@@ -23,29 +23,17 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots(
     tolerance : f64,
 ) -> *mut Vec<f64> {
 
-    if coeffs_ptr.is_null() || len == 0
-    {
+    if coeffs_ptr.is_null() || len == 0 {
 
         return ptr::null_mut();
     }
 
-    let coeffs = slice::from_raw_parts(
-        coeffs_ptr,
-        len,
-    )
-    .to_vec();
+    let coeffs = slice::from_raw_parts(coeffs_ptr, len).to_vec();
 
     let poly = Polynomial::new(coeffs);
 
-    match real_roots::find_roots(
-        &poly,
-        tolerance,
-    ) {
-        | Ok(roots) => {
-            Box::into_raw(Box::new(
-                roots,
-            ))
-        },
+    match real_roots::find_roots(&poly, tolerance) {
+        | Ok(roots) => Box::into_raw(Box::new(roots)),
         | Err(_) => ptr::null_mut(),
     }
 }
@@ -53,9 +41,7 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots(
 /// Frees a roots vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_real_roots_free_vec(
-    ptr : *mut Vec<f64>
-) {
+pub unsafe extern "C" fn rssn_real_roots_free_vec(ptr : *mut Vec<f64>) {
 
     if !ptr.is_null() {
 
@@ -66,9 +52,7 @@ pub unsafe extern "C" fn rssn_real_roots_free_vec(
 /// Gets the length of the roots vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_real_roots_get_vec_len(
-    ptr : *const Vec<f64>
-) -> usize {
+pub unsafe extern "C" fn rssn_real_roots_get_vec_len(ptr : *const Vec<f64>) -> usize {
 
     if ptr.is_null() {
 
@@ -86,8 +70,7 @@ pub unsafe extern "C" fn rssn_real_roots_get_vec_data(
     buffer : *mut f64,
 ) {
 
-    if ptr.is_null() || buffer.is_null()
-    {
+    if ptr.is_null() || buffer.is_null() {
 
         return;
     }

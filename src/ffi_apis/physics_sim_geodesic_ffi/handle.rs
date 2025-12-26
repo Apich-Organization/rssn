@@ -1,9 +1,9 @@
 //! Handle-based FFI API for physics sim geodesic relativity functions.
 
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_sim::geodesic_relativity::GeodesicParameters;
 use crate::physics::physics_sim::geodesic_relativity::{
     self,
-    GeodesicParameters,
 };
 
 /// Runs a geodesic simulation and returns the resulting path as a Matrix handle (Nx2).
@@ -31,14 +31,11 @@ pub extern "C" fn rssn_physics_sim_geodesic_run(
         initial_dt,
     };
 
-    let path = geodesic_relativity::run_geodesic_simulation(
-        &params,
-    );
+    let path = geodesic_relativity::run_geodesic_simulation(&params);
 
     let n = path.len();
 
-    let mut data =
-        Vec::with_capacity(n * 2);
+    let mut data = Vec::with_capacity(n * 2);
 
     for (x, y) in path {
 

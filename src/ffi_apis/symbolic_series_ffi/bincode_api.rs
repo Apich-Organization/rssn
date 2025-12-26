@@ -18,35 +18,22 @@ pub extern "C" fn rssn_bincode_taylor_series(
     order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr : Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let var : Option<String> =
-        from_bincode_buffer(&var_buf);
+    let var : Option<String> = from_bincode_buffer(&var_buf);
 
-    let center : Option<Expr> =
-        from_bincode_buffer(
-            &center_buf,
-        );
+    let center : Option<Expr> = from_bincode_buffer(&center_buf);
 
-    let order : Option<usize> =
-        from_bincode_buffer(&order_buf);
+    let order : Option<usize> = from_bincode_buffer(&order_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(c),
-        Some(o),
-    ) = (
+    if let (Some(e), Some(v), Some(c), Some(o)) = (
         expr,
         var,
         center,
         order,
     ) {
 
-        let result = taylor_series(
-            &e, &v, &c, o,
-        );
+        let result = taylor_series(&e, &v, &c, o);
 
         to_bincode_buffer(&result)
     } else {
@@ -64,35 +51,22 @@ pub extern "C" fn rssn_bincode_laurent_series(
     order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr : Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let var : Option<String> =
-        from_bincode_buffer(&var_buf);
+    let var : Option<String> = from_bincode_buffer(&var_buf);
 
-    let center : Option<Expr> =
-        from_bincode_buffer(
-            &center_buf,
-        );
+    let center : Option<Expr> = from_bincode_buffer(&center_buf);
 
-    let order : Option<usize> =
-        from_bincode_buffer(&order_buf);
+    let order : Option<usize> = from_bincode_buffer(&order_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(c),
-        Some(o),
-    ) = (
+    if let (Some(e), Some(v), Some(c), Some(o)) = (
         expr,
         var,
         center,
         order,
     ) {
 
-        let result = laurent_series(
-            &e, &v, &c, o,
-        );
+        let result = laurent_series(&e, &v, &c, o);
 
         to_bincode_buffer(&result)
     } else {
@@ -110,35 +84,22 @@ pub extern "C" fn rssn_bincode_fourier_series(
     order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr : Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let var : Option<String> =
-        from_bincode_buffer(&var_buf);
+    let var : Option<String> = from_bincode_buffer(&var_buf);
 
-    let period : Option<Expr> =
-        from_bincode_buffer(
-            &period_buf,
-        );
+    let period : Option<Expr> = from_bincode_buffer(&period_buf);
 
-    let order : Option<usize> =
-        from_bincode_buffer(&order_buf);
+    let order : Option<usize> = from_bincode_buffer(&order_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(p),
-        Some(o),
-    ) = (
+    if let (Some(e), Some(v), Some(p), Some(o)) = (
         expr,
         var,
         period,
         order,
     ) {
 
-        let result = fourier_series(
-            &e, &v, &p, o,
-        );
+        let result = fourier_series(&e, &v, &p, o);
 
         to_bincode_buffer(&result)
     } else {
@@ -156,29 +117,19 @@ pub extern "C" fn rssn_bincode_summation(
     upper_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr : Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let var : Option<String> =
-        from_bincode_buffer(&var_buf);
+    let var : Option<String> = from_bincode_buffer(&var_buf);
 
-    let lower : Option<Expr> =
-        from_bincode_buffer(&lower_buf);
+    let lower : Option<Expr> = from_bincode_buffer(&lower_buf);
 
-    let upper : Option<Expr> =
-        from_bincode_buffer(&upper_buf);
+    let upper : Option<Expr> = from_bincode_buffer(&upper_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(l),
-        Some(u),
-    ) = (
+    if let (Some(e), Some(v), Some(l), Some(u)) = (
         expr, var, lower, upper,
     ) {
 
-        let result =
-            summation(&e, &v, &l, &u);
+        let result = summation(&e, &v, &l, &u);
 
         to_bincode_buffer(&result)
     } else {
@@ -196,29 +147,19 @@ pub extern "C" fn rssn_bincode_product(
     upper_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr : Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let var : Option<String> =
-        from_bincode_buffer(&var_buf);
+    let var : Option<String> = from_bincode_buffer(&var_buf);
 
-    let lower : Option<Expr> =
-        from_bincode_buffer(&lower_buf);
+    let lower : Option<Expr> = from_bincode_buffer(&lower_buf);
 
-    let upper : Option<Expr> =
-        from_bincode_buffer(&upper_buf);
+    let upper : Option<Expr> = from_bincode_buffer(&upper_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(l),
-        Some(u),
-    ) = (
+    if let (Some(e), Some(v), Some(l), Some(u)) = (
         expr, var, lower, upper,
     ) {
 
-        let result =
-            product(&e, &v, &l, &u);
+        let result = product(&e, &v, &l, &u);
 
         to_bincode_buffer(&result)
     } else {
@@ -234,20 +175,13 @@ pub extern "C" fn rssn_series_bincode_analyze_convergence(
     var_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let series : Option<Expr> =
-        from_bincode_buffer(
-            &series_buf,
-        );
+    let series : Option<Expr> = from_bincode_buffer(&series_buf);
 
-    let var : Option<String> =
-        from_bincode_buffer(&var_buf);
+    let var : Option<String> = from_bincode_buffer(&var_buf);
 
-    if let (Some(s), Some(v)) =
-        (series, var)
-    {
+    if let (Some(s), Some(v)) = (series, var) {
 
-        let result =
-            analyze_convergence(&s, &v);
+        let result = analyze_convergence(&s, &v);
 
         to_bincode_buffer(&result)
     } else {
@@ -265,31 +199,19 @@ pub extern "C" fn rssn_bincode_asymptotic_expansion(
     order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr : Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let var : Option<String> =
-        from_bincode_buffer(&var_buf);
+    let var : Option<String> = from_bincode_buffer(&var_buf);
 
-    let point : Option<Expr> =
-        from_bincode_buffer(&point_buf);
+    let point : Option<Expr> = from_bincode_buffer(&point_buf);
 
-    let order : Option<usize> =
-        from_bincode_buffer(&order_buf);
+    let order : Option<usize> = from_bincode_buffer(&order_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(p),
-        Some(o),
-    ) = (
+    if let (Some(e), Some(v), Some(p), Some(o)) = (
         expr, var, point, order,
     ) {
 
-        let result =
-            asymptotic_expansion(
-                &e, &v, &p, o,
-            );
+        let result = asymptotic_expansion(&e, &v, &p, o);
 
         to_bincode_buffer(&result)
     } else {
@@ -308,32 +230,17 @@ pub extern "C" fn rssn_bincode_analytic_continuation(
     order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr : Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let var : Option<String> =
-        from_bincode_buffer(&var_buf);
+    let var : Option<String> = from_bincode_buffer(&var_buf);
 
-    let orig_center : Option<Expr> =
-        from_bincode_buffer(
-            &orig_center_buf,
-        );
+    let orig_center : Option<Expr> = from_bincode_buffer(&orig_center_buf);
 
-    let new_center : Option<Expr> =
-        from_bincode_buffer(
-            &new_center_buf,
-        );
+    let new_center : Option<Expr> = from_bincode_buffer(&new_center_buf);
 
-    let order : Option<usize> =
-        from_bincode_buffer(&order_buf);
+    let order : Option<usize> = from_bincode_buffer(&order_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(oc),
-        Some(nc),
-        Some(o),
-    ) = (
+    if let (Some(e), Some(v), Some(oc), Some(nc), Some(o)) = (
         expr,
         var,
         orig_center,
@@ -341,10 +248,7 @@ pub extern "C" fn rssn_bincode_analytic_continuation(
         order,
     ) {
 
-        let result =
-            analytic_continuation(
-                &e, &v, &oc, &nc, o,
-            );
+        let result = analytic_continuation(&e, &v, &oc, &nc, o);
 
         to_bincode_buffer(&result)
     } else {

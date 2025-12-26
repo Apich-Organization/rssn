@@ -21,14 +21,12 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
         return ptr::null_mut();
     }
 
-    let f_slice =
-        std::slice::from_raw_parts(
-            f,
-            n_interior,
-        );
+    let f_slice = std::slice::from_raw_parts(f, n_interior);
 
     match physics_mtm::solve_poisson_1d_multigrid(
-        n_interior, f_slice, num_cycles,
+        n_interior,
+        f_slice,
+        num_cycles,
     ) {
         | Ok(res) => {
 
@@ -67,14 +65,12 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
         return ptr::null_mut();
     }
 
-    let f_slice =
-        std::slice::from_raw_parts(
-            f,
-            n * n,
-        );
+    let f_slice = std::slice::from_raw_parts(f, n * n);
 
     match physics_mtm::solve_poisson_2d_multigrid(
-        n, f_slice, num_cycles,
+        n,
+        f_slice,
+        num_cycles,
     ) {
         | Ok(res) => {
 
@@ -107,8 +103,6 @@ pub unsafe extern "C" fn rssn_free_f64_mtm_array(
 
     if !ptr.is_null() {
 
-        let _ = Box::from_raw(
-            std::slice::from_raw_parts_mut(ptr, size),
-        );
+        let _ = Box::from_raw(std::slice::from_raw_parts_mut(ptr, size));
     }
 }

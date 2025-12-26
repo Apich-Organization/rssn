@@ -39,8 +39,7 @@ fn test_solve_linear_parametric() {
         2,
         3,
         vec![
-            1.0, 1.0, 1.0, 2.0, 2.0,
-            2.0,
+            1.0, 1.0, 1.0, 2.0, 2.0, 2.0,
         ],
     );
 
@@ -55,7 +54,7 @@ fn test_solve_linear_parametric() {
             // Check particular solution
             // A * particular should be b
             // We can check just the first row: 1*p0 + 1*p1 + 1*p2 = 3
-            let p_sum: f64 = particular
+            let p_sum : f64 = particular
                 .iter()
                 .sum();
 
@@ -67,7 +66,7 @@ fn test_solve_linear_parametric() {
             // Verify basis vector v satisfies Av = 0
             for col in null_space_basis.get_cols() {
 
-                let s: f64 = col.iter().sum(); // Since row is 1,1,1, dot(row, col) = sum(col)
+                let s : f64 = col.iter().sum(); // Since row is 1,1,1, dot(row, col) = sum(col)
                 assert_approx_eq!(s, 0.0);
             }
         },

@@ -165,49 +165,42 @@ struct PerspectiveInput {
 // Vector operations
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_graphics_dot_product_json(
-    input : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_graphics_dot_product_json(input : *const c_char) -> *mut c_char {
 
-    let input: TwoVectors3DInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        f64,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : TwoVectors3DInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let v1 = computer_graphics::Vector3D::new(
-        input.v1.x, input.v1.y, input.v1.z,
+        input.v1.x,
+        input.v1.y,
+        input.v1.z,
     );
 
     let v2 = computer_graphics::Vector3D::new(
-        input.v2.x, input.v2.y, input.v2.z,
+        input.v2.x,
+        input.v2.y,
+        input.v2.z,
     );
 
-    let result =
-        computer_graphics::dot_product(
-            &v1, &v2,
-        );
+    let result = computer_graphics::dot_product(&v1, &v2);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -218,156 +211,138 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: TwoVectors3DInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vector3DOutput,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : TwoVectors3DInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vector3DOutput, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let v1 = computer_graphics::Vector3D::new(
-        input.v1.x, input.v1.y, input.v1.z,
+        input.v1.x,
+        input.v1.y,
+        input.v1.z,
     );
 
     let v2 = computer_graphics::Vector3D::new(
-        input.v2.x, input.v2.y, input.v2.z,
+        input.v2.x,
+        input.v2.y,
+        input.v2.z,
     );
 
     let result = computer_graphics::cross_product(&v1, &v2);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    Vector3DOutput {
-                        x : result.x,
-                        y : result.y,
-                        z : result.z,
-                    },
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(Vector3DOutput {
+                x : result.x,
+                y : result.y,
+                z : result.z,
+            }),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_graphics_normalize_json(
-    input : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_graphics_normalize_json(input : *const c_char) -> *mut c_char {
 
-    let input: Vector3DInput = match from_json_string(input)
-    {
+    let input : Vector3DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vector3DOutput,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vector3DOutput, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
     let v = computer_graphics::Vector3D::new(
-        input.x, input.y, input.z,
+        input.x,
+        input.y,
+        input.z,
     );
 
     let result = v.normalize();
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    Vector3DOutput {
-                        x : result.x,
-                        y : result.y,
-                        z : result.z,
-                    },
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(Vector3DOutput {
+                x : result.x,
+                y : result.y,
+                z : result.z,
+            }),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_graphics_magnitude_json(
-    input : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_graphics_magnitude_json(input : *const c_char) -> *mut c_char {
 
-    let input: Vector3DInput = match from_json_string(input)
-    {
+    let input : Vector3DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    f64,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
     let v = computer_graphics::Vector3D::new(
-        input.x, input.y, input.z,
+        input.x,
+        input.y,
+        input.z,
     );
 
     let result = v.magnitude();
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_graphics_reflect_json(
-    input : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_graphics_reflect_json(input : *const c_char) -> *mut c_char {
 
-    let input: ReflectInput = match from_json_string(input)
-    {
+    let input : ReflectInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vector3DOutput,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vector3DOutput, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -385,25 +360,17 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect_json(
         input.normal.z,
     );
 
-    let result =
-        computer_graphics::reflect(
-            &incident,
-            &normal,
-        );
+    let result = computer_graphics::reflect(&incident, &normal);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    Vector3DOutput {
-                        x : result.x,
-                        y : result.y,
-                        z : result.z,
-                    },
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(Vector3DOutput {
+                x : result.x,
+                y : result.y,
+                z : result.z,
+            }),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -414,42 +381,40 @@ pub unsafe extern "C" fn rssn_num_graphics_angle_between_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: TwoVectors3DInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        f64,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : TwoVectors3DInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let v1 = computer_graphics::Vector3D::new(
-        input.v1.x, input.v1.y, input.v1.z,
+        input.v1.x,
+        input.v1.y,
+        input.v1.z,
     );
 
     let v2 = computer_graphics::Vector3D::new(
-        input.v2.x, input.v2.y, input.v2.z,
+        input.v2.x,
+        input.v2.y,
+        input.v2.z,
     );
 
     let result = computer_graphics::angle_between(&v1, &v2);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -461,38 +426,32 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: TransformInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<f64>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : TransformInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let matrix = computer_graphics::translation_matrix(
-        input.dx, input.dy, input.dz,
+        input.dx,
+        input.dy,
+        input.dz,
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    matrix.data(),
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(matrix.data()),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -503,35 +462,32 @@ pub unsafe extern "C" fn rssn_num_graphics_scaling_matrix_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: ScaleInput = match from_json_string(input) {
+    let input : ScaleInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
     let matrix = computer_graphics::scaling_matrix(
-        input.sx, input.sy, input.sz,
+        input.sx,
+        input.sy,
+        input.sz,
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    matrix.data(),
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(matrix.data()),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -542,34 +498,28 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: AngleInput = match from_json_string(input) {
+    let input : AngleInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let matrix =
-        computer_graphics::rotation_matrix_x(input.angle);
+    let matrix = computer_graphics::rotation_matrix_x(input.angle);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    matrix.data(),
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(matrix.data()),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -580,34 +530,28 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_y_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: AngleInput = match from_json_string(input) {
+    let input : AngleInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let matrix =
-        computer_graphics::rotation_matrix_y(input.angle);
+    let matrix = computer_graphics::rotation_matrix_y(input.angle);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    matrix.data(),
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(matrix.data()),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -618,34 +562,28 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_z_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: AngleInput = match from_json_string(input) {
+    let input : AngleInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let matrix =
-        computer_graphics::rotation_matrix_z(input.angle);
+    let matrix = computer_graphics::rotation_matrix_z(input.angle);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    matrix.data(),
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(matrix.data()),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -656,24 +594,20 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: RotationAxisInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<f64>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : RotationAxisInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let axis = computer_graphics::Vector3D::new(
         input.axis.x,
@@ -681,20 +615,13 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
         input.axis.z,
     );
 
-    let matrix = computer_graphics::rotation_matrix_axis(
-        &axis,
-        input.angle,
-    );
+    let matrix = computer_graphics::rotation_matrix_axis(&axis, input.angle);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    matrix.data(),
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(matrix.data()),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -706,49 +633,47 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: TwoQuaternionsInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        QuaternionOutput,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : TwoQuaternionsInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<QuaternionOutput, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let q1 = computer_graphics::Quaternion::new(
-        input.q1.w, input.q1.x, input.q1.y, input.q1.z,
+        input.q1.w,
+        input.q1.x,
+        input.q1.y,
+        input.q1.z,
     );
 
     let q2 = computer_graphics::Quaternion::new(
-        input.q2.w, input.q2.x, input.q2.y, input.q2.z,
+        input.q2.w,
+        input.q2.x,
+        input.q2.y,
+        input.q2.z,
     );
 
     let result = q1.multiply(&q2);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    QuaternionOutput {
-                        w : result.w,
-                        x : result.x,
-                        y : result.y,
-                        z : result.z,
-                    },
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(QuaternionOutput {
+                w : result.w,
+                x : result.x,
+                y : result.y,
+                z : result.z,
+            }),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -759,49 +684,47 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_slerp_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: QuaternionSlerpInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        QuaternionOutput,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : QuaternionSlerpInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<QuaternionOutput, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let q1 = computer_graphics::Quaternion::new(
-        input.q1.w, input.q1.x, input.q1.y, input.q1.z,
+        input.q1.w,
+        input.q1.x,
+        input.q1.y,
+        input.q1.z,
     );
 
     let q2 = computer_graphics::Quaternion::new(
-        input.q2.w, input.q2.x, input.q2.y, input.q2.z,
+        input.q2.w,
+        input.q2.x,
+        input.q2.y,
+        input.q2.z,
     );
 
     let result = q1.slerp(&q2, input.t);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    QuaternionOutput {
-                        w : result.w,
-                        x : result.x,
-                        y : result.y,
-                        z : result.z,
-                    },
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(QuaternionOutput {
+                w : result.w,
+                x : result.x,
+                y : result.y,
+                z : result.z,
+            }),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -813,24 +736,20 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: RaySphereInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Option<IntersectionOutput>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : RaySphereInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Option<IntersectionOutput>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let ray = computer_graphics::Ray::new(
         computer_graphics::Point3D::new(
@@ -866,9 +785,7 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
         input.sphere_radius,
     );
 
-    let result = computer_graphics::ray_sphere_intersection(
-        &ray, &sphere,
-    );
+    let result = computer_graphics::ray_sphere_intersection(&ray, &sphere);
 
     let output = result.map(|i| {
 
@@ -888,12 +805,10 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
     });
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(output),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(output),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -901,79 +816,64 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
 // Curves
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(
-    input : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(input : *const c_char) -> *mut c_char {
 
-    let input: BezierCubicInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Point3DOutput,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : BezierCubicInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Point3DOutput, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
-    let p0 =
-        computer_graphics::Point3D::new(
-            input.p0.x,
-            input.p0.y,
-            input.p0.z,
-        );
+    let p0 = computer_graphics::Point3D::new(
+        input.p0.x,
+        input.p0.y,
+        input.p0.z,
+    );
 
-    let p1 =
-        computer_graphics::Point3D::new(
-            input.p1.x,
-            input.p1.y,
-            input.p1.z,
-        );
+    let p1 = computer_graphics::Point3D::new(
+        input.p1.x,
+        input.p1.y,
+        input.p1.z,
+    );
 
-    let p2 =
-        computer_graphics::Point3D::new(
-            input.p2.x,
-            input.p2.y,
-            input.p2.z,
-        );
+    let p2 = computer_graphics::Point3D::new(
+        input.p2.x,
+        input.p2.y,
+        input.p2.z,
+    );
 
-    let p3 =
-        computer_graphics::Point3D::new(
-            input.p3.x,
-            input.p3.y,
-            input.p3.z,
-        );
+    let p3 = computer_graphics::Point3D::new(
+        input.p3.x,
+        input.p3.y,
+        input.p3.z,
+    );
 
-    let result =
-        computer_graphics::bezier_cubic(
-            &p0,
-            &p1,
-            &p2,
-            &p3,
-            input.t,
-        );
+    let result = computer_graphics::bezier_cubic(
+        &p0,
+        &p1,
+        &p2,
+        &p3,
+        input.t,
+    );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    Point3DOutput {
-                        x : result.x,
-                        y : result.y,
-                        z : result.z,
-                    },
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(Point3DOutput {
+                x : result.x,
+                y : result.y,
+                z : result.z,
+            }),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -985,17 +885,16 @@ pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: LookAtInput = match from_json_string(input) {
+    let input : LookAtInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -1014,22 +913,18 @@ pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
     );
 
     let up = computer_graphics::Vector3D::new(
-        input.up.x, input.up.y, input.up.z,
+        input.up.x,
+        input.up.y,
+        input.up.z,
     );
 
-    let matrix = computer_graphics::look_at_matrix(
-        &eye, &center, &up,
-    );
+    let matrix = computer_graphics::look_at_matrix(&eye, &center, &up);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    matrix.data(),
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(matrix.data()),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -1040,24 +935,20 @@ pub unsafe extern "C" fn rssn_num_graphics_perspective_matrix_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: PerspectiveInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<f64>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : PerspectiveInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let matrix = computer_graphics::perspective_matrix(
         input.fov_y,
@@ -1067,14 +958,10 @@ pub unsafe extern "C" fn rssn_num_graphics_perspective_matrix_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(
-                    matrix.data(),
-                ),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(matrix.data()),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }

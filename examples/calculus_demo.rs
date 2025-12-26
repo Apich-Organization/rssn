@@ -22,8 +22,7 @@ fn main() {
 
     println!("g(x) = {}", g);
 
-    let int_g =
-        integrate(&g, "x", None, None);
+    let int_g = integrate(&g, "x", None, None);
 
     println!(
         "int(g) dx = {}",
@@ -37,8 +36,7 @@ fn main() {
 
     println!("h(z) = {}", h);
 
-    let is_analytic =
-        check_analytic(&h, "z");
+    let is_analytic = check_analytic(&h, "z");
 
     println!(
         "Is h(z) analytic? {}",

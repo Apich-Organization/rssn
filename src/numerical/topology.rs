@@ -22,14 +22,11 @@ use crate::symbolic::topology::SimplicialComplex;
 /// A vector of vectors, where each inner vector contains the node indices of a connected component.
 #[must_use]
 
-pub fn find_connected_components(
-    graph : &Graph
-) -> Vec<Vec<usize>> {
+pub fn find_connected_components(graph : &Graph) -> Vec<Vec<usize>> {
 
     let num_nodes = graph.num_nodes();
 
-    let mut visited =
-        vec![false; num_nodes];
+    let mut visited = vec![false; num_nodes];
 
     let mut components = Vec::new();
 
@@ -37,35 +34,25 @@ pub fn find_connected_components(
 
         if !visited[i] {
 
-            let mut component =
-                Vec::new();
+            let mut component = Vec::new();
 
-            let mut queue =
-                VecDeque::new();
+            let mut queue = VecDeque::new();
 
             visited[i] = true;
 
             queue.push_back(i);
 
-            while let Some(u) =
-                queue.pop_front()
-            {
+            while let Some(u) = queue.pop_front() {
 
                 component.push(u);
 
-                for &(v, _) in
-                    graph.adj(u)
-                {
+                for &(v, _) in graph.adj(u) {
 
                     if !visited[v] {
 
-                        visited[v] =
-                            true;
+                        visited[v] = true;
 
-                        queue
-                            .push_back(
-                                v,
-                            );
+                        queue.push_back(v);
                     }
                 }
             }
@@ -82,14 +69,7 @@ pub fn find_connected_components(
 pub type Simplex = Vec<usize>;
 
 /// Represents a persistence interval (birth, death).
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    PartialEq,
-)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 
 pub struct PersistenceInterval {
     pub birth : f64,
@@ -97,18 +77,11 @@ pub struct PersistenceInterval {
 }
 
 /// Represents a persistence diagram for a specific dimension.
-#[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 
 pub struct PersistenceDiagram {
     pub dimension : usize,
-    pub intervals :
-        Vec<PersistenceInterval>,
+    pub intervals : Vec<PersistenceInterval>,
 }
 
 /// Constructs a Vietoris-Rips simplicial complex from a set of points for a given radius.
@@ -139,44 +112,30 @@ pub fn vietoris_rips_complex(
         return simplices;
     }
 
-    let mut current_simplices =
-        Vec::new();
+    let mut current_simplices = Vec::new();
 
     for i in 0 .. n_points {
 
         for j in (i + 1) .. n_points {
 
-            if euclidean_distance(
-                points[i],
-                points[j],
-            ) <= epsilon
-            {
+            if euclidean_distance(points[i], points[j]) <= epsilon {
 
-                current_simplices
-                    .push(vec![i, j]);
+                current_simplices.push(vec![i, j]);
             }
         }
     }
 
-    simplices.extend(
-        current_simplices.clone(),
-    );
+    simplices.extend(current_simplices.clone());
 
     for _dim in 2 ..= max_dim {
 
-        let mut next_simplices =
-            Vec::new();
+        let mut next_simplices = Vec::new();
 
-        for simplex in
-            &current_simplices
-        {
+        for simplex in &current_simplices {
 
-            let last_v = simplex
-                [simplex.len() - 1];
+            let last_v = simplex[simplex.len() - 1];
 
-            for i in
-                (last_v + 1) .. n_points
-            {
+            for i in (last_v + 1) .. n_points {
 
                 let mut all_ok = true;
 
@@ -192,15 +151,11 @@ pub fn vietoris_rips_complex(
 
                 if all_ok {
 
-                    let mut new_simplex =
-                        simplex.clone();
+                    let mut new_simplex = simplex.clone();
 
                     new_simplex.push(i);
 
-                    next_simplices
-                        .push(
-                            new_simplex,
-                        );
+                    next_simplices.push(new_simplex);
                 }
             }
         }
@@ -210,12 +165,9 @@ pub fn vietoris_rips_complex(
             break;
         }
 
-        simplices.extend(
-            next_simplices.clone(),
-        );
+        simplices.extend(next_simplices.clone());
 
-        current_simplices =
-            next_simplices;
+        current_simplices = next_simplices;
     }
 
     simplices
@@ -234,23 +186,20 @@ pub fn betti_numbers_at_radius(
     max_dim : usize,
 ) -> Vec<usize> {
 
-    let simplices =
-        vietoris_rips_complex(
-            points,
-            epsilon,
-            max_dim,
-        );
+    let simplices = vietoris_rips_complex(
+        points,
+        epsilon,
+        max_dim,
+    );
 
-    let mut complex =
-        SimplicialComplex::new();
+    let mut complex = SimplicialComplex::new();
 
     for s in simplices {
 
         complex.add_simplex(&s);
     }
 
-    let chain_complex =
-        ChainComplex::new(complex);
+    let chain_complex = ChainComplex::new(complex);
 
     let mut betti = Vec::new();
 
@@ -278,8 +227,8 @@ pub fn compute_persistence(
 
     let mut diagrams = vec![
         PersistenceDiagram {
-            dimension: 0,
-            intervals: Vec::new()
+            dimension : 0,
+            intervals : Vec::new()
         };
         max_dim + 1
     ];
@@ -293,32 +242,22 @@ pub fn compute_persistence(
     // Real persistent homology requires tracking individual cycles, but for FFI start
     // we provide a way to see topological features appearing and disappearing.
 
-    let mut prev_betti =
-        vec![0; max_dim + 1];
+    let mut prev_betti = vec![0; max_dim + 1];
 
-    let mut open_intervals : Vec<
-        Vec<f64>,
-    > = vec![Vec::new(); max_dim + 1];
+    let mut open_intervals : Vec<Vec<f64>> = vec![Vec::new(); max_dim + 1];
 
     for step in 0 ..= steps {
 
-        let epsilon = max_epsilon
-            * (step as f64
-                / steps as f64);
+        let epsilon = max_epsilon * (step as f64 / steps as f64);
 
-        let current_betti =
-            betti_numbers_at_radius(
-                &points
-                    .iter()
-                    .map(|v| {
-
-                        v.as_slice()
-                    })
-                    .collect::<Vec<_>>(
-                    ),
-                epsilon,
-                max_dim,
-            );
+        let current_betti = betti_numbers_at_radius(
+            &points
+                .iter()
+                .map(|v| v.as_slice())
+                .collect::<Vec<_>>(),
+            epsilon,
+            max_dim,
+        );
 
         for d in 0 ..= max_dim {
 
@@ -329,30 +268,23 @@ pub fn compute_persistence(
             if cb > pb {
 
                 // New features born
-                for _ in 0 .. (cb - pb)
-                {
+                for _ in 0 .. (cb - pb) {
 
-                    open_intervals[d]
-                        .push(epsilon);
+                    open_intervals[d].push(epsilon);
                 }
             } else if cb < pb {
 
                 // Features died
-                for _ in 0 .. (pb - cb)
-                {
+                for _ in 0 .. (pb - cb) {
 
-                    if let Some(birth) =
-                        open_intervals
-                            [d]
-                            .pop()
-                    {
+                    if let Some(birth) = open_intervals[d].pop() {
 
                         diagrams[d]
                             .intervals
                             .push(
                                 PersistenceInterval {
                                     birth,
-                                    death: epsilon,
+                                    death : epsilon,
                                 },
                             );
                     }
@@ -366,16 +298,14 @@ pub fn compute_persistence(
     // Close remaining intervals
     for d in 0 ..= max_dim {
 
-        while let Some(birth) =
-            open_intervals[d].pop()
-        {
+        while let Some(birth) = open_intervals[d].pop() {
 
             diagrams[d]
                 .intervals
                 .push(
                     PersistenceInterval {
                         birth,
-                        death: max_epsilon,
+                        death : max_epsilon,
                     },
                 );
         }

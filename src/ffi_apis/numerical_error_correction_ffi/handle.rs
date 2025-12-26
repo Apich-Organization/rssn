@@ -16,23 +16,17 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
     out_len : *mut usize,
 ) -> i32 {
 
-    if message_ptr.is_null()
-        || out_ptr.is_null()
-        || out_len.is_null()
-    {
+    if message_ptr.is_null() || out_ptr.is_null() || out_len.is_null() {
 
         return -1;
     }
 
-    let message =
-        std::slice::from_raw_parts(
-            message_ptr,
-            message_len,
-        );
+    let message = std::slice::from_raw_parts(
+        message_ptr,
+        message_len,
+    );
 
-    match error_correction::reed_solomon_encode(
-        message, n_parity,
-    ) {
+    match error_correction::reed_solomon_encode(message, n_parity) {
         | Ok(codeword) => {
 
             let copy_len = codeword
@@ -70,15 +64,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode(
         return -1;
     }
 
-    let codeword =
-        std::slice::from_raw_parts_mut(
-            codeword_ptr,
-            codeword_len,
-        );
+    let codeword = std::slice::from_raw_parts_mut(
+        codeword_ptr,
+        codeword_len,
+    );
 
-    match error_correction::reed_solomon_decode(
-        codeword, n_parity,
-    ) {
+    match error_correction::reed_solomon_decode(codeword, n_parity) {
         | Ok(()) => 0,
         | Err(_) => -2,
     }
@@ -101,15 +92,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check(
         return -1;
     }
 
-    let codeword =
-        std::slice::from_raw_parts(
-            codeword_ptr,
-            codeword_len,
-        );
+    let codeword = std::slice::from_raw_parts(
+        codeword_ptr,
+        codeword_len,
+    );
 
-    if error_correction::reed_solomon_check(
-        codeword, n_parity,
-    ) {
+    if error_correction::reed_solomon_check(codeword, n_parity) {
 
         1
     } else {
@@ -130,18 +118,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
     out_ptr : *mut u8,
 ) -> i32 {
 
-    if data_ptr.is_null()
-        || out_ptr.is_null()
-    {
+    if data_ptr.is_null() || out_ptr.is_null() {
 
         return -1;
     }
 
-    let data =
-        std::slice::from_raw_parts(
-            data_ptr,
-            4,
-        );
+    let data = std::slice::from_raw_parts(data_ptr, 4);
 
     match error_correction::hamming_encode_numerical(data) {
         | Some(codeword) => {
@@ -172,23 +154,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
     error_pos_ptr : *mut i32,
 ) -> i32 {
 
-    if codeword_ptr.is_null()
-        || out_ptr.is_null()
-        || error_pos_ptr.is_null()
-    {
+    if codeword_ptr.is_null() || out_ptr.is_null() || error_pos_ptr.is_null() {
 
         return -1;
     }
 
-    let codeword =
-        std::slice::from_raw_parts(
-            codeword_ptr,
-            7,
-        );
+    let codeword = std::slice::from_raw_parts(codeword_ptr, 7);
 
-    match error_correction::hamming_decode_numerical(
-        codeword,
-    ) {
+    match error_correction::hamming_decode_numerical(codeword) {
         | Ok((data, error_pos)) => {
 
             std::ptr::copy_nonoverlapping(
@@ -197,8 +170,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
                 4,
             );
 
-            *error_pos_ptr =
-                error_pos.map_or(-1, |p| p as i32);
+            *error_pos_ptr = error_pos.map_or(-1, |p| p as i32);
 
             0
         },
@@ -212,20 +184,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
 /// `codeword_ptr` must be a valid pointer to 7 bytes.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(
-    codeword_ptr : *const u8
-) -> i32 {
+pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(codeword_ptr : *const u8) -> i32 {
 
     if codeword_ptr.is_null() {
 
         return -1;
     }
 
-    let codeword =
-        std::slice::from_raw_parts(
-            codeword_ptr,
-            7,
-        );
+    let codeword = std::slice::from_raw_parts(codeword_ptr, 7);
 
     if error_correction::hamming_check_numerical(codeword) {
 
@@ -248,23 +214,16 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance(
     len : usize,
 ) -> i32 {
 
-    if a_ptr.is_null()
-        || b_ptr.is_null()
-    {
+    if a_ptr.is_null() || b_ptr.is_null() {
 
         return -1;
     }
 
-    let a = std::slice::from_raw_parts(
-        a_ptr, len,
-    );
+    let a = std::slice::from_raw_parts(a_ptr, len);
 
-    let b = std::slice::from_raw_parts(
-        b_ptr, len,
-    );
+    let b = std::slice::from_raw_parts(b_ptr, len);
 
-    error_correction::hamming_distance_numerical(a, b)
-        .map_or(-1, |d| d as i32)
+    error_correction::hamming_distance_numerical(a, b).map_or(-1, |d| d as i32)
 }
 
 /// Compute Hamming weight of a byte array.
@@ -283,11 +242,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight(
         return -1;
     }
 
-    let data =
-        std::slice::from_raw_parts(
-            data_ptr,
-            len,
-        );
+    let data = std::slice::from_raw_parts(data_ptr, len);
 
     error_correction::hamming_weight_numerical(data) as i32
 }
@@ -308,11 +263,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32(
         return 0;
     }
 
-    let data =
-        std::slice::from_raw_parts(
-            data_ptr,
-            len,
-        );
+    let data = std::slice::from_raw_parts(data_ptr, len);
 
     error_correction::crc32_compute_numerical(data)
 }
@@ -334,16 +285,9 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
         return -1;
     }
 
-    let data =
-        std::slice::from_raw_parts(
-            data_ptr,
-            len,
-        );
+    let data = std::slice::from_raw_parts(data_ptr, len);
 
-    if error_correction::crc32_verify_numerical(
-        data,
-        expected_crc,
-    ) {
+    if error_correction::crc32_verify_numerical(data, expected_crc) {
 
         1
     } else {
@@ -368,15 +312,9 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16(
         return 0;
     }
 
-    let data =
-        std::slice::from_raw_parts(
-            data_ptr,
-            len,
-        );
+    let data = std::slice::from_raw_parts(data_ptr, len);
 
-    error_correction::crc16_compute(
-        data,
-    )
+    error_correction::crc16_compute(data)
 }
 
 /// Compute CRC-8 checksum.
@@ -395,11 +333,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8(
         return 0;
     }
 
-    let data =
-        std::slice::from_raw_parts(
-            data_ptr,
-            len,
-        );
+    let data = std::slice::from_raw_parts(data_ptr, len);
 
     error_correction::crc8_compute(data)
 }
@@ -418,23 +352,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave(
     out_ptr : *mut u8,
 ) -> i32 {
 
-    if data_ptr.is_null()
-        || out_ptr.is_null()
-    {
+    if data_ptr.is_null() || out_ptr.is_null() {
 
         return -1;
     }
 
-    let data =
-        std::slice::from_raw_parts(
-            data_ptr,
-            len,
-        );
+    let data = std::slice::from_raw_parts(data_ptr, len);
 
-    let result =
-        error_correction::interleave(
-            data, depth,
-        );
+    let result = error_correction::interleave(data, depth);
 
     std::ptr::copy_nonoverlapping(
         result.as_ptr(),
@@ -459,23 +384,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave(
     out_ptr : *mut u8,
 ) -> i32 {
 
-    if data_ptr.is_null()
-        || out_ptr.is_null()
-    {
+    if data_ptr.is_null() || out_ptr.is_null() {
 
         return -1;
     }
 
-    let data =
-        std::slice::from_raw_parts(
-            data_ptr,
-            len,
-        );
+    let data = std::slice::from_raw_parts(data_ptr, len);
 
-    let result =
-        error_correction::deinterleave(
-            data, depth,
-        );
+    let result = error_correction::deinterleave(data, depth);
 
     std::ptr::copy_nonoverlapping(
         result.as_ptr(),
@@ -500,23 +416,15 @@ pub extern "C" fn rssn_num_error_correction_code_rate(
 /// Compute error correction capability from minimum distance.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_error_correction_capability(
-    min_distance : usize
-) -> usize {
+pub extern "C" fn rssn_num_error_correction_capability(min_distance : usize) -> usize {
 
-    error_correction::error_correction_capability(
-        min_distance,
-    )
+    error_correction::error_correction_capability(min_distance)
 }
 
 /// Compute error detection capability from minimum distance.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_error_detection_capability(
-    min_distance : usize
-) -> usize {
+pub extern "C" fn rssn_num_error_detection_capability(min_distance : usize) -> usize {
 
-    error_correction::error_detection_capability(
-        min_distance,
-    )
+    error_correction::error_detection_capability(min_distance)
 }

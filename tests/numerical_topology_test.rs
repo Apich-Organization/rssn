@@ -11,8 +11,7 @@ fn test_connected_components() {
 
     g.add_edge(2, 3, 1.0);
 
-    let comps =
-        find_connected_components(&g);
+    let comps = find_connected_components(&g);
 
     assert_eq!(comps.len(), 2);
 }
@@ -35,12 +34,7 @@ fn test_vietoris_rips() {
 
     // With epsilon = 0.8, all points are connected to each other
     // Triangle should be formed.
-    let simplices =
-        vietoris_rips_complex(
-            &points,
-            0.8,
-            2,
-        );
+    let simplices = vietoris_rips_complex(&points, 0.8, 2);
 
     // 0-simplices: [0], [1], [2]
     // 1-simplices: [0,1], [0,2], [1,2]
@@ -80,11 +74,7 @@ fn test_betti_numbers() {
     // 2-simplices: none
     // B0 = 1 (one component)
     // B1 = 1 (one hole)
-    let betti = betti_numbers_at_radius(
-        &points,
-        1.1,
-        1,
-    );
+    let betti = betti_numbers_at_radius(&points, 1.1, 1);
 
     assert_eq!(betti[0], 1);
 
@@ -102,21 +92,14 @@ fn test_persistence() {
         vec![1.0, 1.0],
     ];
 
-    let diagrams = compute_persistence(
-        &points,
-        1.5,
-        15,
-        1,
-    );
+    let diagrams = compute_persistence(&points, 1.5, 15, 1);
 
     // Dimension 1 hole should be born around 1.0 and die around 1.414
     let d1 = &diagrams[1];
 
     assert!(
         d1.intervals.len() >= 1,
-        "Expected at least one \
-         interval in dimension 1, \
-         found {:?}",
+        "Expected at least one interval in dimension 1, found {:?}",
         d1.intervals
     );
 
@@ -133,9 +116,7 @@ fn test_persistence() {
 
     assert!(
         found,
-        "No interval matched birth \
-         ~1.0, death ~1.4. Intervals: \
-         {:?}",
+        "No interval matched birth ~1.0, death ~1.4. Intervals: {:?}",
         d1.intervals
     );
 }

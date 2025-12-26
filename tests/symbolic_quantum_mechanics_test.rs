@@ -6,24 +6,18 @@ use rssn::symbolic::quantum_mechanics::*;
 fn test_bra_ket() {
 
     let psi = Ket {
-        state : Expr::new_variable(
-            "psi",
-        ),
+        state : Expr::new_variable("psi"),
     };
 
     let phi = Bra {
-        state : Expr::new_variable(
-            "phi",
-        ),
+        state : Expr::new_variable("phi"),
     };
 
     let inner = bra_ket(&phi, &psi);
 
     let inner_str = inner.to_string();
 
-    assert!(
-        inner_str.contains("integral")
-    );
+    assert!(inner_str.contains("integral"));
 
     assert!(inner_str.contains("phi"));
 
@@ -34,18 +28,16 @@ fn test_bra_ket() {
 
 fn test_commutator() {
 
-    let a = Operator::new(
-        Expr::new_variable("A"),
-    );
+    let a = Operator::new(Expr::new_variable(
+        "A",
+    ));
 
-    let b = Operator::new(
-        Expr::new_variable("B"),
-    );
+    let b = Operator::new(Expr::new_variable(
+        "B",
+    ));
 
     let psi = Ket {
-        state : Expr::new_variable(
-            "psi",
-        ),
+        state : Expr::new_variable("psi"),
     };
 
     let comm = commutator(&a, &b, &psi);
@@ -80,18 +72,15 @@ fn test_pauli_matrices() {
 
 fn test_expectation_value() {
 
-    let x = Operator::new(
-        Expr::new_variable("x"),
-    );
+    let x = Operator::new(Expr::new_variable(
+        "x",
+    ));
 
     let psi = Ket {
-        state : Expr::new_variable(
-            "psi",
-        ),
+        state : Expr::new_variable("psi"),
     };
 
-    let exp_x =
-        expectation_value(&x, &psi);
+    let exp_x = expectation_value(&x, &psi);
 
     assert!(exp_x
         .to_string()
@@ -108,8 +97,7 @@ fn test_hamiltonian_free_particle() {
 
     let m = Expr::new_variable("m");
 
-    let h =
-        hamiltonian_free_particle(&m);
+    let h = hamiltonian_free_particle(&m);
 
     assert!(h
         .op

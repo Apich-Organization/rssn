@@ -13,10 +13,7 @@ pub unsafe extern "C" fn rssn_crystal_lattice_new(
     a3 : *const Vector,
 ) -> *mut CrystalLattice {
 
-    if a1.is_null()
-        || a2.is_null()
-        || a3.is_null()
-    {
+    if a1.is_null() || a2.is_null() || a3.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -33,9 +30,7 @@ pub unsafe extern "C" fn rssn_crystal_lattice_new(
 /// Frees a CrystalLattice.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_crystal_lattice_free(
-    ptr : *mut CrystalLattice
-) {
+pub unsafe extern "C" fn rssn_crystal_lattice_free(ptr : *mut CrystalLattice) {
 
     if !ptr.is_null() {
 
@@ -46,9 +41,7 @@ pub unsafe extern "C" fn rssn_crystal_lattice_free(
 /// Computes the volume of the unit cell.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_crystal_lattice_volume(
-    ptr : *const CrystalLattice
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_crystal_lattice_volume(ptr : *const CrystalLattice) -> *mut Expr {
 
     if ptr.is_null() {
 
@@ -70,17 +63,12 @@ pub unsafe extern "C" fn rssn_crystal_lattice_reciprocal_vectors(
     b3 : *mut *mut Vector,
 ) {
 
-    if ptr.is_null()
-        || b1.is_null()
-        || b2.is_null()
-        || b3.is_null()
-    {
+    if ptr.is_null() || b1.is_null() || b2.is_null() || b3.is_null() {
 
         return;
     }
 
-    let (v1, v2, v3) = (*ptr)
-        .reciprocal_lattice_vectors();
+    let (v1, v2, v3) = (*ptr).reciprocal_lattice_vectors();
 
     *b1 = Box::into_raw(Box::new(v1));
 
@@ -98,10 +86,7 @@ pub unsafe extern "C" fn rssn_density_of_states_3d(
     volume : *const Expr,
 ) -> *mut Expr {
 
-    if energy.is_null()
-        || effective_mass.is_null()
-        || volume.is_null()
-    {
+    if energy.is_null() || effective_mass.is_null() || volume.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -123,9 +108,7 @@ pub unsafe extern "C" fn rssn_fermi_energy_3d(
     effective_mass : *const Expr,
 ) -> *mut Expr {
 
-    if concentration.is_null()
-        || effective_mass.is_null()
-    {
+    if concentration.is_null() || effective_mass.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -148,11 +131,7 @@ pub unsafe extern "C" fn rssn_drude_conductivity(
     m_star : *const Expr,
 ) -> *mut Expr {
 
-    if n.is_null()
-        || e_charge.is_null()
-        || tau.is_null()
-        || m_star.is_null()
-    {
+    if n.is_null() || e_charge.is_null() || tau.is_null() || m_star.is_null() {
 
         return std::ptr::null_mut();
     }

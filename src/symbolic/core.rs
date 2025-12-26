@@ -146,24 +146,20 @@
 //!
 //! ```rust
 //! 
-//! use rssn::symbolic::core::{
-//!     register_dynamic_op,
-//!     DynamicOpProperties,
-//!     Expr,
-//! };
 //! use std::sync::Arc;
+//!
+//! use rssn::symbolic::core::register_dynamic_op;
+//! use rssn::symbolic::core::DynamicOpProperties;
+//! use rssn::symbolic::core::Expr;
 //!
 //! // Register a custom operation
 //! register_dynamic_op(
 //!     "custom_func",
 //!     DynamicOpProperties {
-//!         name: "custom_func"
-//!             .to_string(),
-//!         description:
-//!             "My custom function"
-//!                 .to_string(),
-//!         is_associative: false,
-//!         is_commutative: false,
+//!         name : "custom_func".to_string(),
+//!         description : "My custom function".to_string(),
+//!         is_associative : false,
+//!         is_commutative : false,
 //!     },
 //! );
 //!
@@ -223,15 +219,12 @@ use ordered_float::OrderedFloat;
 use crate::symbolic::unit_unification::UnitQuantity;
 
 lazy_static! {
-    pub static ref DAG_MANAGER: DagManager =
-        DagManager::new();
+    pub static ref DAG_MANAGER: DagManager = DagManager::new();
 }
 
 // --- Distribution Trait ---
 // Moved here to break circular dependency
-pub trait Distribution:
-    Debug + Send + Sync
-{
+pub trait Distribution: Debug + Send + Sync {
     fn pdf(
         &self,
         x : &Expr,
@@ -251,24 +244,14 @@ pub trait Distribution:
         t : &Expr,
     ) -> Expr;
 
-    fn clone_box(
-        &self
-    ) -> Arc<dyn Distribution>;
+    fn clone_box(&self) -> Arc<dyn Distribution>;
 }
 
 // --- End Distribution Trait ---
 
 /// `PathType` enum
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    serde::Serialize,
-    serde::Deserialize,
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 
 pub enum PathType {
@@ -285,20 +268,10 @@ pub enum PathType {
 /// such as `x^2*y^3`. This struct stores it as a map from variable names (String)
 /// to their exponents (u32).
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    serde::Serialize,
-    serde::Deserialize,
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 
-pub struct Monomial(
-    pub BTreeMap<String, u32>,
-);
+pub struct Monomial(pub BTreeMap<String, u32>);
 
 /// Represents a sparse multivariate polynomial.
 ///
@@ -306,21 +279,12 @@ pub struct Monomial(
 /// This representation is highly efficient for polynomials with a small number of non-zero
 /// terms relative to the degree, such as `x^1000 + 1`.
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    serde::Serialize,
-    serde::Deserialize,
-    PartialOrd,
-    Ord,
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PartialOrd, Ord,
 )]
 
 pub struct SparsePolynomial {
     /// The terms of the polynomial, mapping each monomial to its coefficient.
-    pub terms :
-        BTreeMap<Monomial, Expr>,
+    pub terms : BTreeMap<Monomial, Expr>,
 }
 
 /// The central enum representing a mathematical expression in the symbolic system.
@@ -329,9 +293,7 @@ pub struct SparsePolynomial {
 /// mathematical objects and operations. Manual implementations for `Debug`, `Clone`,
 /// `PartialEq`, `Eq`, and `Hash` are provided to handle variants containing types
 /// that do not derive these traits automatically (e.g., `f64`, `Arc<dyn Distribution>`).
-#[derive(
-    serde::Serialize, serde::Deserialize,
-)]
+#[derive(serde::Serialize, serde::Deserialize)]
 
 pub enum Expr {
     // --- Basic & Numeric Types ---
@@ -516,10 +478,7 @@ pub enum Expr {
         Arc<Expr>,
     ),
     /// Represents a convergence analysis for a series.
-    ConvergenceAnalysis(
-        Arc<Expr>,
-        String,
-    ),
+    ConvergenceAnalysis(Arc<Expr>, String),
     /// An asymptotic expansion of a function.
     AsymptoticExpansion(
         Arc<Expr>,
@@ -586,15 +545,9 @@ pub enum Expr {
     /// Combinations, `C(n, k)`.
     Combination(Arc<Expr>, Arc<Expr>),
     /// Falling factorial.
-    FallingFactorial(
-        Arc<Expr>,
-        Arc<Expr>,
-    ),
+    FallingFactorial(Arc<Expr>, Arc<Expr>),
     /// Rising factorial.
-    RisingFactorial(
-        Arc<Expr>,
-        Arc<Expr>,
-    ),
+    RisingFactorial(Arc<Expr>, Arc<Expr>),
 
     // --- Geometry & Vector Calculus ---
     /// A path for path integrals (e.g., line, circle).
@@ -644,10 +597,7 @@ pub enum Expr {
     /// The digamma function (psi function).
     Digamma(Arc<Expr>),
     /// The Kronecker delta function.
-    KroneckerDelta(
-        Arc<Expr>,
-        Arc<Expr>,
-    ),
+    KroneckerDelta(Arc<Expr>, Arc<Expr>),
 
     // --- Logic & Sets ---
     /// Logical AND of a vector of expressions.
@@ -778,46 +728,33 @@ pub enum Expr {
     /// A unified quantity with its value and unit string.
     Quantity(Arc<UnitQuantity>),
     /// A temporary representation of a value with a unit string, before unification.
-    QuantityWithValue(
-        Arc<Expr>,
-        String,
-    ),
+    QuantityWithValue(Arc<Expr>, String),
 
     // --- Custom Variants (Old and Deprecated)---
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'UnaryList' variant \
-                instead."
+        note = "Please use the 'UnaryList' variant instead."
     )]
     CustomZero,
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'UnaryList' variant \
-                instead."
+        note = "Please use the 'UnaryList' variant instead."
     )]
     CustomString(String),
 
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'UnaryList' variant \
-                instead."
+        note = "Please use the 'UnaryList' variant instead."
     )]
     CustomArcOne(Arc<Expr>),
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'BinaryList' variant \
-                instead."
+        note = "Please use the 'BinaryList' variant instead."
     )]
     CustomArcTwo(Arc<Expr>, Arc<Expr>),
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'NaryList' variant \
-                instead."
+        note = "Please use the 'NaryList' variant instead."
     )]
     CustomArcThree(
         Arc<Expr>,
@@ -826,9 +763,7 @@ pub enum Expr {
     ),
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'NaryList' variant \
-                instead."
+        note = "Please use the 'NaryList' variant instead."
     )]
     CustomArcFour(
         Arc<Expr>,
@@ -838,9 +773,7 @@ pub enum Expr {
     ),
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'NaryList' variant \
-                instead."
+        note = "Please use the 'NaryList' variant instead."
     )]
     CustomArcFive(
         Arc<Expr>,
@@ -852,23 +785,17 @@ pub enum Expr {
 
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'UnaryList' variant \
-                instead."
+        note = "Please use the 'UnaryList' variant instead."
     )]
     CustomVecOne(Vec<Expr>),
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'BinaryList' variant \
-                instead."
+        note = "Please use the 'BinaryList' variant instead."
     )]
     CustomVecTwo(Vec<Expr>, Vec<Expr>),
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'NaryList' variant \
-                instead."
+        note = "Please use the 'NaryList' variant instead."
     )]
     CustomVecThree(
         Vec<Expr>,
@@ -877,9 +804,7 @@ pub enum Expr {
     ),
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'NaryList' variant \
-                instead."
+        note = "Please use the 'NaryList' variant instead."
     )]
     CustomVecFour(
         Vec<Expr>,
@@ -889,9 +814,7 @@ pub enum Expr {
     ),
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'NaryList' variant \
-                instead."
+        note = "Please use the 'NaryList' variant instead."
     )]
     CustomVecFive(
         Vec<Expr>,
@@ -912,23 +835,20 @@ pub enum Expr {
     /// # Examples
     /// ```
     /// 
-    /// use rssn::symbolic::core::{
-    ///     register_dynamic_op,
-    ///     DynamicOpProperties,
-    ///     Expr,
-    /// };
     /// use std::sync::Arc;
+    ///
+    /// use rssn::symbolic::core::register_dynamic_op;
+    /// use rssn::symbolic::core::DynamicOpProperties;
+    /// use rssn::symbolic::core::Expr;
     ///
     /// // Register a custom operation
     /// register_dynamic_op(
     ///     "my_func",
     ///     DynamicOpProperties {
-    ///         name: "my_func".to_string(),
-    ///         description:
-    ///             "My custom function"
-    ///                 .to_string(),
-    ///         is_associative: false,
-    ///         is_commutative: false,
+    ///         name : "my_func".to_string(),
+    ///         description : "My custom function".to_string(),
+    ///         is_associative : false,
+    ///         is_commutative : false,
     ///     },
     /// );
     ///
@@ -949,22 +869,21 @@ pub enum Expr {
     /// # Examples
     /// ```
     /// 
-    /// use rssn::symbolic::core::{
-    ///     register_dynamic_op,
-    ///     DynamicOpProperties,
-    ///     Expr,
-    /// };
     /// use std::sync::Arc;
+    ///
+    /// use rssn::symbolic::core::register_dynamic_op;
+    /// use rssn::symbolic::core::DynamicOpProperties;
+    /// use rssn::symbolic::core::Expr;
     ///
     /// // Register a custom binary operation
     /// register_dynamic_op(
     ///     "my_binop",
     ///     DynamicOpProperties {
-    ///         name: "my_binop".to_string(),
-    ///         description: "My custom binary operation"
+    ///         name : "my_binop".to_string(),
+    ///         description : "My custom binary operation"
     ///             .to_string(),
-    ///         is_associative: true,
-    ///         is_commutative: true,
+    ///         is_associative : true,
+    ///         is_commutative : true,
     ///     },
     /// );
     ///
@@ -993,23 +912,19 @@ pub enum Expr {
     /// # Examples
     /// ```
     /// 
-    /// use rssn::symbolic::core::{
-    ///     register_dynamic_op,
-    ///     DynamicOpProperties,
-    ///     Expr,
-    /// };
+    /// use rssn::symbolic::core::register_dynamic_op;
+    /// use rssn::symbolic::core::DynamicOpProperties;
+    /// use rssn::symbolic::core::Expr;
     ///
     /// // Register a custom n-ary operation
     /// register_dynamic_op(
     ///     "my_nary",
     ///     DynamicOpProperties {
-    ///         name: "my_nary".to_string(),
-    ///         description:
-    ///             "My custom n-ary \
-    ///              operation"
-    ///                 .to_string(),
-    ///         is_associative: true,
-    ///         is_commutative: false,
+    ///         name : "my_nary".to_string(),
+    ///         description : "My custom n-ary operation"
+    ///             .to_string(),
+    ///         is_associative : true,
+    ///         is_commutative : false,
     ///     },
     /// );
     ///
@@ -1017,15 +932,9 @@ pub enum Expr {
     /// let expr = Expr::NaryList(
     ///     "my_nary".to_string(),
     ///     vec![
-    ///         Expr::Variable(
-    ///             "a".to_string(),
-    ///         ),
-    ///         Expr::Variable(
-    ///             "b".to_string(),
-    ///         ),
-    ///         Expr::Variable(
-    ///             "c".to_string(),
-    ///         ),
+    ///         Expr::Variable("a".to_string()),
+    ///         Expr::Variable("b".to_string()),
+    ///         Expr::Variable("c".to_string()),
     ///     ],
     /// );
     /// ```
@@ -1072,10 +981,10 @@ impl Clone for Expr {
                 to,
             } => {
                 Self::Sum {
-                    body: body.clone(),
-                    var: var.clone(),
-                    from: from.clone(),
-                    to: to.clone(),
+                    body : body.clone(),
+                    var : var.clone(),
+                    from : from.clone(),
+                    to : to.clone(),
                 }
             },
             | Self::Integral {
@@ -1085,10 +994,10 @@ impl Clone for Expr {
                 upper_bound,
             } => {
                 Self::Integral {
-                    integrand: integrand.clone(),
-                    var: var.clone(),
-                    lower_bound: lower_bound.clone(),
-                    upper_bound: upper_bound.clone(),
+                    integrand : integrand.clone(),
+                    var : var.clone(),
+                    lower_bound : lower_bound.clone(),
+                    upper_bound : upper_bound.clone(),
                 }
             },
             | Self::Path(pt, p1, p2) => {
@@ -1131,8 +1040,8 @@ impl Clone for Expr {
                 volume,
             } => {
                 Self::VolumeIntegral {
-                    scalar_field: scalar_field.clone(),
-                    volume: volume.clone(),
+                    scalar_field : scalar_field.clone(),
+                    volume : volume.clone(),
                 }
             },
             | Self::SurfaceIntegral {
@@ -1140,8 +1049,8 @@ impl Clone for Expr {
                 surface,
             } => {
                 Self::SurfaceIntegral {
-                    vector_field: vector_field.clone(),
-                    surface: surface.clone(),
+                    vector_field : vector_field.clone(),
+                    surface : surface.clone(),
                 }
             },
             | Self::Pi => Self::Pi,
@@ -1245,9 +1154,9 @@ impl Clone for Expr {
                 var,
             } => {
                 Self::Ode {
-                    equation: equation.clone(),
-                    func: func.clone(),
-                    var: var.clone(),
+                    equation : equation.clone(),
+                    func : func.clone(),
+                    var : var.clone(),
                 }
             },
             | Self::Pde {
@@ -1256,9 +1165,9 @@ impl Clone for Expr {
                 vars,
             } => {
                 Self::Pde {
-                    equation: equation.clone(),
-                    func: func.clone(),
-                    vars: vars.clone(),
+                    equation : equation.clone(),
+                    func : func.clone(),
+                    vars : vars.clone(),
                 }
             },
             | Self::GeneralSolution(e) => Self::GeneralSolution(e.clone()),
@@ -1285,10 +1194,13 @@ impl Clone for Expr {
             | Self::Xor(a, b) => Self::Xor(a.clone(), b.clone()),
             | Self::Implies(a, b) => Self::Implies(a.clone(), b.clone()),
             | Self::Equivalent(a, b) => Self::Equivalent(a.clone(), b.clone()),
-            | Self::Predicate { name, args } => {
+            | Self::Predicate {
+                name,
+                args,
+            } => {
                 Self::Predicate {
-                    name: name.clone(),
-                    args: args.clone(),
+                    name : name.clone(),
+                    args : args.clone(),
                 }
             },
             | Self::ForAll(s, e) => Self::ForAll(s.clone(), e.clone()),
@@ -1309,16 +1221,22 @@ impl Clone for Expr {
             | Self::Inverse(a) => Self::Inverse(a.clone()),
             | Self::System(v) => Self::System(v.clone()),
             | Self::Solutions(v) => Self::Solutions(v.clone()),
-            | Self::ParametricSolution { x, y } => {
+            | Self::ParametricSolution {
+                x,
+                y,
+            } => {
                 Self::ParametricSolution {
-                    x: x.clone(),
-                    y: y.clone(),
+                    x : x.clone(),
+                    y : y.clone(),
                 }
             },
-            | Self::RootOf { poly, index } => {
+            | Self::RootOf {
+                poly,
+                index,
+            } => {
                 Self::RootOf {
-                    poly: poly.clone(),
-                    index: *index,
+                    poly : poly.clone(),
+                    index : *index,
                 }
             },
 
@@ -1666,7 +1584,10 @@ impl fmt::Display for Expr {
             | Self::Xor(a, b) => write!(f, "({a} ^ {b})"),
             | Self::Implies(a, b) => write!(f, "({a} => {b})"),
             | Self::Equivalent(a, b) => write!(f, "({a} <=> {b})"),
-            | Self::Predicate { name, args } => {
+            | Self::Predicate {
+                name,
+                args,
+            } => {
 
                 let args_str = args
                     .iter()
@@ -1737,14 +1658,20 @@ impl fmt::Display for Expr {
                     "solutions({v:?})"
                 )
             },
-            | Self::ParametricSolution { x, y } => {
+            | Self::ParametricSolution {
+                x,
+                y,
+            } => {
 
                 write!(
                     f,
                     "parametric_solution({x}, {y})"
                 )
             },
-            | Self::RootOf { poly, index } => {
+            | Self::RootOf {
+                poly,
+                index,
+            } => {
 
                 write!(
                     f,
@@ -2083,9 +2010,7 @@ impl Expr {
 
     pub fn re(&self) -> Self {
 
-        if let Self::Complex(re, _) =
-            self
-        {
+        if let Self::Complex(re, _) = self {
 
             re.as_ref().clone()
         } else {
@@ -2099,9 +2024,7 @@ impl Expr {
 
     pub fn im(&self) -> Self {
 
-        if let Self::Complex(_, im) =
-            self
-        {
+        if let Self::Complex(_, im) = self {
 
             im.as_ref().clone()
         } else {
@@ -2113,28 +2036,14 @@ impl Expr {
     #[inline]
     #[must_use]
 
-    pub fn to_f64(
-        &self
-    ) -> Option<f64> {
+    pub fn to_f64(&self) -> Option<f64> {
 
         match self {
-            | Self::Constant(val) => {
-                Some(*val)
-            },
-            | Self::BigInt(val) => {
-                val.to_f64()
-            },
-            | Self::Rational(val) => {
-                val.to_f64()
-            },
-            | Self::Pi => Some(
-                std::f64::consts::PI,
-            ),
-            | Self::E => {
-                Some(
-                    std::f64::consts::E,
-                )
-            },
+            | Self::Constant(val) => Some(*val),
+            | Self::BigInt(val) => val.to_f64(),
+            | Self::Rational(val) => val.to_f64(),
+            | Self::Pi => Some(std::f64::consts::PI),
+            | Self::E => Some(std::f64::consts::E),
             | Self::Dag(node) => {
                 node.to_expr()
                     .ok()?
@@ -2176,33 +2085,22 @@ impl Expr {
     /// * `Vec<Expr>` - A vector containing the direct children of this expression
     #[must_use]
 
-    pub fn children(
-        &self
-    ) -> Vec<Self> {
+    pub fn children(&self) -> Vec<Self> {
 
         match self {
             | Self::Dag(node) => {
                 node.children
                     .iter()
-                    .map(|n| {
-
-                        Self::Dag(
-                            n.clone(),
-                        )
-                    })
+                    .map(|n| Self::Dag(n.clone()))
                     .collect()
             },
-            | _ => self
-                .get_children_internal(
-                ),
+            | _ => self.get_children_internal(),
         }
     }
 
     #[allow(dead_code)]
 
-    pub(crate) const fn variant_order(
-        &self
-    ) -> i32 {
+    pub(crate) const fn variant_order(&self) -> i32 {
 
         match self {
             | Self::Constant(_) => 0,
@@ -2229,8 +2127,12 @@ impl Expr {
             | Self::Vector(_) => 19,
             | Self::Complex(_, _) => 20,
             | Self::Derivative(_, _) => 21,
-            | Self::Integral { .. } => 22,
-            | Self::Sum { .. } => 22, // Assign same order as Integral for now
+            | Self::Integral {
+                ..
+            } => 22,
+            | Self::Sum {
+                ..
+            } => 22, // Assign same order as Integral for now
             | Self::Path(_, _, _) => 23,
             | Self::Abs(_) => 24,
             | Self::Sqrt(_) => 25,
@@ -2260,8 +2162,12 @@ impl Expr {
             | Self::Binomial(_, _) => 49,
             | Self::Boundary(_) => 50,
             | Self::Domain(_) => 51,
-            | Self::VolumeIntegral { .. } => 52,
-            | Self::SurfaceIntegral { .. } => 53,
+            | Self::VolumeIntegral {
+                ..
+            } => 52,
+            | Self::SurfaceIntegral {
+                ..
+            } => 53,
             | Self::Pi => 54,
             | Self::E => 55,
             | Self::Infinity => 56,
@@ -2304,8 +2210,12 @@ impl Expr {
             | Self::Combination(_, _) => 93,
             | Self::FallingFactorial(_, _) => 94,
             | Self::RisingFactorial(_, _) => 95,
-            | Self::Ode { .. } => 96,
-            | Self::Pde { .. } => 97,
+            | Self::Ode {
+                ..
+            } => 96,
+            | Self::Pde {
+                ..
+            } => 97,
             | Self::GeneralSolution(_) => 98,
             | Self::ParticularSolution(_) => 99,
             | Self::Fredholm(_, _, _, _) => 100,
@@ -2316,7 +2226,9 @@ impl Expr {
             | Self::Xor(_, _) => 105,
             | Self::Implies(_, _) => 106,
             | Self::Equivalent(_, _) => 107,
-            | Self::Predicate { .. } => 108,
+            | Self::Predicate {
+                ..
+            } => 108,
             | Self::ForAll(_, _) => 109,
             | Self::Exists(_, _) => 110,
             | Self::Polynomial(_) => 111,
@@ -2333,8 +2245,12 @@ impl Expr {
             | Self::Inverse(_) => 122,
             | Self::System(_) => 123,
             | Self::Solutions(_) => 124,
-            | Self::ParametricSolution { .. } => 125,
-            | Self::RootOf { .. } => 126,
+            | Self::ParametricSolution {
+                ..
+            } => 125,
+            | Self::RootOf {
+                ..
+            } => 126,
             | Self::Quantity(_) => 127,
             | Self::QuantityWithValue(_, _) => 128,
             | Self::CustomZero => 129,
@@ -2356,9 +2272,7 @@ impl Expr {
     }
 }
 
-#[derive(
-    Debug, Clone, serde::Serialize,
-)]
+#[derive(Debug, Clone, serde::Serialize)]
 
 pub struct DagNode {
     pub op : DagOp,
@@ -2367,30 +2281,20 @@ pub struct DagNode {
     pub hash : u64,
 }
 
-impl<'de> serde::Deserialize<'de>
-    for DagNode
-{
-    fn deserialize<D>(
-        deserializer : D
-    ) -> Result<Self, D::Error>
+impl<'de> serde::Deserialize<'de> for DagNode {
+    fn deserialize<D>(deserializer : D) -> Result<Self, D::Error>
     where
         D : serde::Deserializer<'de>,
     {
 
-        #[derive(
-            serde::Deserialize,
-        )]
+        #[derive(serde::Deserialize)]
 
         struct DagNodeHelper {
             op : DagOp,
-            children :
-                Vec<Arc<DagNode>>,
+            children : Vec<Arc<DagNode>>,
         }
 
-        let helper =
-            DagNodeHelper::deserialize(
-                deserializer,
-            )?;
+        let helper = DagNodeHelper::deserialize(deserializer)?;
 
         // Recompute hash after deserialization
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -2417,15 +2321,7 @@ impl<'de> serde::Deserialize<'de>
 }
 
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    PartialOrd,
-    Ord,
-    serde::Serialize,
-    serde::Deserialize,
+    Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
 )]
 
 pub enum DagOp {
@@ -2555,7 +2451,7 @@ pub enum DagOp {
     Equivalent,
     Union,
     Polynomial,
-    SparsePolynomial(SparsePolynomial), /* Note: Storing whole struct for simplicity */
+    SparsePolynomial(SparsePolynomial), // Note: Storing whole struct for simplicity
     Floor,
     IsPrime,
     Gcd,
@@ -2572,7 +2468,7 @@ pub enum DagOp {
     Volterra,
     Apply,
     Tuple,
-    Distribution, /* Trait objects are handled separately */
+    Distribution, // Trait objects are handled separately
     Max,
     Quantity, // Handled separately
     QuantityWithValue(String),
@@ -2610,9 +2506,7 @@ impl PartialEq for DagNode {
         }
 
         // 2. Check the length
-        if self.children.len()
-            != other.children.len()
-        {
+        if self.children.len() != other.children.len() {
 
             return false;
         }
@@ -2626,16 +2520,12 @@ impl PartialEq for DagNode {
                     .iter(),
             )
             .all(
-                |(
-                    l_child_arc,
-                    r_child_arc,
-                )| {
+                |(l_child_arc, r_child_arc)| {
 
                     // This calls PartialEq recursively on the DagNode contents
                     l_child_arc
                         .as_ref()
-                        .eq(r_child_arc
-                            .as_ref())
+                        .eq(r_child_arc.as_ref())
                 },
             )
 
@@ -2668,9 +2558,8 @@ impl Ord for DagNode {
             .cmp(&other.op)
             .then_with(|| {
 
-                self.children.cmp(
-                    &other.children,
-                )
+                self.children
+                    .cmp(&other.children)
             })
     }
 }
@@ -2692,86 +2581,58 @@ impl From<DagNode> for Expr {
     fn from(node : DagNode) -> Self {
 
         node.to_expr()
-            .expect(
-                "Cannot convert \
-                 DagNode to Expr.",
-            )
+            .expect("Cannot convert DagNode to Expr.")
     }
 }
 
 impl DagNode {
-    pub fn to_expr(
-        &self
-    ) -> Result<Expr, String> {
+    pub fn to_expr(&self) -> Result<Expr, String> {
 
         use std::collections::HashMap;
 
         // Iterative implementation using explicit stack to prevent stack overflow
         // This uses a post-order (bottom-up) traversal strategy
 
-        const MAX_NODES : usize =
-            100000;
+        const MAX_NODES : usize = 100000;
 
-        const MAX_CHILDREN : usize =
-            10000;
+        const MAX_CHILDREN : usize = 10000;
 
         // Memoization: maps node hash to its converted Expr
-        let mut memo : HashMap<
-            u64,
-            Expr,
-        > = HashMap::new();
+        let mut memo : HashMap<u64, Expr> = HashMap::new();
 
         // Work stack: nodes to process
-        let mut work_stack : Vec<
-            Arc<Self>,
-        > = vec![Arc::new(
+        let mut work_stack : Vec<Arc<Self>> = vec![Arc::new(
             self.clone(),
         )];
 
         // Track which nodes we've pushed to avoid cycles
-        let mut visited : HashMap<
-            u64,
-            bool,
-        > = HashMap::new();
+        let mut visited : HashMap<u64, bool> = HashMap::new();
 
         let mut nodes_processed = 0;
 
-        while let Some(node) =
-            work_stack.pop()
-        {
+        while let Some(node) = work_stack.pop() {
 
             // Safety check: prevent processing too many nodes
             nodes_processed += 1;
 
-            if nodes_processed
-                > MAX_NODES
-            {
+            if nodes_processed > MAX_NODES {
 
                 return Err(format!(
-                    "Exceeded maximum \
-                     node limit of \
-                     {MAX_NODES}"
+                    "Exceeded maximum node limit of {MAX_NODES}"
                 ));
             }
 
             // If already converted, skip
-            if memo.contains_key(
-                &node.hash,
-            ) {
+            if memo.contains_key(&node.hash) {
 
                 continue;
             }
 
             // Safety check: limit children count
-            if node.children.len()
-                > MAX_CHILDREN
-            {
+            if node.children.len() > MAX_CHILDREN {
 
                 return Err(format!(
-                    "Node has too \
-                     many children \
-                     ({}), exceeds \
-                     limit of {}",
+                    "Node has too many children ({}), exceeds limit of {}",
                     node.children.len(),
                     MAX_CHILDREN
                 ));
@@ -2781,17 +2642,12 @@ impl DagNode {
             let children_ready = node
                 .children
                 .iter()
-                .all(|child| {
-
-                    memo.contains_key(
-                        &child.hash,
-                    )
-                });
+                .all(|child| memo.contains_key(&child.hash));
 
             if children_ready {
 
                 // All children converted, now convert this node
-                let children_exprs: Vec<Expr> = node
+                let children_exprs : Vec<Expr> = node
                     .children
                     .iter()
                     .filter_map(|child| {
@@ -2929,7 +2785,10 @@ impl DagNode {
                             arc!(1),
                         )
                     },
-                    | DagOp::Ode { func, var } => {
+                    | DagOp::Ode {
+                        func,
+                        var,
+                    } => {
 
                         if children_exprs.is_empty() {
 
@@ -2937,12 +2796,15 @@ impl DagNode {
                         }
 
                         Expr::Ode {
-                            equation: arc!(0),
-                            func: func.clone(),
-                            var: var.clone(),
+                            equation : arc!(0),
+                            func : func.clone(),
+                            var : var.clone(),
                         }
                     },
-                    | DagOp::Pde { func, vars } => {
+                    | DagOp::Pde {
+                        func,
+                        vars,
+                    } => {
 
                         if children_exprs.is_empty() {
 
@@ -2950,15 +2812,17 @@ impl DagNode {
                         }
 
                         Expr::Pde {
-                            equation: arc!(0),
-                            func: func.clone(),
-                            vars: vars.clone(),
+                            equation : arc!(0),
+                            func : func.clone(),
+                            vars : vars.clone(),
                         }
                     },
-                    | DagOp::Predicate { name } => {
+                    | DagOp::Predicate {
+                        name,
+                    } => {
                         Expr::Predicate {
-                            name: name.clone(),
-                            args: children_exprs.clone(),
+                            name : name.clone(),
+                            args : children_exprs.clone(),
                         }
                     },
                     | DagOp::Path(pt) => {
@@ -2990,7 +2854,9 @@ impl DagNode {
                             *incl_upper,
                         )
                     },
-                    | DagOp::RootOf { index } => {
+                    | DagOp::RootOf {
+                        index,
+                    } => {
 
                         if children_exprs.is_empty() {
 
@@ -2998,8 +2864,8 @@ impl DagNode {
                         }
 
                         Expr::RootOf {
-                            poly: arc!(0),
-                            index: *index,
+                            poly : arc!(0),
+                            index : *index,
                         }
                     },
                     | DagOp::SparsePolynomial(p) => Expr::SparsePolynomial(p.clone()),
@@ -3762,7 +3628,10 @@ impl DagNode {
                     },
 
                     // --- Complex structures ---
-                    | DagOp::Matrix { rows: _, cols } => {
+                    | DagOp::Matrix {
+                        rows: _,
+                        cols,
+                    } => {
 
                         if !children_exprs
                             .len()
@@ -3771,7 +3640,7 @@ impl DagNode {
 
                             let complete_rows = (children_exprs.len() / cols) * cols;
 
-                            let reconstructed_matrix: Vec<Vec<Expr>> = children_exprs
+                            let reconstructed_matrix : Vec<Vec<Expr>> = children_exprs
                                 .iter()
                                 .take(complete_rows)
                                 .cloned()
@@ -3783,7 +3652,7 @@ impl DagNode {
                             Expr::Matrix(reconstructed_matrix)
                         } else {
 
-                            let reconstructed_matrix: Vec<Vec<Expr>> = children_exprs
+                            let reconstructed_matrix : Vec<Vec<Expr>> = children_exprs
                                 .chunks(*cols)
                                 .map(<[Expr]>::to_vec)
                                 .collect();
@@ -3812,10 +3681,10 @@ impl DagNode {
                         }
 
                         Expr::Integral {
-                            integrand: arc!(0),
-                            var: arc!(1),
-                            lower_bound: arc!(2),
-                            upper_bound: arc!(3),
+                            integrand : arc!(0),
+                            var : arc!(1),
+                            lower_bound : arc!(2),
+                            upper_bound : arc!(3),
                         }
                     },
                     | DagOp::VolumeIntegral => {
@@ -3828,8 +3697,8 @@ impl DagNode {
                         }
 
                         Expr::VolumeIntegral {
-                            scalar_field: arc!(0),
-                            volume: arc!(1),
+                            scalar_field : arc!(0),
+                            volume : arc!(1),
                         }
                     },
                     | DagOp::SurfaceIntegral => {
@@ -3842,8 +3711,8 @@ impl DagNode {
                         }
 
                         Expr::SurfaceIntegral {
-                            vector_field: arc!(0),
-                            surface: arc!(1),
+                            vector_field : arc!(0),
+                            surface : arc!(1),
                         }
                     },
                     | DagOp::Sum => {
@@ -3854,10 +3723,10 @@ impl DagNode {
                         }
 
                         Expr::Sum {
-                            body: arc!(0),
-                            var: arc!(1),
-                            from: arc!(2),
-                            to: arc!(3),
+                            body : arc!(0),
+                            var : arc!(1),
+                            from : arc!(2),
+                            to : arc!(3),
                         }
                     },
                     | DagOp::Series(s) => {
@@ -3934,8 +3803,8 @@ impl DagNode {
                         }
 
                         Expr::ParametricSolution {
-                            x: arc!(0),
-                            y: arc!(1),
+                            x : arc!(0),
+                            y : arc!(1),
                         }
                     },
                     | DagOp::Fredholm => {
@@ -4123,22 +3992,15 @@ impl DagNode {
                 };
 
                 // Store the converted expression
-                memo.insert(
-                    node.hash,
-                    expr,
-                );
+                memo.insert(node.hash, expr);
             } else {
 
                 // Not all children ready, push node back and push children
-                work_stack
-                    .push(node.clone());
+                work_stack.push(node.clone());
 
                 // Push children in reverse order (so they're processed in correct order)
                 if visited
-                    .insert(
-                        node.hash,
-                        true,
-                    )
+                    .insert(node.hash, true)
                     .is_none()
                 {
 
@@ -4160,12 +4022,7 @@ impl DagNode {
         // Return the converted expression for the root node
         memo.get(&self.hash)
             .cloned()
-            .ok_or_else(|| {
-
-                "Failed to convert \
-                 root node"
-                    .to_string()
-            })
+            .ok_or_else(|| "Failed to convert root node".to_string())
     }
 
     #[must_use]
@@ -4176,33 +4033,28 @@ impl DagNode {
     ) -> Arc<Self> {
 
         // Safety check: limit number of children to prevent excessive memory allocation
-        const MAX_CHILDREN : usize =
-            10000;
+        const MAX_CHILDREN : usize = 10000;
 
-        if children.len() > MAX_CHILDREN
-        {
+        if children.len() > MAX_CHILDREN {
 
             // This should not happen in normal usage, but we handle it gracefully
             // by truncating the children list - this is a defensive programming approach
-            let safe_children : Vec<_> =
-                children
-                    .into_iter()
-                    .take(MAX_CHILDREN)
-                    .collect();
+            let safe_children : Vec<_> = children
+                .into_iter()
+                .take(MAX_CHILDREN)
+                .collect();
 
             let mut hasher = std::collections::hash_map::DefaultHasher::new();
 
             op.hash(&mut hasher);
 
-            safe_children
-                .hash(&mut hasher);
+            safe_children.hash(&mut hasher);
 
             let hash = hasher.finish();
 
             return Arc::new(Self {
                 op,
-                children:
-                    safe_children,
+                children : safe_children,
                 hash,
             });
         }
@@ -4224,48 +4076,31 @@ impl DagNode {
 }
 
 impl Expr {
-    pub fn clone_box_dist(
-        &self
-    ) -> Result<
-        Arc<dyn Distribution>,
-        String,
-    > {
+    pub fn clone_box_dist(&self) -> Result<Arc<dyn Distribution>, String> {
 
-        if let Self::Distribution(d) =
-            self
-        {
+        if let Self::Distribution(d) = self {
 
             Ok(d.clone_box())
         } else {
 
-            Err("Cannot clone into \
-                 Distribution"
-                .to_string())
+            Err("Cannot clone into Distribution".to_string())
         }
     }
 
-    pub fn clone_box_quant(
-        &self
-    ) -> Result<Arc<UnitQuantity>, String>
-    {
+    pub fn clone_box_quant(&self) -> Result<Arc<UnitQuantity>, String> {
 
-        if let Self::Quantity(q) = self
-        {
+        if let Self::Quantity(q) = self {
 
             Ok(q.clone())
         } else {
 
-            Err("Cannot clone into \
-                 UnitQuantity"
-                .to_string())
+            Err("Cannot clone into UnitQuantity".to_string())
         }
     }
 }
 
 pub struct DagManager {
-    nodes : Mutex<
-        HashMap<u64, Vec<Arc<DagNode>>>,
-    >,
+    nodes : Mutex<HashMap<u64, Vec<Arc<DagNode>>>>,
 }
 
 impl Default for DagManager {
@@ -4282,9 +4117,7 @@ impl DagManager {
     pub fn new() -> Self {
 
         Self {
-            nodes : Mutex::new(
-                HashMap::new(),
-            ),
+            nodes : Mutex::new(HashMap::new()),
         }
     }
 
@@ -4302,31 +4135,23 @@ impl DagManager {
     pub fn get_or_create_normalized(
         &self,
         op : DagOp,
-        mut children : Vec<
-            Arc<DagNode>,
-        >,
-    ) -> Result<Arc<DagNode>, String>
-    {
+        mut children : Vec<Arc<DagNode>>,
+    ) -> Result<Arc<DagNode>, String> {
 
         // Safety check: limit number of children to prevent excessive memory usage
-        const MAX_CHILDREN : usize =
-            10000;
+        const MAX_CHILDREN : usize = 10000;
 
-        if children.len() > MAX_CHILDREN
-        {
+        if children.len() > MAX_CHILDREN {
 
             return Err(format!(
-                "Too many children in \
-                 node ({}), exceeds \
-                 limit of {}",
+                "Too many children in node ({}), exceeds limit of {}",
                 children.len(),
                 MAX_CHILDREN
             ));
         }
 
         match op {
-            | DagOp::Add
-            | DagOp::Mul => {
+            | DagOp::Add | DagOp::Mul => {
 
                 // Use stable sort to ensure deterministic ordering across test runs.
                 // This is critical for reproducible hashing and test stability.
@@ -4336,72 +4161,57 @@ impl DagManager {
         }
 
         // Compute 64-bit hash key
-        let mut hasher =
-            ahash::AHasher::default();
+        let mut hasher = ahash::AHasher::default();
 
         op.hash(&mut hasher);
 
         for c in &children {
 
             // Use stored hash if present to avoid recursing
-            Self::c_hash_for_hasher(
-                c,
-                &mut hasher,
-            );
+            Self::c_hash_for_hasher(c, &mut hasher);
         }
 
         let hash = hasher.finish();
 
         // Acquire lock safely: handle PoisonError by recovering the inner guard.
-        let mut nodes_guard =
-            match self.nodes.lock() {
-                | Ok(g) => g,
-                | Err(pe) => {
+        let mut nodes_guard = match self.nodes.lock() {
+            | Ok(g) => g,
+            | Err(pe) => {
 
-                    // If a thread panicked previously, recover the poisoned lock's inner data.
-                    // We prefer to continue with a best-effort recovery instead of panicking.
-                    pe.into_inner()
-                },
-            };
+                // If a thread panicked previously, recover the poisoned lock's inner data.
+                // We prefer to continue with a best-effort recovery instead of panicking.
+                pe.into_inner()
+            },
+        };
 
         // Prevent excessive memory usage by limiting bucket size
-        const MAX_BUCKET_SIZE : usize =
-            1000;
+        const MAX_BUCKET_SIZE : usize = 1000;
 
         // Ensure the bucket is a vector of candidates to support collision buckets.
         // nodes: HashMap<u64, Vec<Arc<DagNode>>>
         match nodes_guard.entry(hash) {
-            | Entry::Occupied(
-                mut occ,
-            ) => {
+            | Entry::Occupied(mut occ) => {
 
                 // occ.get_mut() is a Vec<Arc<DagNode>>
-                let bucket =
-                    occ.get_mut();
+                let bucket = occ.get_mut();
 
                 // Check bucket size to prevent excessive memory usage
-                if bucket.len()
-                    > MAX_BUCKET_SIZE
-                {
+                if bucket.len() > MAX_BUCKET_SIZE {
 
                     // If the bucket is too large, we just create a new node without searching
                     // This maintains correctness while limiting memory usage
-                    let node = Arc::new(
-                        DagNode {
-                            op,
-                            children,
-                            hash,
-                        },
-                    );
+                    let node = Arc::new(DagNode {
+                        op,
+                        children,
+                        hash,
+                    });
 
                     return Ok(node);
                 }
 
                 // Build a temporary DagNode candidate for structural comparison.
                 // We avoid allocating the Arc until we know it's needed.
-                for cand in
-                    bucket.iter()
-                {
+                for cand in bucket.iter() {
 
                     if Self::dag_nodes_structurally_equal(cand, &op, &children) {
 
@@ -4411,31 +4221,26 @@ impl DagManager {
                 }
 
                 // No structural match found in bucket: create new node and push.
-                let node =
-                    Arc::new(DagNode {
-                        op,
-                        children,
-                        hash,
-                    });
+                let node = Arc::new(DagNode {
+                    op,
+                    children,
+                    hash,
+                });
 
-                bucket
-                    .push(node.clone());
+                bucket.push(node.clone());
 
                 Ok(node)
             },
             | Entry::Vacant(vac) => {
 
                 // No bucket yet: create a new vector with the node.
-                let node =
-                    Arc::new(DagNode {
-                        op,
-                        children,
-                        hash,
-                    });
+                let node = Arc::new(DagNode {
+                    op,
+                    children,
+                    hash,
+                });
 
-                vac.insert(vec![
-                    node.clone()
-                ]);
+                vac.insert(vec![node.clone()]);
 
                 Ok(node)
             },
@@ -4463,9 +4268,7 @@ impl DagManager {
             return false;
         }
 
-        if cand.children.len()
-            != children.len()
-        {
+        if cand.children.len() != children.len() {
 
             return false;
         }
@@ -4496,17 +4299,13 @@ impl DagManager {
         children : &Vec<Arc<DagNode>>,
     ) -> u64 {
 
-        let mut hasher =
-            ahash::AHasher::default();
+        let mut hasher = ahash::AHasher::default();
 
         op.hash(&mut hasher);
 
         for c in children {
 
-            Self::c_hash_for_hasher(
-                c,
-                &mut hasher,
-            );
+            Self::c_hash_for_hasher(c, &mut hasher);
         }
 
         hasher.finish()
@@ -4542,8 +4341,7 @@ impl DagManager {
     pub fn get_or_create(
         &self,
         expr : &Expr,
-    ) -> Result<Arc<DagNode>, String>
-    {
+    ) -> Result<Arc<DagNode>, String> {
 
         if let Expr::Dag(node) = expr {
 
@@ -4553,24 +4351,17 @@ impl DagManager {
         // Safety check: limit recursion depth to prevent stack overflow
         // We can't directly implement a recursion depth counter here since this is a single function,
         // but we can add checks for extremely complex expressions
-        let op =
-            expr.to_dag_op_internal()?;
+        let op = expr.to_dag_op_internal()?;
 
-        let children_exprs = expr
-            .get_children_internal();
+        let children_exprs = expr.get_children_internal();
 
         // Limit the number of children to prevent excessive memory allocation
-        const MAX_CHILDREN_PER_NODE :
-            usize = 10000;
+        const MAX_CHILDREN_PER_NODE : usize = 10000;
 
-        if children_exprs.len()
-            > MAX_CHILDREN_PER_NODE
-        {
+        if children_exprs.len() > MAX_CHILDREN_PER_NODE {
 
             return Err(format!(
-                "Expression has too \
-                 many children ({}), \
-                 exceeds limit of {}",
+                "Expression has too many children ({}), exceeds limit of {}",
                 children_exprs.len(),
                 MAX_CHILDREN_PER_NODE
             ));
@@ -4581,10 +4372,7 @@ impl DagManager {
             .map(|child| self.get_or_create(child))
             .collect::<Result<Vec<_>, _>>()?;
 
-        self.get_or_create_normalized(
-            op,
-            children_nodes,
-        )
+        self.get_or_create_normalized(op, children_nodes)
     }
 }
 
@@ -4594,11 +4382,7 @@ impl PartialEq for Expr {
         other : &Self,
     ) -> bool {
 
-        if let (
-            Self::Dag(n1),
-            Self::Dag(n2),
-        ) = (self, other)
-        {
+        if let (Self::Dag(n1), Self::Dag(n2)) = (self, other) {
 
             if Arc::ptr_eq(n1, n2) {
 
@@ -4702,15 +4486,11 @@ impl PartialEq for Expr {
             | _ => { /* Ignore, Enter Next Step */ },
         }
 
-        let self_children =
-            self.children();
+        let self_children = self.children();
 
-        let other_children =
-            other.children();
+        let other_children = other.children();
 
-        if self_children.len()
-            != other_children.len()
-        {
+        if self_children.len() != other_children.len() {
 
             return false;
         }
@@ -4718,17 +4498,7 @@ impl PartialEq for Expr {
         self_children
             .iter()
             .zip(other_children.iter())
-            .all(
-                |(
-                    l_child_expr,
-                    r_child_expr,
-                )| {
-
-                    l_child_expr.eq(
-                        r_child_expr,
-                    )
-                },
-            )
+            .all(|(l_child_expr, r_child_expr)| l_child_expr.eq(r_child_expr))
     }
 }
 
@@ -4746,8 +4516,7 @@ impl Hash for Expr {
 
         op.hash(state);
 
-        let mut children =
-            self.children();
+        let mut children = self.children();
 
         match op {
             | DagOp::Add
@@ -4795,11 +4564,7 @@ impl Ord for Expr {
     ) -> Ordering {
 
         // Fast path for identical DAG nodes.
-        if let (
-            Self::Dag(n1),
-            Self::Dag(n2),
-        ) = (self, other)
-        {
+        if let (Self::Dag(n1), Self::Dag(n2)) = (self, other) {
 
             if Arc::ptr_eq(n1, n2) {
 
@@ -4812,9 +4577,7 @@ impl Ord for Expr {
             .op()
             .cmp(&other.op());
 
-        if op_ordering
-            != Ordering::Equal
-        {
+        if op_ordering != Ordering::Equal {
 
             return op_ordering;
         }
@@ -4991,7 +4754,10 @@ impl Expr {
                 v.iter()
                     .for_each(|e| e.pre_order_walk(f))
             },
-            | Self::Predicate { args, .. } => {
+            | Self::Predicate {
+                args,
+                ..
+            } => {
                 args.iter()
                     .for_each(|e| e.pre_order_walk(f))
             },
@@ -5091,8 +4857,14 @@ impl Expr {
 
                 c.pre_order_walk(f);
             },
-            | Self::Ode { equation, .. } => equation.pre_order_walk(f),
-            | Self::Pde { equation, .. } => equation.pre_order_walk(f),
+            | Self::Ode {
+                equation,
+                ..
+            } => equation.pre_order_walk(f),
+            | Self::Pde {
+                equation,
+                ..
+            } => equation.pre_order_walk(f),
             | Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
 
                 a.pre_order_walk(f);
@@ -5103,13 +4875,19 @@ impl Expr {
 
                 d.pre_order_walk(f);
             },
-            | Self::ParametricSolution { x, y } => {
+            | Self::ParametricSolution {
+                x,
+                y,
+            } => {
 
                 x.pre_order_walk(f);
 
                 y.pre_order_walk(f);
             },
-            | Self::RootOf { poly, .. } => poly.pre_order_walk(f),
+            | Self::RootOf {
+                poly,
+                ..
+            } => poly.pre_order_walk(f),
             | Self::QuantityWithValue(v, _) => v.pre_order_walk(f),
 
             | Self::CustomArcOne(a) => {
@@ -5404,7 +5182,10 @@ impl Expr {
                 v.iter()
                     .for_each(|e| e.post_order_walk(f))
             },
-            | Self::Predicate { args, .. } => {
+            | Self::Predicate {
+                args,
+                ..
+            } => {
                 args.iter()
                     .for_each(|e| e.post_order_walk(f))
             },
@@ -5502,8 +5283,14 @@ impl Expr {
 
                 c.post_order_walk(f);
             },
-            | Self::Ode { equation, .. } => equation.post_order_walk(f),
-            | Self::Pde { equation, .. } => equation.post_order_walk(f),
+            | Self::Ode {
+                equation,
+                ..
+            } => equation.post_order_walk(f),
+            | Self::Pde {
+                equation,
+                ..
+            } => equation.post_order_walk(f),
             | Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
 
                 a.post_order_walk(f);
@@ -5514,14 +5301,20 @@ impl Expr {
 
                 d.post_order_walk(f);
             },
-            | Self::ParametricSolution { x, y } => {
+            | Self::ParametricSolution {
+                x,
+                y,
+            } => {
 
                 x.post_order_walk(f);
 
                 y.post_order_walk(f);
             },
             | Self::QuantityWithValue(v, _) => v.post_order_walk(f),
-            | Self::RootOf { poly, .. } => poly.post_order_walk(f),
+            | Self::RootOf {
+                poly,
+                ..
+            } => poly.post_order_walk(f),
 
             | Self::CustomArcOne(a) => {
 
@@ -5757,7 +5550,10 @@ impl Expr {
                     e.in_order_walk(f);
                 }
             },
-            | Self::Predicate { args, .. } => {
+            | Self::Predicate {
+                args,
+                ..
+            } => {
 
                 f(self);
 
@@ -5881,13 +5677,19 @@ impl Expr {
 
                 c.in_order_walk(f);
             },
-            | Self::Ode { equation, .. } => {
+            | Self::Ode {
+                equation,
+                ..
+            } => {
 
                 f(self);
 
                 equation.in_order_walk(f);
             },
-            | Self::Pde { equation, .. } => {
+            | Self::Pde {
+                equation,
+                ..
+            } => {
 
                 f(self);
 
@@ -5905,7 +5707,10 @@ impl Expr {
 
                 d.pre_order_walk(f);
             },
-            | Self::ParametricSolution { x, y } => {
+            | Self::ParametricSolution {
+                x,
+                y,
+            } => {
 
                 f(self);
 
@@ -5913,7 +5718,10 @@ impl Expr {
 
                 y.in_order_walk(f);
             },
-            | Self::RootOf { poly, .. } => {
+            | Self::RootOf {
+                poly,
+                ..
+            } => {
 
                 f(self);
 
@@ -6128,9 +5936,7 @@ impl Expr {
     /// # Returns
     /// * `Vec<Expr>` - A vector containing the direct children of this expression
 
-    pub(crate) fn get_children_internal(
-        &self
-    ) -> Vec<Self> {
+    pub(crate) fn get_children_internal(&self) -> Vec<Self> {
 
         match self {
             | Self::Add(a, b)
@@ -6237,7 +6043,10 @@ impl Expr {
             | Self::Union(v)
             | Self::System(v)
             | Self::Solutions(v) => v.clone(),
-            | Self::Predicate { args, .. } => args.clone(),
+            | Self::Predicate {
+                args,
+                ..
+            } => args.clone(),
             | Self::SparsePolynomial(p) => {
                 p.terms
                     .values()
@@ -6338,13 +6147,19 @@ impl Expr {
                     c.as_ref().clone(),
                 ]
             },
-            | Self::Ode { equation, .. } => {
+            | Self::Ode {
+                equation,
+                ..
+            } => {
 
                 vec![equation
                     .as_ref()
                     .clone()]
             },
-            | Self::Pde { equation, .. } => {
+            | Self::Pde {
+                equation,
+                ..
+            } => {
 
                 vec![equation
                     .as_ref()
@@ -6359,14 +6174,20 @@ impl Expr {
                     d.as_ref().clone(),
                 ]
             },
-            | Self::ParametricSolution { x, y } => {
+            | Self::ParametricSolution {
+                x,
+                y,
+            } => {
 
                 vec![
                     x.as_ref().clone(),
                     y.as_ref().clone(),
                 ]
             },
-            | Self::RootOf { poly, .. } => {
+            | Self::RootOf {
+                poly,
+                ..
+            } => {
 
                 vec![poly
                     .as_ref()
@@ -6467,20 +6288,13 @@ impl Expr {
                 children.sort();
 
                 Self::Add(
-                    Arc::new(
-                        children[0]
-                            .clone(),
-                    ),
-                    Arc::new(
-                        children[1]
-                            .clone(),
-                    ),
+                    Arc::new(children[0].clone()),
+                    Arc::new(children[1].clone()),
                 )
             },
             | Self::AddList(list) => {
 
-                let mut children =
-                    Vec::new();
+                let mut children = Vec::new();
 
                 for child in list {
 
@@ -6507,20 +6321,13 @@ impl Expr {
                 children.sort();
 
                 Self::Mul(
-                    Arc::new(
-                        children[0]
-                            .clone(),
-                    ),
-                    Arc::new(
-                        children[1]
-                            .clone(),
-                    ),
+                    Arc::new(children[0].clone()),
+                    Arc::new(children[1].clone()),
                 )
             },
             | Self::MulList(list) => {
 
-                let mut children =
-                    Vec::new();
+                let mut children = Vec::new();
 
                 for child in list {
 
@@ -6547,14 +6354,8 @@ impl Expr {
                 children.sort();
 
                 Self::Sub(
-                    Arc::new(
-                        children[0]
-                            .clone(),
-                    ),
-                    Arc::new(
-                        children[1]
-                            .clone(),
-                    ),
+                    Arc::new(children[0].clone()),
+                    Arc::new(children[1].clone()),
                 )
             },
             | Self::Div(a, b) => {
@@ -6567,29 +6368,17 @@ impl Expr {
                 children.sort();
 
                 Self::Div(
-                    Arc::new(
-                        children[0]
-                            .clone(),
-                    ),
-                    Arc::new(
-                        children[1]
-                            .clone(),
-                    ),
+                    Arc::new(children[0].clone()),
+                    Arc::new(children[1].clone()),
                 )
             },
             | Self::UnaryList(s, a) => {
                 Self::UnaryList(
                     s.clone(),
-                    Arc::new(
-                        a.normalize(),
-                    ),
+                    Arc::new(a.normalize()),
                 )
             },
-            | Self::BinaryList(
-                s,
-                a,
-                b,
-            ) => {
+            | Self::BinaryList(s, a, b) => {
 
                 let mut children = [
                     a.as_ref().clone(),
@@ -6606,23 +6395,13 @@ impl Expr {
 
                 Self::BinaryList(
                     s.clone(),
-                    Arc::new(
-                        children[0]
-                            .clone(),
-                    ),
-                    Arc::new(
-                        children[1]
-                            .clone(),
-                    ),
+                    Arc::new(children[0].clone()),
+                    Arc::new(children[1].clone()),
                 )
             },
-            | Self::NaryList(
-                s,
-                list,
-            ) => {
+            | Self::NaryList(s, list) => {
 
-                let mut children =
-                    list.clone();
+                let mut children = list.clone();
 
                 if let Some(props) = get_dynamic_op_properties(s) {
 
@@ -6632,10 +6411,7 @@ impl Expr {
                     }
                 }
 
-                Self::NaryList(
-                    s.clone(),
-                    children,
-                )
+                Self::NaryList(s.clone(), children)
             },
             | _ => self.clone(),
         }
@@ -6649,9 +6425,7 @@ impl Expr {
     /// # Returns
     /// * `Result<DagOp, String>` - The corresponding DAG operation or an error if conversion fails
 
-    pub(crate) fn to_dag_op_internal(
-        &self
-    ) -> Result<DagOp, String> {
+    pub(crate) fn to_dag_op_internal(&self) -> Result<DagOp, String> {
 
         match self {
             | Self::Constant(c) => {
@@ -6728,19 +6502,34 @@ impl Expr {
                     s.clone(),
                 ))
             },
-            | Self::Ode { func, var, .. } => {
+            | Self::Ode {
+                func,
+                var,
+                ..
+            } => {
                 Ok(DagOp::Ode {
-                    func: func.clone(),
-                    var: var.clone(),
+                    func : func.clone(),
+                    var : var.clone(),
                 })
             },
-            | Self::Pde { func, vars, .. } => {
+            | Self::Pde {
+                func,
+                vars,
+                ..
+            } => {
                 Ok(DagOp::Pde {
-                    func: func.clone(),
-                    vars: vars.clone(),
+                    func : func.clone(),
+                    vars : vars.clone(),
                 })
             },
-            | Self::Predicate { name, .. } => Ok(DagOp::Predicate { name: name.clone() }),
+            | Self::Predicate {
+                name,
+                ..
+            } => {
+                Ok(DagOp::Predicate {
+                    name : name.clone(),
+                })
+            },
             | Self::Path(pt, _, _) => {
                 Ok(DagOp::Path(
                     pt.clone(),
@@ -6752,7 +6541,14 @@ impl Expr {
                     *incl_upper,
                 ))
             },
-            | Self::RootOf { index, .. } => Ok(DagOp::RootOf { index: *index }),
+            | Self::RootOf {
+                index,
+                ..
+            } => {
+                Ok(DagOp::RootOf {
+                    index : *index,
+                })
+            },
             | Self::SparsePolynomial(p) => Ok(DagOp::SparsePolynomial(p.clone())),
             | Self::QuantityWithValue(_, u) => Ok(DagOp::QuantityWithValue(u.clone())),
 
@@ -6780,9 +6576,18 @@ impl Expr {
 
                 let rows = m.len();
 
-                let cols = if rows > 0 { m[0].len() } else { 0 };
+                let cols = if rows > 0 {
 
-                Ok(DagOp::Matrix { rows, cols })
+                    m[0].len()
+                } else {
+
+                    0
+                };
+
+                Ok(DagOp::Matrix {
+                    rows,
+                    cols,
+                })
             },
             | Self::Vector(_) => Ok(DagOp::Vector),
             | Self::Complex(_, _) => Ok(DagOp::Complex),
@@ -6790,10 +6595,18 @@ impl Expr {
             | Self::MatrixMul(_, _) => Ok(DagOp::MatrixMul),
             | Self::MatrixVecMul(_, _) => Ok(DagOp::MatrixVecMul),
             | Self::Inverse(_) => Ok(DagOp::Inverse),
-            | Self::Integral { .. } => Ok(DagOp::Integral),
-            | Self::VolumeIntegral { .. } => Ok(DagOp::VolumeIntegral),
-            | Self::SurfaceIntegral { .. } => Ok(DagOp::SurfaceIntegral),
-            | Self::Sum { .. } => Ok(DagOp::Sum),
+            | Self::Integral {
+                ..
+            } => Ok(DagOp::Integral),
+            | Self::VolumeIntegral {
+                ..
+            } => Ok(DagOp::VolumeIntegral),
+            | Self::SurfaceIntegral {
+                ..
+            } => Ok(DagOp::SurfaceIntegral),
+            | Self::Sum {
+                ..
+            } => Ok(DagOp::Sum),
             | Self::Series(_, s, _, _) => {
                 Ok(DagOp::Series(
                     s.clone(),
@@ -6867,7 +6680,9 @@ impl Expr {
             | Self::Mod(_, _) => Ok(DagOp::Mod),
             | Self::System(_) => Ok(DagOp::System),
             | Self::Solutions(_) => Ok(DagOp::Solutions),
-            | Self::ParametricSolution { .. } => Ok(DagOp::ParametricSolution),
+            | Self::ParametricSolution {
+                ..
+            } => Ok(DagOp::ParametricSolution),
             | Self::GeneralSolution(_) => Ok(DagOp::GeneralSolution),
             | Self::ParticularSolution(_) => Ok(DagOp::ParticularSolution),
             | Self::Fredholm(_, _, _, _) => Ok(DagOp::Fredholm),
@@ -6924,13 +6739,13 @@ impl AsRef<Self> for Expr {
 // --- Helper Macros ---
 macro_rules! unary_constructor {
     ($name:ident, $op:ident) => {
-        #[doc = "Creates a new "]
+        /// Creates a new
         #[doc = stringify!($op)]
-        #[doc = " expression, managed by the DAG."]
+        /// expression, managed by the DAG.
 
-        pub fn $name<A>(a: A) -> Expr
+        pub fn $name<A>(a : A) -> Expr
         where
-            A: AsRef<Expr>,
+            A : AsRef<Expr>,
         {
 
             let dag_a = DAG_MANAGER
@@ -6951,17 +6766,17 @@ macro_rules! unary_constructor {
 
 macro_rules! binary_constructor {
     ($name:ident, $op:ident) => {
-        #[doc = "Creates a new "]
+        /// Creates a new
         #[doc = stringify!($op)]
-        #[doc = " expression, managed by the DAG."]
+        /// expression, managed by the DAG.
 
         pub fn $name<A, B>(
-            a: A,
-            b: B,
+            a : A,
+            b : B,
         ) -> Expr
         where
-            A: AsRef<Expr>,
-            B: AsRef<Expr>,
+            A : AsRef<Expr>,
+            B : AsRef<Expr>,
         {
 
             let dag_a = DAG_MANAGER
@@ -6986,14 +6801,14 @@ macro_rules! binary_constructor {
 
 macro_rules! n_ary_constructor {
     ($name:ident, $op:ident) => {
-        #[doc = "Creates a new "]
+        /// Creates a new
         #[doc = stringify!($op)]
-        #[doc = " expression, managed by the DAG."]
+        /// expression, managed by the DAG.
 
-        pub fn $name<I, T>(elements: I) -> Expr
+        pub fn $name<I, T>(elements : I) -> Expr
         where
-            I: IntoIterator<Item = T>,
-            T: AsRef<Expr>,
+            I : IntoIterator<Item = T>,
+            T : AsRef<Expr>,
         {
 
             let children_nodes = elements
@@ -7020,24 +6835,22 @@ macro_rules! n_ary_constructor {
 
 #[deprecated(
     since = "0.1.18",
-    note = "Please use the \
-            'UnaryList' variant \
-            instead."
+    note = "Please use the 'UnaryList' variant instead."
 )]
 
 macro_rules! unary_constructor_deprecated {
     ($name:ident, $op:ident) => {
-        #[doc = "Creates a new "]
+        /// Creates a new
         #[doc = stringify!($op)]
-        #[doc = " expression, managed by the DAG."]
+        /// expression, managed by the DAG.
         #[deprecated(
             since = "0.1.18",
             note = "Please use the 'UnaryList' variant instead."
         )]
 
-        pub fn $name<A>(a: A) -> Expr
+        pub fn $name<A>(a : A) -> Expr
         where
-            A: AsRef<Expr>,
+            A : AsRef<Expr>,
         {
 
             let dag_a = DAG_MANAGER
@@ -7058,28 +6871,26 @@ macro_rules! unary_constructor_deprecated {
 
 #[deprecated(
     since = "0.1.18",
-    note = "Please use the \
-            'BinaryList' variant \
-            instead."
+    note = "Please use the 'BinaryList' variant instead."
 )]
 
 macro_rules! binary_constructor_deprecated {
     ($name:ident, $op:ident) => {
-        #[doc = "Creates a new "]
+        /// Creates a new
         #[doc = stringify!($op)]
-        #[doc = " expression, managed by the DAG."]
+        /// expression, managed by the DAG.
         #[deprecated(
             since = "0.1.18",
             note = "Please use the 'BinaryList' variant instead."
         )]
 
         pub fn $name<A, B>(
-            a: A,
-            b: B,
+            a : A,
+            b : B,
         ) -> Expr
         where
-            A: AsRef<Expr>,
-            B: AsRef<Expr>,
+            A : AsRef<Expr>,
+            B : AsRef<Expr>,
         {
 
             let dag_a = DAG_MANAGER
@@ -7104,24 +6915,23 @@ macro_rules! binary_constructor_deprecated {
 
 #[deprecated(
     since = "0.1.18",
-    note = "Please use the 'NaryList' \
-            variant instead."
+    note = "Please use the 'NaryList' variant instead."
 )]
 
 macro_rules! n_ary_constructor_deprecated {
     ($name:ident, $op:ident) => {
-        #[doc = "Creates a new "]
+        /// Creates a new
         #[doc = stringify!($op)]
-        #[doc = " expression, managed by the DAG."]
+        /// expression, managed by the DAG.
         #[deprecated(
             since = "0.1.18",
             note = "Please use the 'NaryList' variant instead."
         )]
 
-        pub fn $name<I, T>(elements: I) -> Expr
+        pub fn $name<I, T>(elements : I) -> Expr
         where
-            I: IntoIterator<Item = T>,
-            T: AsRef<Expr>,
+            I : IntoIterator<Item = T>,
+            T : AsRef<Expr>,
         {
 
             let children_nodes = elements
@@ -7170,10 +6980,7 @@ impl Expr {
         Transpose
     );
 
-    unary_constructor!(
-        new_inverse,
-        Inverse
-    );
+    unary_constructor!(new_inverse, Inverse);
 
     unary_constructor!(new_sec, Sec);
 
@@ -7181,35 +6988,17 @@ impl Expr {
 
     unary_constructor!(new_cot, Cot);
 
-    unary_constructor!(
-        new_arcsin,
-        ArcSin
-    );
+    unary_constructor!(new_arcsin, ArcSin);
 
-    unary_constructor!(
-        new_arccos,
-        ArcCos
-    );
+    unary_constructor!(new_arccos, ArcCos);
 
-    unary_constructor!(
-        new_arctan,
-        ArcTan
-    );
+    unary_constructor!(new_arctan, ArcTan);
 
-    unary_constructor!(
-        new_arcsec,
-        ArcSec
-    );
+    unary_constructor!(new_arcsec, ArcSec);
 
-    unary_constructor!(
-        new_arccsc,
-        ArcCsc
-    );
+    unary_constructor!(new_arccsc, ArcCsc);
 
-    unary_constructor!(
-        new_arccot,
-        ArcCot
-    );
+    unary_constructor!(new_arccot, ArcCot);
 
     unary_constructor!(new_sinh, Sinh);
 
@@ -7223,47 +7012,23 @@ impl Expr {
 
     unary_constructor!(new_coth, Coth);
 
-    unary_constructor!(
-        new_arcsinh,
-        ArcSinh
-    );
+    unary_constructor!(new_arcsinh, ArcSinh);
 
-    unary_constructor!(
-        new_arccosh,
-        ArcCosh
-    );
+    unary_constructor!(new_arccosh, ArcCosh);
 
-    unary_constructor!(
-        new_arctanh,
-        ArcTanh
-    );
+    unary_constructor!(new_arctanh, ArcTanh);
 
-    unary_constructor!(
-        new_arcsech,
-        ArcSech
-    );
+    unary_constructor!(new_arcsech, ArcSech);
 
-    unary_constructor!(
-        new_arccsch,
-        ArcCsch
-    );
+    unary_constructor!(new_arccsch, ArcCsch);
 
-    unary_constructor!(
-        new_arccoth,
-        ArcCoth
-    );
+    unary_constructor!(new_arccoth, ArcCoth);
 
     unary_constructor!(new_not, Not);
 
-    unary_constructor!(
-        new_floor,
-        Floor
-    );
+    unary_constructor!(new_floor, Floor);
 
-    unary_constructor!(
-        new_gamma,
-        Gamma
-    );
+    unary_constructor!(new_gamma, Gamma);
 
     unary_constructor!(new_erf, Erf);
 
@@ -7273,10 +7038,7 @@ impl Expr {
 
     unary_constructor!(new_zeta, Zeta);
 
-    unary_constructor!(
-        new_digamma,
-        Digamma
-    );
+    unary_constructor!(new_digamma, Digamma);
 
     // --- Binary Operator Constructors ---
     binary_constructor!(new_add, Add);
@@ -7289,10 +7051,7 @@ impl Expr {
 
     binary_constructor!(new_pow, Power);
 
-    binary_constructor!(
-        new_complex,
-        Complex
-    );
+    binary_constructor!(new_complex, Complex);
 
     binary_constructor!(
         new_matrix_mul,
@@ -7309,17 +7068,11 @@ impl Expr {
         LogBase
     );
 
-    binary_constructor!(
-        new_atan2,
-        Atan2
-    );
+    binary_constructor!(new_atan2, Atan2);
 
     binary_constructor!(new_xor, Xor);
 
-    binary_constructor!(
-        new_implies,
-        Implies
-    );
+    binary_constructor!(new_implies, Implies);
 
     binary_constructor!(
         new_equivalent,
@@ -7358,35 +7111,23 @@ impl Expr {
         KroneckerDelta
     );
 
-    binary_constructor!(
-        new_apply,
-        Apply
-    );
+    binary_constructor!(new_apply, Apply);
 
     // --- N-ary Constructors ---
-    n_ary_constructor!(
-        new_vector,
-        Vector
-    );
+    n_ary_constructor!(new_vector, Vector);
 
     n_ary_constructor!(new_and, And);
 
     n_ary_constructor!(new_or, Or);
 
-    n_ary_constructor!(
-        new_union,
-        Union
-    );
+    n_ary_constructor!(new_union, Union);
 
     n_ary_constructor!(
         new_polynomial,
         Polynomial
     );
 
-    n_ary_constructor!(
-        new_tuple,
-        Tuple
-    );
+    n_ary_constructor!(new_tuple, Tuple);
 
     unary_constructor_deprecated!(
         new_custom_arc_one,
@@ -7427,15 +7168,11 @@ impl Expr {
     /// Creates a new Constant expression, managed by the DAG.
     #[must_use]
 
-    pub fn new_constant(
-        c : f64
-    ) -> Self {
+    pub fn new_constant(c : f64) -> Self {
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
-                DagOp::Constant(
-                    OrderedFloat(c),
-                ),
+                DagOp::Constant(OrderedFloat(c)),
                 vec![],
             )
             .expect("Value is valid");
@@ -7446,15 +7183,11 @@ impl Expr {
     /// Creates a new Variable expression, managed by the DAG.
     #[must_use]
 
-    pub fn new_variable(
-        name : &str
-    ) -> Self {
+    pub fn new_variable(name : &str) -> Self {
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
-                DagOp::Variable(
-                    name.to_string(),
-                ),
+                DagOp::Variable(name.to_string()),
                 vec![],
             )
             .expect("Value is valid");
@@ -7465,9 +7198,7 @@ impl Expr {
     /// Creates a new `BigInt` expression, managed by the DAG.
     #[must_use]
 
-    pub fn new_bigint(
-        i : BigInt
-    ) -> Self {
+    pub fn new_bigint(i : BigInt) -> Self {
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
@@ -7482,9 +7213,7 @@ impl Expr {
     /// Creates a new Rational expression, managed by the DAG.
     #[must_use]
 
-    pub fn new_rational(
-        r : BigRational
-    ) -> Self {
+    pub fn new_rational(r : BigRational) -> Self {
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
@@ -7502,10 +7231,7 @@ impl Expr {
     pub fn new_pi() -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Pi,
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::Pi, vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -7517,10 +7243,7 @@ impl Expr {
     pub fn new_e() -> Self {
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::E,
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::E, vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -7544,8 +7267,7 @@ impl Expr {
     /// Creates a new `NegativeInfinity` expression, managed by the DAG.
     #[must_use]
 
-    pub fn new_negative_infinity(
-    ) -> Self {
+    pub fn new_negative_infinity() -> Self {
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
@@ -7560,17 +7282,14 @@ impl Expr {
     // --- Special Constructors ---
     /// Creates a new Matrix expression, managed by the DAG.
 
-    pub fn new_matrix<I, J, T>(
-        elements : I
-    ) -> Self
+    pub fn new_matrix<I, J, T>(elements : I) -> Self
     where
         I : IntoIterator<Item = J>,
         J : IntoIterator<Item = T>,
         T : AsRef<Self>,
     {
 
-        let mut flat_children_nodes =
-            Vec::new();
+        let mut flat_children_nodes = Vec::new();
 
         let mut rows = 0;
 
@@ -7588,8 +7307,7 @@ impl Expr {
                     .get_or_create(element.as_ref())
                     .expect("Value is valid");
 
-                flat_children_nodes
-                    .push(node);
+                flat_children_nodes.push(node);
 
                 current_cols += 1;
             }
@@ -7597,15 +7315,9 @@ impl Expr {
             if cols == 0 {
 
                 cols = current_cols;
-            } else if current_cols
-                != cols
-            {
+            } else if current_cols != cols {
 
-                panic!(
-                    "Matrix rows must \
-                     have consistent \
-                     length"
-                );
+                panic!("Matrix rows must have consistent length");
             }
         }
 
@@ -7644,8 +7356,7 @@ impl Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(
                 DagOp::Predicate {
-                    name : name
-                        .to_string(),
+                    name : name.to_string(),
                 },
                 children_nodes,
             )
@@ -7663,16 +7374,12 @@ impl Expr {
     {
 
         let child_node = DAG_MANAGER
-            .get_or_create(
-                expr.as_ref(),
-            )
+            .get_or_create(expr.as_ref())
             .expect("Value is valid");
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
-                DagOp::ForAll(
-                    var.to_string(),
-                ),
+                DagOp::ForAll(var.to_string()),
                 vec![child_node],
             )
             .expect("Value is valid");
@@ -7689,16 +7396,12 @@ impl Expr {
     {
 
         let child_node = DAG_MANAGER
-            .get_or_create(
-                expr.as_ref(),
-            )
+            .get_or_create(expr.as_ref())
             .expect("Value is valid");
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
-                DagOp::Exists(
-                    var.to_string(),
-                ),
+                DagOp::Exists(var.to_string()),
                 vec![child_node],
             )
             .expect("Value is valid");
@@ -7718,15 +7421,11 @@ impl Expr {
     {
 
         let dag_lower = DAG_MANAGER
-            .get_or_create(
-                lower.as_ref(),
-            )
+            .get_or_create(lower.as_ref())
             .expect("Value is valid");
 
         let dag_upper = DAG_MANAGER
-            .get_or_create(
-                upper.as_ref(),
-            )
+            .get_or_create(upper.as_ref())
             .expect("Value is valid");
 
         let node = DAG_MANAGER
@@ -7735,10 +7434,7 @@ impl Expr {
                     incl_lower,
                     incl_upper,
                 ),
-                vec![
-                    dag_lower,
-                    dag_upper,
-                ],
+                vec![dag_lower, dag_upper],
             )
             .expect("Value is valid");
 
@@ -7747,15 +7443,11 @@ impl Expr {
 
     #[must_use]
 
-    pub fn new_sparse_polynomial(
-        p : SparsePolynomial
-    ) -> Self {
+    pub fn new_sparse_polynomial(p : SparsePolynomial) -> Self {
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
-                DagOp::SparsePolynomial(
-                    p,
-                ),
+                DagOp::SparsePolynomial(p),
                 vec![],
             )
             .expect("Value is valid");
@@ -7766,9 +7458,7 @@ impl Expr {
     // --- Custom Constructors ---
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'UnaryList' variant \
-                instead."
+        note = "Please use the 'UnaryList' variant instead."
     )]
     #[must_use]
 
@@ -7786,21 +7476,15 @@ impl Expr {
 
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'UnaryList' variant \
-                instead."
+        note = "Please use the 'UnaryList' variant instead."
     )]
     #[must_use]
 
-    pub fn new_custom_string(
-        s : &str
-    ) -> Self {
+    pub fn new_custom_string(s : &str) -> Self {
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
-                DagOp::CustomString(
-                    s.to_string(),
-                ),
+                DagOp::CustomString(s.to_string()),
                 vec![],
             )
             .expect("Value is valid");
@@ -7810,16 +7494,10 @@ impl Expr {
 
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'NaryList' variant \
-                instead."
+        note = "Please use the 'NaryList' variant instead."
     )]
 
-    pub fn new_custom_arc_three<
-        A,
-        B,
-        C,
-    >(
+    pub fn new_custom_arc_three<A, B, C>(
         a : A,
         b : B,
         c : C,
@@ -7842,8 +7520,7 @@ impl Expr {
             .get_or_create(c.as_ref())
             .expect("Value is valid");
 
-        let children =
-            vec![dag_a, dag_b, dag_c];
+        let children = vec![dag_a, dag_b, dag_c];
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
@@ -7857,17 +7534,10 @@ impl Expr {
 
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'NaryList' variant \
-                instead."
+        note = "Please use the 'NaryList' variant instead."
     )]
 
-    pub fn new_custom_arc_four<
-        A,
-        B,
-        C,
-        D,
-    >(
+    pub fn new_custom_arc_four<A, B, C, D>(
         a : A,
         b : B,
         c : C,
@@ -7912,18 +7582,10 @@ impl Expr {
 
     #[deprecated(
         since = "0.1.18",
-        note = "Please use the \
-                'NaryList' variant \
-                instead."
+        note = "Please use the 'NaryList' variant instead."
     )]
 
-    pub fn new_custom_arc_five<
-        A,
-        B,
-        C,
-        D,
-        E,
-    >(
+    pub fn new_custom_arc_five<A, B, C, D, E>(
         a : A,
         b : B,
         c : C,
@@ -7959,8 +7621,7 @@ impl Expr {
             .expect("Value is valid");
 
         let children = vec![
-            dag_a, dag_b, dag_c, dag_d,
-            dag_e,
+            dag_a, dag_b, dag_c, dag_d, dag_e,
         ];
 
         let node = DAG_MANAGER
@@ -7985,8 +7646,7 @@ impl Expr {
     /// 
     /// use rssn::symbolic::core::Expr;
     ///
-    /// let dag_expr =
-    ///     Expr::new_variable("x");
+    /// let dag_expr = Expr::new_variable("x");
     ///
     /// assert!(dag_expr.is_dag());
     ///
@@ -8035,24 +7695,16 @@ impl Expr {
     /// assert!(dag.is_dag());
     /// ```
 
-    pub fn to_dag(
-        &self
-    ) -> Result<Self, String> {
+    pub fn to_dag(&self) -> Result<Self, String> {
 
         match self {
             // Already in DAG form, just clone
-            | Self::Dag(_) => {
-                Ok(self.clone())
-            },
+            | Self::Dag(_) => Ok(self.clone()),
 
             // Convert AST to DAG
             | _ => {
 
-                let dag_node =
-                    DAG_MANAGER
-                        .get_or_create(
-                            self,
-                        )?;
+                let dag_node = DAG_MANAGER.get_or_create(self)?;
 
                 Ok(Self::Dag(dag_node))
             },
@@ -8095,14 +7747,10 @@ impl Expr {
     /// * `Ok(Expr)` - The expression in AST form
     /// * `Err(String)` - If conversion fails
 
-    pub fn to_ast(
-        &self
-    ) -> Result<Self, String> {
+    pub fn to_ast(&self) -> Result<Self, String> {
 
         match self {
-            | Self::Dag(node) => {
-                node.to_expr()
-            },
+            | Self::Dag(node) => node.to_expr(),
             | _ => Ok(self.clone()),
         }
     }
@@ -8159,22 +7807,17 @@ lazy_static! {
 /// # Examples
 /// ```
 /// 
-/// use rssn::symbolic::core::{
-///     register_dynamic_op,
-///     DynamicOpProperties,
-/// };
+/// use rssn::symbolic::core::register_dynamic_op;
+/// use rssn::symbolic::core::DynamicOpProperties;
 ///
 /// register_dynamic_op(
 ///     "my_custom_op",
 ///     DynamicOpProperties {
-///         name: "my_custom_op"
+///         name : "my_custom_op".to_string(),
+///         description : "A custom commutative operation"
 ///             .to_string(),
-///         description:
-///             "A custom commutative \
-///              operation"
-///                 .to_string(),
-///         is_associative: true,
-///         is_commutative: true,
+///         is_associative : true,
+///         is_commutative : true,
 ///     },
 /// );
 /// ```
@@ -8184,10 +7827,9 @@ pub fn register_dynamic_op(
     props : DynamicOpProperties,
 ) {
 
-    let mut registry =
-        DYNAMIC_OP_REGISTRY
-            .write()
-            .unwrap();
+    let mut registry = DYNAMIC_OP_REGISTRY
+        .write()
+        .unwrap();
 
     registry.insert(
         name.to_string(),
@@ -8210,28 +7852,21 @@ pub fn register_dynamic_op(
 /// # Examples
 /// ```
 /// 
-/// use rssn::symbolic::core::{
-///     get_dynamic_op_properties,
-///     register_dynamic_op,
-///     DynamicOpProperties,
-/// };
+/// use rssn::symbolic::core::get_dynamic_op_properties;
+/// use rssn::symbolic::core::register_dynamic_op;
+/// use rssn::symbolic::core::DynamicOpProperties;
 ///
 /// register_dynamic_op(
 ///     "test_op",
 ///     DynamicOpProperties {
-///         name: "test_op".to_string(),
-///         description:
-///             "Test operation"
-///                 .to_string(),
-///         is_associative: false,
-///         is_commutative: true,
+///         name : "test_op".to_string(),
+///         description : "Test operation".to_string(),
+///         is_associative : false,
+///         is_commutative : true,
 ///     },
 /// );
 ///
-/// let props =
-///     get_dynamic_op_properties(
-///         "test_op",
-///     );
+/// let props = get_dynamic_op_properties("test_op");
 ///
 /// assert!(props.is_some());
 ///
@@ -8243,9 +7878,7 @@ pub fn register_dynamic_op(
 /// ```
 #[must_use]
 
-pub fn get_dynamic_op_properties(
-    name : &str
-) -> Option<DynamicOpProperties> {
+pub fn get_dynamic_op_properties(name : &str) -> Option<DynamicOpProperties> {
 
     let registry = DYNAMIC_OP_REGISTRY
         .read()

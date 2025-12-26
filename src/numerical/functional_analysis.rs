@@ -16,9 +16,7 @@
 /// The numerical value of the L1 norm.
 #[must_use]
 
-pub fn l1_norm(
-    points : &[(f64, f64)]
-) -> f64 {
+pub fn l1_norm(points : &[(f64, f64)]) -> f64 {
 
     points
         .windows(2)
@@ -28,9 +26,7 @@ pub fn l1_norm(
 
             let (x2, y2) = w[1];
 
-            ((y1.abs() + y2.abs())
-                / 2.0)
-                * (x2 - x1)
+            ((y1.abs() + y2.abs()) / 2.0) * (x2 - x1)
         })
         .sum()
 }
@@ -47,9 +43,7 @@ pub fn l1_norm(
 /// The numerical value of the L2 norm.
 #[must_use]
 
-pub fn l2_norm(
-    points : &[(f64, f64)]
-) -> f64 {
+pub fn l2_norm(points : &[(f64, f64)]) -> f64 {
 
     let integral_sq : f64 = points
         .windows(2)
@@ -59,8 +53,7 @@ pub fn l2_norm(
 
             let (x2, y2) = w[1];
 
-            (y2 * y2 + y1 * y1) / 2.0
-                * (x2 - x1)
+            (y2 * y2 + y1 * y1) / 2.0 * (x2 - x1)
         })
         .sum();
 
@@ -78,9 +71,7 @@ pub fn l2_norm(
 /// # Returns
 /// The numerical value of the L-infinity norm.
 
-pub fn infinity_norm(
-    points : &[(f64, f64)]
-) -> f64 {
+pub fn infinity_norm(points : &[(f64, f64)]) -> f64 {
 
     points
         .iter()
@@ -106,14 +97,9 @@ pub fn inner_product(
     g_points : &[(f64, f64)],
 ) -> Result<f64, String> {
 
-    if f_points.len() != g_points.len()
-    {
+    if f_points.len() != g_points.len() {
 
-        return Err("Input functions \
-                    must have the \
-                    same number of \
-                    sample points."
-            .to_string());
+        return Err("Input functions must have the same number of sample points.".to_string());
     }
 
     let integral = f_points
@@ -127,24 +113,14 @@ pub fn inner_product(
 
             let (_, y1_g) = g_points[i];
 
-            let (_, y2_g) =
-                g_points[i + 1];
+            let (_, y2_g) = g_points[i + 1];
 
-            if (x1 - g_points[i].0)
-                .abs()
-                > 1e-9
-                || (x2
-                    - g_points[i + 1].0)
-                    .abs()
-                    > 1e-9
-            {
+            if (x1 - g_points[i].0).abs() > 1e-9 || (x2 - g_points[i + 1].0).abs() > 1e-9 {
 
                 return 0.0;
             }
 
-            (y1_f * y1_g + y2_f * y2_g)
-                / 2.0
-                * (x2 - x1)
+            (y1_f * y1_g + y2_f * y2_g) / 2.0 * (x2 - x1)
         })
         .sum();
 
@@ -159,15 +135,9 @@ pub fn project(
     g_points : &[(f64, f64)],
 ) -> Result<Vec<(f64, f64)>, String> {
 
-    let ip_fg = inner_product(
-        f_points,
-        g_points,
-    )?;
+    let ip_fg = inner_product(f_points, g_points)?;
 
-    let ip_gg = inner_product(
-        g_points,
-        g_points,
-    )?;
+    let ip_gg = inner_product(g_points, g_points)?;
 
     if ip_gg.abs() < 1e-15 {
 
@@ -187,9 +157,7 @@ pub fn project(
 
 /// Normalizes a function relative to its L2 norm.
 
-pub fn normalize(
-    points : &[(f64, f64)]
-) -> Vec<(f64, f64)> {
+pub fn normalize(points : &[(f64, f64)]) -> Vec<(f64, f64)> {
 
     let n = l2_norm(points);
 
@@ -207,14 +175,9 @@ pub fn normalize(
 /// Performs the Gram-Schmidt process to orthogonalize a set of functions.
 /// All functions must have the same sampling points.
 
-pub fn gram_schmidt(
-    basis : &[Vec<(f64, f64)>]
-) -> Result<Vec<Vec<(f64, f64)>>, String>
-{
+pub fn gram_schmidt(basis : &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, String> {
 
-    let mut orthogonal_basis : Vec<
-        Vec<(f64, f64)>,
-    > = Vec::new();
+    let mut orthogonal_basis : Vec<Vec<(f64, f64)>> = Vec::new();
 
     for i in 0 .. basis.len() {
 
@@ -222,8 +185,7 @@ pub fn gram_schmidt(
 
         for u in &orthogonal_basis {
 
-            let proj =
-                project(&basis[i], u)?;
+            let proj = project(&basis[i], u)?;
 
             for (j, (_, py)) in proj
                 .into_iter()
@@ -244,11 +206,9 @@ pub fn gram_schmidt(
 
 pub fn gram_schmidt_orthonormal(
     basis : &[Vec<(f64, f64)>]
-) -> Result<Vec<Vec<(f64, f64)>>, String>
-{
+) -> Result<Vec<Vec<(f64, f64)>>, String> {
 
-    let orthogonal_basis =
-        gram_schmidt(basis)?;
+    let orthogonal_basis = gram_schmidt(basis)?;
 
     Ok(orthogonal_basis
         .into_iter()

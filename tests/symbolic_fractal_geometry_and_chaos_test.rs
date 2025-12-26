@@ -7,8 +7,7 @@ use rssn::symbolic::simplify_dag::simplify;
 fn test_ifs_apply() {
 
     // Simple 1D IFS: f1(x) = x/2, f2(x) = (x+1)/2
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
     let f1 = Expr::new_div(
         x.clone(),
@@ -23,19 +22,17 @@ fn test_ifs_apply() {
         Expr::Constant(2.0),
     );
 
-    let ifs =
-        IteratedFunctionSystem::new(
-            vec![f1, f2],
-            vec![
-                Expr::Constant(0.5),
-                Expr::Constant(0.5),
-            ],
-            vec!["x".to_string()],
-        );
+    let ifs = IteratedFunctionSystem::new(
+        vec![f1, f2],
+        vec![
+            Expr::Constant(0.5),
+            Expr::Constant(0.5),
+        ],
+        vec!["x".to_string()],
+    );
 
     // Apply to x=0
-    let point =
-        vec![Expr::Constant(0.0)];
+    let point = vec![Expr::Constant(0.0)];
 
     let results = ifs.apply(&point);
 
@@ -88,8 +85,7 @@ fn test_complex_system_fixed_points() {
     let c = Expr::Constant(-2.0); // z^2 - 2
     let system = ComplexDynamicalSystem::new_mandelbrot_family(c);
 
-    let fixed_points =
-        system.fixed_points();
+    let fixed_points = system.fixed_points();
 
     // For c = -2: z^2 - z - 2 = 0 => (z-2)(z+1) = 0 => z=2, z=-1
     // Manually check shows that results are correct
@@ -100,8 +96,7 @@ fn test_complex_system_fixed_points() {
 
     assert!(
         fixed_points.len() > 0,
-        "Should find at least one \
-         fixed point"
+        "Should find at least one fixed point"
     );
 }
 
@@ -117,8 +112,7 @@ fn test_lyapunov_exponent_logistic() {
     // f'(0.1) = 4 - 0.8 = 3.2
     // Lyapunov = ln(|3.2|) / 1
 
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
     let r = Expr::Constant(4.0);
 
@@ -150,8 +144,7 @@ fn test_lyapunov_exponent_logistic() {
     let lya_str = format!("{:?}", lya);
 
     assert!(
-        lya_str.contains("Log")
-            || lya_str.contains("ln"),
+        lya_str.contains("Log") || lya_str.contains("ln"),
         "Should contain logarithm"
     );
     // Manually check shows that results are correct

@@ -3,28 +3,27 @@
 //! This module provides C-compatible FFI functions for arithmetic in GF(2^8) and
 //! general finite fields, including polynomial operations over these fields.
 
-use crate::symbolic::core::Expr;
-use crate::symbolic::error_correction_helper::{
-    gf256_add,
-    gf256_div,
-    gf256_exp,
-    gf256_inv,
-    gf256_log,
-    gf256_mul,
-    gf256_pow,
-    poly_add_gf,
-    poly_add_gf256,
-    poly_derivative_gf256,
-    poly_div_gf,
-    poly_div_gf256,
-    poly_eval_gf256,
-    poly_gcd_gf256,
-    poly_mul_gf,
-    poly_mul_gf256,
-    poly_scale_gf256,
-    FiniteField,
-};
 use std::sync::Arc;
+
+use crate::symbolic::core::Expr;
+use crate::symbolic::error_correction_helper::gf256_add;
+use crate::symbolic::error_correction_helper::gf256_div;
+use crate::symbolic::error_correction_helper::gf256_exp;
+use crate::symbolic::error_correction_helper::gf256_inv;
+use crate::symbolic::error_correction_helper::gf256_log;
+use crate::symbolic::error_correction_helper::gf256_mul;
+use crate::symbolic::error_correction_helper::gf256_pow;
+use crate::symbolic::error_correction_helper::poly_add_gf;
+use crate::symbolic::error_correction_helper::poly_add_gf256;
+use crate::symbolic::error_correction_helper::poly_derivative_gf256;
+use crate::symbolic::error_correction_helper::poly_div_gf;
+use crate::symbolic::error_correction_helper::poly_div_gf256;
+use crate::symbolic::error_correction_helper::poly_eval_gf256;
+use crate::symbolic::error_correction_helper::poly_gcd_gf256;
+use crate::symbolic::error_correction_helper::poly_mul_gf;
+use crate::symbolic::error_correction_helper::poly_mul_gf256;
+use crate::symbolic::error_correction_helper::poly_scale_gf256;
+use crate::symbolic::error_correction_helper::FiniteField;
 
 /// Performs addition in GF(2^8) (XOR operation).
 #[no_mangle]
@@ -51,9 +50,7 @@ pub extern "C" fn rssn_gf256_mul(
 /// Computes the exponentiation (anti-logarithm) in GF(2^8).
 #[no_mangle]
 
-pub extern "C" fn rssn_gf256_exp(
-    log_val : u8
-) -> u8 {
+pub extern "C" fn rssn_gf256_exp(log_val : u8) -> u8 {
 
     gf256_exp(log_val)
 }
@@ -62,9 +59,7 @@ pub extern "C" fn rssn_gf256_exp(
 /// Returns 0 if input is 0 (error case, as log(0) is undefined).
 #[no_mangle]
 
-pub extern "C" fn rssn_gf256_log(
-    a : u8
-) -> u8 {
+pub extern "C" fn rssn_gf256_log(a : u8) -> u8 {
 
     gf256_log(a).unwrap_or(0)
 }
@@ -84,9 +79,7 @@ pub extern "C" fn rssn_gf256_pow(
 /// Returns 0 if input is 0 (error case).
 #[no_mangle]
 
-pub extern "C" fn rssn_gf256_inv(
-    a : u8
-) -> u8 {
+pub extern "C" fn rssn_gf256_inv(a : u8) -> u8 {
 
     gf256_inv(a).unwrap_or(0)
 }
@@ -120,10 +113,7 @@ pub unsafe extern "C" fn rssn_poly_eval_gf256(
         return 0;
     }
 
-    let slice =
-        std::slice::from_raw_parts(
-            poly, len,
-        );
+    let slice = std::slice::from_raw_parts(poly, len);
 
     poly_eval_gf256(slice, x)
 }
@@ -142,30 +132,20 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
     out_len : *mut usize,
 ) -> *mut u8 {
 
-    if p1.is_null()
-        || p2.is_null()
-        || out_len.is_null()
-    {
+    if p1.is_null() || p2.is_null() || out_len.is_null() {
 
         return std::ptr::null_mut();
     }
 
-    let s1 = std::slice::from_raw_parts(
-        p1,
-        p1_len,
-    );
+    let s1 = std::slice::from_raw_parts(p1, p1_len);
 
-    let s2 = std::slice::from_raw_parts(
-        p2,
-        p2_len,
-    );
+    let s2 = std::slice::from_raw_parts(p2, p2_len);
 
     let result = poly_add_gf256(s1, s2);
 
     *out_len = result.len();
 
-    let boxed =
-        result.into_boxed_slice();
+    let boxed = result.into_boxed_slice();
 
     Box::into_raw(boxed) as *mut u8
 }
@@ -184,30 +164,20 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
     out_len : *mut usize,
 ) -> *mut u8 {
 
-    if p1.is_null()
-        || p2.is_null()
-        || out_len.is_null()
-    {
+    if p1.is_null() || p2.is_null() || out_len.is_null() {
 
         return std::ptr::null_mut();
     }
 
-    let s1 = std::slice::from_raw_parts(
-        p1,
-        p1_len,
-    );
+    let s1 = std::slice::from_raw_parts(p1, p1_len);
 
-    let s2 = std::slice::from_raw_parts(
-        p2,
-        p2_len,
-    );
+    let s2 = std::slice::from_raw_parts(p2, p2_len);
 
     let result = poly_mul_gf256(s1, s2);
 
     *out_len = result.len();
 
-    let boxed =
-        result.into_boxed_slice();
+    let boxed = result.into_boxed_slice();
 
     Box::into_raw(boxed) as *mut u8
 }
@@ -225,25 +195,18 @@ pub unsafe extern "C" fn rssn_poly_scale_gf256(
     out_len : *mut usize,
 ) -> *mut u8 {
 
-    if poly.is_null()
-        || out_len.is_null()
-    {
+    if poly.is_null() || out_len.is_null() {
 
         return std::ptr::null_mut();
     }
 
-    let slice =
-        std::slice::from_raw_parts(
-            poly, len,
-        );
+    let slice = std::slice::from_raw_parts(poly, len);
 
-    let result =
-        poly_scale_gf256(slice, scalar);
+    let result = poly_scale_gf256(slice, scalar);
 
     *out_len = result.len();
 
-    let boxed =
-        result.into_boxed_slice();
+    let boxed = result.into_boxed_slice();
 
     Box::into_raw(boxed) as *mut u8
 }
@@ -260,25 +223,18 @@ pub unsafe extern "C" fn rssn_poly_derivative_gf256(
     out_len : *mut usize,
 ) -> *mut u8 {
 
-    if poly.is_null()
-        || out_len.is_null()
-    {
+    if poly.is_null() || out_len.is_null() {
 
         return std::ptr::null_mut();
     }
 
-    let slice =
-        std::slice::from_raw_parts(
-            poly, len,
-        );
+    let slice = std::slice::from_raw_parts(poly, len);
 
-    let result =
-        poly_derivative_gf256(slice);
+    let result = poly_derivative_gf256(slice);
 
     *out_len = result.len();
 
-    let boxed =
-        result.into_boxed_slice();
+    let boxed = result.into_boxed_slice();
 
     Box::into_raw(boxed) as *mut u8
 }
@@ -297,30 +253,20 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
     out_len : *mut usize,
 ) -> *mut u8 {
 
-    if p1.is_null()
-        || p2.is_null()
-        || out_len.is_null()
-    {
+    if p1.is_null() || p2.is_null() || out_len.is_null() {
 
         return std::ptr::null_mut();
     }
 
-    let s1 = std::slice::from_raw_parts(
-        p1,
-        p1_len,
-    );
+    let s1 = std::slice::from_raw_parts(p1, p1_len);
 
-    let s2 = std::slice::from_raw_parts(
-        p2,
-        p2_len,
-    );
+    let s2 = std::slice::from_raw_parts(p2, p2_len);
 
     let result = poly_gcd_gf256(s1, s2);
 
     *out_len = result.len();
 
-    let boxed =
-        result.into_boxed_slice();
+    let boxed = result.into_boxed_slice();
 
     Box::into_raw(boxed) as *mut u8
 }
@@ -330,9 +276,7 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
 /// Returns an opaque handle to the field.
 #[no_mangle]
 
-pub extern "C" fn rssn_finite_field_new(
-    modulus : i64
-) -> *mut Arc<FiniteField> {
+pub extern "C" fn rssn_finite_field_new(modulus : i64) -> *mut Arc<FiniteField> {
 
     Box::into_raw(Box::new(
         FiniteField::new(modulus),
@@ -345,9 +289,7 @@ pub extern "C" fn rssn_finite_field_new(
 /// Caller must ensure `field` is a valid pointer returned by `rssn_finite_field_new`.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_finite_field_free(
-    field : *mut Arc<FiniteField>
-) {
+pub unsafe extern "C" fn rssn_finite_field_free(field : *mut Arc<FiniteField>) {
 
     if !field.is_null() {
 
@@ -367,27 +309,14 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
     field : *const Arc<FiniteField>,
 ) -> *mut Expr {
 
-    if p1.is_null()
-        || p2.is_null()
-        || field.is_null()
-    {
+    if p1.is_null() || p2.is_null() || field.is_null() {
 
         return std::ptr::null_mut();
     }
 
-    match poly_add_gf(
-        &*p1,
-        &*p2,
-        &*field,
-    ) {
-        | Ok(result) => {
-            Box::into_raw(Box::new(
-                result,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+    match poly_add_gf(&*p1, &*p2, &*field) {
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -403,26 +332,13 @@ pub unsafe extern "C" fn rssn_poly_mul_gf(
     field : *const Arc<FiniteField>,
 ) -> *mut Expr {
 
-    if p1.is_null()
-        || p2.is_null()
-        || field.is_null()
-    {
+    if p1.is_null() || p2.is_null() || field.is_null() {
 
         return std::ptr::null_mut();
     }
 
-    match poly_mul_gf(
-        &*p1,
-        &*p2,
-        &*field,
-    ) {
-        | Ok(result) => {
-            Box::into_raw(Box::new(
-                result,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+    match poly_mul_gf(&*p1, &*p2, &*field) {
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }

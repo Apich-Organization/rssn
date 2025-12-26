@@ -1,9 +1,8 @@
+use std::ffi::CStr;
+use std::ffi::CString;
+
 use rssn::ffi_apis::numerical_solve_ffi::*;
 use rssn::prelude::numerical::*;
-use std::ffi::{
-    CStr,
-    CString,
-};
 
 #[test]
 
@@ -12,11 +11,7 @@ fn test_solve_handle_ffi() {
     unsafe {
 
         // 3x = 9 => x = 3
-        let a = numerical_Matrix::new(
-            1,
-            1,
-            vec![3.0],
-        );
+        let a = numerical_Matrix::new(1, 1, vec![3.0]);
 
         let b = vec![9.0];
 
@@ -41,9 +36,7 @@ fn test_solve_handle_ffi() {
             out.as_mut_ptr(),
         );
 
-        assert!(
-            (out[0] - 3.0).abs() < 1e-9
-        );
+        assert!((out[0] - 3.0).abs() < 1e-9);
 
         handle::rssn_num_solve_free_solution(sol_ptr);
     }
@@ -68,29 +61,21 @@ fn test_solve_json_ffi() {
 
         let json_input = format!(
             r#"{{"matrix": {}, "vector": {:?}}}"#,
-            serde_json::to_string(&a)
-                .unwrap(),
+            serde_json::to_string(&a).unwrap(),
             b
         );
 
-        let c_json =
-            CString::new(json_input)
-                .unwrap();
+        let c_json = CString::new(json_input).unwrap();
 
         let res_ptr = json::rssn_solve_linear_system_json(c_json.as_ptr());
 
-        let res_str =
-            CStr::from_ptr(res_ptr)
-                .to_str()
-                .unwrap();
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
+            .unwrap();
 
         // Parse result
         // Expected: Ok(Unique([1.0, 1.0]))
-        let v : serde_json::Value =
-            serde_json::from_str(
-                res_str,
-            )
-            .unwrap();
+        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
 
         // Structure is FfiResult { ok: Some(LinearSolution), ... }
         // LinearSolution::Unique is { "Unique": [...] }
@@ -102,7 +87,6 @@ fn test_solve_json_ffi() {
 
         assert_eq!(sol[1], 1.0);
 
-        let _ =
-            CString::from_raw(res_ptr);
+        let _ = CString::from_raw(res_ptr);
     }
 }

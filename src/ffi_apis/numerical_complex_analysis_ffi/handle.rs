@@ -23,16 +23,9 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
     res_im : *mut f64,
 ) -> i32 {
 
-    if expr_ptr.is_null()
-        || res_re.is_null()
-        || res_im.is_null()
-    {
+    if expr_ptr.is_null() || res_re.is_null() || res_im.is_null() {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_complex_eval"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_complex_eval".to_string());
 
         return -1;
     }
@@ -43,11 +36,9 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
 
     for i in 0 .. n_vars {
 
-        let name = CStr::from_ptr(
-            *var_names.add(i),
-        )
-        .to_string_lossy()
-        .into_owned();
+        let name = CStr::from_ptr(*var_names.add(i))
+            .to_string_lossy()
+            .into_owned();
 
         let val = Complex::new(
             *var_re.add(i),
@@ -96,22 +87,16 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
         || res_im.is_null()
     {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_complex_contour_integral"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_complex_contour_integral".to_string());
 
         return -1;
     }
 
     let expr = &*expr_ptr;
 
-    let var = CStr::from_ptr(var_ptr)
-        .to_string_lossy();
+    let var = CStr::from_ptr(var_ptr).to_string_lossy();
 
-    let path : Vec<Complex<f64>> = (0
-        .. path_len)
+    let path : Vec<Complex<f64>> = (0 .. path_len)
         .map(|i| {
 
             Complex::new(
@@ -121,9 +106,7 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
         })
         .collect();
 
-    match complex_analysis::contour_integral_expr(
-        expr, &var, &path,
-    ) {
+    match complex_analysis::contour_integral_expr(expr, &var, &path) {
         | Ok(res) => {
 
             *res_re = res.re;
@@ -155,25 +138,16 @@ pub unsafe extern "C" fn rssn_num_complex_residue(
     res_im : *mut f64,
 ) -> i32 {
 
-    if expr_ptr.is_null()
-        || var_ptr.is_null()
-        || res_re.is_null()
-        || res_im.is_null()
-    {
+    if expr_ptr.is_null() || var_ptr.is_null() || res_re.is_null() || res_im.is_null() {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_complex_residue"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_complex_residue".to_string());
 
         return -1;
     }
 
     let expr = &*expr_ptr;
 
-    let var = CStr::from_ptr(var_ptr)
-        .to_string_lossy();
+    let var = CStr::from_ptr(var_ptr).to_string_lossy();
 
     let z0 = Complex::new(z0_re, z0_im);
 

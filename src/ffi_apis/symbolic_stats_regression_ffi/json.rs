@@ -17,9 +17,7 @@ pub unsafe extern "C" fn rssn_json_simple_linear_regression(
     data_json : *const c_char
 ) -> *mut c_char {
 
-    let data : Option<
-        Vec<(Expr, Expr)>,
-    > = from_json_string(data_json);
+    let data : Option<Vec<(Expr, Expr)>> = from_json_string(data_json);
 
     if let Some(data) = data {
 
@@ -39,9 +37,7 @@ pub unsafe extern "C" fn rssn_json_polynomial_regression(
     degree : usize,
 ) -> *mut c_char {
 
-    let data : Option<
-        Vec<(Expr, Expr)>,
-    > = from_json_string(data_json);
+    let data : Option<Vec<(Expr, Expr)>> = from_json_string(data_json);
 
     if let Some(data) = data {
 
@@ -64,41 +60,30 @@ pub unsafe extern "C" fn rssn_json_nonlinear_regression(
     params_json : *const c_char,
 ) -> *mut c_char {
 
-    let data : Option<
-        Vec<(Expr, Expr)>,
-    > = from_json_string(data_json);
+    let data : Option<Vec<(Expr, Expr)>> = from_json_string(data_json);
 
-    let model : Option<Expr> =
-        from_json_string(model_json);
+    let model : Option<Expr> = from_json_string(model_json);
 
-    let vars : Option<Vec<String>> =
-        from_json_string(vars_json);
+    let vars : Option<Vec<String>> = from_json_string(vars_json);
 
-    let params : Option<Vec<String>> =
-        from_json_string(params_json);
+    let params : Option<Vec<String>> = from_json_string(params_json);
 
-    if let (
-        Some(data),
-        Some(model),
-        Some(vars),
-        Some(params),
-    ) = (
+    if let (Some(data), Some(model), Some(vars), Some(params)) = (
         data,
         model,
         vars,
         params,
     ) {
 
-        let vars_refs : Vec<&str> =
-            vars.iter()
-                .map(|s| s.as_str())
-                .collect();
+        let vars_refs : Vec<&str> = vars
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
-        let params_refs : Vec<&str> =
-            params
-                .iter()
-                .map(|s| s.as_str())
-                .collect();
+        let params_refs : Vec<&str> = params
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match stats_regression::nonlinear_regression_symbolic(
             &data,

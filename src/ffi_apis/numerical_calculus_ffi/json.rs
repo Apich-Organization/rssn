@@ -37,29 +37,22 @@ struct HessianInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_numerical_gradient_json(
-    input_json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_numerical_gradient_json(input_json : *const c_char) -> *mut c_char {
 
-    let input: GradientInput =
-        match from_json_string(input_json) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<f64>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON input"
-                                .to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : GradientInput = match from_json_string(input_json) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON input".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let vars_refs : Vec<&str> = input
         .vars
@@ -88,37 +81,27 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_numerical_jacobian_json(
-    input_json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_numerical_jacobian_json(input_json : *const c_char) -> *mut c_char {
 
-    let input: JacobianInput =
-        match from_json_string(input_json) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<Vec<f64>>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON input"
-                                .to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : JacobianInput = match from_json_string(input_json) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<Vec<f64>>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON input".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let vars_refs : Vec<&str> = input
         .vars
@@ -147,37 +130,27 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_numerical_hessian_json(
-    input_json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_numerical_hessian_json(input_json : *const c_char) -> *mut c_char {
 
-    let input: HessianInput =
-        match from_json_string(input_json) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<Vec<f64>>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON input"
-                                .to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : HessianInput = match from_json_string(input_json) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<Vec<f64>>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON input".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let vars_refs : Vec<&str> = input
         .vars
@@ -206,8 +179,5 @@ pub unsafe extern "C" fn rssn_numerical_hessian_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

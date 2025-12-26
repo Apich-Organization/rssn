@@ -24,26 +24,19 @@ struct ApplyRulesInput {
 /// Output: JSON-serialized Expr (the normal form)
 #[no_mangle]
 
-pub extern "C" fn rssn_apply_rules_to_normal_form_json(
-    json_str : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_apply_rules_to_normal_form_json(json_str : *const c_char) -> *mut c_char {
 
-    let input : Option<
-        ApplyRulesInput,
-    > = from_json_string(json_str);
+    let input : Option<ApplyRulesInput> = from_json_string(json_str);
 
     let input = match input {
         | Some(i) => i,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        apply_rules_to_normal_form(
-            &input.expr,
-            &input.rules,
-        );
+    let result = apply_rules_to_normal_form(
+        &input.expr,
+        &input.rules,
+    );
 
     to_json_string(&result)
 }
@@ -54,31 +47,22 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_json(
 /// Output: JSON array of RewriteRule objects
 #[no_mangle]
 
-pub extern "C" fn rssn_knuth_bendix_json(
-    json_str : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_knuth_bendix_json(json_str : *const c_char) -> *mut c_char {
 
-    let equations : Option<Vec<Expr>> =
-        from_json_string(json_str);
+    let equations : Option<Vec<Expr>> = from_json_string(json_str);
 
     let equations = match equations {
         | Some(e) => e,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     match knuth_bendix(&equations) {
-        | Ok(rules) => {
-            to_json_string(&rules)
-        },
+        | Ok(rules) => to_json_string(&rules),
         | Err(err) => {
 
             let error_response = serde_json::json!({ "error": err });
 
-            to_json_string(
-                &error_response,
-            )
+            to_json_string(&error_response)
         },
     }
 }
@@ -89,9 +73,7 @@ pub extern "C" fn rssn_knuth_bendix_json(
 /// Output: JSON-serialized RewriteRule
 #[no_mangle]
 
-pub extern "C" fn rssn_rewrite_rule_new_json(
-    json_str : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_rewrite_rule_new_json(json_str : *const c_char) -> *mut c_char {
 
     #[derive(Deserialize)]
 
@@ -100,14 +82,11 @@ pub extern "C" fn rssn_rewrite_rule_new_json(
         rhs : Expr,
     }
 
-    let input : Option<RuleInput> =
-        from_json_string(json_str);
+    let input : Option<RuleInput> = from_json_string(json_str);
 
     let input = match input {
         | Some(i) => i,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     let rule = RewriteRule {
@@ -124,18 +103,13 @@ pub extern "C" fn rssn_rewrite_rule_new_json(
 /// Output: JSON object with "string" field
 #[no_mangle]
 
-pub extern "C" fn rssn_rewrite_rule_to_string_json(
-    json_str : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_rewrite_rule_to_string_json(json_str : *const c_char) -> *mut c_char {
 
-    let rule : Option<RewriteRule> =
-        from_json_string(json_str);
+    let rule : Option<RewriteRule> = from_json_string(json_str);
 
     let rule = match rule {
         | Some(r) => r,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     let rule_str = format!(

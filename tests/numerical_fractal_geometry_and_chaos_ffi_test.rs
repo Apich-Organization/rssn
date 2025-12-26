@@ -12,8 +12,7 @@ fn test_mandelbrot_escape_time_json() {
 
     let input = r#"{"c_real": 0.0, "c_imag": 0.0, "max_iter": 100}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -21,17 +20,9 @@ fn test_mandelbrot_escape_time_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         assert_eq!(parsed["ok"], 100);
     }
@@ -43,8 +34,7 @@ fn test_julia_escape_time_json() {
 
     let input = r#"{"z_real": 0.0, "z_imag": 0.0, "c_real": 0.0, "c_imag": 0.0, "max_iter": 100}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -52,17 +42,9 @@ fn test_julia_escape_time_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         assert_eq!(parsed["ok"], 100);
     }
@@ -74,8 +56,7 @@ fn test_lorenz_attractor_json() {
 
     let input = r#"{"start_point": [1.0, 1.0, 1.0], "dt": 0.01, "num_steps": 10}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -83,17 +64,9 @@ fn test_lorenz_attractor_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         assert!(parsed["ok"].is_array());
 
@@ -113,8 +86,7 @@ fn test_henon_map_json() {
 
     let input = r#"{"start_point": [0.0, 0.0], "num_steps": 10, "a": 1.4, "b": 0.3}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -122,17 +94,9 @@ fn test_henon_map_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         assert!(parsed["ok"].is_array());
 
@@ -152,8 +116,7 @@ fn test_logistic_map_json() {
 
     let input = r#"{"x0": 0.5, "r": 3.5, "num_steps": 10}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -161,17 +124,9 @@ fn test_logistic_map_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         assert!(parsed["ok"].is_array());
 
@@ -191,8 +146,7 @@ fn test_lyapunov_logistic_json() {
 
     let input = r#"{"r": 4.0, "x0": 0.5, "transient": 100, "num_iterations": 500}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -200,17 +154,9 @@ fn test_lyapunov_logistic_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         // r=4 should give positive Lyapunov exponent
         let lyap = parsed["ok"]
@@ -227,8 +173,7 @@ fn test_mandelbrot_set_json() {
 
     let input = r#"{"width": 5, "height": 5, "x_range": [-2.0, 1.0], "y_range": [-1.5, 1.5], "max_iter": 20}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -236,17 +181,9 @@ fn test_mandelbrot_set_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         assert!(parsed["ok"].is_array());
 
@@ -266,8 +203,7 @@ fn test_julia_set_json() {
 
     let input = r#"{"width": 5, "height": 5, "x_range": [-2.0, 2.0], "y_range": [-2.0, 2.0], "c": [-0.4, 0.6], "max_iter": 20}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -275,17 +211,9 @@ fn test_julia_set_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         assert!(parsed["ok"].is_array());
 
@@ -305,8 +233,7 @@ fn test_rossler_attractor_json() {
 
     let input = r#"{"start_point": [1.0, 1.0, 1.0], "dt": 0.01, "num_steps": 10, "a": 0.2, "b": 0.2, "c": 5.7}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -314,17 +241,9 @@ fn test_rossler_attractor_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         assert!(parsed["ok"].is_array());
 
@@ -344,8 +263,7 @@ fn test_tinkerbell_map_json() {
 
     let input = r#"{"start_point": [-0.72, -0.64], "num_steps": 10, "a": 0.9, "b": -0.6013, "c": 2.0, "d": 0.5}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -353,17 +271,9 @@ fn test_tinkerbell_map_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         assert!(parsed["ok"].is_array());
 
@@ -383,8 +293,7 @@ fn test_bifurcation_json() {
 
     let input = r#"{"r_range": [2.5, 4.0], "num_r_values": 5, "transient": 50, "num_points": 3, "x0": 0.5}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -392,17 +301,9 @@ fn test_bifurcation_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         assert!(parsed["ok"].is_array());
 
@@ -422,8 +323,7 @@ fn test_bifurcation_json() {
 
 #[test]
 
-fn test_mandelbrot_escape_time_handle()
-{
+fn test_mandelbrot_escape_time_handle() {
 
     let escape = rssn::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_mandelbrot_escape_time(
         0.0,
@@ -522,10 +422,7 @@ fn test_logistic_map_handle() {
 
         assert_eq!(result, 0);
 
-        assert!(
-            (output[0] - 0.5).abs()
-                < 1e-10
-        );
+        assert!((output[0] - 0.5).abs() < 1e-10);
     }
 }
 
@@ -551,9 +448,7 @@ fn test_box_counting_dim_handle() {
             8,
         );
 
-        assert!(
-            dim >= 0.5 && dim <= 1.5
-        );
+        assert!(dim >= 0.5 && dim <= 1.5);
     }
 }
 

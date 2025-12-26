@@ -13,26 +13,22 @@ fn test_numerical_ode_handle_ffi() {
 
     unsafe {
 
-        let y0_expr =
-            Expr::new_variable("y0");
+        let y0_expr = Expr::new_variable("y0");
 
-        let funcs = vec![
-            &y0_expr as *const Expr,
-        ];
+        let funcs = vec![&y0_expr as *const Expr];
 
         let y_init = vec![1.0];
 
-        let matrix_ptr =
-            handle::rssn_num_ode_solve(
-                funcs.as_ptr(),
-                1,
-                y_init.as_ptr(),
-                1,
-                0.0,
-                1.0,
-                100,
-                2, // RungeKutta4
-            );
+        let matrix_ptr = handle::rssn_num_ode_solve(
+            funcs.as_ptr(),
+            1,
+            y_init.as_ptr(),
+            1,
+            0.0,
+            1.0,
+            100,
+            2, // RungeKutta4
+        );
 
         assert!(!matrix_ptr.is_null());
 
@@ -50,8 +46,7 @@ fn test_numerical_ode_handle_ffi() {
             1e-5
         );
 
-        let _ =
-            Box::from_raw(matrix_ptr);
+        let _ = Box::from_raw(matrix_ptr);
     }
 }
 
@@ -61,36 +56,26 @@ fn test_numerical_ode_json_ffi() {
 
     unsafe {
 
-        let f =
-            Expr::new_variable("y0");
+        let f = Expr::new_variable("y0");
 
-        let f_json =
-            serde_json::to_string(&f)
-                .unwrap();
+        let f_json = serde_json::to_string(&f).unwrap();
 
         let json_input = format!(
             r#"{{"funcs": [{}], "y0": [1.0], "x_range": [0.0, 1.0], "num_steps": 100, "method": "RungeKutta4"}}"#,
             f_json
         );
 
-        let c_json =
-            CString::new(json_input)
-                .unwrap();
+        let c_json = CString::new(json_input).unwrap();
 
         let res_ptr = json::rssn_num_ode_solve_json(c_json.as_ptr());
 
         assert!(!res_ptr.is_null());
 
-        let res_str =
-            CStr::from_ptr(res_ptr)
-                .to_str()
-                .unwrap();
-
-        let v : serde_json::Value =
-            serde_json::from_str(
-                res_str,
-            )
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
             .unwrap();
+
+        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
 
         let results = v["ok"]
             .as_array()
@@ -137,17 +122,16 @@ fn test_numerical_ode_bincode_ffi() {
         }
 
         let input = OdeInput {
-            funcs: vec![Expr::new_variable(
+            funcs : vec![Expr::new_variable(
                 "y0",
             )],
-            y0: vec![1.0],
-            x_range: (0.0, 1.0),
-            num_steps: 100,
-            method: OdeSolverMethod::RungeKutta4,
+            y0 : vec![1.0],
+            x_range : (0.0, 1.0),
+            num_steps : 100,
+            method : OdeSolverMethod::RungeKutta4,
         };
 
-        let buffer =
-            to_bincode_buffer(&input);
+        let buffer = to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_ode_solve_bincode(buffer);
 
@@ -161,13 +145,7 @@ fn test_numerical_ode_bincode_ffi() {
             err : Option<E>,
         }
 
-        let res : FfiResult<
-            Vec<Vec<f64>>,
-            String,
-        > = from_bincode_buffer(
-            &res_buffer,
-        )
-        .unwrap();
+        let res : FfiResult<Vec<Vec<f64>>, String> = from_bincode_buffer(&res_buffer).unwrap();
 
         let ok_res = res
             .ok
@@ -182,12 +160,8 @@ fn test_numerical_ode_bincode_ffi() {
             1e-5
         );
 
-        rssn_free_bincode_buffer(
-            res_buffer,
-        );
+        rssn_free_bincode_buffer(res_buffer);
 
-        rssn_free_bincode_buffer(
-            buffer,
-        );
+        rssn_free_bincode_buffer(buffer);
     }
 }

@@ -95,14 +95,11 @@ fn test_nt_factorize() {
 
 fn test_nt_sieve() {
 
-    let primes =
-        numerical_primes_sieve(20);
+    let primes = numerical_primes_sieve(20);
 
     assert_eq!(
         primes,
-        vec![
-            2, 3, 5, 7, 11, 13, 17, 19
-        ]
+        vec![2, 3, 5, 7, 11, 13, 17, 19]
     );
 }
 

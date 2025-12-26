@@ -36,9 +36,7 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
         )
     };
 
-    let init_param = Array1::from(
-        init_param_slice.to_vec(),
-    );
+    let init_param = Array1::from(init_param_slice.to_vec());
 
     let problem = Rosenbrock {
         a,
@@ -48,13 +46,14 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
     let config = OptimizationConfig {
         max_iters,
         tolerance,
-        problem_type:
-            ProblemType::Rosenbrock,
+        problem_type : ProblemType::Rosenbrock,
         dimension : init_param_len,
     };
 
     match EquationOptimizer::solve_with_gradient_descent(
-        problem, init_param, &config,
+        problem,
+        init_param,
+        &config,
     ) {
         | Ok(res) => {
 
@@ -107,9 +106,7 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
         )
     };
 
-    let init_param = Array1::from(
-        init_param_slice.to_vec(),
-    );
+    let init_param = Array1::from(init_param_slice.to_vec());
 
     let problem = Rosenbrock {
         a,
@@ -119,13 +116,14 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
     let config = OptimizationConfig {
         max_iters,
         tolerance,
-        problem_type:
-            ProblemType::Rosenbrock,
+        problem_type : ProblemType::Rosenbrock,
         dimension : init_param_len,
     };
 
     match EquationOptimizer::solve_with_bfgs(
-        problem, init_param, &config,
+        problem,
+        init_param,
+        &config,
     ) {
         | Ok(res) => {
 
@@ -175,22 +173,21 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
         )
     };
 
-    let init_param = Array1::from(
-        init_param_slice.to_vec(),
-    );
+    let init_param = Array1::from(init_param_slice.to_vec());
 
     let problem = Sphere;
 
     let config = OptimizationConfig {
         max_iters,
         tolerance,
-        problem_type:
-            ProblemType::Sphere,
+        problem_type : ProblemType::Sphere,
         dimension : init_param_len,
     };
 
     match EquationOptimizer::solve_with_gradient_descent(
-        problem, init_param, &config,
+        problem,
+        init_param,
+        &config,
     ) {
         | Ok(res) => {
 
@@ -221,7 +218,7 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_get_result_cost_handle(
-    handle: *const FfiOptimizationResult
+    handle : *const FfiOptimizationResult
 ) -> f64 {
 
     if handle.is_null() {
@@ -238,7 +235,7 @@ pub extern "C" fn numerical_optimize_get_result_cost_handle(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_get_result_iterations_handle(
-    handle: *const FfiOptimizationResult
+    handle : *const FfiOptimizationResult
 ) -> u64 {
 
     if handle.is_null() {
@@ -255,7 +252,7 @@ pub extern "C" fn numerical_optimize_get_result_iterations_handle(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_get_result_param_len_handle(
-    handle: *const FfiOptimizationResult
+    handle : *const FfiOptimizationResult
 ) -> usize {
 
     if handle.is_null() {
@@ -274,13 +271,11 @@ pub extern "C" fn numerical_optimize_get_result_param_len_handle(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_get_result_param_handle(
-    handle: *const FfiOptimizationResult,
+    handle : *const FfiOptimizationResult,
     buffer : *mut f64,
 ) -> bool {
 
-    if handle.is_null()
-        || buffer.is_null()
-    {
+    if handle.is_null() || buffer.is_null() {
 
         return false;
     }
@@ -302,16 +297,13 @@ pub extern "C" fn numerical_optimize_get_result_param_handle(
 
 #[no_mangle]
 
-pub extern "C" fn numerical_optimize_drop_result_handle(
-    handle : *mut FfiOptimizationResult
-) {
+pub extern "C" fn numerical_optimize_drop_result_handle(handle : *mut FfiOptimizationResult) {
 
     if !handle.is_null() {
 
         unsafe {
 
-            let _ =
-                Box::from_raw(handle);
+            let _ = Box::from_raw(handle);
         }
     }
 }

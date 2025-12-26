@@ -9,9 +9,7 @@ use crate::symbolic::graph_algorithms::*;
 /// JSON format: {"is_directed": true/false}
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_new(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_new(json : *const c_char) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -19,13 +17,12 @@ pub extern "C" fn rssn_json_graph_new(
         is_directed : bool,
     }
 
-    let spec: GraphSpec = match from_json_string(json) {
+    let spec : GraphSpec = match from_json_string(json) {
         | Some(s) => s,
         | None => return std::ptr::null_mut(),
     };
 
-    let graph : Graph<String> =
-        Graph::new(spec.is_directed);
+    let graph : Graph<String> = Graph::new(spec.is_directed);
 
     to_json_string(&graph)
 }
@@ -35,9 +32,7 @@ pub extern "C" fn rssn_json_graph_new(
 /// Returns updated graph as JSON.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_add_node(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_add_node(json : *const c_char) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -46,7 +41,7 @@ pub extern "C" fn rssn_json_graph_add_node(
         label : String,
     }
 
-    let mut input: Input = match from_json_string(json) {
+    let mut input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -62,9 +57,7 @@ pub extern "C" fn rssn_json_graph_add_node(
 /// Input JSON: {"graph": <graph>, "from": "label1", "to": "label2", "weight": <expr>}
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_add_edge(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_add_edge(json : *const c_char) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -75,7 +68,7 @@ pub extern "C" fn rssn_json_graph_add_edge(
         weight : Expr,
     }
 
-    let mut input: Input = match from_json_string(json) {
+    let mut input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -96,18 +89,14 @@ pub extern "C" fn rssn_json_graph_add_edge(
 /// Returns Expr (matrix) as JSON.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_adjacency_matrix(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_adjacency_matrix(json : *const c_char) -> *mut c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let matrix =
-        graph.to_adjacency_matrix();
+    let matrix = graph.to_adjacency_matrix();
 
     to_json_string(&matrix)
 }
@@ -115,18 +104,14 @@ pub extern "C" fn rssn_json_graph_adjacency_matrix(
 /// Gets the Laplacian matrix of the graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_laplacian_matrix(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_laplacian_matrix(json : *const c_char) -> *mut c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let matrix =
-        graph.to_laplacian_matrix();
+    let matrix = graph.to_laplacian_matrix();
 
     to_json_string(&matrix)
 }
@@ -135,9 +120,7 @@ pub extern "C" fn rssn_json_graph_laplacian_matrix(
 /// Input JSON: {"graph": <graph>, "start_node": <index>}
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_bfs(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_bfs(json : *const c_char) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -146,7 +129,7 @@ pub extern "C" fn rssn_json_graph_bfs(
         start_node : usize,
     }
 
-    let input: Input = match from_json_string(json) {
+    let input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -162,9 +145,7 @@ pub extern "C" fn rssn_json_graph_bfs(
 /// Performs DFS traversal.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_dfs(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_dfs(json : *const c_char) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -173,7 +154,7 @@ pub extern "C" fn rssn_json_graph_dfs(
         start_node : usize,
     }
 
-    let input: Input = match from_json_string(json) {
+    let input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -189,18 +170,14 @@ pub extern "C" fn rssn_json_graph_dfs(
 /// Finds connected components.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_connected_components(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_connected_components(json : *const c_char) -> *mut c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        connected_components(&graph);
+    let result = connected_components(&graph);
 
     to_json_string(&result)
 }
@@ -209,9 +186,7 @@ pub extern "C" fn rssn_json_graph_connected_components(
 /// Input JSON: {"graph": <graph>, "source": <index>, "sink": <index>}
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_max_flow(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_max_flow(json : *const c_char) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -221,7 +196,7 @@ pub extern "C" fn rssn_json_graph_max_flow(
         sink : usize,
     }
 
-    let input: Input = match from_json_string(json) {
+    let input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -238,12 +213,9 @@ pub extern "C" fn rssn_json_graph_max_flow(
 /// Computes MST using Kruskal's algorithm.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_kruskal_mst(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_kruskal_mst(json : *const c_char) -> *mut c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
@@ -256,12 +228,9 @@ pub extern "C" fn rssn_json_graph_kruskal_mst(
 /// Checks if graph has a cycle.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_has_cycle(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_has_cycle(json : *const c_char) -> *mut c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
@@ -274,12 +243,9 @@ pub extern "C" fn rssn_json_graph_has_cycle(
 /// Checks if graph is bipartite.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_is_bipartite(
-    json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_is_bipartite(json : *const c_char) -> *mut c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };

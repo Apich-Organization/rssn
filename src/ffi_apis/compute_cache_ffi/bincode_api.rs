@@ -21,30 +21,21 @@ pub extern "C" fn rssn_parsing_cache_get_bincode(
     input : *const c_char,
 ) -> BincodeBuffer {
 
-    if cache.is_null()
-        || input.is_null()
-    {
+    if cache.is_null() || input.is_null() {
 
         return BincodeBuffer::empty();
     }
 
     unsafe {
 
-        let input_str = match CStr::from_ptr(input).to_str()
-        {
+        let input_str = match CStr::from_ptr(input).to_str() {
             | Ok(s) => s,
             | Err(_) => return BincodeBuffer::empty(),
         };
 
         match (*cache).get(input_str) {
-            | Some(expr) => {
-                to_bincode_buffer(
-                    &*expr,
-                )
-            },
-            | None => {
-                BincodeBuffer::empty()
-            },
+            | Some(expr) => to_bincode_buffer(&*expr),
+            | None => BincodeBuffer::empty(),
         }
     }
 }
@@ -58,29 +49,19 @@ pub extern "C" fn rssn_parsing_cache_set_bincode(
     buffer : BincodeBuffer,
 ) {
 
-    if cache.is_null()
-        || input.is_null()
-    {
+    if cache.is_null() || input.is_null() {
 
         return;
     }
 
     unsafe {
 
-        let input_str =
-            match CStr::from_ptr(input)
-                .to_str()
-            {
-                | Ok(s) => {
-                    s.to_string()
-                },
-                | Err(_) => return,
-            };
+        let input_str = match CStr::from_ptr(input).to_str() {
+            | Ok(s) => s.to_string(),
+            | Err(_) => return,
+        };
 
-        let expr : Option<Expr> =
-            from_bincode_buffer(
-                &buffer,
-            );
+        let expr : Option<Expr> = from_bincode_buffer(&buffer);
 
         if let Some(e) = expr {
 
@@ -109,25 +90,13 @@ pub extern "C" fn rssn_computation_result_cache_get_bincode(
 
     unsafe {
 
-        let expr : Option<Expr> =
-            from_bincode_buffer(
-                &expr_buffer,
-            );
+        let expr : Option<Expr> = from_bincode_buffer(&expr_buffer);
 
         if let Some(e) = expr {
 
-            match (*cache)
-                .get(&Arc::new(e))
-            {
-                | Some(value) => {
-                    to_bincode_buffer(
-                        &value,
-                    )
-                },
-                | None => {
-                    BincodeBuffer::empty(
-                    )
-                },
+            match (*cache).get(&Arc::new(e)) {
+                | Some(value) => to_bincode_buffer(&value),
+                | None => BincodeBuffer::empty(),
             }
         } else {
 
@@ -152,22 +121,13 @@ pub extern "C" fn rssn_computation_result_cache_set_bincode(
 
     unsafe {
 
-        let expr : Option<Expr> =
-            from_bincode_buffer(
-                &expr_buffer,
-            );
+        let expr : Option<Expr> = from_bincode_buffer(&expr_buffer);
 
-        let value : Option<String> =
-            from_bincode_buffer(
-                &value_buffer,
-            );
+        let value : Option<String> = from_bincode_buffer(&value_buffer);
 
-        if let (Some(e), Some(v)) =
-            (expr, value)
-        {
+        if let (Some(e), Some(v)) = (expr, value) {
 
-            (*cache)
-                .set(Arc::new(e), v);
+            (*cache).set(Arc::new(e), v);
         }
     }
 }

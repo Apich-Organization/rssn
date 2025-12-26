@@ -31,30 +31,23 @@ struct OptimizeResponse {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn numerical_optimize_solve_bincode(
-    buffer : BincodeBuffer
-) -> BincodeBuffer {
+pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
 
-    let request : OptimizeRequest =
-        match from_bincode_buffer(
-            &buffer,
-        ) {
-            | Some(req) => req,
-            | None => {
+    let request : OptimizeRequest = match from_bincode_buffer(&buffer) {
+        | Some(req) => req,
+        | None => {
 
-                let response = OptimizeResponse {
-                    success: false,
-                    best_param: None,
-                    best_cost: None,
-                    iterations: None,
-                    error: Some(
-                        "Invalid Bincode Input".to_string(),
-                    ),
-                };
+            let response = OptimizeResponse {
+                success : false,
+                best_param : None,
+                best_cost : None,
+                iterations : None,
+                error : Some("Invalid Bincode Input".to_string()),
+            };
 
-                return to_bincode_buffer(&response);
-            },
-        };
+            return to_bincode_buffer(&response);
+        },
+    };
 
     let init_param = Array1::from(
         request
@@ -65,8 +58,7 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(
     let config = OptimizationConfig {
         max_iters : request.max_iters,
         tolerance : request.tolerance,
-        problem_type:
-            ProblemType::Custom,
+        problem_type : ProblemType::Custom,
         dimension : request
             .init_param
             .len(),
@@ -92,32 +84,34 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(
             };
 
             match EquationOptimizer::solve_with_gradient_descent(
-                problem, init_param, &config,
+                problem,
+                init_param,
+                &config,
             ) {
                 | Ok(res) => {
                     OptimizeResponse {
-                        success: true,
-                        best_param: Some(
+                        success : true,
+                        best_param : Some(
                             res.state
                                 .get_best_param()
                                 .unwrap()
                                 .to_vec(),
                         ),
-                        best_cost: Some(
+                        best_cost : Some(
                             res.state
                                 .get_best_cost(),
                         ),
-                        iterations: Some(res.state.get_iter()),
-                        error: None,
+                        iterations : Some(res.state.get_iter()),
+                        error : None,
                     }
                 },
                 | Err(e) => {
                     OptimizeResponse {
-                        success: false,
-                        best_param: None,
-                        best_cost: None,
-                        iterations: None,
-                        error: Some(e.to_string()),
+                        success : false,
+                        best_param : None,
+                        best_cost : None,
+                        iterations : None,
+                        error : Some(e.to_string()),
                     }
                 },
             }
@@ -127,32 +121,34 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(
             let problem = Sphere;
 
             match EquationOptimizer::solve_with_gradient_descent(
-                problem, init_param, &config,
+                problem,
+                init_param,
+                &config,
             ) {
                 | Ok(res) => {
                     OptimizeResponse {
-                        success: true,
-                        best_param: Some(
+                        success : true,
+                        best_param : Some(
                             res.state
                                 .get_best_param()
                                 .unwrap()
                                 .to_vec(),
                         ),
-                        best_cost: Some(
+                        best_cost : Some(
                             res.state
                                 .get_best_cost(),
                         ),
-                        iterations: Some(res.state.get_iter()),
-                        error: None,
+                        iterations : Some(res.state.get_iter()),
+                        error : None,
                     }
                 },
                 | Err(e) => {
                     OptimizeResponse {
-                        success: false,
-                        best_param: None,
-                        best_cost: None,
-                        iterations: None,
-                        error: Some(e.to_string()),
+                        success : false,
+                        best_param : None,
+                        best_cost : None,
+                        iterations : None,
+                        error : Some(e.to_string()),
                     }
                 },
             }
@@ -164,10 +160,8 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(
                 best_cost : None,
                 iterations : None,
                 error : Some(format!(
-                    "Unknown problem \
-                     type: {}",
-                    request
-                        .problem_type
+                    "Unknown problem type: {}",
+                    request.problem_type
                 )),
             }
         },

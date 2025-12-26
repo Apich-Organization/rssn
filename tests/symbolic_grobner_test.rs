@@ -7,9 +7,7 @@ use rssn::symbolic::grobner::buchberger;
 use rssn::symbolic::grobner::poly_division_multivariate;
 use rssn::symbolic::grobner::MonomialOrder;
 
-fn create_monomial(
-    vars : &[(&str, u32)]
-) -> Monomial {
+fn create_monomial(vars : &[(&str, u32)]) -> Monomial {
 
     let mut map = BTreeMap::new();
 
@@ -31,13 +29,11 @@ fn create_sparse_poly(
     )]
 ) -> SparsePolynomial {
 
-    let mut poly_terms =
-        BTreeMap::new();
+    let mut poly_terms = BTreeMap::new();
 
     for (vars, coeff) in terms {
 
-        let mono =
-            create_monomial(vars);
+        let mono = create_monomial(vars);
 
         poly_terms.insert(
             mono,
@@ -87,13 +83,9 @@ fn test_buchberger_simple() {
 fn test_poly_division_simple() {
 
     // Divide x^2 by x
-    let dividend = create_sparse_poly(
-        &[(vec![("x", 2)], 1.0)],
-    );
+    let dividend = create_sparse_poly(&[(vec![("x", 2)], 1.0)]);
 
-    let divisor = create_sparse_poly(
-        &[(vec![("x", 1)], 1.0)],
-    );
+    let divisor = create_sparse_poly(&[(vec![("x", 1)], 1.0)]);
 
     let result = poly_division_multivariate(
         &dividend,
@@ -103,8 +95,7 @@ fn test_poly_division_simple() {
 
     assert!(result.is_ok());
 
-    let (quotients, remainder) =
-        result.unwrap();
+    let (quotients, remainder) = result.unwrap();
 
     assert_eq!(quotients.len(), 1);
 
@@ -118,15 +109,12 @@ fn test_poly_division_simple() {
 fn test_poly_division_with_remainder() {
 
     // Divide x^2 + 1 by x
-    let dividend =
-        create_sparse_poly(&[
-            (vec![("x", 2)], 1.0),
-            (vec![], 1.0),
-        ]);
+    let dividend = create_sparse_poly(&[
+        (vec![("x", 2)], 1.0),
+        (vec![], 1.0),
+    ]);
 
-    let divisor = create_sparse_poly(
-        &[(vec![("x", 1)], 1.0)],
-    );
+    let divisor = create_sparse_poly(&[(vec![("x", 1)], 1.0)]);
 
     let result = poly_division_multivariate(
         &dividend,
@@ -136,8 +124,7 @@ fn test_poly_division_with_remainder() {
 
     assert!(result.is_ok());
 
-    let (quotients, remainder) =
-        result.unwrap();
+    let (quotients, remainder) = result.unwrap();
 
     assert_eq!(quotients.len(), 1);
 
@@ -150,8 +137,7 @@ fn test_poly_division_with_remainder() {
 
 fn test_buchberger_empty() {
 
-    let basis : Vec<SparsePolynomial> =
-        vec![];
+    let basis : Vec<SparsePolynomial> = vec![];
 
     let result = buchberger(
         &basis,

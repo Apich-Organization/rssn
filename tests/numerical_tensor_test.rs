@@ -16,8 +16,7 @@ fn test_tensor_basic() {
 
     assert_eq!(
         numerical_tensor_norm(&a),
-        (1.0 + 4.0 + 9.0 + 16.0f64)
-            .sqrt()
+        (1.0 + 4.0 + 9.0 + 16.0f64).sqrt()
     );
 }
 
@@ -30,16 +29,11 @@ fn test_tensor_inner_outer() {
     let b = array![3.0, 4.0].into_dyn();
 
     assert_eq!(
-        numerical_tensor_inner_product(
-            &a, &b
-        )
-        .unwrap(),
+        numerical_tensor_inner_product(&a, &b).unwrap(),
         11.0
     );
 
-    let outer =
-        numerical_outer_product(&a, &b)
-            .unwrap();
+    let outer = numerical_outer_product(&a, &b).unwrap();
 
     assert_eq!(
         outer.shape(),
@@ -63,10 +57,7 @@ fn test_tensor_vec_mul() {
 
     let v = vec![1.0, 2.0];
 
-    let res = numerical_tensor_vec_mul(
-        &a, &v,
-    )
-    .unwrap();
+    let res = numerical_tensor_vec_mul(&a, &v).unwrap();
 
     assert_eq!(res.shape(), &[2]);
 
@@ -85,16 +76,11 @@ fn test_tensor_serde() {
     ]
     .into_dyn();
 
-    let data =
-        numerical_TensorData::from(&a);
+    let data = numerical_TensorData::from(&a);
 
-    let json =
-        serde_json::to_string(&data)
-            .unwrap();
+    let json = serde_json::to_string(&data).unwrap();
 
-    let decoded : numerical_TensorData =
-        serde_json::from_str(&json)
-            .unwrap();
+    let decoded : numerical_TensorData = serde_json::from_str(&json).unwrap();
 
     let arr_back = decoded
         .to_arrayd()

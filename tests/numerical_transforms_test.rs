@@ -16,29 +16,17 @@ fn test_fft_basic() {
     fft(&mut data);
 
     // Expected: [2, 1-i, 0, 1+i]
-    assert!(
-        (data[0].re - 2.0).abs() < 1e-9
-    );
+    assert!((data[0].re - 2.0).abs() < 1e-9);
 
-    assert!(
-        (data[1].re - 1.0).abs() < 1e-9
-    );
+    assert!((data[1].re - 1.0).abs() < 1e-9);
 
-    assert!(
-        (data[1].im + 1.0).abs() < 1e-9
-    );
+    assert!((data[1].im + 1.0).abs() < 1e-9);
 
-    assert!(
-        (data[2].re - 0.0).abs() < 1e-9
-    );
+    assert!((data[2].re - 0.0).abs() < 1e-9);
 
-    assert!(
-        (data[3].re - 1.0).abs() < 1e-9
-    );
+    assert!((data[3].re - 1.0).abs() < 1e-9);
 
-    assert!(
-        (data[3].im - 1.0).abs() < 1e-9
-    );
+    assert!((data[3].im - 1.0).abs() < 1e-9);
 }
 
 #[test]
@@ -54,21 +42,13 @@ fn test_ifft_basic() {
 
     ifft(&mut data);
 
-    assert!(
-        (data[0].re - 1.0).abs() < 1e-9
-    );
+    assert!((data[0].re - 1.0).abs() < 1e-9);
 
-    assert!(
-        (data[1].re - 1.0).abs() < 1e-9
-    );
+    assert!((data[1].re - 1.0).abs() < 1e-9);
 
-    assert!(
-        (data[2].re - 0.0).abs() < 1e-9
-    );
+    assert!((data[2].re - 0.0).abs() < 1e-9);
 
-    assert!(
-        (data[3].re - 0.0).abs() < 1e-9
-    );
+    assert!((data[3].re - 0.0).abs() < 1e-9);
 }
 
 #[test]
@@ -90,19 +70,9 @@ fn test_fft_ifft_roundtrip() {
 
     for i in 0 .. 4 {
 
-        assert!(
-            (data[i].re
-                - original[i].re)
-                .abs()
-                < 1e-9
-        );
+        assert!((data[i].re - original[i].re).abs() < 1e-9);
 
-        assert!(
-            (data[i].im
-                - original[i].im)
-                .abs()
-                < 1e-9
-        );
+        assert!((data[i].im - original[i].im).abs() < 1e-9);
     }
 }
 

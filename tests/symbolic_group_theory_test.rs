@@ -8,17 +8,11 @@ use rssn::symbolic::group_theory::*;
 fn test_cyclic_group_c3() {
 
     // Elements: e=0, a=1, a^2=2 (using integers for simplicity)
-    let e = GroupElement(
-        Expr::Constant(0.0),
-    );
+    let e = GroupElement(Expr::Constant(0.0));
 
-    let a = GroupElement(
-        Expr::Constant(1.0),
-    );
+    let a = GroupElement(Expr::Constant(1.0));
 
-    let b = GroupElement(
-        Expr::Constant(2.0),
-    ); // a^2
+    let b = GroupElement(Expr::Constant(2.0)); // a^2
 
     let elements = vec![
         e.clone(),
@@ -97,8 +91,7 @@ fn test_cyclic_group_c3() {
     assert_eq!(center.len(), 3);
 
     // Conjugacy classes (should be singletons for abelian)
-    let classes =
-        group.conjugacy_classes();
+    let classes = group.conjugacy_classes();
 
     assert_eq!(classes.len(), 3);
 
@@ -113,17 +106,11 @@ fn test_cyclic_group_c3() {
 fn test_representation_c3() {
 
     // Trivial representation: rho(g) = [1]
-    let e = GroupElement(
-        Expr::Constant(0.0),
-    );
+    let e = GroupElement(Expr::Constant(0.0));
 
-    let a = GroupElement(
-        Expr::Constant(1.0),
-    );
+    let a = GroupElement(Expr::Constant(1.0));
 
-    let b = GroupElement(
-        Expr::Constant(2.0),
-    );
+    let b = GroupElement(Expr::Constant(2.0));
 
     let elements = vec![
         e.clone(),
@@ -175,10 +162,9 @@ fn test_representation_c3() {
 
     let mut matrices = HashMap::new();
 
-    let one_matrix =
-        Expr::Matrix(vec![vec![
-            Expr::Constant(1.0),
-        ]]);
+    let one_matrix = Expr::Matrix(vec![vec![
+        Expr::Constant(1.0),
+    ]]);
 
     matrices.insert(
         e.clone(),
@@ -195,10 +181,7 @@ fn test_representation_c3() {
         one_matrix.clone(),
     );
 
-    let rep = Representation::new(
-        elements,
-        matrices,
-    );
+    let rep = Representation::new(elements, matrices);
 
     assert!(rep.is_valid(&group));
 

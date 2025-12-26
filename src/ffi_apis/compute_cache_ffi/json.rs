@@ -21,24 +21,20 @@ pub extern "C" fn rssn_parsing_cache_get_json(
     input : *const c_char,
 ) -> *mut c_char {
 
-    if cache.is_null()
-        || input.is_null()
-    {
+    if cache.is_null() || input.is_null() {
 
         return std::ptr::null_mut();
     }
 
     unsafe {
 
-        let input_str = match CStr::from_ptr(input).to_str()
-        {
+        let input_str = match CStr::from_ptr(input).to_str() {
             | Ok(s) => s,
             | Err(_) => return std::ptr::null_mut(),
         };
 
         match (*cache).get(input_str) {
             | Some(expr) => {
-
                 match serde_json::to_string(&*expr) {
                     | Ok(json) => to_c_string(json),
                     | Err(_) => std::ptr::null_mut(),
@@ -58,28 +54,19 @@ pub extern "C" fn rssn_parsing_cache_set_json(
     json_expr : *const c_char,
 ) {
 
-    if cache.is_null()
-        || input.is_null()
-        || json_expr.is_null()
-    {
+    if cache.is_null() || input.is_null() || json_expr.is_null() {
 
         return;
     }
 
     unsafe {
 
-        let input_str =
-            match CStr::from_ptr(input)
-                .to_str()
-            {
-                | Ok(s) => {
-                    s.to_string()
-                },
-                | Err(_) => return,
-            };
+        let input_str = match CStr::from_ptr(input).to_str() {
+            | Ok(s) => s.to_string(),
+            | Err(_) => return,
+        };
 
-        let expr : Option<Expr> =
-            from_json_string(json_expr);
+        let expr : Option<Expr> = from_json_string(json_expr);
 
         if let Some(e) = expr {
 
@@ -102,17 +89,14 @@ pub extern "C" fn rssn_computation_result_cache_get_json(
     json_expr : *const c_char,
 ) -> *mut c_char {
 
-    if cache.is_null()
-        || json_expr.is_null()
-    {
+    if cache.is_null() || json_expr.is_null() {
 
         return std::ptr::null_mut();
     }
 
     unsafe {
 
-        let expr : Option<Expr> =
-            from_json_string(json_expr);
+        let expr : Option<Expr> = from_json_string(json_expr);
 
         if let Some(e) = expr {
 
@@ -141,30 +125,20 @@ pub extern "C" fn rssn_computation_result_cache_set_json(
     json_value : *const c_char,
 ) {
 
-    if cache.is_null()
-        || json_expr.is_null()
-        || json_value.is_null()
-    {
+    if cache.is_null() || json_expr.is_null() || json_value.is_null() {
 
         return;
     }
 
     unsafe {
 
-        let expr : Option<Expr> =
-            from_json_string(json_expr);
+        let expr : Option<Expr> = from_json_string(json_expr);
 
-        let value : Option<String> =
-            from_json_string(
-                json_value,
-            );
+        let value : Option<String> = from_json_string(json_value);
 
-        if let (Some(e), Some(v)) =
-            (expr, value)
-        {
+        if let (Some(e), Some(v)) = (expr, value) {
 
-            (*cache)
-                .set(Arc::new(e), v);
+            (*cache).set(Arc::new(e), v);
         }
     }
 }

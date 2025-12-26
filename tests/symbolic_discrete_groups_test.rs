@@ -51,14 +51,12 @@ fn test_dihedral_group() {
 
 fn test_symmetric_group() {
 
-    let s3 =
-        symmetric_group(3).unwrap();
+    let s3 = symmetric_group(3).unwrap();
 
     assert_eq!(s3.elements.len(), 6); // 3! = 6
     assert!(!s3.is_abelian());
 
-    let s2 =
-        symmetric_group(2).unwrap();
+    let s2 = symmetric_group(2).unwrap();
 
     assert_eq!(s2.elements.len(), 2); // 2! = 2
     assert!(s2.is_abelian()); // S2 is abelian

@@ -28,24 +28,17 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
     out_len : *mut usize,
 ) -> *mut c_double {
 
-    if point_ptr.is_null()
-        || out_len.is_null()
-    {
+    if point_ptr.is_null() || out_len.is_null() {
 
         return ptr::null_mut();
     }
 
     let point = unsafe {
 
-        std::slice::from_raw_parts(
-            point_ptr,
-            point_len,
-        )
+        std::slice::from_raw_parts(point_ptr, point_len)
     };
 
-    match nc::transform_point(
-        point, from, to,
-    ) {
+    match nc::transform_point(point, from, to) {
         | Ok(res) => {
 
             unsafe {
@@ -55,8 +48,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
 
             let mut res_vec = res;
 
-            let ptr =
-                res_vec.as_mut_ptr();
+            let ptr = res_vec.as_mut_ptr();
 
             std::mem::forget(res_vec);
 
@@ -85,24 +77,17 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
     out_len : *mut usize,
 ) -> *mut c_double {
 
-    if point_ptr.is_null()
-        || out_len.is_null()
-    {
+    if point_ptr.is_null() || out_len.is_null() {
 
         return ptr::null_mut();
     }
 
     let point = unsafe {
 
-        std::slice::from_raw_parts(
-            point_ptr,
-            point_len,
-        )
+        std::slice::from_raw_parts(point_ptr, point_len)
     };
 
-    match nc::transform_point_pure(
-        point, from, to,
-    ) {
+    match nc::transform_point_pure(point, from, to) {
         | Ok(res) => {
 
             unsafe {
@@ -112,8 +97,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
 
             let mut res_vec = res;
 
-            let ptr =
-                res_vec.as_mut_ptr();
+            let ptr = res_vec.as_mut_ptr();
 
             std::mem::forget(res_vec);
 
@@ -144,10 +128,7 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
     out_cols : *mut usize,
 ) -> *mut c_double {
 
-    if at_point_ptr.is_null()
-        || out_rows.is_null()
-        || out_cols.is_null()
-    {
+    if at_point_ptr.is_null() || out_rows.is_null() || out_cols.is_null() {
 
         return ptr::null_mut();
     }
@@ -160,9 +141,7 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
         )
     };
 
-    match nc::numerical_jacobian(
-        from, to, point,
-    ) {
+    match nc::numerical_jacobian(from, to, point) {
         | Ok(matrix) => {
 
             let rows = matrix.rows();
@@ -176,8 +155,7 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
                 *out_cols = cols;
             }
 
-            let mut data =
-                matrix.into_data();
+            let mut data = matrix.into_data();
 
             let ptr = data.as_mut_ptr();
 
@@ -209,9 +187,7 @@ pub unsafe extern "C" fn rssn_num_coord_free(
 
         unsafe {
 
-            let _ = Vec::from_raw_parts(
-                ptr, len, len,
-            );
+            let _ = Vec::from_raw_parts(ptr, len, len);
         }
     }
 }

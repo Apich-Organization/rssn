@@ -14,21 +14,13 @@ pub extern "C" fn rssn_bincode_kinetic_energy(
     velocity_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let mass : Option<Expr> =
-        from_bincode_buffer(&mass_buf);
+    let mass : Option<Expr> = from_bincode_buffer(&mass_buf);
 
-    let velocity : Option<Expr> =
-        from_bincode_buffer(
-            &velocity_buf,
-        );
+    let velocity : Option<Expr> = from_bincode_buffer(&velocity_buf);
 
-    if let (Some(m), Some(v)) =
-        (mass, velocity)
-    {
+    if let (Some(m), Some(v)) = (mass, velocity) {
 
-        to_bincode_buffer(
-            &classical_mechanics::kinetic_energy(&m, &v),
-        )
+        to_bincode_buffer(&classical_mechanics::kinetic_energy(&m, &v))
     } else {
 
         BincodeBuffer::empty()
@@ -45,10 +37,7 @@ pub extern "C" fn rssn_bincode_euler_lagrange_equation(
     t_var : *const c_char,
 ) -> BincodeBuffer {
 
-    let lagrangian : Option<Expr> =
-        from_bincode_buffer(
-            &lagrangian_buf,
-        );
+    let lagrangian : Option<Expr> = from_bincode_buffer(&lagrangian_buf);
 
     let q_str = unsafe {
 
@@ -70,11 +59,9 @@ pub extern "C" fn rssn_bincode_euler_lagrange_equation(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                q_dot,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(q_dot)
+                .to_str()
+                .ok()
         }
     };
 
@@ -85,31 +72,20 @@ pub extern "C" fn rssn_bincode_euler_lagrange_equation(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                t_var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(t_var)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(l),
-        Some(qs),
-        Some(qds),
-        Some(ts),
-    ) = (
+    if let (Some(l), Some(qs), Some(qds), Some(ts)) = (
         lagrangian,
         q_str,
         q_dot_str,
         t_str,
     ) {
 
-        to_bincode_buffer(
-            &classical_mechanics::euler_lagrange_equation(
-                &l, qs, qds, ts,
-            ),
-        )
+        to_bincode_buffer(&classical_mechanics::euler_lagrange_equation(&l, qs, qds, ts))
     } else {
 
         BincodeBuffer::empty()

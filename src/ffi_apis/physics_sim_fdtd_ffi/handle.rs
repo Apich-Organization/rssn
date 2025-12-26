@@ -1,9 +1,9 @@
 //! Handle-based FFI API for physics sim FDTD electrodynamics functions.
 
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_sim::fdtd_electrodynamics::FdtdParameters;
 use crate::physics::physics_sim::fdtd_electrodynamics::{
     self,
-    FdtdParameters,
 };
 
 /// Runs a 2D FDTD simulation and returns the final Ez field as a Matrix handle (WxH).
@@ -22,19 +22,13 @@ pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
         width,
         height,
         time_steps,
-        source_pos : (
-            source_x,
-            source_y,
-        ),
+        source_pos : (source_x, source_y),
         source_freq,
     };
 
-    let snapshots =
-        fdtd_electrodynamics::run_fdtd_simulation(&params);
+    let snapshots = fdtd_electrodynamics::run_fdtd_simulation(&params);
 
-    if let Some(final_ez) =
-        snapshots.last()
-    {
+    if let Some(final_ez) = snapshots.last() {
 
         let rows = final_ez.nrows();
 
@@ -45,9 +39,7 @@ pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
             .into_raw_vec();
 
         Box::into_raw(Box::new(
-            Matrix::new(
-                rows, cols, data,
-            ),
+            Matrix::new(rows, cols, data),
         ))
     } else {
 

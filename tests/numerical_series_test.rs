@@ -13,10 +13,7 @@ fn test_taylor_coefficients() {
         x,
         Expr::new_constant(2.0),
     ); // f(x) = x^2
-    let coeffs = taylor_coefficients(
-        &f, "x", 0.0, 2,
-    )
-    .unwrap();
+    let coeffs = taylor_coefficients(&f, "x", 0.0, 2).unwrap();
 
     // coeffs = [0, 0, 1]
     assert_approx_eq!(
@@ -43,17 +40,9 @@ fn test_taylor_coefficients() {
 fn test_evaluate_power_series() {
 
     let coeffs = vec![1.0, 1.0, 0.5]; // 1 + x + x^2/2
-    let val = evaluate_power_series(
-        &coeffs,
-        0.0,
-        1.0,
-    );
+    let val = evaluate_power_series(&coeffs, 0.0, 1.0);
 
-    assert_approx_eq!(
-        val,
-        2.5,
-        1e-10f64
-    );
+    assert_approx_eq!(val, 2.5, 1e-10f64);
 }
 
 #[test]
@@ -64,15 +53,9 @@ fn test_sum_series() {
 
     let f = n;
 
-    let sum =
-        sum_series(&f, "n", 1, 10)
-            .unwrap();
+    let sum = sum_series(&f, "n", 1, 10).unwrap();
 
-    assert_approx_eq!(
-        sum,
-        55.0,
-        1e-10f64
-    );
+    assert_approx_eq!(sum, 55.0, 1e-10f64);
 }
 
 proptest! {

@@ -17,65 +17,45 @@ pub unsafe extern "C" fn rssn_group_create(
     identity_ptr : *const Expr,
 ) -> *mut Group {
 
-    let elements_slice =
-        std::slice::from_raw_parts(
-            elements_ptr,
-            elements_len,
-        );
+    let elements_slice = std::slice::from_raw_parts(
+        elements_ptr,
+        elements_len,
+    );
 
-    let elements : Vec<GroupElement> =
-        elements_slice
-            .iter()
-            .map(|&p| {
+    let elements : Vec<GroupElement> = elements_slice
+        .iter()
+        .map(|&p| GroupElement((*p).clone()))
+        .collect();
 
-                GroupElement(
-                    (*p).clone(),
-                )
-            })
-            .collect();
+    let keys_a_slice = std::slice::from_raw_parts(
+        keys_a_ptr,
+        table_len,
+    );
 
-    let keys_a_slice =
-        std::slice::from_raw_parts(
-            keys_a_ptr,
-            table_len,
-        );
+    let keys_b_slice = std::slice::from_raw_parts(
+        keys_b_ptr,
+        table_len,
+    );
 
-    let keys_b_slice =
-        std::slice::from_raw_parts(
-            keys_b_ptr,
-            table_len,
-        );
+    let values_slice = std::slice::from_raw_parts(
+        values_ptr,
+        table_len,
+    );
 
-    let values_slice =
-        std::slice::from_raw_parts(
-            values_ptr,
-            table_len,
-        );
-
-    let mut multiplication_table =
-        HashMap::new();
+    let mut multiplication_table = HashMap::new();
 
     for i in 0 .. table_len {
 
-        let a = GroupElement(
-            (*keys_a_slice[i]).clone(),
-        );
+        let a = GroupElement((*keys_a_slice[i]).clone());
 
-        let b = GroupElement(
-            (*keys_b_slice[i]).clone(),
-        );
+        let b = GroupElement((*keys_b_slice[i]).clone());
 
-        let val = GroupElement(
-            (*values_slice[i]).clone(),
-        );
+        let val = GroupElement((*values_slice[i]).clone());
 
-        multiplication_table
-            .insert((a, b), val);
+        multiplication_table.insert((a, b), val);
     }
 
-    let identity = GroupElement(
-        (*identity_ptr).clone(),
-    );
+    let identity = GroupElement((*identity_ptr).clone());
 
     let group = Group::new(
         elements,
@@ -88,9 +68,7 @@ pub unsafe extern "C" fn rssn_group_create(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_group_free(
-    ptr : *mut Group
-) {
+pub unsafe extern "C" fn rssn_group_free(ptr : *mut Group) {
 
     if !ptr.is_null() {
 
@@ -111,11 +89,7 @@ pub unsafe extern "C" fn rssn_group_multiply(
     let gb = GroupElement((*b).clone());
 
     match (*group).multiply(&ga, &gb) {
-        | Some(result) => {
-            Box::into_raw(Box::new(
-                result.0,
-            ))
-        },
+        | Some(result) => Box::into_raw(Box::new(result.0)),
         | None => std::ptr::null_mut(),
     }
 }
@@ -130,20 +104,14 @@ pub unsafe extern "C" fn rssn_group_inverse(
     let ga = GroupElement((*a).clone());
 
     match (*group).inverse(&ga) {
-        | Some(result) => {
-            Box::into_raw(Box::new(
-                result.0,
-            ))
-        },
+        | Some(result) => Box::into_raw(Box::new(result.0)),
         | None => std::ptr::null_mut(),
     }
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_group_is_abelian(
-    group : *const Group
-) -> bool {
+pub unsafe extern "C" fn rssn_group_is_abelian(group : *const Group) -> bool {
 
     (*group).is_abelian()
 }
@@ -173,10 +141,7 @@ pub unsafe extern "C" fn rssn_group_center(
 
     *out_len = center.len();
 
-    let mut out_ptrs =
-        Vec::with_capacity(
-            center.len(),
-        );
+    let mut out_ptrs = Vec::with_capacity(center.len());
 
     for elem in center {
 
@@ -204,62 +169,39 @@ pub unsafe extern "C" fn rssn_representation_create(
     map_len : usize,
 ) -> *mut Representation {
 
-    let elements_slice =
-        std::slice::from_raw_parts(
-            elements_ptr,
-            elements_len,
-        );
+    let elements_slice = std::slice::from_raw_parts(
+        elements_ptr,
+        elements_len,
+    );
 
-    let elements : Vec<GroupElement> =
-        elements_slice
-            .iter()
-            .map(|&p| {
+    let elements : Vec<GroupElement> = elements_slice
+        .iter()
+        .map(|&p| GroupElement((*p).clone()))
+        .collect();
 
-                GroupElement(
-                    (*p).clone(),
-                )
-            })
-            .collect();
+    let keys_slice = std::slice::from_raw_parts(keys_ptr, map_len);
 
-    let keys_slice =
-        std::slice::from_raw_parts(
-            keys_ptr,
-            map_len,
-        );
-
-    let values_slice =
-        std::slice::from_raw_parts(
-            values_ptr,
-            map_len,
-        );
+    let values_slice = std::slice::from_raw_parts(values_ptr, map_len);
 
     let mut matrices = HashMap::new();
 
     for i in 0 .. map_len {
 
-        let key = GroupElement(
-            (*keys_slice[i]).clone(),
-        );
+        let key = GroupElement((*keys_slice[i]).clone());
 
-        let val =
-            (*values_slice[i]).clone();
+        let val = (*values_slice[i]).clone();
 
         matrices.insert(key, val);
     }
 
-    let rep = Representation::new(
-        elements,
-        matrices,
-    );
+    let rep = Representation::new(elements, matrices);
 
     Box::into_raw(Box::new(rep))
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_representation_free(
-    ptr : *mut Representation
-) {
+pub unsafe extern "C" fn rssn_representation_free(ptr : *mut Representation) {
 
     if !ptr.is_null() {
 
@@ -290,11 +232,9 @@ pub unsafe extern "C" fn rssn_character(
 
     *out_len = chars.len();
 
-    let mut keys_vec =
-        Vec::with_capacity(chars.len());
+    let mut keys_vec = Vec::with_capacity(chars.len());
 
-    let mut values_vec =
-        Vec::with_capacity(chars.len());
+    let mut values_vec = Vec::with_capacity(chars.len());
 
     for (k, v) in chars {
 
@@ -309,8 +249,7 @@ pub unsafe extern "C" fn rssn_character(
 
     *out_keys = keys_vec.as_mut_ptr();
 
-    *out_values =
-        values_vec.as_mut_ptr();
+    *out_values = values_vec.as_mut_ptr();
 
     std::mem::forget(keys_vec);
 

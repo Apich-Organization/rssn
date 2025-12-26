@@ -13,17 +13,14 @@ use crate::numerical::polynomial::Polynomial;
 /// A `Vec<Polynomial>` representing the Sturm sequence.
 #[must_use]
 
-pub fn sturm_sequence(
-    poly : &Polynomial
-) -> Vec<Polynomial> {
+pub fn sturm_sequence(poly : &Polynomial) -> Vec<Polynomial> {
 
     let mut seq = Vec::new();
 
     if poly
         .coeffs
         .is_empty()
-        || (poly.coeffs.len() == 1
-            && poly.coeffs[0] == 0.0)
+        || (poly.coeffs.len() == 1 && poly.coeffs[0] == 0.0)
     {
 
         return seq;
@@ -33,10 +30,7 @@ pub fn sturm_sequence(
 
     let p1 = poly.derivative();
 
-    if p1.coeffs.is_empty()
-        || (p1.coeffs.len() == 1
-            && p1.coeffs[0] == 0.0)
-    {
+    if p1.coeffs.is_empty() || (p1.coeffs.len() == 1 && p1.coeffs[0] == 0.0) {
 
         return seq;
     }
@@ -45,9 +39,7 @@ pub fn sturm_sequence(
 
     let mut i = 1;
 
-    while seq[i].coeffs.len() > 1
-        || seq[i].coeffs[0] != 0.0
-    {
+    while seq[i].coeffs.len() > 1 || seq[i].coeffs[0] != 0.0 {
 
         let p_prev = &seq[i - 1];
 
@@ -55,9 +47,7 @@ pub fn sturm_sequence(
 
         let (_, mut remainder) = p_prev
             .clone()
-            .long_division(
-                &p_curr.clone(),
-            );
+            .long_division(&p_curr.clone());
 
         if remainder
             .coeffs
@@ -66,8 +56,7 @@ pub fn sturm_sequence(
                 .coeffs
                 .len()
                 == 1
-                && remainder.coeffs[0]
-                    == 0.0)
+                && remainder.coeffs[0] == 0.0)
         {
 
             break;
@@ -95,8 +84,7 @@ pub(crate) fn count_sign_changes(
 
     let mut changes = 0;
 
-    let mut last_sign : Option<i8> =
-        None;
+    let mut last_sign : Option<i8> = None;
 
     for poly in sequence {
 
@@ -115,8 +103,7 @@ pub(crate) fn count_sign_changes(
 
         if let Some(s) = sign {
 
-            if let Some(ls) = last_sign
-            {
+            if let Some(ls) = last_sign {
 
                 if s != ls {
 
@@ -156,28 +143,17 @@ pub fn isolate_real_roots(
 
     let mut roots = Vec::new();
 
-    let mut stack =
-        vec![(-bound, bound)];
+    let mut stack = vec![(-bound, bound)];
 
-    while let Some((a, b)) = stack.pop()
-    {
+    while let Some((a, b)) = stack.pop() {
 
         if b - a < precision {
 
-            let changes_a =
-                count_sign_changes(
-                    &seq, a,
-                );
+            let changes_a = count_sign_changes(&seq, a);
 
-            let changes_b =
-                count_sign_changes(
-                    &seq, b,
-                );
+            let changes_b = count_sign_changes(&seq, b);
 
-            let num_roots = changes_a
-                .saturating_sub(
-                    changes_b,
-                );
+            let num_roots = changes_a.saturating_sub(changes_b);
 
             if num_roots >= 1 {
 
@@ -189,14 +165,11 @@ pub fn isolate_real_roots(
             continue;
         }
 
-        let changes_a =
-            count_sign_changes(&seq, a);
+        let changes_a = count_sign_changes(&seq, a);
 
-        let changes_b =
-            count_sign_changes(&seq, b);
+        let changes_b = count_sign_changes(&seq, b);
 
-        let num_roots = changes_a
-            .saturating_sub(changes_b);
+        let num_roots = changes_a.saturating_sub(changes_b);
 
         if num_roots == 0 {
 
@@ -206,8 +179,7 @@ pub fn isolate_real_roots(
             roots.push((a, b));
         } else {
 
-            let mid =
-                f64::midpoint(a, b);
+            let mid = f64::midpoint(a, b);
 
             stack.push((a, mid));
 
@@ -237,9 +209,7 @@ pub fn isolate_real_roots(
 
 /// Computes an upper bound for the absolute value of the real roots (Cauchy's bound).
 
-pub(crate) fn root_bound(
-    poly : &Polynomial
-) -> Result<f64, String> {
+pub(crate) fn root_bound(poly : &Polynomial) -> Result<f64, String> {
 
     if poly
         .coeffs
@@ -253,11 +223,7 @@ pub(crate) fn root_bound(
 
     if lc == 0.0 {
 
-        return Err(
-            "Leading coefficient \
-             cannot be zero."
-                .to_string(),
-        );
+        return Err("Leading coefficient cannot be zero.".to_string());
     }
 
     let max_coeff = poly
@@ -367,18 +333,15 @@ pub fn find_roots(
         Err(e)
     })?;
 
-    let mut roots = Vec::with_capacity(
-        intervals.len(),
-    );
+    let mut roots = Vec::with_capacity(intervals.len());
 
     for interval in intervals {
 
-        let root =
-            refine_root_bisection(
-                poly,
-                interval,
-                tolerance,
-            );
+        let root = refine_root_bisection(
+            poly,
+            interval,
+            tolerance,
+        );
 
         roots.push(root);
     }
@@ -387,9 +350,7 @@ pub fn find_roots(
     roots.sort_by(|a, b| {
 
         a.partial_cmp(b)
-            .unwrap_or(
-            std::cmp::Ordering::Equal,
-        )
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     Ok(roots)

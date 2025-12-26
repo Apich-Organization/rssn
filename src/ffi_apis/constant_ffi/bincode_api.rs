@@ -9,21 +9,14 @@ use crate::ffi_apis::constant_ffi::json::BuildInfo;
 /// The caller must free the returned buffer using rssn_free_bincode_buffer.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_build_info_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_get_build_info_bincode() -> BincodeBuffer {
 
     let info = BuildInfo {
-        build_date: crate::constant::get_build_date()
-            .to_string(),
-        commit_sha: crate::constant::get_commit_sha()
-            .to_string(),
-        rustc_version: crate::constant::get_rustc_version()
-            .to_string(),
-        cargo_target_triple:
-            crate::constant::get_cargo_target_triple()
-                .to_string(),
-        system_info: crate::constant::get_system_info()
-            .to_string(),
+        build_date : crate::constant::get_build_date().to_string(),
+        commit_sha : crate::constant::get_commit_sha().to_string(),
+        rustc_version : crate::constant::get_rustc_version().to_string(),
+        cargo_target_triple : crate::constant::get_cargo_target_triple().to_string(),
+        system_info : crate::constant::get_system_info().to_string(),
     };
 
     match bincode_next::serde::encode_to_vec(
@@ -39,12 +32,9 @@ pub extern "C" fn rssn_get_build_info_bincode(
 /// The caller must free the returned buffer using rssn_free_bincode_buffer.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_build_date_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_get_build_date_bincode() -> BincodeBuffer {
 
-    let date =
-        crate::constant::get_build_date(
-        );
+    let date = crate::constant::get_build_date();
 
     match bincode_next::serde::encode_to_vec(
         &date,
@@ -59,12 +49,9 @@ pub extern "C" fn rssn_get_build_date_bincode(
 /// The caller must free the returned buffer using rssn_free_bincode_buffer.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_commit_sha_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_get_commit_sha_bincode() -> BincodeBuffer {
 
-    let sha =
-        crate::constant::get_commit_sha(
-        );
+    let sha = crate::constant::get_commit_sha();
 
     match bincode_next::serde::encode_to_vec(
         &sha,

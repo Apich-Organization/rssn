@@ -12,8 +12,7 @@ unsafe fn collect_pairs(
     len : usize,
 ) -> Vec<(Expr, Expr)> {
 
-    let mut data =
-        Vec::with_capacity(len);
+    let mut data = Vec::with_capacity(len);
 
     for i in 0 .. len {
 
@@ -21,9 +20,7 @@ unsafe fn collect_pairs(
 
         let y_ptr = *y_data.add(i);
 
-        if !x_ptr.is_null()
-            && !y_ptr.is_null()
-        {
+        if !x_ptr.is_null() && !y_ptr.is_null() {
 
             data.push((
                 (*x_ptr).clone(),
@@ -43,23 +40,14 @@ pub unsafe extern "C" fn rssn_simple_linear_regression(
     len : usize,
 ) -> *mut Expr {
 
-    if x_data.is_null()
-        || y_data.is_null()
-    {
+    if x_data.is_null() || y_data.is_null() {
 
         return std::ptr::null_mut();
     }
 
-    let data = collect_pairs(
-        x_data,
-        y_data,
-        len,
-    );
+    let data = collect_pairs(x_data, y_data, len);
 
-    let (b0, b1) =
-        stats_regression::simple_linear_regression_symbolic(
-            &data,
-        );
+    let (b0, b1) = stats_regression::simple_linear_regression_symbolic(&data);
 
     Box::into_raw(Box::new(
         Expr::Vector(vec![b0, b1]),
@@ -75,22 +63,14 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
     degree : usize,
 ) -> *mut Expr {
 
-    if x_data.is_null()
-        || y_data.is_null()
-    {
+    if x_data.is_null() || y_data.is_null() {
 
         return std::ptr::null_mut();
     }
 
-    let data = collect_pairs(
-        x_data,
-        y_data,
-        len,
-    );
+    let data = collect_pairs(x_data, y_data, len);
 
-    match stats_regression::polynomial_regression_symbolic(
-        &data, degree,
-    ) {
+    match stats_regression::polynomial_regression_symbolic(&data, degree) {
         | Ok(coeffs) => {
             Box::into_raw(Box::new(
                 Expr::Vector(coeffs),
@@ -113,44 +93,31 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
     params_len : usize,
 ) -> *mut Expr {
 
-    if x_data.is_null()
-        || y_data.is_null()
-        || model.is_null()
-    {
+    if x_data.is_null() || y_data.is_null() || model.is_null() {
 
         return std::ptr::null_mut();
     }
 
-    let data = collect_pairs(
-        x_data,
-        y_data,
-        len,
-    );
+    let data = collect_pairs(x_data, y_data, len);
 
     let model_expr = &*model;
 
     // Collect strings
-    let mut vars_vec =
-        Vec::with_capacity(vars_len);
+    let mut vars_vec = Vec::with_capacity(vars_len);
 
     for i in 0 .. vars_len {
 
-        if let Some(s) =
-            c_str_to_str(*vars.add(i))
-        {
+        if let Some(s) = c_str_to_str(*vars.add(i)) {
 
             vars_vec.push(s);
         }
     }
 
-    let mut params_vec =
-        Vec::with_capacity(params_len);
+    let mut params_vec = Vec::with_capacity(params_len);
 
     for i in 0 .. params_len {
 
-        if let Some(s) =
-            c_str_to_str(*params.add(i))
-        {
+        if let Some(s) = c_str_to_str(*params.add(i)) {
 
             params_vec.push(s);
         }

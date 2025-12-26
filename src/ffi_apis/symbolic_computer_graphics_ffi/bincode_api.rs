@@ -4,20 +4,18 @@
 //! and projections, offering efficient binary data interchange.
 
 use crate::ffi_apis::common::*;
-use crate::symbolic::computer_graphics::{
-    reflection_2d,
-    reflection_3d,
-    rotation_2d,
-    rotation_3d_x,
-    rotation_3d_y,
-    rotation_3d_z,
-    rotation_axis_angle,
-    scaling_2d,
-    scaling_3d,
-    shear_2d,
-    translation_2d,
-    translation_3d,
-};
+use crate::symbolic::computer_graphics::reflection_2d;
+use crate::symbolic::computer_graphics::reflection_3d;
+use crate::symbolic::computer_graphics::rotation_2d;
+use crate::symbolic::computer_graphics::rotation_3d_x;
+use crate::symbolic::computer_graphics::rotation_3d_y;
+use crate::symbolic::computer_graphics::rotation_3d_z;
+use crate::symbolic::computer_graphics::rotation_axis_angle;
+use crate::symbolic::computer_graphics::scaling_2d;
+use crate::symbolic::computer_graphics::scaling_3d;
+use crate::symbolic::computer_graphics::shear_2d;
+use crate::symbolic::computer_graphics::translation_2d;
+use crate::symbolic::computer_graphics::translation_3d;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 
@@ -29,19 +27,15 @@ pub extern "C" fn rssn_bincode_translation_2d(
     ty_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let tx : Option<Expr> =
-        from_bincode_buffer(&tx_buf);
+    let tx : Option<Expr> = from_bincode_buffer(&tx_buf);
 
-    let ty : Option<Expr> =
-        from_bincode_buffer(&ty_buf);
+    let ty : Option<Expr> = from_bincode_buffer(&ty_buf);
 
-    if let (Some(tx), Some(ty)) =
-        (tx, ty)
-    {
+    if let (Some(tx), Some(ty)) = (tx, ty) {
 
-        to_bincode_buffer(
-            &translation_2d(tx, ty),
-        )
+        to_bincode_buffer(&translation_2d(
+            tx, ty,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -57,25 +51,17 @@ pub extern "C" fn rssn_bincode_translation_3d(
     tz_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let tx : Option<Expr> =
-        from_bincode_buffer(&tx_buf);
+    let tx : Option<Expr> = from_bincode_buffer(&tx_buf);
 
-    let ty : Option<Expr> =
-        from_bincode_buffer(&ty_buf);
+    let ty : Option<Expr> = from_bincode_buffer(&ty_buf);
 
-    let tz : Option<Expr> =
-        from_bincode_buffer(&tz_buf);
+    let tz : Option<Expr> = from_bincode_buffer(&tz_buf);
 
-    if let (
-        Some(tx),
-        Some(ty),
-        Some(tz),
-    ) = (tx, ty, tz)
-    {
+    if let (Some(tx), Some(ty), Some(tz)) = (tx, ty, tz) {
 
-        to_bincode_buffer(
-            &translation_3d(tx, ty, tz),
-        )
+        to_bincode_buffer(&translation_3d(
+            tx, ty, tz,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -85,18 +71,13 @@ pub extern "C" fn rssn_bincode_translation_3d(
 /// Generates a 3x3 2D rotation matrix via Bincode interface.
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_rotation_2d(
-    angle_buf : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_rotation_2d(angle_buf : BincodeBuffer) -> BincodeBuffer {
 
-    let angle : Option<Expr> =
-        from_bincode_buffer(&angle_buf);
+    let angle : Option<Expr> = from_bincode_buffer(&angle_buf);
 
     if let Some(a) = angle {
 
-        to_bincode_buffer(&rotation_2d(
-            a,
-        ))
+        to_bincode_buffer(&rotation_2d(a))
     } else {
 
         BincodeBuffer::empty()
@@ -106,18 +87,13 @@ pub extern "C" fn rssn_bincode_rotation_2d(
 /// Generates a 4x4 3D rotation matrix around X-axis via Bincode interface.
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_rotation_3d_x(
-    angle_buf : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_rotation_3d_x(angle_buf : BincodeBuffer) -> BincodeBuffer {
 
-    let angle : Option<Expr> =
-        from_bincode_buffer(&angle_buf);
+    let angle : Option<Expr> = from_bincode_buffer(&angle_buf);
 
     if let Some(a) = angle {
 
-        to_bincode_buffer(
-            &rotation_3d_x(a),
-        )
+        to_bincode_buffer(&rotation_3d_x(a))
     } else {
 
         BincodeBuffer::empty()
@@ -127,18 +103,13 @@ pub extern "C" fn rssn_bincode_rotation_3d_x(
 /// Generates a 4x4 3D rotation matrix around Y-axis via Bincode interface.
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_rotation_3d_y(
-    angle_buf : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_rotation_3d_y(angle_buf : BincodeBuffer) -> BincodeBuffer {
 
-    let angle : Option<Expr> =
-        from_bincode_buffer(&angle_buf);
+    let angle : Option<Expr> = from_bincode_buffer(&angle_buf);
 
     if let Some(a) = angle {
 
-        to_bincode_buffer(
-            &rotation_3d_y(a),
-        )
+        to_bincode_buffer(&rotation_3d_y(a))
     } else {
 
         BincodeBuffer::empty()
@@ -148,18 +119,13 @@ pub extern "C" fn rssn_bincode_rotation_3d_y(
 /// Generates a 4x4 3D rotation matrix around Z-axis via Bincode interface.
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_rotation_3d_z(
-    angle_buf : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_rotation_3d_z(angle_buf : BincodeBuffer) -> BincodeBuffer {
 
-    let angle : Option<Expr> =
-        from_bincode_buffer(&angle_buf);
+    let angle : Option<Expr> = from_bincode_buffer(&angle_buf);
 
     if let Some(a) = angle {
 
-        to_bincode_buffer(
-            &rotation_3d_z(a),
-        )
+        to_bincode_buffer(&rotation_3d_z(a))
     } else {
 
         BincodeBuffer::empty()
@@ -174,19 +140,13 @@ pub extern "C" fn rssn_bincode_scaling_2d(
     sy_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let sx : Option<Expr> =
-        from_bincode_buffer(&sx_buf);
+    let sx : Option<Expr> = from_bincode_buffer(&sx_buf);
 
-    let sy : Option<Expr> =
-        from_bincode_buffer(&sy_buf);
+    let sy : Option<Expr> = from_bincode_buffer(&sy_buf);
 
-    if let (Some(sx), Some(sy)) =
-        (sx, sy)
-    {
+    if let (Some(sx), Some(sy)) = (sx, sy) {
 
-        to_bincode_buffer(&scaling_2d(
-            sx, sy,
-        ))
+        to_bincode_buffer(&scaling_2d(sx, sy))
     } else {
 
         BincodeBuffer::empty()
@@ -202,21 +162,13 @@ pub extern "C" fn rssn_bincode_scaling_3d(
     sz_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let sx : Option<Expr> =
-        from_bincode_buffer(&sx_buf);
+    let sx : Option<Expr> = from_bincode_buffer(&sx_buf);
 
-    let sy : Option<Expr> =
-        from_bincode_buffer(&sy_buf);
+    let sy : Option<Expr> = from_bincode_buffer(&sy_buf);
 
-    let sz : Option<Expr> =
-        from_bincode_buffer(&sz_buf);
+    let sz : Option<Expr> = from_bincode_buffer(&sz_buf);
 
-    if let (
-        Some(sx),
-        Some(sy),
-        Some(sz),
-    ) = (sx, sy, sz)
-    {
+    if let (Some(sx), Some(sy), Some(sz)) = (sx, sy, sz) {
 
         to_bincode_buffer(&scaling_3d(
             sx, sy, sz,
@@ -235,19 +187,13 @@ pub extern "C" fn rssn_bincode_shear_2d(
     shy_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let shx : Option<Expr> =
-        from_bincode_buffer(&shx_buf);
+    let shx : Option<Expr> = from_bincode_buffer(&shx_buf);
 
-    let shy : Option<Expr> =
-        from_bincode_buffer(&shy_buf);
+    let shy : Option<Expr> = from_bincode_buffer(&shy_buf);
 
-    if let (Some(shx), Some(shy)) =
-        (shx, shy)
-    {
+    if let (Some(shx), Some(shy)) = (shx, shy) {
 
-        to_bincode_buffer(&shear_2d(
-            shx, shy,
-        ))
+        to_bincode_buffer(&shear_2d(shx, shy))
     } else {
 
         BincodeBuffer::empty()
@@ -257,18 +203,13 @@ pub extern "C" fn rssn_bincode_shear_2d(
 /// Generates a 3x3 2D reflection matrix via Bincode interface.
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_reflection_2d(
-    angle_buf : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_reflection_2d(angle_buf : BincodeBuffer) -> BincodeBuffer {
 
-    let angle : Option<Expr> =
-        from_bincode_buffer(&angle_buf);
+    let angle : Option<Expr> = from_bincode_buffer(&angle_buf);
 
     if let Some(a) = angle {
 
-        to_bincode_buffer(
-            &reflection_2d(a),
-        )
+        to_bincode_buffer(&reflection_2d(a))
     } else {
 
         BincodeBuffer::empty()
@@ -284,25 +225,17 @@ pub extern "C" fn rssn_bincode_reflection_3d(
     nz_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let nx : Option<Expr> =
-        from_bincode_buffer(&nx_buf);
+    let nx : Option<Expr> = from_bincode_buffer(&nx_buf);
 
-    let ny : Option<Expr> =
-        from_bincode_buffer(&ny_buf);
+    let ny : Option<Expr> = from_bincode_buffer(&ny_buf);
 
-    let nz : Option<Expr> =
-        from_bincode_buffer(&nz_buf);
+    let nz : Option<Expr> = from_bincode_buffer(&nz_buf);
 
-    if let (
-        Some(nx),
-        Some(ny),
-        Some(nz),
-    ) = (nx, ny, nz)
-    {
+    if let (Some(nx), Some(ny), Some(nz)) = (nx, ny, nz) {
 
-        to_bincode_buffer(
-            &reflection_3d(nx, ny, nz),
-        )
+        to_bincode_buffer(&reflection_3d(
+            nx, ny, nz,
+        ))
     } else {
 
         BincodeBuffer::empty()
@@ -319,40 +252,19 @@ pub extern "C" fn rssn_bincode_rotation_axis_angle(
     angle_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let ax : Option<Expr> =
-        from_bincode_buffer(
-            &axis_x_buf,
-        );
+    let ax : Option<Expr> = from_bincode_buffer(&axis_x_buf);
 
-    let ay : Option<Expr> =
-        from_bincode_buffer(
-            &axis_y_buf,
-        );
+    let ay : Option<Expr> = from_bincode_buffer(&axis_y_buf);
 
-    let az : Option<Expr> =
-        from_bincode_buffer(
-            &axis_z_buf,
-        );
+    let az : Option<Expr> = from_bincode_buffer(&axis_z_buf);
 
-    let angle : Option<Expr> =
-        from_bincode_buffer(&angle_buf);
+    let angle : Option<Expr> = from_bincode_buffer(&angle_buf);
 
-    if let (
-        Some(ax),
-        Some(ay),
-        Some(az),
-        Some(a),
-    ) = (ax, ay, az, angle)
-    {
+    if let (Some(ax), Some(ay), Some(az), Some(a)) = (ax, ay, az, angle) {
 
-        let axis =
-            Vector::new(ax, ay, az);
+        let axis = Vector::new(ax, ay, az);
 
-        to_bincode_buffer(
-            &rotation_axis_angle(
-                &axis, a,
-            ),
-        )
+        to_bincode_buffer(&rotation_axis_angle(&axis, a))
     } else {
 
         BincodeBuffer::empty()

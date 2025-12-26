@@ -6,8 +6,7 @@ use rssn::physics::physics_sm::*;
 
 #[test]
 
-fn test_solve_advection_diffusion_1d_basic(
-) {
+fn test_solve_advection_diffusion_1d_basic() {
 
     let result = simulate_1d_advection_diffusion_scenario();
 
@@ -22,8 +21,7 @@ fn test_solve_advection_diffusion_1d_basic(
 
 #[test]
 
-fn test_solve_advection_diffusion_2d_basic(
-) {
+fn test_solve_advection_diffusion_2d_basic() {
 
     let result = simulate_2d_advection_diffusion_scenario();
 

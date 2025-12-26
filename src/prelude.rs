@@ -577,6 +577,58 @@ pub mod plugins {
     pub use crate::plugins::stable_abi::StablePluginModule;
 }
 
+pub use std::collections::BTreeMap;
+pub use std::collections::HashMap;
+pub use std::collections::HashSet;
+pub use std::io::prelude as std_io_prelude;
+pub use std::io::Read as IoRead;
+pub use std::io::Write as IoWrite;
+pub use std::prelude as std_prelude;
+
+pub use argmin::core::CostFunction as _;
+pub use argmin::core::Gradient as _;
+pub use argmin::core::Hessian as _;
+pub use argmin::core::Jacobian as _;
+pub use argmin::core::Operator as _;
+pub use argmin::core::Solver as _;
+pub use bigdecimal::BigDecimal;
+pub use dashmap::DashMap;
+pub use itertools::Itertools as _;
+pub use lazy_static::lazy_static;
+pub use nalgebra::DMatrix;
+pub use nalgebra::DVector;
+pub use nalgebra::Matrix3;
+pub use nalgebra::Vector3;
+pub use ndarray::prelude as ndarray_prelude;
+pub use ndarray::s;
+pub use ndarray::Array1;
+pub use ndarray::Array2;
+pub use ndarray::ArrayView;
+pub use ndarray::Axis;
+pub use ndarray::IntoDimension;
+pub use num_complex::Complex;
+pub use num_rational::Ratio;
+pub use num_traits::Num;
+pub use num_traits::One;
+pub use num_traits::ToPrimitive as _;
+pub use num_traits::Zero;
+pub use once_cell::sync::Lazy;
+pub use once_cell::sync::OnceCell;
+pub use ordered_float::OrderedFloat;
+pub use rand::prelude as rand_prelude;
+pub use rand::Rng as _;
+pub use rayon::prelude::*;
+pub use serde::Deserialize as _;
+pub use serde::Serialize as _;
+pub use sprs_rssn::CsMat;
+pub use sprs_rssn::CsVec;
+pub use uom::si::f64::Length;
+pub use uom::si::f64::Mass;
+pub use uom::si::f64::Time;
+pub use uom::si::length;
+pub use uom::si::mass;
+pub use uom::si::time;
+
 pub use crate::compute::cache::ComputationResultCache;
 pub use crate::compute::cache::ParsingCache;
 pub use crate::compute::computable::Computable;
@@ -786,15 +838,12 @@ pub use crate::symbolic::finite_field::ExtensionFieldElement as symbolic_Extensi
 pub use crate::symbolic::finite_field::FiniteFieldPolynomial as symbolic_FiniteFieldPolynomial;
 pub use crate::symbolic::finite_field::PrimeField as symbolic_PrimeField;
 pub use crate::symbolic::finite_field::PrimeFieldElement as symbolic_PrimeFieldElement;
-pub use crate::symbolic::fractal_geometry_and_chaos::{
-    analyze_stability,
-    find_fixed_points,
-    lorenz_system,
-    lyapunov_exponent as symbolic_lyapunov_exponent,
-    ComplexDynamicalSystem,
-    IteratedFunctionSystem,
-};
-
+pub use crate::symbolic::fractal_geometry_and_chaos::analyze_stability;
+pub use crate::symbolic::fractal_geometry_and_chaos::find_fixed_points;
+pub use crate::symbolic::fractal_geometry_and_chaos::lorenz_system;
+pub use crate::symbolic::fractal_geometry_and_chaos::lyapunov_exponent as symbolic_lyapunov_exponent;
+pub use crate::symbolic::fractal_geometry_and_chaos::ComplexDynamicalSystem;
+pub use crate::symbolic::fractal_geometry_and_chaos::IteratedFunctionSystem;
 pub use crate::symbolic::functional_analysis::are_orthogonal as symbolic_are_orthogonal;
 pub use crate::symbolic::functional_analysis::banach_norm as symbolic_banach_norm;
 pub use crate::symbolic::functional_analysis::gram_schmidt as symbolic_gram_schmidt;
@@ -1213,76 +1262,6 @@ pub use crate::symbolic::vector_calculus::volume_integral as symbolic_volume_int
 pub use crate::symbolic::vector_calculus::ParametricCurve as symbolic_ParametricCurve;
 pub use crate::symbolic::vector_calculus::ParametricSurface as symbolic_ParametricSurface;
 pub use crate::symbolic::vector_calculus::Volume as symbolic_Volume;
-pub use argmin::core::{
-    CostFunction as _,
-    Gradient as _,
-    Hessian as _,
-    Jacobian as _,
-    Operator as _,
-    Solver as _,
-};
-pub use bigdecimal::BigDecimal;
-pub use dashmap::DashMap;
-pub use itertools::Itertools as _;
-pub use lazy_static::lazy_static;
-pub use nalgebra::{
-    DMatrix,
-    DVector,
-    Matrix3,
-    Vector3,
-};
-pub use ndarray::prelude as ndarray_prelude;
-pub use ndarray::{
-    s,
-    Array1,
-    Array2,
-    ArrayView,
-    Axis,
-    IntoDimension,
-};
-pub use num_complex::Complex;
-pub use num_rational::Ratio;
-pub use num_traits::{
-    Num,
-    One,
-    ToPrimitive as _,
-    Zero,
-};
-pub use once_cell::sync::{
-    Lazy,
-    OnceCell,
-};
-pub use ordered_float::OrderedFloat;
-pub use rand::prelude as rand_prelude;
-pub use rand::Rng as _;
-pub use rayon::prelude::*;
-pub use serde::{
-    Deserialize as _,
-    Serialize as _,
-};
-pub use sprs_rssn::{
-    CsMat,
-    CsVec,
-};
-pub use std::collections::{
-    BTreeMap,
-    HashMap,
-    HashSet,
-};
-pub use std::io::prelude as std_io_prelude;
-pub use std::io::Read as IoRead;
-pub use std::io::Write as IoWrite;
-pub use std::prelude as std_prelude;
-pub use uom::si::{
-    f64::{
-        Length,
-        Mass,
-        Time,
-    },
-    length,
-    mass,
-    time,
-};
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 

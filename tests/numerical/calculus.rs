@@ -12,8 +12,7 @@ use rssn::symbolic::core::Expr;
 
 fn test_gradient_x_squared() {
 
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
     let x_squared = Expr::Mul(
         Arc::new(x.clone()),
@@ -33,8 +32,7 @@ fn test_gradient_x_squared() {
         | Err(e) => {
 
             panic!(
-                "Gradient calculation \
-                 failed: {}",
+                "Gradient calculation failed: {}",
                 e
             )
         },
@@ -42,11 +40,7 @@ fn test_gradient_x_squared() {
 
     assert_eq!(grad.len(), 1);
 
-    assert_approx_eq!(
-        grad[0],
-        6.0,
-        1e-6
-    );
+    assert_approx_eq!(grad[0], 6.0, 1e-6);
 }
 
 /// Tests the gradient of a multivariate function, f(x, y) = x^2 + y^2.
@@ -55,14 +49,11 @@ fn test_gradient_x_squared() {
 /// At (x, y) = (1, 2), the gradient is (2, 4).
 #[test]
 
-fn test_gradient_x_squared_plus_y_squared(
-) {
+fn test_gradient_x_squared_plus_y_squared() {
 
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
-    let y =
-        Expr::Variable("y".to_string());
+    let y = Expr::Variable("y".to_string());
 
     let x_squared = Expr::Mul(
         Arc::new(x.clone()),
@@ -83,17 +74,12 @@ fn test_gradient_x_squared_plus_y_squared(
 
     let point = [1.0, 2.0];
 
-    let grad = match gradient(
-        &f,
-        &vars,
-        &point,
-    ) {
+    let grad = match gradient(&f, &vars, &point) {
         | Ok(g) => g,
         | Err(e) => {
 
             panic!(
-                "Gradient calculation \
-                 failed: {}",
+                "Gradient calculation failed: {}",
                 e
             )
         },
@@ -101,17 +87,9 @@ fn test_gradient_x_squared_plus_y_squared(
 
     assert_eq!(grad.len(), 2);
 
-    assert_approx_eq!(
-        grad[0],
-        2.0,
-        1e-6
-    );
+    assert_approx_eq!(grad[0], 2.0, 1e-6);
 
-    assert_approx_eq!(
-        grad[1],
-        4.0,
-        1e-6
-    );
+    assert_approx_eq!(grad[1], 4.0, 1e-6);
 }
 
 /// Tests the gradient of a more complex function, f(x, y) = sin(x) + cos(y).
@@ -122,17 +100,13 @@ fn test_gradient_x_squared_plus_y_squared(
 
 fn test_gradient_sin_x_plus_cos_y() {
 
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
-    let y =
-        Expr::Variable("y".to_string());
+    let y = Expr::Variable("y".to_string());
 
-    let sin_x =
-        Expr::Sin(Arc::new(x.clone()));
+    let sin_x = Expr::Sin(Arc::new(x.clone()));
 
-    let cos_y =
-        Expr::Cos(Arc::new(y.clone()));
+    let cos_y = Expr::Cos(Arc::new(y.clone()));
 
     let f = Expr::Add(
         Arc::new(sin_x),
@@ -146,17 +120,12 @@ fn test_gradient_sin_x_plus_cos_y() {
         std::f64::consts::PI / 2.0,
     ];
 
-    let grad = match gradient(
-        &f,
-        &vars,
-        &point,
-    ) {
+    let grad = match gradient(&f, &vars, &point) {
         | Ok(g) => g,
         | Err(e) => {
 
             panic!(
-                "Gradient calculation \
-                 failed: {}",
+                "Gradient calculation failed: {}",
                 e
             )
         },
@@ -164,15 +133,7 @@ fn test_gradient_sin_x_plus_cos_y() {
 
     assert_eq!(grad.len(), 2);
 
-    assert_approx_eq!(
-        grad[0],
-        1.0,
-        1e-6
-    );
+    assert_approx_eq!(grad[0], 1.0, 1e-6);
 
-    assert_approx_eq!(
-        grad[1],
-        -1.0,
-        1e-6
-    );
+    assert_approx_eq!(grad[1], -1.0, 1e-6);
 }

@@ -26,24 +26,18 @@ struct OdeInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ode_solve_json(
-    input_json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_ode_solve_json(input_json : *const c_char) -> *mut c_char {
 
-    let input: OdeInput = match from_json_string(input_json)
-    {
+    let input : OdeInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<Vec<f64>>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid JSON input".to_string(),
-                    ),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<Vec<f64>>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -72,8 +66,5 @@ pub unsafe extern "C" fn rssn_num_ode_solve_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

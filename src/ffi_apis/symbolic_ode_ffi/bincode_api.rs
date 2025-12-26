@@ -15,8 +15,7 @@ pub extern "C" fn rssn_bincode_solve_ode(
     var : *const c_char,
 ) -> BincodeBuffer {
 
-    let ode_expr : Option<Expr> =
-        from_bincode_buffer(&ode_buf);
+    let ode_expr : Option<Expr> = from_bincode_buffer(&ode_buf);
 
     let func_str = unsafe {
 
@@ -25,11 +24,9 @@ pub extern "C" fn rssn_bincode_solve_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -40,27 +37,19 @@ pub extern "C" fn rssn_bincode_solve_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(ode),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(ode), Some(f), Some(v)) = (
         ode_expr,
         func_str,
         var_str,
     ) {
 
-        let result = ode::solve_ode(
-            &ode, f, v, None,
-        );
+        let result = ode::solve_ode(&ode, f, v, None);
 
         to_bincode_buffer(&result)
     } else {
@@ -78,10 +67,7 @@ pub extern "C" fn rssn_bincode_solve_separable_ode(
     var : *const c_char,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
     let func_str = unsafe {
 
@@ -90,11 +76,9 @@ pub extern "C" fn rssn_bincode_solve_separable_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -105,35 +89,21 @@ pub extern "C" fn rssn_bincode_solve_separable_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(eq), Some(f), Some(v)) = (
         equation,
         func_str,
         var_str,
     ) {
 
-        match ode::solve_separable_ode(
-            &eq, f, v,
-        ) {
-            | Some(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | None => {
-                BincodeBuffer::empty()
-            },
+        match ode::solve_separable_ode(&eq, f, v) {
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -150,10 +120,7 @@ pub extern "C" fn rssn_bincode_solve_first_order_linear_ode(
     var : *const c_char,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
     let func_str = unsafe {
 
@@ -162,11 +129,9 @@ pub extern "C" fn rssn_bincode_solve_first_order_linear_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -177,19 +142,13 @@ pub extern "C" fn rssn_bincode_solve_first_order_linear_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(eq), Some(f), Some(v)) = (
         equation,
         func_str,
         var_str,
@@ -214,10 +173,7 @@ pub extern "C" fn rssn_bincode_solve_bernoulli_ode(
     var : *const c_char,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
     let func_str = unsafe {
 
@@ -226,11 +182,9 @@ pub extern "C" fn rssn_bincode_solve_bernoulli_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -241,35 +195,21 @@ pub extern "C" fn rssn_bincode_solve_bernoulli_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(eq), Some(f), Some(v)) = (
         equation,
         func_str,
         var_str,
     ) {
 
-        match ode::solve_bernoulli_ode(
-            &eq, f, v,
-        ) {
-            | Some(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | None => {
-                BincodeBuffer::empty()
-            },
+        match ode::solve_bernoulli_ode(&eq, f, v) {
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -287,13 +227,9 @@ pub extern "C" fn rssn_bincode_solve_riccati_ode(
     y1_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
-    let y1 : Option<Expr> =
-        from_bincode_buffer(&y1_buf);
+    let y1 : Option<Expr> = from_bincode_buffer(&y1_buf);
 
     let func_str = unsafe {
 
@@ -302,11 +238,9 @@ pub extern "C" fn rssn_bincode_solve_riccati_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -317,37 +251,22 @@ pub extern "C" fn rssn_bincode_solve_riccati_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-        Some(y),
-    ) = (
+    if let (Some(eq), Some(f), Some(v), Some(y)) = (
         equation,
         func_str,
         var_str,
         y1,
     ) {
 
-        match ode::solve_riccati_ode(
-            &eq, f, v, &y,
-        ) {
-            | Some(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | None => {
-                BincodeBuffer::empty()
-            },
+        match ode::solve_riccati_ode(&eq, f, v, &y) {
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -364,10 +283,7 @@ pub extern "C" fn rssn_bincode_solve_cauchy_euler_ode(
     var : *const c_char,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
     let func_str = unsafe {
 
@@ -376,11 +292,9 @@ pub extern "C" fn rssn_bincode_solve_cauchy_euler_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -391,19 +305,13 @@ pub extern "C" fn rssn_bincode_solve_cauchy_euler_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(eq), Some(f), Some(v)) = (
         equation,
         func_str,
         var_str,
@@ -428,10 +336,7 @@ pub extern "C" fn rssn_bincode_solve_exact_ode(
     var : *const c_char,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
     let func_str = unsafe {
 
@@ -440,11 +345,9 @@ pub extern "C" fn rssn_bincode_solve_exact_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -455,35 +358,21 @@ pub extern "C" fn rssn_bincode_solve_exact_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(eq), Some(f), Some(v)) = (
         equation,
         func_str,
         var_str,
     ) {
 
-        match ode::solve_exact_ode(
-            &eq, f, v,
-        ) {
-            | Some(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | None => {
-                BincodeBuffer::empty()
-            },
+        match ode::solve_exact_ode(&eq, f, v) {
+            | Some(result) => to_bincode_buffer(&result),
+            | None => BincodeBuffer::empty(),
         }
     } else {
 
@@ -501,13 +390,9 @@ pub extern "C" fn rssn_bincode_solve_by_reduction_of_order(
     y1_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
-    let y1 : Option<Expr> =
-        from_bincode_buffer(&y1_buf);
+    let y1 : Option<Expr> = from_bincode_buffer(&y1_buf);
 
     let func_str = unsafe {
 
@@ -516,11 +401,9 @@ pub extern "C" fn rssn_bincode_solve_by_reduction_of_order(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
@@ -531,29 +414,20 @@ pub extern "C" fn rssn_bincode_solve_by_reduction_of_order(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-        Some(y),
-    ) = (
+    if let (Some(eq), Some(f), Some(v), Some(y)) = (
         equation,
         func_str,
         var_str,
         y1,
     ) {
 
-        match ode::solve_by_reduction_of_order(
-            &eq, f, v, &y,
-        ) {
+        match ode::solve_by_reduction_of_order(&eq, f, v, &y) {
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }

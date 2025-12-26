@@ -24,11 +24,7 @@ struct FfiResult<T> {
     err : Option<String>,
 }
 
-fn decode<
-    T : for<'de> Deserialize<'de>,
->(
-    buffer : BincodeBuffer
-) -> Option<T> {
+fn decode<T : for<'de> Deserialize<'de>>(buffer : BincodeBuffer) -> Option<T> {
 
     let slice = unsafe {
 
@@ -43,9 +39,7 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T : Serialize>(
-    val : T
-) -> BincodeBuffer {
+fn encode<T : Serialize>(val : T) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
         &val,
@@ -59,19 +53,15 @@ fn encode<T : Serialize>(
 /// Bincode FFI for solving linear systems.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_solve_linear_system_bincode(
-    buffer : BincodeBuffer
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_solve_linear_system_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
 
-    let input: SolveLinearInput = match decode(buffer) {
+    let input : SolveLinearInput = match decode(buffer) {
         | Some(v) => v,
         | None => {
             return encode(
                 FfiResult::<LinearSolution> {
-                    ok: None,
-                    err: Some(
-                        "Bincode decode error".to_string(),
-                    ),
+                    ok : None,
+                    err : Some("Bincode decode error".to_string()),
                 },
             )
         },
@@ -88,12 +78,12 @@ pub unsafe extern "C" fn rssn_solve_linear_system_bincode(
             })
         },
         | Err(e) => {
-            encode(FfiResult::<
-                LinearSolution,
-            > {
-                ok : None,
-                err : Some(e),
-            })
+            encode(
+                FfiResult::<LinearSolution> {
+                    ok : None,
+                    err : Some(e),
+                },
+            )
         },
     }
 }

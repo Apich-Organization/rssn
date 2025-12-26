@@ -11,9 +11,7 @@ use crate::symbolic::core::Expr;
 /// It avoids re-parsing the same string multiple times.
 
 pub struct ParsingCache {
-    cache : Mutex<
-        HashMap<String, Arc<Expr>>,
-    >,
+    cache : Mutex<HashMap<String, Arc<Expr>>>,
 }
 
 impl ParsingCache {
@@ -23,9 +21,7 @@ impl ParsingCache {
     pub fn new() -> Self {
 
         Self {
-            cache : Mutex::new(
-                HashMap::new(),
-            ),
+            cache : Mutex::new(HashMap::new()),
         }
     }
 
@@ -45,10 +41,7 @@ impl ParsingCache {
         let cache = self
             .cache
             .lock()
-            .expect(
-                "ParsingCache lock \
-                 poisoned",
-            );
+            .expect("ParsingCache lock poisoned");
 
         cache
             .get(input)
@@ -70,10 +63,7 @@ impl ParsingCache {
         let mut cache = self
             .cache
             .lock()
-            .expect(
-                "ParsingCache lock \
-                 poisoned",
-            );
+            .expect("ParsingCache lock poisoned");
 
         cache.insert(input, expr);
     }
@@ -85,10 +75,7 @@ impl ParsingCache {
         let mut cache = self
             .cache
             .lock()
-            .expect(
-                "ParsingCache lock \
-                 poisoned",
-            );
+            .expect("ParsingCache lock poisoned");
 
         cache.clear();
     }
@@ -107,9 +94,7 @@ impl Default for ParsingCache {
 /// It avoids re-computing the value of the same expression multiple times.
 
 pub struct ComputationResultCache {
-    cache : Mutex<
-        HashMap<Arc<Expr>, Value>,
-    >,
+    cache : Mutex<HashMap<Arc<Expr>, Value>>,
 }
 
 impl ComputationResultCache {
@@ -119,9 +104,7 @@ impl ComputationResultCache {
     pub fn new() -> Self {
 
         Self {
-            cache : Mutex::new(
-                HashMap::new(),
-            ),
+            cache : Mutex::new(HashMap::new()),
         }
     }
 
@@ -141,10 +124,7 @@ impl ComputationResultCache {
         let cache = self
             .cache
             .lock()
-            .expect(
-            "ComputationResultCache \
-             lock poisoned",
-        );
+            .expect("ComputationResultCache lock poisoned");
 
         cache
             .get(expr)
@@ -184,9 +164,7 @@ impl ComputationResultCache {
     }
 }
 
-impl Default
-    for ComputationResultCache
-{
+impl Default for ComputationResultCache {
     fn default() -> Self {
 
         Self::new()

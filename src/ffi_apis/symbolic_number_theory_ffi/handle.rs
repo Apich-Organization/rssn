@@ -26,8 +26,7 @@ pub extern "C" fn rssn_solve_diophantine_handle(
 
         if equation.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*equation
@@ -60,18 +59,11 @@ pub extern "C" fn rssn_solve_diophantine_handle(
     ) {
         | Ok(solutions) => {
 
-            let result =
-                Expr::new_vector(
-                    solutions,
-                );
+            let result = Expr::new_vector(solutions);
 
-            Box::into_raw(Box::new(
-                result,
-            ))
+            Box::into_raw(Box::new(result))
         },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -90,8 +82,7 @@ pub extern "C" fn rssn_extended_gcd_handle(
 
         if a.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*a
@@ -101,18 +92,15 @@ pub extern "C" fn rssn_extended_gcd_handle(
 
         if b.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*b
     };
 
-    let (g, x, y) =
-        extended_gcd(a_ref, b_ref);
+    let (g, x, y) = extended_gcd(a_ref, b_ref);
 
-    let result =
-        Expr::new_tuple(vec![g, x, y]);
+    let result = Expr::new_tuple(vec![g, x, y]);
 
     Box::into_raw(Box::new(result))
 }
@@ -123,16 +111,13 @@ pub extern "C" fn rssn_extended_gcd_handle(
 /// `n` must be a valid pointer to an `Expr`.
 #[no_mangle]
 
-pub extern "C" fn rssn_is_prime_handle(
-    n : *const Expr
-) -> *mut Expr {
+pub extern "C" fn rssn_is_prime_handle(n : *const Expr) -> *mut Expr {
 
     let n_ref = unsafe {
 
         if n.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*n
@@ -165,10 +150,7 @@ pub extern "C" fn rssn_chinese_remainder_handle(
 
     let moduli_slice = unsafe {
 
-        slice::from_raw_parts(
-            moduli,
-            len as usize,
-        )
+        slice::from_raw_parts(moduli, len as usize)
     };
 
     let mut congruences = Vec::new();
@@ -179,12 +161,9 @@ pub extern "C" fn rssn_chinese_remainder_handle(
 
         let m_ptr = moduli_slice[i];
 
-        if r_ptr.is_null()
-            || m_ptr.is_null()
-        {
+        if r_ptr.is_null() || m_ptr.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         let r = unsafe {
@@ -197,20 +176,11 @@ pub extern "C" fn rssn_chinese_remainder_handle(
             &*m_ptr
         };
 
-        congruences.push((
-            r.clone(),
-            m.clone(),
-        ));
+        congruences.push((r.clone(), m.clone()));
     }
 
-    match chinese_remainder(
-        &congruences,
-    ) {
-        | Some(result) => {
-            Box::into_raw(Box::new(
-                result,
-            ))
-        },
+    match chinese_remainder(&congruences) {
+        | Some(result) => Box::into_raw(Box::new(result)),
         | None => std::ptr::null_mut(),
     }
 }

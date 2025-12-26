@@ -41,9 +41,7 @@ pub mod stats;
 pub mod tensor;
 #[deprecated(
     since = "0.1.19",
-    note = "This module is deprecated \
-            and please use \
-            numrical/solve instead."
+    note = "This module is deprecated and please use numrical/solve instead."
 )]
 pub mod testing;
 pub mod topology;

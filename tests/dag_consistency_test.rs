@@ -12,10 +12,7 @@ fn test_simplify_dag_consistency() {
 
     // (x + y) - x -> y
     let expr1 = Expr::new_sub(
-        Expr::new_add(
-            x.clone(),
-            y.clone(),
-        ),
+        Expr::new_add(x.clone(), y.clone()),
         x.clone(),
     );
 
@@ -42,10 +39,9 @@ fn test_simplify_dag_consistency() {
         simplified2
     );
 
-    let is_zero =
-        |expr : &Expr| -> bool {
+    let is_zero = |expr : &Expr| -> bool {
 
-            match expr {
+        match expr {
             | Expr::Constant(c) => c.abs() < 1e-9,
             | Expr::BigInt(n) => n.is_zero(),
             | Expr::Dag(node) => {
@@ -57,7 +53,7 @@ fn test_simplify_dag_consistency() {
             },
             | _ => false,
         }
-        };
+    };
 
     assert!(
         is_zero(&simplified2),

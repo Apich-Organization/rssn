@@ -1,11 +1,12 @@
+use std::os::raw::c_char;
+
 use crate::ffi_apis::common::*;
+use crate::symbolic::quantum_mechanics::Bra;
+use crate::symbolic::quantum_mechanics::Ket;
+use crate::symbolic::quantum_mechanics::Operator;
 use crate::symbolic::quantum_mechanics::{
     self,
-    Bra,
-    Ket,
-    Operator,
 };
-use std::os::raw::c_char;
 
 /// Computes the expectation value using JSON.
 #[no_mangle]
@@ -15,21 +16,13 @@ pub extern "C" fn rssn_json_expectation_value(
     psi_json : *const c_char,
 ) -> *mut c_char {
 
-    let op : Option<Operator> =
-        from_json_string(op_json);
+    let op : Option<Operator> = from_json_string(op_json);
 
-    let psi : Option<Ket> =
-        from_json_string(psi_json);
+    let psi : Option<Ket> = from_json_string(psi_json);
 
-    if let (Some(op), Some(psi)) =
-        (op, psi)
-    {
+    if let (Some(op), Some(psi)) = (op, psi) {
 
-        to_json_string(
-            &quantum_mechanics::expectation_value(
-                &op, &psi,
-            ),
-        )
+        to_json_string(&quantum_mechanics::expectation_value(&op, &psi))
     } else {
 
         std::ptr::null_mut()
@@ -44,19 +37,13 @@ pub extern "C" fn rssn_json_uncertainty(
     psi_json : *const c_char,
 ) -> *mut c_char {
 
-    let op : Option<Operator> =
-        from_json_string(op_json);
+    let op : Option<Operator> = from_json_string(op_json);
 
-    let psi : Option<Ket> =
-        from_json_string(psi_json);
+    let psi : Option<Ket> = from_json_string(psi_json);
 
-    if let (Some(op), Some(psi)) =
-        (op, psi)
-    {
+    if let (Some(op), Some(psi)) = (op, psi) {
 
-        to_json_string(
-            &quantum_mechanics::uncertainty(&op, &psi),
-        )
+        to_json_string(&quantum_mechanics::uncertainty(&op, &psi))
     } else {
 
         std::ptr::null_mut()
@@ -71,21 +58,13 @@ pub extern "C" fn rssn_json_bra_ket(
     ket_json : *const c_char,
 ) -> *mut c_char {
 
-    let bra : Option<Bra> =
-        from_json_string(bra_json);
+    let bra : Option<Bra> = from_json_string(bra_json);
 
-    let ket : Option<Ket> =
-        from_json_string(ket_json);
+    let ket : Option<Ket> = from_json_string(ket_json);
 
-    if let (Some(bra), Some(ket)) =
-        (bra, ket)
-    {
+    if let (Some(bra), Some(ket)) = (bra, ket) {
 
-        to_json_string(
-            &quantum_mechanics::bra_ket(
-                &bra, &ket,
-            ),
-        )
+        to_json_string(&quantum_mechanics::bra_ket(&bra, &ket))
     } else {
 
         std::ptr::null_mut()

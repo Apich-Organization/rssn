@@ -22,15 +22,7 @@ use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 
 /// Enum to select the numerical integration method.
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 
 pub enum QuadratureMethod {
     /// Trapezoidal rule.
@@ -62,7 +54,7 @@ pub enum QuadratureMethod {
 /// 
 /// use rssn::numerical::integrate::trapezoidal_rule;
 ///
-/// let f = |x: f64| x * x;
+/// let f = |x : f64| x * x;
 ///
 /// let res = trapezoidal_rule(f, (0.0, 1.0), 1000);
 ///
@@ -124,7 +116,7 @@ where
 /// 
 /// use rssn::numerical::integrate::simpson_rule;
 ///
-/// let f = |x: f64| x * x;
+/// let f = |x : f64| x * x;
 ///
 /// let res = simpson_rule(f, (0.0, 1.0), 10).unwrap();
 ///
@@ -198,7 +190,7 @@ where
 /// 
 /// use rssn::numerical::integrate::adaptive_quadrature;
 ///
-/// let f = |x: f64| x.sin();
+/// let f = |x : f64| x.sin();
 ///
 /// let res = adaptive_quadrature(
 ///     f,
@@ -242,11 +234,9 @@ where
 
         let mid = (a + b) / 2.0;
 
-        let sub_mid_left =
-            (a + mid) / 2.0;
+        let sub_mid_left = (a + mid) / 2.0;
 
-        let sub_mid_right =
-            (mid + b) / 2.0;
+        let sub_mid_right = (mid + b) / 2.0;
 
         let fa = f(a);
 
@@ -259,30 +249,19 @@ where
         let fmr = f(sub_mid_right);
 
         // Simp(a, b) = (b-a)/6 * (f(a) + 4f(m) + f(b))
-        let left_simpson = (mid - a)
-            / 6.0
-            * (fa + 4.0 * fml + fm);
+        let left_simpson = (mid - a) / 6.0 * (fa + 4.0 * fml + fm);
 
-        let right_simpson = (b - mid)
-            / 6.0
-            * (fm + 4.0 * fmr + fb);
+        let right_simpson = (b - mid) / 6.0 * (fm + 4.0 * fmr + fb);
 
-        let sum_halves = left_simpson
-            + right_simpson;
+        let sum_halves = left_simpson + right_simpson;
 
         // Error estimate (1/15 rule)
-        let error = (sum_halves
-            - whole_simpson)
-            .abs()
-            / 15.0;
+        let error = (sum_halves - whole_simpson).abs() / 15.0;
 
         if error <= eps {
 
             // Richardson extrapolation: S + (S - S_whole)/15
-            sum_halves
-                + (sum_halves
-                    - whole_simpson)
-                    / 15.0
+            sum_halves + (sum_halves - whole_simpson) / 15.0
         } else {
 
             adaptive_recursive(
@@ -315,8 +294,7 @@ where
 
     let fm = f(mid);
 
-    let initial_simpson = (b - a) / 6.0
-        * (f(a) + 4.0 * fm + f(b));
+    let initial_simpson = (b - a) / 6.0 * (f(a) + 4.0 * fm + f(b));
 
     adaptive_recursive(
         &f,
@@ -342,7 +320,7 @@ where
 /// 
 /// use rssn::numerical::integrate::romberg_integration;
 ///
-/// let f = |x: f64| x.exp();
+/// let f = |x : f64| x.exp();
 ///
 /// let res = romberg_integration(f, (0.0, 1.0), 6);
 ///
@@ -372,11 +350,7 @@ where
         return 0.0;
     }
 
-    let mut r =
-        vec![
-            vec![0.0; max_steps];
-            max_steps
-        ];
+    let mut r = vec![vec![0.0; max_steps]; max_steps];
 
     // R[0][0]
     let h = b - a;
@@ -395,25 +369,19 @@ where
 
         for k in 1 ..= steps_prev {
 
-            let x = a
-                + (2 * k - 1) as f64
-                    * h_i;
+            let x = a + (2 * k - 1) as f64 * h_i;
 
             sum += f(x);
         }
 
-        r[i][0] = 0.5 * r[i - 1][0]
-            + h_i * sum;
+        r[i][0] = 0.5 * r[i - 1][0] + h_i * sum;
 
         // Richardson extrapolation
         for j in 1 ..= i {
 
-            let k =
-                4.0_f64.powi(j as i32);
+            let k = 4.0_f64.powi(j as i32);
 
-            r[i][j] = (k * r[i][j - 1]
-                - r[i - 1][j - 1])
-                / (k - 1.0);
+            r[i][j] = (k * r[i][j - 1] - r[i - 1][j - 1]) / (k - 1.0);
         }
     }
 
@@ -479,8 +447,7 @@ where
     for i in 0 .. 5 {
 
         // Transform x from [-1, 1] to [a, b]
-        let x =
-            mid + half_len * nodes[i];
+        let x = mid + half_len * nodes[i];
 
         sum += weights[i] * f(x);
     }
@@ -514,36 +481,20 @@ pub fn quadrature(
 
         vars.insert(var.to_string(), x);
 
-        eval_expr(f, &vars)
-            .unwrap_or(f64::NAN)
+        eval_expr(f, &vars).unwrap_or(f64::NAN)
     };
 
     let result = match method {
-        | QuadratureMethod::Trapezoidal => {
-            trapezoidal_rule(func, range, n_steps)
-        },
-        | QuadratureMethod::Simpson => {
-            simpson_rule(func, range, n_steps)?
-        },
-        | QuadratureMethod::Adaptive => {
-            adaptive_quadrature(func, range, 1e-6)
-        },
-        | QuadratureMethod::Romberg => {
-            romberg_integration(func, range, 6)
-        },
-        | QuadratureMethod::GaussLegendre => {
-            gauss_legendre_quadrature(func, range)
-        },
+        | QuadratureMethod::Trapezoidal => trapezoidal_rule(func, range, n_steps),
+        | QuadratureMethod::Simpson => simpson_rule(func, range, n_steps)?,
+        | QuadratureMethod::Adaptive => adaptive_quadrature(func, range, 1e-6),
+        | QuadratureMethod::Romberg => romberg_integration(func, range, 6),
+        | QuadratureMethod::GaussLegendre => gauss_legendre_quadrature(func, range),
     };
 
     if result.is_nan() {
 
-        return Err("Integration \
-                    resulted in \
-                    NaN, likely due \
-                    to evaluation \
-                    error."
-            .to_string());
+        return Err("Integration resulted in NaN, likely due to evaluation error.".to_string());
     }
 
     Ok(result)

@@ -9,21 +9,18 @@ fn test_handle_insert_and_get() {
 
     let expr = Expr::new_variable("x");
 
-    let handle = HANDLE_MANAGER
-        .insert(expr.clone());
+    let handle = HANDLE_MANAGER.insert(expr.clone());
 
     assert!(
         handle > 0,
         "Handle should be non-zero"
     );
 
-    let retrieved =
-        HANDLE_MANAGER.get(handle);
+    let retrieved = HANDLE_MANAGER.get(handle);
 
     assert!(
         retrieved.is_some(),
-        "Should retrieve inserted \
-         expression"
+        "Should retrieve inserted expression"
     );
 
     if let Some(arc_expr) = retrieved {
@@ -43,8 +40,7 @@ fn test_handle_exists() {
 
     let expr = Expr::new_constant(42.0);
 
-    let handle =
-        HANDLE_MANAGER.insert(expr);
+    let handle = HANDLE_MANAGER.insert(expr);
 
     assert!(
         HANDLE_MANAGER.exists(handle),
@@ -53,8 +49,7 @@ fn test_handle_exists() {
 
     assert!(
         !HANDLE_MANAGER.exists(99999),
-        "Non-existent handle should \
-         not exist"
+        "Non-existent handle should not exist"
     );
 }
 
@@ -66,36 +61,30 @@ fn test_handle_free() {
 
     let expr = Expr::new_variable("y");
 
-    let handle =
-        HANDLE_MANAGER.insert(expr);
+    let handle = HANDLE_MANAGER.insert(expr);
 
     assert!(
         HANDLE_MANAGER.exists(handle),
-        "Handle should exist before \
-         free"
+        "Handle should exist before free"
     );
 
-    let freed =
-        HANDLE_MANAGER.free(handle);
+    let freed = HANDLE_MANAGER.free(handle);
 
     assert!(
         freed.is_some(),
-        "Free should return the \
-         expression"
+        "Free should return the expression"
     );
 
     assert!(
         !HANDLE_MANAGER.exists(handle),
-        "Handle should not exist \
-         after free"
+        "Handle should not exist after free"
     );
 
     assert!(
         HANDLE_MANAGER
             .get(handle)
             .is_none(),
-        "Get should return None after \
-         free"
+        "Get should return None after free"
     );
 }
 
@@ -105,27 +94,25 @@ fn test_handle_count() {
 
     HANDLE_MANAGER.clear();
 
-    let initial_count =
-        HANDLE_MANAGER.count();
+    let initial_count = HANDLE_MANAGER.count();
 
     assert_eq!(
         initial_count, 0,
-        "Should start with 0 handles \
-         after clear"
+        "Should start with 0 handles after clear"
     );
 
-    let h1 = HANDLE_MANAGER.insert(
-        Expr::new_constant(1.0),
-    );
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
+        1.0,
+    ));
 
     assert_eq!(
         HANDLE_MANAGER.count(),
         initial_count + 1
     );
 
-    let h2 = HANDLE_MANAGER.insert(
-        Expr::new_constant(2.0),
-    );
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
+        2.0,
+    ));
 
     assert_eq!(
         HANDLE_MANAGER.count(),
@@ -153,17 +140,17 @@ fn test_handle_clear() {
 
     HANDLE_MANAGER.clear();
 
-    let h1 = HANDLE_MANAGER.insert(
-        Expr::new_constant(1.0),
-    );
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
+        1.0,
+    ));
 
-    let h2 = HANDLE_MANAGER.insert(
-        Expr::new_constant(2.0),
-    );
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
+        2.0,
+    ));
 
-    let h3 = HANDLE_MANAGER.insert(
-        Expr::new_constant(3.0),
-    );
+    let h3 = HANDLE_MANAGER.insert(Expr::new_constant(
+        3.0,
+    ));
 
     assert_eq!(
         HANDLE_MANAGER.count(),
@@ -195,11 +182,9 @@ fn test_handle_clone_expr() {
         Expr::new_constant(5.0),
     );
 
-    let handle =
-        HANDLE_MANAGER.insert(expr);
+    let handle = HANDLE_MANAGER.insert(expr);
 
-    let cloned = HANDLE_MANAGER
-        .clone_expr(handle);
+    let cloned = HANDLE_MANAGER.clone_expr(handle);
 
     assert!(
         cloned.is_some(),
@@ -225,20 +210,19 @@ fn test_handle_get_all_handles() {
 
     HANDLE_MANAGER.clear();
 
-    let h1 = HANDLE_MANAGER.insert(
-        Expr::new_constant(1.0),
-    );
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
+        1.0,
+    ));
 
-    let h2 = HANDLE_MANAGER.insert(
-        Expr::new_constant(2.0),
-    );
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
+        2.0,
+    ));
 
-    let h3 = HANDLE_MANAGER.insert(
-        Expr::new_constant(3.0),
-    );
+    let h3 = HANDLE_MANAGER.insert(Expr::new_constant(
+        3.0,
+    ));
 
-    let all_handles = HANDLE_MANAGER
-        .get_all_handles();
+    let all_handles = HANDLE_MANAGER.get_all_handles();
 
     assert_eq!(all_handles.len(), 3);
 
@@ -255,19 +239,17 @@ fn test_handle_unique_ids() {
 
     HANDLE_MANAGER.clear();
 
-    let h1 = HANDLE_MANAGER.insert(
-        Expr::new_constant(1.0),
-    );
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
+        1.0,
+    ));
 
-    let h2 = HANDLE_MANAGER.insert(
-        Expr::new_constant(1.0),
-    ); // Same expression
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
+        1.0,
+    )); // Same expression
 
     assert_ne!(
         h1, h2,
-        "Different handles should be \
-         generated even for same \
-         expression"
+        "Different handles should be generated even for same expression"
     );
 }
 
@@ -280,37 +262,26 @@ fn test_handle_thread_safety() {
 
     HANDLE_MANAGER.clear();
 
-    let handles = Arc::new(
-        std::sync::Mutex::new(
-            Vec::new(),
-        ),
-    );
+    let handles = Arc::new(std::sync::Mutex::new(Vec::new()));
 
     let mut threads = vec![];
 
     // Spawn multiple threads inserting expressions
     for i in 0 .. 10 {
 
-        let handles_clone =
-            Arc::clone(&handles);
+        let handles_clone = Arc::clone(&handles);
 
-        let thread =
-            thread::spawn(move || {
+        let thread = thread::spawn(move || {
 
-                let expr =
-                    Expr::new_constant(
-                        i as f64,
-                    );
+            let expr = Expr::new_constant(i as f64);
 
-                let handle =
-                    HANDLE_MANAGER
-                        .insert(expr);
+            let handle = HANDLE_MANAGER.insert(expr);
 
-                handles_clone
-                    .lock()
-                    .unwrap()
-                    .push(handle);
-            });
+            handles_clone
+                .lock()
+                .unwrap()
+                .push(handle);
+        });
 
         threads.push(thread);
     }
@@ -330,13 +301,11 @@ fn test_handle_thread_safety() {
     assert_eq!(
         handles.len(),
         10,
-        "All threads should have \
-         inserted expressions"
+        "All threads should have inserted expressions"
     );
 
     // Verify all handles are unique
-    let mut sorted_handles =
-        handles.clone();
+    let mut sorted_handles = handles.clone();
 
     sorted_handles.sort();
 
@@ -352,8 +321,7 @@ fn test_handle_thread_safety() {
     for &handle in handles.iter() {
 
         assert!(
-            HANDLE_MANAGER
-                .exists(handle),
+            HANDLE_MANAGER.exists(handle),
             "Handle {} should exist",
             handle
         );
@@ -378,26 +346,21 @@ fn test_handle_complex_expression() {
         Expr::new_constant(2.0),
     );
 
-    let sum =
-        Expr::new_add(x_squared, y);
+    let sum = Expr::new_add(x_squared, y);
 
     let sin_z = Expr::new_sin(z);
 
-    let complex_expr =
-        Expr::new_mul(sum, sin_z);
+    let complex_expr = Expr::new_mul(sum, sin_z);
 
-    let handle = HANDLE_MANAGER
-        .insert(complex_expr);
+    let handle = HANDLE_MANAGER.insert(complex_expr);
 
-    let retrieved =
-        HANDLE_MANAGER.get(handle);
+    let retrieved = HANDLE_MANAGER.get(handle);
 
     assert!(retrieved.is_some());
 
     if let Some(arc_expr) = retrieved {
 
-        let expr_str =
-            format!("{}", arc_expr);
+        let expr_str = format!("{}", arc_expr);
 
         assert!(expr_str.contains("x"));
 
@@ -405,16 +368,13 @@ fn test_handle_complex_expression() {
 
         assert!(expr_str.contains("z"));
 
-        assert!(
-            expr_str.contains("sin")
-        );
+        assert!(expr_str.contains("sin"));
     }
 }
 
 #[test]
 
-fn test_handle_persistence_across_operations(
-) {
+fn test_handle_persistence_across_operations() {
 
     HANDLE_MANAGER.clear();
 
@@ -424,14 +384,11 @@ fn test_handle_persistence_across_operations(
 
     let expr3 = Expr::new_variable("c");
 
-    let h1 =
-        HANDLE_MANAGER.insert(expr1);
+    let h1 = HANDLE_MANAGER.insert(expr1);
 
-    let h2 =
-        HANDLE_MANAGER.insert(expr2);
+    let h2 = HANDLE_MANAGER.insert(expr2);
 
-    let h3 =
-        HANDLE_MANAGER.insert(expr3);
+    let h3 = HANDLE_MANAGER.insert(expr3);
 
     // Free middle handle
     HANDLE_MANAGER.free(h2);
@@ -444,8 +401,7 @@ fn test_handle_persistence_across_operations(
 
     assert!(
         !HANDLE_MANAGER.exists(h2),
-        "Handle h2 should not exist \
-         after free"
+        "Handle h2 should not exist after free"
     );
 
     assert!(
@@ -454,8 +410,7 @@ fn test_handle_persistence_across_operations(
     );
 
     // Verify we can still get the expressions
-    let retrieved_h1 =
-        HANDLE_MANAGER.get(h1);
+    let retrieved_h1 = HANDLE_MANAGER.get(h1);
 
     assert!(
         retrieved_h1.is_some(),
@@ -470,8 +425,7 @@ fn test_handle_persistence_across_operations(
         );
     }
 
-    let retrieved_h3 =
-        HANDLE_MANAGER.get(h3);
+    let retrieved_h3 = HANDLE_MANAGER.get(h3);
 
     assert!(
         retrieved_h3.is_some(),

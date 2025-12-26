@@ -13,14 +13,7 @@ use serde::Serialize;
 
 /// Represents the dimensions of the simulation grid.
 /// cbindgen:ignore
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 
 pub enum Dimensions {
     /// 1-dimensional grid with a given size.
@@ -34,19 +27,14 @@ pub enum Dimensions {
 /// A generic grid structure for finite difference method simulations.
 /// It can represent a 1D, 2D, or 3D grid.
 /// cbindgen:ignore
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct FdmGrid<T> {
     pub(crate) data : Vec<T>,
     pub(crate) dims : Dimensions,
 }
 
-impl<
-        T : Clone + Default + Send + Sync,
-    > FdmGrid<T>
-{
+impl<T : Clone + Default + Send + Sync> FdmGrid<T> {
     /// Creates a new grid from existing data and dimensions.
 
     pub fn from_data(
@@ -62,27 +50,16 @@ impl<
 
     /// Creates a new grid with the given dimensions, initialized with a default value.
 
-    pub fn new(
-        dims : Dimensions
-    ) -> Self {
+    pub fn new(dims : Dimensions) -> Self {
 
         let size = match dims {
             | Dimensions::D1(x) => x,
-            | Dimensions::D2(x, y) => {
-                x * y
-            },
-            | Dimensions::D3(
-                x,
-                y,
-                z,
-            ) => x * y * z,
+            | Dimensions::D2(x, y) => x * y,
+            | Dimensions::D3(x, y, z) => x * y * z,
         };
 
         FdmGrid {
-            data : vec![
-                T::default();
-                size
-            ],
+            data : vec![T::default(); size],
             dims,
         }
     }
@@ -96,14 +73,8 @@ impl<
 
         let size = match dims {
             | Dimensions::D1(x) => x,
-            | Dimensions::D2(x, y) => {
-                x * y
-            },
-            | Dimensions::D3(
-                x,
-                y,
-                z,
-            ) => x * y * z,
+            | Dimensions::D2(x, y) => x * y,
+            | Dimensions::D3(x, y, z) => x * y * z,
         };
 
         FdmGrid {
@@ -115,9 +86,7 @@ impl<
     /// Returns the dimensions of the grid.
     #[inline]
 
-    pub fn dimensions(
-        &self
-    ) -> &Dimensions {
+    pub fn dimensions(&self) -> &Dimensions {
 
         &self.dims
     }
@@ -133,9 +102,7 @@ impl<
     /// Returns a mutable slice to the underlying data.
     #[inline]
 
-    pub fn as_mut_slice(
-        &mut self
-    ) -> &mut [T] {
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
 
         &mut self.data
     }
@@ -181,9 +148,7 @@ impl<T> IndexMut<usize> for FdmGrid<T> {
     }
 }
 
-impl<T> Index<(usize, usize)>
-    for FdmGrid<T>
-{
+impl<T> Index<(usize, usize)> for FdmGrid<T> {
     type Output = T;
 
     #[inline]
@@ -193,27 +158,17 @@ impl<T> Index<(usize, usize)>
         (x, y) : (usize, usize),
     ) -> &Self::Output {
 
-        if let Dimensions::D2(
-            width,
-            _,
-        ) = self.dims
-        {
+        if let Dimensions::D2(width, _) = self.dims {
 
             &self.data[y * width + x]
         } else {
 
-            panic!(
-                "Attempted to use 2D \
-                 indexing on a non-2D \
-                 grid."
-            );
+            panic!("Attempted to use 2D indexing on a non-2D grid.");
         }
     }
 }
 
-impl<T> IndexMut<(usize, usize)>
-    for FdmGrid<T>
-{
+impl<T> IndexMut<(usize, usize)> for FdmGrid<T> {
     #[inline]
 
     fn index_mut(
@@ -221,97 +176,50 @@ impl<T> IndexMut<(usize, usize)>
         (x, y) : (usize, usize),
     ) -> &mut Self::Output {
 
-        if let Dimensions::D2(
-            width,
-            _,
-        ) = self.dims
-        {
+        if let Dimensions::D2(width, _) = self.dims {
 
-            &mut self.data
-                [y * width + x]
+            &mut self.data[y * width + x]
         } else {
 
-            panic!(
-                "Attempted to use 2D \
-                 indexing on a non-2D \
-                 grid."
-            );
+            panic!("Attempted to use 2D indexing on a non-2D grid.");
         }
     }
 }
 
-impl<T> Index<(usize, usize, usize)>
-    for FdmGrid<T>
-{
+impl<T> Index<(usize, usize, usize)> for FdmGrid<T> {
     type Output = T;
 
     #[inline]
 
     fn index(
         &self,
-        (x, y, z) : (
-            usize,
-            usize,
-            usize,
-        ),
+        (x, y, z) : (usize, usize, usize),
     ) -> &Self::Output {
 
-        if let Dimensions::D3(
-            width,
-            height,
-            _,
-        ) = self.dims
-        {
+        if let Dimensions::D3(width, height, _) = self.dims {
 
-            &self.data[z
-                * width
-                * height
-                + y * width
-                + x]
+            &self.data[z * width * height + y * width + x]
         } else {
 
-            panic!(
-                "Attempted to use 3D \
-                 indexing on a non-3D \
-                 grid."
-            );
+            panic!("Attempted to use 3D indexing on a non-3D grid.");
         }
     }
 }
 
-impl<T> IndexMut<(usize, usize, usize)>
-    for FdmGrid<T>
-{
+impl<T> IndexMut<(usize, usize, usize)> for FdmGrid<T> {
     #[inline]
 
     fn index_mut(
         &mut self,
-        (x, y, z) : (
-            usize,
-            usize,
-            usize,
-        ),
+        (x, y, z) : (usize, usize, usize),
     ) -> &mut Self::Output {
 
-        if let Dimensions::D3(
-            width,
-            height,
-            _,
-        ) = self.dims
-        {
+        if let Dimensions::D3(width, height, _) = self.dims {
 
-            &mut self.data[z
-                * width
-                * height
-                + y * width
-                + x]
+            &mut self.data[z * width * height + y * width + x]
         } else {
 
-            panic!(
-                "Attempted to use 3D \
-                 indexing on a non-3D \
-                 grid."
-            );
+            panic!("Attempted to use 3D indexing on a non-3D grid.");
         }
     }
 }
@@ -336,8 +244,7 @@ where
     F : Fn(usize, usize) -> f64 + Sync,
 {
 
-    let dims =
-        Dimensions::D2(width, height);
+    let dims = Dimensions::D2(width, height);
 
     let mut grid = FdmGrid::new(dims);
 
@@ -352,9 +259,7 @@ where
 
             let y = i / width;
 
-            *val = initial_conditions(
-                x, y,
-            );
+            *val = initial_conditions(x, y);
         });
 
     let r_x = alpha * dt / (dx * dx);
@@ -367,53 +272,24 @@ where
             .as_mut_slice()
             .par_iter_mut()
             .enumerate()
-            .for_each(
-                |(i, next_val)| {
+            .for_each(|(i, next_val)| {
 
-                    let x = i % width;
+                let x = i % width;
 
-                    let y = i / width;
+                let y = i / width;
 
-                    if x == 0
-                        || x == width
-                            - 1
-                        || y == 0
-                        || y == height
-                            - 1
-                    {
+                if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
 
-                        *next_val =
-                            grid[i]; // Boundary remains constant
-                        return;
-                    }
+                    *next_val = grid[i]; // Boundary remains constant
+                    return;
+                }
 
-                    let lap_x = grid
-                        [(x + 1, y)]
-                        - 2.0
-                            * grid[(
-                                x, y,
-                            )]
-                        + grid[(
-                            x - 1,
-                            y,
-                        )];
+                let lap_x = grid[(x + 1, y)] - 2.0 * grid[(x, y)] + grid[(x - 1, y)];
 
-                    let lap_y = grid
-                        [(x, y + 1)]
-                        - 2.0
-                            * grid[(
-                                x, y,
-                            )]
-                        + grid[(
-                            x,
-                            y - 1,
-                        )];
+                let lap_y = grid[(x, y + 1)] - 2.0 * grid[(x, y)] + grid[(x, y - 1)];
 
-                    *next_val = grid[i]
-                        + r_x * lap_x
-                        + r_y * lap_y;
-                },
-            );
+                *next_val = grid[i] + r_x * lap_x + r_y * lap_y;
+            });
 
         std::mem::swap(
             &mut grid,
@@ -440,17 +316,13 @@ where
     F : Fn(usize, usize) -> f64 + Sync,
 {
 
-    let dims =
-        Dimensions::D2(width, height);
+    let dims = Dimensions::D2(width, height);
 
-    let mut u_prev =
-        FdmGrid::new(dims.clone());
+    let mut u_prev = FdmGrid::new(dims.clone());
 
-    let mut u_curr =
-        FdmGrid::new(dims.clone());
+    let mut u_curr = FdmGrid::new(dims.clone());
 
-    let mut u_next =
-        FdmGrid::new(dims.clone());
+    let mut u_next = FdmGrid::new(dims.clone());
 
     u_curr
         .as_mut_slice()
@@ -480,55 +352,25 @@ where
             .as_mut_slice()
             .par_iter_mut()
             .enumerate()
-            .for_each(
-                |(i, next_val)| {
+            .for_each(|(i, next_val)| {
 
-                    let x = i % width;
+                let x = i % width;
 
-                    let y = i / width;
+                let y = i / width;
 
-                    if x == 0
-                        || x == width
-                            - 1
-                        || y == 0
-                        || y == height
-                            - 1
-                    {
+                if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
 
-                        *next_val = 0.0;
+                    *next_val = 0.0;
 
-                        return;
-                    }
+                    return;
+                }
 
-                    let lap_x = u_curr
-                        [(x + 1, y)]
-                        - 2.0
-                            * u_curr[(
-                                x, y,
-                            )]
-                        + u_curr[(
-                            x - 1,
-                            y,
-                        )];
+                let lap_x = u_curr[(x + 1, y)] - 2.0 * u_curr[(x, y)] + u_curr[(x - 1, y)];
 
-                    let lap_y = u_curr
-                        [(x, y + 1)]
-                        - 2.0
-                            * u_curr[(
-                                x, y,
-                            )]
-                        + u_curr[(
-                            x,
-                            y - 1,
-                        )];
+                let lap_y = u_curr[(x, y + 1)] - 2.0 * u_curr[(x, y)] + u_curr[(x, y - 1)];
 
-                    *next_val = 2.0
-                        * u_curr[i]
-                        - u_prev[i]
-                        + s_x * lap_x
-                        + s_y * lap_y;
-                },
-            );
+                *next_val = 2.0 * u_curr[i] - u_prev[i] + s_x * lap_x + s_y * lap_y;
+            });
 
         std::mem::swap(
             &mut u_prev,
@@ -557,11 +399,9 @@ pub fn solve_poisson_2d(
     tolerance : f64,
 ) -> FdmGrid<f64> {
 
-    let dims =
-        Dimensions::D2(width, height);
+    let dims = Dimensions::D2(width, height);
 
-    let mut u : FdmGrid<f64> =
-        FdmGrid::new(dims);
+    let mut u : FdmGrid<f64> = FdmGrid::new(dims);
 
     let dx2 = dx * dx;
 
@@ -569,8 +409,7 @@ pub fn solve_poisson_2d(
 
     let beta = dx2 / dy2;
 
-    let factor =
-        1.0 / (2.0 * (1.0 + beta));
+    let factor = 1.0 / (2.0 * (1.0 + beta));
 
     for _ in 0 .. max_iter {
 
@@ -580,10 +419,9 @@ pub fn solve_poisson_2d(
 
             let u_ptr = u
                 .as_mut_slice()
-                .as_mut_ptr()
-                as usize;
+                .as_mut_ptr() as usize;
 
-            let diffs: Vec<f64> = u
+            let diffs : Vec<f64> = u
                 .as_mut_slice()
                 .par_iter_mut()
                 .enumerate()
@@ -605,14 +443,14 @@ pub fn solve_poisson_2d(
 
                     // Safety: In Red-Black SOR, the neighbors we read are always from the
                     // opposite color set, which is not being modified in this pass.
-                    let get_u = |nx: usize, ny: usize| unsafe {
+                    let get_u = |nx : usize, ny : usize| unsafe {
 
                         let ptr = u_ptr as *const f64;
 
                         *ptr.add(ny * width + nx)
                     };
 
-                    let old_val: f64 = *val;
+                    let old_val : f64 = *val;
 
                     let target = factor
                         * (get_u(x + 1, y)
@@ -622,7 +460,7 @@ pub fn solve_poisson_2d(
 
                     *val = old_val + omega * (target - old_val);
 
-                    let diff: f64 = (*val - old_val).abs();
+                    let diff : f64 = (*val - old_val).abs();
 
                     Some(diff)
                 })
@@ -764,8 +602,7 @@ pub fn solve_advection_diffusion_1d(
 
 /// Example scenario: Simulates heat conduction on a 100x100 plate.
 
-pub fn simulate_2d_heat_conduction_scenario(
-) -> FdmGrid<f64> {
+pub fn simulate_2d_heat_conduction_scenario() -> FdmGrid<f64> {
 
     const WIDTH : usize = 100;
 
@@ -791,16 +628,11 @@ pub fn simulate_2d_heat_conduction_scenario(
         STEPS,
         |x, y| {
 
-            let dx_cen = x as f64
-                - (WIDTH / 2) as f64;
+            let dx_cen = x as f64 - (WIDTH / 2) as f64;
 
-            let dy_cen = y as f64
-                - (HEIGHT / 2) as f64;
+            let dy_cen = y as f64 - (HEIGHT / 2) as f64;
 
-            if dx_cen.powi(2)
-                + dy_cen.powi(2)
-                < 25.0
-            {
+            if dx_cen.powi(2) + dy_cen.powi(2) < 25.0 {
 
                 100.0
             } else {
@@ -811,8 +643,7 @@ pub fn simulate_2d_heat_conduction_scenario(
     )
 }
 
-pub fn simulate_2d_wave_propagation_scenario(
-) -> FdmGrid<f64> {
+pub fn simulate_2d_wave_propagation_scenario() -> FdmGrid<f64> {
 
     const WIDTH : usize = 120;
 
@@ -838,14 +669,11 @@ pub fn simulate_2d_wave_propagation_scenario(
         STEPS,
         |x, y| {
 
-            let dx_cen = x as f64
-                - (WIDTH / 2) as f64;
+            let dx_cen = x as f64 - (WIDTH / 2) as f64;
 
-            let dy_cen = y as f64
-                - (HEIGHT / 2) as f64;
+            let dy_cen = y as f64 - (HEIGHT / 2) as f64;
 
-            let dist2 = dx_cen.powi(2)
-                + dy_cen.powi(2);
+            let dist2 = dx_cen.powi(2) + dy_cen.powi(2);
 
             (-dist2 / 50.0).exp() // Gaussian pulse
         },

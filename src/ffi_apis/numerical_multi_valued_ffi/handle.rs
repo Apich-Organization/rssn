@@ -20,17 +20,9 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
     res_im : *mut f64,
 ) -> i32 {
 
-    if f_ptr.is_null()
-        || f_prime_ptr.is_null()
-        || res_re.is_null()
-        || res_im.is_null()
-    {
+    if f_ptr.is_null() || f_prime_ptr.is_null() || res_re.is_null() || res_im.is_null() {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_mv_newton_method_complex"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_mv_newton_method_complex".to_string());
 
         return -1;
     }
@@ -39,10 +31,7 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
 
     let f_prime = &*f_prime_ptr;
 
-    let start_point = Complex::new(
-        start_re,
-        start_im,
-    );
+    let start_point = Complex::new(start_re, start_im);
 
     match multi_valued::newton_method_complex(
         f,
@@ -61,10 +50,7 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
         },
         | None => {
 
-            update_last_error(
-                "Newton's method failed to converge"
-                    .to_string(),
-            );
+            update_last_error("Newton's method failed to converge".to_string());
 
             -1
         },
@@ -84,10 +70,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k(
 
     let z = Complex::new(re, im);
 
-    let res =
-        multi_valued::complex_log_k(
-            z, k,
-        );
+    let res = multi_valued::complex_log_k(z, k);
 
     *res_re = res.re;
 
@@ -107,10 +90,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k(
 
     let z = Complex::new(re, im);
 
-    let res =
-        multi_valued::complex_sqrt_k(
-            z, k,
-        );
+    let res = multi_valued::complex_sqrt_k(z, k);
 
     *res_re = res.re;
 
@@ -134,10 +114,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k(
 
     let w = Complex::new(w_re, w_im);
 
-    let res =
-        multi_valued::complex_pow_k(
-            z, w, k,
-        );
+    let res = multi_valued::complex_pow_k(z, w, k);
 
     *res_re = res.re;
 
@@ -178,10 +155,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_arcsin_k(
 
     let z = Complex::new(re, im);
 
-    let res =
-        multi_valued::complex_arcsin_k(
-            z, k,
-        );
+    let res = multi_valued::complex_arcsin_k(z, k);
 
     *res_re = res.re;
 
@@ -202,10 +176,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_arccos_k(
 
     let z = Complex::new(re, im);
 
-    let res =
-        multi_valued::complex_arccos_k(
-            z, k, s,
-        );
+    let res = multi_valued::complex_arccos_k(z, k, s);
 
     *res_re = res.re;
 
@@ -225,10 +196,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_arctan_k(
 
     let z = Complex::new(re, im);
 
-    let res =
-        multi_valued::complex_arctan_k(
-            z, k,
-        );
+    let res = multi_valued::complex_arctan_k(z, k);
 
     *res_re = res.re;
 

@@ -17,33 +17,24 @@ pub struct RssnGraph {
 /// Creates a new graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_new(
-    is_directed : c_int
-) -> *mut RssnGraph {
+pub extern "C" fn rssn_graph_new(is_directed : c_int) -> *mut RssnGraph {
 
-    let graph = Graph::<String>::new(
-        is_directed != 0,
-    );
+    let graph = Graph::<String>::new(is_directed != 0);
 
-    Box::into_raw(Box::new(graph))
-        as *mut RssnGraph
+    Box::into_raw(Box::new(graph)) as *mut RssnGraph
 }
 
 /// Frees a graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_free(
-    ptr : *mut RssnGraph
-) {
+pub extern "C" fn rssn_graph_free(ptr : *mut RssnGraph) {
 
     if !ptr.is_null() {
 
         unsafe {
 
             drop(Box::from_raw(
-                ptr as *mut Graph<
-                    String,
-                >,
+                ptr as *mut Graph<String>,
             ))
         };
     }
@@ -57,17 +48,14 @@ pub extern "C" fn rssn_graph_add_node(
     label : *const c_char,
 ) -> usize {
 
-    if ptr.is_null() || label.is_null()
-    {
+    if ptr.is_null() || label.is_null() {
 
         return usize::MAX;
     }
 
     let graph = unsafe {
 
-        &mut *(ptr as *mut Graph<
-            String,
-        >)
+        &mut *(ptr as *mut Graph<String>)
     };
 
     let label_str = unsafe {
@@ -90,20 +78,14 @@ pub extern "C" fn rssn_graph_add_edge(
     weight : *const Expr,
 ) {
 
-    if ptr.is_null()
-        || from_label.is_null()
-        || to_label.is_null()
-        || weight.is_null()
-    {
+    if ptr.is_null() || from_label.is_null() || to_label.is_null() || weight.is_null() {
 
         return;
     }
 
     let graph = unsafe {
 
-        &mut *(ptr as *mut Graph<
-            String,
-        >)
+        &mut *(ptr as *mut Graph<String>)
     };
 
     let from = unsafe {
@@ -135,9 +117,7 @@ pub extern "C" fn rssn_graph_add_edge(
 /// Gets the number of nodes in the graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_node_count(
-    ptr : *const RssnGraph
-) -> usize {
+pub extern "C" fn rssn_graph_node_count(ptr : *const RssnGraph) -> usize {
 
     if ptr.is_null() {
 
@@ -155,9 +135,7 @@ pub extern "C" fn rssn_graph_node_count(
 /// Gets the adjacency matrix of the graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_adjacency_matrix(
-    ptr : *const RssnGraph
-) -> *mut Expr {
+pub extern "C" fn rssn_graph_adjacency_matrix(ptr : *const RssnGraph) -> *mut Expr {
 
     if ptr.is_null() {
 
@@ -177,9 +155,7 @@ pub extern "C" fn rssn_graph_adjacency_matrix(
 /// Gets the incidence matrix of the graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_incidence_matrix(
-    ptr : *const RssnGraph
-) -> *mut Expr {
+pub extern "C" fn rssn_graph_incidence_matrix(ptr : *const RssnGraph) -> *mut Expr {
 
     if ptr.is_null() {
 
@@ -199,9 +175,7 @@ pub extern "C" fn rssn_graph_incidence_matrix(
 /// Gets the Laplacian matrix of the graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_laplacian_matrix(
-    ptr : *const RssnGraph
-) -> *mut Expr {
+pub extern "C" fn rssn_graph_laplacian_matrix(ptr : *const RssnGraph) -> *mut Expr {
 
     if ptr.is_null() {
 
@@ -239,16 +213,13 @@ pub extern "C" fn rssn_graph_bfs(
 
     let result = bfs(graph, start_node);
 
-    match serde_json::to_string(&result)
-    {
+    match serde_json::to_string(&result) {
         | Ok(json) => {
             CString::new(json)
                 .unwrap()
                 .into_raw()
         },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -273,16 +244,13 @@ pub extern "C" fn rssn_graph_dfs(
 
     let result = dfs(graph, start_node);
 
-    match serde_json::to_string(&result)
-    {
+    match serde_json::to_string(&result) {
         | Ok(json) => {
             CString::new(json)
                 .unwrap()
                 .into_raw()
         },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -290,9 +258,7 @@ pub extern "C" fn rssn_graph_dfs(
 /// Returns a JSON string containing the components.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_connected_components(
-    ptr : *const RssnGraph
-) -> *mut c_char {
+pub extern "C" fn rssn_graph_connected_components(ptr : *const RssnGraph) -> *mut c_char {
 
     if ptr.is_null() {
 
@@ -304,19 +270,15 @@ pub extern "C" fn rssn_graph_connected_components(
         &*(ptr as *const Graph<String>)
     };
 
-    let result =
-        connected_components(graph);
+    let result = connected_components(graph);
 
-    match serde_json::to_string(&result)
-    {
+    match serde_json::to_string(&result) {
         | Ok(json) => {
             CString::new(json)
                 .unwrap()
                 .into_raw()
         },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -339,20 +301,14 @@ pub extern "C" fn rssn_graph_max_flow(
         &*(ptr as *const Graph<String>)
     };
 
-    edmonds_karp_max_flow(
-        graph,
-        source,
-        sink,
-    )
+    edmonds_karp_max_flow(graph, source, sink)
 }
 
 /// Computes minimum spanning tree using Kruskal's algorithm.
 /// Returns a JSON string containing the MST edges.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_kruskal_mst(
-    ptr : *const RssnGraph
-) -> *mut c_char {
+pub extern "C" fn rssn_graph_kruskal_mst(ptr : *const RssnGraph) -> *mut c_char {
 
     if ptr.is_null() {
 
@@ -367,11 +323,7 @@ pub extern "C" fn rssn_graph_kruskal_mst(
     let mst = kruskal_mst(graph);
 
     // Convert to a simpler format for JSON
-    let edges : Vec<(
-        usize,
-        usize,
-        String,
-    )> = mst
+    let edges : Vec<(usize, usize, String)> = mst
         .iter()
         .map(|(u, v, w)| {
 
@@ -383,25 +335,20 @@ pub extern "C" fn rssn_graph_kruskal_mst(
         })
         .collect();
 
-    match serde_json::to_string(&edges)
-    {
+    match serde_json::to_string(&edges) {
         | Ok(json) => {
             CString::new(json)
                 .unwrap()
                 .into_raw()
         },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
 /// Checks if the graph has a cycle.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_has_cycle(
-    ptr : *const RssnGraph
-) -> c_int {
+pub extern "C" fn rssn_graph_has_cycle(ptr : *const RssnGraph) -> c_int {
 
     if ptr.is_null() {
 
@@ -426,9 +373,7 @@ pub extern "C" fn rssn_graph_has_cycle(
 /// Returns 1 if bipartite, 0 otherwise.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_is_bipartite(
-    ptr : *const RssnGraph
-) -> c_int {
+pub extern "C" fn rssn_graph_is_bipartite(ptr : *const RssnGraph) -> c_int {
 
     if ptr.is_null() {
 

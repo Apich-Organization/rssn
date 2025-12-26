@@ -1,17 +1,12 @@
-pub const BUILD_DATE : &str =
-    env!("VERGEN_BUILD_DATE");
+pub const BUILD_DATE : &str = env!("VERGEN_BUILD_DATE");
 
-pub const COMMIT_SHA : &str =
-    env!("VERGEN_GIT_SHA");
+pub const COMMIT_SHA : &str = env!("VERGEN_GIT_SHA");
 
-pub const RUSTC_VERSION : &str =
-    env!("VERGEN_RUSTC_SEMVER");
+pub const RUSTC_VERSION : &str = env!("VERGEN_RUSTC_SEMVER");
 
-pub const CARGO_TARGET_TRIPLE : &str =
-    env!("VERGEN_CARGO_TARGET_TRIPLE");
+pub const CARGO_TARGET_TRIPLE : &str = env!("VERGEN_CARGO_TARGET_TRIPLE");
 
-pub const SYSTEM_INFO : &str =
-    env!("VERGEN_SYSINFO_OS_VERSION");
+pub const SYSTEM_INFO : &str = env!("VERGEN_SYSINFO_OS_VERSION");
 
 // --- Getter functions ---
 
@@ -29,8 +24,7 @@ pub const SYSTEM_INFO : &str =
 /// ```
 #[must_use]
 
-pub const fn get_build_date(
-) -> &'static str {
+pub const fn get_build_date() -> &'static str {
 
     BUILD_DATE
 }
@@ -49,8 +43,7 @@ pub const fn get_build_date(
 /// ```
 #[must_use]
 
-pub const fn get_commit_sha(
-) -> &'static str {
+pub const fn get_commit_sha() -> &'static str {
 
     COMMIT_SHA
 }
@@ -69,8 +62,7 @@ pub const fn get_commit_sha(
 /// ```
 #[must_use]
 
-pub const fn get_rustc_version(
-) -> &'static str {
+pub const fn get_rustc_version() -> &'static str {
 
     RUSTC_VERSION
 }
@@ -89,8 +81,7 @@ pub const fn get_rustc_version(
 /// ```
 #[must_use]
 
-pub const fn get_cargo_target_triple(
-) -> &'static str {
+pub const fn get_cargo_target_triple() -> &'static str {
 
     CARGO_TARGET_TRIPLE
 }
@@ -109,8 +100,7 @@ pub const fn get_cargo_target_triple(
 /// ```
 #[must_use]
 
-pub const fn get_system_info(
-) -> &'static str {
+pub const fn get_system_info() -> &'static str {
 
     SYSTEM_INFO
 }

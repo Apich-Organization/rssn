@@ -5,17 +5,12 @@ use criterion::Criterion;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::simplify_dag::simplify;
 
-fn bench_simplify_arithmetic(
-    c : &mut Criterion
-) {
+fn bench_simplify_arithmetic(c : &mut Criterion) {
 
     let x = Expr::new_variable("x");
 
     // x + x -> 2*x
-    let expr_add = Expr::new_add(
-        x.clone(),
-        x.clone(),
-    );
+    let expr_add = Expr::new_add(x.clone(), x.clone());
 
     c.bench_function(
         "simplify_add_identical",
@@ -23,11 +18,9 @@ fn bench_simplify_arithmetic(
 
             b.iter(|| {
 
-                black_box(simplify(
-                    black_box(
-                        &expr_add,
-                    ),
-                ));
+                black_box(simplify(black_box(
+                    &expr_add,
+                )));
             });
         },
     );
@@ -44,25 +37,20 @@ fn bench_simplify_arithmetic(
 
             b.iter(|| {
 
-                black_box(simplify(
-                    black_box(
-                        &expr_mul_one,
-                    ),
-                ));
+                black_box(simplify(black_box(
+                    &expr_mul_one,
+                )));
             });
         },
     );
 }
 
-fn bench_simplify_trig(
-    c : &mut Criterion
-) {
+fn bench_simplify_trig(c : &mut Criterion) {
 
     let zero = Expr::new_constant(0.0);
 
     // sin(0) -> 0
-    let expr_sin_zero =
-        Expr::new_sin(zero.clone());
+    let expr_sin_zero = Expr::new_sin(zero.clone());
 
     c.bench_function(
         "simplify_sin_zero",
@@ -70,28 +58,21 @@ fn bench_simplify_trig(
 
             b.iter(|| {
 
-                black_box(simplify(
-                    black_box(
-                        &expr_sin_zero,
-                    ),
-                ));
+                black_box(simplify(black_box(
+                    &expr_sin_zero,
+                )));
             });
         },
     );
 }
 
-fn bench_simplify_nested(
-    c : &mut Criterion
-) {
+fn bench_simplify_nested(c : &mut Criterion) {
 
     let x = Expr::new_variable("x");
 
     // (x + x) * 2 -> 4*x
     let expr = Expr::new_mul(
-        Expr::new_add(
-            x.clone(),
-            x.clone(),
-        ),
+        Expr::new_add(x.clone(), x.clone()),
         Expr::new_constant(2.0),
     );
 
@@ -101,9 +82,9 @@ fn bench_simplify_nested(
 
             b.iter(|| {
 
-                black_box(simplify(
-                    black_box(&expr),
-                ));
+                black_box(simplify(black_box(
+                    &expr,
+                )));
             });
         },
     );

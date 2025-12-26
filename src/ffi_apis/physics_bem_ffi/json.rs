@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: Bem2DInput = match from_json_string(input) {
+    let input : Bem2DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
@@ -55,33 +55,29 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
         },
     };
 
-    let bcs: Vec<BoundaryCondition<f64>> = input
+    let bcs : Vec<BoundaryCondition<f64>> = input
         .bcs
         .into_iter()
         .map(|bc| {
 
             match bc {
-                | BemBoundaryCondition::Potential(v) => {
-                    BoundaryCondition::Potential(v)
-                },
-                | BemBoundaryCondition::Flux(v) => {
-                    BoundaryCondition::Flux(v)
-                },
+                | BemBoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
+                | BemBoundaryCondition::Flux(v) => BoundaryCondition::Flux(v),
             }
         })
         .collect();
 
-    match physics_bem::solve_laplace_bem_2d(
-        &input.points,
-        &bcs,
-    ) {
+    match physics_bem::solve_laplace_bem_2d(&input.points, &bcs) {
         | Ok((u, q)) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<
                     Bem2DOutput,
                     String,
                 >::ok(
-                    Bem2DOutput { u, q },
+                    Bem2DOutput {
+                        u,
+                        q,
+                    },
                 ))
                 .unwrap(),
             )

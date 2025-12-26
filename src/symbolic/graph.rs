@@ -18,25 +18,18 @@ use crate::symbolic::core::Expr;
 /// Represents a generic symbolic graph.
 /// V is the type for vertex labels (e.g., String, Expr).
 /// cbindgen:ignore
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct Graph<V>
 where
     V : Eq + Hash + Clone + Debug,
 {
     pub(crate) nodes : Vec<V>,
-    pub(crate) node_map :
-        HashMap<V, usize>,
-    pub(crate) adj :
-        Vec<Vec<(usize, Expr)>>,
-    pub(crate) rev_adj :
-        Vec<Vec<(usize, Expr)>>,
+    pub(crate) node_map : HashMap<V, usize>,
+    pub(crate) adj : Vec<Vec<(usize, Expr)>>,
+    pub(crate) rev_adj : Vec<Vec<(usize, Expr)>>,
     pub(crate) hyperedges : Vec<(
-        std::collections::HashSet<
-            usize,
-        >,
+        std::collections::HashSet<usize>,
         Expr,
     )>,
     pub(crate) is_directed : bool,
@@ -55,9 +48,7 @@ where
     /// A new `Graph` instance.
     #[must_use]
 
-    pub fn new(
-        is_directed : bool
-    ) -> Self {
+    pub fn new(is_directed : bool) -> Self {
 
         Self {
             nodes : Vec::new(),
@@ -80,9 +71,7 @@ where
     /// Returns the number of nodes in the graph.
     #[must_use]
 
-    pub const fn node_count(
-        &self
-    ) -> usize {
+    pub const fn node_count(&self) -> usize {
 
         self.nodes.len()
     }
@@ -90,9 +79,7 @@ where
     /// Returns true if the graph is directed.
     #[must_use]
 
-    pub const fn is_directed(
-        &self
-    ) -> bool {
+    pub const fn is_directed(&self) -> bool {
 
         self.is_directed
     }
@@ -154,12 +141,9 @@ where
         weight : Expr,
     ) {
 
-        let from_id = self.add_node(
-            from_label.clone(),
-        );
+        let from_id = self.add_node(from_label.clone());
 
-        let to_id = self
-            .add_node(to_label.clone());
+        let to_id = self.add_node(to_label.clone());
 
         self.adj[from_id].push((
             to_id,
@@ -178,8 +162,7 @@ where
                 weight.clone(),
             ));
 
-            self.rev_adj[from_id]
-                .push((to_id, weight));
+            self.rev_adj[from_id].push((to_id, weight));
         }
     }
 
@@ -212,8 +195,7 @@ where
     pub fn neighbors(
         &self,
         node_id : usize,
-    ) -> impl Iterator<Item = &(usize, Expr)>
-    {
+    ) -> impl Iterator<Item = &(usize, Expr)> {
 
         self.adj
             .get(node_id)
@@ -279,9 +261,7 @@ where
     /// A `Vec<(usize, usize, Expr)>` where each tuple is `(from_node_id, to_node_id, edge_weight)`.
     #[must_use]
 
-    pub fn get_edges(
-        &self
-    ) -> Vec<(usize, usize, Expr)> {
+    pub fn get_edges(&self) -> Vec<(usize, usize, Expr)> {
 
         let mut edges = Vec::new();
 
@@ -291,22 +271,14 @@ where
             .enumerate()
         {
 
-            for &(v, ref weight) in
-                neighbors
-            {
+            for &(v, ref weight) in neighbors {
 
-                if !self.is_directed
-                    && u > v
-                {
+                if !self.is_directed && u > v {
 
                     continue;
                 }
 
-                edges.push((
-                    u,
-                    v,
-                    weight.clone(),
-                ));
+                edges.push((u, v, weight.clone()));
             }
         }
 
@@ -327,7 +299,7 @@ where
         weight : Expr,
     ) {
 
-        let ids: std::collections::HashSet<usize> = labels
+        let ids : std::collections::HashSet<usize> = labels
             .iter()
             .map(|label| self.add_node(label.clone()))
             .collect();
@@ -345,32 +317,19 @@ where
     /// An `Expr::Matrix` representing the adjacency matrix.
     #[must_use]
 
-    pub fn to_adjacency_matrix(
-        &self
-    ) -> Expr {
+    pub fn to_adjacency_matrix(&self) -> Expr {
 
         let n = self.nodes.len();
 
-        let mut matrix = vec![
-            vec![
-                    Expr::Constant(0.0);
-                    n
-                ];
-            n
-        ];
+        let mut matrix = vec![vec![Expr::Constant(0.0); n]; n];
 
         for u in 0 .. n {
 
-            if let Some(neighbors) =
-                self.adj.get(u)
-            {
+            if let Some(neighbors) = self.adj.get(u) {
 
-                for &(v, ref weight) in
-                    neighbors
-                {
+                for &(v, ref weight) in neighbors {
 
-                    matrix[u][v] =
-                        weight.clone();
+                    matrix[u][v] = weight.clone();
                 }
             }
         }
@@ -388,9 +347,7 @@ where
     /// An `Expr::Matrix` representing the incidence matrix.
     #[must_use]
 
-    pub fn to_incidence_matrix(
-        &self
-    ) -> Expr {
+    pub fn to_incidence_matrix(&self) -> Expr {
 
         let n = self.nodes.len();
 
@@ -398,13 +355,7 @@ where
 
         let m = edges.len();
 
-        let mut matrix = vec![
-            vec![
-                    Expr::Constant(0.0);
-                    m
-                ];
-            n
-        ];
+        let mut matrix = vec![vec![Expr::Constant(0.0); m]; n];
 
         for (j, &(u, v, _)) in edges
             .iter()
@@ -413,20 +364,14 @@ where
 
             if self.is_directed {
 
-                matrix[u][j] =
-                    Expr::Constant(
-                        -1.0,
-                    );
+                matrix[u][j] = Expr::Constant(-1.0);
 
-                matrix[v][j] =
-                    Expr::Constant(1.0);
+                matrix[v][j] = Expr::Constant(1.0);
             } else {
 
-                matrix[u][j] =
-                    Expr::Constant(1.0);
+                matrix[u][j] = Expr::Constant(1.0);
 
-                matrix[v][j] =
-                    Expr::Constant(1.0);
+                matrix[v][j] = Expr::Constant(1.0);
             }
         }
 
@@ -443,45 +388,27 @@ where
     /// An `Expr::Matrix` representing the Laplacian matrix.
     #[must_use]
 
-    pub fn to_laplacian_matrix(
-        &self
-    ) -> Expr {
+    pub fn to_laplacian_matrix(&self) -> Expr {
 
         let n = self.nodes.len();
 
-        let adj_matrix_expr =
-            self.to_adjacency_matrix();
+        let adj_matrix_expr = self.to_adjacency_matrix();
 
-        let _adj_matrix =
-            if let Expr::Matrix(m) =
-                &adj_matrix_expr
-            {
+        let _adj_matrix = if let Expr::Matrix(m) = &adj_matrix_expr {
 
-                m
-            } else {
+            m
+        } else {
 
-                return Expr::Variable(
-                    "Error".to_string(),
-                );
-            };
+            return Expr::Variable("Error".to_string());
+        };
 
-        let mut deg_matrix = vec![
-            vec![
-                    Expr::Constant(0.0);
-                    n
-                ];
-            n
-        ];
+        let mut deg_matrix = vec![vec![Expr::Constant(0.0); n]; n];
 
         for i in 0 .. n {
 
-            let degree =
-                self.out_degree(i);
+            let degree = self.out_degree(i);
 
-            deg_matrix[i][i] =
-                Expr::Constant(
-                    degree as f64,
-                );
+            deg_matrix[i][i] = Expr::Constant(degree as f64);
         }
 
         crate::symbolic::matrix::sub_matrices(

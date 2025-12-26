@@ -63,9 +63,9 @@ fn test_simplify_basic_arithmetic() {
 fn test_simplify_trig() {
 
     // sin(0) -> 0
-    let expr = Expr::new_sin(
-        Expr::new_constant(0.0),
-    );
+    let expr = Expr::new_sin(Expr::new_constant(
+        0.0,
+    ));
 
     let simplified = simplify(&expr);
 
@@ -75,9 +75,9 @@ fn test_simplify_trig() {
     );
 
     // cos(0) -> 1
-    let expr = Expr::new_cos(
-        Expr::new_constant(0.0),
-    );
+    let expr = Expr::new_cos(Expr::new_constant(
+        0.0,
+    ));
 
     let simplified = simplify(&expr);
 

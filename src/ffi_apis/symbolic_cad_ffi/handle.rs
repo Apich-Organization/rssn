@@ -20,18 +20,14 @@ pub extern "C" fn rssn_cad_handle(
     vars_count : usize,
 ) -> *mut Cad {
 
-    if polys.is_null() || vars.is_null()
-    {
+    if polys.is_null() || vars.is_null() {
 
         return std::ptr::null_mut();
     }
 
     let polys_slice = unsafe {
 
-        std::slice::from_raw_parts(
-            polys,
-            polys_count,
-        )
+        std::slice::from_raw_parts(polys, polys_count)
     };
 
     let mut sparse_polys = Vec::new();
@@ -40,32 +36,24 @@ pub extern "C" fn rssn_cad_handle(
 
         if p_ptr.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        if let Expr::SparsePolynomial(
-            sp,
-        ) = unsafe {
+        if let Expr::SparsePolynomial(sp) = unsafe {
 
             &*p_ptr
         } {
 
-            sparse_polys
-                .push(sp.clone());
+            sparse_polys.push(sp.clone());
         } else {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
     }
 
     let vars_slice = unsafe {
 
-        std::slice::from_raw_parts(
-            vars,
-            vars_count,
-        )
+        std::slice::from_raw_parts(vars, vars_count)
     };
 
     let mut vars_vec = Vec::new();
@@ -74,8 +62,7 @@ pub extern "C" fn rssn_cad_handle(
 
         if v_ptr.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         let c_str = unsafe {
@@ -88,8 +75,7 @@ pub extern "C" fn rssn_cad_handle(
             vars_vec.push(s);
         } else {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
     }
 
@@ -97,21 +83,15 @@ pub extern "C" fn rssn_cad_handle(
         &sparse_polys,
         &vars_vec,
     ) {
-        | Ok(c) => {
-            Box::into_raw(Box::new(c))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Ok(c) => Box::into_raw(Box::new(c)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
 /// Frees a CAD handle.
 #[no_mangle]
 
-pub extern "C" fn rssn_free_cad_handle(
-    ptr : *mut Cad
-) {
+pub extern "C" fn rssn_free_cad_handle(ptr : *mut Cad) {
 
     if !ptr.is_null() {
 
@@ -125,9 +105,7 @@ pub extern "C" fn rssn_free_cad_handle(
 /// Gets the number of cells in a CAD.
 #[no_mangle]
 
-pub extern "C" fn rssn_cad_get_cell_count(
-    ptr : *const Cad
-) -> usize {
+pub extern "C" fn rssn_cad_get_cell_count(ptr : *const Cad) -> usize {
 
     if ptr.is_null() {
 

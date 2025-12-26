@@ -12,22 +12,15 @@ pub extern "C" fn rssn_factor_gf_handle(
 
         if poly.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*poly
     };
 
     match factor_gf(poly_ref) {
-        | Ok(factors) => {
-            Box::into_raw(Box::new(
-                factors,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Ok(factors) => Box::into_raw(Box::new(factors)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -45,24 +38,15 @@ pub extern "C" fn rssn_square_free_factorization_gf_handle(
 
         if poly.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*poly
     };
 
-    match square_free_factorization_gf(
-        poly_ref.clone(),
-    ) {
-        | Ok(factors) => {
-            Box::into_raw(Box::new(
-                factors,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+    match square_free_factorization_gf(poly_ref.clone()) {
+        | Ok(factors) => Box::into_raw(Box::new(factors)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -78,8 +62,7 @@ pub extern "C" fn rssn_poly_gcd_gf_handle(
 
         if a.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*a
@@ -89,8 +72,7 @@ pub extern "C" fn rssn_poly_gcd_gf_handle(
 
         if b.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*b
@@ -100,12 +82,8 @@ pub extern "C" fn rssn_poly_gcd_gf_handle(
         a_ref.clone(),
         b_ref.clone(),
     ) {
-        | Ok(gcd) => {
-            Box::into_raw(Box::new(gcd))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Ok(gcd) => Box::into_raw(Box::new(gcd)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -120,15 +98,13 @@ pub extern "C" fn rssn_poly_derivative_gf_handle(
 
         if poly.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*poly
     };
 
-    let derivative =
-        poly_derivative_gf(poly_ref);
+    let derivative = poly_derivative_gf(poly_ref);
 
     Box::into_raw(Box::new(derivative))
 }
@@ -136,11 +112,7 @@ pub extern "C" fn rssn_poly_derivative_gf_handle(
 /// Frees a vector of polynomials (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_free_poly_vec_handle(
-    ptr : *mut Vec<
-        FiniteFieldPolynomial,
-    >
-) {
+pub extern "C" fn rssn_free_poly_vec_handle(ptr : *mut Vec<FiniteFieldPolynomial>) {
 
     if !ptr.is_null() {
 

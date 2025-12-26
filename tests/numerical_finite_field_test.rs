@@ -33,9 +33,9 @@ fn test_gf_p_inverse() {
 
     let a = numerical_PrimeFieldElement::new(7, p);
 
-    let inv = a.inverse().expect(
-        "7 is invertible mod 11",
-    );
+    let inv = a
+        .inverse()
+        .expect("7 is invertible mod 11");
 
     // 7 * 8 = 56 ≡ 1 mod 11
     assert_eq!(inv.value, 8);
@@ -77,11 +77,7 @@ fn test_gf256_basic() {
     // Multiplication and inverse
     let a = 0x57;
 
-    let inv = numerical_gf256_inv(a)
-        .expect(
-            "Non-zero element is \
-             invertible",
-        );
+    let inv = numerical_gf256_inv(a).expect("Non-zero element is invertible");
 
     assert_eq!(
         numerical_gf256_mul(a, inv),

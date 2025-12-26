@@ -1,24 +1,17 @@
-use rssn::ffi_apis::common::{
-    from_bincode_buffer,
-    rssn_free_bincode_buffer,
-    rssn_free_string,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use std::ffi::CStr;
+use std::ffi::CString;
+
+use rssn::ffi_apis::common::from_bincode_buffer;
+use rssn::ffi_apis::common::rssn_free_bincode_buffer;
+use rssn::ffi_apis::common::rssn_free_string;
+use rssn::ffi_apis::common::to_bincode_buffer;
+use rssn::ffi_apis::common::BincodeBuffer;
 use rssn::ffi_apis::ffi_api::FfiResult;
-use rssn::ffi_apis::numerical_graph_ffi::{
-    bincode_api,
-    handle,
-    json,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ffi::{
-    CStr,
-    CString,
-};
+use rssn::ffi_apis::numerical_graph_ffi::bincode_api;
+use rssn::ffi_apis::numerical_graph_ffi::handle;
+use rssn::ffi_apis::numerical_graph_ffi::json;
+use serde::Deserialize;
+use serde::Serialize;
 
 #[test]
 
@@ -32,13 +25,9 @@ fn test_graph_handle_ffi() {
 
         assert!(!graph.is_null());
 
-        handle::rssn_num_graph_add_edge(
-            graph, 0, 1, 1.0,
-        );
+        handle::rssn_num_graph_add_edge(graph, 0, 1, 1.0);
 
-        handle::rssn_num_graph_add_edge(
-            graph, 1, 2, 2.0,
-        );
+        handle::rssn_num_graph_add_edge(graph, 1, 2, 2.0);
 
         let mut dist = vec![0.0; n];
 
@@ -65,8 +54,7 @@ fn test_graph_handle_ffi() {
         assert_eq!(prev[2], 1);
 
         // BFS from 0
-        let mut bfs_dist =
-            vec![0usize; n];
+        let mut bfs_dist = vec![0usize; n];
 
         handle::rssn_num_graph_bfs(
             graph,
@@ -100,8 +88,7 @@ fn test_graph_handle_ffi() {
         );
 
         // Floyd-Warshall
-        let mut fw_dist =
-            vec![0.0; n * n];
+        let mut fw_dist = vec![0.0; n * n];
 
         handle::rssn_num_graph_floyd_warshall(
             graph,
@@ -114,8 +101,7 @@ fn test_graph_handle_ffi() {
         );
 
         // Connected Components
-        let mut components =
-            vec![0usize; n];
+        let mut components = vec![0usize; n];
 
         handle::rssn_num_graph_connected_components(
             graph,
@@ -147,13 +133,9 @@ fn test_graph_handle_ffi() {
 
         // Since it's opaque handle, we can't inspect easily without accessor or assumption.
         // We can just free it.
-        handle::rssn_num_graph_free(
-            mst_handle,
-        );
+        handle::rssn_num_graph_free(mst_handle);
 
-        handle::rssn_num_graph_free(
-            graph,
-        );
+        handle::rssn_num_graph_free(graph);
     }
 }
 
@@ -215,29 +197,18 @@ fn test_graph_json_ffi() {
             start_node : 0,
         };
 
-        let json_str =
-            serde_json::to_string(
-                &input,
-            )
-            .unwrap();
+        let json_str = serde_json::to_string(&input).unwrap();
 
-        let c_json =
-            CString::new(json_str)
-                .unwrap();
+        let c_json = CString::new(json_str).unwrap();
 
         // Dijkstra
         let res_ptr = json::rssn_num_graph_dijkstra_json(c_json.as_ptr());
 
-        let res_str =
-            CStr::from_ptr(res_ptr)
-                .to_str()
-                .unwrap();
-
-        let v : serde_json::Value =
-            serde_json::from_str(
-                res_str,
-            )
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
             .unwrap();
+
+        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
 
         let dist = v["ok"]["dist"]
             .as_array()
@@ -255,16 +226,11 @@ fn test_graph_json_ffi() {
         // BFS
         let res_ptr = json::rssn_num_graph_bfs_json(c_json.as_ptr());
 
-        let res_str =
-            CStr::from_ptr(res_ptr)
-                .to_str()
-                .unwrap();
-
-        let v : serde_json::Value =
-            serde_json::from_str(
-                res_str,
-            )
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
             .unwrap();
+
+        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
 
         let bfs_dist = v["ok"]
             .as_array()
@@ -296,30 +262,17 @@ fn test_graph_json_ffi() {
             ],
         };
 
-        let graph_json_str =
-            serde_json::to_string(
-                &graph_only,
-            )
-            .unwrap();
+        let graph_json_str = serde_json::to_string(&graph_only).unwrap();
 
-        let c_graph_json =
-            CString::new(
-                graph_json_str,
-            )
-            .unwrap();
+        let c_graph_json = CString::new(graph_json_str).unwrap();
 
         let res_ptr = json::rssn_num_graph_connected_components_json(c_graph_json.as_ptr());
 
-        let res_str =
-            CStr::from_ptr(res_ptr)
-                .to_str()
-                .unwrap();
-
-        let v : serde_json::Value =
-            serde_json::from_str(
-                res_str,
-            )
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
             .unwrap();
+
+        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
 
         let comp = v["ok"]
             .as_array()
@@ -335,16 +288,11 @@ fn test_graph_json_ffi() {
         // MST
         let res_ptr = json::rssn_num_graph_minimum_spanning_tree_json(c_graph_json.as_ptr());
 
-        let res_str =
-            CStr::from_ptr(res_ptr)
-                .to_str()
-                .unwrap();
-
-        let v : serde_json::Value =
-            serde_json::from_str(
-                res_str,
-            )
+        let res_str = CStr::from_ptr(res_ptr)
+            .to_str()
             .unwrap();
+
+        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
 
         let edges = v["ok"]["edges"]
             .as_array()
@@ -384,8 +332,7 @@ fn test_graph_bincode_ffi() {
             start_node : 0,
         };
 
-        let buffer =
-            to_bincode_buffer(&input);
+        let buffer = to_bincode_buffer(&input);
 
         // Dijkstra
         let res_buffer = bincode_api::rssn_num_graph_dijkstra_bincode(buffer);
@@ -397,25 +344,15 @@ fn test_graph_bincode_ffi() {
             prev : Vec<Option<usize>>,
         }
 
-        let res : FfiResult<
-            DijkstraOutput,
-            String,
-        > = from_bincode_buffer(
-            &res_buffer,
-        )
-        .unwrap();
+        let res : FfiResult<DijkstraOutput, String> = from_bincode_buffer(&res_buffer).unwrap();
 
         let out = res.ok.unwrap();
 
         assert_eq!(out.dist[2], 3.0);
 
-        rssn_free_bincode_buffer(
-            res_buffer,
-        );
+        rssn_free_bincode_buffer(res_buffer);
 
-        rssn_free_bincode_buffer(
-            buffer,
-        );
+        rssn_free_bincode_buffer(buffer);
 
         // Connected Components
         #[derive(Serialize)]
@@ -442,28 +379,17 @@ fn test_graph_bincode_ffi() {
             ],
         };
 
-        let buffer_graph =
-            to_bincode_buffer(
-                &input_graph,
-            );
+        let buffer_graph = to_bincode_buffer(&input_graph);
 
         let res_buffer = bincode_api::rssn_num_graph_connected_components_bincode(buffer_graph);
 
-        let res : FfiResult<
-            Vec<usize>,
-            String,
-        > = from_bincode_buffer(
-            &res_buffer,
-        )
-        .unwrap();
+        let res : FfiResult<Vec<usize>, String> = from_bincode_buffer(&res_buffer).unwrap();
 
         let comp = res.ok.unwrap();
 
         assert_eq!(comp[0], comp[1]);
 
-        rssn_free_bincode_buffer(
-            res_buffer,
-        );
+        rssn_free_bincode_buffer(res_buffer);
 
         // MST
         let res_buffer = bincode_api::rssn_num_graph_minimum_spanning_tree_bincode(buffer_graph);
@@ -483,24 +409,14 @@ fn test_graph_bincode_ffi() {
             edges : Vec<EdgeOut>,
         }
 
-        let res : FfiResult<
-            GraphDefOut,
-            String,
-        > = from_bincode_buffer(
-            &res_buffer,
-        )
-        .unwrap();
+        let res : FfiResult<GraphDefOut, String> = from_bincode_buffer(&res_buffer).unwrap();
 
         let mst = res.ok.unwrap();
 
         assert_eq!(mst.edges.len(), 4);
 
-        rssn_free_bincode_buffer(
-            res_buffer,
-        );
+        rssn_free_bincode_buffer(res_buffer);
 
-        rssn_free_bincode_buffer(
-            buffer_graph,
-        );
+        rssn_free_bincode_buffer(buffer_graph);
     }
 }

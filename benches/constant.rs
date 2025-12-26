@@ -2,9 +2,7 @@ use criterion::criterion_group;
 use criterion::Criterion;
 use rssn::constant;
 
-fn bench_get_build_date(
-    c : &mut Criterion
-) {
+fn bench_get_build_date(c : &mut Criterion) {
 
     c.bench_function(
         "constant::get_build_date",
@@ -12,9 +10,7 @@ fn bench_get_build_date(
     );
 }
 
-fn bench_get_commit_sha(
-    c : &mut Criterion
-) {
+fn bench_get_commit_sha(c : &mut Criterion) {
 
     c.bench_function(
         "constant::get_commit_sha",

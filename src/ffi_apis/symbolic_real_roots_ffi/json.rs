@@ -16,8 +16,7 @@ pub extern "C" fn rssn_json_sturm_sequence(
     var_ptr : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
-        from_json_string(expr_json);
+    let expr : Option<Expr> = from_json_string(expr_json);
 
     if let Some(e) = expr {
 
@@ -28,26 +27,18 @@ pub extern "C" fn rssn_json_sturm_sequence(
                 return std::ptr::null_mut();
             }
 
-            let var_cstr =
-                CStr::from_ptr(var_ptr);
+            let var_cstr = CStr::from_ptr(var_ptr);
 
             let var_str = match var_cstr.to_str() {
                 | Ok(s) => s,
                 | Err(_) => return std::ptr::null_mut(),
             };
 
-            let poly =
-                expr_to_sparse_poly(
-                    &e,
-                    &[var_str],
-                );
+            let poly = expr_to_sparse_poly(&e, &[var_str]);
 
-            let seq = sturm_sequence(
-                &poly,
-                var_str,
-            );
+            let seq = sturm_sequence(&poly, var_str);
 
-            let expr_seq: Vec<Expr> = seq
+            let expr_seq : Vec<Expr> = seq
                 .into_iter()
                 .map(|p| sparse_poly_to_expr(&p))
                 .collect();
@@ -70,8 +61,7 @@ pub extern "C" fn rssn_json_count_real_roots_in_interval(
     b : f64,
 ) -> i64 {
 
-    let expr : Option<Expr> =
-        from_json_string(expr_json);
+    let expr : Option<Expr> = from_json_string(expr_json);
 
     if let Some(e) = expr {
 
@@ -82,25 +72,16 @@ pub extern "C" fn rssn_json_count_real_roots_in_interval(
                 return -1;
             }
 
-            let var_cstr =
-                CStr::from_ptr(var_ptr);
+            let var_cstr = CStr::from_ptr(var_ptr);
 
-            let var_str = match var_cstr
-                .to_str()
-            {
+            let var_str = match var_cstr.to_str() {
                 | Ok(s) => s,
                 | Err(_) => return -1,
             };
 
-            let poly =
-                expr_to_sparse_poly(
-                    &e,
-                    &[var_str],
-                );
+            let poly = expr_to_sparse_poly(&e, &[var_str]);
 
-            match count_real_roots_in_interval(
-                &poly, var_str, a, b,
-            ) {
+            match count_real_roots_in_interval(&poly, var_str, a, b) {
                 | Ok(count) => count as i64,
                 | Err(_) => -1,
             }
@@ -120,8 +101,7 @@ pub extern "C" fn rssn_json_isolate_real_roots(
     precision : f64,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
-        from_json_string(expr_json);
+    let expr : Option<Expr> = from_json_string(expr_json);
 
     if let Some(e) = expr {
 
@@ -132,33 +112,22 @@ pub extern "C" fn rssn_json_isolate_real_roots(
                 return std::ptr::null_mut();
             }
 
-            let var_cstr =
-                CStr::from_ptr(var_ptr);
+            let var_cstr = CStr::from_ptr(var_ptr);
 
             let var_str = match var_cstr.to_str() {
                 | Ok(s) => s,
                 | Err(_) => return std::ptr::null_mut(),
             };
 
-            let poly =
-                expr_to_sparse_poly(
-                    &e,
-                    &[var_str],
-                );
+            let poly = expr_to_sparse_poly(&e, &[var_str]);
 
             match isolate_real_roots(
                 &poly,
                 var_str,
                 precision,
             ) {
-                | Ok(roots) => {
-                    to_json_string(
-                        &roots,
-                    )
-                },
-                | Err(_) => {
-                    std::ptr::null_mut()
-                },
+                | Ok(roots) => to_json_string(&roots),
+                | Err(_) => std::ptr::null_mut(),
             }
         }
     } else {

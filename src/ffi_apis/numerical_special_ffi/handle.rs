@@ -5,27 +5,21 @@ use crate::numerical::special;
 // Gamma functions
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_gamma(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_gamma(x : f64) -> f64 {
 
     special::gamma_numerical(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_ln_gamma(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_ln_gamma(x : f64) -> f64 {
 
     special::ln_gamma_numerical(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_digamma(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_digamma(x : f64) -> f64 {
 
     special::digamma_numerical(x)
 }
@@ -37,9 +31,7 @@ pub extern "C" fn rssn_num_special_lower_incomplete_gamma(
     x : f64,
 ) -> f64 {
 
-    special::lower_incomplete_gamma(
-        s, x,
-    )
+    special::lower_incomplete_gamma(s, x)
 }
 
 #[no_mangle]
@@ -49,9 +41,7 @@ pub extern "C" fn rssn_num_special_upper_incomplete_gamma(
     x : f64,
 ) -> f64 {
 
-    special::upper_incomplete_gamma(
-        s, x,
-    )
+    special::upper_incomplete_gamma(s, x)
 }
 
 // Beta functions
@@ -89,27 +79,21 @@ pub extern "C" fn rssn_num_special_regularized_beta(
 // Error functions
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_erf(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_erf(x : f64) -> f64 {
 
     special::erf_numerical(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_erfc(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_erfc(x : f64) -> f64 {
 
     special::erfc_numerical(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_inverse_erf(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_inverse_erf(x : f64) -> f64 {
 
     special::inverse_erf_numerical(x)
 }
@@ -117,54 +101,42 @@ pub extern "C" fn rssn_num_special_inverse_erf(
 // Bessel functions
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_bessel_j0(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_bessel_j0(x : f64) -> f64 {
 
     special::bessel_j0(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_bessel_j1(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_bessel_j1(x : f64) -> f64 {
 
     special::bessel_j1(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_bessel_y0(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_bessel_y0(x : f64) -> f64 {
 
     special::bessel_y0(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_bessel_y1(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_bessel_y1(x : f64) -> f64 {
 
     special::bessel_y1(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_bessel_i0(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_bessel_i0(x : f64) -> f64 {
 
     special::bessel_i0(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_bessel_i1(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_bessel_i1(x : f64) -> f64 {
 
     special::bessel_i1(x)
 }
@@ -223,18 +195,14 @@ pub extern "C" fn rssn_num_special_laguerre_l(
 // Other special functions
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_factorial(
-    n : u64
-) -> f64 {
+pub extern "C" fn rssn_num_special_factorial(n : u64) -> f64 {
 
     special::factorial(n)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_double_factorial(
-    n : u64
-) -> f64 {
+pub extern "C" fn rssn_num_special_double_factorial(n : u64) -> f64 {
 
     special::double_factorial(n)
 }
@@ -251,45 +219,35 @@ pub extern "C" fn rssn_num_special_binomial(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_zeta(
-    s : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_zeta(s : f64) -> f64 {
 
     special::riemann_zeta(s)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_sinc(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_sinc(x : f64) -> f64 {
 
     special::sinc(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_sigmoid(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_sigmoid(x : f64) -> f64 {
 
     special::sigmoid(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_softplus(
-    x : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_softplus(x : f64) -> f64 {
 
     special::softplus(x)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_special_logit(
-    p : f64
-) -> f64 {
+pub extern "C" fn rssn_num_special_logit(p : f64) -> f64 {
 
     special::logit(p)
 }

@@ -2,9 +2,7 @@
 //! Responsible for loading, managing, and interacting with plugins.
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
-#![allow(
-    clippy::no_mangle_with_rust_abi
-)]
+#![allow(clippy::no_mangle_with_rust_abi)]
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -30,10 +28,7 @@ use crate::symbolic::core::Expr;
 /// Each plugin library must export a C-compatible function named `_plugin_create`
 /// with this signature, returning a pointer to a Box containing the plugin trait object.
 
-type PluginCreate =
-    unsafe extern "C" fn() -> *mut Box<
-        dyn Plugin,
-    >;
+type PluginCreate = unsafe extern "C" fn() -> *mut Box<dyn Plugin>;
 
 use abi_stable::std_types::RBox;
 
@@ -48,34 +43,16 @@ pub struct ManagedPlugin {
 }
 
 pub struct ManagedStablePlugin {
-    pub plugin : StablePlugin_TO<
-        'static,
-        RBox<()>,
-    >,
+    pub plugin : StablePlugin_TO<'static, RBox<()>>,
     pub health : RwLock<PluginHealth>,
 }
 
 /// Manages the lifecycle of all loaded plugins.
 
 pub struct PluginManager {
-    pub plugins : Arc<
-        RwLock<
-            HashMap<
-                String,
-                ManagedPlugin,
-            >,
-        >,
-    >,
-    pub stable_plugins : Arc<
-        RwLock<
-            HashMap<
-                String,
-                ManagedStablePlugin,
-            >,
-        >,
-    >,
-    pub health_check_thread :
-        Option<thread::JoinHandle<()>>,
+    pub plugins : Arc<RwLock<HashMap<String, ManagedPlugin>>>,
+    pub stable_plugins : Arc<RwLock<HashMap<String, ManagedStablePlugin>>>,
+    pub health_check_thread : Option<thread::JoinHandle<()>>,
     pub stop_signal : Arc<AtomicBool>,
     pub libraries : Vec<Library>,
 }
@@ -83,31 +60,27 @@ pub struct PluginManager {
 impl PluginManager {
     /// Creates a new `PluginManager` and loads plugins from a specified directory.
 
-    pub fn new(
-        plugin_dir : &str
-    ) -> Result<Self, Box<dyn Error>>
-    {
+    pub fn new(plugin_dir : &str) -> Result<Self, Box<dyn Error>> {
 
         let mut manager = PluginManager {
-            plugins: Arc::new(RwLock::new(
+            plugins : Arc::new(RwLock::new(
                 HashMap::new(),
             )),
-            stable_plugins: Arc::new(RwLock::new(
+            stable_plugins : Arc::new(RwLock::new(
                 HashMap::new(),
             )),
-            health_check_thread: None,
-            stop_signal: Arc::new(AtomicBool::new(
+            health_check_thread : None,
+            stop_signal : Arc::new(AtomicBool::new(
                 false,
             )),
-            libraries: Vec::new(),
+            libraries : Vec::new(),
         };
 
-        manager
-            .load_plugins(plugin_dir)?;
+        manager.load_plugins(plugin_dir)?;
 
-        manager.start_health_checks(
-            Duration::from_secs(30),
-        );
+        manager.start_health_checks(Duration::from_secs(
+            30,
+        ));
 
         Ok(manager)
     }
@@ -132,28 +105,13 @@ impl PluginManager {
         let stable_plugins_map = self
             .stable_plugins
             .read()
-            .expect(
-                "No data was found.",
-            );
+            .expect("No data was found.");
 
-        if let Some(managed_plugin) =
-            stable_plugins_map
-                .get(plugin_name)
-        {
+        if let Some(managed_plugin) = stable_plugins_map.get(plugin_name) {
 
-            let config =
-                config::standard(); // Get the configuration object
+            let config = config::standard(); // Get the configuration object
             let args_vec =
-                serde::encode_to_vec(
-                    args,
-                    config,
-                )
-                .map_err(|e| {
-
-                    PluginError::new(
-                        &e.to_string(),
-                    )
-                })?;
+                serde::encode_to_vec(args, config).map_err(|e| PluginError::new(&e.to_string()))?;
 
             let result_vec = managed_plugin
                 .plugin
@@ -164,8 +122,7 @@ impl PluginManager {
                 .into_result()
                 .map_err(|e| PluginError::new(&e.to_string()))?;
 
-            let config =
-                config::standard(); // Get the configuration object
+            let config = config::standard(); // Get the configuration object
             let (result_expr, _) = serde::decode_from_slice(&result_vec, config)
                 .map_err(|e| PluginError::new(&e.to_string()))?;
 
@@ -175,26 +132,18 @@ impl PluginManager {
         let plugins_map = self
             .plugins
             .read()
-            .expect(
-                "No data was found.",
-            );
+            .expect("No data was found.");
 
-        if let Some(managed_plugin) =
-            plugins_map.get(plugin_name)
-        {
+        if let Some(managed_plugin) = plugins_map.get(plugin_name) {
 
             return managed_plugin
                 .plugin
-                .execute(
-                    command,
-                    args,
-                );
+                .execute(command, args);
         }
 
         Err(PluginError::new(
             &format!(
-                "Plugin '{}' not \
-                 found.",
+                "Plugin '{}' not found.",
                 plugin_name
             ),
         ))
@@ -205,12 +154,9 @@ impl PluginManager {
     pub(crate) fn load_plugins(
         &mut self,
         directory : &str,
-    ) -> Result<(), Box<dyn Error>>
-    {
+    ) -> Result<(), Box<dyn Error>> {
 
-        for entry in std::fs::read_dir(
-            directory,
-        )? {
+        for entry in std::fs::read_dir(directory)? {
 
             let entry = entry?;
 
@@ -246,11 +192,9 @@ impl PluginManager {
     unsafe fn load_stable_plugin(
         &mut self,
         library_path : &std::path::Path,
-    ) -> Result<(), Box<dyn Error>>
-    {
+    ) -> Result<(), Box<dyn Error>> {
 
-        let library =
-            Library::new(library_path)?;
+        let library = Library::new(library_path)?;
 
         self.libraries
             .push(library);
@@ -260,76 +204,47 @@ impl PluginManager {
             .last()
             .expect("Library invalid");
 
-        let module : Symbol<
-            '_,
-            *const StablePluginModule,
-        > = library.get(
-            b"STABLE_PLUGIN_MODULE",
-        )?;
+        let module : Symbol<'_, *const StablePluginModule> =
+            library.get(b"STABLE_PLUGIN_MODULE")?;
 
         let module = &**module;
 
         let plugin = (module.new)();
 
-        let plugin_name =
-            (module.name)();
+        let plugin_name = (module.name)();
 
-        let plugin_api_version =
-            (module.version)();
+        let plugin_api_version = (module.version)();
 
-        let crate_version =
-            env!("CARGO_PKG_VERSION");
+        let crate_version = env!("CARGO_PKG_VERSION");
 
-        let (p_major, p_minor) =
-            parse_version(
-                &plugin_api_version,
-            )?;
+        let (p_major, p_minor) = parse_version(&plugin_api_version)?;
 
-        let (c_major, c_minor) =
-            parse_version(
-                crate_version,
-            )?;
+        let (c_major, c_minor) = parse_version(crate_version)?;
 
-        if p_major != c_major
-            || p_minor != c_minor
-        {
+        if p_major != c_major || p_minor != c_minor {
 
             return Err(format!(
-                "Plugin '{}' has \
-                 incompatible API \
-                 version {}. Expected \
-                 a version compatible \
-                 with {}.",
-                plugin_name,
-                plugin_api_version,
-                crate_version
+                "Plugin '{}' has incompatible API version {}. Expected a version compatible with \
+                 {}.",
+                plugin_name, plugin_api_version, crate_version
             )
             .into());
         }
 
         println!(
-            "Successfully loaded \
-             stable plugin: {} (API \
-             version: {})",
-            plugin_name,
-            plugin_api_version
+            "Successfully loaded stable plugin: {} (API version: {})",
+            plugin_name, plugin_api_version
         );
 
         plugin
             .on_load()
             .into_result()
-            .map_err(|e| {
+            .map_err(|e| e.to_string())?;
 
-                e.to_string()
-            })?;
-
-        let managed_plugin =
-            ManagedStablePlugin {
-                plugin,
-                health : RwLock::new(
-                    PluginHealth::Ok,
-                ),
-            };
+        let managed_plugin = ManagedStablePlugin {
+            plugin,
+            health : RwLock::new(PluginHealth::Ok),
+        };
 
         self.stable_plugins
             .write()
@@ -347,11 +262,9 @@ impl PluginManager {
     unsafe fn load_plugin(
         &mut self,
         library_path : &std::path::Path,
-    ) -> Result<(), Box<dyn Error>>
-    {
+    ) -> Result<(), Box<dyn Error>> {
 
-        let library =
-            Library::new(library_path)?;
+        let library = Library::new(library_path)?;
 
         self.libraries
             .push(library);
@@ -361,47 +274,27 @@ impl PluginManager {
             .last()
             .expect("Library invalid");
 
-        let constructor : Symbol<
-            '_,
-            PluginCreate,
-        > = library
-            .get(b"_plugin_create")?;
+        let constructor : Symbol<'_, PluginCreate> = library.get(b"_plugin_create")?;
 
-        let plugin_box_ptr =
-            constructor();
+        let plugin_box_ptr = constructor();
 
-        let plugin_box = Box::from_raw(
-            plugin_box_ptr,
-        );
+        let plugin_box = Box::from_raw(plugin_box_ptr);
 
         let plugin = *plugin_box;
 
-        let plugin_api_version =
-            plugin.api_version();
+        let plugin_api_version = plugin.api_version();
 
-        let crate_version =
-            env!("CARGO_PKG_VERSION");
+        let crate_version = env!("CARGO_PKG_VERSION");
 
-        let (p_major, p_minor) =
-            parse_version(
-                plugin_api_version,
-            )?;
+        let (p_major, p_minor) = parse_version(plugin_api_version)?;
 
-        let (c_major, c_minor) =
-            parse_version(
-                crate_version,
-            )?;
+        let (c_major, c_minor) = parse_version(crate_version)?;
 
-        if p_major != c_major
-            || p_minor != c_minor
-        {
+        if p_major != c_major || p_minor != c_minor {
 
             return Err(format!(
-                "Plugin '{}' has \
-                 incompatible API \
-                 version {}. Expected \
-                 a version compatible \
-                 with {}.",
+                "Plugin '{}' has incompatible API version {}. Expected a version compatible with \
+                 {}.",
                 plugin.name(),
                 plugin_api_version,
                 crate_version
@@ -410,22 +303,17 @@ impl PluginManager {
         }
 
         println!(
-            "Successfully loaded \
-             plugin: {} (API version: \
-             {})",
+            "Successfully loaded plugin: {} (API version: {})",
             plugin.name(),
             plugin_api_version
         );
 
         plugin.on_load()?;
 
-        let managed_plugin =
-            ManagedPlugin {
-                plugin,
-                health : RwLock::new(
-                    PluginHealth::Ok,
-                ),
-            };
+        let managed_plugin = ManagedPlugin {
+            plugin,
+            health : RwLock::new(PluginHealth::Ok),
+        };
 
         self.plugins
             .write()
@@ -448,23 +336,15 @@ impl PluginManager {
         interval : Duration,
     ) {
 
-        let plugins_clone =
-            Arc::clone(&self.plugins);
+        let plugins_clone = Arc::clone(&self.plugins);
 
-        let stable_plugins_clone =
-            Arc::clone(
-                &self.stable_plugins,
-            );
+        let stable_plugins_clone = Arc::clone(&self.stable_plugins);
 
-        let stop_signal_clone =
-            Arc::clone(
-                &self.stop_signal,
-            );
+        let stop_signal_clone = Arc::clone(&self.stop_signal);
 
-        let handle = thread::spawn(
-            move || {
+        let handle = thread::spawn(move || {
 
-                while !stop_signal_clone.load(Ordering::SeqCst) {
+            while !stop_signal_clone.load(Ordering::SeqCst) {
 
                 println!("Running plugin health checks...");
 
@@ -517,26 +397,17 @@ impl PluginManager {
                 thread::sleep(interval);
             }
 
-                println!(
-                    "Plugin health \
-                     check thread \
-                     shutting down."
-                );
-            },
-        );
+            println!("Plugin health check thread shutting down.");
+        });
 
-        self.health_check_thread =
-            Some(handle);
+        self.health_check_thread = Some(handle);
     }
 }
 
 impl Drop for PluginManager {
     fn drop(&mut self) {
 
-        println!(
-            "Shutting down plugin \
-             manager..."
-        );
+        println!("Shutting down plugin manager...");
 
         self.stop_signal
             .store(
@@ -551,40 +422,27 @@ impl Drop for PluginManager {
 
             handle
                 .join()
-                .expect(
-                    "Failed to join \
-                     health check \
-                     thread",
-                );
+                .expect("Failed to join health check thread");
         }
 
-        println!(
-            "Plugin manager shut down."
-        );
+        println!("Plugin manager shut down.");
     }
 }
 
 /// A helper to parse a semantic version string into (major, minor) components.
 
-pub(crate) fn parse_version(
-    version : &str
-) -> Result<(u32, u32), Box<dyn Error>>
-{
+pub(crate) fn parse_version(version : &str) -> Result<(u32, u32), Box<dyn Error>> {
 
     let mut parts = version.split('.');
 
     let major = parts
         .next()
-        .ok_or(
-            "Invalid version string",
-        )?
+        .ok_or("Invalid version string")?
         .parse::<u32>()?;
 
     let minor = parts
         .next()
-        .ok_or(
-            "Invalid version string",
-        )?
+        .ok_or("Invalid version string")?
         .parse::<u32>()?;
 
     Ok((major, minor))

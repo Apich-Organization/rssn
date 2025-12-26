@@ -28,8 +28,7 @@ pub fn csr_from_triplets(
     triplets : &[(usize, usize, f64)],
 ) -> CsMat<f64> {
 
-    let mut mat =
-        TriMat::new((rows, cols));
+    let mut mat = TriMat::new((rows, cols));
 
     for &(r, c, v) in triplets {
 
@@ -58,16 +57,12 @@ pub fn sp_mat_vec_mul(
 
     if matrix.cols() != vector.len() {
 
-        return Err("Matrix and \
-                    vector dimensions \
-                    are not compatible \
-                    for multiplication.\
-                    "
-        .to_string());
+        return Err(
+            "Matrix and vector dimensions are not compatible for multiplication.".to_string(),
+        );
     }
 
-    let mut result =
-        vec![0.0; matrix.rows()];
+    let mut result = vec![0.0; matrix.rows()];
 
     for (i, row) in matrix
         .outer_iterator()
@@ -101,23 +96,19 @@ pub fn sp_mat_vec_mul(
 /// Panics if the input array is not 2D.
 #[must_use]
 
-pub fn to_csr(
-    arr : &Array
-) -> CsMat<f64> {
+pub fn to_csr(arr : &Array) -> CsMat<f64> {
 
     assert_eq!(
         arr.ndim(),
         2,
-        "Input array must be 2D for \
-         CSR conversion."
+        "Input array must be 2D for CSR conversion."
     );
 
     let rows = arr.shape()[0];
 
     let cols = arr.shape()[1];
 
-    let mut indptr =
-        Vec::with_capacity(rows + 1);
+    let mut indptr = Vec::with_capacity(rows + 1);
 
     let mut indices = Vec::new();
 
@@ -164,9 +155,7 @@ pub fn to_csr(
 /// An `ndarray::Array2<f64>` representing the dense matrix.
 #[must_use]
 
-pub fn to_dense(
-    matrix : &CsMat<f64>
-) -> Array2<f64> {
+pub fn to_dense(matrix : &CsMat<f64>) -> Array2<f64> {
 
     matrix.to_dense()
 }
@@ -186,12 +175,9 @@ use crate::numerical::matrix::Matrix;
 /// The rank of the matrix as a `usize`.
 #[must_use]
 
-pub fn rank(
-    matrix : &CsMat<f64>
-) -> usize {
+pub fn rank(matrix : &CsMat<f64>) -> usize {
 
-    let dense_array2 : Array2<f64> =
-        matrix.to_dense();
+    let dense_array2 : Array2<f64> = matrix.to_dense();
 
     let rows = dense_array2.nrows();
 
@@ -213,9 +199,7 @@ pub fn rank(
 /// Transposes a sparse matrix.
 #[must_use]
 
-pub fn transpose(
-    matrix : &CsMat<f64>
-) -> CsMat<f64> {
+pub fn transpose(matrix : &CsMat<f64>) -> CsMat<f64> {
 
     matrix
         .clone()
@@ -224,25 +208,18 @@ pub fn transpose(
 
 /// Computes the trace of a square sparse matrix.
 
-pub fn trace(
-    matrix : &CsMat<f64>
-) -> Result<f64, String> {
+pub fn trace(matrix : &CsMat<f64>) -> Result<f64, String> {
 
     if matrix.rows() != matrix.cols() {
 
-        return Err("Matrix must be \
-                    square to compute \
-                    trace."
-            .to_string());
+        return Err("Matrix must be square to compute trace.".to_string());
     }
 
     let mut sum = 0.0;
 
     for i in 0 .. matrix.rows() {
 
-        if let Some(&val) =
-            matrix.get(i, i)
-        {
+        if let Some(&val) = matrix.get(i, i) {
 
             sum += val;
         }
@@ -271,8 +248,7 @@ pub fn is_symmetric(
             .copied()
             .unwrap_or(0.0);
 
-        if (val - other).abs() > epsilon
-        {
+        if (val - other).abs() > epsilon {
 
             return false;
         }
@@ -284,9 +260,7 @@ pub fn is_symmetric(
 /// Checks if the sparse matrix is diagonal.
 #[must_use]
 
-pub fn is_diagonal(
-    matrix : &CsMat<f64>
-) -> bool {
+pub fn is_diagonal(matrix : &CsMat<f64>) -> bool {
 
     for (&val, (r, c)) in matrix {
 
@@ -302,9 +276,7 @@ pub fn is_diagonal(
 /// Computes the Frobenius norm of a sparse matrix.
 #[must_use]
 
-pub fn frobenius_norm(
-    matrix : &CsMat<f64>
-) -> f64 {
+pub fn frobenius_norm(matrix : &CsMat<f64>) -> f64 {
 
     let mut sum = 0.0;
 
@@ -319,12 +291,9 @@ pub fn frobenius_norm(
 /// Computes the L1 norm of a sparse matrix (max column sum).
 #[must_use]
 
-pub fn l1_norm(
-    matrix : &CsMat<f64>
-) -> f64 {
+pub fn l1_norm(matrix : &CsMat<f64>) -> f64 {
 
-    let mut col_sums =
-        vec![0.0; matrix.cols()];
+    let mut col_sums = vec![0.0; matrix.cols()];
 
     for (val, (_, c)) in matrix {
 
@@ -347,9 +316,7 @@ pub fn l1_norm(
 /// Computes the Linf norm of a sparse matrix (max row sum).
 #[must_use]
 
-pub fn linf_norm(
-    matrix : &CsMat<f64>
-) -> f64 {
+pub fn linf_norm(matrix : &CsMat<f64>) -> f64 {
 
     let mut max_sum = 0.0;
 
@@ -375,9 +342,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 /// A serializable representation of a sparse matrix in CSR format.
-#[derive(
-    Serialize, Deserialize, Debug, Clone,
-)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 
 pub struct SparseMatrixData {
     pub rows : usize,
@@ -387,9 +352,7 @@ pub struct SparseMatrixData {
     pub data : Vec<f64>,
 }
 
-impl From<&CsMat<f64>>
-    for SparseMatrixData
-{
+impl From<&CsMat<f64>> for SparseMatrixData {
     fn from(mat : &CsMat<f64>) -> Self {
 
         Self {
@@ -411,9 +374,7 @@ impl From<&CsMat<f64>>
 impl SparseMatrixData {
     #[must_use]
 
-    pub fn to_csmat(
-        &self
-    ) -> CsMat<f64> {
+    pub fn to_csmat(&self) -> CsMat<f64> {
 
         CsMat::new(
             (self.rows, self.cols),
@@ -434,8 +395,7 @@ mod tests {
 
     #[test]
 
-    pub(crate) fn test_csr_from_triplets(
-    ) {
+    pub(crate) fn test_csr_from_triplets() {
 
         let triplets = vec![
             (0, 0, 1.0),
@@ -443,11 +403,7 @@ mod tests {
             (2, 1, 3.0),
         ];
 
-        let mat = csr_from_triplets(
-            3,
-            3,
-            &triplets,
-        );
+        let mat = csr_from_triplets(3, 3, &triplets);
 
         assert_eq!(mat.rows(), 3);
 
@@ -475,8 +431,7 @@ mod tests {
 
     #[test]
 
-    pub(crate) fn test_sp_mat_vec_mul()
-    {
+    pub(crate) fn test_sp_mat_vec_mul() {
 
         let triplets = vec![
             (0, 0, 1.0),
@@ -484,33 +439,24 @@ mod tests {
             (2, 1, 3.0),
         ];
 
-        let mat = csr_from_triplets(
-            3,
-            3,
-            &triplets,
-        );
+        let mat = csr_from_triplets(3, 3, &triplets);
 
-        let vec =
-            vec![10.0, 20.0, 30.0];
+        let vec = vec![10.0, 20.0, 30.0];
 
-        let result =
-            sp_mat_vec_mul(&mat, &vec);
+        let result = sp_mat_vec_mul(&mat, &vec);
 
         match result {
             | Ok(res) => {
 
                 assert_eq!(
                     res,
-                    vec![
-                        70.0, 0.0, 60.0
-                    ]
+                    vec![70.0, 0.0, 60.0]
                 )
             },
             | Err(e) => {
 
                 panic!(
-                    "sp_mat_vec_mul \
-                     failed with: {}",
+                    "sp_mat_vec_mul failed with: {}",
                     e
                 )
             },
@@ -528,8 +474,7 @@ mod tests {
         ]
         .into_dyn();
 
-        let csr_mat =
-            to_csr(&dense_arr);
+        let csr_mat = to_csr(&dense_arr);
 
         assert_eq!(csr_mat.rows(), 3);
 
@@ -594,19 +539,12 @@ pub fn solve_conjugate_gradient(
 
     if a.rows() != n || b.len() != n {
 
-        return Err("Matrix and \
-                    vector dimensions \
-                    are incompatible.\
-                    "
-        .to_string());
+        return Err("Matrix and vector dimensions are incompatible.".to_string());
     }
 
     let mut x = x0
         .cloned()
-        .unwrap_or_else(|| {
-
-            Array1::zeros(n)
-        });
+        .unwrap_or_else(|| Array1::zeros(n));
 
     let mut r = b - &(a * &x);
 
@@ -636,8 +574,7 @@ pub fn solve_conjugate_gradient(
             break;
         }
 
-        p = &r
-            + &(&p * (rs_new / rs_old));
+        p = &r + &(&p * (rs_new / rs_old));
 
         rs_old = rs_new;
     }

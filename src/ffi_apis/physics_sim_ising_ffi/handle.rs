@@ -1,9 +1,9 @@
 //! Handle-based FFI API for physics sim Ising statistical functions.
 
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_sim::ising_statistical::IsingParameters;
 use crate::physics::physics_sim::ising_statistical::{
     self,
-    IsingParameters,
 };
 
 #[repr(C)]
@@ -30,8 +30,7 @@ pub extern "C" fn rssn_physics_sim_ising_run(
         mc_steps,
     };
 
-    let (grid, mag) =
-        ising_statistical::run_ising_simulation(&params);
+    let (grid, mag) = ising_statistical::run_ising_simulation(&params);
 
     let grid_f64 : Vec<f64> = grid
         .into_iter()
@@ -45,9 +44,7 @@ pub extern "C" fn rssn_physics_sim_ising_run(
     );
 
     IsingResultHandle {
-        grid : Box::into_raw(Box::new(
-            matrix,
-        )),
+        grid : Box::into_raw(Box::new(matrix)),
         magnetization : mag,
     }
 }
@@ -55,16 +52,13 @@ pub extern "C" fn rssn_physics_sim_ising_run(
 /// Frees the Ising result handle.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_sim_ising_free_result(
-    handle : IsingResultHandle
-) {
+pub unsafe extern "C" fn rssn_physics_sim_ising_free_result(handle : IsingResultHandle) {
 
     if !handle
         .grid
         .is_null()
     {
 
-        let _ =
-            Box::from_raw(handle.grid);
+        let _ = Box::from_raw(handle.grid);
     }
 }

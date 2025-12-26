@@ -8,13 +8,12 @@ impl Computable for DummyComputable {
     fn compute(
         &self,
         _state : &mut State,
-        progress: &mut ComputationProgress,
+        progress : &mut ComputationProgress,
     ) -> Result<(), String> {
 
         progress.percentage = 100.0;
 
-        progress.description =
-            "Done".to_string();
+        progress.description = "Done".to_string();
 
         Ok(())
     }
@@ -28,12 +27,10 @@ fn test_computable() {
 
     let mut state = State::new();
 
-    let mut progress =
-        ComputationProgress {
-            percentage : 0.0,
-            description : "Starting"
-                .to_string(),
-        };
+    let mut progress = ComputationProgress {
+        percentage : 0.0,
+        description : "Starting".to_string(),
+    };
 
     let result = computable.compute(
         &mut state,

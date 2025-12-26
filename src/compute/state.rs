@@ -5,9 +5,7 @@ use serde::Serialize;
 ///
 /// This struct holds intermediate values and other context information
 /// required during a computation.
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct State {
     // Placeholder for now. This will hold the intermediate state of a computation.
@@ -22,8 +20,7 @@ impl State {
     pub const fn new() -> Self {
 
         Self {
-            intermediate_value:
-                String::new(),
+            intermediate_value : String::new(),
         }
     }
 }

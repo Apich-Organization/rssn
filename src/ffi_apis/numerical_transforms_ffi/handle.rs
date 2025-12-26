@@ -24,40 +24,29 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
     len : usize,
 ) -> i32 {
 
-    if real.is_null() || imag.is_null()
-    {
+    if real.is_null() || imag.is_null() {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_fft_inplace"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_fft_inplace".to_string());
 
         return -1;
     }
 
     if !len.is_power_of_two() {
 
-        update_last_error(
-            "FFT length must be a \
-             power of two for \
-             in-place operation."
-                .to_string(),
-        );
+        update_last_error("FFT length must be a power of two for in-place operation.".to_string());
 
         return -1;
     }
 
-    let mut data : Vec<Complex<f64>> =
-        (0 .. len)
-            .map(|i| {
+    let mut data : Vec<Complex<f64>> = (0 .. len)
+        .map(|i| {
 
-                Complex::new(
-                    *real.add(i),
-                    *imag.add(i),
-                )
-            })
-            .collect();
+            Complex::new(
+                *real.add(i),
+                *imag.add(i),
+            )
+        })
+        .collect();
 
     transforms::fft_slice(&mut data);
 
@@ -80,40 +69,29 @@ pub unsafe extern "C" fn rssn_num_ifft_inplace(
     len : usize,
 ) -> i32 {
 
-    if real.is_null() || imag.is_null()
-    {
+    if real.is_null() || imag.is_null() {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_ifft_inplace"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_ifft_inplace".to_string());
 
         return -1;
     }
 
     if !len.is_power_of_two() {
 
-        update_last_error(
-            "IFFT length must be a \
-             power of two for \
-             in-place operation."
-                .to_string(),
-        );
+        update_last_error("IFFT length must be a power of two for in-place operation.".to_string());
 
         return -1;
     }
 
-    let mut data : Vec<Complex<f64>> =
-        (0 .. len)
-            .map(|i| {
+    let mut data : Vec<Complex<f64>> = (0 .. len)
+        .map(|i| {
 
-                Complex::new(
-                    *real.add(i),
-                    *imag.add(i),
-                )
-            })
-            .collect();
+            Complex::new(
+                *real.add(i),
+                *imag.add(i),
+            )
+        })
+        .collect();
 
     transforms::ifft_slice(&mut data);
 

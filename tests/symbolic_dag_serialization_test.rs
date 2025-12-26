@@ -15,9 +15,7 @@ fn test_dag_serialization_json() {
     assert!(expr.is_dag());
 
     // Serialize to JSON
-    let json =
-        serde_json::to_string(&expr)
-            .unwrap();
+    let json = serde_json::to_string(&expr).unwrap();
 
     println!(
         "Serialized: {}",
@@ -25,9 +23,7 @@ fn test_dag_serialization_json() {
     );
 
     // Deserialize from JSON
-    let deserialized : Expr =
-        serde_json::from_str(&json)
-            .unwrap();
+    let deserialized : Expr = serde_json::from_str(&json).unwrap();
 
     // Should still be DAG
     assert!(deserialized.is_dag());
@@ -49,12 +45,11 @@ fn test_dag_serialization_bincode() {
     assert!(expr.is_dag());
 
     // Serialize to bincode
-    let bytes =
-        bincode::serde::encode_to_vec(
-            &expr,
-            bincode::config::standard(),
-        )
-        .unwrap();
+    let bytes = bincode::serde::encode_to_vec(
+        &expr,
+        bincode::config::standard(),
+    )
+    .unwrap();
 
     println!(
         "Serialized to {} bytes",
@@ -62,7 +57,7 @@ fn test_dag_serialization_bincode() {
     );
 
     // Deserialize from bincode
-    let (deserialized, _): (Expr, usize) = bincode::serde::decode_from_slice(
+    let (deserialized, _) : (Expr, usize) = bincode::serde::decode_from_slice(
         &bytes,
         bincode::config::standard(),
     )
@@ -94,13 +89,9 @@ fn test_nested_dag_serialization() {
     assert!(expr.is_dag());
 
     // Serialize and deserialize
-    let json =
-        serde_json::to_string(&expr)
-            .unwrap();
+    let json = serde_json::to_string(&expr).unwrap();
 
-    let deserialized : Expr =
-        serde_json::from_str(&json)
-            .unwrap();
+    let deserialized : Expr = serde_json::from_str(&json).unwrap();
 
     assert!(deserialized.is_dag());
 
@@ -109,8 +100,7 @@ fn test_nested_dag_serialization() {
 
 #[test]
 
-fn test_ast_serialization_still_works()
-{
+fn test_ast_serialization_still_works() {
 
     // Create an AST expression (old style)
     let ast = Expr::Add(
@@ -123,13 +113,9 @@ fn test_ast_serialization_still_works()
     assert!(!ast.is_dag());
 
     // Should still serialize
-    let json =
-        serde_json::to_string(&ast)
-            .unwrap();
+    let json = serde_json::to_string(&ast).unwrap();
 
-    let deserialized : Expr =
-        serde_json::from_str(&json)
-            .unwrap();
+    let deserialized : Expr = serde_json::from_str(&json).unwrap();
 
     // Deserialized might be AST or DAG depending on implementation
     // Just verify it works
@@ -146,21 +132,14 @@ fn test_dag_with_sharing() {
     // Create an expression with shared subexpressions
     let x = Expr::new_variable("x");
 
-    let expr = Expr::new_add(
-        x.clone(),
-        x.clone(),
-    );
+    let expr = Expr::new_add(x.clone(), x.clone());
 
     assert!(expr.is_dag());
 
     // Serialize and deserialize
-    let json =
-        serde_json::to_string(&expr)
-            .unwrap();
+    let json = serde_json::to_string(&expr).unwrap();
 
-    let deserialized : Expr =
-        serde_json::from_str(&json)
-            .unwrap();
+    let deserialized : Expr = serde_json::from_str(&json).unwrap();
 
     assert!(deserialized.is_dag());
     // Note: Sharing might not be preserved across serialization

@@ -9,18 +9,13 @@ use std::os::raw::c_char;
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_build_date(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_build_date() -> *mut c_char {
 
-    let date =
-        crate::constant::get_build_date(
-        );
+    let date = crate::constant::get_build_date();
 
     match CString::new(date) {
         | Ok(c_str) => c_str.into_raw(),
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -28,18 +23,13 @@ pub extern "C" fn rssn_get_build_date(
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_commit_sha(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_commit_sha() -> *mut c_char {
 
-    let sha =
-        crate::constant::get_commit_sha(
-        );
+    let sha = crate::constant::get_commit_sha();
 
     match CString::new(sha) {
         | Ok(c_str) => c_str.into_raw(),
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -47,16 +37,13 @@ pub extern "C" fn rssn_get_commit_sha(
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_rustc_version(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_rustc_version() -> *mut c_char {
 
     let version = crate::constant::get_rustc_version();
 
     match CString::new(version) {
         | Ok(c_str) => c_str.into_raw(),
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -64,16 +51,13 @@ pub extern "C" fn rssn_get_rustc_version(
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_cargo_target_triple(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_cargo_target_triple() -> *mut c_char {
 
     let triple = crate::constant::get_cargo_target_triple();
 
     match CString::new(triple) {
         | Ok(c_str) => c_str.into_raw(),
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -81,15 +65,12 @@ pub extern "C" fn rssn_get_cargo_target_triple(
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_system_info(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_system_info() -> *mut c_char {
 
     let info = crate::constant::get_system_info();
 
     match CString::new(info) {
         | Ok(c_str) => c_str.into_raw(),
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }

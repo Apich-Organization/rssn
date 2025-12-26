@@ -11,20 +11,14 @@ use crate::symbolic::stats::mean;
 use crate::symbolic::stats::variance;
 
 /// Represents a formal hypothesis test.
-#[derive(
-    Debug,
-    Clone,
-    serde::Serialize,
-    serde::Deserialize,
-)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 
 pub struct HypothesisTest {
     pub null_hypothesis : Expr,
     pub alternative_hypothesis : Expr,
     pub test_statistic : Expr,
     pub p_value_formula : Expr,
-    pub degrees_of_freedom :
-        Option<Expr>,
+    pub degrees_of_freedom : Option<Expr>,
 }
 
 #[must_use]
@@ -34,9 +28,7 @@ pub fn one_sample_t_test_symbolic(
     target_mean : &Expr,
 ) -> HypothesisTest {
 
-    let n = Expr::Constant(
-        sample.len() as f64,
-    );
+    let n = Expr::Constant(sample.len() as f64);
 
     let mu = mean(sample);
 
@@ -51,15 +43,12 @@ pub fn one_sample_t_test_symbolic(
         Expr::Constant(1.0),
     );
 
-    let standard_error_sq =
-        Expr::new_div(
-            var,
-            n_minus_1.clone(),
-        );
-
-    let standard_error = Expr::new_sqrt(
-        standard_error_sq,
+    let standard_error_sq = Expr::new_div(
+        var,
+        n_minus_1.clone(),
     );
+
+    let standard_error = Expr::new_sqrt(standard_error_sq);
 
     let test_statistic = Expr::new_div(
         Expr::new_sub(
@@ -77,15 +66,9 @@ pub fn one_sample_t_test_symbolic(
         Expr::new_sub(
             Expr::Constant(1.0),
             Expr::new_apply(
-                Expr::Variable(
-                    "t_dist_cdf"
-                        .to_string(),
-                ),
+                Expr::Variable("t_dist_cdf".to_string()),
                 Expr::Tuple(vec![
-                    Expr::new_abs(
-                        test_statistic
-                            .clone(),
-                    ),
+                    Expr::new_abs(test_statistic.clone()),
                     df.clone(),
                 ]),
             ),
@@ -97,22 +80,14 @@ pub fn one_sample_t_test_symbolic(
             Arc::new(Expr::Variable(
                 "mu".to_string(),
             )),
-            Arc::new(
-                target_mean.clone(),
-            ),
+            Arc::new(target_mean.clone()),
         ),
-        alternative_hypothesis:
-            Expr::new_not(Expr::Eq(
-                Arc::new(
-                    Expr::Variable(
-                        "mu".to_string(
-                        ),
-                    ),
-                ),
-                Arc::new(
-                    target_mean.clone(),
-                ),
+        alternative_hypothesis : Expr::new_not(Expr::Eq(
+            Arc::new(Expr::Variable(
+                "mu".to_string(),
             )),
+            Arc::new(target_mean.clone()),
+        )),
         test_statistic,
         p_value_formula : p_value,
         degrees_of_freedom : Some(df),
@@ -128,13 +103,9 @@ pub fn two_sample_t_test_symbolic(
     mu_diff : &Expr,
 ) -> HypothesisTest {
 
-    let n1 = Expr::Constant(
-        sample1.len() as f64,
-    );
+    let n1 = Expr::Constant(sample1.len() as f64);
 
-    let n2 = Expr::Constant(
-        sample2.len() as f64,
-    );
+    let n2 = Expr::Constant(sample2.len() as f64);
 
     let mean1 = mean(sample1);
 
@@ -215,15 +186,9 @@ pub fn two_sample_t_test_symbolic(
         Expr::new_sub(
             Expr::Constant(1.0),
             Expr::new_apply(
-                Expr::Variable(
-                    "t_dist_cdf"
-                        .to_string(),
-                ),
+                Expr::Variable("t_dist_cdf".to_string()),
                 Expr::Tuple(vec![
-                    Expr::new_abs(
-                        test_statistic
-                            .clone(),
-                    ),
+                    Expr::new_abs(test_statistic.clone()),
                     df.clone(),
                 ]),
             ),
@@ -231,14 +196,14 @@ pub fn two_sample_t_test_symbolic(
     );
 
     HypothesisTest {
-        null_hypothesis: Expr::Eq(
+        null_hypothesis : Expr::Eq(
             Arc::new(Expr::new_sub(
                 Expr::Variable("mu1".to_string()),
                 Expr::Variable("mu2".to_string()),
             )),
             Arc::new(mu_diff.clone()),
         ),
-        alternative_hypothesis: Expr::new_not(Expr::Eq(
+        alternative_hypothesis : Expr::new_not(Expr::Eq(
             Arc::new(Expr::new_sub(
                 Expr::Variable("mu1".to_string()),
                 Expr::Variable("mu2".to_string()),
@@ -247,7 +212,7 @@ pub fn two_sample_t_test_symbolic(
         )),
         test_statistic,
         p_value_formula,
-        degrees_of_freedom: Some(df),
+        degrees_of_freedom : Some(df),
     }
 }
 
@@ -263,9 +228,7 @@ pub fn z_test_symbolic(
     pop_std_dev : &Expr,
 ) -> HypothesisTest {
 
-    let n = Expr::Constant(
-        sample.len() as f64,
-    );
+    let n = Expr::Constant(sample.len() as f64);
 
     let mu = mean(sample);
 
@@ -287,16 +250,10 @@ pub fn z_test_symbolic(
         Expr::new_sub(
             Expr::Constant(1.0),
             Expr::new_apply(
-                Expr::Variable(
-                    "normal_cdf"
-                        .to_string(),
-                ),
-                Expr::Tuple(vec![
-                    Expr::new_abs(
-                        test_statistic
-                            .clone(),
-                    ),
-                ]),
+                Expr::Variable("normal_cdf".to_string()),
+                Expr::Tuple(vec![Expr::new_abs(
+                    test_statistic.clone(),
+                )]),
             ),
         ),
     );
@@ -306,22 +263,14 @@ pub fn z_test_symbolic(
             Arc::new(Expr::Variable(
                 "mu".to_string(),
             )),
-            Arc::new(
-                target_mean.clone(),
-            ),
+            Arc::new(target_mean.clone()),
         ),
-        alternative_hypothesis:
-            Expr::new_not(Expr::Eq(
-                Arc::new(
-                    Expr::Variable(
-                        "mu".to_string(
-                        ),
-                    ),
-                ),
-                Arc::new(
-                    target_mean.clone(),
-                ),
+        alternative_hypothesis : Expr::new_not(Expr::Eq(
+            Arc::new(Expr::Variable(
+                "mu".to_string(),
             )),
+            Arc::new(target_mean.clone()),
+        )),
         test_statistic,
         p_value_formula : p_value,
         degrees_of_freedom : None,

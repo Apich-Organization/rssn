@@ -15,14 +15,7 @@ use crate::symbolic::core::Expr;
 pub type Value = String;
 
 /// The status of a computation.
-#[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 
 pub enum ComputationStatus {
     /// The computation is pending execution.
@@ -38,9 +31,7 @@ pub enum ComputationStatus {
 }
 
 /// Represents the progress of a computation.
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct ComputationProgress {
     /// The percentage of completion (0.0 to 100.0).
@@ -50,9 +41,7 @@ pub struct ComputationProgress {
 }
 
 /// Represents a computation task.
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct Computation {
     /// A unique identifier for the computation.
@@ -72,8 +61,7 @@ pub struct Computation {
         skip,
         default = "default_pause"
     )]
-    pub pause :
-        Arc<(Mutex<bool>, Condvar)>,
+    pub pause : Arc<(Mutex<bool>, Condvar)>,
     /// A signal to cancel the computation.
     #[serde(
         skip,
@@ -82,8 +70,7 @@ pub struct Computation {
     pub cancel_signal : Arc<AtomicBool>,
 }
 
-fn default_pause(
-) -> Arc<(Mutex<bool>, Condvar)> {
+fn default_pause() -> Arc<(Mutex<bool>, Condvar)> {
 
     Arc::new((
         Mutex::new(false),
@@ -91,8 +78,7 @@ fn default_pause(
     ))
 }
 
-fn default_cancel_signal(
-) -> Arc<AtomicBool> {
+fn default_cancel_signal() -> Arc<AtomicBool> {
 
     Arc::new(AtomicBool::new(
         false,

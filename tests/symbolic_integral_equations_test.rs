@@ -1,9 +1,7 @@
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::integral_equations::{
-    solve_airfoil_equation,
-    FredholmEquation,
-    VolterraEquation,
-};
+use rssn::symbolic::integral_equations::solve_airfoil_equation;
+use rssn::symbolic::integral_equations::FredholmEquation;
+use rssn::symbolic::integral_equations::VolterraEquation;
 use rssn::symbolic::simplify_dag::simplify;
 
 #[test]
@@ -25,17 +23,14 @@ fn test_fredholm_neumann_series() {
 
     let lambda = Expr::Constant(0.1);
 
-    let kernel = Expr::new_mul(
-        x.clone(),
-        t.clone(),
-    );
+    let kernel = Expr::new_mul(x.clone(), t.clone());
 
     let lower = Expr::Constant(0.0);
 
     let upper = Expr::Constant(1.0);
 
     let eq = FredholmEquation::new(
-        Expr::new_variable("y"), /* Placeholder */
+        Expr::new_variable("y"), // Placeholder
         f_x,
         lambda,
         kernel,
@@ -47,11 +42,9 @@ fn test_fredholm_neumann_series() {
 
     // 1st iteration: y_0 = x
     // y_1 = x + 0.1 * int_0^1 x*t * t dt = x + 0.1 * x * [t^3/3]_0^1 = x + 0.1*x/3
-    let solution =
-        eq.solve_neumann_series(1);
+    let solution = eq.solve_neumann_series(1);
 
-    let simplified =
-        simplify(&solution);
+    let simplified = simplify(&solution);
 
     // Expected: x + 0.0333... * x
     // Let's check if it contains x
@@ -82,10 +75,7 @@ fn test_fredholm_separable_kernel() {
 
     let lambda = Expr::Constant(1.0);
 
-    let kernel = Expr::new_mul(
-        x.clone(),
-        t.clone(),
-    ); // Not used directly in separable solver but good for context
+    let kernel = Expr::new_mul(x.clone(), t.clone()); // Not used directly in separable solver but good for context
     let lower = Expr::Constant(0.0);
 
     let upper = Expr::Constant(1.0);
@@ -106,10 +96,7 @@ fn test_fredholm_separable_kernel() {
     let b_funcs = vec![t.clone()];
 
     let solution = eq
-        .solve_separable_kernel(
-            a_funcs,
-            b_funcs,
-        )
+        .solve_separable_kernel(a_funcs, b_funcs)
         .unwrap();
 
     println!(
@@ -133,12 +120,9 @@ fn test_fredholm_separable_kernel() {
         &Expr::Constant(1.0),
     );
 
-    let simplified_val =
-        simplify(&val_at_1);
+    let simplified_val = simplify(&val_at_1);
 
-    if let Some(v) =
-        simplified_val.to_f64()
-    {
+    if let Some(v) = simplified_val.to_f64() {
 
         assert!(
             (v - 1.5).abs() < 1e-6,
@@ -157,8 +141,7 @@ fn test_fredholm_separable_kernel() {
 
 #[test]
 
-fn test_volterra_successive_approximations(
-) {
+fn test_volterra_successive_approximations() {
 
     // y(x) = 1 + int_0^x y(t) dt
     // Solution should be e^x
@@ -207,12 +190,9 @@ fn test_volterra_successive_approximations(
         &Expr::Constant(1.0),
     );
 
-    let simplified_val =
-        simplify(&val_at_1);
+    let simplified_val = simplify(&val_at_1);
 
-    if let Some(v) =
-        simplified_val.to_f64()
-    {
+    if let Some(v) = simplified_val.to_f64() {
 
         assert!(
             (v - 2.6666).abs() < 0.01,
@@ -232,10 +212,7 @@ fn test_airfoil_equation() {
 
     let f_x = Expr::Constant(1.0);
 
-    let solution =
-        solve_airfoil_equation(
-            &f_x, "x", "t",
-        );
+    let solution = solve_airfoil_equation(&f_x, "x", "t");
 
     println!(
         "Airfoil solution: {}",

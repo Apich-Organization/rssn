@@ -12,9 +12,7 @@ fn test_boltzmann_constant_handle() {
 
     let kb = rssn::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_boltzmann_constant_si();
 
-    assert!(
-        kb > 1.38e-23 && kb < 1.39e-23
-    );
+    assert!(kb > 1.38e-23 && kb < 1.39e-23);
 }
 
 #[test]
@@ -28,8 +26,7 @@ fn test_avogadro_number_handle() {
 
 #[test]
 
-fn test_temperature_unit_argon_handle()
-{
+fn test_temperature_unit_argon_handle() {
 
     let t = rssn::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_temperature_unit_argon();
 
@@ -74,8 +71,7 @@ fn test_lennard_jones_json() {
         r_eq
     );
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -85,28 +81,16 @@ fn test_lennard_jones_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let potential = parsed["ok"]
-            ["potential"]
+        let potential = parsed["ok"]["potential"]
             .as_f64()
             .unwrap();
 
         // At equilibrium, potential = -ε = -1.0
-        assert!(
-            (potential + 1.0).abs()
-                < 1e-10
-        );
+        assert!((potential + 1.0).abs() < 1e-10);
     }
 }
 
@@ -116,8 +100,7 @@ fn test_morse_json() {
 
     let input = r#"{"p1_position": [0.0, 0.0, 0.0], "p2_position": [1.0, 0.0, 0.0], "de": 1.0, "a": 1.0, "re": 1.0}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -127,27 +110,16 @@ fn test_morse_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let potential = parsed["ok"]
-            ["potential"]
+        let potential = parsed["ok"]["potential"]
             .as_f64()
             .unwrap();
 
         // At equilibrium, potential = 0
-        assert!(
-            potential.abs() < 1e-10
-        );
+        assert!(potential.abs() < 1e-10);
     }
 }
 
@@ -157,8 +129,7 @@ fn test_harmonic_json() {
 
     let input = r#"{"p1_position": [0.0, 0.0, 0.0], "p2_position": [1.5, 0.0, 0.0], "k": 100.0, "r0": 1.0}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -168,28 +139,16 @@ fn test_harmonic_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let potential = parsed["ok"]
-            ["potential"]
+        let potential = parsed["ok"]["potential"]
             .as_f64()
             .unwrap();
 
         // V = 0.5 * 100 * 0.5² = 12.5
-        assert!(
-            (potential - 12.5).abs()
-                < 1e-10
-        );
+        assert!((potential - 12.5).abs() < 1e-10);
     }
 }
 
@@ -199,8 +158,7 @@ fn test_system_properties_json() {
 
     let input = r#"{"particles": [{"id": 0, "mass": 1.0, "position": [0.0, 0.0, 0.0], "velocity": [1.0, 0.0, 0.0]}, {"id": 1, "mass": 1.0, "position": [1.0, 0.0, 0.0], "velocity": [-1.0, 0.0, 0.0]}]}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -211,27 +169,16 @@ fn test_system_properties_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
-        let ke = parsed["ok"]
-            ["kinetic_energy"]
+        let ke = parsed["ok"]["kinetic_energy"]
             .as_f64()
             .unwrap();
 
         // KE = 0.5 + 0.5 = 1.0
-        assert!(
-            (ke - 1.0).abs() < 1e-10
-        );
+        assert!((ke - 1.0).abs() < 1e-10);
     }
 }
 
@@ -241,8 +188,7 @@ fn test_create_cubic_lattice_json() {
 
     let input = r#"{"n_per_side": 2, "lattice_constant": 1.0, "mass": 1.0}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -253,17 +199,9 @@ fn test_create_cubic_lattice_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         let particles = parsed["ok"]
             .as_array()
@@ -279,8 +217,7 @@ fn test_apply_pbc_json() {
 
     let input = r#"{"position": [11.0, -1.0, 5.0], "box_size": [10.0, 10.0, 10.0]}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -290,17 +227,9 @@ fn test_apply_pbc_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         let wrapped = parsed["ok"]
             .as_array()
@@ -332,8 +261,7 @@ fn test_minimum_image_json() {
 
     let input = r#"{"position": [8.0, -8.0, 0.0], "box_size": [10.0, 10.0, 10.0]}"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -343,17 +271,9 @@ fn test_minimum_image_json() {
 
         assert!(!result.is_null());
 
-        let result_str =
-            std::ffi::CStr::from_ptr(
-                result,
-            )
-            .to_string_lossy();
+        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
 
-        let parsed : serde_json::Value =
-            serde_json::from_str(
-                &result_str,
-            )
-            .unwrap();
+        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
 
         let r_mic = parsed["ok"]
             .as_array()

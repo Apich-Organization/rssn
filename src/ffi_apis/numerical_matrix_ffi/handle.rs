@@ -24,11 +24,7 @@ pub unsafe extern "C" fn rssn_num_matrix_create(
 
     if data.is_null() {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_matrix_create"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_matrix_create".to_string());
 
         return ptr::null_mut();
     }
@@ -37,9 +33,7 @@ pub unsafe extern "C" fn rssn_num_matrix_create(
 
     let slice = unsafe {
 
-        std::slice::from_raw_parts(
-            data, len,
-        )
+        std::slice::from_raw_parts(data, len)
     };
 
     let matrix = Matrix::new(
@@ -53,25 +47,20 @@ pub unsafe extern "C" fn rssn_num_matrix_create(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_free(
-    matrix : *mut Matrix<f64>
-) {
+pub unsafe extern "C" fn rssn_num_matrix_free(matrix : *mut Matrix<f64>) {
 
     if !matrix.is_null() {
 
         unsafe {
 
-            let _ =
-                Box::from_raw(matrix);
+            let _ = Box::from_raw(matrix);
         }
     }
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_get_rows(
-    matrix : *const Matrix<f64>
-) -> usize {
+pub unsafe extern "C" fn rssn_num_matrix_get_rows(matrix : *const Matrix<f64>) -> usize {
 
     if matrix.is_null() {
 
@@ -86,9 +75,7 @@ pub unsafe extern "C" fn rssn_num_matrix_get_rows(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_get_cols(
-    matrix : *const Matrix<f64>
-) -> usize {
+pub unsafe extern "C" fn rssn_num_matrix_get_cols(matrix : *const Matrix<f64>) -> usize {
 
     if matrix.is_null() {
 
@@ -108,15 +95,9 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data(
     buffer : *mut f64,
 ) -> i32 {
 
-    if matrix.is_null()
-        || buffer.is_null()
-    {
+    if matrix.is_null() || buffer.is_null() {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_matrix_get_data"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_matrix_get_data".to_string());
 
         return -1;
     }
@@ -162,15 +143,9 @@ pub unsafe extern "C" fn rssn_num_matrix_add(
         &*m2
     };
 
-    if v1.rows() != v2.rows()
-        || v1.cols() != v2.cols()
-    {
+    if v1.rows() != v2.rows() || v1.cols() != v2.cols() {
 
-        update_last_error(
-            "Dimension mismatch in \
-             matrix addition"
-                .to_string(),
-        );
+        update_last_error("Dimension mismatch in matrix addition".to_string());
 
         return ptr::null_mut();
     }
@@ -204,11 +179,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul(
 
     if v1.cols() != v2.rows() {
 
-        update_last_error(
-            "Dimension mismatch in \
-             matrix multiplication"
-                .to_string(),
-        );
+        update_last_error("Dimension mismatch in matrix multiplication".to_string());
 
         return ptr::null_mut();
     }
@@ -246,9 +217,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
     result : *mut f64,
 ) -> i32 {
 
-    if matrix.is_null()
-        || result.is_null()
-    {
+    if matrix.is_null() || result.is_null() {
 
         return -1;
     }
@@ -279,9 +248,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_inverse(
-    matrix : *const Matrix<f64>
-) -> *mut Matrix<f64> {
+pub unsafe extern "C" fn rssn_num_matrix_inverse(matrix : *const Matrix<f64>) -> *mut Matrix<f64> {
 
     if matrix.is_null() {
 
@@ -294,16 +261,10 @@ pub unsafe extern "C" fn rssn_num_matrix_inverse(
     };
 
     match m.inverse() {
-        | Some(inv) => {
-            Box::into_raw(Box::new(inv))
-        },
+        | Some(inv) => Box::into_raw(Box::new(inv)),
         | None => {
 
-            update_last_error(
-                "Matrix is singular \
-                 or not square"
-                    .to_string(),
-            );
+            update_last_error("Matrix is singular or not square".to_string());
 
             ptr::null_mut()
         },
@@ -313,9 +274,7 @@ pub unsafe extern "C" fn rssn_num_matrix_inverse(
 /// Creates an identity matrix.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_identity(
-    size : usize
-) -> *mut Matrix<f64> {
+pub unsafe extern "C" fn rssn_num_matrix_identity(size : usize) -> *mut Matrix<f64> {
 
     let m = Matrix::identity(size);
 
@@ -384,9 +343,7 @@ pub unsafe extern "C" fn rssn_num_matrix_rank(
     out_rank : *mut usize,
 ) -> i32 {
 
-    if matrix.is_null()
-        || out_rank.is_null()
-    {
+    if matrix.is_null() || out_rank.is_null() {
 
         return -1;
     }
@@ -423,9 +380,7 @@ pub unsafe extern "C" fn rssn_num_matrix_trace(
     out_trace : *mut f64,
 ) -> i32 {
 
-    if matrix.is_null()
-        || out_trace.is_null()
-    {
+    if matrix.is_null() || out_trace.is_null() {
 
         return -1;
     }
@@ -457,9 +412,7 @@ pub unsafe extern "C" fn rssn_num_matrix_trace(
 /// Returns the Frobenius norm.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_frobenius_norm(
-    matrix : *const Matrix<f64>
-) -> f64 {
+pub unsafe extern "C" fn rssn_num_matrix_frobenius_norm(matrix : *const Matrix<f64>) -> f64 {
 
     if matrix.is_null() {
 

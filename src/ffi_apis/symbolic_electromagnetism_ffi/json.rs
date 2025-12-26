@@ -17,35 +17,22 @@ pub extern "C" fn rssn_json_lorentz_force(
     b_field_json : *const c_char,
 ) -> *mut c_char {
 
-    let charge : Option<Expr> =
-        from_json_string(charge_json);
+    let charge : Option<Expr> = from_json_string(charge_json);
 
-    let e_field : Option<Vector> =
-        from_json_string(e_field_json);
+    let e_field : Option<Vector> = from_json_string(e_field_json);
 
-    let velocity : Option<Vector> =
-        from_json_string(velocity_json);
+    let velocity : Option<Vector> = from_json_string(velocity_json);
 
-    let b_field : Option<Vector> =
-        from_json_string(b_field_json);
+    let b_field : Option<Vector> = from_json_string(b_field_json);
 
-    if let (
-        Some(q),
-        Some(e),
-        Some(v),
-        Some(b),
-    ) = (
+    if let (Some(q), Some(e), Some(v), Some(b)) = (
         charge,
         e_field,
         velocity,
         b_field,
     ) {
 
-        to_json_string(
-            &electromagnetism::lorentz_force(
-                &q, &e, &v, &b,
-            ),
-        )
+        to_json_string(&electromagnetism::lorentz_force(&q, &e, &v, &b))
     } else {
 
         std::ptr::null_mut()
@@ -60,19 +47,13 @@ pub extern "C" fn rssn_json_electromagnetic_energy_density(
     b_field_json : *const c_char,
 ) -> *mut c_char {
 
-    let e_field : Option<Vector> =
-        from_json_string(e_field_json);
+    let e_field : Option<Vector> = from_json_string(e_field_json);
 
-    let b_field : Option<Vector> =
-        from_json_string(b_field_json);
+    let b_field : Option<Vector> = from_json_string(b_field_json);
 
-    if let (Some(e), Some(b)) =
-        (e_field, b_field)
-    {
+    if let (Some(e), Some(b)) = (e_field, b_field) {
 
-        to_json_string(
-            &electromagnetism::energy_density(&e, &b),
-        )
+        to_json_string(&electromagnetism::energy_density(&e, &b))
     } else {
 
         std::ptr::null_mut()

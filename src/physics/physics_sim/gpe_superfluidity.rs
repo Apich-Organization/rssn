@@ -10,9 +10,7 @@ use crate::physics::physics_sm::fft2d;
 use crate::physics::physics_sm::ifft2d;
 
 /// Parameters for the GPE simulation.
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct GpeParameters {
     pub nx : usize,
@@ -30,39 +28,28 @@ pub struct GpeParameters {
 /// # Returns
 /// The final wave function `psi` representing the ground state.
 
-pub fn run_gpe_ground_state_finder(
-    params : &GpeParameters
-) -> Result<Array2<f64>, String> {
+pub fn run_gpe_ground_state_finder(params : &GpeParameters) -> Result<Array2<f64>, String> {
 
-    let dx =
-        params.lx / params.nx as f64;
+    let dx = params.lx / params.nx as f64;
 
-    let dy =
-        params.ly / params.ny as f64;
+    let dy = params.ly / params.ny as f64;
 
-    let n_total =
-        (params.nx * params.ny) as f64;
+    let n_total = (params.nx * params.ny) as f64;
 
-    let mut potential = vec![
-            0.0;
-            params.nx * params.ny
-        ];
+    let mut potential = vec![0.0; params.nx * params.ny];
 
     let nx = params.nx;
 
     let ny = params.ny;
 
-    let trap_strength =
-        params.trap_strength;
+    let trap_strength = params.trap_strength;
 
     potential
         .par_chunks_mut(nx)
         .enumerate()
         .for_each(|(j, row)| {
 
-            let y = (j as f64
-                - ny as f64 / 2.0)
-                * dy;
+            let y = (j as f64 - ny as f64 / 2.0) * dy;
 
             let y_sq = y.powi(2);
 
@@ -71,27 +58,17 @@ pub fn run_gpe_ground_state_finder(
                 .enumerate()
             {
 
-                let x = (i as f64
-                    - nx as f64 / 2.0)
-                    * dx;
+                let x = (i as f64 - nx as f64 / 2.0) * dx;
 
-                *val = 0.5
-                    * trap_strength
-                    * (x.powi(2)
-                        + y_sq);
+                *val = 0.5 * trap_strength * (x.powi(2) + y_sq);
             }
         });
 
-    let kx =
-        create_k_grid(params.nx, dx);
+    let kx = create_k_grid(params.nx, dx);
 
-    let ky =
-        create_k_grid(params.ny, dy);
+    let ky = create_k_grid(params.ny, dy);
 
-    let mut kinetic_operator = vec![
-            0.0;
-            params.nx * params.ny
-        ];
+    let mut kinetic_operator = vec![0.0; params.nx * params.ny];
 
     let d_tau = params.d_tau;
 
@@ -107,28 +84,22 @@ pub fn run_gpe_ground_state_finder(
                 .enumerate()
             {
 
-                let k_sq = kx[i]
-                    .powi(2)
-                    + ky_sq;
+                let k_sq = kx[i].powi(2) + ky_sq;
 
-                *val = (-0.5
-                    * k_sq
-                    * d_tau)
-                    .exp();
+                *val = (-0.5 * k_sq * d_tau).exp();
             }
         });
 
-    let mut psi : Vec<Complex<f64>> =
-        potential
-            .iter()
-            .map(|&v| {
+    let mut psi : Vec<Complex<f64>> = potential
+        .iter()
+        .map(|&v| {
 
-                Complex::new(
-                    (-v * 0.1).exp(),
-                    0.0,
-                )
-            })
-            .collect();
+            Complex::new(
+                (-v * 0.1).exp(),
+                0.0,
+            )
+        })
+        .collect();
 
     for _ in 0 .. params.time_steps {
 
@@ -136,15 +107,9 @@ pub fn run_gpe_ground_state_finder(
             .enumerate()
             .for_each(|(idx, p)| {
 
-                let v_eff = potential
-                    [idx]
-                    + params.g
-                        * p.norm_sqr();
+                let v_eff = potential[idx] + params.g * p.norm_sqr();
 
-                *p *= (-v_eff
-                    * params.d_tau
-                    / 2.0)
-                    .exp();
+                *p *= (-v_eff * params.d_tau / 2.0).exp();
             });
 
         fft2d(
@@ -155,10 +120,7 @@ pub fn run_gpe_ground_state_finder(
 
         psi.par_iter_mut()
             .zip(&kinetic_operator)
-            .for_each(|(p, k_op)| {
-
-                *p *= k_op
-            });
+            .for_each(|(p, k_op)| *p *= k_op);
 
         ifft2d(
             &mut psi,
@@ -170,15 +132,9 @@ pub fn run_gpe_ground_state_finder(
             .enumerate()
             .for_each(|(idx, p)| {
 
-                let v_eff = potential
-                    [idx]
-                    + params.g
-                        * p.norm_sqr();
+                let v_eff = potential[idx] + params.g * p.norm_sqr();
 
-                *p *= (-v_eff
-                    * params.d_tau
-                    / 2.0)
-                    .exp();
+                *p *= (-v_eff * params.d_tau / 2.0).exp();
             });
 
         let norm : f64 = psi
@@ -186,21 +142,16 @@ pub fn run_gpe_ground_state_finder(
             .map(|p| p.norm_sqr())
             .sum();
 
-        let norm_factor = (n_total
-            / (norm * dx * dy))
-            .sqrt();
+        let norm_factor = (n_total / (norm * dx * dy)).sqrt();
 
         psi.par_iter_mut()
-            .for_each(|p| {
-
-                *p *= norm_factor
-            });
+            .for_each(|p| *p *= norm_factor);
     }
 
-    let probability_density : Vec<f64> =
-        psi.iter()
-            .map(|p| p.norm_sqr())
-            .collect();
+    let probability_density : Vec<f64> = psi
+        .iter()
+        .map(|p| p.norm_sqr())
+        .collect();
 
     Array2::from_shape_vec(
         (params.ny, params.nx),
@@ -211,13 +162,9 @@ pub fn run_gpe_ground_state_finder(
 
 /// An example scenario that finds the ground state of a BEC, which may contain a vortex.
 
-pub fn simulate_bose_einstein_vortex_scenario(
-) -> Result<(), String> {
+pub fn simulate_bose_einstein_vortex_scenario() -> Result<(), String> {
 
-    println!(
-        "Running GPE simulation to \
-         find BEC ground state..."
-    );
+    println!("Running GPE simulation to find BEC ground state...");
 
     let params = GpeParameters {
         nx : 128,
@@ -230,17 +177,12 @@ pub fn simulate_bose_einstein_vortex_scenario(
         trap_strength : 1.0,
     };
 
-    let final_density =
-        run_gpe_ground_state_finder(
-            &params,
-        )?;
+    let final_density = run_gpe_ground_state_finder(&params)?;
 
-    let filename =
-        "gpe_vortex_state.npy";
+    let filename = "gpe_vortex_state.npy";
 
     println!(
-        "Simulation finished. Saving \
-         final density to {}",
+        "Simulation finished. Saving final density to {}",
         filename
     );
 

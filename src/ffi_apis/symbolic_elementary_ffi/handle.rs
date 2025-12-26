@@ -12,9 +12,7 @@ use crate::symbolic::elementary;
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_sin(
-    expr : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_sin(expr : *const Expr) -> *mut Expr {
 
     if expr.is_null() {
 
@@ -24,18 +22,14 @@ pub unsafe extern "C" fn rssn_sin(
     let expr_ref = &*expr;
 
     Box::into_raw(Box::new(
-        elementary::sin(
-            expr_ref.clone(),
-        ),
+        elementary::sin(expr_ref.clone()),
     ))
 }
 
 /// Creates a cosine expression: cos(expr).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_cos(
-    expr : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_cos(expr : *const Expr) -> *mut Expr {
 
     if expr.is_null() {
 
@@ -45,18 +39,14 @@ pub unsafe extern "C" fn rssn_cos(
     let expr_ref = &*expr;
 
     Box::into_raw(Box::new(
-        elementary::cos(
-            expr_ref.clone(),
-        ),
+        elementary::cos(expr_ref.clone()),
     ))
 }
 
 /// Creates a tangent expression: tan(expr).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_tan(
-    expr : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_tan(expr : *const Expr) -> *mut Expr {
 
     if expr.is_null() {
 
@@ -66,18 +56,14 @@ pub unsafe extern "C" fn rssn_tan(
     let expr_ref = &*expr;
 
     Box::into_raw(Box::new(
-        elementary::tan(
-            expr_ref.clone(),
-        ),
+        elementary::tan(expr_ref.clone()),
     ))
 }
 
 /// Creates an exponential expression: e^(expr).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_exp(
-    expr : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_exp(expr : *const Expr) -> *mut Expr {
 
     if expr.is_null() {
 
@@ -87,18 +73,14 @@ pub unsafe extern "C" fn rssn_exp(
     let expr_ref = &*expr;
 
     Box::into_raw(Box::new(
-        elementary::exp(
-            expr_ref.clone(),
-        ),
+        elementary::exp(expr_ref.clone()),
     ))
 }
 
 /// Creates a natural logarithm expression: ln(expr).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_ln(
-    expr : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_ln(expr : *const Expr) -> *mut Expr {
 
     if expr.is_null() {
 
@@ -108,18 +90,14 @@ pub unsafe extern "C" fn rssn_ln(
     let expr_ref = &*expr;
 
     Box::into_raw(Box::new(
-        elementary::ln(
-            expr_ref.clone(),
-        ),
+        elementary::ln(expr_ref.clone()),
     ))
 }
 
 /// Creates a square root expression: sqrt(expr).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_sqrt(
-    expr : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_sqrt(expr : *const Expr) -> *mut Expr {
 
     if expr.is_null() {
 
@@ -129,9 +107,7 @@ pub unsafe extern "C" fn rssn_sqrt(
     let expr_ref = &*expr;
 
     Box::into_raw(Box::new(
-        elementary::sqrt(
-            expr_ref.clone(),
-        ),
+        elementary::sqrt(expr_ref.clone()),
     ))
 }
 
@@ -163,8 +139,7 @@ pub unsafe extern "C" fn rssn_pow(
 /// Returns the symbolic representation of Pi.
 #[no_mangle]
 
-pub extern "C" fn rssn_pi() -> *mut Expr
-{
+pub extern "C" fn rssn_pi() -> *mut Expr {
 
     Box::into_raw(Box::new(
         elementary::pi(),
@@ -174,8 +149,7 @@ pub extern "C" fn rssn_pi() -> *mut Expr
 /// Returns the symbolic representation of Euler's number (e).
 #[no_mangle]
 
-pub extern "C" fn rssn_e() -> *mut Expr
-{
+pub extern "C" fn rssn_e() -> *mut Expr {
 
     Box::into_raw(Box::new(
         elementary::e(),
@@ -188,9 +162,7 @@ pub extern "C" fn rssn_e() -> *mut Expr
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_expand(
-    expr : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_expand(expr : *const Expr) -> *mut Expr {
 
     if expr.is_null() {
 
@@ -200,9 +172,7 @@ pub unsafe extern "C" fn rssn_expand(
     let expr_ref = &*expr;
 
     Box::into_raw(Box::new(
-        elementary::expand(
-            expr_ref.clone(),
-        ),
+        elementary::expand(expr_ref.clone()),
     ))
 }
 
@@ -225,9 +195,7 @@ pub extern "C" fn rssn_binomial_coefficient(
 /// The caller must ensure `expr` was created by this module and hasn't been freed yet.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_free_expr(
-    expr : *mut Expr
-) {
+pub unsafe extern "C" fn rssn_free_expr(expr : *mut Expr) {
 
     if !expr.is_null() {
 

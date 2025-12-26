@@ -36,25 +36,20 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_json(
     input_json : *const c_char
 ) -> *mut c_char {
 
-    let input: NewtonInput =
-        match from_json_string(input_json) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        ComplexResult,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON input"
-                                .to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : NewtonInput = match from_json_string(input_json) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<ComplexResult, String> {
+                        ok : None,
+                        err : Some("Invalid JSON input".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let start_point = Complex::new(
         input.start_re,
@@ -71,31 +66,26 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_json(
         | Some(root) => {
 
             let res = ComplexResult {
-                re: root.re,
-                im: root.im,
+                re : root.re,
+                im : root.im,
             };
 
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok: Some(res),
-                    err: None::<String>,
+                    ok : Some(res),
+                    err : None::<String>,
                 })
                 .unwrap(),
             )
         },
         | None => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    ComplexResult,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Newton's method failed to \
-                         converge"
-                            .to_string(),
-                    ),
-                })
+                serde_json::to_string(
+                    &FfiResult::<ComplexResult, String> {
+                        ok : None,
+                        err : Some("Newton's method failed to converge".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -112,38 +102,26 @@ struct LogSqrtInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
-    json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(json : *const c_char) -> *mut c_char {
 
-    let input: LogSqrtInput = match from_json_string(json) {
+    let input : LogSqrtInput = match from_json_string(json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    ComplexResult,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid JSON input".to_string(),
-                    ),
-                })
+                serde_json::to_string(
+                    &FfiResult::<ComplexResult, String> {
+                        ok : None,
+                        err : Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let z = Complex::new(
-        input.re,
-        input.im,
-    );
+    let z = Complex::new(input.re, input.im);
 
-    let res =
-        multi_valued::complex_log_k(
-            z,
-            input.k,
-        );
+    let res = multi_valued::complex_log_k(z, input.k);
 
     let out = ComplexResult {
         re : res.re,
@@ -151,50 +129,36 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
     };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(out),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(out),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(
-    json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(json : *const c_char) -> *mut c_char {
 
-    let input: LogSqrtInput = match from_json_string(json) {
+    let input : LogSqrtInput = match from_json_string(json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    ComplexResult,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid JSON input".to_string(),
-                    ),
-                })
+                serde_json::to_string(
+                    &FfiResult::<ComplexResult, String> {
+                        ok : None,
+                        err : Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let z = Complex::new(
-        input.re,
-        input.im,
-    );
+    let z = Complex::new(input.re, input.im);
 
-    let res =
-        multi_valued::complex_sqrt_k(
-            z,
-            input.k,
-        );
+    let res = multi_valued::complex_sqrt_k(z, input.k);
 
     let out = ComplexResult {
         re : res.re,
@@ -202,12 +166,10 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(
     };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(out),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(out),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -224,23 +186,18 @@ struct PowInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(
-    json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(json : *const c_char) -> *mut c_char {
 
-    let input: PowInput = match from_json_string(json) {
+    let input : PowInput = match from_json_string(json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    ComplexResult,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid JSON input".to_string(),
-                    ),
-                })
+                serde_json::to_string(
+                    &FfiResult::<ComplexResult, String> {
+                        ok : None,
+                        err : Some("Invalid JSON input".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -256,12 +213,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(
         input.w_im,
     );
 
-    let res =
-        multi_valued::complex_pow_k(
-            z,
-            w,
-            input.k,
-        );
+    let res = multi_valued::complex_pow_k(z, w, input.k);
 
     let out = ComplexResult {
         re : res.re,
@@ -269,12 +221,10 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(
     };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(out),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(out),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }

@@ -13,12 +13,9 @@ use crate::symbolic::elementary;
 /// Bincode-serialized Expr
 #[no_mangle]
 
-pub extern "C" fn rssn_sin_bincode(
-    expr_buffer : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_sin_bincode(expr_buffer : BincodeBuffer) -> BincodeBuffer {
 
-    let expr: Expr = match from_bincode_buffer(&expr_buffer)
-    {
+    let expr : Expr = match from_bincode_buffer(&expr_buffer) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -31,12 +28,9 @@ pub extern "C" fn rssn_sin_bincode(
 /// Creates a cosine expression from bincode: cos(expr).
 #[no_mangle]
 
-pub extern "C" fn rssn_cos_bincode(
-    expr_buffer : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_cos_bincode(expr_buffer : BincodeBuffer) -> BincodeBuffer {
 
-    let expr: Expr = match from_bincode_buffer(&expr_buffer)
-    {
+    let expr : Expr = match from_bincode_buffer(&expr_buffer) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -49,12 +43,9 @@ pub extern "C" fn rssn_cos_bincode(
 /// Creates a tangent expression from bincode: tan(expr).
 #[no_mangle]
 
-pub extern "C" fn rssn_tan_bincode(
-    expr_buffer : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_tan_bincode(expr_buffer : BincodeBuffer) -> BincodeBuffer {
 
-    let expr: Expr = match from_bincode_buffer(&expr_buffer)
-    {
+    let expr : Expr = match from_bincode_buffer(&expr_buffer) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -67,12 +58,9 @@ pub extern "C" fn rssn_tan_bincode(
 /// Creates an exponential expression from bincode: e^(expr).
 #[no_mangle]
 
-pub extern "C" fn rssn_exp_bincode(
-    expr_buffer : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_exp_bincode(expr_buffer : BincodeBuffer) -> BincodeBuffer {
 
-    let expr: Expr = match from_bincode_buffer(&expr_buffer)
-    {
+    let expr : Expr = match from_bincode_buffer(&expr_buffer) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -85,12 +73,9 @@ pub extern "C" fn rssn_exp_bincode(
 /// Creates a natural logarithm expression from bincode: ln(expr).
 #[no_mangle]
 
-pub extern "C" fn rssn_ln_bincode(
-    expr_buffer : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_ln_bincode(expr_buffer : BincodeBuffer) -> BincodeBuffer {
 
-    let expr: Expr = match from_bincode_buffer(&expr_buffer)
-    {
+    let expr : Expr = match from_bincode_buffer(&expr_buffer) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -103,19 +88,16 @@ pub extern "C" fn rssn_ln_bincode(
 /// Creates a square root expression from bincode: sqrt(expr).
 #[no_mangle]
 
-pub extern "C" fn rssn_sqrt_bincode(
-    expr_buffer : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_sqrt_bincode(expr_buffer : BincodeBuffer) -> BincodeBuffer {
 
-    let expr: Expr = match from_bincode_buffer(&expr_buffer)
-    {
+    let expr : Expr = match from_bincode_buffer(&expr_buffer) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(
-        &elementary::sqrt(expr),
-    )
+    to_bincode_buffer(&elementary::sqrt(
+        expr,
+    ))
 }
 
 /// Creates a power expression from bincode: base^exp.
@@ -130,13 +112,12 @@ pub extern "C" fn rssn_pow_bincode(
     exp_buffer : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let base: Expr = match from_bincode_buffer(&base_buffer)
-    {
+    let base : Expr = match from_bincode_buffer(&base_buffer) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let exp: Expr = match from_bincode_buffer(&exp_buffer) {
+    let exp : Expr = match from_bincode_buffer(&exp_buffer) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -149,8 +130,7 @@ pub extern "C" fn rssn_pow_bincode(
 /// Returns Pi as bincode.
 #[no_mangle]
 
-pub extern "C" fn rssn_pi_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_pi_bincode() -> BincodeBuffer {
 
     to_bincode_buffer(&elementary::pi())
 }
@@ -158,8 +138,7 @@ pub extern "C" fn rssn_pi_bincode(
 /// Returns Euler's number (e) as bincode.
 #[no_mangle]
 
-pub extern "C" fn rssn_e_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_e_bincode() -> BincodeBuffer {
 
     to_bincode_buffer(&elementary::e())
 }
@@ -167,17 +146,14 @@ pub extern "C" fn rssn_e_bincode(
 /// Expands a symbolic expression from bincode.
 #[no_mangle]
 
-pub extern "C" fn rssn_expand_bincode(
-    expr_buffer : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_expand_bincode(expr_buffer : BincodeBuffer) -> BincodeBuffer {
 
-    let expr: Expr = match from_bincode_buffer(&expr_buffer)
-    {
+    let expr : Expr = match from_bincode_buffer(&expr_buffer) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(
-        &elementary::expand(expr),
-    )
+    to_bincode_buffer(&elementary::expand(
+        expr,
+    ))
 }

@@ -15,11 +15,9 @@ pub extern "C" fn rssn_bincode_solve_pde(
     vars_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let pde_expr : Option<Expr> =
-        from_bincode_buffer(&pde_buf);
+    let pde_expr : Option<Expr> = from_bincode_buffer(&pde_buf);
 
-    let vars : Option<Vec<String>> =
-        from_bincode_buffer(&vars_buf);
+    let vars : Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
 
@@ -28,19 +26,13 @@ pub extern "C" fn rssn_bincode_solve_pde(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(pde),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(pde), Some(f), Some(v)) = (
         pde_expr,
         func_str,
         vars,
@@ -74,13 +66,9 @@ pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
     vars_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
-    let vars : Option<Vec<String>> =
-        from_bincode_buffer(&vars_buf);
+    let vars : Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
 
@@ -89,19 +77,13 @@ pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(eq), Some(f), Some(v)) = (
         equation,
         func_str,
         vars,
@@ -112,9 +94,7 @@ pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
             .map(|s| s.as_str())
             .collect();
 
-        match pde::solve_pde_by_characteristics(
-            &eq, f, &vars_refs,
-        ) {
+        match pde::solve_pde_by_characteristics(&eq, f, &vars_refs) {
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
@@ -133,13 +113,9 @@ pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
     vars_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
-    let vars : Option<Vec<String>> =
-        from_bincode_buffer(&vars_buf);
+    let vars : Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
 
@@ -148,19 +124,13 @@ pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(eq), Some(f), Some(v)) = (
         equation,
         func_str,
         vars,
@@ -171,9 +141,7 @@ pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
             .map(|s| s.as_str())
             .collect();
 
-        match pde::solve_wave_equation_1d_dalembert(
-            &eq, f, &vars_refs,
-        ) {
+        match pde::solve_wave_equation_1d_dalembert(&eq, f, &vars_refs) {
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
@@ -192,13 +160,9 @@ pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
     vars_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
-    let vars : Option<Vec<String>> =
-        from_bincode_buffer(&vars_buf);
+    let vars : Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
 
@@ -207,19 +171,13 @@ pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(eq), Some(f), Some(v)) = (
         equation,
         func_str,
         vars,
@@ -230,9 +188,7 @@ pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
             .map(|s| s.as_str())
             .collect();
 
-        match pde::solve_heat_equation_1d(
-            &eq, f, &vars_refs,
-        ) {
+        match pde::solve_heat_equation_1d(&eq, f, &vars_refs) {
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
@@ -251,13 +207,9 @@ pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
     vars_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
-    let vars : Option<Vec<String>> =
-        from_bincode_buffer(&vars_buf);
+    let vars : Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
 
@@ -266,19 +218,13 @@ pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(eq), Some(f), Some(v)) = (
         equation,
         func_str,
         vars,
@@ -289,9 +235,7 @@ pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
             .map(|s| s.as_str())
             .collect();
 
-        match pde::solve_laplace_equation_2d(
-            &eq, f, &vars_refs,
-        ) {
+        match pde::solve_laplace_equation_2d(&eq, f, &vars_refs) {
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
@@ -310,13 +254,9 @@ pub extern "C" fn rssn_bincode_classify_pde(
     vars_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
-        from_bincode_buffer(
-            &equation_buf,
-        );
+    let equation : Option<Expr> = from_bincode_buffer(&equation_buf);
 
-    let vars : Option<Vec<String>> =
-        from_bincode_buffer(&vars_buf);
+    let vars : Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
 
@@ -325,19 +265,13 @@ pub extern "C" fn rssn_bincode_classify_pde(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(
-                func,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(func)
+                .to_str()
+                .ok()
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    if let (Some(eq), Some(f), Some(v)) = (
         equation,
         func_str,
         vars,
@@ -348,16 +282,9 @@ pub extern "C" fn rssn_bincode_classify_pde(
             .map(|s| s.as_str())
             .collect();
 
-        let classification =
-            pde::classify_pde_heuristic(
-                &eq,
-                f,
-                &vars_refs,
-            );
+        let classification = pde::classify_pde_heuristic(&eq, f, &vars_refs);
 
-        to_bincode_buffer(
-            &classification,
-        )
+        to_bincode_buffer(&classification)
     } else {
 
         BincodeBuffer::empty()

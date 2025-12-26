@@ -16,9 +16,10 @@
 //! # Examples
 //! ```
 //! 
+//! use std::sync::Arc;
+//!
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::unit_unification::unify_expression;
-//! use std::sync::Arc;
 //!
 //! // Define quantities: 5m and 3m
 //! let q1 = Expr::QuantityWithValue(
@@ -70,13 +71,7 @@ use crate::symbolic::core::Expr;
 ///
 /// This enum wraps the `uom` crate's types to provide a unified interface for
 /// different physical dimensions.
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[repr(C)]
 
 pub enum SupportedQuantity {
@@ -87,9 +82,7 @@ pub enum SupportedQuantity {
     Velocity(Velocity),
 }
 
-#[allow(
-    clippy::arithmetic_side_effects
-)]
+#[allow(clippy::arithmetic_side_effects)]
 
 impl Add for SupportedQuantity {
     type Output = Result<Self, String>;
@@ -100,52 +93,25 @@ impl Add for SupportedQuantity {
     ) -> Self::Output {
 
         match (self, rhs) {
-            | (
-                Self::Length(l1),
-                Self::Length(l2),
-            ) => {
+            | (Self::Length(l1), Self::Length(l2)) => {
                 Ok(Self::Length(
                     l1 + l2,
                 ))
             },
-            | (
-                Self::Mass(m1),
-                Self::Mass(m2),
-            ) => {
-                Ok(Self::Mass(m1 + m2))
-            },
-            | (
-                Self::Time(t1),
-                Self::Time(t2),
-            ) => {
-                Ok(Self::Time(t1 + t2))
-            },
-            | (
-                Self::Area(a1),
-                Self::Area(a2),
-            ) => {
-                Ok(Self::Area(a1 + a2))
-            },
-            | (
-                Self::Velocity(v1),
-                Self::Velocity(v2),
-            ) => {
+            | (Self::Mass(m1), Self::Mass(m2)) => Ok(Self::Mass(m1 + m2)),
+            | (Self::Time(t1), Self::Time(t2)) => Ok(Self::Time(t1 + t2)),
+            | (Self::Area(a1), Self::Area(a2)) => Ok(Self::Area(a1 + a2)),
+            | (Self::Velocity(v1), Self::Velocity(v2)) => {
                 Ok(Self::Velocity(
                     v1 + v2,
                 ))
             },
-            | _ => Err(
-                "Incompatible types \
-                 for addition"
-                    .to_string(),
-            ),
+            | _ => Err("Incompatible types for addition".to_string()),
         }
     }
 }
 
-#[allow(
-    clippy::arithmetic_side_effects
-)]
+#[allow(clippy::arithmetic_side_effects)]
 
 impl Sub for SupportedQuantity {
     type Output = Result<Self, String>;
@@ -156,52 +122,25 @@ impl Sub for SupportedQuantity {
     ) -> Self::Output {
 
         match (self, rhs) {
-            | (
-                Self::Length(l1),
-                Self::Length(l2),
-            ) => {
+            | (Self::Length(l1), Self::Length(l2)) => {
                 Ok(Self::Length(
                     l1 - l2,
                 ))
             },
-            | (
-                Self::Mass(m1),
-                Self::Mass(m2),
-            ) => {
-                Ok(Self::Mass(m1 - m2))
-            },
-            | (
-                Self::Time(t1),
-                Self::Time(t2),
-            ) => {
-                Ok(Self::Time(t1 - t2))
-            },
-            | (
-                Self::Area(a1),
-                Self::Area(a2),
-            ) => {
-                Ok(Self::Area(a1 - a2))
-            },
-            | (
-                Self::Velocity(v1),
-                Self::Velocity(v2),
-            ) => {
+            | (Self::Mass(m1), Self::Mass(m2)) => Ok(Self::Mass(m1 - m2)),
+            | (Self::Time(t1), Self::Time(t2)) => Ok(Self::Time(t1 - t2)),
+            | (Self::Area(a1), Self::Area(a2)) => Ok(Self::Area(a1 - a2)),
+            | (Self::Velocity(v1), Self::Velocity(v2)) => {
                 Ok(Self::Velocity(
                     v1 - v2,
                 ))
             },
-            | _ => Err(
-                "Incompatible types \
-                 for subtraction"
-                    .to_string(),
-            ),
+            | _ => Err("Incompatible types for subtraction".to_string()),
         }
     }
 }
 
-#[allow(
-    clippy::arithmetic_side_effects
-)]
+#[allow(clippy::arithmetic_side_effects)]
 
 impl Neg for SupportedQuantity {
     type Output = Self;
@@ -209,28 +148,16 @@ impl Neg for SupportedQuantity {
     fn neg(self) -> Self::Output {
 
         match self {
-            | Self::Length(l) => {
-                Self::Length(-l)
-            },
-            | Self::Mass(m) => {
-                Self::Mass(-m)
-            },
-            | Self::Time(t) => {
-                Self::Time(-t)
-            },
-            | Self::Area(a) => {
-                Self::Area(-a)
-            },
-            | Self::Velocity(v) => {
-                Self::Velocity(-v)
-            },
+            | Self::Length(l) => Self::Length(-l),
+            | Self::Mass(m) => Self::Mass(-m),
+            | Self::Time(t) => Self::Time(-t),
+            | Self::Area(a) => Self::Area(-a),
+            | Self::Velocity(v) => Self::Velocity(-v),
         }
     }
 }
 
-#[allow(
-    clippy::arithmetic_side_effects
-)]
+#[allow(clippy::arithmetic_side_effects)]
 
 impl Mul for SupportedQuantity {
     type Output = Result<Self, String>;
@@ -241,26 +168,15 @@ impl Mul for SupportedQuantity {
     ) -> Self::Output {
 
         match (self, rhs) {
-            | (
-                Self::Length(l1),
-                Self::Length(l2),
-            ) => {
-                Ok(Self::Area(l1 * l2))
-            },
+            | (Self::Length(l1), Self::Length(l2)) => Ok(Self::Area(l1 * l2)),
             | _ => {
-                Err("Unsupported or \
-                     complex quantity \
-                     combination for \
-                     multiplication"
-                    .to_string())
+                Err("Unsupported or complex quantity combination for multiplication".to_string())
             },
         }
     }
 }
 
-#[allow(
-    clippy::arithmetic_side_effects
-)]
+#[allow(clippy::arithmetic_side_effects)]
 
 impl Mul<f64> for SupportedQuantity {
     type Output = Self;
@@ -271,28 +187,16 @@ impl Mul<f64> for SupportedQuantity {
     ) -> Self::Output {
 
         match self {
-            | Self::Length(l) => {
-                Self::Length(l * rhs)
-            },
-            | Self::Mass(m) => {
-                Self::Mass(m * rhs)
-            },
-            | Self::Time(t) => {
-                Self::Time(t * rhs)
-            },
-            | Self::Area(a) => {
-                Self::Area(a * rhs)
-            },
-            | Self::Velocity(v) => {
-                Self::Velocity(v * rhs)
-            },
+            | Self::Length(l) => Self::Length(l * rhs),
+            | Self::Mass(m) => Self::Mass(m * rhs),
+            | Self::Time(t) => Self::Time(t * rhs),
+            | Self::Area(a) => Self::Area(a * rhs),
+            | Self::Velocity(v) => Self::Velocity(v * rhs),
         }
     }
 }
 
-#[allow(
-    clippy::arithmetic_side_effects
-)]
+#[allow(clippy::arithmetic_side_effects)]
 
 impl Div for SupportedQuantity {
     type Output = Result<Self, String>;
@@ -303,38 +207,20 @@ impl Div for SupportedQuantity {
     ) -> Self::Output {
 
         match (self, rhs) {
-            | (
-                Self::Length(l),
-                Self::Time(t),
-            ) => {
+            | (Self::Length(l), Self::Time(t)) => {
                 Ok(Self::Velocity(
                     l / t,
                 ))
             },
-            | (
-                Self::Length(_l),
-                Self::Length(_l2),
-            ) => Err(
-                "Division resulting \
-                 in dimensionless \
-                 scalar is not yet \
-                 supported"
-                    .to_string(),
-            ),
-            | _ => {
-                Err("Unsupported or \
-                     complex quantity \
-                     combination for \
-                     division"
-                    .to_string())
+            | (Self::Length(_l), Self::Length(_l2)) => {
+                Err("Division resulting in dimensionless scalar is not yet supported".to_string())
             },
+            | _ => Err("Unsupported or complex quantity combination for division".to_string()),
         }
     }
 }
 
-#[allow(
-    clippy::arithmetic_side_effects
-)]
+#[allow(clippy::arithmetic_side_effects)]
 
 impl Div<f64> for SupportedQuantity {
     type Output = Self;
@@ -345,48 +231,26 @@ impl Div<f64> for SupportedQuantity {
     ) -> Self::Output {
 
         match self {
-            | Self::Length(l) => {
-                Self::Length(l / rhs)
-            },
-            | Self::Mass(m) => {
-                Self::Mass(m / rhs)
-            },
-            | Self::Time(t) => {
-                Self::Time(t / rhs)
-            },
-            | Self::Area(a) => {
-                Self::Area(a / rhs)
-            },
-            | Self::Velocity(v) => {
-                Self::Velocity(v / rhs)
-            },
+            | Self::Length(l) => Self::Length(l / rhs),
+            | Self::Mass(m) => Self::Mass(m / rhs),
+            | Self::Time(t) => Self::Time(t / rhs),
+            | Self::Area(a) => Self::Area(a / rhs),
+            | Self::Velocity(v) => Self::Velocity(v / rhs),
         }
     }
 }
 
 /// A wrapper struct for `SupportedQuantity` to be used within `Expr`.
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 
-pub struct UnitQuantity(
-    pub SupportedQuantity,
-);
+pub struct UnitQuantity(pub SupportedQuantity);
 
-#[allow(
-    clippy::arithmetic_side_effects
-)]
+#[allow(clippy::arithmetic_side_effects)]
 
 impl Eq for UnitQuantity {
 }
 
-#[allow(
-    clippy::arithmetic_side_effects
-)]
+#[allow(clippy::arithmetic_side_effects)]
 
 impl Hash for UnitQuantity {
     fn hash<H : Hasher>(
@@ -447,8 +311,7 @@ pub(crate) fn parse_quantity(
     unit : &str,
 ) -> Result<SupportedQuantity, String> {
 
-    let unit_lower =
-        unit.to_lowercase();
+    let unit_lower = unit.to_lowercase();
 
     match unit_lower.as_str() {
         | "m" | "meter" => {
@@ -543,37 +406,20 @@ pub(crate) fn parse_quantity(
 /// A `Result` containing the `f64` value or an error string.
 #[inline]
 
-pub(crate) fn expr_to_f64(
-    expr : &Expr
-) -> Result<f64, String> {
+pub(crate) fn expr_to_f64(expr : &Expr) -> Result<f64, String> {
 
-    let expr_ast =
-        if let Expr::Dag(node) = expr {
+    let expr_ast = if let Expr::Dag(node) = expr {
 
-            node.to_expr()
-                .map_err(|e| {
+        node.to_expr()
+            .map_err(|e| format!("DAG conversion error: {e}"))?
+    } else {
 
-                    format!(
-                    "DAG conversion \
-                     error: {e}"
-                )
-                })?
-        } else {
-
-            expr.clone()
-        };
+        expr.clone()
+    };
 
     expr_ast
         .to_f64()
-        .ok_or_else(|| {
-
-            format!(
-                "Expression cannot be \
-                 converted to a \
-                 numeric value: \
-                 {expr:?}"
-            )
-        })
+        .ok_or_else(|| format!("Expression cannot be converted to a numeric value: {expr:?}"))
 }
 
 /// Unifies an expression containing quantities with units.
@@ -592,9 +438,10 @@ pub(crate) fn expr_to_f64(
 /// # Examples
 /// ```
 /// 
+/// use std::sync::Arc;
+///
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::unit_unification::unify_expression;
-/// use std::sync::Arc;
 ///
 /// // 10m / 2s
 /// let dist = Expr::QuantityWithValue(
@@ -617,33 +464,21 @@ pub(crate) fn expr_to_f64(
 /// // Result is a Quantity representing 5 m/s
 /// ```
 
-pub fn unify_expression(
-    expr : &Expr
-) -> Result<Expr, String> {
+pub fn unify_expression(expr : &Expr) -> Result<Expr, String> {
 
     match expr {
         | Expr::Dag(node) => {
             unify_expression(
                 &node
                     .to_expr()
-                    .expect(
-                        "Dag Unify",
-                    ),
+                    .expect("Dag Unify"),
             )
         },
-        | Expr::QuantityWithValue(
-            val_expr,
-            unit_str,
-        ) => {
+        | Expr::QuantityWithValue(val_expr, unit_str) => {
 
-            let value =
-                expr_to_f64(val_expr)?;
+            let value = expr_to_f64(val_expr)?;
 
-            let quantity =
-                parse_quantity(
-                    value,
-                    unit_str,
-                )?;
+            let quantity = parse_quantity(value, unit_str)?;
 
             Ok(Expr::Quantity(
                 Arc::new(UnitQuantity(
@@ -653,23 +488,14 @@ pub fn unify_expression(
         },
         | Expr::Add(a, b) => {
 
-            let unified_a =
-                unify_expression(a)?;
+            let unified_a = unify_expression(a)?;
 
-            let unified_b =
-                unify_expression(b)?;
+            let unified_b = unify_expression(b)?;
 
-            match (unified_a, unified_b)
-            {
-                | (
-                    Expr::Quantity(qa),
-                    Expr::Quantity(qb),
-                ) => {
+            match (unified_a, unified_b) {
+                | (Expr::Quantity(qa), Expr::Quantity(qb)) => {
 
-                    let result = qa
-                        .0
-                        .clone()
-                        + qb.0.clone();
+                    let result = qa.0.clone() + qb.0.clone();
 
                     Ok(Expr::Quantity(
                         Arc::new(UnitQuantity(
@@ -677,32 +503,19 @@ pub fn unify_expression(
                         )),
                     ))
                 },
-                | (a, b) => {
-                    Ok(Expr::new_add(
-                        a, b,
-                    ))
-                },
+                | (a, b) => Ok(Expr::new_add(a, b)),
             }
         },
         | Expr::Sub(a, b) => {
 
-            let unified_a =
-                unify_expression(a)?;
+            let unified_a = unify_expression(a)?;
 
-            let unified_b =
-                unify_expression(b)?;
+            let unified_b = unify_expression(b)?;
 
-            match (unified_a, unified_b)
-            {
-                | (
-                    Expr::Quantity(qa),
-                    Expr::Quantity(qb),
-                ) => {
+            match (unified_a, unified_b) {
+                | (Expr::Quantity(qa), Expr::Quantity(qb)) => {
 
-                    let result = qa
-                        .0
-                        .clone()
-                        - qb.0.clone();
+                    let result = qa.0.clone() - qb.0.clone();
 
                     Ok(Expr::Quantity(
                         Arc::new(UnitQuantity(
@@ -710,103 +523,55 @@ pub fn unify_expression(
                         )),
                     ))
                 },
-                | (a, b) => {
-                    Ok(Expr::new_sub(
-                        a, b,
-                    ))
-                },
+                | (a, b) => Ok(Expr::new_sub(a, b)),
             }
         },
         | Expr::Mul(a, b) => {
 
-            let unified_a =
-                unify_expression(a)?;
+            let unified_a = unify_expression(a)?;
 
-            let unified_b =
-                unify_expression(b)?;
+            let unified_b = unify_expression(b)?;
 
-            match (unified_a, unified_b)
-            {
-                | (
-                    Expr::Quantity(qa),
-                    Expr::Quantity(qb),
-                ) => {
+            match (unified_a, unified_b) {
+                | (Expr::Quantity(qa), Expr::Quantity(qb)) => {
 
-                    let result = (qa
-                        .0
-                        .clone()
-                        * qb.0
-                            .clone())?;
+                    let result = (qa.0.clone() * qb.0.clone())?;
 
                     Ok(Expr::Quantity(
                         Arc::new(UnitQuantity(result)),
                     ))
                 },
-                | (
-                    Expr::Quantity(qa),
-                    Expr::Constant(
-                        scalar_f64,
-                    ),
-                )
-                | (
-                    Expr::Constant(
-                        scalar_f64,
-                    ),
-                    Expr::Quantity(qa),
-                ) => {
+                | (Expr::Quantity(qa), Expr::Constant(scalar_f64))
+                | (Expr::Constant(scalar_f64), Expr::Quantity(qa)) => {
 
-                    let result = qa
-                        .0
-                        .clone()
-                        * scalar_f64;
+                    let result = qa.0.clone() * scalar_f64;
 
                     Ok(Expr::Quantity(
                         Arc::new(UnitQuantity(result)),
                     ))
                 },
-                | (a, b) => {
-                    Ok(Expr::new_mul(
-                        a, b,
-                    ))
-                },
+                | (a, b) => Ok(Expr::new_mul(a, b)),
             }
         },
         | Expr::Div(a, b) => {
 
-            let unified_a =
-                unify_expression(a)?;
+            let unified_a = unify_expression(a)?;
 
-            let unified_b =
-                unify_expression(b)?;
+            let unified_b = unify_expression(b)?;
 
-            match (unified_a, unified_b)
-            {
-                | (
-                    Expr::Quantity(qa),
-                    Expr::Quantity(qb),
-                ) => {
+            match (unified_a, unified_b) {
+                | (Expr::Quantity(qa), Expr::Quantity(qb)) => {
 
-                    let result = (qa
-                        .0
-                        .clone()
-                        / qb.0
-                            .clone())?;
+                    let result = (qa.0.clone() / qb.0.clone())?;
 
                     Ok(Expr::Quantity(
                         Arc::new(UnitQuantity(result)),
                     ))
                 },
                 #[allow(clippy::arithmetic_side_effects)]
-                | (
-                    Expr::Quantity(qa),
-                    Expr::Constant(
-                        scalar_f64,
-                    ),
-                ) => {
+                | (Expr::Quantity(qa), Expr::Constant(scalar_f64)) => {
 
-                    if !scalar_f64
-                        .is_normal()
-                    {
+                    if !scalar_f64.is_normal() {
 
                         return Err(format!(
                             "Error: Division scalar must be a non-zero, finite number. Received: \
@@ -814,56 +579,33 @@ pub fn unify_expression(
                         ));
                     }
 
-                    let result = qa
-                        .0
-                        .clone()
-                        / scalar_f64;
+                    let result = qa.0.clone() / scalar_f64;
 
                     Ok(Expr::Quantity(
                         Arc::new(UnitQuantity(result)),
                     ))
                 },
-                | (
-                    Expr::Constant(_),
-                    Expr::Quantity(_),
-                ) => Err(
-                    "Error: Scalar \
-                     divided by \
-                     Quantity (S / Q) \
-                     is not yet \
-                     supported as it \
-                     requires new \
-                     reciprocal \
-                     dimension types \
-                     (like Frequency \
-                     or Reciprocal \
-                     Length)."
-                        .to_string(),
-                ),
-                | (a, b) => {
-                    Ok(Expr::new_div(
-                        a, b,
-                    ))
+                | (Expr::Constant(_), Expr::Quantity(_)) => {
+                    Err(
+                        "Error: Scalar divided by Quantity (S / Q) is not yet supported as it \
+                         requires new reciprocal dimension types (like Frequency or Reciprocal \
+                         Length)."
+                            .to_string(),
+                    )
                 },
+                | (a, b) => Ok(Expr::new_div(a, b)),
             }
         },
         | Expr::Neg(a) => {
 
-            let unified_a =
-                unify_expression(a)?;
+            let unified_a = unify_expression(a)?;
 
-            if let Expr::Quantity(qa) =
-                unified_a
-            {
+            if let Expr::Quantity(qa) = unified_a {
 
                 Ok(Expr::Quantity(
-                    Arc::new(
-                        UnitQuantity(
-                            qa.0.clone(
-                            )
-                            .neg(),
-                        ),
-                    ),
+                    Arc::new(UnitQuantity(
+                        qa.0.clone().neg(),
+                    )),
                 ))
             } else {
 

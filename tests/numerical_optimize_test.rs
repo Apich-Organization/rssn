@@ -18,8 +18,7 @@ type H = Array2<f64>;
 
 #[allow(dead_code)]
 
-type BFGSState =
-    IterState<P, G, (), H, (), F>;
+type BFGSState = IterState<P, G, (), H, (), F>;
 
 #[test]
 #[allow(unused_variables)]
@@ -27,8 +26,7 @@ type BFGSState =
 fn test_rosenbrock_optimization() {
 
     let config = OptimizationConfig {
-        problem_type:
-            ProblemType::Rosenbrock,
+        problem_type : ProblemType::Rosenbrock,
         max_iters : 1000,
         tolerance : 1e-8,
         dimension : 2,
@@ -36,40 +34,26 @@ fn test_rosenbrock_optimization() {
 
     let problem = Rosenbrock::default();
 
-    let initial_guess =
-        Array1::from(vec![-1.2, 1.0]);
+    let initial_guess = Array1::from(vec![-1.2, 1.0]);
 
-    let linesearch =
-        MoreThuenteLineSearch::new();
+    let linesearch = MoreThuenteLineSearch::new();
 
     let solver = BFGS::new(linesearch);
 
     let dimension = initial_guess.len();
 
-    let initial_inverse_hessian =
-        Array2::eye(dimension);
+    let initial_inverse_hessian = Array2::eye(dimension);
 
-    let initial_state : BFGSState =
-        IterState::new()
-            .param(initial_guess)
-            .inv_hessian(
-                initial_inverse_hessian,
-            )
-            .max_iters(config.max_iters)
-            .target_cost(
-                config.tolerance,
-            );
+    let initial_state : BFGSState = IterState::new()
+        .param(initial_guess)
+        .inv_hessian(initial_inverse_hessian)
+        .max_iters(config.max_iters)
+        .target_cost(config.tolerance);
 
-    let result =
-        Executor::new(problem, solver)
-            .configure(
-                |state : BFGSState| {
-
-                    initial_state
-                },
-            )
-            .run()
-            .unwrap();
+    let result = Executor::new(problem, solver)
+        .configure(|state : BFGSState| initial_state)
+        .run()
+        .unwrap();
 
     let best_param = result
         .state
@@ -82,15 +66,9 @@ fn test_rosenbrock_optimization() {
 
     assert!(best_cost < 1e-4);
 
-    assert!(
-        (best_param[0] - 1.0).abs()
-            < 0.1
-    );
+    assert!((best_param[0] - 1.0).abs() < 0.1);
 
-    assert!(
-        (best_param[1] - 1.0).abs()
-            < 0.1
-    );
+    assert!((best_param[1] - 1.0).abs() < 0.1);
 }
 
 #[test]
@@ -109,25 +87,19 @@ fn test_linear_regression() {
         5.0, 8.0, 11.0, 14.0, 17.0,
     ]);
 
-    let problem =
-        match LinearRegression::new(
-            x, y,
-        ) {
-            | Ok(p) => p,
-            | Err(e) => {
+    let problem = match LinearRegression::new(x, y) {
+        | Ok(p) => p,
+        | Err(e) => {
 
-                panic!(
-                    "Failed to create \
-                     LinearRegression \
-                     problem: {}",
-                    e
-                )
-            },
-        };
+            panic!(
+                "Failed to create LinearRegression problem: {}",
+                e
+            )
+        },
+    };
 
     let config = OptimizationConfig {
-        problem_type:
-            ProblemType::Custom,
+        problem_type : ProblemType::Custom,
         max_iters : 1000,
         tolerance : 1e-6,
         dimension : 2,
@@ -155,24 +127,13 @@ fn test_linear_regression() {
         | Some(p) => p,
         | None => {
 
-            panic!(
-                "Best param should \
-                 not be None after \
-                 successful \
-                 optimization"
-            )
+            panic!("Best param should not be None after successful optimization")
         },
     };
 
-    assert!(
-        (best_param[0] - 2.0).abs()
-            < 0.5
-    );
+    assert!((best_param[0] - 2.0).abs() < 0.5);
 
-    assert!(
-        (best_param[1] - 3.0).abs()
-            < 0.5
-    );
+    assert!((best_param[1] - 3.0).abs() < 0.5);
 }
 
 #[test]
@@ -180,8 +141,7 @@ fn test_linear_regression() {
 fn test_sphere_function() {
 
     let config = OptimizationConfig {
-        problem_type:
-            ProblemType::Sphere,
+        problem_type : ProblemType::Sphere,
         max_iters : 500,
         tolerance : 1e-8,
         dimension : 3,
@@ -189,10 +149,7 @@ fn test_sphere_function() {
 
     let problem = Sphere;
 
-    let initial_guess =
-        Array1::from(vec![
-            2.0, -1.5, 3.0,
-        ]);
+    let initial_guess = Array1::from(vec![2.0, -1.5, 3.0]);
 
     let result = EquationOptimizer::solve_with_gradient_descent(
         problem,

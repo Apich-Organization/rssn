@@ -12,7 +12,9 @@ pub extern "C" fn rssn_num_fractal_mandelbrot_escape_time(
 ) -> u32 {
 
     fractal_geometry_and_chaos::mandelbrot_escape_time(
-        c_real, c_imag, max_iter,
+        c_real,
+        c_imag,
+        max_iter,
     )
 }
 
@@ -28,7 +30,11 @@ pub extern "C" fn rssn_num_fractal_julia_escape_time(
 ) -> u32 {
 
     fractal_geometry_and_chaos::julia_escape_time(
-        z_real, z_imag, c_real, c_imag, max_iter,
+        z_real,
+        z_imag,
+        c_real,
+        c_imag,
+        max_iter,
     )
 }
 
@@ -135,13 +141,12 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map(
         return -1;
     }
 
-    let points =
-        fractal_geometry_and_chaos::generate_henon_map(
-            (x0, y0),
-            num_steps,
-            a,
-            b,
-        );
+    let points = fractal_geometry_and_chaos::generate_henon_map(
+        (x0, y0),
+        num_steps,
+        a,
+        b,
+    );
 
     for (i, (x, y)) in points
         .iter()
@@ -174,10 +179,7 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map(
         return -1;
     }
 
-    let orbit =
-        fractal_geometry_and_chaos::logistic_map_iterate(
-            x0, r, num_steps,
-        );
+    let orbit = fractal_geometry_and_chaos::logistic_map_iterate(x0, r, num_steps);
 
     for (i, &x) in orbit
         .iter()
@@ -202,29 +204,23 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim(
     num_scales : usize,
 ) -> f64 {
 
-    if points_ptr.is_null()
-        || num_points == 0
-    {
+    if points_ptr.is_null() || num_points == 0 {
 
         return 0.0;
     }
 
-    let mut points =
-        Vec::with_capacity(num_points);
+    let mut points = Vec::with_capacity(num_points);
 
     for i in 0 .. num_points {
 
         let x = *points_ptr.add(i * 2);
 
-        let y =
-            *points_ptr.add(i * 2 + 1);
+        let y = *points_ptr.add(i * 2 + 1);
 
         points.push((x, y));
     }
 
-    fractal_geometry_and_chaos::box_counting_dimension(
-        &points, num_scales,
-    )
+    fractal_geometry_and_chaos::box_counting_dimension(&points, num_scales)
 }
 
 /// Computes correlation dimension.
@@ -239,27 +235,21 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim(
     num_radii : usize,
 ) -> f64 {
 
-    if points_ptr.is_null()
-        || num_points == 0
-    {
+    if points_ptr.is_null() || num_points == 0 {
 
         return 0.0;
     }
 
-    let mut points =
-        Vec::with_capacity(num_points);
+    let mut points = Vec::with_capacity(num_points);
 
     for i in 0 .. num_points {
 
         let x = *points_ptr.add(i * 2);
 
-        let y =
-            *points_ptr.add(i * 2 + 1);
+        let y = *points_ptr.add(i * 2 + 1);
 
         points.push((x, y));
     }
 
-    fractal_geometry_and_chaos::correlation_dimension(
-        &points, num_radii,
-    )
+    fractal_geometry_and_chaos::correlation_dimension(&points, num_radii)
 }

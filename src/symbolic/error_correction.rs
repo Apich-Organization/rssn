@@ -30,11 +30,9 @@
 //! ### Hamming Code
 //! ```
 //! 
-//! use rssn::symbolic::error_correction::{
-//!     hamming_check,
-//!     hamming_decode,
-//!     hamming_encode,
-//! };
+//! use rssn::symbolic::error_correction::hamming_check;
+//! use rssn::symbolic::error_correction::hamming_decode;
+//! use rssn::symbolic::error_correction::hamming_encode;
 //!
 //! // Encode 4 bits of data
 //! let data = vec![1, 0, 1, 1];
@@ -74,31 +72,28 @@
 //! ### CRC-32
 //! ```
 //! 
-//! use rssn::symbolic::error_correction::{
-//!     crc32_compute,
-//!     crc32_verify,
-//! };
+//! use rssn::symbolic::error_correction::crc32_compute;
+//! use rssn::symbolic::error_correction::crc32_verify;
 //!
 //! let data = b"Important data";
 //!
 //! let checksum = crc32_compute(data);
 //!
 //! assert!(crc32_verify(
-//!     data, checksum
+//!     data,
+//!     checksum
 //! ));
 //! ```
 
-use crate::symbolic::error_correction_helper::{
-    gf256_add,
-    gf256_div,
-    gf256_exp,
-    gf256_inv,
-    gf256_mul,
-    poly_add_gf256,
-    poly_div_gf256,
-    poly_eval_gf256,
-    poly_mul_gf256,
-};
+use crate::symbolic::error_correction_helper::gf256_add;
+use crate::symbolic::error_correction_helper::gf256_div;
+use crate::symbolic::error_correction_helper::gf256_exp;
+use crate::symbolic::error_correction_helper::gf256_inv;
+use crate::symbolic::error_correction_helper::gf256_mul;
+use crate::symbolic::error_correction_helper::poly_add_gf256;
+use crate::symbolic::error_correction_helper::poly_div_gf256;
+use crate::symbolic::error_correction_helper::poly_eval_gf256;
+use crate::symbolic::error_correction_helper::poly_mul_gf256;
 
 // ============================================================================
 // Hamming Codes
@@ -146,9 +141,7 @@ pub fn hamming_distance(
 /// The count of non-zero bytes
 #[must_use]
 
-pub fn hamming_weight(
-    data : &[u8]
-) -> usize {
+pub fn hamming_weight(data : &[u8]) -> usize {
 
     data.iter()
         .filter(|&&x| x != 0)
@@ -167,9 +160,7 @@ pub fn hamming_weight(
 /// A `Option<Vec<u8>>` of 7 bits representing the codeword, or `None` if the input length is not 4.
 #[must_use]
 
-pub fn hamming_encode(
-    data : &[u8]
-) -> Option<Vec<u8>> {
+pub fn hamming_encode(data : &[u8]) -> Option<Vec<u8>> {
 
     if data.len() != 4 {
 
@@ -204,9 +195,7 @@ pub fn hamming_encode(
 /// `true` if the codeword is valid (no errors), `false` otherwise
 #[must_use]
 
-pub fn hamming_check(
-    codeword : &[u8]
-) -> bool {
+pub fn hamming_check(codeword : &[u8]) -> bool {
 
     if codeword.len() != 7 {
 
@@ -233,9 +222,7 @@ pub fn hamming_check(
 
     let p4_calc = d5_in ^ d6_in ^ d7_in;
 
-    p1_in == p1_calc
-        && p2_in == p2_calc
-        && p4_in == p4_calc
+    p1_in == p1_calc && p2_in == p2_calc && p4_in == p4_calc
 }
 
 /// Decodes a 7-bit Hamming(7,4) codeword, correcting a single-bit error if found.
@@ -264,9 +251,7 @@ pub fn hamming_decode(
 
     if codeword.len() != 7 {
 
-        return Err("Codeword length \
-                    must be 7"
-            .to_string());
+        return Err("Codeword length must be 7".to_string());
     }
 
     let p1_in = codeword[0];
@@ -295,24 +280,17 @@ pub fn hamming_decode(
 
     let c4 = p4_in ^ p4_calc;
 
-    let error_pos =
-        (c4 << 2) | (c2 << 1) | c1;
+    let error_pos = (c4 << 2) | (c2 << 1) | c1;
 
-    let mut corrected_codeword =
-        codeword.to_vec();
+    let mut corrected_codeword = codeword.to_vec();
 
-    let error_index = if error_pos != 0
-    {
+    let error_index = if error_pos != 0 {
 
-        let index =
-            error_pos as usize - 1;
+        let index = error_pos as usize - 1;
 
-        if index
-            < corrected_codeword.len()
-        {
+        if index < corrected_codeword.len() {
 
-            corrected_codeword
-                [index] ^= 1;
+            corrected_codeword[index] ^= 1;
         }
 
         Some(error_pos as usize)
@@ -340,17 +318,11 @@ pub fn hamming_decode(
 
 /// Computes the generator polynomial for a Reed-Solomon code with `n_sym` error correction symbols.
 
-pub(crate) fn rs_generator_poly(
-    n_sym : usize
-) -> Result<Vec<u8>, String> {
+pub(crate) fn rs_generator_poly(n_sym : usize) -> Result<Vec<u8>, String> {
 
     if n_sym == 0 {
 
-        return Err(
-            "Number of symbols must \
-             be positive"
-                .to_string(),
-        );
+        return Err("Number of symbols must be positive".to_string());
     }
 
     let mut g = vec![1];
@@ -389,18 +361,12 @@ pub fn rs_encode(
 
     if data.len() + n_sym > 255 {
 
-        return Err("Message length \
-                    + number of \
-                    symbols cannot \
-                    exceed 255"
-            .to_string());
+        return Err("Message length + number of symbols cannot exceed 255".to_string());
     }
 
-    let gen_poly =
-        rs_generator_poly(n_sym)?;
+    let gen_poly = rs_generator_poly(n_sym)?;
 
-    let mut message_poly =
-        data.to_vec();
+    let mut message_poly = data.to_vec();
 
     message_poly.extend(vec![0; n_sym]);
 
@@ -457,10 +423,7 @@ pub fn rs_check(
     n_sym : usize,
 ) -> bool {
 
-    let syndromes = rs_calc_syndromes(
-        codeword,
-        n_sym,
-    );
+    let syndromes = rs_calc_syndromes(codeword, n_sym);
 
     syndromes
         .iter()
@@ -484,10 +447,7 @@ pub fn rs_error_count(
     n_sym : usize,
 ) -> usize {
 
-    let syndromes = rs_calc_syndromes(
-        codeword,
-        n_sym,
-    );
+    let syndromes = rs_calc_syndromes(codeword, n_sym);
 
     if syndromes
         .iter()
@@ -497,10 +457,7 @@ pub fn rs_error_count(
         return 0;
     }
 
-    let sigma =
-        rs_find_error_locator_poly(
-            &syndromes,
-        );
+    let sigma = rs_find_error_locator_poly(&syndromes);
 
     sigma.len() - 1 // degree of error locator polynomial
 }
@@ -508,9 +465,7 @@ pub fn rs_error_count(
 /// Finds the error locator polynomial `sigma` using the Berlekamp-Massey algorithm.
 #[allow(clippy::cast_possible_wrap)]
 
-pub(crate) fn rs_find_error_locator_poly(
-    syndromes : &[u8]
-) -> Vec<u8> {
+pub(crate) fn rs_find_error_locator_poly(syndromes : &[u8]) -> Vec<u8> {
 
     let mut sigma = vec![1];
 
@@ -531,9 +486,7 @@ pub(crate) fn rs_find_error_locator_poly(
             d = gf256_add(
                 d,
                 gf256_mul(
-                    sigma[sigma.len()
-                        - 1
-                        - i],
+                    sigma[sigma.len() - 1 - i],
                     syndromes[n - i],
                 ),
             );
@@ -543,8 +496,7 @@ pub(crate) fn rs_find_error_locator_poly(
 
             let t = sigma.clone();
 
-            let mut correction =
-                vec![b];
+            let mut correction = vec![b];
 
             correction.extend(vec![
                 0;
@@ -557,10 +509,7 @@ pub(crate) fn rs_find_error_locator_poly(
                 &prev_sigma,
             );
 
-            sigma = poly_add_gf256(
-                &sigma,
-                &correction,
-            );
+            sigma = poly_add_gf256(&sigma, &correction);
 
             if 2 * l <= n {
 
@@ -587,31 +536,21 @@ pub(crate) fn rs_find_error_locations(
 
     let mut error_locs = Vec::new();
 
-    let err_poly_degree =
-        sigma.len() - 1;
+    let err_poly_degree = sigma.len() - 1;
 
     for i in 0 .. codeword_len {
 
-        let x =
-            gf256_exp((255 - i) as u8);
+        let x = gf256_exp((255 - i) as u8);
 
-        if poly_eval_gf256(sigma, x)
-            == 0
-        {
+        if poly_eval_gf256(sigma, x) == 0 {
 
             error_locs.push(i);
         }
     }
 
-    if error_locs.len()
-        != err_poly_degree
-    {
+    if error_locs.len() != err_poly_degree {
 
-        return Err("Failed to find \
-                    the correct \
-                    number of error \
-                    locations."
-            .to_string());
+        return Err("Failed to find the correct number of error locations.".to_string());
     }
 
     Ok(error_locs)
@@ -636,8 +575,7 @@ pub fn rs_decode(
     n_sym : usize,
 ) -> Result<Vec<u8>, String> {
 
-    let mut codeword_poly =
-        codeword.to_vec();
+    let mut codeword_poly = codeword.to_vec();
 
     let syndromes = rs_calc_syndromes(
         &codeword_poly,
@@ -649,72 +587,48 @@ pub fn rs_decode(
         .all(|&s| s == 0)
     {
 
-        return Ok(
-            codeword[.. codeword.len()
-                - n_sym]
-                .to_vec(),
-        );
+        return Ok(codeword[.. codeword.len() - n_sym].to_vec());
     }
 
-    let sigma =
-        rs_find_error_locator_poly(
-            &syndromes,
-        );
+    let sigma = rs_find_error_locator_poly(&syndromes);
 
-    let error_locs =
-        rs_find_error_locations(
-            &sigma,
-            codeword.len(),
-        )?;
-
-    let mut omega = poly_mul_gf256(
-        &syndromes,
+    let error_locs = rs_find_error_locations(
         &sigma,
-    );
+        codeword.len(),
+    )?;
+
+    let mut omega = poly_mul_gf256(&syndromes, &sigma);
 
     omega.truncate(n_sym);
 
     for &err_loc in &error_locs {
 
-        let x_inv =
-            gf256_inv(gf256_exp(
-                (codeword.len()
-                    - 1
-                    - err_loc)
-                    as u8,
-            ));
+        let x_inv = gf256_inv(gf256_exp(
+            (codeword.len() - 1 - err_loc) as u8,
+        ));
 
         let mut sigma_prime_eval = 0;
 
-        for i in (1 .. sigma.len())
-            .step_by(2)
-        {
+        for i in (1 .. sigma.len()).step_by(2) {
 
-            sigma_prime_eval =
-                gf256_add(
-                    sigma_prime_eval,
-                    sigma[i],
-                );
+            sigma_prime_eval = gf256_add(
+                sigma_prime_eval,
+                sigma[i],
+            );
         }
 
         let y = gf256_div(
-            poly_eval_gf256(
-                &omega,
-                x_inv?,
-            ),
+            poly_eval_gf256(&omega, x_inv?),
             sigma_prime_eval,
         );
 
-        codeword_poly[err_loc] =
-            gf256_add(
-                codeword_poly[err_loc],
-                y?,
-            );
+        codeword_poly[err_loc] = gf256_add(
+            codeword_poly[err_loc],
+            y?,
+        );
     }
 
-    Ok(codeword_poly
-        [.. codeword.len() - n_sym]
-        .to_vec())
+    Ok(codeword_poly[.. codeword.len() - n_sym].to_vec())
 }
 
 // ============================================================================
@@ -723,8 +637,7 @@ pub fn rs_decode(
 
 /// CRC-32 polynomial (IEEE 802.3)
 
-const CRC32_POLYNOMIAL : u32 =
-    0xEDB88320;
+const CRC32_POLYNOMIAL : u32 = 0xEDB88320;
 
 /// Computes CRC-32 checksum of data.
 ///
@@ -737,9 +650,7 @@ const CRC32_POLYNOMIAL : u32 =
 /// The 32-bit CRC checksum
 #[must_use]
 
-pub fn crc32_compute(
-    data : &[u8]
-) -> u32 {
+pub fn crc32_compute(data : &[u8]) -> u32 {
 
     let mut crc : u32 = 0xFFFFFFFF;
 
@@ -751,8 +662,7 @@ pub fn crc32_compute(
 
             if crc & 1 != 0 {
 
-                crc = (crc >> 1)
-                    ^ CRC32_POLYNOMIAL;
+                crc = (crc >> 1) ^ CRC32_POLYNOMIAL;
             } else {
 
                 crc >>= 1;
@@ -808,8 +718,7 @@ pub fn crc32_update(
 
             if crc & 1 != 0 {
 
-                crc = (crc >> 1)
-                    ^ CRC32_POLYNOMIAL;
+                crc = (crc >> 1) ^ CRC32_POLYNOMIAL;
             } else {
 
                 crc >>= 1;
@@ -829,9 +738,7 @@ pub fn crc32_update(
 /// The final CRC-32 checksum
 #[must_use]
 
-pub const fn crc32_finalize(
-    crc : u32
-) -> u32 {
+pub const fn crc32_finalize(crc : u32) -> u32 {
 
     !crc
 }

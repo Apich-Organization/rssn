@@ -6,8 +6,7 @@ use rssn::physics::physics_bem::*;
 
 #[test]
 
-fn test_solve_laplace_bem_2d_rectangle()
-{
+fn test_solve_laplace_bem_2d_rectangle() {
 
     // Steady state heat conduction in a rectangle
     // u=100 at x=0, u=0 at x=1, q=0 at y=0 and y=1
@@ -21,16 +20,11 @@ fn test_solve_laplace_bem_2d_rectangle()
     for i in 0 .. n_per_side {
 
         points.push((
-            (i as f64)
-                / n_per_side as f64,
+            (i as f64) / n_per_side as f64,
             0.0,
         ));
 
-        bcs.push(
-            BoundaryCondition::Flux(
-                0.0,
-            ),
-        );
+        bcs.push(BoundaryCondition::Flux(0.0));
     }
 
     // Right: x=1, y from 0 to 1
@@ -38,8 +32,7 @@ fn test_solve_laplace_bem_2d_rectangle()
 
         points.push((
             1.0,
-            (i as f64)
-                / n_per_side as f64,
+            (i as f64) / n_per_side as f64,
         ));
 
         bcs.push(BoundaryCondition::Potential(0.0));
@@ -49,16 +42,11 @@ fn test_solve_laplace_bem_2d_rectangle()
     for i in 0 .. n_per_side {
 
         points.push((
-            1.0 - (i as f64)
-                / n_per_side as f64,
+            1.0 - (i as f64) / n_per_side as f64,
             1.0,
         ));
 
-        bcs.push(
-            BoundaryCondition::Flux(
-                0.0,
-            ),
-        );
+        bcs.push(BoundaryCondition::Flux(0.0));
     }
 
     // Left: x=0, y from 1 to 0
@@ -66,18 +54,13 @@ fn test_solve_laplace_bem_2d_rectangle()
 
         points.push((
             0.0,
-            1.0 - (i as f64)
-                / n_per_side as f64,
+            1.0 - (i as f64) / n_per_side as f64,
         ));
 
         bcs.push(BoundaryCondition::Potential(100.0));
     }
 
-    let (u, _q) = solve_laplace_bem_2d(
-        &points,
-        &bcs,
-    )
-    .unwrap();
+    let (u, _q) = solve_laplace_bem_2d(&points, &bcs).unwrap();
 
     // Check boundary values
     assert_approx_eq!(
@@ -87,26 +70,15 @@ fn test_solve_laplace_bem_2d_rectangle()
     );
 
     assert_approx_eq!(
-        u[3 * n_per_side
-            + n_per_side / 2],
+        u[3 * n_per_side + n_per_side / 2],
         100.0,
         1e-1
     );
 
     // Midpoints on insulated sides should be around 50
-    assert!(
-        u[n_per_side / 2] > 40.0
-            && u[n_per_side / 2] < 60.0
-    );
+    assert!(u[n_per_side / 2] > 40.0 && u[n_per_side / 2] < 60.0);
 
-    assert!(
-        u[2 * n_per_side
-            + n_per_side / 2]
-            > 40.0
-            && u[2 * n_per_side
-                + n_per_side / 2]
-                < 60.0
-    );
+    assert!(u[2 * n_per_side + n_per_side / 2] > 40.0 && u[2 * n_per_side + n_per_side / 2] < 60.0);
 }
 
 #[test]
@@ -122,24 +94,18 @@ fn test_evaluate_potential_2d() {
     for i in 0 .. n_per_side {
 
         points.push((
-            (i as f64)
-                / n_per_side as f64,
+            (i as f64) / n_per_side as f64,
             0.0,
         ));
 
-        bcs.push(
-            BoundaryCondition::Flux(
-                0.0,
-            ),
-        );
+        bcs.push(BoundaryCondition::Flux(0.0));
     }
 
     for i in 0 .. n_per_side {
 
         points.push((
             1.0,
-            (i as f64)
-                / n_per_side as f64,
+            (i as f64) / n_per_side as f64,
         ));
 
         bcs.push(BoundaryCondition::Potential(0.0));
@@ -148,34 +114,24 @@ fn test_evaluate_potential_2d() {
     for i in 0 .. n_per_side {
 
         points.push((
-            1.0 - (i as f64)
-                / n_per_side as f64,
+            1.0 - (i as f64) / n_per_side as f64,
             1.0,
         ));
 
-        bcs.push(
-            BoundaryCondition::Flux(
-                0.0,
-            ),
-        );
+        bcs.push(BoundaryCondition::Flux(0.0));
     }
 
     for i in 0 .. n_per_side {
 
         points.push((
             0.0,
-            1.0 - (i as f64)
-                / n_per_side as f64,
+            1.0 - (i as f64) / n_per_side as f64,
         ));
 
         bcs.push(BoundaryCondition::Potential(100.0));
     }
 
-    let (u, q) = solve_laplace_bem_2d(
-        &points,
-        &bcs,
-    )
-    .unwrap();
+    let (u, q) = solve_laplace_bem_2d(&points, &bcs).unwrap();
 
     let n = points.len();
 
@@ -188,10 +144,8 @@ fn test_evaluate_potential_2d() {
                     points[i].1,
                 ),
                 Vector2D::new(
-                    points[(i + 1) % n]
-                        .0,
-                    points[(i + 1) % n]
-                        .1,
+                    points[(i + 1) % n].0,
+                    points[(i + 1) % n].1,
                 ),
             )
         })

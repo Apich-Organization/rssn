@@ -4,9 +4,7 @@
 //! with the core data structures and functions of the `rssn` library.
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
-#![allow(
-    clippy::no_mangle_with_rust_abi
-)]
+#![allow(clippy::no_mangle_with_rust_abi)]
 
 #[macro_use]
 

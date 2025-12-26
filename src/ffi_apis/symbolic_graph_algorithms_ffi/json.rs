@@ -18,7 +18,7 @@ pub unsafe extern "C" fn rssn_json_graph_dfs_api(
         start_node : usize,
     }
 
-    let input: Input = match from_json_string(json) {
+    let input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn rssn_json_graph_bfs_api(
         start_node : usize,
     }
 
-    let input: Input = match from_json_string(json) {
+    let input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -69,14 +69,12 @@ pub unsafe extern "C" fn rssn_json_graph_connected_components_api(
     json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        connected_components(&graph);
+    let result = connected_components(&graph);
 
     to_json_string(&result)
 }
@@ -90,8 +88,7 @@ pub unsafe extern "C" fn rssn_json_graph_is_connected(
     json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
@@ -110,16 +107,12 @@ pub unsafe extern "C" fn rssn_json_graph_strongly_connected_components(
     json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        strongly_connected_components(
-            &graph,
-        );
+    let result = strongly_connected_components(&graph);
 
     to_json_string(&result)
 }
@@ -133,8 +126,7 @@ pub unsafe extern "C" fn rssn_json_graph_has_cycle_api(
     json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
@@ -153,21 +145,18 @@ pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
     json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let (bridges, aps) =
-        find_bridges_and_articulation_points(&graph);
+    let (bridges, aps) = find_bridges_and_articulation_points(&graph);
 
     #[derive(serde::Serialize)]
 
     struct Result {
         bridges : Vec<(usize, usize)>,
-        articulation_points :
-            Vec<usize>,
+        articulation_points : Vec<usize>,
     }
 
     let result = Result {
@@ -187,21 +176,18 @@ pub unsafe extern "C" fn rssn_json_graph_kruskal_mst_api(
     json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
     let mst_edges = kruskal_mst(&graph);
 
-    let mut mst_graph =
-        Graph::new(graph.is_directed);
+    let mut mst_graph = Graph::new(graph.is_directed);
 
     for node in &graph.nodes {
 
-        mst_graph
-            .add_node(node.clone());
+        mst_graph.add_node(node.clone());
     }
 
     for (u, v, weight) in mst_edges {
@@ -233,7 +219,7 @@ pub unsafe extern "C" fn rssn_json_graph_edmonds_karp_max_flow(
         sink : usize,
     }
 
-    let input: Input = match from_json_string(json) {
+    let input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -264,7 +250,7 @@ pub unsafe extern "C" fn rssn_json_graph_dinic_max_flow(
         sink : usize,
     }
 
-    let input: Input = match from_json_string(json) {
+    let input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -287,8 +273,7 @@ pub unsafe extern "C" fn rssn_json_graph_is_bipartite_api(
     json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
@@ -314,16 +299,15 @@ pub unsafe extern "C" fn rssn_json_graph_bipartite_maximum_matching(
         partition : Vec<i8>,
     }
 
-    let input: Input = match from_json_string(json) {
+    let input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        bipartite_maximum_matching(
-            &input.graph,
-            &input.partition,
-        );
+    let result = bipartite_maximum_matching(
+        &input.graph,
+        &input.partition,
+    );
 
     to_json_string(&result)
 }
@@ -337,14 +321,12 @@ pub unsafe extern "C" fn rssn_json_graph_topological_sort(
     json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        topological_sort(&graph);
+    let result = topological_sort(&graph);
 
     to_json_string(&result)
 }

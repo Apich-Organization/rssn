@@ -33,22 +33,10 @@ fn test_metric_tensor_spherical() {
     )
     .unwrap();
 
-    assert_approx_eq!(
-        g[0][0],
-        1.0,
-        1e-9
-    );
+    assert_approx_eq!(g[0][0], 1.0, 1e-9);
 
-    assert_approx_eq!(
-        g[1][1],
-        4.0,
-        1e-9
-    ); // 2^2 * sin^2(pi/2) = 4 * 1 = 4
-    assert_approx_eq!(
-        g[2][2],
-        4.0,
-        1e-9
-    ); // 2^2 = 4
+    assert_approx_eq!(g[1][1], 4.0, 1e-9); // 2^2 * sin^2(pi/2) = 4 * 1 = 4
+    assert_approx_eq!(g[2][2], 4.0, 1e-9); // 2^2 = 4
 }
 
 #[test]

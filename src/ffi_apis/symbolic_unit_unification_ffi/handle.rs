@@ -3,9 +3,7 @@ use crate::symbolic::unit_unification::unify_expression;
 
 #[no_mangle]
 
-pub extern "C" fn rssn_unify_expression_handle(
-    expr : *const Expr
-) -> *mut Expr {
+pub extern "C" fn rssn_unify_expression_handle(expr : *const Expr) -> *mut Expr {
 
     let expr_ref = unsafe {
 
@@ -13,13 +11,7 @@ pub extern "C" fn rssn_unify_expression_handle(
     };
 
     match unify_expression(expr_ref) {
-        | Ok(result) => {
-            Box::into_raw(Box::new(
-                result,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }

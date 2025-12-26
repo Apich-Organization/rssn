@@ -18,9 +18,7 @@ pub extern "C" fn rssn_num_graphics_dot_product(
 
     let v2 = computer_graphics::Vector3D::new(x2, y2, z2);
 
-    computer_graphics::dot_product(
-        &v1, &v2,
-    )
+    computer_graphics::dot_product(&v1, &v2)
 }
 
 /// Computes the cross product of two 3D vectors.
@@ -42,10 +40,7 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product(
     out_z : *mut f64,
 ) -> i32 {
 
-    if out_x.is_null()
-        || out_y.is_null()
-        || out_z.is_null()
-    {
+    if out_x.is_null() || out_y.is_null() || out_z.is_null() {
 
         return -1;
     }
@@ -80,10 +75,7 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize(
     out_z : *mut f64,
 ) -> i32 {
 
-    if out_x.is_null()
-        || out_y.is_null()
-        || out_z.is_null()
-    {
+    if out_x.is_null() || out_y.is_null() || out_z.is_null() {
 
         return -1;
     }
@@ -133,25 +125,16 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect(
     out_z : *mut f64,
 ) -> i32 {
 
-    if out_x.is_null()
-        || out_y.is_null()
-        || out_z.is_null()
-    {
+    if out_x.is_null() || out_y.is_null() || out_z.is_null() {
 
         return -1;
     }
 
-    let incident =
-        computer_graphics::Vector3D::new(ix, iy, iz);
+    let incident = computer_graphics::Vector3D::new(ix, iy, iz);
 
-    let normal =
-        computer_graphics::Vector3D::new(nx, ny, nz);
+    let normal = computer_graphics::Vector3D::new(nx, ny, nz);
 
-    let result =
-        computer_graphics::reflect(
-            &incident,
-            &normal,
-        );
+    let result = computer_graphics::reflect(&incident, &normal);
 
     *out_x = result.x;
 
@@ -178,17 +161,13 @@ pub extern "C" fn rssn_num_graphics_angle_between(
 
     let v2 = computer_graphics::Vector3D::new(x2, y2, z2);
 
-    computer_graphics::angle_between(
-        &v1, &v2,
-    )
+    computer_graphics::angle_between(&v1, &v2)
 }
 
 /// Converts degrees to radians.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_graphics_degrees_to_radians(
-    degrees : f64
-) -> f64 {
+pub extern "C" fn rssn_num_graphics_degrees_to_radians(degrees : f64) -> f64 {
 
     computer_graphics::degrees_to_radians(degrees)
 }
@@ -196,9 +175,7 @@ pub extern "C" fn rssn_num_graphics_degrees_to_radians(
 /// Converts radians to degrees.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_graphics_radians_to_degrees(
-    radians : f64
-) -> f64 {
+pub extern "C" fn rssn_num_graphics_radians_to_degrees(radians : f64) -> f64 {
 
     computer_graphics::radians_to_degrees(radians)
 }
@@ -224,20 +201,14 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
     out_z : *mut f64,
 ) -> i32 {
 
-    if out_w.is_null()
-        || out_x.is_null()
-        || out_y.is_null()
-        || out_z.is_null()
-    {
+    if out_w.is_null() || out_x.is_null() || out_y.is_null() || out_z.is_null() {
 
         return -1;
     }
 
-    let q1 =
-        computer_graphics::Quaternion::new(w1, x1, y1, z1);
+    let q1 = computer_graphics::Quaternion::new(w1, x1, y1, z1);
 
-    let q2 =
-        computer_graphics::Quaternion::new(w2, x2, y2, z2);
+    let q2 = computer_graphics::Quaternion::new(w2, x2, y2, z2);
 
     let result = q1.multiply(&q2);
 
@@ -269,13 +240,11 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x(
         return -1;
     }
 
-    let matrix =
-        computer_graphics::rotation_matrix_x(angle_rad);
+    let matrix = computer_graphics::rotation_matrix_x(angle_rad);
 
     for i in 0 .. 16 {
 
-        *out_ptr.add(i) =
-            matrix.data()[i];
+        *out_ptr.add(i) = matrix.data()[i];
     }
 
     0
@@ -300,23 +269,27 @@ pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
 
     let ray = computer_graphics::Ray::new(
         computer_graphics::Point3D::new(
-            ray_ox, ray_oy, ray_oz,
+            ray_ox,
+            ray_oy,
+            ray_oz,
         ),
         computer_graphics::Vector3D::new(
-            ray_dx, ray_dy, ray_dz,
+            ray_dx,
+            ray_dy,
+            ray_dz,
         ),
     );
 
     let sphere = computer_graphics::Sphere::new(
         computer_graphics::Point3D::new(
-            sphere_cx, sphere_cy, sphere_cz,
+            sphere_cx,
+            sphere_cy,
+            sphere_cz,
         ),
         sphere_r,
     );
 
-    match computer_graphics::ray_sphere_intersection(
-        &ray, &sphere,
-    ) {
+    match computer_graphics::ray_sphere_intersection(&ray, &sphere) {
         | Some(intersection) => intersection.t,
         | None => -1.0,
     }
@@ -347,38 +320,22 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic(
     out_z : *mut f64,
 ) -> i32 {
 
-    if out_x.is_null()
-        || out_y.is_null()
-        || out_z.is_null()
-    {
+    if out_x.is_null() || out_y.is_null() || out_z.is_null() {
 
         return -1;
     }
 
-    let p0 =
-        computer_graphics::Point3D::new(
-            p0x, p0y, p0z,
-        );
+    let p0 = computer_graphics::Point3D::new(p0x, p0y, p0z);
 
-    let p1 =
-        computer_graphics::Point3D::new(
-            p1x, p1y, p1z,
-        );
+    let p1 = computer_graphics::Point3D::new(p1x, p1y, p1z);
 
-    let p2 =
-        computer_graphics::Point3D::new(
-            p2x, p2y, p2z,
-        );
+    let p2 = computer_graphics::Point3D::new(p2x, p2y, p2z);
 
-    let p3 =
-        computer_graphics::Point3D::new(
-            p3x, p3y, p3z,
-        );
+    let p3 = computer_graphics::Point3D::new(p3x, p3y, p3z);
 
-    let result =
-        computer_graphics::bezier_cubic(
-            &p0, &p1, &p2, &p3, t,
-        );
+    let result = computer_graphics::bezier_cubic(
+        &p0, &p1, &p2, &p3, t,
+    );
 
     *out_x = result.x;
 

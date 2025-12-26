@@ -13,22 +13,15 @@ pub extern "C" fn rssn_json_prime_field_element_new(
     modulus_json : *const c_char,
 ) -> *mut c_char {
 
-    let value : Option<BigInt> =
-        from_json_string(value_json);
+    let value : Option<BigInt> = from_json_string(value_json);
 
-    let modulus : Option<BigInt> =
-        from_json_string(modulus_json);
+    let modulus : Option<BigInt> = from_json_string(modulus_json);
 
-    if let (Some(v), Some(m)) =
-        (value, modulus)
-    {
+    if let (Some(v), Some(m)) = (value, modulus) {
 
         let field = PrimeField::new(m);
 
-        let element =
-            PrimeFieldElement::new(
-                v, field,
-            );
+        let element = PrimeFieldElement::new(v, field);
 
         to_json_string(&element)
     } else {
@@ -45,17 +38,11 @@ pub extern "C" fn rssn_json_prime_field_element_add(
     b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<PrimeFieldElement> =
-        from_json_string(a_json);
+    let a : Option<PrimeFieldElement> = from_json_string(a_json);
 
-    let b : Option<PrimeFieldElement> =
-        from_json_string(b_json);
+    let b : Option<PrimeFieldElement> = from_json_string(b_json);
 
-    if let (
-        Some(a_elem),
-        Some(b_elem),
-    ) = (a, b)
-    {
+    if let (Some(a_elem), Some(b_elem)) = (a, b) {
 
         let result = a_elem + b_elem;
 
@@ -74,17 +61,11 @@ pub extern "C" fn rssn_json_prime_field_element_sub(
     b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<PrimeFieldElement> =
-        from_json_string(a_json);
+    let a : Option<PrimeFieldElement> = from_json_string(a_json);
 
-    let b : Option<PrimeFieldElement> =
-        from_json_string(b_json);
+    let b : Option<PrimeFieldElement> = from_json_string(b_json);
 
-    if let (
-        Some(a_elem),
-        Some(b_elem),
-    ) = (a, b)
-    {
+    if let (Some(a_elem), Some(b_elem)) = (a, b) {
 
         let result = a_elem - b_elem;
 
@@ -103,17 +84,11 @@ pub extern "C" fn rssn_json_prime_field_element_mul(
     b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<PrimeFieldElement> =
-        from_json_string(a_json);
+    let a : Option<PrimeFieldElement> = from_json_string(a_json);
 
-    let b : Option<PrimeFieldElement> =
-        from_json_string(b_json);
+    let b : Option<PrimeFieldElement> = from_json_string(b_json);
 
-    if let (
-        Some(a_elem),
-        Some(b_elem),
-    ) = (a, b)
-    {
+    if let (Some(a_elem), Some(b_elem)) = (a, b) {
 
         let result = a_elem * b_elem;
 
@@ -132,17 +107,11 @@ pub extern "C" fn rssn_json_prime_field_element_div(
     b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<PrimeFieldElement> =
-        from_json_string(a_json);
+    let a : Option<PrimeFieldElement> = from_json_string(a_json);
 
-    let b : Option<PrimeFieldElement> =
-        from_json_string(b_json);
+    let b : Option<PrimeFieldElement> = from_json_string(b_json);
 
-    if let (
-        Some(a_elem),
-        Some(b_elem),
-    ) = (a, b)
-    {
+    if let (Some(a_elem), Some(b_elem)) = (a, b) {
 
         let result = a_elem / b_elem;
 
@@ -156,23 +125,15 @@ pub extern "C" fn rssn_json_prime_field_element_div(
 /// Computes the inverse of a prime field element (JSON)
 #[no_mangle]
 
-pub extern "C" fn rssn_json_prime_field_element_inverse(
-    elem_json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_prime_field_element_inverse(elem_json : *const c_char) -> *mut c_char {
 
-    let elem : Option<
-        PrimeFieldElement,
-    > = from_json_string(elem_json);
+    let elem : Option<PrimeFieldElement> = from_json_string(elem_json);
 
     if let Some(e) = elem {
 
         match e.inverse() {
-            | Some(inv) => {
-                to_json_string(&inv)
-            },
-            | None => {
-                std::ptr::null_mut()
-            },
+            | Some(inv) => to_json_string(&inv),
+            | None => std::ptr::null_mut(),
         }
     } else {
 
@@ -188,23 +149,15 @@ pub extern "C" fn rssn_json_finite_field_polynomial_new(
     modulus_json : *const c_char,
 ) -> *mut c_char {
 
-    let coeffs : Option<
-        Vec<PrimeFieldElement>,
-    > = from_json_string(coeffs_json);
+    let coeffs : Option<Vec<PrimeFieldElement>> = from_json_string(coeffs_json);
 
-    let modulus : Option<BigInt> =
-        from_json_string(modulus_json);
+    let modulus : Option<BigInt> = from_json_string(modulus_json);
 
-    if let (Some(c), Some(m)) =
-        (coeffs, modulus)
-    {
+    if let (Some(c), Some(m)) = (coeffs, modulus) {
 
         let field = PrimeField::new(m);
 
-        let poly =
-            FiniteFieldPolynomial::new(
-                c, field,
-            );
+        let poly = FiniteFieldPolynomial::new(c, field);
 
         to_json_string(&poly)
     } else {
@@ -216,13 +169,9 @@ pub extern "C" fn rssn_json_finite_field_polynomial_new(
 /// Gets the degree of a finite field polynomial (JSON)
 #[no_mangle]
 
-pub extern "C" fn rssn_json_finite_field_polynomial_degree(
-    poly_json : *const c_char
-) -> i64 {
+pub extern "C" fn rssn_json_finite_field_polynomial_degree(poly_json : *const c_char) -> i64 {
 
-    let poly : Option<
-        FiniteFieldPolynomial,
-    > = from_json_string(poly_json);
+    let poly : Option<FiniteFieldPolynomial> = from_json_string(poly_json);
 
     if let Some(p) = poly {
 
@@ -241,27 +190,14 @@ pub extern "C" fn rssn_json_finite_field_polynomial_long_division(
     divisor_json : *const c_char,
 ) -> *mut c_char {
 
-    let dividend : Option<
-        FiniteFieldPolynomial,
-    > = from_json_string(dividend_json);
+    let dividend : Option<FiniteFieldPolynomial> = from_json_string(dividend_json);
 
-    let divisor : Option<
-        FiniteFieldPolynomial,
-    > = from_json_string(divisor_json);
+    let divisor : Option<FiniteFieldPolynomial> = from_json_string(divisor_json);
 
-    if let (
-        Some(div),
-        Some(divisor_poly),
-    ) = (dividend, divisor)
-    {
+    if let (Some(div), Some(divisor_poly)) = (dividend, divisor) {
 
-        match div.long_division(
-            &divisor_poly,
-        ) {
-            | Ok((
-                quotient,
-                remainder,
-            )) => {
+        match div.long_division(&divisor_poly) {
+            | Ok((quotient, remainder)) => {
 
                 let result = serde_json::json!({
                     "quotient": quotient,
@@ -270,9 +206,7 @@ pub extern "C" fn rssn_json_finite_field_polynomial_long_division(
 
                 to_json_string(&result)
             },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 

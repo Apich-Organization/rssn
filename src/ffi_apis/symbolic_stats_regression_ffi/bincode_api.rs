@@ -6,13 +6,9 @@ use crate::symbolic::stats_regression;
 
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_simple_linear_regression(
-    data_buf : BincodeBuffer
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_simple_linear_regression(data_buf : BincodeBuffer) -> BincodeBuffer {
 
-    let data : Option<
-        Vec<(Expr, Expr)>,
-    > = from_bincode_buffer(&data_buf);
+    let data : Option<Vec<(Expr, Expr)>> = from_bincode_buffer(&data_buf);
 
     if let Some(data) = data {
 
@@ -32,9 +28,7 @@ pub extern "C" fn rssn_bincode_polynomial_regression(
     degree : usize,
 ) -> BincodeBuffer {
 
-    let data : Option<
-        Vec<(Expr, Expr)>,
-    > = from_bincode_buffer(&data_buf);
+    let data : Option<Vec<(Expr, Expr)>> = from_bincode_buffer(&data_buf);
 
     if let Some(data) = data {
 
@@ -57,43 +51,30 @@ pub extern "C" fn rssn_bincode_nonlinear_regression(
     params_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let data : Option<
-        Vec<(Expr, Expr)>,
-    > = from_bincode_buffer(&data_buf);
+    let data : Option<Vec<(Expr, Expr)>> = from_bincode_buffer(&data_buf);
 
-    let model : Option<Expr> =
-        from_bincode_buffer(&model_buf);
+    let model : Option<Expr> = from_bincode_buffer(&model_buf);
 
-    let vars : Option<Vec<String>> =
-        from_bincode_buffer(&vars_buf);
+    let vars : Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
-    let params : Option<Vec<String>> =
-        from_bincode_buffer(
-            &params_buf,
-        );
+    let params : Option<Vec<String>> = from_bincode_buffer(&params_buf);
 
-    if let (
-        Some(data),
-        Some(model),
-        Some(vars),
-        Some(params),
-    ) = (
+    if let (Some(data), Some(model), Some(vars), Some(params)) = (
         data,
         model,
         vars,
         params,
     ) {
 
-        let vars_refs : Vec<&str> =
-            vars.iter()
-                .map(|s| s.as_str())
-                .collect();
+        let vars_refs : Vec<&str> = vars
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
-        let params_refs : Vec<&str> =
-            params
-                .iter()
-                .map(|s| s.as_str())
-                .collect();
+        let params_refs : Vec<&str> = params
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         match stats_regression::nonlinear_regression_symbolic(
             &data,

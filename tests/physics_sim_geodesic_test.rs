@@ -16,9 +16,7 @@ fn test_geodesic_simulation_smoke() {
         initial_dt : 0.1,
     };
 
-    let path = run_geodesic_simulation(
-        &params,
-    );
+    let path = run_geodesic_simulation(&params);
 
     assert!(path.len() > 0);
 
@@ -48,18 +46,14 @@ fn test_effective_potential_scaling() {
     // L = r^2 * phi_dot = 100 * 0.035 = 3.5
     // V_eff = -1/10 + 3.5^2 / 200 - 3.5^2 / 1000
     // V_eff = -0.1 + 12.25/200 - 12.25/1000 = -0.1 + 0.06125 - 0.01225 = -0.051
-    let v = params
-        .effective_potential(10.0, 3.5);
+    let v = params.effective_potential(10.0, 3.5);
 
-    assert!(
-        (v - (-0.051)).abs() < 1e-10
-    );
+    assert!((v - (-0.051)).abs() < 1e-10);
 }
 
 #[test]
 
-fn test_black_hole_orbits_scenario_run()
-{
+fn test_black_hole_orbits_scenario_run() {
 
     let res = simulate_black_hole_orbits_scenario();
 

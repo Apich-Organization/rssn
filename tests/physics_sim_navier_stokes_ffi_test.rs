@@ -46,8 +46,7 @@ fn test_navier_stokes_json_ffi() {
         "lid_velocity": 1.0
     }"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
 
@@ -55,13 +54,9 @@ fn test_navier_stokes_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str =
-            CStr::from_ptr(res_ptr)
-                .to_string_lossy();
+        let res_str = CStr::from_ptr(res_ptr).to_string_lossy();
 
-        assert!(
-            res_str.contains("\"ok\":")
-        );
+        assert!(res_str.contains("\"ok\":"));
 
         rssn::ffi_apis::ffi_api::free_string(res_ptr);
     }

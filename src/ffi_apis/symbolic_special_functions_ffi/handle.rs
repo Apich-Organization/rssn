@@ -13,9 +13,7 @@ use crate::symbolic::special_functions;
 /// Computes the symbolic Gamma function Γ(z).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_gamma(
-    arg : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_gamma(arg : *const Expr) -> *mut Expr {
 
     if arg.is_null() {
 
@@ -23,18 +21,14 @@ pub unsafe extern "C" fn rssn_gamma(
     }
 
     Box::into_raw(Box::new(
-        special_functions::gamma(
-            (*arg).clone(),
-        ),
+        special_functions::gamma((*arg).clone()),
     ))
 }
 
 /// Computes the symbolic log-gamma function ln(Γ(z)).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_ln_gamma(
-    arg : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_ln_gamma(arg : *const Expr) -> *mut Expr {
 
     if arg.is_null() {
 
@@ -42,9 +36,7 @@ pub unsafe extern "C" fn rssn_ln_gamma(
     }
 
     Box::into_raw(Box::new(
-        special_functions::ln_gamma(
-            (*arg).clone(),
-        ),
+        special_functions::ln_gamma((*arg).clone()),
     ))
 }
 
@@ -72,9 +64,7 @@ pub unsafe extern "C" fn rssn_beta(
 /// Computes the symbolic Digamma function ψ(z).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_digamma(
-    arg : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_digamma(arg : *const Expr) -> *mut Expr {
 
     if arg.is_null() {
 
@@ -82,9 +72,7 @@ pub unsafe extern "C" fn rssn_digamma(
     }
 
     Box::into_raw(Box::new(
-        special_functions::digamma(
-            (*arg).clone(),
-        ),
+        special_functions::digamma((*arg).clone()),
     ))
 }
 
@@ -116,9 +104,7 @@ pub unsafe extern "C" fn rssn_polygamma(
 /// Computes the symbolic error function erf(z).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_erf(
-    arg : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_erf(arg : *const Expr) -> *mut Expr {
 
     if arg.is_null() {
 
@@ -126,18 +112,14 @@ pub unsafe extern "C" fn rssn_erf(
     }
 
     Box::into_raw(Box::new(
-        special_functions::erf(
-            (*arg).clone(),
-        ),
+        special_functions::erf((*arg).clone()),
     ))
 }
 
 /// Computes the symbolic complementary error function erfc(z).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_erfc(
-    arg : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_erfc(arg : *const Expr) -> *mut Expr {
 
     if arg.is_null() {
 
@@ -145,18 +127,14 @@ pub unsafe extern "C" fn rssn_erfc(
     }
 
     Box::into_raw(Box::new(
-        special_functions::erfc(
-            (*arg).clone(),
-        ),
+        special_functions::erfc((*arg).clone()),
     ))
 }
 
 /// Computes the symbolic imaginary error function erfi(z).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_erfi(
-    arg : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_erfi(arg : *const Expr) -> *mut Expr {
 
     if arg.is_null() {
 
@@ -164,9 +142,7 @@ pub unsafe extern "C" fn rssn_erfi(
     }
 
     Box::into_raw(Box::new(
-        special_functions::erfi(
-            (*arg).clone(),
-        ),
+        special_functions::erfi((*arg).clone()),
     ))
 }
 
@@ -177,9 +153,7 @@ pub unsafe extern "C" fn rssn_erfi(
 /// Computes the symbolic Riemann zeta function ζ(s).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_zeta(
-    arg : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_zeta(arg : *const Expr) -> *mut Expr {
 
     if arg.is_null() {
 
@@ -187,9 +161,7 @@ pub unsafe extern "C" fn rssn_zeta(
     }
 
     Box::into_raw(Box::new(
-        special_functions::zeta(
-            (*arg).clone(),
-        ),
+        special_functions::zeta((*arg).clone()),
     ))
 }
 
@@ -205,8 +177,7 @@ pub unsafe extern "C" fn rssn_bessel_j(
     arg : *const Expr,
 ) -> *mut Expr {
 
-    if order.is_null() || arg.is_null()
-    {
+    if order.is_null() || arg.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -227,8 +198,7 @@ pub unsafe extern "C" fn rssn_bessel_y(
     arg : *const Expr,
 ) -> *mut Expr {
 
-    if order.is_null() || arg.is_null()
-    {
+    if order.is_null() || arg.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -249,8 +219,7 @@ pub unsafe extern "C" fn rssn_bessel_i(
     arg : *const Expr,
 ) -> *mut Expr {
 
-    if order.is_null() || arg.is_null()
-    {
+    if order.is_null() || arg.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -271,8 +240,7 @@ pub unsafe extern "C" fn rssn_bessel_k(
     arg : *const Expr,
 ) -> *mut Expr {
 
-    if order.is_null() || arg.is_null()
-    {
+    if order.is_null() || arg.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -297,8 +265,7 @@ pub unsafe extern "C" fn rssn_legendre_p(
     arg : *const Expr,
 ) -> *mut Expr {
 
-    if degree.is_null() || arg.is_null()
-    {
+    if degree.is_null() || arg.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -319,8 +286,7 @@ pub unsafe extern "C" fn rssn_laguerre_l(
     arg : *const Expr,
 ) -> *mut Expr {
 
-    if degree.is_null() || arg.is_null()
-    {
+    if degree.is_null() || arg.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -342,10 +308,7 @@ pub unsafe extern "C" fn rssn_generalized_laguerre(
     x : *const Expr,
 ) -> *mut Expr {
 
-    if n.is_null()
-        || alpha.is_null()
-        || x.is_null()
-    {
+    if n.is_null() || alpha.is_null() || x.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -367,8 +330,7 @@ pub unsafe extern "C" fn rssn_hermite_h(
     arg : *const Expr,
 ) -> *mut Expr {
 
-    if degree.is_null() || arg.is_null()
-    {
+    if degree.is_null() || arg.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -436,18 +398,13 @@ pub unsafe extern "C" fn rssn_bessel_differential_equation(
     n : *const Expr,
 ) -> *mut Expr {
 
-    if y.is_null()
-        || x.is_null()
-        || n.is_null()
-    {
+    if y.is_null() || x.is_null() || n.is_null() {
 
         return std::ptr::null_mut();
     }
 
     Box::into_raw(Box::new(
-        special_functions::bessel_differential_equation(
-            &*y, &*x, &*n,
-        ),
+        special_functions::bessel_differential_equation(&*y, &*x, &*n),
     ))
 }
 
@@ -460,18 +417,13 @@ pub unsafe extern "C" fn rssn_legendre_differential_equation(
     n : *const Expr,
 ) -> *mut Expr {
 
-    if y.is_null()
-        || x.is_null()
-        || n.is_null()
-    {
+    if y.is_null() || x.is_null() || n.is_null() {
 
         return std::ptr::null_mut();
     }
 
     Box::into_raw(Box::new(
-        special_functions::legendre_differential_equation(
-            &*y, &*x, &*n,
-        ),
+        special_functions::legendre_differential_equation(&*y, &*x, &*n),
     ))
 }
 
@@ -484,18 +436,13 @@ pub unsafe extern "C" fn rssn_laguerre_differential_equation(
     n : *const Expr,
 ) -> *mut Expr {
 
-    if y.is_null()
-        || x.is_null()
-        || n.is_null()
-    {
+    if y.is_null() || x.is_null() || n.is_null() {
 
         return std::ptr::null_mut();
     }
 
     Box::into_raw(Box::new(
-        special_functions::laguerre_differential_equation(
-            &*y, &*x, &*n,
-        ),
+        special_functions::laguerre_differential_equation(&*y, &*x, &*n),
     ))
 }
 
@@ -508,18 +455,13 @@ pub unsafe extern "C" fn rssn_hermite_differential_equation(
     n : *const Expr,
 ) -> *mut Expr {
 
-    if y.is_null()
-        || x.is_null()
-        || n.is_null()
-    {
+    if y.is_null() || x.is_null() || n.is_null() {
 
         return std::ptr::null_mut();
     }
 
     Box::into_raw(Box::new(
-        special_functions::hermite_differential_equation(
-            &*y, &*x, &*n,
-        ),
+        special_functions::hermite_differential_equation(&*y, &*x, &*n),
     ))
 }
 
@@ -532,18 +474,13 @@ pub unsafe extern "C" fn rssn_chebyshev_differential_equation(
     n : *const Expr,
 ) -> *mut Expr {
 
-    if y.is_null()
-        || x.is_null()
-        || n.is_null()
-    {
+    if y.is_null() || x.is_null() || n.is_null() {
 
         return std::ptr::null_mut();
     }
 
     Box::into_raw(Box::new(
-        special_functions::chebyshev_differential_equation(
-            &*y, &*x, &*n,
-        ),
+        special_functions::chebyshev_differential_equation(&*y, &*x, &*n),
     ))
 }
 
@@ -565,9 +502,7 @@ pub unsafe extern "C" fn rssn_legendre_rodrigues_formula(
     }
 
     Box::into_raw(Box::new(
-        special_functions::legendre_rodrigues_formula(
-            &*n, &*x,
-        ),
+        special_functions::legendre_rodrigues_formula(&*n, &*x),
     ))
 }
 
@@ -585,8 +520,6 @@ pub unsafe extern "C" fn rssn_hermite_rodrigues_formula(
     }
 
     Box::into_raw(Box::new(
-        special_functions::hermite_rodrigues_formula(
-            &*n, &*x,
-        ),
+        special_functions::hermite_rodrigues_formula(&*n, &*x),
     ))
 }

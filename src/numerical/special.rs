@@ -28,9 +28,7 @@ pub fn gamma_numerical(x : f64) -> f64 {
 /// Computes the natural logarithm of the gamma function, ln(Γ(x)).
 #[must_use]
 
-pub fn ln_gamma_numerical(
-    x : f64
-) -> f64 {
+pub fn ln_gamma_numerical(x : f64) -> f64 {
 
     ln_gamma(x)
 }
@@ -38,9 +36,7 @@ pub fn ln_gamma_numerical(
 /// Computes the digamma function, ψ(x) = d/dx ln(Γ(x)) = Γ'(x)/Γ(x).
 #[must_use]
 
-pub fn digamma_numerical(
-    x : f64
-) -> f64 {
+pub fn digamma_numerical(x : f64) -> f64 {
 
     digamma(x)
 }
@@ -79,9 +75,7 @@ pub fn lower_incomplete_gamma(
 
         sum += term;
 
-        if term.abs()
-            < 1e-15 * sum.abs()
-        {
+        if term.abs() < 1e-15 * sum.abs() {
 
             break;
         }
@@ -98,8 +92,7 @@ pub fn upper_incomplete_gamma(
     x : f64,
 ) -> f64 {
 
-    gamma(s)
-        - lower_incomplete_gamma(s, x)
+    gamma(s) - lower_incomplete_gamma(s, x)
 }
 
 /// Computes the regularized lower incomplete gamma function, P(s, x) = γ(s, x) / Γ(s).
@@ -110,8 +103,7 @@ pub fn regularized_lower_gamma(
     x : f64,
 ) -> f64 {
 
-    lower_incomplete_gamma(s, x)
-        / gamma(s)
+    lower_incomplete_gamma(s, x) / gamma(s)
 }
 
 /// Computes the regularized upper incomplete gamma function, Q(s, x) = Γ(s, x) / Γ(s).
@@ -160,11 +152,7 @@ pub fn incomplete_beta(
     b : f64,
 ) -> f64 {
 
-    if x < 0.0
-        || x > 1.0
-        || a <= 0.0
-        || b <= 0.0
-    {
+    if x < 0.0 || x > 1.0 || a <= 0.0 || b <= 0.0 {
 
         return f64::NAN;
     }
@@ -180,8 +168,7 @@ pub fn incomplete_beta(
     }
 
     // Use series expansion
-    regularized_beta(x, a, b)
-        * beta(a, b)
+    regularized_beta(x, a, b) * beta(a, b)
 }
 
 /// Computes the regularized incomplete beta function, I_x(a, b) = B(x; a, b) / B(a, b).
@@ -194,11 +181,7 @@ pub fn regularized_beta(
     b : f64,
 ) -> f64 {
 
-    if x < 0.0
-        || x > 1.0
-        || a <= 0.0
-        || b <= 0.0
-    {
+    if x < 0.0 || x > 1.0 || a <= 0.0 || b <= 0.0 {
 
         return f64::NAN;
     }
@@ -216,12 +199,7 @@ pub fn regularized_beta(
     // Use symmetry for better convergence
     if x > (a + 1.0) / (a + b + 2.0) {
 
-        return 1.0
-            - regularized_beta(
-                1.0 - x,
-                b,
-                a,
-            );
+        return 1.0 - regularized_beta(1.0 - x, b, a);
     }
 
     // Continued fraction expansion
@@ -230,12 +208,7 @@ pub fn regularized_beta(
         0.0
     } else {
 
-        (ln_gamma(a + b)
-            - ln_gamma(a)
-            - ln_gamma(b)
-            + a * x.ln()
-            + b * (1.0 - x).ln())
-        .exp()
+        (ln_gamma(a + b) - ln_gamma(a) - ln_gamma(b) + a * x.ln() + b * (1.0 - x).ln()).exp()
     };
 
     let mut am = 1.0;
@@ -258,17 +231,13 @@ pub fn regularized_beta(
 
         let tem = em + em;
 
-        let d = em * (b - em) * x
-            / ((qam + tem) * (a + tem));
+        let d = em * (b - em) * x / ((qam + tem) * (a + tem));
 
         let ap = az + d * am;
 
         let bp = bz + d * bm;
 
-        let d = -(a + em)
-            * (qab + em)
-            * x
-            / ((a + tem) * (qap + tem));
+        let d = -(a + em) * (qab + em) * x / ((a + tem) * (qap + tem));
 
         let app = ap + d * az;
 
@@ -284,9 +253,7 @@ pub fn regularized_beta(
 
         bz = 1.0;
 
-        if (az - aold).abs()
-            < 1e-14 * az.abs()
-        {
+        if (az - aold).abs() < 1e-14 * az.abs() {
 
             return bt * az / a;
         }
@@ -319,9 +286,7 @@ pub fn erfc_numerical(x : f64) -> f64 {
 /// Uses a rational approximation for the initial guess and Newton-Raphson refinement.
 #[must_use]
 
-pub fn inverse_erf_numerical(
-    x : f64
-) -> f64 {
+pub fn inverse_erf_numerical(x : f64) -> f64 {
 
     if x <= -1.0 {
 
@@ -354,36 +319,25 @@ pub fn inverse_erf_numerical(
 
         let x2 = x * x;
 
-        let num = x
-            * (1.0
-                + x2 * (-0.140543331
-                    + x2 * 0.0140002));
+        let num = x * (1.0 + x2 * (-0.140543331 + x2 * 0.0140002));
 
-        let den = 1.0
-            + x2 * (-0.453004011
-                + x2 * 0.049988);
+        let den = 1.0 + x2 * (-0.453004011 + x2 * 0.049988);
 
         num / den
     } else {
 
         // For larger x, use a different approximation
-        let y =
-            (-(1.0 - x).ln()).sqrt();
+        let y = (-(1.0 - x).ln()).sqrt();
 
-        let num = y
-            * (1.0
-                + y * (-0.0941
-                    + y * 0.00327));
+        let num = y * (1.0 + y * (-0.0941 + y * 0.00327));
 
-        let den = 1.0
-            + y * (-0.188 + y * 0.0329);
+        let den = 1.0 + y * (-0.188 + y * 0.0329);
 
         num / den * 0.886226899 // √(π/2)
     };
 
     // Refine with Newton-Raphson iterations
-    let two_over_sqrt_pi = 2.0
-        / std::f64::consts::PI.sqrt();
+    let two_over_sqrt_pi = 2.0 / std::f64::consts::PI.sqrt();
 
     let mut y = result;
 
@@ -391,8 +345,7 @@ pub fn inverse_erf_numerical(
 
         let err = erf(y) - x;
 
-        let deriv = two_over_sqrt_pi
-            * (-y * y).exp();
+        let deriv = two_over_sqrt_pi * (-y * y).exp();
 
         y -= err / deriv;
     }
@@ -444,9 +397,7 @@ pub fn bessel_j0(x : f64) -> f64 {
             + y * (0.1430488765e-3
                 + y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934945152e-7)));
 
-        (0.636619772 / ax).sqrt()
-            * (xx.cos() * ans1
-                - z * xx.sin() * ans2)
+        (0.636619772 / ax).sqrt() * (xx.cos() * ans1 - z * xx.sin() * ans2)
     }
 }
 
@@ -492,10 +443,7 @@ pub fn bessel_j1(x : f64) -> f64 {
             + y * (-0.2002690873e-3
                 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
 
-        let ans = (0.636619772 / ax)
-            .sqrt()
-            * (xx.cos() * ans1
-                - z * xx.sin() * ans2);
+        let ans = (0.636619772 / ax).sqrt() * (xx.cos() * ans1 - z * xx.sin() * ans2);
 
         if x < 0.0 {
 
@@ -528,10 +476,7 @@ pub fn bessel_y0(x : f64) -> f64 {
         let ans2 = 40076544269.0
             + y * (745249964.8 + y * (7189466.438 + y * (47447.26470 + y * (226.1030244 + y))));
 
-        ans1 / ans2
-            + 0.636619772
-                * bessel_j0(x)
-                * x.ln()
+        ans1 / ans2 + 0.636619772 * bessel_j0(x) * x.ln()
     } else {
 
         let z = 8.0 / x;
@@ -548,9 +493,7 @@ pub fn bessel_y0(x : f64) -> f64 {
             + y * (0.1430488765e-3
                 + y * (-0.6911147651e-5 + y * (0.7621095161e-6 + y * (-0.934945152e-7))));
 
-        (0.636619772 / x).sqrt()
-            * (xx.sin() * ans1
-                + z * xx.cos() * ans2)
+        (0.636619772 / x).sqrt() * (xx.sin() * ans1 + z * xx.cos() * ans2)
     }
 }
 
@@ -579,11 +522,7 @@ pub fn bessel_y1(x : f64) -> f64 {
                 + y * (0.3733650367e10
                     + y * (0.2245904002e8 + y * (0.1020426050e6 + y * (0.3549632885e3 + y)))));
 
-        ans1 / ans2
-            + 0.636619772
-                * (bessel_j1(x)
-                    * x.ln()
-                    - 1.0 / x)
+        ans1 / ans2 + 0.636619772 * (bessel_j1(x) * x.ln() - 1.0 / x)
     } else {
 
         let z = 8.0 / x;
@@ -600,9 +539,7 @@ pub fn bessel_y1(x : f64) -> f64 {
             + y * (-0.2002690873e-3
                 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
 
-        (0.636619772 / x).sqrt()
-            * (xx.sin() * ans1
-                + z * xx.cos() * ans2)
+        (0.636619772 / x).sqrt() * (xx.sin() * ans1 + z * xx.cos() * ans2)
     }
 }
 
@@ -660,10 +597,7 @@ pub fn bessel_i1(x : f64) -> f64 {
 
         let y = 3.75 / ax;
 
-        0.02282967
-            + y * (-0.02895312
-                + y * (0.01787654
-                    - y * 0.00420059));
+        0.02282967 + y * (-0.02895312 + y * (0.01787654 - y * 0.00420059));
 
         let ans = 0.39894228
             + y * (-0.03988024
@@ -713,12 +647,7 @@ pub fn legendre_p(
 
     for k in 2 ..= n {
 
-        let p_next = ((2 * k - 1)
-            as f64
-            * x
-            * p_curr
-            - (k - 1) as f64 * p_prev)
-            / k as f64;
+        let p_next = ((2 * k - 1) as f64 * x * p_curr - (k - 1) as f64 * p_prev) / k as f64;
 
         p_prev = p_curr;
 
@@ -752,8 +681,7 @@ pub fn chebyshev_t(
 
     for _ in 2 ..= n {
 
-        let t_next =
-            2.0 * x * t_curr - t_prev;
+        let t_next = 2.0 * x * t_curr - t_prev;
 
         t_prev = t_curr;
 
@@ -787,8 +715,7 @@ pub fn chebyshev_u(
 
     for _ in 2 ..= n {
 
-        let u_next =
-            2.0 * x * u_curr - u_prev;
+        let u_next = 2.0 * x * u_curr - u_prev;
 
         u_prev = u_curr;
 
@@ -822,10 +749,7 @@ pub fn hermite_h(
 
     for k in 2 ..= n {
 
-        let h_next = 2.0 * x * h_curr
-            - 2.0
-                * (k - 1) as f64
-                * h_prev;
+        let h_next = 2.0 * x * h_curr - 2.0 * (k - 1) as f64 * h_prev;
 
         h_prev = h_curr;
 
@@ -859,13 +783,8 @@ pub fn laguerre_l(
 
     for k in 2 ..= n {
 
-        let l_next = ((2 * k - 1)
-            as f64
-            - x)
-            * l_curr
-            / k as f64
-            - (k - 1) as f64 * l_prev
-                / k as f64;
+        let l_next =
+            ((2 * k - 1) as f64 - x) * l_curr / k as f64 - (k - 1) as f64 * l_prev / k as f64;
 
         l_prev = l_curr;
 
@@ -896,9 +815,7 @@ pub fn factorial(n : u64) -> f64 {
 /// n!! = n * (n-2) * (n-4) * ... * (1 or 2)
 #[must_use]
 
-pub fn double_factorial(
-    n : u64
-) -> f64 {
+pub fn double_factorial(n : u64) -> f64 {
 
     if n <= 1 {
 
@@ -938,9 +855,7 @@ pub fn binomial(
     }
 
     // Use gamma for large values to avoid overflow
-    gamma((n + 1) as f64)
-        / (gamma((k + 1) as f64)
-            * gamma((n - k + 1) as f64))
+    gamma((n + 1) as f64) / (gamma((k + 1) as f64) * gamma((n - k + 1) as f64))
 }
 
 /// Computes the Riemann zeta function ζ(s) for real s > 1.
@@ -965,8 +880,7 @@ pub fn riemann_zeta(s : f64) -> f64 {
 
     for n in 1 .. 10000 {
 
-        let term =
-            1.0 / (n as f64).powf(s);
+        let term = 1.0 / (n as f64).powf(s);
 
         sum += term;
 

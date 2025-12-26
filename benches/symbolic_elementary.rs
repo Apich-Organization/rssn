@@ -6,9 +6,7 @@ use num_bigint::BigInt;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::elementary::*;
 
-fn bench_trig_construction(
-    c : &mut Criterion
-) {
+fn bench_trig_construction(c : &mut Criterion) {
 
     let x = Expr::new_variable("x");
 
@@ -18,11 +16,9 @@ fn bench_trig_construction(
 
             b.iter(|| {
 
-                black_box(sin(
-                    black_box(
-                        x.clone(),
-                    ),
-                ));
+                black_box(sin(black_box(
+                    x.clone(),
+                )));
             });
         },
     );
@@ -33,11 +29,9 @@ fn bench_trig_construction(
 
             b.iter(|| {
 
-                black_box(cos(
-                    black_box(
-                        x.clone(),
-                    ),
-                ));
+                black_box(cos(black_box(
+                    x.clone(),
+                )));
             });
         },
     );
@@ -48,19 +42,15 @@ fn bench_trig_construction(
 
             b.iter(|| {
 
-                black_box(tan(
-                    black_box(
-                        x.clone(),
-                    ),
-                ));
+                black_box(tan(black_box(
+                    x.clone(),
+                )));
             });
         },
     );
 }
 
-fn bench_hyperbolic_construction(
-    c : &mut Criterion
-) {
+fn bench_hyperbolic_construction(c : &mut Criterion) {
 
     let x = Expr::new_variable("x");
 
@@ -70,11 +60,9 @@ fn bench_hyperbolic_construction(
 
             b.iter(|| {
 
-                black_box(sinh(
-                    black_box(
-                        x.clone(),
-                    ),
-                ));
+                black_box(sinh(black_box(
+                    x.clone(),
+                )));
             });
         },
     );
@@ -85,19 +73,15 @@ fn bench_hyperbolic_construction(
 
             b.iter(|| {
 
-                black_box(cosh(
-                    black_box(
-                        x.clone(),
-                    ),
-                ));
+                black_box(cosh(black_box(
+                    x.clone(),
+                )));
             });
         },
     );
 }
 
-fn bench_exp_log_construction(
-    c : &mut Criterion
-) {
+fn bench_exp_log_construction(c : &mut Criterion) {
 
     let x = Expr::new_variable("x");
 
@@ -107,11 +91,9 @@ fn bench_exp_log_construction(
 
             b.iter(|| {
 
-                black_box(exp(
-                    black_box(
-                        x.clone(),
-                    ),
-                ));
+                black_box(exp(black_box(
+                    x.clone(),
+                )));
             });
         },
     );
@@ -122,19 +104,15 @@ fn bench_exp_log_construction(
 
             b.iter(|| {
 
-                black_box(ln(
-                    black_box(
-                        x.clone(),
-                    ),
-                ));
+                black_box(ln(black_box(
+                    x.clone(),
+                )));
             });
         },
     );
 }
 
-fn bench_power_construction(
-    c : &mut Criterion
-) {
+fn bench_power_construction(c : &mut Criterion) {
 
     let x = Expr::new_variable("x");
 
@@ -147,12 +125,8 @@ fn bench_power_construction(
             b.iter(|| {
 
                 black_box(pow(
-                    black_box(
-                        x.clone(),
-                    ),
-                    black_box(
-                        y.clone(),
-                    ),
+                    black_box(x.clone()),
+                    black_box(y.clone()),
                 ));
             });
         },
@@ -164,19 +138,15 @@ fn bench_power_construction(
 
             b.iter(|| {
 
-                black_box(sqrt(
-                    black_box(
-                        x.clone(),
-                    ),
-                ));
+                black_box(sqrt(black_box(
+                    x.clone(),
+                )));
             });
         },
     );
 }
 
-fn bench_expand_operations(
-    c : &mut Criterion
-) {
+fn bench_expand_operations(c : &mut Criterion) {
 
     let x = Expr::new_variable("x");
 
@@ -201,20 +171,15 @@ fn bench_expand_operations(
         y_plus_2,
     );
 
-    c.bench_function(
-        "expand_mul",
-        |b| {
+    c.bench_function("expand_mul", |b| {
 
-            b.iter(|| {
+        b.iter(|| {
 
-                black_box(expand(
-                    black_box(
-                        product.clone(),
-                    ),
-                ));
-            });
-        },
-    );
+            black_box(expand(black_box(
+                product.clone(),
+            )));
+        });
+    });
 
     let squared = Expr::new_pow(
         x_plus_1,
@@ -227,19 +192,15 @@ fn bench_expand_operations(
 
             b.iter(|| {
 
-                black_box(expand(
-                    black_box(
-                        squared.clone(),
-                    ),
-                ));
+                black_box(expand(black_box(
+                    squared.clone(),
+                )));
             });
         },
     );
 }
 
-fn bench_binomial_coefficient(
-    c : &mut Criterion
-) {
+fn bench_binomial_coefficient(c : &mut Criterion) {
 
     use rssn::symbolic::elementary::binomial_coefficient;
 

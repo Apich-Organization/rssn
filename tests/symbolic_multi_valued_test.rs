@@ -16,8 +16,7 @@ fn test_arg() {
     // We can't evaluate it symbolically, but we can check it's constructed
     assert!(matches!(
         result,
-        Expr::Apply(_, _)
-            | Expr::Dag(_)
+        Expr::Apply(_, _) | Expr::Dag(_)
     ));
 }
 
@@ -44,11 +43,9 @@ fn test_abs() {
 
 fn test_general_log() {
 
-    let z =
-        Expr::Variable("z".to_string());
+    let z = Expr::Variable("z".to_string());
 
-    let k =
-        Expr::Variable("k".to_string());
+    let k = Expr::Variable("k".to_string());
 
     let result = general_log(&z, &k);
 
@@ -64,8 +61,7 @@ fn test_general_log() {
 
 fn test_general_sqrt() {
 
-    let z =
-        Expr::Variable("z".to_string());
+    let z = Expr::Variable("z".to_string());
 
     let k = Expr::Constant(0.0); // Principal branch
 
@@ -109,14 +105,12 @@ fn test_general_sqrt_two_branches() {
 
 fn test_general_power() {
 
-    let z =
-        Expr::Variable("z".to_string());
+    let z = Expr::Variable("z".to_string());
 
     let w = Expr::Constant(0.5); // Square root
     let k = Expr::Constant(0.0);
 
-    let result =
-        general_power(&z, &w, &k);
+    let result = general_power(&z, &w, &k);
 
     // Result should be exp(w * log(z))
     assert!(!matches!(
@@ -134,8 +128,7 @@ fn test_general_nth_root() {
     let n = Expr::Constant(3.0); // Cube root
     let k = Expr::Constant(0.0);
 
-    let result =
-        general_nth_root(&z, &n, &k);
+    let result = general_nth_root(&z, &n, &k);
 
     // Result should be the principal cube root of 8
     assert!(!matches!(
@@ -146,8 +139,7 @@ fn test_general_nth_root() {
 
 #[test]
 
-fn test_general_nth_root_multiple_branches(
-) {
+fn test_general_nth_root_multiple_branches() {
 
     let z = Expr::Constant(1.0);
 
@@ -159,14 +151,11 @@ fn test_general_nth_root_multiple_branches(
 
     let k2 = Expr::Constant(2.0);
 
-    let root0 =
-        general_nth_root(&z, &n, &k0);
+    let root0 = general_nth_root(&z, &n, &k0);
 
-    let root1 =
-        general_nth_root(&z, &n, &k1);
+    let root1 = general_nth_root(&z, &n, &k1);
 
-    let root2 =
-        general_nth_root(&z, &n, &k2);
+    let root2 = general_nth_root(&z, &n, &k2);
 
     // All three cube roots should exist
     assert!(!matches!(
@@ -212,8 +201,7 @@ fn test_general_arccos() {
 
     let s = Expr::Constant(1.0); // Positive sign
 
-    let result =
-        general_arccos(&z, &k, &s);
+    let result = general_arccos(&z, &k, &s);
 
     // Result should involve arccos, k, and s
     assert!(!matches!(
@@ -243,13 +231,11 @@ fn test_general_arctan() {
 
 fn test_general_arcsinh() {
 
-    let z =
-        Expr::Variable("z".to_string());
+    let z = Expr::Variable("z".to_string());
 
     let k = Expr::Constant(0.0);
 
-    let result =
-        general_arcsinh(&z, &k);
+    let result = general_arcsinh(&z, &k);
 
     // Result should be log(z + sqrt(z^2 + 1))
     // eprintln!("Result: {:?}", result);
@@ -268,8 +254,7 @@ fn test_general_arccosh() {
 
     let k = Expr::Constant(0.0);
 
-    let result =
-        general_arccosh(&z, &k);
+    let result = general_arccosh(&z, &k);
 
     // Result should be log(z + sqrt(z^2 - 1))
     assert!(!matches!(
@@ -286,8 +271,7 @@ fn test_general_arctanh() {
 
     let k = Expr::Constant(0.0);
 
-    let result =
-        general_arctanh(&z, &k);
+    let result = general_arctanh(&z, &k);
 
     // Result should be (1/2) * log((1+z)/(1-z))
     assert!(!matches!(
@@ -305,8 +289,7 @@ fn test_general_log_with_symbolic_k() {
         Expr::Constant(0.0),
     );
 
-    let k =
-        Expr::Variable("k".to_string());
+    let k = Expr::Variable("k".to_string());
 
     let result = general_log(&z, &k);
 
@@ -320,17 +303,14 @@ fn test_general_log_with_symbolic_k() {
 
 #[test]
 
-fn test_general_power_integer_exponent()
-{
+fn test_general_power_integer_exponent() {
 
-    let z =
-        Expr::Variable("z".to_string());
+    let z = Expr::Variable("z".to_string());
 
     let w = Expr::Constant(2.0); // Square
     let k = Expr::Constant(0.0);
 
-    let result =
-        general_power(&z, &w, &k);
+    let result = general_power(&z, &w, &k);
 
     // z^2 via exp(2*log(z))
     assert!(!matches!(
@@ -365,8 +345,7 @@ fn test_arg_real_positive() {
     // Arg(5) should be 0, but symbolically it's Arg(5)
     assert!(matches!(
         result,
-        Expr::Apply(_, _)
-            | Expr::Dag(_)
+        Expr::Apply(_, _) | Expr::Dag(_)
     ));
 }
 
@@ -398,8 +377,7 @@ fn test_general_nth_root_of_negative() {
 
     let k = Expr::Constant(0.0);
 
-    let result =
-        general_nth_root(&z, &n, &k);
+    let result = general_nth_root(&z, &n, &k);
 
     // Cube root of -8 should be -2 (principal branch)
     assert!(!matches!(

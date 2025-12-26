@@ -4,8 +4,7 @@ use rssn::constant;
 
 fn test_get_build_date() {
 
-    let date =
-        constant::get_build_date();
+    let date = constant::get_build_date();
 
     assert!(!date.is_empty());
 
@@ -19,8 +18,7 @@ fn test_get_build_date() {
 
 fn test_get_commit_sha() {
 
-    let sha =
-        constant::get_commit_sha();
+    let sha = constant::get_commit_sha();
 
     assert!(!sha.is_empty());
 
@@ -34,8 +32,7 @@ fn test_get_commit_sha() {
 
 fn test_get_rustc_version() {
 
-    let version =
-        constant::get_rustc_version();
+    let version = constant::get_rustc_version();
 
     assert!(!version.is_empty());
 
@@ -63,8 +60,7 @@ fn test_get_cargo_target_triple() {
 
 fn test_get_system_info() {
 
-    let info =
-        constant::get_system_info();
+    let info = constant::get_system_info();
 
     assert!(!info.is_empty());
 

@@ -22,13 +22,10 @@ use criterion::Criterion;
 // use rssn::r#mod;
 // use nalgebra::DVector; // Example dependency for numerical benchmarks
 
-pub fn criterion_benchmark(
-    c : &mut Criterion
-) {
+pub fn criterion_benchmark(c : &mut Criterion) {
 
     // --- BENCHMARK GROUP: MOD ---
-    let mut group =
-        c.benchmark_group("mod");
+    let mut group = c.benchmark_group("mod");
 
     // Example Setup: Define a fixed input
     // let input_vector = DVector::<f64>::new_random(100);

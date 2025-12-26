@@ -16,9 +16,7 @@ struct CoordinateTransformRequest {
     to : CoordinateSystem,
 }
 
-fn decode<
-    T : for<'de> Deserialize<'de>,
->(
+fn decode<T : for<'de> Deserialize<'de>>(
     data : *const u8,
     len : usize,
 ) -> Option<T> {
@@ -30,9 +28,7 @@ fn decode<
 
     let slice = unsafe {
 
-        std::slice::from_raw_parts(
-            data, len,
-        )
+        std::slice::from_raw_parts(data, len)
     };
 
     bincode_next::serde::decode_from_slice(
@@ -43,9 +39,7 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T : Serialize>(
-    val : &T
-) -> BincodeBuffer {
+fn encode<T : Serialize>(val : &T) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
         val,
@@ -64,21 +58,17 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
     len : usize,
 ) -> BincodeBuffer {
 
-    let req: CoordinateTransformRequest =
-        match decode(data, len) {
-            | Some(r) => r,
-            | None => {
-                return encode(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Bincode decode error".to_string(),
-                    ),
-                })
-            },
-        };
+    let req : CoordinateTransformRequest = match decode(data, len) {
+        | Some(r) => r,
+        | None => {
+            return encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok : None,
+                    err : Some("Bincode decode error".to_string()),
+                },
+            )
+        },
+    };
 
     match nc::transform_point(
         &req.point,
@@ -86,22 +76,20 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
         req.to,
     ) {
         | Ok(res) => {
-            encode(&FfiResult::<
-                Vec<f64>,
-                String,
-            > {
-                ok : Some(res),
-                err : None,
-            })
+            encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok : Some(res),
+                    err : None,
+                },
+            )
         },
         | Err(e) => {
-            encode(&FfiResult::<
-                Vec<f64>,
-                String,
-            > {
-                ok : None,
-                err : Some(e),
-            })
+            encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok : None,
+                    err : Some(e),
+                },
+            )
         },
     }
 }
@@ -114,21 +102,17 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_bincode(
     len : usize,
 ) -> BincodeBuffer {
 
-    let req: CoordinateTransformRequest =
-        match decode(data, len) {
-            | Some(r) => r,
-            | None => {
-                return encode(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Bincode decode error".to_string(),
-                    ),
-                })
-            },
-        };
+    let req : CoordinateTransformRequest = match decode(data, len) {
+        | Some(r) => r,
+        | None => {
+            return encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok : None,
+                    err : Some("Bincode decode error".to_string()),
+                },
+            )
+        },
+    };
 
     match nc::transform_point_pure(
         &req.point,
@@ -136,22 +120,20 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_bincode(
         req.to,
     ) {
         | Ok(res) => {
-            encode(&FfiResult::<
-                Vec<f64>,
-                String,
-            > {
-                ok : Some(res),
-                err : None,
-            })
+            encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok : Some(res),
+                    err : None,
+                },
+            )
         },
         | Err(e) => {
-            encode(&FfiResult::<
-                Vec<f64>,
-                String,
-            > {
-                ok : None,
-                err : Some(e),
-            })
+            encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok : None,
+                    err : Some(e),
+                },
+            )
         },
     }
 }

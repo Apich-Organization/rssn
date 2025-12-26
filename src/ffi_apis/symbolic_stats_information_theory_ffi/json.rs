@@ -6,17 +6,13 @@ use crate::symbolic::stats_information_theory;
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_shannon_entropy(
-    probs_json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_shannon_entropy(probs_json : *const c_char) -> *mut c_char {
 
-    let probs : Option<Vec<Expr>> =
-        from_json_string(probs_json);
+    let probs : Option<Vec<Expr>> = from_json_string(probs_json);
 
     if let Some(p) = probs {
 
-        let res =
-            stats_information_theory::shannon_entropy(&p);
+        let res = stats_information_theory::shannon_entropy(&p);
 
         to_json_string(&res)
     } else {
@@ -32,19 +28,13 @@ pub unsafe extern "C" fn rssn_json_kl_divergence(
     q_probs_json : *const c_char,
 ) -> *mut c_char {
 
-    let p_probs : Option<Vec<Expr>> =
-        from_json_string(p_probs_json);
+    let p_probs : Option<Vec<Expr>> = from_json_string(p_probs_json);
 
-    let q_probs : Option<Vec<Expr>> =
-        from_json_string(q_probs_json);
+    let q_probs : Option<Vec<Expr>> = from_json_string(q_probs_json);
 
-    if let (Some(p), Some(q)) =
-        (p_probs, q_probs)
-    {
+    if let (Some(p), Some(q)) = (p_probs, q_probs) {
 
-        match stats_information_theory::kl_divergence(
-            &p, &q,
-        ) {
+        match stats_information_theory::kl_divergence(&p, &q) {
             | Ok(res) => to_json_string(&res),
             | Err(_) => std::ptr::null_mut(),
         }
@@ -61,19 +51,13 @@ pub unsafe extern "C" fn rssn_json_cross_entropy(
     q_probs_json : *const c_char,
 ) -> *mut c_char {
 
-    let p_probs : Option<Vec<Expr>> =
-        from_json_string(p_probs_json);
+    let p_probs : Option<Vec<Expr>> = from_json_string(p_probs_json);
 
-    let q_probs : Option<Vec<Expr>> =
-        from_json_string(q_probs_json);
+    let q_probs : Option<Vec<Expr>> = from_json_string(q_probs_json);
 
-    if let (Some(p), Some(q)) =
-        (p_probs, q_probs)
-    {
+    if let (Some(p), Some(q)) = (p_probs, q_probs) {
 
-        match stats_information_theory::cross_entropy(
-            &p, &q,
-        ) {
+        match stats_information_theory::cross_entropy(&p, &q) {
             | Ok(res) => to_json_string(&res),
             | Err(_) => std::ptr::null_mut(),
         }
@@ -85,17 +69,13 @@ pub unsafe extern "C" fn rssn_json_cross_entropy(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_gini_impurity(
-    probs_json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_gini_impurity(probs_json : *const c_char) -> *mut c_char {
 
-    let probs : Option<Vec<Expr>> =
-        from_json_string(probs_json);
+    let probs : Option<Vec<Expr>> = from_json_string(probs_json);
 
     if let Some(p) = probs {
 
-        let res =
-            stats_information_theory::gini_impurity(&p);
+        let res = stats_information_theory::gini_impurity(&p);
 
         to_json_string(&res)
     } else {
@@ -106,14 +86,9 @@ pub unsafe extern "C" fn rssn_json_gini_impurity(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_joint_entropy(
-    joint_probs_json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_joint_entropy(joint_probs_json : *const c_char) -> *mut c_char {
 
-    let joint : Option<Expr> =
-        from_json_string(
-            joint_probs_json,
-        );
+    let joint : Option<Expr> = from_json_string(joint_probs_json);
 
     if let Some(j) = joint {
 
@@ -133,16 +108,11 @@ pub unsafe extern "C" fn rssn_json_conditional_entropy(
     joint_probs_json : *const c_char
 ) -> *mut c_char {
 
-    let joint : Option<Expr> =
-        from_json_string(
-            joint_probs_json,
-        );
+    let joint : Option<Expr> = from_json_string(joint_probs_json);
 
     if let Some(j) = joint {
 
-        match stats_information_theory::conditional_entropy(
-            &j,
-        ) {
+        match stats_information_theory::conditional_entropy(&j) {
             | Ok(res) => to_json_string(&res),
             | Err(_) => std::ptr::null_mut(),
         }
@@ -158,16 +128,11 @@ pub unsafe extern "C" fn rssn_json_mutual_information(
     joint_probs_json : *const c_char
 ) -> *mut c_char {
 
-    let joint : Option<Expr> =
-        from_json_string(
-            joint_probs_json,
-        );
+    let joint : Option<Expr> = from_json_string(joint_probs_json);
 
     if let Some(j) = joint {
 
-        match stats_information_theory::mutual_information(
-            &j,
-        ) {
+        match stats_information_theory::mutual_information(&j) {
             | Ok(res) => to_json_string(&res),
             | Err(_) => std::ptr::null_mut(),
         }

@@ -5,8 +5,7 @@ use std::ffi::CString;
 
 #[test]
 
-fn test_mm_simulate_dam_break_handle_ffi(
-) {
+fn test_mm_simulate_dam_break_handle_ffi() {
 
     unsafe {
 
@@ -37,11 +36,21 @@ fn test_mm_sph_handle_life_cycle() {
         assert!(!system_ptr.is_null());
 
         rssn::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_add_particle(
-            system_ptr, 1.0, 1.0, 0.0, 0.0, 1.0,
+            system_ptr,
+            1.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
         );
 
         rssn::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_add_particle(
-            system_ptr, 1.05, 1.0, 0.0, 0.0, 1.0,
+            system_ptr,
+            1.05,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
         );
 
         assert_eq!(
@@ -58,10 +67,7 @@ fn test_mm_sph_handle_life_cycle() {
 
         assert!(!pos_ptr.is_null());
 
-        assert_eq!(
-            (*pos_ptr).rows(),
-            2
-        );
+        assert_eq!((*pos_ptr).rows(), 2);
 
         rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(pos_ptr);
 

@@ -21,31 +21,31 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
         return ptr::null_mut();
     }
 
-    let point_slice =
-        std::slice::from_raw_parts(
-            point,
-            n_vars,
-        );
+    let point_slice = std::slice::from_raw_parts(point, n_vars);
 
-    match differential_geometry::metric_tensor_at_point(
-        system,
-        point_slice,
-    ) {
+    match differential_geometry::metric_tensor_at_point(system, point_slice) {
         | Ok(g) => {
 
             let rows = g.len();
 
-            let cols =
-                if rows > 0 { g[0].len() } else { 0 };
+            let cols = if rows > 0 {
 
-            let flattened: Vec<f64> = g
+                g[0].len()
+            } else {
+
+                0
+            };
+
+            let flattened : Vec<f64> = g
                 .into_iter()
                 .flatten()
                 .collect();
 
             Box::into_raw(Box::new(
                 Matrix::new(
-                    rows, cols, flattened,
+                    rows,
+                    cols,
+                    flattened,
                 ),
             ))
         },
@@ -73,19 +73,12 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
         return ptr::null_mut();
     }
 
-    let point_slice =
-        std::slice::from_raw_parts(
-            point,
-            n_vars,
-        );
+    let point_slice = std::slice::from_raw_parts(point, n_vars);
 
-    match differential_geometry::christoffel_symbols(
-        system,
-        point_slice,
-    ) {
+    match differential_geometry::christoffel_symbols(system, point_slice) {
         | Ok(c) => {
 
-            let flattened: Vec<f64> = c
+            let flattened : Vec<f64> = c
                 .into_iter()
                 .flatten()
                 .flatten()
@@ -116,31 +109,31 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
         return ptr::null_mut();
     }
 
-    let point_slice =
-        std::slice::from_raw_parts(
-            point,
-            n_vars,
-        );
+    let point_slice = std::slice::from_raw_parts(point, n_vars);
 
-    match differential_geometry::ricci_tensor(
-        system,
-        point_slice,
-    ) {
+    match differential_geometry::ricci_tensor(system, point_slice) {
         | Ok(r) => {
 
             let rows = r.len();
 
-            let cols =
-                if rows > 0 { r[0].len() } else { 0 };
+            let cols = if rows > 0 {
 
-            let flattened: Vec<f64> = r
+                r[0].len()
+            } else {
+
+                0
+            };
+
+            let flattened : Vec<f64> = r
                 .into_iter()
                 .flatten()
                 .collect();
 
             Box::into_raw(Box::new(
                 Matrix::new(
-                    rows, cols, flattened,
+                    rows,
+                    cols,
+                    flattened,
                 ),
             ))
         },
@@ -163,23 +156,14 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar(
     result : *mut f64,
 ) -> i32 {
 
-    if point.is_null()
-        || result.is_null()
-    {
+    if point.is_null() || result.is_null() {
 
         return -1;
     }
 
-    let point_slice =
-        std::slice::from_raw_parts(
-            point,
-            n_vars,
-        );
+    let point_slice = std::slice::from_raw_parts(point, n_vars);
 
-    match differential_geometry::ricci_scalar(
-        system,
-        point_slice,
-    ) {
+    match differential_geometry::ricci_scalar(system, point_slice) {
         | Ok(r) => {
 
             *result = r;

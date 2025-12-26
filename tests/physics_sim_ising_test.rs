@@ -5,8 +5,7 @@ use rssn::physics::physics_sim::ising_statistical::*;
 
 #[test]
 
-fn test_ising_simulation_low_temp_smoke(
-) {
+fn test_ising_simulation_low_temp_smoke() {
 
     let params = IsingParameters {
         width : 10,
@@ -15,8 +14,7 @@ fn test_ising_simulation_low_temp_smoke(
         mc_steps : 100,
     };
 
-    let (grid, mag) =
-        run_ising_simulation(&params);
+    let (grid, mag) = run_ising_simulation(&params);
 
     println!("Grid: {:?}", grid);
 
@@ -38,8 +36,7 @@ fn test_ising_simulation_low_temp_smoke(
 
 #[test]
 
-fn test_ising_simulation_high_temp_smoke(
-) {
+fn test_ising_simulation_high_temp_smoke() {
 
     let params = IsingParameters {
         width : 10,
@@ -48,8 +45,7 @@ fn test_ising_simulation_high_temp_smoke(
         mc_steps : 100,
     };
 
-    let (_grid, mag) =
-        run_ising_simulation(&params);
+    let (_grid, mag) = run_ising_simulation(&params);
 
     // At high temp, magnetization should be low (close to 0.0)
     assert!(mag < 0.5);
@@ -57,8 +53,7 @@ fn test_ising_simulation_high_temp_smoke(
 
 #[test]
 
-fn test_ising_phase_transition_scenario_run(
-) {
+fn test_ising_phase_transition_scenario_run() {
 
     // This is a slow scenario, but we can run a reduced version or just smoke test it
     let res = simulate_ising_phase_transition_scenario();

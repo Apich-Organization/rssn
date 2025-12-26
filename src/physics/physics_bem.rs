@@ -10,14 +10,7 @@ use crate::numerical::matrix::Matrix;
 use crate::numerical::solve::solve_linear_system;
 use crate::numerical::solve::LinearSolution;
 
-#[derive(
-    Clone,
-    Copy,
-    Default,
-    Debug,
-    Serialize,
-    Deserialize,
-)]
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 
 pub struct Vector2D {
     pub x : f64,
@@ -38,9 +31,7 @@ impl Vector2D {
 
     pub fn norm(&self) -> f64 {
 
-        (self.x * self.x
-            + self.y * self.y)
-            .sqrt()
+        (self.x * self.x + self.y * self.y).sqrt()
     }
 }
 
@@ -89,14 +80,7 @@ impl Sub for Vector2D {
     }
 }
 
-#[derive(
-    Clone,
-    Copy,
-    Default,
-    Debug,
-    Serialize,
-    Deserialize,
-)]
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 
 pub struct Vector3D {
     pub x : f64,
@@ -124,10 +108,7 @@ impl Vector3D {
 
     pub fn norm(&self) -> f64 {
 
-        (self.x * self.x
-            + self.y * self.y
-            + self.z * self.z)
-            .sqrt()
+        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 }
 
@@ -148,13 +129,7 @@ impl Sub for Vector3D {
 }
 
 /// Specifies the type of boundary condition on an element.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Serialize,
-    Deserialize,
-)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 
 pub enum BoundaryCondition<T> {
     Potential(T),
@@ -162,13 +137,7 @@ pub enum BoundaryCondition<T> {
 }
 
 #[allow(dead_code)]
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Serialize,
-    Deserialize,
-)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 
 pub struct Element2D {
     pub p1 : Vector2D,
@@ -226,19 +195,13 @@ impl Element2D {
 pub fn solve_laplace_bem_2d(
     points : &[(f64, f64)],
     bcs : &[BoundaryCondition<f64>],
-) -> Result<(Vec<f64>, Vec<f64>), String>
-{
+) -> Result<(Vec<f64>, Vec<f64>), String> {
 
     let n = points.len();
 
     if n != bcs.len() {
 
-        return Err(
-            "Number of points and \
-             boundary conditions must \
-             match."
-                .to_string(),
-        );
+        return Err("Number of points and boundary conditions must match.".to_string());
     }
 
     let elements : Vec<_> = (0 .. n)
@@ -250,10 +213,8 @@ pub fn solve_laplace_bem_2d(
                     points[i].1,
                 ),
                 Vector2D::new(
-                    points[(i + 1) % n]
-                        .0,
-                    points[(i + 1) % n]
-                        .1,
+                    points[(i + 1) % n].0,
+                    points[(i + 1) % n].1,
                 ),
             )
         })
@@ -264,20 +225,20 @@ pub fn solve_laplace_bem_2d(
     let mut g_mat = Matrix::zeros(n, n);
 
     // Parallel matrix assembly
-    let matrices_data: Vec<
+    let matrices_data : Vec<
         Vec<(
             usize,
             usize,
             f64,
             f64,
         )>,
-    > = (0..n)
+    > = (0 .. n)
         .into_par_iter()
         .map(|i| {
 
             let mut row = Vec::with_capacity(n);
 
-            for j in 0..n {
+            for j in 0 .. n {
 
                 if i == j {
 
@@ -330,8 +291,7 @@ pub fn solve_laplace_bem_2d(
 
             if i != j {
 
-                row_sum +=
-                    *h_mat.get(i, j);
+                row_sum += *h_mat.get(i, j);
             }
         }
 
@@ -414,9 +374,7 @@ pub fn solve_laplace_bem_2d(
 /// A `Result` containing a tuple `(u, q)` of potentials and fluxes on the cylinder surface,
 /// or an error string if the BEM system cannot be solved.
 
-pub fn simulate_2d_cylinder_scenario(
-) -> Result<(Vec<f64>, Vec<f64>), String>
-{
+pub fn simulate_2d_cylinder_scenario() -> Result<(Vec<f64>, Vec<f64>), String> {
 
     let n_points = 40;
 
@@ -428,10 +386,7 @@ pub fn simulate_2d_cylinder_scenario(
 
     for i in 0 .. n_points {
 
-        let angle = 2.0
-            * std::f64::consts::PI
-            * (f64::from(i))
-            / (f64::from(n_points));
+        let angle = 2.0 * std::f64::consts::PI * (f64::from(i)) / (f64::from(n_points));
 
         let (x, y) = (
             radius * angle.cos(),
@@ -461,40 +416,23 @@ pub fn evaluate_potential_2d(
     q : &[f64],
 ) -> f64 {
 
-    let p =
-        Vector2D::new(point.0, point.1);
+    let p = Vector2D::new(point.0, point.1);
 
     let mut result = 0.0;
 
     for i in 0 .. elements.len() {
 
-        let r_vec =
-            elements[i].midpoint - p;
+        let r_vec = elements[i].midpoint - p;
 
         let r = r_vec.norm();
 
-        let dot = r_vec.x
-            * elements[i].normal.x
-            + r_vec.y
-                * elements[i].normal.y;
+        let dot = r_vec.x * elements[i].normal.x + r_vec.y * elements[i].normal.y;
 
-        let h_ij = -dot
-            / (2.0
-                * std::f64::consts::PI
-                * r
-                * r);
+        let h_ij = -dot / (2.0 * std::f64::consts::PI * r * r);
 
-        let g_ij = -1.0
-            / (2.0
-                * std::f64::consts::PI)
-            * r.ln();
+        let g_ij = -1.0 / (2.0 * std::f64::consts::PI) * r.ln();
 
-        result += g_ij
-            * elements[i].length
-            * q[i]
-            - h_ij
-                * elements[i].length
-                * u[i];
+        result += g_ij * elements[i].length * q[i] - h_ij * elements[i].length * u[i];
     }
 
     result
@@ -502,15 +440,9 @@ pub fn evaluate_potential_2d(
 
 /// Solves a 3D Laplace problem on a cubic domain using a simplified BEM approach.
 
-pub fn solve_laplace_bem_3d(
-) -> Result<(), String> {
+pub fn solve_laplace_bem_3d() -> Result<(), String> {
 
-    println!(
-        "3D BEM is a complex topic \
-         requiring a dedicated \
-         library. This is a \
-         placeholder."
-    );
+    println!("3D BEM is a complex topic requiring a dedicated library. This is a placeholder.");
 
     Ok(())
 }

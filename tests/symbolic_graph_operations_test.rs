@@ -32,10 +32,7 @@ fn test_induced_subgraph() {
         Expr::Constant(1.0),
     );
 
-    let sub = induced_subgraph(
-        &g,
-        &["A", "B", "C"],
-    );
+    let sub = induced_subgraph(&g, &["A", "B", "C"]);
 
     assert_eq!(sub.node_count(), 3);
 
@@ -140,8 +137,7 @@ fn test_cartesian_product() {
     ); // Path graph P2
 
     // P2 x P2 should be C4 (Cycle graph with 4 nodes)
-    let prod =
-        cartesian_product(&g1, &g2);
+    let prod = cartesian_product(&g1, &g2);
 
     assert_eq!(prod.node_count(), 4);
 

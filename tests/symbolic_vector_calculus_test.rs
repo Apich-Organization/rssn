@@ -57,9 +57,7 @@ fn test_line_integral_scalar() {
     // The result should be a valid expression
     assert!(matches!(
         result,
-        Expr::Constant(_)
-            | Expr::Rational(_)
-            | Expr::Dag(_)
+        Expr::Constant(_) | Expr::Rational(_) | Expr::Dag(_)
     ));
 }
 
@@ -84,10 +82,7 @@ fn test_line_integral_vector() {
             zero.clone(),
         ),
         t_var : "t".to_string(),
-        t_bounds : (
-            zero.clone(),
-            two_pi,
-        ),
+        t_bounds : (zero.clone(), two_pi),
     };
 
     let x = Expr::new_variable("x");
@@ -113,10 +108,7 @@ fn test_line_integral_vector() {
     // The result should be a valid expression
     assert!(matches!(
         result,
-        Expr::Constant(_)
-            | Expr::Rational(_)
-            | Expr::Dag(_)
-            | Expr::Mul(_, _)
+        Expr::Constant(_) | Expr::Rational(_) | Expr::Dag(_) | Expr::Mul(_, _)
     ));
 }
 
@@ -143,15 +135,11 @@ fn test_surface_integral() {
         r : Vector::new(
             Expr::new_mul(
                 u.clone(),
-                Expr::new_cos(
-                    v.clone(),
-                ),
+                Expr::new_cos(v.clone()),
             ),
             Expr::new_mul(
                 u.clone(),
-                Expr::new_sin(
-                    v.clone(),
-                ),
+                Expr::new_sin(v.clone()),
             ),
             u.clone(),
         ),
@@ -161,10 +149,7 @@ fn test_surface_integral() {
             one.clone(),
         ),
         v_var : "v".to_string(),
-        v_bounds : (
-            zero.clone(),
-            two_pi,
-        ),
+        v_bounds : (zero.clone(), two_pi),
     };
 
     let z = Expr::new_variable("z");
@@ -188,10 +173,7 @@ fn test_surface_integral() {
     // The result should be a valid expression
     assert!(matches!(
         result,
-        Expr::Constant(_)
-            | Expr::Rational(_)
-            | Expr::Dag(_)
-            | Expr::Mul(_, _)
+        Expr::Constant(_) | Expr::Rational(_) | Expr::Dag(_) | Expr::Mul(_, _)
     ));
 }
 
@@ -246,15 +228,10 @@ fn test_volume_integral() {
     );
 
     // The result should be 1/8 = 0.125
-    if let Expr::Constant(val) = result
-    {
+    if let Expr::Constant(val) = result {
 
-        assert!(
-            (val - 0.125).abs() < 1e-9
-        );
-    } else if let Expr::Rational(r) =
-        result
-    {
+        assert!((val - 0.125).abs() < 1e-9);
+    } else if let Expr::Rational(r) = result {
 
         use num_traits::ToPrimitive;
 
@@ -266,8 +243,7 @@ fn test_volume_integral() {
 
         // It might return a DAG that evaluates to 0.125
         println!(
-            "Result is a complex \
-             expression: {}",
+            "Result is a complex expression: {}",
             result
         );
     }
@@ -275,8 +251,7 @@ fn test_volume_integral() {
 
 #[test]
 
-fn test_parametric_curve_serialization()
-{
+fn test_parametric_curve_serialization() {
 
     // Test that ParametricCurve can be serialized/deserialized
     let t = Expr::new_variable("t");
@@ -295,13 +270,9 @@ fn test_parametric_curve_serialization()
         t_bounds : (zero, one),
     };
 
-    let json =
-        serde_json::to_string(&curve)
-            .unwrap();
+    let json = serde_json::to_string(&curve).unwrap();
 
-    let deserialized : ParametricCurve =
-        serde_json::from_str(&json)
-            .unwrap();
+    let deserialized : ParametricCurve = serde_json::from_str(&json).unwrap();
 
     assert_eq!(
         curve.t_var,
@@ -311,8 +282,7 @@ fn test_parametric_curve_serialization()
 
 #[test]
 
-fn test_parametric_surface_serialization(
-) {
+fn test_parametric_surface_serialization() {
 
     // Test that ParametricSurface can be serialized/deserialized
     let u = Expr::new_variable("u");
@@ -338,11 +308,9 @@ fn test_parametric_surface_serialization(
         v_bounds : (zero, one),
     };
 
-    let json =
-        serde_json::to_string(&surface)
-            .unwrap();
+    let json = serde_json::to_string(&surface).unwrap();
 
-    let deserialized: ParametricSurface = serde_json::from_str(&json).unwrap();
+    let deserialized : ParametricSurface = serde_json::from_str(&json).unwrap();
 
     assert_eq!(
         surface.u_var,
@@ -381,13 +349,9 @@ fn test_volume_serialization() {
         ),
     };
 
-    let json =
-        serde_json::to_string(&volume)
-            .unwrap();
+    let json = serde_json::to_string(&volume).unwrap();
 
-    let deserialized : Volume =
-        serde_json::from_str(&json)
-            .unwrap();
+    let deserialized : Volume = serde_json::from_str(&json).unwrap();
 
     assert_eq!(
         volume.vars,

@@ -6,71 +6,29 @@ use rssn::symbolic::core::Distribution;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::stats_probability::*;
 
-fn evaluate_expr(
-    expr : &Expr
-) -> Option<f64> {
+fn evaluate_expr(expr : &Expr) -> Option<f64> {
 
     match expr {
         | Expr::Constant(v) => Some(*v),
         | Expr::BigInt(v) => v.to_f64(),
-        | Expr::Rational(v) => {
-            v.to_f64()
-        },
-        | Expr::Sqrt(a) => {
-            evaluate_expr(a)
-                .map(|v| v.sqrt())
-        },
-        | Expr::Add(a, b) => {
-            Some(
-                evaluate_expr(a)?
-                    + evaluate_expr(b)?,
-            )
-        },
-        | Expr::Sub(a, b) => {
-            Some(
-                evaluate_expr(a)?
-                    - evaluate_expr(b)?,
-            )
-        },
-        | Expr::Mul(a, b) => {
-            Some(
-                evaluate_expr(a)?
-                    * evaluate_expr(b)?,
-            )
-        },
-        | Expr::Div(a, b) => {
-            Some(
-                evaluate_expr(a)?
-                    / evaluate_expr(b)?,
-            )
-        },
-        | Expr::Dag(node) => {
-            evaluate_dag(node)
-        },
+        | Expr::Rational(v) => v.to_f64(),
+        | Expr::Sqrt(a) => evaluate_expr(a).map(|v| v.sqrt()),
+        | Expr::Add(a, b) => Some(evaluate_expr(a)? + evaluate_expr(b)?),
+        | Expr::Sub(a, b) => Some(evaluate_expr(a)? - evaluate_expr(b)?),
+        | Expr::Mul(a, b) => Some(evaluate_expr(a)? * evaluate_expr(b)?),
+        | Expr::Div(a, b) => Some(evaluate_expr(a)? / evaluate_expr(b)?),
+        | Expr::Dag(node) => evaluate_dag(node),
         | _ => None,
     }
 }
 
-fn evaluate_dag(
-    node: &rssn::symbolic::core::DagNode
-) -> Option<f64> {
+fn evaluate_dag(node : &rssn::symbolic::core::DagNode) -> Option<f64> {
 
     match &node.op {
-        | DagOp::Constant(v) => {
-            Some(v.into_inner())
-        },
-        | DagOp::BigInt(v) => {
-            v.to_f64()
-        },
-        | DagOp::Rational(v) => {
-            v.to_f64()
-        },
-        | DagOp::Sqrt => {
-            evaluate_dag(
-                &node.children[0],
-            )
-            .map(|v| v.sqrt())
-        },
+        | DagOp::Constant(v) => Some(v.into_inner()),
+        | DagOp::BigInt(v) => v.to_f64(),
+        | DagOp::Rational(v) => v.to_f64(),
+        | DagOp::Sqrt => evaluate_dag(&node.children[0]).map(|v| v.sqrt()),
         | DagOp::Add => {
 
             let mut sum = 0.0;
@@ -88,63 +46,35 @@ fn evaluate_dag(
 
             for c in &node.children {
 
-                prod *=
-                    evaluate_dag(c)?;
+                prod *= evaluate_dag(c)?;
             }
 
             Some(prod)
         },
         | DagOp::Sub => {
+            if node.children.len() == 2 {
 
-            if node.children.len() == 2
-            {
-
-                Some(
-                    evaluate_dag(
-                        &node.children
-                            [0],
-                    )? - evaluate_dag(
-                        &node.children
-                            [1],
-                    )?,
-                )
+                Some(evaluate_dag(&node.children[0])? - evaluate_dag(&node.children[1])?)
             } else {
 
                 None
             }
         },
         | DagOp::Div => {
+            if node.children.len() == 2 {
 
-            if node.children.len() == 2
-            {
-
-                Some(
-                    evaluate_dag(
-                        &node.children
-                            [0],
-                    )? / evaluate_dag(
-                        &node.children
-                            [1],
-                    )?,
-                )
+                Some(evaluate_dag(&node.children[0])? / evaluate_dag(&node.children[1])?)
             } else {
 
                 None
             }
         },
         | DagOp::Power => {
-
-            if node.children.len() == 2
-            {
+            if node.children.len() == 2 {
 
                 Some(
-                    evaluate_dag(
-                        &node.children
-                            [0],
-                    )?
-                    .powf(evaluate_dag(
-                        &node.children
-                            [1],
+                    evaluate_dag(&node.children[0])?.powf(evaluate_dag(
+                        &node.children[1],
                     )?),
                 )
             } else {
@@ -162,15 +92,11 @@ fn assert_approx_eq(
     expected : f64,
 ) {
 
-    if let Some(val) =
-        evaluate_expr(expr)
-    {
+    if let Some(val) = evaluate_expr(expr) {
 
         assert!(
-            (val - expected).abs()
-                < 1e-9,
-            "Expected {}, got {} \
-             (from {:?})",
+            (val - expected).abs() < 1e-9,
+            "Expected {}, got {} (from {:?})",
             expected,
             val,
             expr
@@ -178,8 +104,7 @@ fn assert_approx_eq(
     } else {
 
         panic!(
-            "Expected numeric result \
-             {}, got non-numeric {:?}",
+            "Expected numeric result {}, got non-numeric {:?}",
             expected, expr
         );
     }
@@ -211,8 +136,7 @@ fn test_normal_distribution() {
     );
 
     // PDF at 0 should be 1/sqrt(2pi)
-    let pdf_0 =
-        dist.pdf(&Expr::Constant(0.0));
+    let pdf_0 = dist.pdf(&Expr::Constant(0.0));
 
     // Check approximate value: 1 / sqrt(2 * pi) approx 0.39894228
     // Evaluate symbolically
@@ -326,7 +250,6 @@ fn test_usage_in_expr() {
         std_dev : Expr::Constant(1.0),
     };
 
-    let _expr =
-        Expr::Distribution(Arc::new(n));
+    let _expr = Expr::Distribution(Arc::new(n));
     // Test that it compiles and fits in Expr
 }

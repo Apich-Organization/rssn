@@ -8,17 +8,15 @@ use rssn::compute::cache::ParsingCache;
 use rssn::compute::computation::Value;
 use rssn::symbolic::core::Expr;
 
-fn bench_parsing_cache(
-    c : &mut Criterion
-) {
+fn bench_parsing_cache(c : &mut Criterion) {
 
     let cache = ParsingCache::new();
 
     let input = "x + 1".to_string();
 
-    let expr = Arc::new(
-        Expr::new_variable("x"),
-    );
+    let expr = Arc::new(Expr::new_variable(
+        "x",
+    ));
 
     cache.set(
         input.clone(),
@@ -27,28 +25,17 @@ fn bench_parsing_cache(
 
     c.bench_function(
         "parsing_cache_get",
-        |b| {
-
-            b.iter(|| {
-
-                cache.get(black_box(
-                    &input,
-                ))
-            })
-        },
+        |b| b.iter(|| cache.get(black_box(&input))),
     );
 }
 
-fn bench_computation_result_cache(
-    c : &mut Criterion
-) {
+fn bench_computation_result_cache(c : &mut Criterion) {
 
-    let cache =
-        ComputationResultCache::new();
+    let cache = ComputationResultCache::new();
 
-    let expr = Arc::new(
-        Expr::new_variable("x"),
-    );
+    let expr = Arc::new(Expr::new_variable(
+        "x",
+    ));
 
     let value = "42.0".to_string();
 
@@ -56,15 +43,7 @@ fn bench_computation_result_cache(
 
     c.bench_function(
         "computation_cache_get",
-        |b| {
-
-            b.iter(|| {
-
-                cache.get(black_box(
-                    &expr,
-                ))
-            })
-        },
+        |b| b.iter(|| cache.get(black_box(&expr))),
     );
 }
 

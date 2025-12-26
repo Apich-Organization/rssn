@@ -22,22 +22,16 @@ struct SimplifyWithRelationsInput {
 /// Expands an expression using algebraic rules (JSON).
 #[no_mangle]
 
-pub extern "C" fn rssn_cas_expand_json(
-    json_str : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_cas_expand_json(json_str : *const c_char) -> *mut c_char {
 
-    let expr : Option<Expr> =
-        from_json_string(json_str);
+    let expr : Option<Expr> = from_json_string(json_str);
 
     let expr = match expr {
         | Some(e) => e,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        cas_foundations::expand(expr);
+    let result = cas_foundations::expand(expr);
 
     to_json_string(&result)
 }
@@ -45,24 +39,16 @@ pub extern "C" fn rssn_cas_expand_json(
 /// Factorizes an expression (JSON).
 #[no_mangle]
 
-pub extern "C" fn rssn_cas_factorize_json(
-    json_str : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_cas_factorize_json(json_str : *const c_char) -> *mut c_char {
 
-    let expr : Option<Expr> =
-        from_json_string(json_str);
+    let expr : Option<Expr> = from_json_string(json_str);
 
     let expr = match expr {
         | Some(e) => e,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        cas_foundations::factorize(
-            expr,
-        );
+    let result = cas_foundations::factorize(expr);
 
     to_json_string(&result)
 }
@@ -70,24 +56,16 @@ pub extern "C" fn rssn_cas_factorize_json(
 /// Normalizes an expression to a canonical form (JSON).
 #[no_mangle]
 
-pub extern "C" fn rssn_cas_normalize_json(
-    json_str : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_cas_normalize_json(json_str : *const c_char) -> *mut c_char {
 
-    let expr : Option<Expr> =
-        from_json_string(json_str);
+    let expr : Option<Expr> = from_json_string(json_str);
 
     let expr = match expr {
         | Some(e) => e,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        cas_foundations::normalize(
-            expr,
-        );
+    let result = cas_foundations::normalize(expr);
 
     to_json_string(&result)
 }
@@ -95,19 +73,13 @@ pub extern "C" fn rssn_cas_normalize_json(
 /// Simplifies an expression using a set of polynomial side-relations (JSON).
 #[no_mangle]
 
-pub extern "C" fn rssn_cas_simplify_with_relations_json(
-    json_str : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_cas_simplify_with_relations_json(json_str : *const c_char) -> *mut c_char {
 
-    let input : Option<
-        SimplifyWithRelationsInput,
-    > = from_json_string(json_str);
+    let input : Option<SimplifyWithRelationsInput> = from_json_string(json_str);
 
     let input = match input {
         | Some(i) => i,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     let vars_refs : Vec<&str> = input

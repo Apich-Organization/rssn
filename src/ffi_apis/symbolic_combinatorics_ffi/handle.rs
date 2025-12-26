@@ -23,19 +23,14 @@ pub unsafe extern "C" fn rssn_combinations(
     k : *const Expr,
 ) -> *mut Expr {
 
-    let result = combinations(
-        &(*n),
-        (*k).clone(),
-    );
+    let result = combinations(&(*n), (*k).clone());
 
     Box::into_raw(Box::new(result))
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_catalan_number(
-    n : usize
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_catalan_number(n : usize) -> *mut Expr {
 
     let result = catalan_number(n);
 
@@ -49,19 +44,14 @@ pub unsafe extern "C" fn rssn_stirling_number_second_kind(
     k : usize,
 ) -> *mut Expr {
 
-    let result =
-        stirling_number_second_kind(
-            n, k,
-        );
+    let result = stirling_number_second_kind(n, k);
 
     Box::into_raw(Box::new(result))
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bell_number(
-    n : usize
-) -> *mut Expr {
+pub unsafe extern "C" fn rssn_bell_number(n : usize) -> *mut Expr {
 
     let result = bell_number(n);
 

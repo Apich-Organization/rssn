@@ -15,9 +15,7 @@ fn test_ideal_gas_law() {
 
     let t = Expr::new_variable("T");
 
-    let eq = ideal_gas_law(
-        &p, &v, &n, &r, &t,
-    );
+    let eq = ideal_gas_law(&p, &v, &n, &r, &t);
 
     let eq_str = format!("{:?}", eq);
 
@@ -38,8 +36,7 @@ fn test_carnot_efficiency() {
 
     let th = Expr::new_variable("Th");
 
-    let eta =
-        carnot_efficiency(&tc, &th);
+    let eta = carnot_efficiency(&tc, &th);
 
     let eta_str = format!("{:?}", eta);
 
@@ -55,8 +52,7 @@ fn test_carnot_efficiency() {
 
 fn test_boltzmann_entropy() {
 
-    let omega =
-        Expr::new_variable("Omega");
+    let omega = Expr::new_variable("Omega");
 
     let s = boltzmann_entropy(&omega);
 
@@ -83,8 +79,7 @@ fn test_enthalpy_and_gibbs() {
 
     let h = enthalpy(&u, &p, &v);
 
-    let g =
-        gibbs_free_energy(&h, &t, &s);
+    let g = gibbs_free_energy(&h, &t, &s);
 
     let g_str = format!("{:?}", g);
 

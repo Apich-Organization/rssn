@@ -12,12 +12,9 @@ use crate::symbolic::simplify_dag::simplify;
 /// Computes the Dirac adjoint of a fermion field: `ψ̄ = ψ†γ⁰`.
 #[must_use]
 
-pub fn dirac_adjoint(
-    psi : &Expr
-) -> Expr {
+pub fn dirac_adjoint(psi : &Expr) -> Expr {
 
-    let gamma_0 =
-        Expr::new_variable("gamma_0");
+    let gamma_0 = Expr::new_variable("gamma_0");
 
     simplify(&Expr::new_mul(
         psi.clone(),
@@ -28,12 +25,9 @@ pub fn dirac_adjoint(
 /// Computes the Feynman slash notation: `A̸ = γμ Aμ`.
 #[must_use]
 
-pub fn feynman_slash(
-    v_mu : &Expr
-) -> Expr {
+pub fn feynman_slash(v_mu : &Expr) -> Expr {
 
-    let gamma_mu =
-        Expr::new_variable("gamma_mu");
+    let gamma_mu = Expr::new_variable("gamma_mu");
 
     simplify(&Expr::new_mul(
         gamma_mu,
@@ -52,9 +46,7 @@ pub fn scalar_field_lagrangian(
 
     let half = Expr::Constant(0.5);
 
-    let d_mu_phi = Expr::new_variable(
-        "partial_mu_phi",
-    );
+    let d_mu_phi = Expr::new_variable("partial_mu_phi");
 
     let d_mu_phi_sq = Expr::new_pow(
         d_mu_phi,
@@ -71,8 +63,7 @@ pub fn scalar_field_lagrangian(
         Expr::Constant(2.0),
     );
 
-    let mass_term =
-        Expr::new_mul(m_sq, phi_sq);
+    let mass_term = Expr::new_mul(m_sq, phi_sq);
 
     let diff = Expr::new_sub(
         d_mu_phi_sq,
@@ -102,36 +93,27 @@ pub fn qed_lagrangian(
         Expr::Constant(1.0),
     );
 
-    let partial_slash = feynman_slash(
-        &Expr::new_variable(
-            "partial_mu",
-        ),
-    );
+    let partial_slash = feynman_slash(&Expr::new_variable(
+        "partial_mu",
+    ));
 
     let a_slash = feynman_slash(a_mu);
 
     // iD_slash = i*gamma_mu*(partial_mu + i*e*A_mu) = i*partial_slash - e*A_slash
     let id_slash = Expr::new_sub(
         Expr::new_mul(i, partial_slash),
-        Expr::new_mul(
-            e.clone(),
-            a_slash,
-        ),
+        Expr::new_mul(e.clone(), a_slash),
     );
 
     let dirac_part = Expr::new_mul(
         psi_bar.clone(),
         Expr::new_mul(
-            Expr::new_sub(
-                id_slash,
-                m.clone(),
-            ),
+            Expr::new_sub(id_slash, m.clone()),
             psi.clone(),
         ),
     );
 
-    let f_mu_nu =
-        Expr::new_variable("F_mu_nu");
+    let f_mu_nu = Expr::new_variable("F_mu_nu");
 
     let f_sq = Expr::new_pow(
         f_mu_nu,
@@ -166,11 +148,9 @@ pub fn qcd_lagrangian(
         Expr::Constant(1.0),
     );
 
-    let partial_slash = feynman_slash(
-        &Expr::new_variable(
-            "partial_mu",
-        ),
-    );
+    let partial_slash = feynman_slash(&Expr::new_variable(
+        "partial_mu",
+    ));
 
     let g_slash = feynman_slash(g_mu);
 
@@ -178,25 +158,18 @@ pub fn qcd_lagrangian(
     // iD_slash = i*partial_slash + gs*A_slash
     let id_slash = Expr::new_add(
         Expr::new_mul(i, partial_slash),
-        Expr::new_mul(
-            gs.clone(),
-            g_slash,
-        ),
+        Expr::new_mul(gs.clone(), g_slash),
     );
 
     let quark_part = Expr::new_mul(
         psi_bar.clone(),
         Expr::new_mul(
-            Expr::new_sub(
-                id_slash,
-                m.clone(),
-            ),
+            Expr::new_sub(id_slash, m.clone()),
             psi.clone(),
         ),
     );
 
-    let g_strength =
-        Expr::new_variable("G_mu_nu_a");
+    let g_strength = Expr::new_variable("G_mu_nu_a");
 
     let g_sq = Expr::new_pow(
         g_strength,
@@ -257,10 +230,7 @@ pub fn propagator(
 
         let numerator = Expr::new_mul(
             i,
-            Expr::new_add(
-                p_slash,
-                m.clone(),
-            ),
+            Expr::new_add(p_slash, m.clone()),
         );
 
         simplify(&Expr::new_div(
@@ -286,17 +256,12 @@ pub fn scattering_cross_section(
 ) -> Expr {
 
     let m_sq = Expr::new_pow(
-        Expr::new_abs(
-            matrix_element.clone(),
-        ),
+        Expr::new_abs(matrix_element.clone()),
         Expr::Constant(2.0),
     );
 
     simplify(&Expr::new_mul(
-        Expr::new_div(
-            m_sq,
-            flux.clone(),
-        ),
+        Expr::new_div(m_sq, flux.clone()),
         phase_space.clone(),
     ))
 }
@@ -312,13 +277,9 @@ pub fn feynman_propagator_position_space(
 
     let p = Expr::new_variable("p");
 
-    let prop_p =
-        propagator(&p, m, false);
+    let prop_p = propagator(&p, m, false);
 
-    let diff = Expr::new_sub(
-        x.clone(),
-        y.clone(),
-    );
+    let diff = Expr::new_sub(x.clone(), y.clone());
 
     let exponent = Expr::new_mul(
         Expr::new_complex(
@@ -336,11 +297,7 @@ pub fn feynman_propagator_position_space(
     simplify(&Expr::Integral {
         integrand : Arc::new(integrand),
         var : Arc::new(p),
-        lower_bound : Arc::new(
-            Expr::NegativeInfinity,
-        ),
-        upper_bound : Arc::new(
-            Expr::Infinity,
-        ),
+        lower_bound : Arc::new(Expr::NegativeInfinity),
+        upper_bound : Arc::new(Expr::Infinity),
     })
 }

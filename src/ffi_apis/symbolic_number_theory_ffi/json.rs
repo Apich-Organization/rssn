@@ -21,33 +21,20 @@ pub extern "C" fn rssn_json_solve_diophantine(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> =
-        from_json_string(equation_json);
+    let equation : Option<Expr> = from_json_string(equation_json);
 
-    let vars : Option<Vec<String>> =
-        from_json_string(vars_json);
+    let vars : Option<Vec<String>> = from_json_string(vars_json);
 
-    if let (Some(eq), Some(v)) =
-        (equation, vars)
-    {
+    if let (Some(eq), Some(v)) = (equation, vars) {
 
         let v_str : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
 
-        match solve_diophantine(
-            &eq,
-            &v_str,
-        ) {
-            | Ok(solutions) => {
-                to_json_string(
-                    &solutions,
-                )
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+        match solve_diophantine(&eq, &v_str) {
+            | Ok(solutions) => to_json_string(&solutions),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
 
@@ -62,22 +49,13 @@ pub extern "C" fn rssn_json_extended_gcd(
     b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<Expr> =
-        from_json_string(a_json);
+    let a : Option<Expr> = from_json_string(a_json);
 
-    let b : Option<Expr> =
-        from_json_string(b_json);
+    let b : Option<Expr> = from_json_string(b_json);
 
-    if let (
-        Some(a_expr),
-        Some(b_expr),
-    ) = (a, b)
-    {
+    if let (Some(a_expr), Some(b_expr)) = (a, b) {
 
-        let (g, x, y) = extended_gcd(
-            &a_expr,
-            &b_expr,
-        );
+        let (g, x, y) = extended_gcd(&a_expr, &b_expr);
 
         to_json_string(&(g, x, y))
     } else {
@@ -88,12 +66,9 @@ pub extern "C" fn rssn_json_extended_gcd(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_json_is_prime(
-    n_json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_is_prime(n_json : *const c_char) -> *mut c_char {
 
-    let n : Option<Expr> =
-        from_json_string(n_json);
+    let n : Option<Expr> = from_json_string(n_json);
 
     if let Some(n_expr) = n {
 
@@ -108,24 +83,13 @@ pub extern "C" fn rssn_json_is_prime(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_json_chinese_remainder(
-    congruences_json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_chinese_remainder(congruences_json : *const c_char) -> *mut c_char {
 
-    let congruences_input : Option<
-        Vec<Congruence>,
-    > = from_json_string(
-        congruences_json,
-    );
+    let congruences_input : Option<Vec<Congruence>> = from_json_string(congruences_json);
 
-    if let Some(input) =
-        congruences_input
-    {
+    if let Some(input) = congruences_input {
 
-        let congruences : Vec<(
-            Expr,
-            Expr,
-        )> = input
+        let congruences : Vec<(Expr, Expr)> = input
             .into_iter()
             .map(|c| {
 
@@ -136,15 +100,9 @@ pub extern "C" fn rssn_json_chinese_remainder(
             })
             .collect();
 
-        match chinese_remainder(
-            &congruences,
-        ) {
-            | Some(result) => {
-                to_json_string(&result)
-            },
-            | None => {
-                std::ptr::null_mut()
-            },
+        match chinese_remainder(&congruences) {
+            | Some(result) => to_json_string(&result),
+            | None => std::ptr::null_mut(),
         }
     } else {
 

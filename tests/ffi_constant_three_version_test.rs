@@ -1,8 +1,9 @@
+use std::ffi::CStr;
+
 use rssn::ffi_apis::common::*;
 use rssn::ffi_apis::constant_ffi::bincode_api::*;
 use rssn::ffi_apis::constant_ffi::handle::*;
 use rssn::ffi_apis::constant_ffi::json::*;
-use std::ffi::CStr;
 
 #[test]
 
@@ -54,8 +55,7 @@ fn test_json_api_build_info() {
 
     unsafe {
 
-        let ptr =
-            rssn_get_build_info_json();
+        let ptr = rssn_get_build_info_json();
 
         assert!(!ptr.is_null());
 
@@ -66,20 +66,13 @@ fn test_json_api_build_info() {
             .unwrap();
 
         // Parse JSON
-        let info : serde_json::Value =
-            serde_json::from_str(json)
-                .unwrap();
+        let info : serde_json::Value = serde_json::from_str(json).unwrap();
 
-        assert!(info["build_date"]
-            .is_string());
+        assert!(info["build_date"].is_string());
 
-        assert!(info["commit_sha"]
-            .is_string());
+        assert!(info["commit_sha"].is_string());
 
-        assert!(
-            info["rustc_version"]
-                .is_string()
-        );
+        assert!(info["rustc_version"].is_string());
 
         rssn_free_string(ptr);
     }
@@ -91,8 +84,7 @@ fn test_json_api_build_date() {
 
     unsafe {
 
-        let ptr =
-            rssn_get_build_date_json();
+        let ptr = rssn_get_build_date_json();
 
         assert!(!ptr.is_null());
 
@@ -103,9 +95,7 @@ fn test_json_api_build_date() {
             .unwrap();
 
         // Should be a JSON string
-        let date : String =
-            serde_json::from_str(json)
-                .unwrap();
+        let date : String = serde_json::from_str(json).unwrap();
 
         assert!(!date.is_empty());
 
@@ -117,8 +107,7 @@ fn test_json_api_build_date() {
 
 fn test_bincode_api_build_info() {
 
-    let buffer =
-        rssn_get_build_info_bincode();
+    let buffer = rssn_get_build_info_bincode();
 
     assert!(!buffer.is_null());
 
@@ -126,7 +115,7 @@ fn test_bincode_api_build_info() {
 
         let slice = buffer.as_slice();
 
-        let (info, _): (BuildInfo, usize) = bincode::serde::decode_from_slice(
+        let (info, _) : (BuildInfo, usize) = bincode::serde::decode_from_slice(
             slice,
             bincode::config::standard(),
         )
@@ -152,8 +141,7 @@ fn test_bincode_api_build_info() {
 
 fn test_bincode_api_build_date() {
 
-    let buffer =
-        rssn_get_build_date_bincode();
+    let buffer = rssn_get_build_date_bincode();
 
     assert!(!buffer.is_null());
 
@@ -161,7 +149,7 @@ fn test_bincode_api_build_date() {
 
         let slice = buffer.as_slice();
 
-        let (date, _): (String, usize) = bincode::serde::decode_from_slice(
+        let (date, _) : (String, usize) = bincode::serde::decode_from_slice(
             slice,
             bincode::config::standard(),
         )
@@ -196,8 +184,7 @@ fn test_all_three_apis_consistency() {
 
     let json_date = unsafe {
 
-        let ptr =
-            rssn_get_build_date_json();
+        let ptr = rssn_get_build_date_json();
 
         let c_str = CStr::from_ptr(ptr);
 
@@ -205,9 +192,7 @@ fn test_all_three_apis_consistency() {
             .to_str()
             .unwrap();
 
-        let date : String =
-            serde_json::from_str(json)
-                .unwrap();
+        let date : String = serde_json::from_str(json).unwrap();
 
         rssn_free_string(ptr);
 
@@ -216,16 +201,13 @@ fn test_all_three_apis_consistency() {
 
     let bincode_date = {
 
-        let buffer =
-            rssn_get_build_date_bincode(
-            );
+        let buffer = rssn_get_build_date_bincode();
 
         let date = unsafe {
 
-            let slice =
-                buffer.as_slice();
+            let slice = buffer.as_slice();
 
-            let (d, _): (String, usize) = bincode::serde::decode_from_slice(
+            let (d, _) : (String, usize) = bincode::serde::decode_from_slice(
                 slice,
                 bincode::config::standard(),
             )
@@ -234,9 +216,7 @@ fn test_all_three_apis_consistency() {
             d
         };
 
-        rssn_free_bincode_buffer(
-            buffer,
-        );
+        rssn_free_bincode_buffer(buffer);
 
         date
     };

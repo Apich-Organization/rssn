@@ -1,19 +1,16 @@
 //! Bincode-based FFI API for physics sim Schrodinger quantum functions.
 
-use crate::ffi_apis::common::{
-    from_bincode_buffer,
-    to_bincode_buffer,
-    BincodeBuffer,
-};
+use num_complex::Complex;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
+use crate::physics::physics_sim::schrodinger_quantum::SchrodingerParameters;
 use crate::physics::physics_sim::schrodinger_quantum::{
     self,
-    SchrodingerParameters,
-};
-use num_complex::Complex;
-use serde::{
-    Deserialize,
-    Serialize,
 };
 
 #[derive(Deserialize)]
@@ -30,22 +27,19 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
     buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: SchrodingerInput =
-        match from_bincode_buffer(&buffer) {
-            | Some(i) => i,
-            | None => {
-                return to_bincode_buffer(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    "Invalid Bincode".to_string(),
-                ))
-            },
-        };
+    let input : SchrodingerInput = match from_bincode_buffer(&buffer) {
+        | Some(i) => i,
+        | None => {
+            return to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
+                "Invalid Bincode".to_string(),
+            ))
+        },
+    };
 
-    let mut initial_psi : Vec<
-        Complex<f64>,
-    > = input
+    let mut initial_psi : Vec<Complex<f64>> = input
         .initial_psi_re
         .iter()
         .zip(
@@ -53,10 +47,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
                 .initial_psi_im
                 .iter(),
         )
-        .map(|(&r, &i)| {
-
-            Complex::new(r, i)
-        })
+        .map(|(&r, &i)| Complex::new(r, i))
         .collect();
 
     match schrodinger_quantum::run_schrodinger_simulation(
@@ -64,7 +55,6 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
         &mut initial_psi,
     ) {
         | Ok(snapshots) => {
-
             if let Some(final_state) = snapshots.last() {
 
                 to_bincode_buffer(&FfiResult::<

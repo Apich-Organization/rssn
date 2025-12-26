@@ -17,9 +17,7 @@ use crate::symbolic::core::Expr;
 /// length contraction, and relativistic mass.
 #[must_use]
 
-pub fn lorentz_factor(
-    velocity : &Expr
-) -> Expr {
+pub fn lorentz_factor(velocity : &Expr) -> Expr {
 
     let c = Expr::new_variable("c");
 
@@ -33,8 +31,7 @@ pub fn lorentz_factor(
         Expr::Constant(2.0),
     );
 
-    let beta_sq =
-        Expr::new_div(v_sq, c_sq);
+    let beta_sq = Expr::new_div(v_sq, c_sq);
 
     Expr::new_pow(
         Expr::new_sub(
@@ -71,10 +68,7 @@ pub fn lorentz_transformation_x(
         gamma.clone(),
         Expr::new_sub(
             x.clone(),
-            Expr::new_mul(
-                v.clone(),
-                t.clone(),
-            ),
+            Expr::new_mul(v.clone(), t.clone()),
         ),
     );
 
@@ -83,10 +77,7 @@ pub fn lorentz_transformation_x(
         Expr::new_sub(
             t.clone(),
             Expr::new_div(
-                Expr::new_mul(
-                    v.clone(),
-                    x.clone(),
-                ),
+                Expr::new_mul(v.clone(), x.clone()),
                 c_sq,
             ),
         ),
@@ -137,9 +128,7 @@ pub fn velocity_addition(
 /// Calculates mass-energy equivalence: $E = mc^2$.
 #[must_use]
 
-pub fn mass_energy_equivalence(
-    mass : &Expr
-) -> Expr {
+pub fn mass_energy_equivalence(mass : &Expr) -> Expr {
 
     let c = Expr::new_variable("c");
 
@@ -159,8 +148,7 @@ pub fn relativistic_momentum(
     velocity : &Expr,
 ) -> Expr {
 
-    let gamma =
-        lorentz_factor(velocity);
+    let gamma = lorentz_factor(velocity);
 
     Expr::new_mul(
         gamma,
@@ -183,8 +171,7 @@ pub fn doppler_effect(
 
     let c = Expr::new_variable("c");
 
-    let beta =
-        Expr::new_div(v.clone(), c);
+    let beta = Expr::new_div(v.clone(), c);
 
     let ratio = Expr::new_div(
         Expr::new_sub(
@@ -209,9 +196,7 @@ pub fn doppler_effect(
 /// Calculates the Schwarzschild Radius: $`r_s` = \frac{2GM}{c^2}$.
 #[must_use]
 
-pub fn schwarzschild_radius(
-    mass : &Expr
-) -> Expr {
+pub fn schwarzschild_radius(mass : &Expr) -> Expr {
 
     let g = Expr::new_variable("G");
 
@@ -225,10 +210,7 @@ pub fn schwarzschild_radius(
     Expr::new_div(
         Expr::new_mul(
             Expr::Constant(2.0),
-            Expr::new_mul(
-                g,
-                mass.clone(),
-            ),
+            Expr::new_mul(g, mass.clone()),
         ),
         c_sq,
     )
@@ -245,11 +227,9 @@ pub fn gravitational_time_dilation(
     mass : &Expr,
 ) -> Expr {
 
-    let r_s =
-        schwarzschild_radius(mass);
+    let r_s = schwarzschild_radius(mass);
 
-    let ratio =
-        Expr::new_div(r_s, r.clone());
+    let ratio = Expr::new_div(r_s, r.clone());
 
     Expr::new_mul(
         t_far.clone(),
@@ -279,8 +259,7 @@ pub fn einstein_tensor(
         Expr::new_mul(
             Expr::Constant(0.5),
             Expr::new_mul(
-                scalar_curvature
-                    .clone(),
+                scalar_curvature.clone(),
                 metric.clone(),
             ),
         ),

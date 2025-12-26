@@ -25,9 +25,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken(
         return ptr::null_mut();
     }
 
-    let slice = slice::from_raw_parts(
-        data, len,
-    );
+    let slice = slice::from_raw_parts(data, len);
 
     let res = convergence::aitken_acceleration(slice);
 
@@ -54,9 +52,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson(
         return ptr::null_mut();
     }
 
-    let slice = slice::from_raw_parts(
-        data, len,
-    );
+    let slice = slice::from_raw_parts(data, len);
 
     let res = convergence::richardson_extrapolation(slice);
 
@@ -83,13 +79,9 @@ pub unsafe extern "C" fn rssn_convergence_wynn(
         return ptr::null_mut();
     }
 
-    let slice = slice::from_raw_parts(
-        data, len,
-    );
+    let slice = slice::from_raw_parts(data, len);
 
-    let res = convergence::wynn_epsilon(
-        slice,
-    );
+    let res = convergence::wynn_epsilon(slice);
 
     Box::into_raw(Box::new(res))
 }
@@ -97,9 +89,7 @@ pub unsafe extern "C" fn rssn_convergence_wynn(
 /// Frees a generic `Vec<f64>` pointer created by convergence functions.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_convergence_free_vec(
-    vec : *mut Vec<f64>
-) {
+pub unsafe extern "C" fn rssn_convergence_free_vec(vec : *mut Vec<f64>) {
 
     if !vec.is_null() {
 
@@ -113,9 +103,7 @@ pub unsafe extern "C" fn rssn_convergence_free_vec(
 /// Returns the length of the vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_convergence_get_vec_len(
-    vec : *const Vec<f64>
-) -> usize {
+pub unsafe extern "C" fn rssn_convergence_get_vec_len(vec : *const Vec<f64>) -> usize {
 
     if vec.is_null() {
 
@@ -137,8 +125,7 @@ pub unsafe extern "C" fn rssn_convergence_get_vec_data(
     buffer : *mut f64,
 ) {
 
-    if vec.is_null() || buffer.is_null()
-    {
+    if vec.is_null() || buffer.is_null() {
 
         return;
     }

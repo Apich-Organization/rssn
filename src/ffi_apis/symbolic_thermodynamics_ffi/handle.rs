@@ -16,12 +16,7 @@ pub unsafe extern "C" fn rssn_ideal_gas_law(
     t : *const Expr,
 ) -> *mut Expr {
 
-    if p.is_null()
-        || v.is_null()
-        || n.is_null()
-        || r.is_null()
-        || t.is_null()
-    {
+    if p.is_null() || v.is_null() || n.is_null() || r.is_null() || t.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -42,18 +37,13 @@ pub unsafe extern "C" fn rssn_enthalpy(
     v : *const Expr,
 ) -> *mut Expr {
 
-    if u.is_null()
-        || p.is_null()
-        || v.is_null()
-    {
+    if u.is_null() || p.is_null() || v.is_null() {
 
         return std::ptr::null_mut();
     }
 
     Box::into_raw(Box::new(
-        thermodynamics::enthalpy(
-            &*u, &*p, &*v,
-        ),
+        thermodynamics::enthalpy(&*u, &*p, &*v),
     ))
 }
 
@@ -66,10 +56,7 @@ pub unsafe extern "C" fn rssn_gibbs_free_energy(
     s : *const Expr,
 ) -> *mut Expr {
 
-    if h.is_null()
-        || t.is_null()
-        || s.is_null()
-    {
+    if h.is_null() || t.is_null() || s.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -106,10 +93,7 @@ pub unsafe extern "C" fn rssn_boltzmann_distribution(
     partition_function : *const Expr,
 ) -> *mut Expr {
 
-    if energy.is_null()
-        || temperature.is_null()
-        || partition_function.is_null()
-    {
+    if energy.is_null() || temperature.is_null() || partition_function.is_null() {
 
         return std::ptr::null_mut();
     }

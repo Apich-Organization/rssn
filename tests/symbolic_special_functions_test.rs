@@ -10,77 +10,31 @@ use rssn::symbolic::special_functions::*;
 
 // --- Helper Functions ---
 
-fn evaluate_expr(
-    expr : &Expr
-) -> Option<f64> {
+fn evaluate_expr(expr : &Expr) -> Option<f64> {
 
     match expr {
         | Expr::Constant(v) => Some(*v),
         | Expr::BigInt(v) => v.to_f64(),
-        | Expr::Rational(v) => {
-            v.to_f64()
-        },
-        | Expr::Add(a, b) => {
-            Some(
-                evaluate_expr(a)?
-                    + evaluate_expr(b)?,
-            )
-        },
-        | Expr::Sub(a, b) => {
-            Some(
-                evaluate_expr(a)?
-                    - evaluate_expr(b)?,
-            )
-        },
-        | Expr::Mul(a, b) => {
-            Some(
-                evaluate_expr(a)?
-                    * evaluate_expr(b)?,
-            )
-        },
-        | Expr::Div(a, b) => {
-            Some(
-                evaluate_expr(a)?
-                    / evaluate_expr(b)?,
-            )
-        },
-        | Expr::Power(a, b) => {
-            Some(
-                evaluate_expr(a)?.powf(
-                    evaluate_expr(b)?,
-                ),
-            )
-        },
-        | Expr::Pi => {
-            Some(std::f64::consts::PI)
-        },
-        | Expr::E => {
-            Some(std::f64::consts::E)
-        },
-        | Expr::Dag(node) => {
-            evaluate_dag(node)
-        },
+        | Expr::Rational(v) => v.to_f64(),
+        | Expr::Add(a, b) => Some(evaluate_expr(a)? + evaluate_expr(b)?),
+        | Expr::Sub(a, b) => Some(evaluate_expr(a)? - evaluate_expr(b)?),
+        | Expr::Mul(a, b) => Some(evaluate_expr(a)? * evaluate_expr(b)?),
+        | Expr::Div(a, b) => Some(evaluate_expr(a)? / evaluate_expr(b)?),
+        | Expr::Power(a, b) => Some(evaluate_expr(a)?.powf(evaluate_expr(b)?)),
+        | Expr::Pi => Some(std::f64::consts::PI),
+        | Expr::E => Some(std::f64::consts::E),
+        | Expr::Dag(node) => evaluate_dag(node),
         | _ => None,
     }
 }
 
-fn evaluate_dag(
-    node: &rssn::symbolic::core::DagNode
-) -> Option<f64> {
+fn evaluate_dag(node : &rssn::symbolic::core::DagNode) -> Option<f64> {
 
     match &node.op {
-        | DagOp::Constant(v) => {
-            Some(v.into_inner())
-        },
-        | DagOp::BigInt(v) => {
-            v.to_f64()
-        },
-        | DagOp::Rational(v) => {
-            v.to_f64()
-        },
-        | DagOp::Pi => {
-            Some(std::f64::consts::PI)
-        },
+        | DagOp::Constant(v) => Some(v.into_inner()),
+        | DagOp::BigInt(v) => v.to_f64(),
+        | DagOp::Rational(v) => v.to_f64(),
+        | DagOp::Pi => Some(std::f64::consts::PI),
         | _ => None,
     }
 }
@@ -90,15 +44,11 @@ fn assert_approx_eq(
     expected : f64,
 ) {
 
-    if let Some(val) =
-        evaluate_expr(expr)
-    {
+    if let Some(val) = evaluate_expr(expr) {
 
         assert!(
-            (val - expected).abs()
-                < 1e-6,
-            "Expected {}, got {} \
-             (from {:?})",
+            (val - expected).abs() < 1e-6,
+            "Expected {}, got {} (from {:?})",
             expected,
             val,
             expr
@@ -152,21 +102,17 @@ fn test_gamma_integers() {
 fn test_gamma_half_integer() {
 
     // Γ(0.5) = √π
-    let g_half =
-        gamma(Expr::Constant(0.5));
+    let g_half = gamma(Expr::Constant(0.5));
 
     // Check it simplifies to Sqrt(Pi)
     match &g_half {
-        | Expr::Sqrt(inner)
-            if **inner == Expr::Pi =>
-        { /* Success */ },
+        | Expr::Sqrt(inner) if **inner == Expr::Pi => { /* Success */ },
         | Expr::Dag(_) => { // Also acceptable if DAG form
         },
         | _ => {
 
             panic!(
-                "Expected sqrt(pi), \
-                 got {:?}",
+                "Expected sqrt(pi), got {:?}",
                 g_half
             )
         },
@@ -178,13 +124,9 @@ fn test_gamma_half_integer() {
 fn test_ln_gamma() {
 
     // ln(Γ(5)) = ln(24)
-    let lg =
-        ln_gamma(Expr::Constant(5.0));
+    let lg = ln_gamma(Expr::Constant(5.0));
 
-    assert_approx_eq(
-        &lg,
-        24.0_f64.ln(),
-    );
+    assert_approx_eq(&lg, 24.0_f64.ln());
 }
 
 // ============================================================================
@@ -217,11 +159,9 @@ fn test_beta_basic() {
 fn test_beta_symmetry() {
 
     // B(a, b) = B(b, a)
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
-    let y =
-        Expr::Variable("y".to_string());
+    let y = Expr::Variable("y".to_string());
 
     // For constants, verify symmetry
     let b12 = beta(
@@ -249,20 +189,16 @@ fn test_beta_symmetry() {
 fn test_digamma_special_values() {
 
     // ψ(1) = -γ (Euler-Mascheroni constant)
-    let d1 =
-        digamma(Expr::Constant(1.0));
+    let d1 = digamma(Expr::Constant(1.0));
 
     match &d1 {
-        | Expr::Variable(s)
-            if s == "-gamma" =>
-        { /* Success */ },
+        | Expr::Variable(s) if s == "-gamma" => { /* Success */ },
         | Expr::Dag(_) => { // Also acceptable
         },
         | _ => {
 
             panic!(
-                "Expected -gamma \
-                 variable, got {:?}",
+                "Expected -gamma variable, got {:?}",
                 d1
             )
         },
@@ -279,8 +215,7 @@ fn test_polygamma() {
         Expr::Constant(2.0),
     );
 
-    let d2 =
-        digamma(Expr::Constant(2.0));
+    let d2 = digamma(Expr::Constant(2.0));
     // Both should represent digamma(2)
 }
 
@@ -351,8 +286,7 @@ fn test_zeta_special_values() {
     assert_eq!(z1, Expr::Infinity);
 
     // ζ(-2) = 0 (trivial zero)
-    let z_neg2 =
-        zeta(Expr::Constant(-2.0));
+    let z_neg2 = zeta(Expr::Constant(-2.0));
 
     assert_approx_eq(&z_neg2, 0.0);
 }
@@ -447,8 +381,7 @@ fn test_bessel_k_at_zero() {
 
 fn test_legendre_p_basic() {
 
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
     // P_0(x) = 1
     let p0 = legendre_p(
@@ -497,8 +430,7 @@ fn test_legendre_p_recurrence() {
 
 fn test_laguerre_l_basic() {
 
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
     // L_0(x) = 1
     let l0 = laguerre_l(
@@ -564,8 +496,7 @@ fn test_generalized_laguerre() {
 
 fn test_hermite_h_basic() {
 
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
     // H_0(x) = 1
     let h0 = hermite_h(
@@ -621,8 +552,7 @@ fn test_hermite_h_recurrence() {
 
 fn test_chebyshev_t_basic() {
 
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
     // T_0(x) = 1
     let t0 = chebyshev_t(
@@ -688,8 +618,7 @@ fn test_chebyshev_t_at_minus_one() {
 
 fn test_chebyshev_u_basic() {
 
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
     // U_0(x) = 1
     let u0 = chebyshev_u(
@@ -714,8 +643,7 @@ fn test_chebyshev_u_basic() {
 
 #[test]
 
-fn test_differential_equations_construct(
-) {
+fn test_differential_equations_construct() {
 
     // Just ensure they construct without panic
     let y = Expr::new_variable("y");
@@ -724,10 +652,7 @@ fn test_differential_equations_construct(
 
     let n = Expr::Constant(2.0);
 
-    let bessel_eq =
-        bessel_differential_equation(
-            &y, &x, &n,
-        );
+    let bessel_eq = bessel_differential_equation(&y, &x, &n);
 
     match bessel_eq {
         | Expr::Eq(_, _) => { // Success
@@ -741,10 +666,7 @@ fn test_differential_equations_construct(
         },
     }
 
-    let legendre_eq =
-        legendre_differential_equation(
-            &y, &x, &n,
-        );
+    let legendre_eq = legendre_differential_equation(&y, &x, &n);
 
     match legendre_eq {
         | Expr::Eq(_, _) => { // Success
@@ -758,10 +680,7 @@ fn test_differential_equations_construct(
         },
     }
 
-    let laguerre_eq =
-        laguerre_differential_equation(
-            &y, &x, &n,
-        );
+    let laguerre_eq = laguerre_differential_equation(&y, &x, &n);
 
     match laguerre_eq {
         | Expr::Eq(_, _) => { // Success
@@ -775,10 +694,7 @@ fn test_differential_equations_construct(
         },
     }
 
-    let hermite_eq =
-        hermite_differential_equation(
-            &y, &x, &n,
-        );
+    let hermite_eq = hermite_differential_equation(&y, &x, &n);
 
     match hermite_eq {
         | Expr::Eq(_, _) => { // Success
@@ -792,10 +708,7 @@ fn test_differential_equations_construct(
         },
     }
 
-    let chebyshev_eq =
-        chebyshev_differential_equation(
-            &y, &x, &n,
-        );
+    let chebyshev_eq = chebyshev_differential_equation(&y, &x, &n);
 
     match chebyshev_eq {
         | Expr::Eq(_, _) => { // Success
@@ -822,10 +735,7 @@ fn test_rodrigues_formulas_construct() {
 
     let x = Expr::new_variable("x");
 
-    let legendre_rf =
-        legendre_rodrigues_formula(
-            &n, &x,
-        );
+    let legendre_rf = legendre_rodrigues_formula(&n, &x);
 
     match legendre_rf {
         | Expr::Eq(_, _) => { // Success
@@ -839,10 +749,7 @@ fn test_rodrigues_formulas_construct() {
         },
     }
 
-    let hermite_rf =
-        hermite_rodrigues_formula(
-            &n, &x,
-        );
+    let hermite_rf = hermite_rodrigues_formula(&n, &x);
 
     match hermite_rf {
         | Expr::Eq(_, _) => { // Success
@@ -872,13 +779,10 @@ fn test_gamma_beta_relationship() {
         Expr::Constant(3.0),
     );
 
-    if let Some(val) =
-        evaluate_expr(&b23)
-    {
+    if let Some(val) = evaluate_expr(&b23) {
 
         assert!(
-            (val - 1.0 / 12.0).abs()
-                < 1e-6,
+            (val - 1.0 / 12.0).abs() < 1e-6,
             "Expected 1/12, got {}",
             val
         );
@@ -887,8 +791,7 @@ fn test_gamma_beta_relationship() {
 
 #[test]
 
-fn test_polynomial_orthogonality_at_boundaries(
-) {
+fn test_polynomial_orthogonality_at_boundaries() {
 
     // All orthogonal polynomials evaluated at typical boundary points
     // P_n(1) = 1 for Legendre
@@ -900,15 +803,11 @@ fn test_polynomial_orthogonality_at_boundaries(
             Expr::Constant(1.0),
         );
 
-        if let Some(val) =
-            evaluate_expr(&pn)
-        {
+        if let Some(val) = evaluate_expr(&pn) {
 
             assert!(
-                (val - 1.0).abs()
-                    < 1e-6,
-                "P_{}(1) should be 1, \
-                 got {}",
+                (val - 1.0).abs() < 1e-6,
+                "P_{}(1) should be 1, got {}",
                 n,
                 val
             );
@@ -919,15 +818,11 @@ fn test_polynomial_orthogonality_at_boundaries(
             Expr::Constant(1.0),
         );
 
-        if let Some(val) =
-            evaluate_expr(&tn)
-        {
+        if let Some(val) = evaluate_expr(&tn) {
 
             assert!(
-                (val - 1.0).abs()
-                    < 1e-6,
-                "T_{}(1) should be 1, \
-                 got {}",
+                (val - 1.0).abs() < 1e-6,
+                "T_{}(1) should be 1, got {}",
                 n,
                 val
             );

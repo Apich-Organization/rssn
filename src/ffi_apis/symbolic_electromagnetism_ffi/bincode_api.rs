@@ -17,43 +17,22 @@ pub extern "C" fn rssn_bincode_lorentz_force(
     b_field_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let charge : Option<Expr> =
-        from_bincode_buffer(
-            &charge_buf,
-        );
+    let charge : Option<Expr> = from_bincode_buffer(&charge_buf);
 
-    let e_field : Option<Vector> =
-        from_bincode_buffer(
-            &e_field_buf,
-        );
+    let e_field : Option<Vector> = from_bincode_buffer(&e_field_buf);
 
-    let velocity : Option<Vector> =
-        from_bincode_buffer(
-            &velocity_buf,
-        );
+    let velocity : Option<Vector> = from_bincode_buffer(&velocity_buf);
 
-    let b_field : Option<Vector> =
-        from_bincode_buffer(
-            &b_field_buf,
-        );
+    let b_field : Option<Vector> = from_bincode_buffer(&b_field_buf);
 
-    if let (
-        Some(q),
-        Some(e),
-        Some(v),
-        Some(b),
-    ) = (
+    if let (Some(q), Some(e), Some(v), Some(b)) = (
         charge,
         e_field,
         velocity,
         b_field,
     ) {
 
-        to_bincode_buffer(
-            &electromagnetism::lorentz_force(
-                &q, &e, &v, &b,
-            ),
-        )
+        to_bincode_buffer(&electromagnetism::lorentz_force(&q, &e, &v, &b))
     } else {
 
         BincodeBuffer::empty()
@@ -68,23 +47,13 @@ pub extern "C" fn rssn_bincode_electromagnetic_energy_density(
     b_field_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let e_field : Option<Vector> =
-        from_bincode_buffer(
-            &e_field_buf,
-        );
+    let e_field : Option<Vector> = from_bincode_buffer(&e_field_buf);
 
-    let b_field : Option<Vector> =
-        from_bincode_buffer(
-            &b_field_buf,
-        );
+    let b_field : Option<Vector> = from_bincode_buffer(&b_field_buf);
 
-    if let (Some(e), Some(b)) =
-        (e_field, b_field)
-    {
+    if let (Some(e), Some(b)) = (e_field, b_field) {
 
-        to_bincode_buffer(
-            &electromagnetism::energy_density(&e, &b),
-        )
+        to_bincode_buffer(&electromagnetism::energy_density(&e, &b))
     } else {
 
         BincodeBuffer::empty()

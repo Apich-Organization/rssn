@@ -4,9 +4,7 @@ use serde::Serialize;
 
 /// Defines the interface for a system of first-order ODEs: dy/dt = f(t, y).
 
-pub trait OdeSystem:
-    Sync + Send
-{
+pub trait OdeSystem: Sync + Send {
     /// The dimension of the system (number of equations).
 
     fn dim(&self) -> usize;
@@ -35,9 +33,7 @@ pub trait OdeSystem:
 /// # Returns
 /// A `Vec` of tuples `(time, state_vector)` representing the solution at each time step.
 
-pub fn solve_rk4<
-    S : OdeSystem + Sync,
->(
+pub fn solve_rk4<S : OdeSystem + Sync>(
     system : &S,
     y0 : &[f64],
     t_span : (f64, f64),
@@ -46,16 +42,13 @@ pub fn solve_rk4<
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        as usize;
+    let steps = ((t_end - t_start) / dt).ceil() as usize;
 
     let mut t = t_start;
 
     let mut y = y0.to_vec();
 
-    let mut history =
-        Vec::with_capacity(steps + 1);
+    let mut history = Vec::with_capacity(steps + 1);
 
     history.push((t, y.clone()));
 
@@ -90,10 +83,7 @@ pub fn solve_rk4<
             .for_each(
                 |((yt, &yi), &k1i)| {
 
-                    *yt = yi
-                        + 0.5
-                            * current_dt
-                            * k1i;
+                    *yt = yi + 0.5 * current_dt * k1i;
                 },
             );
 
@@ -111,10 +101,7 @@ pub fn solve_rk4<
             .for_each(
                 |((yt, &yi), &k2i)| {
 
-                    *yt = yi
-                        + 0.5
-                            * current_dt
-                            * k2i;
+                    *yt = yi + 0.5 * current_dt * k2i;
                 },
             );
 
@@ -132,9 +119,7 @@ pub fn solve_rk4<
             .for_each(
                 |((yt, &yi), &k3i)| {
 
-                    *yt = yi
-                        + current_dt
-                            * k3i;
+                    *yt = yi + current_dt * k3i;
                 },
             );
 
@@ -151,25 +136,9 @@ pub fn solve_rk4<
             .zip(&k3)
             .zip(&k4)
             .for_each(
-                |(
-                    (
-                        (
-                            (yi, &k1i),
-                            &k2i,
-                        ),
-                        &k3i,
-                    ),
-                    &k4i,
-                )| {
+                |((((yi, &k1i), &k2i), &k3i), &k4i)| {
 
-                    *yi += (current_dt
-                        / 6.0)
-                        * (k1i
-                            + 2.0
-                                * k2i
-                            + 2.0
-                                * k3i
-                            + k4i);
+                    *yi += (current_dt / 6.0) * (k1i + 2.0 * k2i + 2.0 * k3i + k4i);
                 },
             );
 
@@ -275,9 +244,7 @@ impl DormandPrince54 {
         }
     }
 
-    pub fn solve<
-        S : OdeSystem + Sync,
-    >(
+    pub fn solve<S : OdeSystem + Sync>(
         &self,
         system : &S,
         y0 : &[f64],
@@ -294,13 +261,11 @@ impl DormandPrince54 {
 
         let mut y = y0.to_vec();
 
-        let mut history =
-            vec![(t, y.clone())];
+        let mut history = vec![(t, y.clone())];
 
         let dim = system.dim();
 
-        let mut k =
-            vec![vec![0.0; dim]; 7];
+        let mut k = vec![vec![0.0; dim]; 7];
 
         while t < t_end {
 
@@ -309,16 +274,11 @@ impl DormandPrince54 {
                 dt = t_end - t;
             }
 
-            system.eval(
-                t,
-                &y,
-                &mut k[0],
-            );
+            system.eval(t, &y, &mut k[0]);
 
             for i in 1 .. 7 {
 
-                let mut y_temp =
-                    y.clone();
+                let mut y_temp = y.clone();
 
                 for (j, _vars) in k
                     .iter()
@@ -326,8 +286,7 @@ impl DormandPrince54 {
                     .take(i)
                 {
 
-                    let a_val = self.a
-                        [i - 1][j];
+                    let a_val = self.a[i - 1][j];
 
                     if a_val != 0.0 {
 
@@ -358,34 +317,23 @@ impl DormandPrince54 {
 
                 for j in 0 .. 7 {
 
-                    y5_i += dt
-                        * k[j][i]
-                        * self.b5[j];
+                    y5_i += dt * k[j][i] * self.b5[j];
 
-                    y4_i += dt
-                        * k[j][i]
-                        * self.b4[j];
+                    y4_i += dt * k[j][i] * self.b4[j];
                 }
 
                 let scale = atol
-                    + y[i].abs().max(
-                        y5_i.abs(),
-                    ) * rtol;
+                    + y[i]
+                        .abs()
+                        .max(y5_i.abs())
+                        * rtol;
 
-                error += ((y5_i
-                    - y4_i)
-                    / scale)
-                    .powi(2);
+                error += ((y5_i - y4_i) / scale).powi(2);
             }
 
-            error = (error
-                / dim as f64)
-                .sqrt();
+            error = (error / dim as f64).sqrt();
 
-            let factor = (0.9
-                * (1.0 / error)
-                    .powf(0.2))
-            .clamp(0.1, 4.0);
+            let factor = (0.9 * (1.0 / error).powf(0.2)).clamp(0.1, 4.0);
 
             if error <= 1.0 {
 
@@ -394,16 +342,13 @@ impl DormandPrince54 {
                 y.par_iter_mut()
                     .enumerate()
                     .for_each(|(i, yi)| {
-                        for j in 0..7 {
+                        for j in 0 .. 7 {
 
                             *yi += dt * k[j][i] * self.b5[j];
                         }
                     });
 
-                history.push((
-                    t,
-                    y.clone(),
-                ));
+                history.push((t, y.clone()));
             }
 
             dt *= factor;
@@ -497,9 +442,7 @@ impl Default for CashKarp45 {
 }
 
 impl CashKarp45 {
-    pub fn solve<
-        S : OdeSystem + Sync,
-    >(
+    pub fn solve<S : OdeSystem + Sync>(
         &self,
         system : &S,
         y0 : &[f64],
@@ -516,13 +459,11 @@ impl CashKarp45 {
 
         let mut y = y0.to_vec();
 
-        let mut history =
-            vec![(t, y.clone())];
+        let mut history = vec![(t, y.clone())];
 
         let dim = system.dim();
 
-        let mut k =
-            vec![vec![0.0; dim]; 6];
+        let mut k = vec![vec![0.0; dim]; 6];
 
         while t < t_end {
 
@@ -531,21 +472,15 @@ impl CashKarp45 {
                 dt = t_end - t;
             }
 
-            system.eval(
-                t,
-                &y,
-                &mut k[0],
-            );
+            system.eval(t, &y, &mut k[0]);
 
             for i in 1 .. 6 {
 
-                let mut y_temp =
-                    y.clone();
+                let mut y_temp = y.clone();
 
                 for j in 0 .. i {
 
-                    let a_val = self.a
-                        [i - 1][j];
+                    let a_val = self.a[i - 1][j];
 
                     if a_val != 0.0 {
 
@@ -576,34 +511,23 @@ impl CashKarp45 {
 
                 for j in 0 .. 6 {
 
-                    y5_i += dt
-                        * k[j][i]
-                        * self.b5[j];
+                    y5_i += dt * k[j][i] * self.b5[j];
 
-                    y4_i += dt
-                        * k[j][i]
-                        * self.b4[j];
+                    y4_i += dt * k[j][i] * self.b4[j];
                 }
 
                 let scale = atol
-                    + y[i].abs().max(
-                        y5_i.abs(),
-                    ) * rtol;
+                    + y[i]
+                        .abs()
+                        .max(y5_i.abs())
+                        * rtol;
 
-                error += ((y5_i
-                    - y4_i)
-                    / scale)
-                    .powi(2);
+                error += ((y5_i - y4_i) / scale).powi(2);
             }
 
-            error = (error
-                / dim as f64)
-                .sqrt();
+            error = (error / dim as f64).sqrt();
 
-            let factor = (0.9
-                * (1.0 / error)
-                    .powf(0.2))
-            .clamp(0.1, 4.0);
+            let factor = (0.9 * (1.0 / error).powf(0.2)).clamp(0.1, 4.0);
 
             if error <= 1.0 {
 
@@ -612,16 +536,13 @@ impl CashKarp45 {
                 y.par_iter_mut()
                     .enumerate()
                     .for_each(|(i, yi)| {
-                        for j in 0..6 {
+                        for j in 0 .. 6 {
 
                             *yi += dt * k[j][i] * self.b5[j];
                         }
                     });
 
-                history.push((
-                    t,
-                    y.clone(),
-                ));
+                history.push((t, y.clone()));
             }
 
             dt *= factor;
@@ -682,9 +603,7 @@ impl Default for BogackiShampine23 {
 }
 
 impl BogackiShampine23 {
-    pub fn solve<
-        S : OdeSystem + Sync,
-    >(
+    pub fn solve<S : OdeSystem + Sync>(
         &self,
         system : &S,
         y0 : &[f64],
@@ -701,13 +620,11 @@ impl BogackiShampine23 {
 
         let mut y = y0.to_vec();
 
-        let mut history =
-            vec![(t, y.clone())];
+        let mut history = vec![(t, y.clone())];
 
         let dim = system.dim();
 
-        let mut k =
-            vec![vec![0.0; dim]; 4];
+        let mut k = vec![vec![0.0; dim]; 4];
 
         while t < t_end {
 
@@ -716,21 +633,15 @@ impl BogackiShampine23 {
                 dt = t_end - t;
             }
 
-            system.eval(
-                t,
-                &y,
-                &mut k[0],
-            );
+            system.eval(t, &y, &mut k[0]);
 
             for i in 1 .. 4 {
 
-                let mut y_temp =
-                    y.clone();
+                let mut y_temp = y.clone();
 
                 for j in 0 .. i {
 
-                    let a_val = self.a
-                        [i - 1][j];
+                    let a_val = self.a[i - 1][j];
 
                     if a_val != 0.0 {
 
@@ -761,34 +672,23 @@ impl BogackiShampine23 {
 
                 for j in 0 .. 4 {
 
-                    y3_i += dt
-                        * k[j][i]
-                        * self.b3[j];
+                    y3_i += dt * k[j][i] * self.b3[j];
 
-                    y2_i += dt
-                        * k[j][i]
-                        * self.b2[j];
+                    y2_i += dt * k[j][i] * self.b2[j];
                 }
 
                 let scale = atol
-                    + y[i].abs().max(
-                        y3_i.abs(),
-                    ) * rtol;
+                    + y[i]
+                        .abs()
+                        .max(y3_i.abs())
+                        * rtol;
 
-                error += ((y3_i
-                    - y2_i)
-                    / scale)
-                    .powi(2);
+                error += ((y3_i - y2_i) / scale).powi(2);
             }
 
-            error = (error
-                / dim as f64)
-                .sqrt();
+            error = (error / dim as f64).sqrt();
 
-            let factor = (0.9
-                * (1.0 / error)
-                    .powf(0.33))
-            .clamp(0.1, 4.0);
+            let factor = (0.9 * (1.0 / error).powf(0.33)).clamp(0.1, 4.0);
 
             if error <= 1.0 {
 
@@ -797,16 +697,13 @@ impl BogackiShampine23 {
                 y.par_iter_mut()
                     .enumerate()
                     .for_each(|(i, yi)| {
-                        for j in 0..4 {
+                        for j in 0 .. 4 {
 
                             *yi += dt * k[j][i] * self.b3[j];
                         }
                     });
 
-                history.push((
-                    t,
-                    y.clone(),
-                ));
+                history.push((t, y.clone()));
             }
 
             dt *= factor;
@@ -826,9 +723,7 @@ impl BogackiShampine23 {
 // ============================================================================
 
 /// The Lorenz attractor system.
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct LorenzSystem {
     pub sigma : f64,
@@ -849,31 +744,23 @@ impl OdeSystem for LorenzSystem {
         dy : &mut [f64],
     ) {
 
-        dy[0] =
-            self.sigma * (y[1] - y[0]);
+        dy[0] = self.sigma * (y[1] - y[0]);
 
-        dy[1] = y[0]
-            * (self.rho - y[2])
-            - y[1];
+        dy[1] = y[0] * (self.rho - y[2]) - y[1];
 
-        dy[2] = y[0] * y[1]
-            - self.beta * y[2];
+        dy[2] = y[0] * y[1] - self.beta * y[2];
     }
 }
 
 /// A damped harmonic oscillator (y'' + 2*zeta*omega*y' + omega^2*y = 0).
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct DampedOscillatorSystem {
     pub omega : f64,
     pub zeta : f64,
 }
 
-impl OdeSystem
-    for DampedOscillatorSystem
-{
+impl OdeSystem for DampedOscillatorSystem {
     fn dim(&self) -> usize {
 
         2
@@ -888,19 +775,13 @@ impl OdeSystem
 
         dy[0] = y[1];
 
-        dy[1] = -2.0
-            * self.zeta
-            * self.omega
-            * y[1]
-            - self.omega.powi(2) * y[0];
+        dy[1] = -2.0 * self.zeta * self.omega * y[1] - self.omega.powi(2) * y[0];
     }
 }
 
 /// Van der Pol oscillator system.
 /// y'' - mu(1 - y^2)y' + y = 0
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct VanDerPolSystem {
     pub mu : f64,
@@ -921,19 +802,14 @@ impl OdeSystem for VanDerPolSystem {
 
         dy[0] = y[1];
 
-        dy[1] = self.mu
-            * (1.0 - y[0] * y[0])
-            * y[1]
-            - y[0];
+        dy[1] = self.mu * (1.0 - y[0] * y[0]) * y[1] - y[0];
     }
 }
 
 /// Lotka-Volterra predator-prey system.
 /// dx/dt = alpha*x - beta*x*y
 /// dy/dt = delta*x*y - gamma*y
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct LotkaVolterraSystem {
     pub alpha : f64,
@@ -955,20 +831,15 @@ impl OdeSystem for LotkaVolterraSystem {
         dy : &mut [f64],
     ) {
 
-        dy[0] = self.alpha * y[0]
-            - self.beta * y[0] * y[1];
+        dy[0] = self.alpha * y[0] - self.beta * y[0] * y[1];
 
-        dy[1] =
-            self.delta * y[0] * y[1]
-                - self.gamma * y[1];
+        dy[1] = self.delta * y[0] * y[1] - self.gamma * y[1];
     }
 }
 
 /// Simple pendulum system.
 /// theta'' + (g/L)sin(theta) = 0
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct PendulumSystem {
     pub g : f64,
@@ -990,8 +861,7 @@ impl OdeSystem for PendulumSystem {
 
         dy[0] = y[1];
 
-        dy[1] = -(self.g / self.l)
-            * y[0].sin();
+        dy[1] = -(self.g / self.l) * y[0].sin();
     }
 }
 
@@ -999,8 +869,7 @@ impl OdeSystem for PendulumSystem {
 // Scenarios
 // ============================================================================
 
-pub fn simulate_lorenz_attractor_scenario(
-) -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_lorenz_attractor_scenario() -> Vec<(f64, Vec<f64>)> {
 
     let system = LorenzSystem {
         sigma : 10.0,
@@ -1027,14 +896,12 @@ pub fn simulate_lorenz_attractor_scenario(
     )
 }
 
-pub fn simulate_damped_oscillator_scenario(
-) -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_damped_oscillator_scenario() -> Vec<(f64, Vec<f64>)> {
 
-    let system =
-        DampedOscillatorSystem {
-            omega : 1.0,
-            zeta : 0.15,
-        };
+    let system = DampedOscillatorSystem {
+        omega : 1.0,
+        zeta : 0.15,
+    };
 
     let y0 = &[1.0, 0.0];
 
@@ -1050,8 +917,7 @@ pub fn simulate_damped_oscillator_scenario(
     )
 }
 
-pub fn simulate_vanderpol_scenario(
-) -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_vanderpol_scenario() -> Vec<(f64, Vec<f64>)> {
 
     let system = VanDerPolSystem {
         mu : 1.0,
@@ -1076,8 +942,7 @@ pub fn simulate_vanderpol_scenario(
     )
 }
 
-pub fn simulate_lotka_volterra_scenario(
-) -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_lotka_volterra_scenario() -> Vec<(f64, Vec<f64>)> {
 
     let system = LotkaVolterraSystem {
         alpha : 1.5,
@@ -1094,8 +959,7 @@ pub fn simulate_lotka_volterra_scenario(
 
     let tolerance = (1e-6, 1e-6);
 
-    let solver =
-        BogackiShampine23::default();
+    let solver = BogackiShampine23::default();
 
     solver.solve(
         &system,

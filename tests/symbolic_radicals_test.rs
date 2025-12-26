@@ -6,13 +6,8 @@ use rssn::symbolic::radicals::simplify_radicals;
 fn is_one(expr : &Expr) -> bool {
 
     match expr {
-        | Expr::Constant(c) => {
-            (c - 1.0).abs()
-                < f64::EPSILON
-        },
-        | Expr::Sqrt(inner) => {
-            is_one(inner)
-        },
+        | Expr::Constant(c) => (c - 1.0).abs() < f64::EPSILON,
+        | Expr::Sqrt(inner) => is_one(inner),
         | _ => false,
     }
 }
@@ -25,10 +20,7 @@ fn is_sqrt_k(
     match expr {
         | Expr::Sqrt(inner) => {
             match inner.as_ref() {
-                | Expr::Constant(c) => {
-                    (c - k).abs()
-                        < f64::EPSILON
-                },
+                | Expr::Constant(c) => (c - k).abs() < f64::EPSILON,
                 | _ => false,
             }
         },
@@ -42,37 +34,23 @@ fn is_neg_sqrt_k(
 ) -> bool {
 
     match expr {
-        | Expr::Neg(inner) => {
-            is_sqrt_k(inner, k)
-        },
+        | Expr::Neg(inner) => is_sqrt_k(inner, k),
         | Expr::Mul(a, b) => {
 
             // Check for -1 * sqrt(k)
-            if let Expr::Constant(c) =
-                a.as_ref()
-            {
+            if let Expr::Constant(c) = a.as_ref() {
 
-                if (c + 1.0).abs()
-                    < f64::EPSILON
-                {
+                if (c + 1.0).abs() < f64::EPSILON {
 
-                    return is_sqrt_k(
-                        b, k,
-                    );
+                    return is_sqrt_k(b, k);
                 }
             }
 
-            if let Expr::Constant(c) =
-                b.as_ref()
-            {
+            if let Expr::Constant(c) = b.as_ref() {
 
-                if (c + 1.0).abs()
-                    < f64::EPSILON
-                {
+                if (c + 1.0).abs() < f64::EPSILON {
 
-                    return is_sqrt_k(
-                        a, k,
-                    );
+                    return is_sqrt_k(a, k);
                 }
             }
 
@@ -87,10 +65,7 @@ fn resolve(expr : Expr) -> Expr {
     if let Expr::Dag(node) = expr {
 
         node.to_expr()
-            .unwrap_or_else(|_| {
-
-                Expr::Dag(node)
-            })
+            .unwrap_or_else(|_| Expr::Dag(node))
     } else {
 
         expr
@@ -106,32 +81,28 @@ fn test_denest_sqrt_add() {
         Expr::new_constant(3.0),
         Expr::new_mul(
             Expr::new_constant(2.0),
-            Expr::new_sqrt(
-                Expr::new_constant(2.0),
-            ),
+            Expr::new_sqrt(Expr::new_constant(
+                2.0,
+            )),
         ),
     );
 
     let expr = Expr::new_sqrt(inner);
 
-    let simplified = resolve(
-        simplify_radicals(&expr),
-    );
+    let simplified = resolve(simplify_radicals(
+        &expr,
+    ));
 
     println!(
         "Simplified: {:?}",
         simplified
     );
 
-    if let Expr::Add(a, b) = simplified
-    {
+    if let Expr::Add(a, b) = simplified {
 
-        let has_one =
-            is_one(&a) || is_one(&b);
+        let has_one = is_one(&a) || is_one(&b);
 
-        let has_sqrt2 =
-            is_sqrt_k(&a, 2.0)
-                || is_sqrt_k(&b, 2.0);
+        let has_sqrt2 = is_sqrt_k(&a, 2.0) || is_sqrt_k(&b, 2.0);
 
         assert!(
             has_one && has_sqrt2,
@@ -139,9 +110,7 @@ fn test_denest_sqrt_add() {
         );
     } else {
 
-        panic!(
-            "Expected Add expression"
-        );
+        panic!("Expected Add expression");
     }
 }
 
@@ -154,17 +123,17 @@ fn test_denest_sqrt_sub() {
         Expr::new_constant(5.0),
         Expr::new_mul(
             Expr::new_constant(2.0),
-            Expr::new_sqrt(
-                Expr::new_constant(6.0),
-            ),
+            Expr::new_sqrt(Expr::new_constant(
+                6.0,
+            )),
         ),
     );
 
     let expr = Expr::new_sqrt(inner);
 
-    let simplified = resolve(
-        simplify_radicals(&expr),
-    );
+    let simplified = resolve(simplify_radicals(
+        &expr,
+    ));
 
     println!(
         "Simplified: {:?}",
@@ -175,45 +144,29 @@ fn test_denest_sqrt_sub() {
     match simplified {
         | Expr::Sub(a, b) => {
 
-            let is_sqrt3 =
-                is_sqrt_k(&a, 3.0);
+            let is_sqrt3 = is_sqrt_k(&a, 3.0);
 
-            let is_sqrt2 =
-                is_sqrt_k(&b, 2.0);
+            let is_sqrt2 = is_sqrt_k(&b, 2.0);
 
             assert!(
                 is_sqrt3 && is_sqrt2,
-                "Expected sqrt(3) - \
-                 sqrt(2)"
+                "Expected sqrt(3) - sqrt(2)"
             );
         },
         | Expr::Add(a, b) => {
 
-            let has_sqrt3 =
-                is_sqrt_k(&a, 3.0)
-                    || is_sqrt_k(
-                        &b, 3.0,
-                    );
+            let has_sqrt3 = is_sqrt_k(&a, 3.0) || is_sqrt_k(&b, 3.0);
 
-            let has_neg_sqrt2 =
-                is_neg_sqrt_k(&a, 2.0)
-                    || is_neg_sqrt_k(
-                        &b, 2.0,
-                    );
+            let has_neg_sqrt2 = is_neg_sqrt_k(&a, 2.0) || is_neg_sqrt_k(&b, 2.0);
 
             assert!(
-                has_sqrt3
-                    && has_neg_sqrt2,
-                "Expected sqrt(3) - \
-                 sqrt(2)"
+                has_sqrt3 && has_neg_sqrt2,
+                "Expected sqrt(3) - sqrt(2)"
             );
         },
         | _ => {
 
-            panic!(
-                "Expected Sub or Add \
-                 expression"
-            )
+            panic!("Expected Sub or Add expression")
         },
     }
 }
@@ -227,20 +180,19 @@ fn test_denest_sqrt_recursive() {
         Expr::new_constant(3.0),
         Expr::new_mul(
             Expr::new_constant(2.0),
-            Expr::new_sqrt(
-                Expr::new_constant(2.0),
-            ),
+            Expr::new_sqrt(Expr::new_constant(
+                2.0,
+            )),
         ),
     );
 
-    let inner =
-        Expr::new_sqrt(inner_inner);
+    let inner = Expr::new_sqrt(inner_inner);
 
     let expr = Expr::new_sqrt(inner);
 
-    let simplified = resolve(
-        simplify_radicals(&expr),
-    );
+    let simplified = resolve(simplify_radicals(
+        &expr,
+    ));
 
     println!(
         "Simplified recursive: {:?}",
@@ -249,38 +201,25 @@ fn test_denest_sqrt_recursive() {
 
     if let Expr::Sqrt(s) = simplified {
 
-        let inner_s =
-            resolve(s.as_ref().clone());
+        let inner_s = resolve(s.as_ref().clone());
 
-        if let Expr::Add(a, b) = inner_s
-        {
+        if let Expr::Add(a, b) = inner_s {
 
-            let has_one = is_one(&a)
-                || is_one(&b);
+            let has_one = is_one(&a) || is_one(&b);
 
-            let has_sqrt2 =
-                is_sqrt_k(&a, 2.0)
-                    || is_sqrt_k(
-                        &b, 2.0,
-                    );
+            let has_sqrt2 = is_sqrt_k(&a, 2.0) || is_sqrt_k(&b, 2.0);
 
             assert!(
                 has_one && has_sqrt2,
-                "Expected sqrt(1 + \
-                 sqrt(2))"
+                "Expected sqrt(1 + sqrt(2))"
             );
         } else {
 
-            panic!(
-                "Expected Add inside \
-                 Sqrt"
-            );
+            panic!("Expected Add inside Sqrt");
         }
     } else {
 
-        panic!(
-            "Expected Sqrt expression"
-        );
+        panic!("Expected Sqrt expression");
     }
 }
 
@@ -291,31 +230,27 @@ fn test_denest_sqrt_simple() {
     // sqrt(3 + sqrt(8)) = 1 + sqrt(2)
     let inner = Expr::new_add(
         Expr::new_constant(3.0),
-        Expr::new_sqrt(
-            Expr::new_constant(8.0),
-        ),
+        Expr::new_sqrt(Expr::new_constant(
+            8.0,
+        )),
     );
 
     let expr = Expr::new_sqrt(inner);
 
-    let simplified = resolve(
-        simplify_radicals(&expr),
-    );
+    let simplified = resolve(simplify_radicals(
+        &expr,
+    ));
 
     println!(
         "Simplified simple: {:?}",
         simplified
     );
 
-    if let Expr::Add(a, b) = simplified
-    {
+    if let Expr::Add(a, b) = simplified {
 
-        let has_one =
-            is_one(&a) || is_one(&b);
+        let has_one = is_one(&a) || is_one(&b);
 
-        let has_sqrt2 =
-            is_sqrt_k(&a, 2.0)
-                || is_sqrt_k(&b, 2.0);
+        let has_sqrt2 = is_sqrt_k(&a, 2.0) || is_sqrt_k(&b, 2.0);
 
         assert!(
             has_one && has_sqrt2,
@@ -323,8 +258,6 @@ fn test_denest_sqrt_simple() {
         );
     } else {
 
-        panic!(
-            "Expected Add expression"
-        );
+        panic!("Expected Add expression");
     }
 }

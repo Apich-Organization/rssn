@@ -15,8 +15,7 @@ pub extern "C" fn rssn_multivector_scalar_handle(
 
         if value.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*value
@@ -42,8 +41,7 @@ pub extern "C" fn rssn_multivector_geometric_product_handle(
 
         if a.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*a
@@ -53,15 +51,13 @@ pub extern "C" fn rssn_multivector_geometric_product_handle(
 
         if b.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*b
     };
 
-    let result =
-        a_ref.geometric_product(b_ref);
+    let result = a_ref.geometric_product(b_ref);
 
     Box::into_raw(Box::new(result))
 }
@@ -78,8 +74,7 @@ pub extern "C" fn rssn_multivector_outer_product_handle(
 
         if a.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*a
@@ -89,15 +84,13 @@ pub extern "C" fn rssn_multivector_outer_product_handle(
 
         if b.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*b
     };
 
-    let result =
-        a_ref.outer_product(b_ref);
+    let result = a_ref.outer_product(b_ref);
 
     Box::into_raw(Box::new(result))
 }
@@ -114,8 +107,7 @@ pub extern "C" fn rssn_multivector_inner_product_handle(
 
         if a.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*a
@@ -125,15 +117,13 @@ pub extern "C" fn rssn_multivector_inner_product_handle(
 
         if b.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*b
     };
 
-    let result =
-        a_ref.inner_product(b_ref);
+    let result = a_ref.inner_product(b_ref);
 
     Box::into_raw(Box::new(result))
 }
@@ -141,16 +131,13 @@ pub extern "C" fn rssn_multivector_inner_product_handle(
 /// Computes reverse (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_multivector_reverse_handle(
-    mv : *const Multivector
-) -> *mut Multivector {
+pub extern "C" fn rssn_multivector_reverse_handle(mv : *const Multivector) -> *mut Multivector {
 
     let mv_ref = unsafe {
 
         if mv.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*mv
@@ -173,15 +160,13 @@ pub extern "C" fn rssn_multivector_grade_projection_handle(
 
         if mv.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*mv
     };
 
-    let result =
-        mv_ref.grade_projection(grade);
+    let result = mv_ref.grade_projection(grade);
 
     Box::into_raw(Box::new(result))
 }
@@ -189,16 +174,13 @@ pub extern "C" fn rssn_multivector_grade_projection_handle(
 /// Computes magnitude (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_multivector_magnitude_handle(
-    mv : *const Multivector
-) -> *mut Expr {
+pub extern "C" fn rssn_multivector_magnitude_handle(mv : *const Multivector) -> *mut Expr {
 
     let mv_ref = unsafe {
 
         if mv.is_null() {
 
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*mv
@@ -212,9 +194,7 @@ pub extern "C" fn rssn_multivector_magnitude_handle(
 /// Frees a multivector (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_free_multivector_handle(
-    ptr : *mut Multivector
-) {
+pub extern "C" fn rssn_free_multivector_handle(ptr : *mut Multivector) {
 
     if !ptr.is_null() {
 

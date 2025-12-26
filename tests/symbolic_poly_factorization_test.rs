@@ -1,19 +1,14 @@
-use num_bigint::BigInt;
-use num_traits::{
-    One,
-    Zero,
-};
-use rssn::symbolic::finite_field::{
-    FiniteFieldPolynomial,
-    PrimeField,
-    PrimeFieldElement,
-};
-use rssn::symbolic::poly_factorization::*;
 use std::sync::Arc;
 
-fn create_test_field(
-    modulus : i64
-) -> Arc<PrimeField> {
+use num_bigint::BigInt;
+use num_traits::One;
+use num_traits::Zero;
+use rssn::symbolic::finite_field::FiniteFieldPolynomial;
+use rssn::symbolic::finite_field::PrimeField;
+use rssn::symbolic::finite_field::PrimeFieldElement;
+use rssn::symbolic::poly_factorization::*;
+
+fn create_test_field(modulus : i64) -> Arc<PrimeField> {
 
     PrimeField::new(BigInt::from(
         modulus,
@@ -25,9 +20,7 @@ fn create_poly(
     field : Arc<PrimeField>,
 ) -> FiniteFieldPolynomial {
 
-    let elements : Vec<
-        PrimeFieldElement,
-    > = coeffs
+    let elements : Vec<PrimeFieldElement> = coeffs
         .into_iter()
         .map(|c| {
 
@@ -38,10 +31,7 @@ fn create_poly(
         })
         .collect();
 
-    FiniteFieldPolynomial::new(
-        elements,
-        field,
-    )
+    FiniteFieldPolynomial::new(elements, field)
 }
 
 #[test]
@@ -57,8 +47,7 @@ fn test_poly_derivative_gf() {
         field.clone(),
     ); // x^2 + 2x + 1
 
-    let derivative =
-        poly_derivative_gf(&poly);
+    let derivative = poly_derivative_gf(&poly);
 
     // Derivative: 2x + 2
     assert_eq!(
@@ -100,8 +89,7 @@ fn test_poly_gcd_gf() {
         field.clone(),
     ); // x - 1
 
-    let gcd = poly_gcd_gf(poly1, poly2)
-        .unwrap();
+    let gcd = poly_gcd_gf(poly1, poly2).unwrap();
 
     // GCD should be x - 1 (or a scalar multiple)
     assert_eq!(gcd.degree(), 1);
@@ -109,8 +97,7 @@ fn test_poly_gcd_gf() {
 
 #[test]
 
-fn test_square_free_factorization_simple(
-) {
+fn test_square_free_factorization_simple() {
 
     // Test with x^2 over GF(3)
     // x^2 = x * x, so it's not square-free
@@ -121,10 +108,7 @@ fn test_square_free_factorization_simple(
         field.clone(),
     ); // x^2
 
-    let result =
-        square_free_factorization_gf(
-            poly,
-        );
+    let result = square_free_factorization_gf(poly);
 
     assert!(result.is_ok());
 
@@ -147,8 +131,7 @@ fn test_factor_gf_linear() {
         field.clone(),
     ); // x - 1
 
-    let factors =
-        factor_gf(&poly).unwrap();
+    let factors = factor_gf(&poly).unwrap();
 
     assert_eq!(factors.len(), 1);
 
@@ -171,20 +154,15 @@ fn test_factor_gf_quadratic() {
         field.clone(),
     ); // x^2 - 1
 
-    let factors =
-        factor_gf(&poly).unwrap();
+    let factors = factor_gf(&poly).unwrap();
 
     // Should factor into two linear factors
-    assert!(
-        factors.len() >= 2
-            || factors[0].degree() == 2
-    );
+    assert!(factors.len() >= 2 || factors[0].degree() == 2);
 }
 
 #[test]
 
-fn test_berlekamp_factorization_simple()
-{
+fn test_berlekamp_factorization_simple() {
 
     // Test Berlekamp on x^2 - 1 over GF(3)
     let field = create_test_field(3);
@@ -194,9 +172,7 @@ fn test_berlekamp_factorization_simple()
         field.clone(),
     ); // x^2 - 1
 
-    let factors =
-        berlekamp_factorization(&poly)
-            .unwrap();
+    let factors = berlekamp_factorization(&poly).unwrap();
 
     // Should produce factors
     assert!(!factors.is_empty());
@@ -204,8 +180,7 @@ fn test_berlekamp_factorization_simple()
 
 #[test]
 
-fn test_distinct_degree_factorization()
-{
+fn test_distinct_degree_factorization() {
 
     // Test DDF on x^3 - x over GF(2)
     // x^3 - x = x(x^2 - 1) = x(x-1)(x+1) in GF(2)
@@ -216,10 +191,7 @@ fn test_distinct_degree_factorization()
         field.clone(),
     ); // x^3 - x
 
-    let result =
-        distinct_degree_factorization(
-            &poly,
-        );
+    let result = distinct_degree_factorization(&poly);
 
     assert!(result.is_ok());
 
@@ -240,9 +212,7 @@ fn test_cantor_zassenhaus() {
         field.clone(),
     ); // x^2 - 1
 
-    let factors =
-        cantor_zassenhaus(&poly)
-            .unwrap();
+    let factors = cantor_zassenhaus(&poly).unwrap();
 
     // Should produce factors
     assert!(!factors.is_empty());
@@ -265,12 +235,7 @@ fn test_poly_pow_mod() {
     ); // x^2 + 1
     let exp = BigInt::from(2);
 
-    let result = poly_pow_mod(
-        base,
-        &exp,
-        &modulus,
-    )
-    .unwrap();
+    let result = poly_pow_mod(base, &exp, &modulus).unwrap();
 
     // x^2 mod (x^2 + 1) = -1 = 4 in GF(5)
     assert_eq!(result.degree(), 0);
@@ -294,8 +259,7 @@ fn test_poly_mul_scalar() {
     ); // x^2 + 2x + 3
     let scalar = BigInt::from(2);
 
-    let result =
-        poly_mul_scalar(&poly, &scalar);
+    let result = poly_mul_scalar(&poly, &scalar);
 
     // Should be 2x^2 + 4x + 6
     assert_eq!(
@@ -330,10 +294,7 @@ fn test_poly_extended_gcd() {
         field.clone(),
     ); // x - 1
 
-    let result = poly_extended_gcd(
-        a.clone(),
-        b.clone(),
-    );
+    let result = poly_extended_gcd(a.clone(), b.clone());
 
     assert!(result.is_ok());
 
@@ -362,8 +323,7 @@ fn test_factor_gf_irreducible() {
         field.clone(),
     ); // x^2 + x + 1
 
-    let factors =
-        factor_gf(&poly).unwrap();
+    let factors = factor_gf(&poly).unwrap();
 
     // Should return itself as it's irreducible
     assert_eq!(factors.len(), 1);
@@ -386,8 +346,7 @@ fn test_zero_polynomial_derivative() {
         field.clone(),
     );
 
-    let derivative =
-        poly_derivative_gf(&poly);
+    let derivative = poly_derivative_gf(&poly);
 
     assert_eq!(
         derivative
@@ -399,8 +358,7 @@ fn test_zero_polynomial_derivative() {
 
 #[test]
 
-fn test_constant_polynomial_derivative()
-{
+fn test_constant_polynomial_derivative() {
 
     // Test derivative of constant polynomial
     let field = create_test_field(5);
@@ -410,8 +368,7 @@ fn test_constant_polynomial_derivative()
         field.clone(),
     ); // constant 3
 
-    let derivative =
-        poly_derivative_gf(&poly);
+    let derivative = poly_derivative_gf(&poly);
 
     // Derivative of constant is 0
     assert_eq!(

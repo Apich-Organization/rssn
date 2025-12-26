@@ -84,18 +84,16 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: RsEncodeInput = match from_json_string(input)
-    {
+    let input : RsEncodeInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<u8>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -108,21 +106,20 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
         | Ok(codeword) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok: Some(codeword),
-                    err: None::<String>,
+                    ok : Some(codeword),
+                    err : None::<String>,
                 })
                 .unwrap(),
             )
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<u8>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(e),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok : None,
+                        err : Some(e),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -135,18 +132,16 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: RsDecodeInput = match from_json_string(input)
-    {
+    let input : RsDecodeInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<u8>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -161,21 +156,20 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
         | Ok(()) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok: Some(codeword),
-                    err: None::<String>,
+                    ok : Some(codeword),
+                    err : None::<String>,
                 })
                 .unwrap(),
             )
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<u8>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(e),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok : None,
+                        err : Some(e),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -188,18 +182,16 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: RsDecodeInput = match from_json_string(input)
-    {
+    let input : RsDecodeInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    bool,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<bool, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -211,12 +203,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -228,47 +218,39 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: HammingInput = match from_json_string(input)
-    {
+    let input : HammingInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<u8>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    match error_correction::hamming_encode_numerical(
-        &input.data,
-    ) {
+    match error_correction::hamming_encode_numerical(&input.data) {
         | Some(codeword) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok: Some(codeword),
-                    err: None::<String>,
+                    ok : Some(codeword),
+                    err : None::<String>,
                 })
                 .unwrap(),
             )
         },
         | None => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<u8>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Input must be exactly 4 bytes"
-                            .to_string(),
-                    ),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok : None,
+                        err : Some("Input must be exactly 4 bytes".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -281,49 +263,44 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: HammingInput = match from_json_string(input)
-    {
+    let input : HammingInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    HammingDecodeResult,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<HammingDecodeResult, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    match error_correction::hamming_decode_numerical(
-        &input.data,
-    ) {
+    match error_correction::hamming_decode_numerical(&input.data) {
         | Ok((data, error_pos)) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok: Some(
+                    ok : Some(
                         HammingDecodeResult {
                             data,
                             error_pos,
                         },
                     ),
-                    err: None::<String>,
+                    err : None::<String>,
                 })
                 .unwrap(),
             )
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    HammingDecodeResult,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(e),
-                })
+                serde_json::to_string(
+                    &FfiResult::<HammingDecodeResult, String> {
+                        ok : None,
+                        err : Some(e),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -336,34 +313,28 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: HammingInput = match from_json_string(input)
-    {
+    let input : HammingInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    bool,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<bool, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let result = error_correction::hamming_check_numerical(
-        &input.data,
-    );
+    let result = error_correction::hamming_check_numerical(&input.data);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -374,47 +345,39 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: DistanceInput = match from_json_string(input)
-    {
+    let input : DistanceInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    usize,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<usize, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    match error_correction::hamming_distance_numerical(
-        &input.a, &input.b,
-    ) {
+    match error_correction::hamming_distance_numerical(&input.a, &input.b) {
         | Some(dist) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok: Some(dist),
-                    err: None::<String>,
+                    ok : Some(dist),
+                    err : None::<String>,
                 })
                 .unwrap(),
             )
         },
         | None => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    usize,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Vectors must have same length"
-                            .to_string(),
-                    ),
-                })
+                serde_json::to_string(
+                    &FfiResult::<usize, String> {
+                        ok : None,
+                        err : Some("Vectors must have same length".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -427,34 +390,28 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: HammingInput = match from_json_string(input)
-    {
+    let input : HammingInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    usize,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<usize, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let result = error_correction::hamming_weight_numerical(
-        &input.data,
-    );
+    let result = error_correction::hamming_weight_numerical(&input.data);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -466,33 +423,28 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: CrcInput = match from_json_string(input) {
+    let input : CrcInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    u32,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<u32, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let result = error_correction::crc32_compute_numerical(
-        &input.data,
-    );
+    let result = error_correction::crc32_compute_numerical(&input.data);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -503,24 +455,20 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: Crc32VerifyInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        bool,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : Crc32VerifyInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<bool, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     let result = error_correction::crc32_verify_numerical(
         &input.data,
@@ -528,12 +476,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -544,72 +490,58 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: CrcInput = match from_json_string(input) {
+    let input : CrcInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    u16,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<u16, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let result =
-        error_correction::crc16_compute(
-            &input.data,
-        );
+    let result = error_correction::crc16_compute(&input.data);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
-    input : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(input : *const c_char) -> *mut c_char {
 
-    let input: CrcInput = match from_json_string(input) {
+    let input : CrcInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    u8,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<u8, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let result =
-        error_correction::crc8_compute(
-            &input.data,
-        );
+    let result = error_correction::crc8_compute(&input.data);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -621,38 +553,31 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: InterleaveInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<u8>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : InterleaveInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
-    let result =
-        error_correction::interleave(
-            &input.data,
-            input.depth,
-        );
+    let result = error_correction::interleave(
+        &input.data,
+        input.depth,
+    );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -663,38 +588,31 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: InterleaveInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<u8>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : InterleaveInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
-    let result =
-        error_correction::deinterleave(
-            &input.data,
-            input.depth,
-        );
+    let result = error_correction::deinterleave(
+        &input.data,
+        input.depth,
+    );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -706,36 +624,28 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: CodeRateInput = match from_json_string(input)
-    {
+    let input : CodeRateInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    f64,
-                    String,
-                > {
-                    ok: None,
-                    err: Some("Invalid JSON".to_string()),
-                })
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
+                )
                 .unwrap(),
             )
         },
     };
 
-    let result =
-        error_correction::code_rate(
-            input.k,
-            input.n,
-        );
+    let result = error_correction::code_rate(input.k, input.n);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -746,37 +656,28 @@ pub unsafe extern "C" fn rssn_num_error_correction_capability_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: CapabilityInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        usize,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON".to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : CapabilityInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<usize, String> {
+                        ok : None,
+                        err : Some("Invalid JSON".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
-    let result =
-        error_correction::error_correction_capability(
-            input.min_distance,
-        );
+    let result = error_correction::error_correction_capability(input.min_distance);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok : Some(result),
+            err : None::<String>,
+        })
         .unwrap(),
     )
 }

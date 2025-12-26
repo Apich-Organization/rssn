@@ -84,8 +84,7 @@ pub fn combinations(
 
     for i in 1 ..= k {
 
-        res = res * (n - i + 1) as f64
-            / i as f64;
+        res = res * (n - i + 1) as f64 / i as f64;
     }
 
     res
@@ -112,26 +111,19 @@ pub fn solve_recurrence_numerical(
 
     let order = coeffs.len();
 
-    if initial_conditions.len() != order
-    {
+    if initial_conditions.len() != order {
 
         return Err(
-            "Number of initial \
-             conditions must match \
-             the order of the \
-             recurrence."
-                .to_string(),
+            "Number of initial conditions must match the order of the recurrence.".to_string(),
         );
     }
 
     if target_n < order {
 
-        return Ok(initial_conditions
-            [target_n]);
+        return Ok(initial_conditions[target_n]);
     }
 
-    let mut values =
-        initial_conditions.to_vec();
+    let mut values = initial_conditions.to_vec();
 
     for n in order ..= target_n {
 
@@ -139,8 +131,7 @@ pub fn solve_recurrence_numerical(
 
         for i in 0 .. order {
 
-            next_val += coeffs[i]
-                * values[n - 1 - i];
+            next_val += coeffs[i] * values[n - 1 - i];
         }
 
         values.push(next_val);
@@ -149,11 +140,7 @@ pub fn solve_recurrence_numerical(
     match values.last() {
         | Some(v) => Ok(*v),
         | None => {
-            Err("Failed to compute \
-                 the recurrence \
-                 relation, values \
-                 vector was empty."
-                .to_string())
+            Err("Failed to compute the recurrence relation, values vector was empty.".to_string())
         },
     }
 }
@@ -201,8 +188,7 @@ pub fn stirling_second(
 
     for j in 0 ..= k {
 
-        let term = combinations(k, j)
-            * (j as f64).powf(n as f64);
+        let term = combinations(k, j) * (j as f64).powf(n as f64);
 
         if (k - j) % 2 == 1 {
 
@@ -233,8 +219,7 @@ pub fn bell(n : u64) -> f64 {
 
 pub fn catalan(n : u64) -> f64 {
 
-    combinations(2 * n, n)
-        / ((n + 1) as f64)
+    combinations(2 * n, n) / ((n + 1) as f64)
 }
 
 /// Computes the rising factorial (Pochhammer symbol) x^(n) = x(x+1)...(x+n-1).

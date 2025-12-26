@@ -12,22 +12,13 @@ pub extern "C" fn rssn_json_general_log(
     k_json : *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
-        from_json_string(z_json);
+    let z : Option<Expr> = from_json_string(z_json);
 
-    let k : Option<Expr> =
-        from_json_string(k_json);
+    let k : Option<Expr> = from_json_string(k_json);
 
-    if let (
-        Some(z_expr),
-        Some(k_expr),
-    ) = (z, k)
-    {
+    if let (Some(z_expr), Some(k_expr)) = (z, k) {
 
-        let result = general_log(
-            &z_expr,
-            &k_expr,
-        );
+        let result = general_log(&z_expr, &k_expr);
 
         to_json_string(&result)
     } else {
@@ -44,22 +35,13 @@ pub extern "C" fn rssn_json_general_sqrt(
     k_json : *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
-        from_json_string(z_json);
+    let z : Option<Expr> = from_json_string(z_json);
 
-    let k : Option<Expr> =
-        from_json_string(k_json);
+    let k : Option<Expr> = from_json_string(k_json);
 
-    if let (
-        Some(z_expr),
-        Some(k_expr),
-    ) = (z, k)
-    {
+    if let (Some(z_expr), Some(k_expr)) = (z, k) {
 
-        let result = general_sqrt(
-            &z_expr,
-            &k_expr,
-        );
+        let result = general_sqrt(&z_expr, &k_expr);
 
         to_json_string(&result)
     } else {
@@ -77,21 +59,13 @@ pub extern "C" fn rssn_json_general_power(
     k_json : *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
-        from_json_string(z_json);
+    let z : Option<Expr> = from_json_string(z_json);
 
-    let w : Option<Expr> =
-        from_json_string(w_json);
+    let w : Option<Expr> = from_json_string(w_json);
 
-    let k : Option<Expr> =
-        from_json_string(k_json);
+    let k : Option<Expr> = from_json_string(k_json);
 
-    if let (
-        Some(z_expr),
-        Some(w_expr),
-        Some(k_expr),
-    ) = (z, w, k)
-    {
+    if let (Some(z_expr), Some(w_expr), Some(k_expr)) = (z, w, k) {
 
         let result = general_power(
             &z_expr,
@@ -115,21 +89,13 @@ pub extern "C" fn rssn_json_general_nth_root(
     k_json : *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
-        from_json_string(z_json);
+    let z : Option<Expr> = from_json_string(z_json);
 
-    let n : Option<Expr> =
-        from_json_string(n_json);
+    let n : Option<Expr> = from_json_string(n_json);
 
-    let k : Option<Expr> =
-        from_json_string(k_json);
+    let k : Option<Expr> = from_json_string(k_json);
 
-    if let (
-        Some(z_expr),
-        Some(n_expr),
-        Some(k_expr),
-    ) = (z, n, k)
-    {
+    if let (Some(z_expr), Some(n_expr), Some(k_expr)) = (z, n, k) {
 
         let result = general_nth_root(
             &z_expr,
@@ -152,22 +118,13 @@ pub extern "C" fn rssn_json_general_arcsin(
     k_json : *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
-        from_json_string(z_json);
+    let z : Option<Expr> = from_json_string(z_json);
 
-    let k : Option<Expr> =
-        from_json_string(k_json);
+    let k : Option<Expr> = from_json_string(k_json);
 
-    if let (
-        Some(z_expr),
-        Some(k_expr),
-    ) = (z, k)
-    {
+    if let (Some(z_expr), Some(k_expr)) = (z, k) {
 
-        let result = general_arcsin(
-            &z_expr,
-            &k_expr,
-        );
+        let result = general_arcsin(&z_expr, &k_expr);
 
         to_json_string(&result)
     } else {
@@ -185,21 +142,13 @@ pub extern "C" fn rssn_json_general_arccos(
     s_json : *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
-        from_json_string(z_json);
+    let z : Option<Expr> = from_json_string(z_json);
 
-    let k : Option<Expr> =
-        from_json_string(k_json);
+    let k : Option<Expr> = from_json_string(k_json);
 
-    let s : Option<Expr> =
-        from_json_string(s_json);
+    let s : Option<Expr> = from_json_string(s_json);
 
-    if let (
-        Some(z_expr),
-        Some(k_expr),
-        Some(s_expr),
-    ) = (z, k, s)
-    {
+    if let (Some(z_expr), Some(k_expr), Some(s_expr)) = (z, k, s) {
 
         let result = general_arccos(
             &z_expr,
@@ -222,22 +171,13 @@ pub extern "C" fn rssn_json_general_arctan(
     k_json : *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
-        from_json_string(z_json);
+    let z : Option<Expr> = from_json_string(z_json);
 
-    let k : Option<Expr> =
-        from_json_string(k_json);
+    let k : Option<Expr> = from_json_string(k_json);
 
-    if let (
-        Some(z_expr),
-        Some(k_expr),
-    ) = (z, k)
-    {
+    if let (Some(z_expr), Some(k_expr)) = (z, k) {
 
-        let result = general_arctan(
-            &z_expr,
-            &k_expr,
-        );
+        let result = general_arctan(&z_expr, &k_expr);
 
         to_json_string(&result)
     } else {
@@ -249,12 +189,9 @@ pub extern "C" fn rssn_json_general_arctan(
 /// Computes argument (angle) of complex number (JSON)
 #[no_mangle]
 
-pub extern "C" fn rssn_json_arg(
-    z_json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_arg(z_json : *const c_char) -> *mut c_char {
 
-    let z : Option<Expr> =
-        from_json_string(z_json);
+    let z : Option<Expr> = from_json_string(z_json);
 
     if let Some(z_expr) = z {
 
@@ -270,12 +207,9 @@ pub extern "C" fn rssn_json_arg(
 /// Computes absolute value (magnitude) of complex number (JSON)
 #[no_mangle]
 
-pub extern "C" fn rssn_json_abs(
-    z_json : *const c_char
-) -> *mut c_char {
+pub extern "C" fn rssn_json_abs(z_json : *const c_char) -> *mut c_char {
 
-    let z : Option<Expr> =
-        from_json_string(z_json);
+    let z : Option<Expr> = from_json_string(z_json);
 
     if let Some(z_expr) = z {
 

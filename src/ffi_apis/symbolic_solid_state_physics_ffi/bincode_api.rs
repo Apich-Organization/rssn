@@ -13,29 +13,19 @@ pub extern "C" fn rssn_bincode_density_of_states_3d(
     volume_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let energy : Option<Expr> =
-        from_bincode_buffer(
-            &energy_buf,
-        );
+    let energy : Option<Expr> = from_bincode_buffer(&energy_buf);
 
-    let mass : Option<Expr> =
-        from_bincode_buffer(&mass_buf);
+    let mass : Option<Expr> = from_bincode_buffer(&mass_buf);
 
-    let volume : Option<Expr> =
-        from_bincode_buffer(
-            &volume_buf,
-        );
+    let volume : Option<Expr> = from_bincode_buffer(&volume_buf);
 
-    if let (
-        Some(energy),
-        Some(mass),
-        Some(volume),
-    ) = (energy, mass, volume)
-    {
+    if let (Some(energy), Some(mass), Some(volume)) = (energy, mass, volume) {
 
         to_bincode_buffer(
             &solid_state_physics::density_of_states_3d(
-                &energy, &mass, &volume,
+                &energy,
+                &mass,
+                &volume,
             ),
         )
     } else {
@@ -52,19 +42,11 @@ pub extern "C" fn rssn_bincode_fermi_energy_3d(
     mass_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let concentration : Option<Expr> =
-        from_bincode_buffer(
-            &concentration_buf,
-        );
+    let concentration : Option<Expr> = from_bincode_buffer(&concentration_buf);
 
-    let mass : Option<Expr> =
-        from_bincode_buffer(&mass_buf);
+    let mass : Option<Expr> = from_bincode_buffer(&mass_buf);
 
-    if let (
-        Some(concentration),
-        Some(mass),
-    ) = (concentration, mass)
-    {
+    if let (Some(concentration), Some(mass)) = (concentration, mass) {
 
         to_bincode_buffer(
             &solid_state_physics::fermi_energy_3d(
@@ -88,31 +70,17 @@ pub extern "C" fn rssn_bincode_drude_conductivity(
     mass_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let n : Option<Expr> =
-        from_bincode_buffer(&n_buf);
+    let n : Option<Expr> = from_bincode_buffer(&n_buf);
 
-    let e : Option<Expr> =
-        from_bincode_buffer(&e_buf);
+    let e : Option<Expr> = from_bincode_buffer(&e_buf);
 
-    let tau : Option<Expr> =
-        from_bincode_buffer(&tau_buf);
+    let tau : Option<Expr> = from_bincode_buffer(&tau_buf);
 
-    let mass : Option<Expr> =
-        from_bincode_buffer(&mass_buf);
+    let mass : Option<Expr> = from_bincode_buffer(&mass_buf);
 
-    if let (
-        Some(n),
-        Some(e),
-        Some(tau),
-        Some(mass),
-    ) = (n, e, tau, mass)
-    {
+    if let (Some(n), Some(e), Some(tau), Some(mass)) = (n, e, tau, mass) {
 
-        to_bincode_buffer(
-            &solid_state_physics::drude_conductivity(
-                &n, &e, &tau, &mass,
-            ),
-        )
+        to_bincode_buffer(&solid_state_physics::drude_conductivity(&n, &e, &tau, &mass))
     } else {
 
         BincodeBuffer::empty()

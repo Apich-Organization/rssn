@@ -6,11 +6,9 @@ use crate::physics::physics_mm;
 /// Simulates the dam break scenario and returns the final particle positions as a Matrix handle (Nx2).
 #[no_mangle]
 
-pub extern "C" fn rssn_physics_mm_simulate_dam_break(
-) -> *mut Matrix<f64> {
+pub extern "C" fn rssn_physics_mm_simulate_dam_break() -> *mut Matrix<f64> {
 
-    let results =
-        physics_mm::simulate_dam_break_2d_scenario();
+    let results = physics_mm::simulate_dam_break_2d_scenario();
 
     let rows = results.len();
 
@@ -19,8 +17,7 @@ pub extern "C" fn rssn_physics_mm_simulate_dam_break(
         return std::ptr::null_mut();
     }
 
-    let mut flattened =
-        Vec::with_capacity(rows * 2);
+    let mut flattened = Vec::with_capacity(rows * 2);
 
     for (x, y) in results {
 
@@ -44,16 +41,19 @@ pub extern "C" fn rssn_physics_mm_sph_create(
 ) -> *mut physics_mm::SPHSystem {
 
     let system = physics_mm::SPHSystem {
-        particles: Vec::new(),
-        poly6: physics_mm::Poly6Kernel::new(h),
-        spiky: physics_mm::SpikyKernel::new(h),
-        gravity: physics_mm::Vector2D { x: 0.0, y: -9.8 },
-        viscosity: 0.01,
-        gas_const: 2000.0,
-        rest_density: 1000.0,
-        bounds: physics_mm::Vector2D {
-            x: bounds_x,
-            y: bounds_y,
+        particles : Vec::new(),
+        poly6 : physics_mm::Poly6Kernel::new(h),
+        spiky : physics_mm::SpikyKernel::new(h),
+        gravity : physics_mm::Vector2D {
+            x : 0.0,
+            y : -9.8,
+        },
+        viscosity : 0.01,
+        gas_const : 2000.0,
+        rest_density : 1000.0,
+        bounds : physics_mm::Vector2D {
+            x : bounds_x,
+            y : bounds_y,
         },
     };
 
@@ -63,9 +63,7 @@ pub extern "C" fn rssn_physics_mm_sph_create(
 /// Frees an SPH system.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_mm_sph_free(
-    system : *mut physics_mm::SPHSystem
-) {
+pub unsafe extern "C" fn rssn_physics_mm_sph_free(system : *mut physics_mm::SPHSystem) {
 
     if !system.is_null() {
 
@@ -89,11 +87,17 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
 
         sys.particles.push(
             physics_mm::Particle {
-                pos: physics_mm::Vector2D { x, y },
-                vel: physics_mm::Vector2D { x: vx, y: vy },
-                force: physics_mm::Vector2D::default(),
-                density: 0.0,
-                pressure: 0.0,
+                pos : physics_mm::Vector2D {
+                    x,
+                    y,
+                },
+                vel : physics_mm::Vector2D {
+                    x : vx,
+                    y : vy,
+                },
+                force : physics_mm::Vector2D::default(),
+                density : 0.0,
+                pressure : 0.0,
                 mass,
             },
         );
@@ -141,10 +145,7 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
 
         let rows = sys.particles.len();
 
-        let mut flattened =
-            Vec::with_capacity(
-                rows * 2,
-            );
+        let mut flattened = Vec::with_capacity(rows * 2);
 
         for p in &sys.particles {
 
@@ -154,11 +155,7 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
         }
 
         Box::into_raw(Box::new(
-            Matrix::new(
-                rows,
-                2,
-                flattened,
-            ),
+            Matrix::new(rows, 2, flattened),
         ))
     } else {
 

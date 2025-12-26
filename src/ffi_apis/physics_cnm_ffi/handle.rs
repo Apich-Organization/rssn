@@ -23,11 +23,7 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
         return ptr::null_mut();
     }
 
-    let initial_slice =
-        std::slice::from_raw_parts(
-            initial_condition,
-            n,
-        );
+    let initial_slice = std::slice::from_raw_parts(initial_condition, n);
 
     let res = physics_cnm::solve_heat_equation_1d_cn(
         initial_slice,
@@ -39,8 +35,7 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
 
     *out_size = res.len();
 
-    let mut res_boxed =
-        res.into_boxed_slice();
+    let mut res_boxed = res.into_boxed_slice();
 
     let ptr = res_boxed.as_mut_ptr();
 
@@ -59,8 +54,6 @@ pub unsafe extern "C" fn rssn_free_f64_cnm_array(
 
     if !ptr.is_null() {
 
-        let _ = Box::from_raw(
-            std::slice::from_raw_parts_mut(ptr, size),
-        );
+        let _ = Box::from_raw(std::slice::from_raw_parts_mut(ptr, size));
     }
 }

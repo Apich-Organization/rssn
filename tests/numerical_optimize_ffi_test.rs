@@ -1,11 +1,10 @@
+use std::ffi::CStr;
+use std::ffi::CString;
+
 use rssn::ffi_apis::common::BincodeBuffer;
 use rssn::ffi_apis::numerical_optimize_ffi::bincode_api::*;
 use rssn::ffi_apis::numerical_optimize_ffi::handle::*;
 use rssn::ffi_apis::numerical_optimize_ffi::json::*;
-use std::ffi::{
-    CStr,
-    CString,
-};
 
 #[test]
 
@@ -45,15 +44,9 @@ fn test_handle_rosenbrock_bfgs() {
 
     assert!(success);
 
-    assert!(
-        (out_param[0] - 1.0).abs()
-            < 0.1
-    );
+    assert!((out_param[0] - 1.0).abs() < 0.1);
 
-    assert!(
-        (out_param[1] - 1.0).abs()
-            < 0.1
-    );
+    assert!((out_param[1] - 1.0).abs() < 0.1);
 
     numerical_optimize_drop_result_handle(handle);
 }
@@ -71,13 +64,9 @@ fn test_json_sphere() {
 
     let req_str = request.to_string();
 
-    let c_req =
-        CString::new(req_str).unwrap();
+    let c_req = CString::new(req_str).unwrap();
 
-    let res_ptr =
-        numerical_optimize_solve_json(
-            c_req.as_ptr(),
-        );
+    let res_ptr = numerical_optimize_solve_json(c_req.as_ptr());
 
     assert!(!res_ptr.is_null());
 
@@ -90,9 +79,7 @@ fn test_json_sphere() {
         .to_str()
         .unwrap();
 
-    let response : serde_json::Value =
-        serde_json::from_str(res_str)
-            .unwrap();
+    let response : serde_json::Value = serde_json::from_str(res_str).unwrap();
 
     assert!(response["success"]
         .as_bool()
@@ -105,9 +92,7 @@ fn test_json_sphere() {
             < 1e-4
     );
 
-    numerical_optimize_free_json(
-        res_ptr,
-    );
+    numerical_optimize_free_json(res_ptr);
 }
 
 // Minimal bincode test structure check (logic is same as JSON/Handle)

@@ -12,20 +12,13 @@ pub extern "C" fn rssn_json_risch_norman_integrate(
     x_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
-        from_json_string(expr_json);
+    let expr : Option<Expr> = from_json_string(expr_json);
 
-    let x : Option<String> =
-        from_json_string(x_json);
+    let x : Option<String> = from_json_string(x_json);
 
-    if let (Some(e), Some(var)) =
-        (expr, x)
-    {
+    if let (Some(e), Some(var)) = (expr, x) {
 
-        let result =
-            risch_norman_integrate(
-                &e, &var,
-            );
+        let result = risch_norman_integrate(&e, &var);
 
         to_json_string(&result)
     } else {
@@ -42,15 +35,11 @@ pub extern "C" fn rssn_json_integrate_rational_function(
     x_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
-        from_json_string(expr_json);
+    let expr : Option<Expr> = from_json_string(expr_json);
 
-    let x : Option<String> =
-        from_json_string(x_json);
+    let x : Option<String> = from_json_string(x_json);
 
-    if let (Some(e), Some(var)) =
-        (expr, x)
-    {
+    if let (Some(e), Some(var)) = (expr, x) {
 
         match integrate_rational_function_expr(&e, &var) {
             | Ok(result) => to_json_string(&result),

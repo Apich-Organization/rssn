@@ -27,12 +27,7 @@ fn integral_poly_2(
     b : f64,
 ) -> f64 {
 
-    let antideriv = |x : f64| {
-
-        c[0] * x
-            + 0.5 * c[1] * x * x
-            + (c[2] * x * x * x) / 3.0
-    };
+    let antideriv = |x : f64| c[0] * x + 0.5 * c[1] * x * x + (c[2] * x * x * x) / 3.0;
 
     antideriv(b) - antideriv(a)
 }
@@ -45,17 +40,9 @@ fn test_trapezoidal_basic() {
 
     let f = |x : f64| x * x;
 
-    let res = trapezoidal_rule(
-        f,
-        (0.0, 1.0),
-        1000,
-    );
+    let res = trapezoidal_rule(f, (0.0, 1.0), 1000);
 
-    assert_approx_eq!(
-        res,
-        1.0 / 3.0,
-        1e-4
-    );
+    assert_approx_eq!(res, 1.0 / 3.0, 1e-4);
 }
 
 #[test]
@@ -65,9 +52,7 @@ fn test_simpson_basic() {
     let f = |x : f64| x * x;
 
     // Simpson's rule is exact for polynomials up to degree 2 (and actually 3).
-    let res =
-        simpson_rule(f, (0.0, 1.0), 10)
-            .unwrap();
+    let res = simpson_rule(f, (0.0, 1.0), 10).unwrap();
 
     assert_approx_eq!(
         res,
@@ -102,14 +87,9 @@ fn test_romberg_basic() {
     let f = |x : f64| x.exp();
 
     // Integral of exp(x) from 0 to 1 is e^1 - e^0 = e - 1
-    let exact =
-        std::f64::consts::E - 1.0;
+    let exact = std::f64::consts::E - 1.0;
 
-    let res = romberg_integration(
-        f,
-        (0.0, 1.0),
-        5,
-    );
+    let res = romberg_integration(f, (0.0, 1.0), 5);
 
     assert_approx_eq!(res, exact, 1e-8);
 }
@@ -118,24 +98,15 @@ fn test_romberg_basic() {
 
 fn test_gauss_legendre_basic() {
 
-    let f = |x : f64| {
-
-        x.powi(3) + x.powi(2) + 1.0
-    };
+    let f = |x : f64| x.powi(3) + x.powi(2) + 1.0;
 
     // Exact: [x^4/4 + x^3/3 + x]_0^1 = 1/4 + 1/3 + 1 = 0.25 + 0.333... + 1 = 1.58333...
-    let exact =
-        1.0 / 4.0 + 1.0 / 3.0 + 1.0;
+    let exact = 1.0 / 4.0 + 1.0 / 3.0 + 1.0;
 
     // Gauss-Legendre with n=5 is exact for polynomials up to degree 2n-1 = 9.
-    let res = gauss_legendre_quadrature(
-        f,
-        (0.0, 1.0),
-    );
+    let res = gauss_legendre_quadrature(f, (0.0, 1.0));
 
-    assert_approx_eq!(
-        res, exact, 1e-10
-    );
+    assert_approx_eq!(res, exact, 1e-10);
 }
 
 // --- 2. Property-Based Tests (Proptest) ---

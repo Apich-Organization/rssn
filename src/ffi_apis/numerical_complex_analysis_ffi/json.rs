@@ -17,35 +17,27 @@ use crate::symbolic::core::Expr;
 
 struct EvalInput {
     expr : Expr,
-    vars :
-        HashMap<String, Complex<f64>>,
+    vars : HashMap<String, Complex<f64>>,
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_complex_eval_json(
-    input_json : *const c_char
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json : *const c_char) -> *mut c_char {
 
-    let input: EvalInput =
-        match from_json_string(input_json) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Complex<f64>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON input"
-                                .to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : EvalInput = match from_json_string(input_json) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Complex<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON input".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     match complex_analysis::eval_complex_expr(
         &input.expr,
@@ -54,21 +46,20 @@ pub unsafe extern "C" fn rssn_num_complex_eval_json(
         | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok: Some(res),
-                    err: None::<String>,
+                    ok : Some(res),
+                    err : None::<String>,
                 })
                 .unwrap(),
             )
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Complex<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(e),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Complex<f64>, String> {
+                        ok : None,
+                        err : Some(e),
+                    },
+                )
                 .unwrap(),
             )
         },
@@ -89,25 +80,20 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
     input_json : *const c_char
 ) -> *mut c_char {
 
-    let input: ContourInput =
-        match from_json_string(input_json) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Complex<f64>,
-                        String,
-                    > {
-                        ok: None,
-                        err: Some(
-                            "Invalid JSON input"
-                                .to_string(),
-                        ),
-                    })
-                    .unwrap(),
+    let input : ContourInput = match from_json_string(input_json) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Complex<f64>, String> {
+                        ok : None,
+                        err : Some("Invalid JSON input".to_string()),
+                    },
                 )
-            },
-        };
+                .unwrap(),
+            )
+        },
+    };
 
     match complex_analysis::contour_integral_expr(
         &input.expr,
@@ -117,21 +103,20 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
         | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok: Some(res),
-                    err: None::<String>,
+                    ok : Some(res),
+                    err : None::<String>,
                 })
                 .unwrap(),
             )
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Complex<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(e),
-                })
+                serde_json::to_string(
+                    &FfiResult::<Complex<f64>, String> {
+                        ok : None,
+                        err : Some(e),
+                    },
+                )
                 .unwrap(),
             )
         },

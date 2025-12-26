@@ -7,9 +7,7 @@ use rssn::symbolic::finite_field::*;
 
 fn test_prime_field_element_creation() {
 
-    let field = PrimeField::new(
-        BigInt::from(7),
-    );
+    let field = PrimeField::new(BigInt::from(7));
 
     let elem = PrimeFieldElement::new(
         BigInt::from(5),
@@ -48,9 +46,7 @@ fn test_prime_field_element_creation() {
 
 fn test_prime_field_element_addition() {
 
-    let field = PrimeField::new(
-        BigInt::from(7),
-    );
+    let field = PrimeField::new(BigInt::from(7));
 
     let a = PrimeFieldElement::new(
         BigInt::from(5),
@@ -72,12 +68,9 @@ fn test_prime_field_element_addition() {
 
 #[test]
 
-fn test_prime_field_element_subtraction(
-) {
+fn test_prime_field_element_subtraction() {
 
-    let field = PrimeField::new(
-        BigInt::from(7),
-    );
+    let field = PrimeField::new(BigInt::from(7));
 
     let a = PrimeFieldElement::new(
         BigInt::from(3),
@@ -99,12 +92,9 @@ fn test_prime_field_element_subtraction(
 
 #[test]
 
-fn test_prime_field_element_multiplication(
-) {
+fn test_prime_field_element_multiplication() {
 
-    let field = PrimeField::new(
-        BigInt::from(7),
-    );
+    let field = PrimeField::new(BigInt::from(7));
 
     let a = PrimeFieldElement::new(
         BigInt::from(3),
@@ -128,9 +118,7 @@ fn test_prime_field_element_multiplication(
 
 fn test_prime_field_element_division() {
 
-    let field = PrimeField::new(
-        BigInt::from(7),
-    );
+    let field = PrimeField::new(BigInt::from(7));
 
     let a = PrimeFieldElement::new(
         BigInt::from(6),
@@ -154,9 +142,7 @@ fn test_prime_field_element_division() {
 
 fn test_prime_field_element_inverse() {
 
-    let field = PrimeField::new(
-        BigInt::from(7),
-    );
+    let field = PrimeField::new(BigInt::from(7));
 
     let elem = PrimeFieldElement::new(
         BigInt::from(3),
@@ -183,12 +169,9 @@ fn test_prime_field_element_inverse() {
 
 #[test]
 
-fn test_finite_field_polynomial_creation(
-) {
+fn test_finite_field_polynomial_creation() {
 
-    let field = PrimeField::new(
-        BigInt::from(5),
-    );
+    let field = PrimeField::new(BigInt::from(5));
 
     let coeffs = vec![
         PrimeFieldElement::new(
@@ -205,11 +188,10 @@ fn test_finite_field_polynomial_creation(
         ),
     ];
 
-    let poly =
-        FiniteFieldPolynomial::new(
-            coeffs,
-            field.clone(),
-        );
+    let poly = FiniteFieldPolynomial::new(
+        coeffs,
+        field.clone(),
+    );
 
     assert_eq!(poly.degree(), 2);
 
@@ -218,19 +200,15 @@ fn test_finite_field_polynomial_creation(
 
 #[test]
 
-fn test_finite_field_polynomial_degree()
-{
+fn test_finite_field_polynomial_degree() {
 
-    let field = PrimeField::new(
-        BigInt::from(5),
-    );
+    let field = PrimeField::new(BigInt::from(5));
 
     // Zero polynomial
-    let zero_poly =
-        FiniteFieldPolynomial::new(
-            vec![],
-            field.clone(),
-        );
+    let zero_poly = FiniteFieldPolynomial::new(
+        vec![],
+        field.clone(),
+    );
 
     assert_eq!(
         zero_poly.degree(),
@@ -238,16 +216,15 @@ fn test_finite_field_polynomial_degree()
     );
 
     // Constant polynomial
-    let const_poly =
-        FiniteFieldPolynomial::new(
-            vec![
-                PrimeFieldElement::new(
-                    BigInt::from(3),
-                    field.clone(),
-                ),
-            ],
-            field.clone(),
-        );
+    let const_poly = FiniteFieldPolynomial::new(
+        vec![
+            PrimeFieldElement::new(
+                BigInt::from(3),
+                field.clone(),
+            ),
+        ],
+        field.clone(),
+    );
 
     assert_eq!(
         const_poly.degree(),
@@ -255,36 +232,32 @@ fn test_finite_field_polynomial_degree()
     );
 
     // Degree 2 polynomial
-    let poly =
-        FiniteFieldPolynomial::new(
-            vec![
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(2),
-                    field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(3),
-                    field.clone(),
-                ),
-            ],
-            field.clone(),
-        );
+    let poly = FiniteFieldPolynomial::new(
+        vec![
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(2),
+                field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(3),
+                field.clone(),
+            ),
+        ],
+        field.clone(),
+    );
 
     assert_eq!(poly.degree(), 2);
 }
 
 #[test]
 
-fn test_finite_field_polynomial_addition(
-) {
+fn test_finite_field_polynomial_addition() {
 
-    let field = PrimeField::new(
-        BigInt::from(5),
-    );
+    let field = PrimeField::new(BigInt::from(5));
 
     // p1 = x + 2
     let p1 = FiniteFieldPolynomial::new(
@@ -336,12 +309,9 @@ fn test_finite_field_polynomial_addition(
 
 #[test]
 
-fn test_finite_field_polynomial_multiplication(
-) {
+fn test_finite_field_polynomial_multiplication() {
 
-    let field = PrimeField::new(
-        BigInt::from(5),
-    );
+    let field = PrimeField::new(BigInt::from(5));
 
     // p1 = x + 1
     let p1 = FiniteFieldPolynomial::new(
@@ -394,224 +364,184 @@ fn test_finite_field_polynomial_multiplication(
 
 #[test]
 
-fn test_finite_field_polynomial_long_division(
-) {
+fn test_finite_field_polynomial_long_division() {
 
-    let field = PrimeField::new(
-        BigInt::from(5),
-    );
+    let field = PrimeField::new(BigInt::from(5));
 
     // dividend = x^2 + 2x + 3
-    let dividend =
-        FiniteFieldPolynomial::new(
-            vec![
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(2),
-                    field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(3),
-                    field.clone(),
-                ),
-            ],
-            field.clone(),
-        );
+    let dividend = FiniteFieldPolynomial::new(
+        vec![
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(2),
+                field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(3),
+                field.clone(),
+            ),
+        ],
+        field.clone(),
+    );
 
     // divisor = x + 1
-    let divisor =
-        FiniteFieldPolynomial::new(
-            vec![
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    field.clone(),
-                ),
-            ],
-            field.clone(),
-        );
+    let divisor = FiniteFieldPolynomial::new(
+        vec![
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                field.clone(),
+            ),
+        ],
+        field.clone(),
+    );
 
-    let (quotient, remainder) =
-        dividend
-            .long_division(&divisor)
-            .expect(
-                "Division should \
-                 succeed",
-            );
+    let (quotient, remainder) = dividend
+        .long_division(&divisor)
+        .expect("Division should succeed");
 
     // The quotient degree depends on implementation details
     // Just verify that the division succeeded and remainder degree is less than divisor
-    assert!(
-        remainder.degree()
-            < divisor.degree()
-    );
+    assert!(remainder.degree() < divisor.degree());
 }
 
 #[test]
 
-fn test_extension_field_element_creation(
-) {
+fn test_extension_field_element_creation() {
 
-    let prime_field = PrimeField::new(
-        BigInt::from(5),
-    );
+    let prime_field = PrimeField::new(BigInt::from(5));
 
     // Create irreducible polynomial x^2 + 2 over GF(5)
-    let irreducible =
-        FiniteFieldPolynomial::new(
-            vec![
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    prime_field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(0),
-                    prime_field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(2),
-                    prime_field.clone(),
-                ),
-            ],
-            prime_field.clone(),
-        );
+    let irreducible = FiniteFieldPolynomial::new(
+        vec![
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                prime_field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(0),
+                prime_field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(2),
+                prime_field.clone(),
+            ),
+        ],
+        prime_field.clone(),
+    );
 
-    let ext_field =
-        Arc::new(ExtensionField {
-            prime_field : prime_field
-                .clone(),
-            irreducible_poly:
-                irreducible,
-        });
+    let ext_field = Arc::new(ExtensionField {
+        prime_field : prime_field.clone(),
+        irreducible_poly : irreducible,
+    });
 
     // Create element x + 1
-    let poly =
-        FiniteFieldPolynomial::new(
-            vec![
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    prime_field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    prime_field.clone(),
-                ),
-            ],
-            prime_field.clone(),
-        );
+    let poly = FiniteFieldPolynomial::new(
+        vec![
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                prime_field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                prime_field.clone(),
+            ),
+        ],
+        prime_field.clone(),
+    );
 
-    let elem =
-        ExtensionFieldElement::new(
-            poly,
-            ext_field,
-        );
+    let elem = ExtensionFieldElement::new(poly, ext_field);
 
     assert!(elem.poly.degree() <= 1); // Should be reduced modulo irreducible poly
 }
 
 #[test]
 
-fn test_extension_field_element_arithmetic(
-) {
+fn test_extension_field_element_arithmetic() {
 
-    let prime_field = PrimeField::new(
-        BigInt::from(5),
-    );
+    let prime_field = PrimeField::new(BigInt::from(5));
 
     // Create irreducible polynomial x^2 + 2 over GF(5)
-    let irreducible =
-        FiniteFieldPolynomial::new(
-            vec![
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    prime_field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(0),
-                    prime_field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(2),
-                    prime_field.clone(),
-                ),
-            ],
-            prime_field.clone(),
-        );
+    let irreducible = FiniteFieldPolynomial::new(
+        vec![
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                prime_field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(0),
+                prime_field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(2),
+                prime_field.clone(),
+            ),
+        ],
+        prime_field.clone(),
+    );
 
-    let ext_field =
-        Arc::new(ExtensionField {
-            prime_field : prime_field
-                .clone(),
-            irreducible_poly:
-                irreducible,
-        });
+    let ext_field = Arc::new(ExtensionField {
+        prime_field : prime_field.clone(),
+        irreducible_poly : irreducible,
+    });
 
     // Create two elements
-    let poly1 =
-        FiniteFieldPolynomial::new(
-            vec![
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    prime_field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    prime_field.clone(),
-                ),
-            ],
-            prime_field.clone(),
-        );
+    let poly1 = FiniteFieldPolynomial::new(
+        vec![
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                prime_field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(1),
+                prime_field.clone(),
+            ),
+        ],
+        prime_field.clone(),
+    );
 
-    let poly2 =
-        FiniteFieldPolynomial::new(
-            vec![
-                PrimeFieldElement::new(
-                    BigInt::from(2),
-                    prime_field.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(3),
-                    prime_field.clone(),
-                ),
-            ],
-            prime_field.clone(),
-        );
+    let poly2 = FiniteFieldPolynomial::new(
+        vec![
+            PrimeFieldElement::new(
+                BigInt::from(2),
+                prime_field.clone(),
+            ),
+            PrimeFieldElement::new(
+                BigInt::from(3),
+                prime_field.clone(),
+            ),
+        ],
+        prime_field.clone(),
+    );
 
-    let elem1 =
-        ExtensionFieldElement::new(
-            poly1,
-            ext_field.clone(),
-        );
+    let elem1 = ExtensionFieldElement::new(
+        poly1,
+        ext_field.clone(),
+    );
 
-    let elem2 =
-        ExtensionFieldElement::new(
-            poly2,
-            ext_field.clone(),
-        );
+    let elem2 = ExtensionFieldElement::new(
+        poly2,
+        ext_field.clone(),
+    );
 
     // Test addition
     let sum = elem1
         .clone()
         .add(elem2.clone())
-        .expect(
-            "Addition should succeed",
-        );
+        .expect("Addition should succeed");
 
     assert!(sum.poly.degree() <= 1);
 
     // Test multiplication
     let product = elem1
         .mul(elem2)
-        .expect(
-            "Multiplication should \
-             succeed",
-        );
+        .expect("Multiplication should succeed");
 
     assert!(
         product

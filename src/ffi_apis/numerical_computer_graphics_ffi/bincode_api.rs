@@ -77,34 +77,31 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
     buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: TwoVectors3DInput =
-        match from_bincode_buffer(&buffer) {
-            | Some(i) => i,
-            | None => {
-                return to_bincode_buffer(&FfiResult::<
-                    f64,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid Bincode".to_string(),
-                    ),
-                })
-            },
-        };
+    let input : TwoVectors3DInput = match from_bincode_buffer(&buffer) {
+        | Some(i) => i,
+        | None => {
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok : None,
+                    err : Some("Invalid Bincode".to_string()),
+                },
+            )
+        },
+    };
 
     let v1 = computer_graphics::Vector3D::new(
-        input.v1.x, input.v1.y, input.v1.z,
+        input.v1.x,
+        input.v1.y,
+        input.v1.z,
     );
 
     let v2 = computer_graphics::Vector3D::new(
-        input.v2.x, input.v2.y, input.v2.z,
+        input.v2.x,
+        input.v2.y,
+        input.v2.z,
     );
 
-    let result =
-        computer_graphics::dot_product(
-            &v1, &v2,
-        );
+    let result = computer_graphics::dot_product(&v1, &v2);
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -118,28 +115,28 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
     buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: TwoVectors3DInput =
-        match from_bincode_buffer(&buffer) {
-            | Some(i) => i,
-            | None => {
-                return to_bincode_buffer(&FfiResult::<
-                    Vector3DOutput,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid Bincode".to_string(),
-                    ),
-                })
-            },
-        };
+    let input : TwoVectors3DInput = match from_bincode_buffer(&buffer) {
+        | Some(i) => i,
+        | None => {
+            return to_bincode_buffer(
+                &FfiResult::<Vector3DOutput, String> {
+                    ok : None,
+                    err : Some("Invalid Bincode".to_string()),
+                },
+            )
+        },
+    };
 
     let v1 = computer_graphics::Vector3D::new(
-        input.v1.x, input.v1.y, input.v1.z,
+        input.v1.x,
+        input.v1.y,
+        input.v1.z,
     );
 
     let v2 = computer_graphics::Vector3D::new(
-        input.v2.x, input.v2.y, input.v2.z,
+        input.v2.x,
+        input.v2.y,
+        input.v2.z,
     );
 
     let result = computer_graphics::cross_product(&v1, &v2);
@@ -160,24 +157,22 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
     buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: Vector3DInput =
-        match from_bincode_buffer(&buffer) {
-            | Some(i) => i,
-            | None => {
-                return to_bincode_buffer(&FfiResult::<
-                    Vector3DOutput,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid Bincode".to_string(),
-                    ),
-                })
-            },
-        };
+    let input : Vector3DInput = match from_bincode_buffer(&buffer) {
+        | Some(i) => i,
+        | None => {
+            return to_bincode_buffer(
+                &FfiResult::<Vector3DOutput, String> {
+                    ok : None,
+                    err : Some("Invalid Bincode".to_string()),
+                },
+            )
+        },
+    };
 
     let v = computer_graphics::Vector3D::new(
-        input.x, input.y, input.z,
+        input.x,
+        input.y,
+        input.z,
     );
 
     let result = v.normalize();
@@ -198,24 +193,19 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
     buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: AngleInput =
-        match from_bincode_buffer(&buffer) {
-            | Some(i) => i,
-            | None => {
-                return to_bincode_buffer(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid Bincode".to_string(),
-                    ),
-                })
-            },
-        };
+    let input : AngleInput = match from_bincode_buffer(&buffer) {
+        | Some(i) => i,
+        | None => {
+            return to_bincode_buffer(
+                &FfiResult::<Vec<f64>, String> {
+                    ok : None,
+                    err : Some("Invalid Bincode".to_string()),
+                },
+            )
+        },
+    };
 
-    let matrix =
-        computer_graphics::rotation_matrix_x(input.angle);
+    let matrix = computer_graphics::rotation_matrix_x(input.angle);
 
     to_bincode_buffer(&FfiResult {
         ok : Some(matrix.data()),
@@ -229,24 +219,22 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
     buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: TransformInput =
-        match from_bincode_buffer(&buffer) {
-            | Some(i) => i,
-            | None => {
-                return to_bincode_buffer(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid Bincode".to_string(),
-                    ),
-                })
-            },
-        };
+    let input : TransformInput = match from_bincode_buffer(&buffer) {
+        | Some(i) => i,
+        | None => {
+            return to_bincode_buffer(
+                &FfiResult::<Vec<f64>, String> {
+                    ok : None,
+                    err : Some("Invalid Bincode".to_string()),
+                },
+            )
+        },
+    };
 
     let matrix = computer_graphics::translation_matrix(
-        input.dx, input.dy, input.dz,
+        input.dx,
+        input.dy,
+        input.dz,
     );
 
     to_bincode_buffer(&FfiResult {
@@ -261,28 +249,30 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_bincode(
     buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: TwoQuaternionsInput =
-        match from_bincode_buffer(&buffer) {
-            | Some(i) => i,
-            | None => {
-                return to_bincode_buffer(&FfiResult::<
-                    QuaternionOutput,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid Bincode".to_string(),
-                    ),
-                })
-            },
-        };
+    let input : TwoQuaternionsInput = match from_bincode_buffer(&buffer) {
+        | Some(i) => i,
+        | None => {
+            return to_bincode_buffer(
+                &FfiResult::<QuaternionOutput, String> {
+                    ok : None,
+                    err : Some("Invalid Bincode".to_string()),
+                },
+            )
+        },
+    };
 
     let q1 = computer_graphics::Quaternion::new(
-        input.q1.w, input.q1.x, input.q1.y, input.q1.z,
+        input.q1.w,
+        input.q1.x,
+        input.q1.y,
+        input.q1.z,
     );
 
     let q2 = computer_graphics::Quaternion::new(
-        input.q2.w, input.q2.x, input.q2.y, input.q2.z,
+        input.q2.w,
+        input.q2.x,
+        input.q2.y,
+        input.q2.z,
     );
 
     let result = q1.multiply(&q2);

@@ -9,8 +9,7 @@ fn test_lorentz_factor() {
 
     let gamma = lorentz_factor(&v);
 
-    let gamma_str =
-        format!("{:?}", gamma);
+    let gamma_str = format!("{:?}", gamma);
 
     println!(
         "Lorentz Factor: {}",
@@ -69,8 +68,7 @@ fn test_doppler_effect() {
 
     let f_obs = doppler_effect(&f, &v);
 
-    let f_obs_str =
-        format!("{:?}", f_obs);
+    let f_obs_str = format!("{:?}", f_obs);
 
     assert!(f_obs_str.contains("f"));
 
@@ -85,13 +83,11 @@ fn test_doppler_effect() {
 
 fn test_einstein_tensor() {
 
-    let r_mu_nu =
-        Expr::new_variable("R_mn");
+    let r_mu_nu = Expr::new_variable("R_mn");
 
     let r = Expr::new_variable("R");
 
-    let g_mu_nu =
-        Expr::new_variable("g_mn");
+    let g_mu_nu = Expr::new_variable("g_mn");
 
     let g_tensor = einstein_tensor(
         &r_mu_nu,
@@ -99,8 +95,7 @@ fn test_einstein_tensor() {
         &g_mu_nu,
     );
 
-    let g_str =
-        format!("{:?}", g_tensor);
+    let g_str = format!("{:?}", g_tensor);
 
     assert!(g_str.contains("R_mn"));
 

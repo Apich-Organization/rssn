@@ -15,9 +15,7 @@ use crate::symbolic::simplify_dag::simplify;
 pub fn arg(z : &Expr) -> Expr {
 
     Expr::new_apply(
-        Expr::Variable(
-            "Arg".to_string(),
-        ),
+        Expr::Variable("Arg".to_string()),
         z.clone(),
     )
 }
@@ -60,10 +58,7 @@ pub fn general_log(
         Expr::new_mul(pi, k.clone()),
     );
 
-    let full_arg = Expr::new_add(
-        arg(z),
-        term_2_pi_k,
-    );
+    let full_arg = Expr::new_add(arg(z), term_2_pi_k);
 
     let result = Expr::new_add(
         Expr::new_log(abs(z)),
@@ -98,18 +93,14 @@ pub fn general_sqrt(
         Expr::Constant(1.0),
     );
 
-    let magnitude_sqrt =
-        Expr::new_sqrt(abs(z));
+    let magnitude_sqrt = Expr::new_sqrt(abs(z));
 
     let angle = Expr::new_div(
         Expr::new_add(
             arg(z),
             Expr::new_mul(
                 Expr::Constant(2.0),
-                Expr::new_mul(
-                    pi,
-                    k.clone(),
-                ),
+                Expr::new_mul(pi, k.clone()),
             ),
         ),
         Expr::Constant(2.0),
@@ -191,10 +182,7 @@ pub fn general_nth_root(
             arg(z),
             Expr::new_mul(
                 Expr::Constant(2.0),
-                Expr::new_mul(
-                    pi,
-                    k.clone(),
-                ),
+                Expr::new_mul(pi, k.clone()),
             ),
         ),
         n.clone(),
@@ -230,11 +218,9 @@ pub fn general_arcsin(
 
     let pi = Expr::Pi;
 
-    let principal_arcsin =
-        Expr::new_arcsin(z.clone());
+    let principal_arcsin = Expr::new_arcsin(z.clone());
 
-    let term1 =
-        Expr::new_mul(k.clone(), pi);
+    let term1 = Expr::new_mul(k.clone(), pi);
 
     let term2 = Expr::new_mul(
         Expr::new_pow(
@@ -271,8 +257,7 @@ pub fn general_arccos(
 
     let pi = Expr::Pi;
 
-    let principal_arccos =
-        Expr::new_arccos(z.clone());
+    let principal_arccos = Expr::new_arccos(z.clone());
 
     let term1 = Expr::new_mul(
         Expr::Constant(2.0),
@@ -309,11 +294,9 @@ pub fn general_arctan(
 
     let pi = Expr::Pi;
 
-    let principal_arctan =
-        Expr::new_arctan(z.clone());
+    let principal_arctan = Expr::new_arctan(z.clone());
 
-    let term1 =
-        Expr::new_mul(k.clone(), pi);
+    let term1 = Expr::new_mul(k.clone(), pi);
 
     simplify(&Expr::new_add(
         term1,
@@ -353,10 +336,7 @@ pub fn general_arcsinh(
         &inner,
         &Expr::Constant(0.0),
     ); // Use principal sqrt
-    let arg = Expr::new_add(
-        z.clone(),
-        sqrt_part,
-    );
+    let arg = Expr::new_add(z.clone(), sqrt_part);
 
     general_log(&arg, k)
 }
@@ -393,10 +373,7 @@ pub fn general_arccosh(
         &inner,
         &Expr::Constant(0.0),
     ); // Use principal sqrt
-    let arg = Expr::new_add(
-        z.clone(),
-        sqrt_part,
-    );
+    let arg = Expr::new_add(z.clone(), sqrt_part);
 
     general_log(&arg, k)
 }
@@ -434,8 +411,7 @@ pub fn general_arctanh(
         denominator,
     );
 
-    let log_part =
-        general_log(&ratio, k);
+    let log_part = general_log(&ratio, k);
 
     simplify(&Expr::new_mul(
         Expr::Constant(0.5),

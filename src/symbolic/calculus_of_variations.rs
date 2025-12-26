@@ -80,16 +80,11 @@ pub fn euler_lagrange(
     var : &str,
 ) -> Expr {
 
-    let q = Expr::Variable(
-        func.to_string(),
-    );
+    let q = Expr::Variable(func.to_string());
 
-    let q_prime_str =
-        format!("{func}__prime");
+    let q_prime_str = format!("{func}__prime");
 
-    let q_prime_var = Expr::Variable(
-        q_prime_str.clone(),
-    );
+    let q_prime_var = Expr::Variable(q_prime_str.clone());
 
     // We need to substitute q' (which appears as Derivative(q, var) in the expression)
     // with a temporary variable q_prime_var to perform partial differentiation.
@@ -122,11 +117,10 @@ pub fn euler_lagrange(
     );
 
     // Now take the total time derivative: d/dt (dl/dq')
-    let d_dt_dl_dq_prime =
-        differentiate(
-            &dl_dq_prime_full,
-            var,
-        );
+    let d_dt_dl_dq_prime = differentiate(
+        &dl_dq_prime_full,
+        var,
+    );
 
     simplify(&Expr::new_sub(
         d_dt_dl_dq_prime,

@@ -28,39 +28,30 @@ fn test_mandelbrot_set_generation() {
 
 #[test]
 
-fn test_mandelbrot_escape_time_in_set()
-{
+fn test_mandelbrot_escape_time_in_set() {
 
     // Origin is in the Mandelbrot set
-    let escape = mandelbrot_escape_time(
-        0.0, 0.0, 100,
-    );
+    let escape = mandelbrot_escape_time(0.0, 0.0, 100);
 
     assert_eq!(escape, 100);
 }
 
 #[test]
 
-fn test_mandelbrot_escape_time_outside_set(
-) {
+fn test_mandelbrot_escape_time_outside_set() {
 
     // Point (2, 0) is outside the set
-    let escape = mandelbrot_escape_time(
-        2.0, 0.0, 100,
-    );
+    let escape = mandelbrot_escape_time(2.0, 0.0, 100);
 
     assert!(escape < 100);
 }
 
 #[test]
 
-fn test_mandelbrot_escape_time_boundary(
-) {
+fn test_mandelbrot_escape_time_boundary() {
 
     // Point at -2 is on the boundary
-    let escape = mandelbrot_escape_time(
-        -2.0, 0.0, 100,
-    );
+    let escape = mandelbrot_escape_time(-2.0, 0.0, 100);
 
     assert_eq!(escape, 100);
 }
@@ -210,12 +201,11 @@ fn test_newton_fractal_generation() {
 
 fn test_lorenz_attractor_length() {
 
-    let points =
-        generate_lorenz_attractor(
-            (1.0, 1.0, 1.0),
-            0.01,
-            100,
-        );
+    let points = generate_lorenz_attractor(
+        (1.0, 1.0, 1.0),
+        0.01,
+        100,
+    );
 
     assert_eq!(points.len(), 100);
 }
@@ -224,12 +214,11 @@ fn test_lorenz_attractor_length() {
 
 fn test_lorenz_attractor_bounded() {
 
-    let points =
-        generate_lorenz_attractor(
-            (0.1, 0.0, 0.0),
-            0.01,
-            1000,
-        );
+    let points = generate_lorenz_attractor(
+        (0.1, 0.0, 0.0),
+        0.01,
+        1000,
+    );
 
     // Lorenz attractor is bounded, values should stay within reasonable range
     for (x, y, z) in points {
@@ -266,15 +255,14 @@ fn test_lorenz_attractor_custom() {
 
 fn test_rossler_attractor_length() {
 
-    let points =
-        generate_rossler_attractor(
-            (1.0, 1.0, 1.0),
-            0.01,
-            100,
-            0.2,
-            0.2,
-            5.7,
-        );
+    let points = generate_rossler_attractor(
+        (1.0, 1.0, 1.0),
+        0.01,
+        100,
+        0.2,
+        0.2,
+        5.7,
+    );
 
     assert_eq!(points.len(), 100);
 }
@@ -283,15 +271,14 @@ fn test_rossler_attractor_length() {
 
 fn test_rossler_attractor_bounded() {
 
-    let points =
-        generate_rossler_attractor(
-            (0.1, 0.0, 0.0),
-            0.01,
-            1000,
-            0.2,
-            0.2,
-            5.7,
-        );
+    let points = generate_rossler_attractor(
+        (0.1, 0.0, 0.0),
+        0.01,
+        1000,
+        0.2,
+        0.2,
+        5.7,
+    );
 
     // Rossler attractor is bounded
     for (x, y, _z) in &points[100 ..] {
@@ -335,11 +322,7 @@ fn test_henon_map_classic() {
     // Most points should be bounded for classic parameters
     let bounded_count = points
         .iter()
-        .filter(|(x, y)| {
-
-            x.abs() < 10.0
-                && y.abs() < 10.0
-        })
+        .filter(|(x, y)| x.abs() < 10.0 && y.abs() < 10.0)
         .count();
 
     assert!(bounded_count > 500);
@@ -353,15 +336,14 @@ fn test_henon_map_classic() {
 
 fn test_tinkerbell_map_length() {
 
-    let points =
-        generate_tinkerbell_map(
-            (-0.72, -0.64),
-            100,
-            0.9,
-            -0.6013,
-            2.0,
-            0.5,
-        );
+    let points = generate_tinkerbell_map(
+        (-0.72, -0.64),
+        100,
+        0.9,
+        -0.6013,
+        2.0,
+        0.5,
+    );
 
     assert_eq!(points.len(), 100);
 }
@@ -374,9 +356,7 @@ fn test_tinkerbell_map_length() {
 
 fn test_logistic_map_length() {
 
-    let orbit = logistic_map_iterate(
-        0.5, 3.5, 100,
-    );
+    let orbit = logistic_map_iterate(0.5, 3.5, 100);
 
     assert_eq!(orbit.len(), 101); // x0 + 100 iterations
 }
@@ -386,9 +366,7 @@ fn test_logistic_map_length() {
 fn test_logistic_map_fixed_point_r1() {
 
     // For r=1, should converge to 0
-    let orbit = logistic_map_iterate(
-        0.5, 1.0, 100,
-    );
+    let orbit = logistic_map_iterate(0.5, 1.0, 100);
 
     assert!(
         orbit
@@ -404,17 +382,13 @@ fn test_logistic_map_fixed_point_r1() {
 fn test_logistic_map_fixed_point_r2() {
 
     // For r=2, should converge to (r-1)/r = 0.5
-    let orbit = logistic_map_iterate(
-        0.1, 2.0, 100,
-    );
+    let orbit = logistic_map_iterate(0.1, 2.0, 100);
 
     let final_val = *orbit
         .last()
         .unwrap();
 
-    assert!(
-        (final_val - 0.5).abs() < 0.01
-    );
+    assert!((final_val - 0.5).abs() < 0.01);
 }
 
 #[test]
@@ -422,9 +396,7 @@ fn test_logistic_map_fixed_point_r2() {
 fn test_logistic_map_chaos() {
 
     // For r=4, should be chaotic between 0 and 1
-    let orbit = logistic_map_iterate(
-        0.1, 4.0, 100,
-    );
+    let orbit = logistic_map_iterate(0.1, 4.0, 100);
 
     for &x in &orbit {
 
@@ -480,10 +452,7 @@ fn test_bifurcation_diagram_range() {
 fn test_lyapunov_logistic_stable() {
 
     // For r < 3, Lyapunov exponent should be negative (stable)
-    let lyap =
-        lyapunov_exponent_logistic(
-            2.5, 0.5, 100, 1000,
-        );
+    let lyap = lyapunov_exponent_logistic(2.5, 0.5, 100, 1000);
 
     assert!(lyap < 0.0);
 }
@@ -493,10 +462,7 @@ fn test_lyapunov_logistic_stable() {
 fn test_lyapunov_logistic_chaotic() {
 
     // For r = 4, Lyapunov exponent should be positive (chaotic)
-    let lyap =
-        lyapunov_exponent_logistic(
-            4.0, 0.5, 100, 1000,
-        );
+    let lyap = lyapunov_exponent_logistic(4.0, 0.5, 100, 1000);
 
     assert!(lyap > 0.0);
 }
@@ -528,8 +494,7 @@ fn test_lyapunov_lorenz() {
 fn test_box_counting_dimension_line() {
 
     // A line should have dimension ~1
-    let points : Vec<(f64, f64)> = (0
-        .. 100)
+    let points : Vec<(f64, f64)> = (0 .. 100)
         .map(|i| {
 
             (
@@ -539,10 +504,7 @@ fn test_box_counting_dimension_line() {
         })
         .collect();
 
-    let dim = box_counting_dimension(
-        &points,
-        8,
-    );
+    let dim = box_counting_dimension(&points, 8);
 
     // Box-counting dimension estimation has some variance
     assert!(
@@ -556,13 +518,9 @@ fn test_box_counting_dimension_line() {
 
 fn test_box_counting_dimension_empty() {
 
-    let points : Vec<(f64, f64)> =
-        vec![];
+    let points : Vec<(f64, f64)> = vec![];
 
-    let dim = box_counting_dimension(
-        &points,
-        8,
-    );
+    let dim = box_counting_dimension(&points, 8);
 
     assert_eq!(dim, 0.0);
 }
@@ -571,13 +529,9 @@ fn test_box_counting_dimension_empty() {
 
 fn test_correlation_dimension_empty() {
 
-    let points : Vec<(f64, f64)> =
-        vec![];
+    let points : Vec<(f64, f64)> = vec![];
 
-    let dim = correlation_dimension(
-        &points,
-        8,
-    );
+    let dim = correlation_dimension(&points, 8);
 
     assert_eq!(dim, 0.0);
 }
@@ -622,23 +576,19 @@ fn test_orbit_density() {
 fn test_orbit_entropy_uniform() {
 
     // More spread out distribution should have higher entropy
-    let mut density1 =
-        vec![vec![0; 10]; 10];
+    let mut density1 = vec![vec![0; 10]; 10];
 
     density1[0][0] = 100; // All in one bin
 
-    let mut density2 =
-        vec![vec![0; 10]; 10];
+    let mut density2 = vec![vec![0; 10]; 10];
 
     density2[0][0] = 50;
 
     density2[9][9] = 50; // Split between two bins
 
-    let entropy1 =
-        orbit_entropy(&density1);
+    let entropy1 = orbit_entropy(&density1);
 
-    let entropy2 =
-        orbit_entropy(&density2);
+    let entropy2 = orbit_entropy(&density2);
 
     assert!(entropy2 > entropy1);
 }
@@ -647,11 +597,9 @@ fn test_orbit_entropy_uniform() {
 
 fn test_orbit_entropy_empty() {
 
-    let density : Vec<Vec<usize>> =
-        vec![vec![0; 10]; 10];
+    let density : Vec<Vec<usize>> = vec![vec![0; 10]; 10];
 
-    let entropy =
-        orbit_entropy(&density);
+    let entropy = orbit_entropy(&density);
 
     assert_eq!(entropy, 0.0);
 }
@@ -664,14 +612,11 @@ fn test_orbit_entropy_empty() {
 
 fn test_affine_transform() {
 
-    let transform =
-        AffineTransform2D::new(
-            0.5, 0.0, 0.0, 0.5, 0.0,
-            0.0,
-        );
+    let transform = AffineTransform2D::new(
+        0.5, 0.0, 0.0, 0.5, 0.0, 0.0,
+    );
 
-    let (x, y) =
-        transform.apply((1.0, 1.0));
+    let (x, y) = transform.apply((1.0, 1.0));
 
     assert!((x - 0.5).abs() < 1e-10);
 
@@ -682,8 +627,7 @@ fn test_affine_transform() {
 
 fn test_sierpinski_triangle_ifs() {
 
-    let (transforms, probs) =
-        sierpinski_triangle_ifs();
+    let (transforms, probs) = sierpinski_triangle_ifs();
 
     assert_eq!(transforms.len(), 3);
 
@@ -694,8 +638,7 @@ fn test_sierpinski_triangle_ifs() {
 
 fn test_barnsley_fern_ifs() {
 
-    let (transforms, probs) =
-        barnsley_fern_ifs();
+    let (transforms, probs) = barnsley_fern_ifs();
 
     assert_eq!(transforms.len(), 4);
 
@@ -706,8 +649,7 @@ fn test_barnsley_fern_ifs() {
 
 fn test_ifs_fractal_generation() {
 
-    let (transforms, probs) =
-        sierpinski_triangle_ifs();
+    let (transforms, probs) = sierpinski_triangle_ifs();
 
     let points = generate_ifs_fractal(
         &transforms,
@@ -724,8 +666,7 @@ fn test_ifs_fractal_generation() {
 
 fn test_ifs_fractal_bounded() {
 
-    let (transforms, probs) =
-        sierpinski_triangle_ifs();
+    let (transforms, probs) = sierpinski_triangle_ifs();
 
     let points = generate_ifs_fractal(
         &transforms,
@@ -752,8 +693,7 @@ fn test_ifs_fractal_bounded() {
 
 fn test_fractal_data_new() {
 
-    let data =
-        FractalData::new(100, 100, 50);
+    let data = FractalData::new(100, 100, 50);
 
     assert_eq!(data.width, 100);
 
@@ -771,8 +711,7 @@ fn test_fractal_data_new() {
 
 fn test_fractal_data_get_set() {
 
-    let mut data =
-        FractalData::new(10, 10, 50);
+    let mut data = FractalData::new(10, 10, 50);
 
     data.set(5, 5, 42);
 

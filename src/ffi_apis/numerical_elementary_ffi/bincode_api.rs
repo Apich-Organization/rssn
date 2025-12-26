@@ -17,9 +17,7 @@ struct EvalRequest {
     vars : HashMap<String, f64>,
 }
 
-fn decode<
-    T : for<'de> Deserialize<'de>,
->(
+fn decode<T : for<'de> Deserialize<'de>>(
     data : *const u8,
     len : usize,
 ) -> Option<T> {
@@ -31,9 +29,7 @@ fn decode<
 
     let slice = unsafe {
 
-        std::slice::from_raw_parts(
-            data, len,
-        )
+        std::slice::from_raw_parts(data, len)
     };
 
     bincode_next::serde::decode_from_slice(
@@ -44,9 +40,7 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T : Serialize>(
-    val : &T
-) -> BincodeBuffer {
+fn encode<T : Serialize>(val : &T) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
         val,
@@ -65,31 +59,20 @@ pub unsafe extern "C" fn rssn_num_eval_bincode(
     len : usize,
 ) -> BincodeBuffer {
 
-    let req : EvalRequest =
-        match decode(data, len) {
-            | Some(r) => r,
-            | None => {
+    let req : EvalRequest = match decode(data, len) {
+        | Some(r) => r,
+        | None => {
 
-                let res: FfiResult<
-                f64,
-                String,
-            > = FfiResult {
-                ok: None,
-                err: Some(
-                    "Bincode decode \
-                     error"
-                        .to_string(),
-                ),
+            let res : FfiResult<f64, String> = FfiResult {
+                ok : None,
+                err : Some("Bincode decode error".to_string()),
             };
 
-                return encode(&res);
-            },
-        };
+            return encode(&res);
+        },
+    };
 
-    let result = elementary::eval_expr(
-        &req.expr,
-        &req.vars,
-    );
+    let result = elementary::eval_expr(&req.expr, &req.vars);
 
     let ffi_res = match result {
         | Ok(v) => {

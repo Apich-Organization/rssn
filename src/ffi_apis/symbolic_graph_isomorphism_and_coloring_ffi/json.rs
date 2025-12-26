@@ -18,16 +18,12 @@ pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
         g2 : Graph<String>,
     }
 
-    let input: Input = match from_json_string(json) {
+    let input : Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        are_isomorphic_heuristic(
-            &input.g1,
-            &input.g2,
-        );
+    let result = are_isomorphic_heuristic(&input.g1, &input.g2);
 
     to_json_string(&result)
 }
@@ -41,14 +37,12 @@ pub unsafe extern "C" fn rssn_json_greedy_coloring(
     json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        greedy_coloring(&graph);
+    let result = greedy_coloring(&graph);
 
     to_json_string(&result)
 }
@@ -62,14 +56,12 @@ pub unsafe extern "C" fn rssn_json_chromatic_number_exact(
     json : *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
-    let graph: Graph<String> = match from_json_string(json)
-    {
+    let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        chromatic_number_exact(&graph);
+    let result = chromatic_number_exact(&graph);
 
     to_json_string(&result)
 }

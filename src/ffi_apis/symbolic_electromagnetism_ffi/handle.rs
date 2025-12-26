@@ -7,9 +7,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::electromagnetism;
 use crate::symbolic::vector::Vector;
 
-unsafe fn c_str_to_str<'a>(
-    s : *const c_char
-) -> Option<&'a str> {
+unsafe fn c_str_to_str<'a>(s : *const c_char) -> Option<&'a str> {
 
     if s.is_null() {
 
@@ -32,11 +30,7 @@ pub unsafe extern "C" fn rssn_lorentz_force(
     b_field : *const Vector,
 ) -> *mut Vector {
 
-    if charge.is_null()
-        || e_field.is_null()
-        || velocity.is_null()
-        || b_field.is_null()
-    {
+    if charge.is_null() || e_field.is_null() || velocity.is_null() || b_field.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -59,17 +53,13 @@ pub unsafe extern "C" fn rssn_poynting_vector(
     b_field : *const Vector,
 ) -> *mut Vector {
 
-    if e_field.is_null()
-        || b_field.is_null()
-    {
+    if e_field.is_null() || b_field.is_null() {
 
         return std::ptr::null_mut();
     }
 
     Box::into_raw(Box::new(
-        electromagnetism::poynting_vector(
-            &*e_field, &*b_field,
-        ),
+        electromagnetism::poynting_vector(&*e_field, &*b_field),
     ))
 }
 
@@ -81,17 +71,13 @@ pub unsafe extern "C" fn rssn_electromagnetic_energy_density(
     b_field : *const Vector,
 ) -> *mut Expr {
 
-    if e_field.is_null()
-        || b_field.is_null()
-    {
+    if e_field.is_null() || b_field.is_null() {
 
         return std::ptr::null_mut();
     }
 
     Box::into_raw(Box::new(
-        electromagnetism::energy_density(
-            &*e_field, &*b_field,
-        ),
+        electromagnetism::energy_density(&*e_field, &*b_field),
     ))
 }
 
@@ -105,34 +91,24 @@ pub unsafe extern "C" fn rssn_magnetic_field_from_vector_potential(
     z : *const c_char,
 ) -> *mut Vector {
 
-    if a.is_null()
-        || x.is_null()
-        || y.is_null()
-        || z.is_null()
-    {
+    if a.is_null() || x.is_null() || y.is_null() || z.is_null() {
 
         return std::ptr::null_mut();
     }
 
     let xs = match c_str_to_str(x) {
         | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     let ys = match c_str_to_str(y) {
         | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     let zs = match c_str_to_str(z) {
         | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -152,43 +128,29 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
     t : *const c_char,
 ) -> *mut Vector {
 
-    if v.is_null()
-        || a.is_null()
-        || x.is_null()
-        || y.is_null()
-        || z.is_null()
-        || t.is_null()
-    {
+    if v.is_null() || a.is_null() || x.is_null() || y.is_null() || z.is_null() || t.is_null() {
 
         return std::ptr::null_mut();
     }
 
     let xs = match c_str_to_str(x) {
         | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     let ys = match c_str_to_str(y) {
         | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     let zs = match c_str_to_str(z) {
         | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     let ts = match c_str_to_str(t) {
         | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
+        | None => return std::ptr::null_mut(),
     };
 
     Box::into_raw(Box::new(
@@ -215,9 +177,6 @@ pub unsafe extern "C" fn rssn_coulombs_law(
     }
 
     Box::into_raw(Box::new(
-        electromagnetism::coulombs_law(
-            &*charge,
-            &*r,
-        ),
+        electromagnetism::coulombs_law(&*charge, &*r),
     ))
 }

@@ -24,8 +24,7 @@ fn test_crystal_lattice_volume() {
         Expr::Constant(1.0),
     );
 
-    let lattice =
-        CrystalLattice::new(a1, a2, a3);
+    let lattice = CrystalLattice::new(a1, a2, a3);
 
     let vol = lattice.volume();
 
@@ -57,11 +56,9 @@ fn test_reciprocal_lattice_vectors() {
         Expr::Constant(1.0),
     );
 
-    let lattice =
-        CrystalLattice::new(a1, a2, a3);
+    let lattice = CrystalLattice::new(a1, a2, a3);
 
-    let (b1, b2, b3) = lattice
-        .reciprocal_lattice_vectors();
+    let (b1, b2, b3) = lattice.reciprocal_lattice_vectors();
 
     // For unit cube, reciprocal vectors should be 2pi * unit vectors
     // 1.0 / 1.0 = 1.0, so it should be exactly 2 * pi
@@ -92,11 +89,9 @@ fn test_debye_frequency() {
 
     let v_s = Expr::new_variable("v_s");
 
-    let n_dense =
-        Expr::new_variable("n");
+    let n_dense = Expr::new_variable("n");
 
-    let omega_d =
-        debye_frequency(&v_s, &n_dense);
+    let omega_d = debye_frequency(&v_s, &n_dense);
 
     assert!(omega_d
         .to_string()
@@ -115,8 +110,7 @@ fn test_plasma_frequency() {
 
     let e = Expr::new_variable("e");
 
-    let epsilon_0 =
-        Expr::new_variable("epsilon_0");
+    let epsilon_0 = Expr::new_variable("epsilon_0");
 
     let m = Expr::new_variable("m");
 
@@ -150,8 +144,7 @@ fn test_einstein_heat_capacity() {
 
     let n = Expr::new_variable("N");
 
-    let einstein_temp =
-        Expr::new_variable("Theta_E");
+    let einstein_temp = Expr::new_variable("Theta_E");
 
     let temp = Expr::new_variable("T");
 
@@ -180,17 +173,15 @@ fn test_london_penetration_depth() {
 
     let mass = Expr::new_variable("m");
 
-    let mu_0 =
-        Expr::new_variable("mu_0");
+    let mu_0 = Expr::new_variable("mu_0");
 
     let n_s = Expr::new_variable("n_s");
 
     let e = Expr::new_variable("e");
 
-    let lambda =
-        london_penetration_depth(
-            &mass, &mu_0, &n_s, &e,
-        );
+    let lambda = london_penetration_depth(
+        &mass, &mu_0, &n_s, &e,
+    );
 
     assert!(lambda
         .to_string()
@@ -255,16 +246,11 @@ fn test_energy_band() {
 
     let k_mag = Expr::new_variable("k");
 
-    let m_star =
-        Expr::new_variable("m_star");
+    let m_star = Expr::new_variable("m_star");
 
     let e0 = Expr::new_variable("E_0");
 
-    let energy = energy_band(
-        &k_mag,
-        &m_star,
-        &e0,
-    );
+    let energy = energy_band(&k_mag, &m_star, &e0);
 
     assert!(energy
         .to_string()
@@ -281,11 +267,9 @@ fn test_fermi_energy_3d() {
 
     let n = Expr::new_variable("n");
 
-    let m_star =
-        Expr::new_variable("m_star");
+    let m_star = Expr::new_variable("m_star");
 
-    let ef =
-        fermi_energy_3d(&n, &m_star);
+    let ef = fermi_energy_3d(&n, &m_star);
 
     let ef_str = ef.to_string();
 
@@ -306,8 +290,7 @@ fn test_drude_conductivity() {
 
     let tau = Expr::new_variable("tau");
 
-    let m_star =
-        Expr::new_variable("m_star");
+    let m_star = Expr::new_variable("m_star");
 
     let sigma = drude_conductivity(
         &n,
@@ -324,7 +307,5 @@ fn test_drude_conductivity() {
 
     assert!(sigma_str.contains("tau"));
 
-    assert!(
-        sigma_str.contains("m_star")
-    );
+    assert!(sigma_str.contains("m_star"));
 }

@@ -7,17 +7,14 @@ use rssn::symbolic::simplify_dag::simplify;
 fn test_find_extrema_1d() {
 
     // f(x) = x^2
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
     let f = Expr::new_pow(
         x.clone(),
         Expr::Constant(2.0),
     );
 
-    let extrema =
-        find_extrema(&f, &["x"])
-            .unwrap();
+    let extrema = find_extrema(&f, &["x"]).unwrap();
 
     assert_eq!(extrema.len(), 1);
 
@@ -44,11 +41,9 @@ fn test_find_extrema_1d() {
 fn test_find_extrema_2d_min() {
 
     // f(x, y) = x^2 + y^2
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
-    let y =
-        Expr::Variable("y".to_string());
+    let y = Expr::Variable("y".to_string());
 
     let f = Expr::new_add(
         Expr::new_pow(
@@ -61,9 +56,7 @@ fn test_find_extrema_2d_min() {
         ),
     );
 
-    let extrema =
-        find_extrema(&f, &["x", "y"])
-            .unwrap();
+    let extrema = find_extrema(&f, &["x", "y"]).unwrap();
 
     assert_eq!(extrema.len(), 1);
 
@@ -89,11 +82,9 @@ fn test_find_extrema_2d_min() {
 fn test_find_extrema_2d_saddle() {
 
     // f(x, y) = x^2 - y^2
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
-    let y =
-        Expr::Variable("y".to_string());
+    let y = Expr::Variable("y".to_string());
 
     let f = Expr::new_sub(
         Expr::new_pow(
@@ -106,9 +97,7 @@ fn test_find_extrema_2d_saddle() {
         ),
     );
 
-    let extrema =
-        find_extrema(&f, &["x", "y"])
-            .unwrap();
+    let extrema = find_extrema(&f, &["x", "y"]).unwrap();
 
     assert_eq!(extrema.len(), 1);
 
@@ -134,11 +123,9 @@ fn test_find_extrema_2d_saddle() {
 fn test_hessian_matrix() {
 
     // f(x, y) = x^2 + y^2
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
-    let y =
-        Expr::Variable("y".to_string());
+    let y = Expr::Variable("y".to_string());
 
     let f = Expr::new_add(
         Expr::new_pow(
@@ -151,12 +138,10 @@ fn test_hessian_matrix() {
         ),
     );
 
-    let hessian =
-        hessian_matrix(&f, &["x", "y"]);
+    let hessian = hessian_matrix(&f, &["x", "y"]);
 
     // Check that we got a matrix
-    if let Expr::Matrix(rows) = hessian
-    {
+    if let Expr::Matrix(rows) = hessian {
 
         assert_eq!(rows.len(), 2);
 

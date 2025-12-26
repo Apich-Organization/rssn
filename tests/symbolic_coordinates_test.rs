@@ -3,14 +3,12 @@ use rssn::symbolic::core::Expr;
 
 #[test]
 
-fn test_transform_point_cylindrical_to_cartesian_symbolic(
-) {
+fn test_transform_point_cylindrical_to_cartesian_symbolic() {
 
     // Point in cylindrical: (r, theta, z)
     let r = Expr::new_variable("r");
 
-    let theta =
-        Expr::new_variable("theta");
+    let theta = Expr::new_variable("theta");
 
     let z = Expr::new_variable("z");
 
@@ -48,14 +46,12 @@ fn test_transform_point_cylindrical_to_cartesian_symbolic(
 
 #[test]
 
-fn test_transform_point_spherical_to_cartesian_symbolic(
-) {
+fn test_transform_point_spherical_to_cartesian_symbolic() {
 
     // Point in spherical: (rho, theta, phi)
     let rho = Expr::new_variable("rho");
 
-    let theta =
-        Expr::new_variable("theta");
+    let theta = Expr::new_variable("theta");
 
     let phi = Expr::new_variable("phi");
 
@@ -95,8 +91,7 @@ fn test_transform_point_spherical_to_cartesian_symbolic(
 
 #[test]
 
-fn test_transform_expression_symbolic()
-{
+fn test_transform_expression_symbolic() {
 
     // Transform expression f(r, theta) from cylindrical to Cartesian
     // f = r^2
@@ -123,15 +118,11 @@ fn test_transform_expression_symbolic()
 
 #[test]
 
-fn test_get_metric_tensor_cylindrical()
-{
+fn test_get_metric_tensor_cylindrical() {
 
     // Metric tensor for cylindrical coordinates
     // g = diag(1, r^2, 1)
-    let g = get_metric_tensor(
-        CoordinateSystem::Cylindrical,
-    )
-    .unwrap();
+    let g = get_metric_tensor(CoordinateSystem::Cylindrical).unwrap();
 
     if let Expr::Matrix(rows) = g {
 
@@ -164,10 +155,7 @@ fn test_get_metric_tensor_spherical() {
 
     // Metric tensor for spherical coordinates
     // g = diag(1, rho^2*sin^2(phi), rho^2)
-    let g = get_metric_tensor(
-        CoordinateSystem::Spherical,
-    )
-    .unwrap();
+    let g = get_metric_tensor(CoordinateSystem::Spherical).unwrap();
 
     if let Expr::Matrix(rows) = g {
 

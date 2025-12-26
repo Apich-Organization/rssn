@@ -37,21 +37,20 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: AdvectionDiffusion1DInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<f64>,
-                        String,
-                    >::err(
-                        "Invalid JSON".to_string(),
-                    ))
-                    .unwrap(),
-                )
-            },
-        };
+    let input : AdvectionDiffusion1DInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        },
+    };
 
     let res = physics_sm::solve_advection_diffusion_1d(
         &input.initial_condition,
@@ -63,12 +62,10 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(res),
-        )
+        serde_json::to_string(&FfiResult::<
+            Vec<f64>,
+            String,
+        >::ok(res))
         .unwrap(),
     )
 }
@@ -79,21 +76,20 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
     input : *const c_char
 ) -> *mut c_char {
 
-    let input: AdvectionDiffusion2DInput =
-        match from_json_string(input) {
-            | Some(i) => i,
-            | None => {
-                return to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<f64>,
-                        String,
-                    >::err(
-                        "Invalid JSON".to_string(),
-                    ))
-                    .unwrap(),
-                )
-            },
-        };
+    let input : AdvectionDiffusion2DInput = match from_json_string(input) {
+        | Some(i) => i,
+        | None => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
+                    "Invalid JSON".to_string(),
+                ))
+                .unwrap(),
+            )
+        },
+    };
 
     let res = physics_sm::solve_advection_diffusion_2d(
         &input.initial_condition,
@@ -101,12 +97,10 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(res),
-        )
+        serde_json::to_string(&FfiResult::<
+            Vec<f64>,
+            String,
+        >::ok(res))
         .unwrap(),
     )
 }

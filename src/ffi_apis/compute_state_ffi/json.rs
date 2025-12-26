@@ -9,17 +9,13 @@ use crate::ffi_apis::common::to_c_string;
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_state_new_json(
-) -> *mut c_char {
+pub extern "C" fn rssn_state_new_json() -> *mut c_char {
 
     let state = State::new();
 
-    match serde_json::to_string(&state)
-    {
+    match serde_json::to_string(&state) {
         | Ok(json) => to_c_string(json),
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -39,26 +35,13 @@ pub extern "C" fn rssn_state_get_intermediate_value_json(
 
     unsafe {
 
-        let c_str =
-            std::ffi::CStr::from_ptr(
-                json_state,
-            );
+        let c_str = std::ffi::CStr::from_ptr(json_state);
 
-        if let Ok(json_str) =
-            c_str.to_str()
-        {
+        if let Ok(json_str) = c_str.to_str() {
 
-            if let Ok(state) =
-                serde_json::from_str::<
-                    State,
-                >(
-                    json_str
-                )
-            {
+            if let Ok(state) = serde_json::from_str::<State>(json_str) {
 
-                return to_c_string(
-                    state.intermediate_value,
-                );
+                return to_c_string(state.intermediate_value);
             }
         }
 
@@ -75,50 +58,33 @@ pub extern "C" fn rssn_state_set_intermediate_value_json(
     value : *const c_char,
 ) -> *mut c_char {
 
-    if json_state.is_null()
-        || value.is_null()
-    {
+    if json_state.is_null() || value.is_null() {
 
         return std::ptr::null_mut();
     }
 
     unsafe {
 
-        let state_str =
-            match std::ffi::CStr::from_ptr(json_state)
-                .to_str()
-            {
-                | Ok(s) => s,
-                | Err(_) => return std::ptr::null_mut(),
-            };
-
-        let value_str = match std::ffi::CStr::from_ptr(
-            value,
-        )
-        .to_str()
-        {
+        let state_str = match std::ffi::CStr::from_ptr(json_state).to_str() {
             | Ok(s) => s,
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let mut state: State =
-            match serde_json::from_str(state_str) {
-                | Ok(s) => s,
-                | Err(_) => return std::ptr::null_mut(),
-            };
+        let value_str = match std::ffi::CStr::from_ptr(value).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        state.intermediate_value =
-            value_str.to_string();
+        let mut state : State = match serde_json::from_str(state_str) {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        match serde_json::to_string(
-            &state,
-        ) {
-            | Ok(json) => {
-                to_c_string(json)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+        state.intermediate_value = value_str.to_string();
+
+        match serde_json::to_string(&state) {
+            | Ok(json) => to_c_string(json),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }

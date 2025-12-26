@@ -13,29 +13,25 @@ pub unsafe extern "C" fn path_continuation_new(
     order : usize,
 ) -> *mut PathContinuation {
 
-    if func.is_null()
-        || start_point.is_null()
-    {
+    if func.is_null() || start_point.is_null() {
 
         return std::ptr::null_mut();
     }
 
     let func_ref = &*func;
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
-            .to_str()
-            .unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let start_point_ref = &*start_point;
 
-    let path_continuation =
-        PathContinuation::new(
-            func_ref,
-            var_str,
-            start_point_ref,
-            order,
-        );
+    let path_continuation = PathContinuation::new(
+        func_ref,
+        var_str,
+        start_point_ref,
+        order,
+    );
 
     Box::into_raw(Box::new(
         path_continuation,
@@ -50,35 +46,25 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
     path_points_len : usize,
 ) -> *mut c_char {
 
-    if pc.is_null()
-        || path_points.is_null()
-    {
+    if pc.is_null() || path_points.is_null() {
 
         return std::ptr::null_mut();
     }
 
     let pc_ref = &mut *pc;
 
-    let path_points_slice =
-        std::slice::from_raw_parts(
-            path_points,
-            path_points_len,
-        );
+    let path_points_slice = std::slice::from_raw_parts(
+        path_points,
+        path_points_len,
+    );
 
-    let path_points_vec : Vec<Expr> =
-        path_points_slice
-            .iter()
-            .map(|&ptr| (*ptr).clone())
-            .collect();
+    let path_points_vec : Vec<Expr> = path_points_slice
+        .iter()
+        .map(|&ptr| (*ptr).clone())
+        .collect();
 
-    match pc_ref.continue_along_path(
-        &path_points_vec,
-    ) {
-        | Ok(_) => {
-            to_c_string(
-                "OK".to_string(),
-            )
-        },
+    match pc_ref.continue_along_path(&path_points_vec) {
+        | Ok(_) => to_c_string("OK".to_string()),
         | Err(e) => to_c_string(e),
     }
 }
@@ -96,8 +82,7 @@ pub unsafe extern "C" fn path_continuation_get_final_expression(
 
     let pc_ref = &*pc;
 
-    match pc_ref.get_final_expression()
-    {
+    match pc_ref.get_final_expression() {
         | Some(expr) => {
             Box::into_raw(Box::new(
                 expr.clone(),
@@ -116,19 +101,16 @@ pub unsafe extern "C" fn estimate_radius_of_convergence(
     order : usize,
 ) -> f64 {
 
-    if series_expr.is_null()
-        || center.is_null()
-    {
+    if series_expr.is_null() || center.is_null() {
 
         return 0.0;
     }
 
     let series_expr_ref = &*series_expr;
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
-            .to_str()
-            .unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let center_ref = &*center;
 
@@ -157,10 +139,7 @@ pub unsafe extern "C" fn complex_distance(
 
     let p2_ref = &*p2;
 
-    crate::symbolic::complex_analysis::complex_distance(
-        p1_ref, p2_ref,
-    )
-    .unwrap_or(0.0)
+    crate::symbolic::complex_analysis::complex_distance(p1_ref, p2_ref).unwrap_or(0.0)
 }
 
 #[no_mangle]
@@ -172,19 +151,16 @@ pub unsafe extern "C" fn classify_singularity(
     order : usize,
 ) -> *mut SingularityType {
 
-    if func.is_null()
-        || singularity.is_null()
-    {
+    if func.is_null() || singularity.is_null() {
 
         return std::ptr::null_mut();
     }
 
     let func_ref = &*func;
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
-            .to_str()
-            .unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularity_ref = &*singularity;
 
@@ -209,26 +185,25 @@ pub unsafe extern "C" fn laurent_series(
     order : usize,
 ) -> *mut Expr {
 
-    if func.is_null()
-        || center.is_null()
-    {
+    if func.is_null() || center.is_null() {
 
         return std::ptr::null_mut();
     }
 
     let func_ref = &*func;
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
-            .to_str()
-            .unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let center_ref = &*center;
 
-    let series =
-        crate::symbolic::complex_analysis::laurent_series(
-            func_ref, var_str, center_ref, order,
-        );
+    let series = crate::symbolic::complex_analysis::laurent_series(
+        func_ref,
+        var_str,
+        center_ref,
+        order,
+    );
 
     Box::into_raw(Box::new(series))
 }
@@ -241,19 +216,16 @@ pub unsafe extern "C" fn calculate_residue(
     singularity : *const Expr,
 ) -> *mut Expr {
 
-    if func.is_null()
-        || singularity.is_null()
-    {
+    if func.is_null() || singularity.is_null() {
 
         return std::ptr::null_mut();
     }
 
     let func_ref = &*func;
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
-            .to_str()
-            .unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let singularity_ref = &*singularity;
 
@@ -275,31 +247,26 @@ pub unsafe extern "C" fn contour_integral_residue_theorem(
     singularities_len : usize,
 ) -> *mut Expr {
 
-    if func.is_null()
-        || singularities.is_null()
-    {
+    if func.is_null() || singularities.is_null() {
 
         return std::ptr::null_mut();
     }
 
     let func_ref = &*func;
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
-            .to_str()
-            .unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
-    let singularities_slice =
-        std::slice::from_raw_parts(
-            singularities,
-            singularities_len,
-        );
+    let singularities_slice = std::slice::from_raw_parts(
+        singularities,
+        singularities_len,
+    );
 
-    let singularities_vec : Vec<Expr> =
-        singularities_slice
-            .iter()
-            .map(|&ptr| (*ptr).clone())
-            .collect();
+    let singularities_vec : Vec<Expr> = singularities_slice
+        .iter()
+        .map(|&ptr| (*ptr).clone())
+        .collect();
 
     let result = crate::symbolic::complex_analysis::contour_integral_residue_theorem(
         func_ref,
@@ -319,11 +286,7 @@ pub unsafe extern "C" fn mobius_transformation_new(
     d : *const Expr,
 ) -> *mut MobiusTransformation {
 
-    if a.is_null()
-        || b.is_null()
-        || c.is_null()
-        || d.is_null()
-    {
+    if a.is_null() || b.is_null() || c.is_null() || d.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -336,25 +299,21 @@ pub unsafe extern "C" fn mobius_transformation_new(
 
     let d_ref = &*d;
 
-    let mobius =
-        MobiusTransformation::new(
-            a_ref.clone(),
-            b_ref.clone(),
-            c_ref.clone(),
-            d_ref.clone(),
-        );
+    let mobius = MobiusTransformation::new(
+        a_ref.clone(),
+        b_ref.clone(),
+        c_ref.clone(),
+        d_ref.clone(),
+    );
 
     Box::into_raw(Box::new(mobius))
 }
 
 #[no_mangle]
 
-pub extern "C" fn mobius_transformation_identity(
-) -> *mut MobiusTransformation {
+pub extern "C" fn mobius_transformation_identity() -> *mut MobiusTransformation {
 
-    let mobius =
-        MobiusTransformation::identity(
-        );
+    let mobius = MobiusTransformation::identity();
 
     Box::into_raw(Box::new(mobius))
 }
@@ -362,7 +321,7 @@ pub extern "C" fn mobius_transformation_identity(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_apply(
-    mobius: *const MobiusTransformation,
+    mobius : *const MobiusTransformation,
     z : *const Expr,
 ) -> *mut Expr {
 
@@ -375,8 +334,7 @@ pub unsafe extern "C" fn mobius_transformation_apply(
 
     let z_ref = &*z;
 
-    let result =
-        mobius_ref.apply(z_ref);
+    let result = mobius_ref.apply(z_ref);
 
     Box::into_raw(Box::new(result))
 }
@@ -384,13 +342,11 @@ pub unsafe extern "C" fn mobius_transformation_apply(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_compose(
-    mobius1: *const MobiusTransformation,
-    mobius2: *const MobiusTransformation,
+    mobius1 : *const MobiusTransformation,
+    mobius2 : *const MobiusTransformation,
 ) -> *mut MobiusTransformation {
 
-    if mobius1.is_null()
-        || mobius2.is_null()
-    {
+    if mobius1.is_null() || mobius2.is_null() {
 
         return std::ptr::null_mut();
     }
@@ -399,8 +355,7 @@ pub unsafe extern "C" fn mobius_transformation_compose(
 
     let mobius2_ref = &*mobius2;
 
-    let result = mobius1_ref
-        .compose(mobius2_ref);
+    let result = mobius1_ref.compose(mobius2_ref);
 
     Box::into_raw(Box::new(result))
 }
@@ -408,7 +363,7 @@ pub unsafe extern "C" fn mobius_transformation_compose(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_inverse(
-    mobius: *const MobiusTransformation
+    mobius : *const MobiusTransformation
 ) -> *mut MobiusTransformation {
 
     if mobius.is_null() {
@@ -438,15 +393,16 @@ pub unsafe extern "C" fn cauchy_integral_formula(
 
     let func_ref = &*func;
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
-            .to_str()
-            .unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let z0_ref = &*z0;
 
     let result = crate::symbolic::complex_analysis::cauchy_integral_formula(
-        func_ref, var_str, z0_ref,
+        func_ref,
+        var_str,
+        z0_ref,
     );
 
     Box::into_raw(Box::new(result))
@@ -468,15 +424,17 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
 
     let func_ref = &*func;
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
-            .to_str()
-            .unwrap();
+    let var_str = std::ffi::CStr::from_ptr(var)
+        .to_str()
+        .unwrap();
 
     let z0_ref = &*z0;
 
     let result = crate::symbolic::complex_analysis::cauchy_derivative_formula(
-        func_ref, var_str, z0_ref, n,
+        func_ref,
+        var_str,
+        z0_ref,
+        n,
     );
 
     Box::into_raw(Box::new(result))
@@ -484,9 +442,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_exp(
-    z : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn complex_exp(z : *const Expr) -> *mut Expr {
 
     if z.is_null() {
 
@@ -495,19 +451,14 @@ pub unsafe extern "C" fn complex_exp(
 
     let z_ref = &*z;
 
-    let result =
-        crate::symbolic::complex_analysis::complex_exp(
-            z_ref,
-        );
+    let result = crate::symbolic::complex_analysis::complex_exp(z_ref);
 
     Box::into_raw(Box::new(result))
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_log(
-    z : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn complex_log(z : *const Expr) -> *mut Expr {
 
     if z.is_null() {
 
@@ -516,19 +467,14 @@ pub unsafe extern "C" fn complex_log(
 
     let z_ref = &*z;
 
-    let result =
-        crate::symbolic::complex_analysis::complex_log(
-            z_ref,
-        );
+    let result = crate::symbolic::complex_analysis::complex_log(z_ref);
 
     Box::into_raw(Box::new(result))
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_arg(
-    z : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn complex_arg(z : *const Expr) -> *mut Expr {
 
     if z.is_null() {
 
@@ -537,19 +483,14 @@ pub unsafe extern "C" fn complex_arg(
 
     let z_ref = &*z;
 
-    let result =
-        crate::symbolic::complex_analysis::complex_arg(
-            z_ref,
-        );
+    let result = crate::symbolic::complex_analysis::complex_arg(z_ref);
 
     Box::into_raw(Box::new(result))
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_modulus(
-    z : *const Expr
-) -> *mut Expr {
+pub unsafe extern "C" fn complex_modulus(z : *const Expr) -> *mut Expr {
 
     if z.is_null() {
 
@@ -558,10 +499,7 @@ pub unsafe extern "C" fn complex_modulus(
 
     let z_ref = &*z;
 
-    let result =
-        crate::symbolic::complex_analysis::complex_modulus(
-            z_ref,
-        );
+    let result = crate::symbolic::complex_analysis::complex_modulus(z_ref);
 
     Box::into_raw(Box::new(result))
 }

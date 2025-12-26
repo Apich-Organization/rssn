@@ -53,12 +53,10 @@ pub fn mod_pow(
 
         if exp % 2 == 1 {
 
-            res = (res * base)
-                % u128::from(modulus);
+            res = (res * base) % u128::from(modulus);
         }
 
-        base = (base * base)
-            % u128::from(modulus);
+        base = (base * base) % u128::from(modulus);
 
         exp /= 2;
     }
@@ -106,8 +104,7 @@ pub(crate) fn extended_gcd(
         (b, 0, 1)
     } else {
 
-        let (g, x, y) =
-            extended_gcd(b % a, a);
+        let (g, x, y) = extended_gcd(b % a, a);
 
         (
             g,
@@ -129,9 +126,7 @@ pub(crate) fn extended_gcd(
 /// `true` if `n` is prime, `false` otherwise.
 #[must_use]
 
-pub fn is_prime_miller_rabin(
-    n : u64
-) -> bool {
+pub fn is_prime_miller_rabin(n : u64) -> bool {
 
     if n < 2 {
 
@@ -143,9 +138,7 @@ pub fn is_prime_miller_rabin(
         return true;
     }
 
-    if n.is_multiple_of(2)
-        || n.is_multiple_of(3)
-    {
+    if n.is_multiple_of(2) || n.is_multiple_of(3) {
 
         return false;
     }
@@ -162,8 +155,7 @@ pub fn is_prime_miller_rabin(
     }
 
     let bases = [
-        2, 3, 5, 7, 11, 13, 17, 19, 23,
-        29, 31, 37,
+        2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37,
     ];
 
     for &a in &bases {
@@ -173,11 +165,7 @@ pub fn is_prime_miller_rabin(
             return true;
         }
 
-        let mut x = mod_pow(
-            u128::from(a),
-            d,
-            n,
-        );
+        let mut x = mod_pow(u128::from(a), d, n);
 
         if x == 1 || x == n - 1 {
 
@@ -188,11 +176,7 @@ pub fn is_prime_miller_rabin(
 
         for _ in 0 .. s - 1 {
 
-            x = mod_pow(
-                u128::from(x),
-                2,
-                n,
-            );
+            x = mod_pow(u128::from(x), 2, n);
 
             if x == n - 1 {
 
@@ -267,9 +251,7 @@ pub const fn phi(mut n : u64) -> u64 {
 /// Returns a list of prime factors of n.
 #[must_use]
 
-pub fn factorize(
-    mut n : u64
-) -> Vec<u64> {
+pub fn factorize(mut n : u64) -> Vec<u64> {
 
     let mut factors = Vec::new();
 
@@ -303,25 +285,20 @@ pub fn factorize(
 /// Generates primes up to limit using Sieve of Eratosthenes.
 #[must_use]
 
-pub fn primes_sieve(
-    limit : usize
-) -> Vec<usize> {
+pub fn primes_sieve(limit : usize) -> Vec<usize> {
 
     if limit < 2 {
 
         return Vec::new();
     }
 
-    let mut is_prime =
-        vec![true; limit + 1];
+    let mut is_prime = vec![true; limit + 1];
 
     is_prime[0] = false;
 
     is_prime[1] = false;
 
-    for p in 2 ..= (limit as f64).sqrt()
-        as usize
-    {
+    for p in 2 ..= (limit as f64).sqrt() as usize {
 
         if is_prime[p] {
 

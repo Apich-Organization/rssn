@@ -34,29 +34,24 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
     buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: TaylorInput =
-        match from_bincode_buffer(&buffer) {
-            | Some(i) => i,
-            | None => {
-                return to_bincode_buffer(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                > {
-                    ok: None,
-                    err: Some(
-                        "Invalid Bincode input".to_string(),
-                    ),
-                })
-            },
-        };
+    let input : TaylorInput = match from_bincode_buffer(&buffer) {
+        | Some(i) => i,
+        | None => {
+            return to_bincode_buffer(
+                &FfiResult::<Vec<f64>, String> {
+                    ok : None,
+                    err : Some("Invalid Bincode input".to_string()),
+                },
+            )
+        },
+    };
 
-    let res =
-        series::taylor_coefficients(
-            &input.expr,
-            &input.var,
-            input.at_point,
-            input.order,
-        );
+    let res = series::taylor_coefficients(
+        &input.expr,
+        &input.var,
+        input.at_point,
+        input.order,
+    );
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -82,19 +77,15 @@ pub unsafe extern "C" fn rssn_numerical_sum_series_bincode(
     buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: SumInput = match from_bincode_buffer(&buffer)
-    {
+    let input : SumInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(&FfiResult::<
-                f64,
-                String,
-            > {
-                ok: None,
-                err: Some(
-                    "Invalid Bincode input".to_string(),
-                ),
-            })
+            return to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok : None,
+                    err : Some("Invalid Bincode input".to_string()),
+                },
+            )
         },
     };
 

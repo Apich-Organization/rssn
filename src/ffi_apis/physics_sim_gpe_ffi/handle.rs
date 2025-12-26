@@ -1,9 +1,9 @@
 //! Handle-based FFI API for physics sim GPE superfluidity functions.
 
 use crate::numerical::matrix::Matrix;
+use crate::physics::physics_sim::gpe_superfluidity::GpeParameters;
 use crate::physics::physics_sim::gpe_superfluidity::{
     self,
-    GpeParameters,
 };
 
 /// Runs the GPE ground state finder and returns the result as a Matrix handle (Nx x Ny).
@@ -31,9 +31,7 @@ pub extern "C" fn rssn_physics_sim_gpe_run_ground_state_finder(
         trap_strength,
     };
 
-    match gpe_superfluidity::run_gpe_ground_state_finder(
-        &params,
-    ) {
+    match gpe_superfluidity::run_gpe_ground_state_finder(&params) {
         | Ok(res) => {
 
             let rows = res.nrows();

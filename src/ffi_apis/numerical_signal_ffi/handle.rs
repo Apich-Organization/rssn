@@ -17,35 +17,26 @@ pub unsafe extern "C" fn rssn_num_signal_fft(
     len : usize,
 ) -> *mut Matrix<f64> {
 
-    if real.is_null() || imag.is_null()
-    {
+    if real.is_null() || imag.is_null() {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_signal_fft"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_signal_fft".to_string());
 
         return ptr::null_mut();
     }
 
-    let mut input : Vec<Complex<f64>> =
-        (0 .. len)
-            .map(|i| {
+    let mut input : Vec<Complex<f64>> = (0 .. len)
+        .map(|i| {
 
-                Complex::new(
-                    *real.add(i),
-                    *imag.add(i),
-                )
-            })
-            .collect();
+            Complex::new(
+                *real.add(i),
+                *imag.add(i),
+            )
+        })
+        .collect();
 
-    let output =
-        signal::fft(&mut input);
+    let output = signal::fft(&mut input);
 
-    let mut flat = Vec::with_capacity(
-        output.len() * 2,
-    );
+    let mut flat = Vec::with_capacity(output.len() * 2);
 
     for c in output {
 
@@ -71,29 +62,16 @@ pub unsafe extern "C" fn rssn_num_signal_convolve(
 
     if a.is_null() || v.is_null() {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_signal_convolve"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_signal_convolve".to_string());
 
         return ptr::null_mut();
     }
 
-    let a_slice =
-        std::slice::from_raw_parts(
-            a, a_len,
-        );
+    let a_slice = std::slice::from_raw_parts(a, a_len);
 
-    let v_slice =
-        std::slice::from_raw_parts(
-            v, v_len,
-        );
+    let v_slice = std::slice::from_raw_parts(v, v_len);
 
-    let result = signal::convolve(
-        a_slice,
-        v_slice,
-    );
+    let result = signal::convolve(a_slice, v_slice);
 
     let n = result.len();
 
@@ -114,30 +92,16 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation(
 
     if a.is_null() || v.is_null() {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_signal_cross_correlation"
-                .to_string(),
-        );
+        update_last_error("Null pointer passed to rssn_num_signal_cross_correlation".to_string());
 
         return ptr::null_mut();
     }
 
-    let a_slice =
-        std::slice::from_raw_parts(
-            a, a_len,
-        );
+    let a_slice = std::slice::from_raw_parts(a, a_len);
 
-    let v_slice =
-        std::slice::from_raw_parts(
-            v, v_len,
-        );
+    let v_slice = std::slice::from_raw_parts(v, v_len);
 
-    let result =
-        signal::cross_correlation(
-            a_slice,
-            v_slice,
-        );
+    let result = signal::cross_correlation(a_slice, v_slice);
 
     let n = result.len();
 
@@ -149,9 +113,7 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation(
 /// Generates a Hann window.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_signal_hann_window(
-    n : usize
-) -> *mut Matrix<f64> {
+pub unsafe extern "C" fn rssn_num_signal_hann_window(n : usize) -> *mut Matrix<f64> {
 
     let window = signal::hann_window(n);
 
@@ -163,12 +125,9 @@ pub unsafe extern "C" fn rssn_num_signal_hann_window(
 /// Generates a Hamming window.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_signal_hamming_window(
-    n : usize
-) -> *mut Matrix<f64> {
+pub unsafe extern "C" fn rssn_num_signal_hamming_window(n : usize) -> *mut Matrix<f64> {
 
-    let window =
-        signal::hamming_window(n);
+    let window = signal::hamming_window(n);
 
     Box::into_raw(Box::new(
         Matrix::new(1, n, window),

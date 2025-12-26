@@ -26,28 +26,16 @@ use crate::symbolic::graph::Graph;
 /// `true` if the graphs are indistinguishable by the WL test, `false` otherwise.
 #[must_use]
 
-pub fn are_isomorphic_heuristic<
-    V1,
-    V2,
->(
+pub fn are_isomorphic_heuristic<V1, V2>(
     g1 : &Graph<V1>,
     g2 : &Graph<V2>,
 ) -> bool
 where
-    V1 : Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
-    V2 : Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
+    V1 : Eq + std::hash::Hash + Clone + std::fmt::Debug,
+    V2 : Eq + std::hash::Hash + Clone + std::fmt::Debug,
 {
 
-    if g1.nodes.len() != g2.nodes.len()
-        || g1.get_edges().len()
-            != g2.get_edges().len()
-    {
+    if g1.nodes.len() != g2.nodes.len() || g1.get_edges().len() != g2.get_edges().len() {
 
         return false;
     }
@@ -59,19 +47,13 @@ where
     h1 == h2
 }
 
-pub(crate) fn wl_test<
-    V : Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub(crate) fn wl_test<V : Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph : &Graph<V>
 ) -> HashMap<String, usize> {
 
     let n = graph.nodes.len();
 
-    let mut colors : Vec<String> = (0
-        .. n)
+    let mut colors : Vec<String> = (0 .. n)
         .map(|i| {
 
             graph
@@ -82,27 +64,17 @@ pub(crate) fn wl_test<
 
     for _ in 0 .. n {
 
-        let mut next_colors =
-            Vec::with_capacity(n);
+        let mut next_colors = Vec::with_capacity(n);
 
         for i in 0 .. n {
 
-            let mut neighbor_colors =
-                Vec::new();
+            let mut neighbor_colors = Vec::new();
 
-            if let Some(neighbors) =
-                graph.adj.get(i)
-            {
+            if let Some(neighbors) = graph.adj.get(i) {
 
-                for &(v, _) in neighbors
-                {
+                for &(v, _) in neighbors {
 
-                    neighbor_colors
-                        .push(
-                            colors[v]
-                                .clone(
-                                ),
-                        );
+                    neighbor_colors.push(colors[v].clone());
                 }
             }
 
@@ -111,13 +83,10 @@ pub(crate) fn wl_test<
             let new_color_signature = format!(
                 "{}-{}",
                 colors[i],
-                neighbor_colors
-                    .join(",")
+                neighbor_colors.join(",")
             );
 
-            next_colors.push(
-                new_color_signature,
-            );
+            next_colors.push(new_color_signature);
         }
 
         colors = next_colors;
@@ -148,18 +117,11 @@ pub(crate) fn wl_test<
 /// A `HashMap<usize, usize>` where keys are node IDs and values are their assigned colors.
 #[must_use]
 
-pub fn greedy_coloring<
-    V : Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn greedy_coloring<V : Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph : &Graph<V>
 ) -> HashMap<usize, usize> {
 
-    let mut nodes : Vec<usize> = (0
-        .. graph.nodes.len())
-        .collect();
+    let mut nodes : Vec<usize> = (0 .. graph.nodes.len()).collect();
 
     nodes.sort_by(|a, b| {
 
@@ -174,30 +136,27 @@ pub fn greedy_coloring<
 
     for &node_id in &nodes {
 
-        if !colors
-            .contains_key(&node_id)
-        {
+        if !colors.contains_key(&node_id) {
 
             colors.insert(
                 node_id,
                 color_counter,
             );
 
-            for &other_node_id in &nodes
-            {
+            for &other_node_id in &nodes {
 
-                if !colors.contains_key(
-                    &other_node_id,
-                ) {
+                if !colors.contains_key(&other_node_id) {
 
                     let is_safe = graph
                         .adj
                         .get(other_node_id)
-                        .is_none_or(|neighbors: &_| {
+                        .is_none_or(|neighbors : &_| {
 
                             neighbors
                                 .iter()
-                                .all(|(n, _): &(usize, Expr)| colors.get(n) != Some(&color_counter))
+                                .all(
+                                    |(n, _) : &(usize, Expr)| colors.get(n) != Some(&color_counter),
+                                )
                         });
 
                     if is_safe {
@@ -230,12 +189,7 @@ pub fn greedy_coloring<
 /// The chromatic number as a `usize`.
 #[must_use]
 
-pub fn chromatic_number_exact<
-    V : Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn chromatic_number_exact<V : Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph : &Graph<V>
 ) -> usize {
 
@@ -264,12 +218,7 @@ pub fn chromatic_number_exact<
     n
 }
 
-pub(crate) fn can_color_with_k<
-    V : Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub(crate) fn can_color_with_k<V : Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph : &Graph<V>,
     k : usize,
     colors : &mut [usize],
@@ -309,21 +258,14 @@ pub(crate) fn can_color_with_k<
     false
 }
 
-pub(crate) fn is_safe_to_color<
-    V : Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub(crate) fn is_safe_to_color<V : Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph : &Graph<V>,
     u : usize,
     color : usize,
     colors : &[usize],
 ) -> bool {
 
-    if let Some(neighbors) =
-        graph.adj.get(u)
-    {
+    if let Some(neighbors) = graph.adj.get(u) {
 
         for &(v, _) in neighbors {
 

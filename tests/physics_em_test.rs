@@ -20,9 +20,9 @@ fn test_solve_forward_euler_decay() {
 
         fn eval(
             &self,
-            _t: f64,
-            y: &[f64],
-            dy: &mut [f64],
+            _t : f64,
+            y : &[f64],
+            dy : &mut [f64],
         ) {
 
             dy[0] = -y[0];
@@ -66,9 +66,9 @@ fn test_solve_midpoint_euler_decay() {
 
         fn eval(
             &self,
-            _t: f64,
-            y: &[f64],
-            dy: &mut [f64],
+            _t : f64,
+            y : &[f64],
+            dy : &mut [f64],
         ) {
 
             dy[0] = -y[0];
@@ -90,11 +90,7 @@ fn test_solve_midpoint_euler_decay() {
         .1[0];
 
     // Midpoint method is second order, should be closer to 0.3678 than forward Euler.
-    assert!(
-        (final_y - 0.3678).abs()
-            < (0.3486f64 - 0.3678f64)
-                .abs()
-    );
+    assert!((final_y - 0.3678).abs() < (0.3486f64 - 0.3678f64).abs());
 }
 
 #[test]
@@ -111,9 +107,9 @@ fn test_solve_heun_euler_decay() {
 
         fn eval(
             &self,
-            _t: f64,
-            y: &[f64],
-            dy: &mut [f64],
+            _t : f64,
+            y : &[f64],
+            dy : &mut [f64],
         ) {
 
             dy[0] = -y[0];
@@ -135,11 +131,7 @@ fn test_solve_heun_euler_decay() {
         .1[0];
 
     // Heun's method is also second order.
-    assert!(
-        (final_y - 0.3678).abs()
-            < (0.3486f64 - 0.3678f64)
-                .abs()
-    );
+    assert!((final_y - 0.3678).abs() < (0.3486f64 - 0.3678f64).abs());
 }
 
 proptest! {

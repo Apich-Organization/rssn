@@ -4,9 +4,7 @@ use serde::Serialize;
 
 use crate::physics::physics_rkm::OdeSystem;
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct EulerSolverConfig {
     pub dt : f64,
@@ -26,9 +24,7 @@ pub struct EulerSolverConfig {
 /// # Returns
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
 
-pub fn solve_forward_euler<
-    S : OdeSystem,
->(
+pub fn solve_forward_euler<S : OdeSystem>(
     system : &S,
     y0 : &[f64],
     t_span : (f64, f64),
@@ -37,16 +33,13 @@ pub fn solve_forward_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        as usize;
+    let steps = ((t_end - t_start) / dt).ceil() as usize;
 
     let mut t = t_start;
 
     let mut y = y0.to_vec();
 
-    let mut history =
-        Vec::with_capacity(steps + 1);
+    let mut history = Vec::with_capacity(steps + 1);
 
     history.push((t, y.clone()));
 
@@ -75,9 +68,7 @@ pub fn solve_forward_euler<
 
 /// Solves an ODE system using the explicit midpoint method (Modified Euler).
 
-pub fn solve_midpoint_euler<
-    S : OdeSystem,
->(
+pub fn solve_midpoint_euler<S : OdeSystem>(
     system : &S,
     y0 : &[f64],
     t_span : (f64, f64),
@@ -86,16 +77,13 @@ pub fn solve_midpoint_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        as usize;
+    let steps = ((t_end - t_start) / dt).ceil() as usize;
 
     let mut t = t_start;
 
     let mut y = y0.to_vec();
 
-    let mut history =
-        Vec::with_capacity(steps + 1);
+    let mut history = Vec::with_capacity(steps + 1);
 
     history.push((t, y.clone()));
 
@@ -118,10 +106,7 @@ pub fn solve_midpoint_euler<
             .for_each(
                 |((ym, &yi), &k1i)| {
 
-                    *ym = yi
-                        + 0.5
-                            * dt
-                            * k1i;
+                    *ym = yi + 0.5 * dt * k1i;
                 },
             );
 
@@ -148,9 +133,7 @@ pub fn solve_midpoint_euler<
 
 /// Solves an ODE system using Heun's method (Improved Euler).
 
-pub fn solve_heun_euler<
-    S : OdeSystem,
->(
+pub fn solve_heun_euler<S : OdeSystem>(
     system : &S,
     y0 : &[f64],
     t_span : (f64, f64),
@@ -159,16 +142,13 @@ pub fn solve_heun_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        as usize;
+    let steps = ((t_end - t_start) / dt).ceil() as usize;
 
     let mut t = t_start;
 
     let mut y = y0.to_vec();
 
-    let mut history =
-        Vec::with_capacity(steps + 1);
+    let mut history = Vec::with_capacity(steps + 1);
 
     history.push((t, y.clone()));
 
@@ -207,9 +187,7 @@ pub fn solve_heun_euler<
             .for_each(
                 |((yi, &k1i), &k2i)| {
 
-                    *yi += 0.5
-                        * dt
-                        * (k1i + k2i);
+                    *yi += 0.5 * dt * (k1i + k2i);
                 },
             );
 
@@ -254,39 +232,29 @@ pub trait MechanicalSystem {
 /// # Returns
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
 
-pub fn solve_semi_implicit_euler<
-    S : MechanicalSystem,
->(
+pub fn solve_semi_implicit_euler<S : MechanicalSystem>(
     system : &S,
     y0 : &[f64],
     t_span : (f64, f64),
     dt : f64,
-) -> Result<Vec<(f64, Vec<f64>)>, String>
-{
+) -> Result<Vec<(f64, Vec<f64>)>, String> {
 
     let s_dim = system.spatial_dim();
 
     if y0.len() != 2 * s_dim {
 
-        return Err("State vector \
-                    length must be \
-                    twice the spatial \
-                    dimension."
-            .to_string());
+        return Err("State vector length must be twice the spatial dimension.".to_string());
     }
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        as usize;
+    let steps = ((t_end - t_start) / dt).ceil() as usize;
 
     let mut t = t_start;
 
     let mut y = y0.to_vec();
 
-    let mut history =
-        Vec::with_capacity(steps + 1);
+    let mut history = Vec::with_capacity(steps + 1);
 
     history.push((t, y.clone()));
 
@@ -294,13 +262,9 @@ pub fn solve_semi_implicit_euler<
 
     for _ in 0 .. steps {
 
-        let (x, v) =
-            y.split_at_mut(s_dim);
+        let (x, v) = y.split_at_mut(s_dim);
 
-        system.eval_acceleration(
-            x,
-            &mut a,
-        );
+        system.eval_acceleration(x, &mut a);
 
         v.par_iter_mut()
             .zip(&a)
@@ -335,15 +299,12 @@ use crate::physics::physics_rkm::DampedOscillatorSystem;
 /// # Returns
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
 
-pub fn simulate_oscillator_forward_euler_scenario(
-) -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_oscillator_forward_euler_scenario() -> Vec<(f64, Vec<f64>)> {
 
-    let system =
-        DampedOscillatorSystem {
-            omega : 2.0
-                * std::f64::consts::PI,
-            zeta : 0.0,
-        };
+    let system = DampedOscillatorSystem {
+        omega : 2.0 * std::f64::consts::PI,
+        zeta : 0.0,
+    };
 
     let y0 = &[1.0, 0.0];
 
@@ -360,18 +321,14 @@ pub fn simulate_oscillator_forward_euler_scenario(
 }
 
 /// A simple 2D orbital system (e.g., planet around a star).
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct OrbitalSystem {
     pub gravitational_constant : f64,
     pub star_mass : f64,
 }
 
-impl MechanicalSystem
-    for OrbitalSystem
-{
+impl MechanicalSystem for OrbitalSystem {
     fn spatial_dim(&self) -> usize {
 
         2
@@ -385,17 +342,13 @@ impl MechanicalSystem
 
         let (px, py) = (x[0], x[1]);
 
-        let dist_sq =
-            px.powi(2) + py.powi(2);
+        let dist_sq = px.powi(2) + py.powi(2);
 
         let dist_cubed = dist_sq
             .sqrt()
             .powi(3);
 
-        let force_magnitude = -self
-            .gravitational_constant
-            * self.star_mass
-            / dist_cubed;
+        let force_magnitude = -self.gravitational_constant * self.star_mass / dist_cubed;
 
         a[0] = force_magnitude * px;
 
@@ -412,9 +365,7 @@ impl MechanicalSystem
 /// # Returns
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
 
-pub fn simulate_gravity_semi_implicit_euler_scenario(
-) -> Result<Vec<(f64, Vec<f64>)>, String>
-{
+pub fn simulate_gravity_semi_implicit_euler_scenario() -> Result<Vec<(f64, Vec<f64>)>, String> {
 
     let system = OrbitalSystem {
         gravitational_constant : 1.0,
@@ -446,8 +397,7 @@ pub trait LinearOdeSystem {
 
     /// Provides the system matrix A.
 
-    fn get_matrix(&self)
-        -> Matrix<f64>;
+    fn get_matrix(&self) -> Matrix<f64>;
 }
 
 /// Solves a linear ODE system y' = Ay using the backward (implicit) Euler method.
@@ -470,28 +420,22 @@ pub trait LinearOdeSystem {
 /// # Returns
 /// A `Result` containing the solution path as `Vec<(f64, Vec<f64>)>`, or an error string if matrix inversion fails.
 
-pub fn solve_backward_euler_linear<
-    S : LinearOdeSystem,
->(
+pub fn solve_backward_euler_linear<S : LinearOdeSystem>(
     system : &S,
     y0 : &[f64],
     t_span : (f64, f64),
     dt : f64,
-) -> Result<Vec<(f64, Vec<f64>)>, String>
-{
+) -> Result<Vec<(f64, Vec<f64>)>, String> {
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        as usize;
+    let steps = ((t_end - t_start) / dt).ceil() as usize;
 
     let mut t = t_start;
 
     let mut y = y0.to_vec();
 
-    let mut history =
-        Vec::with_capacity(steps + 1);
+    let mut history = Vec::with_capacity(steps + 1);
 
     history.push((t, y.clone()));
 
@@ -499,30 +443,21 @@ pub fn solve_backward_euler_linear<
 
     let a = system.get_matrix();
 
-    let identity =
-        Matrix::identity(dim);
+    let identity = Matrix::identity(dim);
 
     let m = identity - (a * dt);
 
-    let m_inv = m.inverse().ok_or(
-        "Matrix (I - dt*A) is not \
-         invertible.",
-    )?;
+    let m_inv = m
+        .inverse()
+        .ok_or("Matrix (I - dt*A) is not invertible.")?;
 
     for _ in 0 .. steps {
 
-        let y_matrix = Matrix::new(
-            dim,
-            1,
-            y.clone(),
-        );
+        let y_matrix = Matrix::new(dim, 1, y.clone());
 
-        let y_new_matrix =
-            m_inv.clone() * y_matrix;
+        let y_new_matrix = m_inv.clone() * y_matrix;
 
-        y.clone_from(
-            &y_new_matrix.get_cols()[0],
-        );
+        y.clone_from(&y_new_matrix.get_cols()[0]);
 
         t += dt;
 
@@ -536,17 +471,13 @@ pub fn solve_backward_euler_linear<
 
 pub struct StiffDecaySystem;
 
-impl LinearOdeSystem
-    for StiffDecaySystem
-{
+impl LinearOdeSystem for StiffDecaySystem {
     fn dim(&self) -> usize {
 
         2
     }
 
-    fn get_matrix(
-        &self
-    ) -> Matrix<f64> {
+    fn get_matrix(&self) -> Matrix<f64> {
 
         Matrix::new(
             2,
@@ -566,9 +497,7 @@ impl LinearOdeSystem
 /// # Returns
 /// A `Result` containing the solution path as `Vec<(f64, Vec<f64>)>`, or an error string if matrix inversion fails.
 
-pub fn simulate_stiff_decay_scenario(
-) -> Result<Vec<(f64, Vec<f64>)>, String>
-{
+pub fn simulate_stiff_decay_scenario() -> Result<Vec<(f64, Vec<f64>)>, String> {
 
     let system = StiffDecaySystem;
 

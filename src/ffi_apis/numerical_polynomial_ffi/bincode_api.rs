@@ -14,9 +14,7 @@ struct PolyBinaryOpRequest {
     b : Polynomial,
 }
 
-fn decode<
-    T : for<'de> Deserialize<'de>,
->(
+fn decode<T : for<'de> Deserialize<'de>>(
     data : *const u8,
     len : usize,
 ) -> Option<T> {
@@ -28,9 +26,7 @@ fn decode<
 
     let slice = unsafe {
 
-        std::slice::from_raw_parts(
-            data, len,
-        )
+        std::slice::from_raw_parts(data, len)
     };
 
     bincode_next::serde::decode_from_slice(
@@ -41,9 +37,7 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T : Serialize>(
-    val : &T
-) -> BincodeBuffer {
+fn encode<T : Serialize>(val : &T) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
         val,
@@ -62,15 +56,13 @@ pub unsafe extern "C" fn rssn_num_poly_add_bincode(
     len : usize,
 ) -> BincodeBuffer {
 
-    let req: PolyBinaryOpRequest = match decode(data, len) {
+    let req : PolyBinaryOpRequest = match decode(data, len) {
         | Some(r) => r,
         | None => {
             return encode(
                 &FfiResult::<Polynomial, String> {
-                    ok: None,
-                    err: Some(
-                        "Bincode decode error".to_string(),
-                    ),
+                    ok : None,
+                    err : Some("Bincode decode error".to_string()),
                 },
             )
         },
@@ -78,11 +70,10 @@ pub unsafe extern "C" fn rssn_num_poly_add_bincode(
 
     let res = req.a + req.b;
 
-    encode(&FfiResult::<
-        Polynomial,
-        String,
-    > {
-        ok : Some(res),
-        err : None,
-    })
+    encode(
+        &FfiResult::<Polynomial, String> {
+            ok : Some(res),
+            err : None,
+        },
+    )
 }

@@ -4,8 +4,7 @@ use rssn::symbolic::simplify_dag::simplify;
 
 fn main() {
 
-    let x =
-        Expr::Variable("x".to_string());
+    let x = Expr::Variable("x".to_string());
 
     let lower = Expr::Constant(-1.0);
 
@@ -20,13 +19,11 @@ fn main() {
     );
 
     println!(
-        "Integral of x from -1 to 1: \
-         {:?}",
+        "Integral of x from -1 to 1: {:?}",
         integral
     );
 
-    let simplified =
-        simplify(&integral);
+    let simplified = simplify(&integral);
 
     println!(
         "Simplified: {:?}",

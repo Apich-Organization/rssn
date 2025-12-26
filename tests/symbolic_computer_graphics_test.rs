@@ -65,8 +65,7 @@ fn test_translation_3d() {
 
     let tz = Expr::Constant(3.0);
 
-    let matrix =
-        translation_3d(tx, ty, tz);
+    let matrix = translation_3d(tx, ty, tz);
 
     if let Expr::Matrix(rows) = matrix {
 
@@ -175,9 +174,7 @@ fn test_scaling_3d() {
 fn test_rotation_2d() {
 
     // Just ensure it constructs without panic
-    let angle = Expr::Constant(
-        std::f64::consts::PI / 4.0,
-    );
+    let angle = Expr::Constant(std::f64::consts::PI / 4.0);
 
     let matrix = rotation_2d(angle);
 
@@ -196,9 +193,7 @@ fn test_rotation_2d() {
 
 fn test_rotation_3d_x() {
 
-    let angle = Expr::Constant(
-        std::f64::consts::PI / 6.0,
-    );
+    let angle = Expr::Constant(std::f64::consts::PI / 6.0);
 
     let matrix = rotation_3d_x(angle);
 
@@ -291,8 +286,7 @@ fn test_reflection_3d() {
 
     let nz = Expr::Constant(1.0);
 
-    let matrix =
-        reflection_3d(nx, ny, nz);
+    let matrix = reflection_3d(nx, ny, nz);
 
     if let Expr::Matrix(rows) = matrix {
 
@@ -316,13 +310,9 @@ fn test_rotation_axis_angle() {
         Expr::Constant(1.0),
     );
 
-    let angle = Expr::Constant(
-        std::f64::consts::PI / 4.0,
-    );
+    let angle = Expr::Constant(std::f64::consts::PI / 4.0);
 
-    let matrix = rotation_axis_angle(
-        &axis, angle,
-    );
+    let matrix = rotation_axis_angle(&axis, angle);
 
     if let Expr::Matrix(rows) = matrix {
 
@@ -364,9 +354,7 @@ fn test_bezier_curve_new() {
     );
 
     let curve = BezierCurve {
-        control_points : vec![
-            p0, p1, p2,
-        ],
+        control_points : vec![p0, p1, p2],
         degree : 2,
     };
 
@@ -382,8 +370,7 @@ fn test_bezier_curve_new() {
 
 #[test]
 
-fn test_bezier_curve_evaluate_endpoints(
-) {
+fn test_bezier_curve_evaluate_endpoints() {
 
     let p0 = Vector::new(
         Expr::Constant(0.0),
@@ -406,28 +393,20 @@ fn test_bezier_curve_evaluate_endpoints(
     };
 
     // At t=0, should be at p0
-    let at_0 = curve
-        .evaluate(&Expr::Constant(0.0));
+    let at_0 = curve.evaluate(&Expr::Constant(0.0));
 
     // At t=1, should be at p1
-    let at_1 = curve
-        .evaluate(&Expr::Constant(1.0));
+    let at_1 = curve.evaluate(&Expr::Constant(1.0));
 
     // Just verify they don't panic and produce valid vectors
     assert!(matches!(
         at_0.x,
-        Expr::Dag(_)
-            | Expr::Constant(_)
-            | Expr::BigInt(_)
-            | _
+        Expr::Dag(_) | Expr::Constant(_) | Expr::BigInt(_) | _
     ));
 
     assert!(matches!(
         at_1.x,
-        Expr::Dag(_)
-            | Expr::Constant(_)
-            | Expr::BigInt(_)
-            | _
+        Expr::Dag(_) | Expr::Constant(_) | Expr::BigInt(_) | _
     ));
 }
 
@@ -453,9 +432,7 @@ fn test_bezier_curve_derivative() {
         degree : 1,
     };
 
-    let tangent = curve.derivative(
-        &Expr::Constant(0.5),
-    );
+    let tangent = curve.derivative(&Expr::Constant(0.5));
 
     // For a linear curve of degree 1, derivative is n * (P1 - P0) = 1 * (2, 4, 0)
     // The tangent should be a valid Vector
@@ -488,14 +465,11 @@ fn test_bezier_curve_split() {
     );
 
     let curve = BezierCurve {
-        control_points : vec![
-            p0, p1, p2,
-        ],
+        control_points : vec![p0, p1, p2],
         degree : 2,
     };
 
-    let (left, right) = curve
-        .split(&Expr::Constant(0.5));
+    let (left, right) = curve.split(&Expr::Constant(0.5));
 
     // Both curves should have same degree
     assert_eq!(left.degree, 2);
@@ -564,8 +538,7 @@ fn test_polygon_mesh_new() {
 
 #[test]
 
-fn test_polygon_mesh_apply_transformation(
-) {
+fn test_polygon_mesh_apply_transformation() {
 
     let v0 = Vector::new(
         Expr::Constant(0.0),
@@ -579,10 +552,7 @@ fn test_polygon_mesh_apply_transformation(
         Expr::Constant(0.0),
     );
 
-    let mesh = PolygonMesh::new(
-        vec![v0, v1],
-        vec![],
-    );
+    let mesh = PolygonMesh::new(vec![v0, v1], vec![]);
 
     // Apply translation
     let transform = translation_3d(
@@ -591,10 +561,7 @@ fn test_polygon_mesh_apply_transformation(
         Expr::Constant(0.0),
     );
 
-    let transformed = mesh
-        .apply_transformation(
-            &transform,
-        );
+    let transformed = mesh.apply_transformation(&transform);
 
     assert!(transformed.is_ok());
 
@@ -638,8 +605,7 @@ fn test_polygon_mesh_compute_normals() {
         ])],
     );
 
-    let normals =
-        mesh.compute_normals();
+    let normals = mesh.compute_normals();
 
     assert_eq!(normals.len(), 1);
     // Normal should point in Z direction (either +Z or -Z)
@@ -681,8 +647,7 @@ fn test_polygon_mesh_triangulate() {
         ])], // One quad
     );
 
-    let triangulated =
-        mesh.triangulate();
+    let triangulated = mesh.triangulate();
 
     // Quad should become 2 triangles
     assert_eq!(

@@ -32,9 +32,7 @@ struct OptimizeResponse {
 
 #[no_mangle]
 
-pub extern "C" fn numerical_optimize_solve_json(
-    json_ptr : *const c_char
-) -> *mut c_char {
+pub extern "C" fn numerical_optimize_solve_json(json_ptr : *const c_char) -> *mut c_char {
 
     if json_ptr.is_null() {
 
@@ -46,43 +44,33 @@ pub extern "C" fn numerical_optimize_solve_json(
         CStr::from_ptr(json_ptr)
     };
 
-    let json_str = match c_str.to_str()
-    {
+    let json_str = match c_str.to_str() {
         | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
+        | Err(_) => return std::ptr::null_mut(),
     };
 
-    let request : OptimizeRequest =
-        match serde_json::from_str(
-            json_str,
-        ) {
-            | Ok(req) => req,
-            | Err(e) => {
+    let request : OptimizeRequest = match serde_json::from_str(json_str) {
+        | Ok(req) => req,
+        | Err(e) => {
 
-                let response = OptimizeResponse {
-                    success: false,
-                    best_param: None,
-                    best_cost: None,
-                    iterations: None,
-                    error: Some(format!(
-                        "Invalid JSON: {}",
-                        e
-                    )),
-                };
+            let response = OptimizeResponse {
+                success : false,
+                best_param : None,
+                best_cost : None,
+                iterations : None,
+                error : Some(format!(
+                    "Invalid JSON: {}",
+                    e
+                )),
+            };
 
-                let json_resp =
-                    serde_json::to_string(&response)
-                        .unwrap();
+            let json_resp = serde_json::to_string(&response).unwrap();
 
-                return CString::new(
-                    json_resp,
-                )
+            return CString::new(json_resp)
                 .unwrap()
                 .into_raw();
-            },
-        };
+        },
+    };
 
     let init_param = Array1::from(
         request
@@ -93,8 +81,7 @@ pub extern "C" fn numerical_optimize_solve_json(
     let config = OptimizationConfig {
         max_iters : request.max_iters,
         tolerance : request.tolerance,
-        problem_type:
-            ProblemType::Custom, /* Placeholder, not used by logic below effectively */
+        problem_type : ProblemType::Custom, // Placeholder, not used by logic below effectively
         dimension : request
             .init_param
             .len(),
@@ -120,32 +107,34 @@ pub extern "C" fn numerical_optimize_solve_json(
             };
 
             match EquationOptimizer::solve_with_gradient_descent(
-                problem, init_param, &config,
+                problem,
+                init_param,
+                &config,
             ) {
                 | Ok(res) => {
                     OptimizeResponse {
-                        success: true,
-                        best_param: Some(
+                        success : true,
+                        best_param : Some(
                             res.state
                                 .get_best_param()
                                 .unwrap()
                                 .to_vec(),
                         ),
-                        best_cost: Some(
+                        best_cost : Some(
                             res.state
                                 .get_best_cost(),
                         ),
-                        iterations: Some(res.state.get_iter()),
-                        error: None,
+                        iterations : Some(res.state.get_iter()),
+                        error : None,
                     }
                 },
                 | Err(e) => {
                     OptimizeResponse {
-                        success: false,
-                        best_param: None,
-                        best_cost: None,
-                        iterations: None,
-                        error: Some(e.to_string()),
+                        success : false,
+                        best_param : None,
+                        best_cost : None,
+                        iterations : None,
+                        error : Some(e.to_string()),
                     }
                 },
             }
@@ -155,32 +144,34 @@ pub extern "C" fn numerical_optimize_solve_json(
             let problem = Sphere;
 
             match EquationOptimizer::solve_with_gradient_descent(
-                problem, init_param, &config,
+                problem,
+                init_param,
+                &config,
             ) {
                 | Ok(res) => {
                     OptimizeResponse {
-                        success: true,
-                        best_param: Some(
+                        success : true,
+                        best_param : Some(
                             res.state
                                 .get_best_param()
                                 .unwrap()
                                 .to_vec(),
                         ),
-                        best_cost: Some(
+                        best_cost : Some(
                             res.state
                                 .get_best_cost(),
                         ),
-                        iterations: Some(res.state.get_iter()),
-                        error: None,
+                        iterations : Some(res.state.get_iter()),
+                        error : None,
                     }
                 },
                 | Err(e) => {
                     OptimizeResponse {
-                        success: false,
-                        best_param: None,
-                        best_cost: None,
-                        iterations: None,
-                        error: Some(e.to_string()),
+                        success : false,
+                        best_param : None,
+                        best_cost : None,
+                        iterations : None,
+                        error : Some(e.to_string()),
                     }
                 },
             }
@@ -192,20 +183,14 @@ pub extern "C" fn numerical_optimize_solve_json(
                 best_cost : None,
                 iterations : None,
                 error : Some(format!(
-                    "Unknown problem \
-                     type: {}",
-                    request
-                        .problem_type
+                    "Unknown problem type: {}",
+                    request.problem_type
                 )),
             }
         },
     };
 
-    let json_resp =
-        serde_json::to_string(
-            &response,
-        )
-        .unwrap();
+    let json_resp = serde_json::to_string(&response).unwrap();
 
     CString::new(json_resp)
         .unwrap()
@@ -214,16 +199,13 @@ pub extern "C" fn numerical_optimize_solve_json(
 
 #[no_mangle]
 
-pub extern "C" fn numerical_optimize_free_json(
-    ptr : *mut c_char
-) {
+pub extern "C" fn numerical_optimize_free_json(ptr : *mut c_char) {
 
     if !ptr.is_null() {
 
         unsafe {
 
-            let _ =
-                CString::from_raw(ptr);
+            let _ = CString::from_raw(ptr);
         }
     }
 }

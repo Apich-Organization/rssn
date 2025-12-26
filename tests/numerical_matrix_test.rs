@@ -9,11 +9,7 @@ fn test_matrix_basic() {
 
     let data = vec![1.0, 2.0, 3.0, 4.0];
 
-    let m = numerical_Matrix::new(
-        2,
-        2,
-        data.clone(),
-    );
+    let m = numerical_Matrix::new(2, 2, data.clone());
 
     assert_eq!(m.rows(), 2);
 
@@ -75,8 +71,7 @@ fn test_matrix_transpose() {
         2,
         3,
         vec![
-            1.0, 2.0, 3.0, 4.0, 5.0,
-            6.0,
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
         ],
     );
 
@@ -88,10 +83,7 @@ fn test_matrix_transpose() {
 
     assert_eq!(
         mt.data(),
-        &vec![
-            1.0, 4.0, 2.0, 5.0, 3.0,
-            6.0
-        ]
+        &vec![1.0, 4.0, 2.0, 5.0, 3.0, 6.0]
     );
 }
 
@@ -115,8 +107,7 @@ fn test_matrix_determinant() {
         3,
         3,
         vec![
-            1.0, 2.0, 3.0, 0.0, 1.0,
-            4.0, 5.0, 6.0, 0.0,
+            1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0,
         ],
     );
 
@@ -143,25 +134,13 @@ fn test_matrix_inverse() {
     // inv = 1/10 * [6 -7; -2 4] = [0.6 -0.7; -0.2 0.4]
     let inv = m.inverse().unwrap();
 
-    assert_approx_eq!(
-        inv.get(0, 0),
-        0.6
-    );
+    assert_approx_eq!(inv.get(0, 0), 0.6);
 
-    assert_approx_eq!(
-        inv.get(0, 1),
-        -0.7
-    );
+    assert_approx_eq!(inv.get(0, 1), -0.7);
 
-    assert_approx_eq!(
-        inv.get(1, 0),
-        -0.2
-    );
+    assert_approx_eq!(inv.get(1, 0), -0.2);
 
-    assert_approx_eq!(
-        inv.get(1, 1),
-        0.4
-    );
+    assert_approx_eq!(inv.get(1, 1), 0.4);
 
     let identity = m * inv;
 
@@ -198,8 +177,7 @@ fn test_matrix_norms() {
 
     assert_approx_eq!(
         m.frobenius_norm(),
-        (1.0 + 4.0 + 9.0 + 16.0f64)
-            .sqrt()
+        (1.0 + 4.0 + 9.0 + 16.0f64).sqrt()
     );
 
     assert_eq!(m.l1_norm(), 6.0);
@@ -213,8 +191,7 @@ fn test_matrix_trace() {
         3,
         3,
         vec![
-            1.0, 2.0, 3.0, 4.0, 5.0,
-            6.0, 7.0, 8.0, 9.0,
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
         ],
     );
 
@@ -232,8 +209,7 @@ fn test_matrix_rank() {
         3,
         3,
         vec![
-            1.0, 2.0, 3.0, 2.0, 4.0,
-            6.0, 0.0, 1.0, 1.0,
+            1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 0.0, 1.0, 1.0,
         ],
     );
 

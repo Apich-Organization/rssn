@@ -10,20 +10,13 @@ pub extern "C" fn rssn_bincode_risch_norman_integrate(
     x_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr : Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let x : Option<String> =
-        from_bincode_buffer(&x_buf);
+    let x : Option<String> = from_bincode_buffer(&x_buf);
 
-    if let (Some(e), Some(var)) =
-        (expr, x)
-    {
+    if let (Some(e), Some(var)) = (expr, x) {
 
-        let result =
-            risch_norman_integrate(
-                &e, &var,
-            );
+        let result = risch_norman_integrate(&e, &var);
 
         to_bincode_buffer(&result)
     } else {
@@ -40,15 +33,11 @@ pub extern "C" fn rssn_bincode_integrate_rational_function(
     x_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr : Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let x : Option<String> =
-        from_bincode_buffer(&x_buf);
+    let x : Option<String> = from_bincode_buffer(&x_buf);
 
-    if let (Some(e), Some(var)) =
-        (expr, x)
-    {
+    if let (Some(e), Some(var)) = (expr, x) {
 
         match integrate_rational_function_expr(&e, &var) {
             | Ok(result) => to_bincode_buffer(&result),
