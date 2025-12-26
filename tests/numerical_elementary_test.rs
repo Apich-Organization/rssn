@@ -19,7 +19,10 @@ fn test_basic_eval() {
     );
 
     assert_eq!(
-        numerical_eval_expr(&expr, &vars).unwrap(),
+        numerical_eval_expr(
+            &expr, &vars
+        )
+        .unwrap(),
         5.0
     );
 
@@ -30,7 +33,10 @@ fn test_basic_eval() {
     );
 
     assert_eq!(
-        numerical_eval_expr(&expr, &vars).unwrap(),
+        numerical_eval_expr(
+            &expr, &vars
+        )
+        .unwrap(),
         4.0
     );
 }
@@ -39,19 +45,26 @@ fn test_basic_eval() {
 
 fn test_trig_eval() {
 
-    let vars = HashMap::<String, f64>::new();
+    let vars =
+        HashMap::<String, f64>::new();
 
     let expr = Expr::new_sin(Expr::Pi);
 
     assert_approx_eq!(
-        numerical_eval_expr(&expr, &vars).unwrap(),
+        numerical_eval_expr(
+            &expr, &vars
+        )
+        .unwrap(),
         0.0
     );
 
     let expr = Expr::new_cos(Expr::Pi);
 
     assert_approx_eq!(
-        numerical_eval_expr(&expr, &vars).unwrap(),
+        numerical_eval_expr(
+            &expr, &vars
+        )
+        .unwrap(),
         -1.0
     );
 }
@@ -68,21 +81,30 @@ fn test_domain_errors() {
         Expr::new_constant(0.0),
     );
 
-    assert!(numerical_eval_expr(&expr, &vars).is_err());
+    assert!(numerical_eval_expr(
+        &expr, &vars
+    )
+    .is_err());
 
     // sqrt(-1)
-    let expr = Expr::new_sqrt(Expr::new_constant(
-        -1.0,
-    ));
+    let expr = Expr::new_sqrt(
+        Expr::new_constant(-1.0),
+    );
 
-    assert!(numerical_eval_expr(&expr, &vars).is_err());
+    assert!(numerical_eval_expr(
+        &expr, &vars
+    )
+    .is_err());
 
     // ln(0)
-    let expr = Expr::new_log(Expr::new_constant(
-        0.0,
-    ));
+    let expr = Expr::new_log(
+        Expr::new_constant(0.0),
+    );
 
-    assert!(numerical_eval_expr(&expr, &vars).is_err());
+    assert!(numerical_eval_expr(
+        &expr, &vars
+    )
+    .is_err());
 }
 
 #[test]
@@ -90,12 +112,16 @@ fn test_domain_errors() {
 fn test_pure_functions() {
 
     assert_approx_eq!(
-        numerical_sin(std::f64::consts::PI),
+        numerical_sin(
+            std::f64::consts::PI
+        ),
         0.0
     );
 
     assert_approx_eq!(
-        numerical_cos(std::f64::consts::PI),
+        numerical_cos(
+            std::f64::consts::PI
+        ),
         -1.0
     );
 

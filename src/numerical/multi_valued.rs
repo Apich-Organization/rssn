@@ -41,17 +41,29 @@ pub fn newton_method_complex(
 
         vars.insert("z".to_string(), z);
 
-        let f_val = match eval_complex_expr(f, &vars) {
-            | Ok(val) => val,
-            | Err(_) => return None,
-        };
+        let f_val =
+            match eval_complex_expr(
+                f, &vars,
+            ) {
+                | Ok(val) => val,
+                | Err(_) => {
+                    return None
+                },
+            };
 
-        let f_prime_val = match eval_complex_expr(f_prime, &vars) {
-            | Ok(val) => val,
-            | Err(_) => return None,
-        };
+        let f_prime_val =
+            match eval_complex_expr(
+                f_prime, &vars,
+            ) {
+                | Ok(val) => val,
+                | Err(_) => {
+                    return None
+                },
+            };
 
-        if f_prime_val.norm_sqr() < 1e-12 {
+        if f_prime_val.norm_sqr()
+            < 1e-12
+        {
 
             return None;
         }
@@ -78,7 +90,10 @@ pub fn complex_log_k(
 
     let ln_r = z.norm().ln();
 
-    let theta = z.arg() + 2.0 * std::f64::consts::PI * (k as f64);
+    let theta = z.arg()
+        + 2.0
+            * std::f64::consts::PI
+            * (k as f64);
 
     Complex::new(ln_r, theta)
 }
@@ -92,7 +107,11 @@ pub fn complex_sqrt_k(
 
     let r_sqrt = z.norm().sqrt();
 
-    let theta = (z.arg() + 2.0 * std::f64::consts::PI * (k as f64)) / 2.0;
+    let theta = (z.arg()
+        + 2.0
+            * std::f64::consts::PI
+            * (k as f64))
+        / 2.0;
 
     Complex::new(
         r_sqrt * theta.cos(),
@@ -125,7 +144,11 @@ pub fn complex_nth_root_k(
         .norm()
         .powf(1.0 / (n as f64));
 
-    let theta = (z.arg() + 2.0 * std::f64::consts::PI * (k as f64)) / (n as f64);
+    let theta = (z.arg()
+        + 2.0
+            * std::f64::consts::PI
+            * (k as f64))
+        / (n as f64);
 
     Complex::new(
         r_root * theta.cos(),
@@ -144,7 +167,10 @@ pub fn complex_arcsin_k(
 
     let principal = z.asin();
 
-    let k_pi = Complex::new((k as f64) * pi, 0.0);
+    let k_pi = Complex::new(
+        (k as f64) * pi,
+        0.0,
+    );
 
     if k % 2 == 0 {
 
@@ -193,7 +219,10 @@ pub fn complex_arctan_k(
 
     let principal = z.atan();
 
-    let k_pi = Complex::new((k as f64) * pi, 0.0);
+    let k_pi = Complex::new(
+        (k as f64) * pi,
+        0.0,
+    );
 
     k_pi + principal
 }

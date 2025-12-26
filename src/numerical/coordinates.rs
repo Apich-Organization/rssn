@@ -38,11 +38,12 @@ pub fn transform_point(
         .map(|&v| Expr::Constant(v))
         .collect();
 
-    let transformed_expr = coordinates::transform_point(
-        &point_expr,
-        from,
-        to,
-    )?;
+    let transformed_expr =
+        coordinates::transform_point(
+            &point_expr,
+            from,
+            to,
+        )?;
 
     let mut result = Vec::new();
 
@@ -79,7 +80,8 @@ pub fn numerical_jacobian(
     at_point: &[f64],
 ) -> Result<Matrix<f64>, String> {
 
-    let (from_vars, _, rules) = coordinates::get_transform_rules(from, to)?;
+    let (from_vars, _, rules) =
+        coordinates::get_transform_rules(from, to)?;
 
     let mut jacobian_rows = Vec::new();
 
@@ -99,7 +101,13 @@ pub fn numerical_jacobian(
 
     let rows = jacobian_rows.len();
 
-    let cols = if rows > 0 { jacobian_rows[0].len() } else { 0 };
+    let cols = if rows > 0 {
+
+        jacobian_rows[0].len()
+    } else {
+
+        0
+    };
 
     Ok(Matrix::new(
         rows,
@@ -132,9 +140,13 @@ pub fn transform_point_pure(
         return Ok(point.to_vec());
     }
 
-    let cartesian_point = to_cartesian_pure(point, from)?;
+    let cartesian_point =
+        to_cartesian_pure(point, from)?;
 
-    from_cartesian_pure(&cartesian_point, to)
+    from_cartesian_pure(
+        &cartesian_point,
+        to,
+    )
 }
 
 pub(crate) fn to_cartesian_pure(
@@ -158,7 +170,11 @@ pub(crate) fn to_cartesian_pure(
 
             if point.len() != 3 {
 
-                return Err("Cylindrical point must have 3 components (r, theta, z)".to_string());
+                return Err(
+                    "Cylindrical point must have 3 \
+                     components (r, theta, z)"
+                        .to_string(),
+                );
             }
 
             let r = point[0];
@@ -177,7 +193,11 @@ pub(crate) fn to_cartesian_pure(
 
             if point.len() != 3 {
 
-                return Err("Spherical point must have 3 components (rho, theta, phi)".to_string());
+                return Err(
+                    "Spherical point must have 3 \
+                     components (rho, theta, phi)"
+                        .to_string(),
+                );
             }
 
             let rho = point[0];
@@ -218,7 +238,11 @@ pub(crate) fn from_cartesian_pure(
 
             if point.len() < 2 {
 
-                return Err("Cartesian point must have at least 2 components (x, y)".to_string());
+                return Err(
+                    "Cartesian point must have at least 2 \
+                     components (x, y)"
+                        .to_string(),
+                );
             }
 
             let x = point[0];
@@ -242,7 +266,11 @@ pub(crate) fn from_cartesian_pure(
 
             if point.len() != 3 {
 
-                return Err("Cartesian point must have 3 components (x, y, z)".to_string());
+                return Err(
+                    "Cartesian point must have 3 \
+                     components (x, y, z)"
+                        .to_string(),
+                );
             }
 
             let x = point[0];

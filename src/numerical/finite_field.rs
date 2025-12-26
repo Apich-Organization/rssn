@@ -22,7 +22,15 @@ use std::ops::{
 ///
 /// The value is stored as a `u64`, and all arithmetic operations are performed
 /// modulo the specified `modulus`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct PrimeFieldElement {
     /// The value of the field element.
@@ -62,16 +70,21 @@ impl PrimeFieldElement {
     /// * `None` if the element is not invertible (i.e., its value is not coprime to the modulus).
     #[must_use]
 
-    pub fn inverse(&self) -> Option<Self> {
+    pub fn inverse(
+        &self
+    ) -> Option<Self> {
 
-        let (g, x, _) = extended_gcd_u64(
-            self.value,
-            self.modulus,
-        );
+        let (g, x, _) =
+            extended_gcd_u64(
+                self.value,
+                self.modulus,
+            );
 
         if g == 1 {
 
-            let m = i128::from(self.modulus);
+            let m = i128::from(
+                self.modulus,
+            );
 
             let inv = (x % m + m) % m;
 
@@ -95,9 +108,11 @@ impl PrimeFieldElement {
 
         let mut res = 1u128;
 
-        let mut base = u128::from(self.value);
+        let mut base =
+            u128::from(self.value);
 
-        let m = u128::from(self.modulus);
+        let m =
+            u128::from(self.modulus);
 
         while exp > 0 {
 
@@ -160,7 +175,8 @@ impl Neg for PrimeFieldElement {
         } else {
 
             Self::new(
-                self.modulus - self.value,
+                self.modulus
+                    - self.value,
                 self.modulus,
             )
         }
@@ -200,11 +216,14 @@ pub(crate) fn extended_gcd_u64(
         (b, 0, 1)
     } else {
 
-        let (g, x, y) = extended_gcd_u64(b % a, a);
+        let (g, x, y) =
+            extended_gcd_u64(b % a, a);
 
         (
             g,
-            y - (i128::from(b) / i128::from(a)) * x,
+            y - (i128::from(b)
+                / i128::from(a))
+                * x,
             x,
         )
     }
@@ -220,7 +239,9 @@ impl Add for PrimeFieldElement {
         rhs: Self,
     ) -> Self {
 
-        let val = (self.value + rhs.value) % self.modulus;
+        let val = (self.value
+            + rhs.value)
+            % self.modulus;
 
         Self::new(val, self.modulus)
     }
@@ -236,7 +257,10 @@ impl Sub for PrimeFieldElement {
         rhs: Self,
     ) -> Self {
 
-        let val = (self.value + self.modulus - rhs.value) % self.modulus;
+        let val = (self.value
+            + self.modulus
+            - rhs.value)
+            % self.modulus;
 
         Self::new(val, self.modulus)
     }
@@ -256,13 +280,21 @@ impl Mul for PrimeFieldElement {
     ) -> Self {
 
         let val =
-            ((u128::from(self.value) * u128::from(rhs.value)) % u128::from(self.modulus)) as u64;
+            ((u128::from(self.value)
+                * u128::from(
+                    rhs.value,
+                ))
+                % u128::from(
+                    self.modulus,
+                )) as u64;
 
         Self::new(val, self.modulus)
     }
 }
 
-#[allow(clippy::suspicious_arithmetic_impl)]
+#[allow(
+    clippy::suspicious_arithmetic_impl
+)]
 
 impl Div for PrimeFieldElement {
     type Output = Self;
@@ -272,13 +304,17 @@ impl Div for PrimeFieldElement {
         rhs: Self,
     ) -> Self {
 
-        let inv_rhs = match rhs.inverse() {
-            | Some(inv) => inv,
-            | None => {
+        let inv_rhs =
+            match rhs.inverse() {
+                | Some(inv) => inv,
+                | None => {
 
-                return Self::new(0, self.modulus);
-            },
-        };
+                    return Self::new(
+                        0,
+                        self.modulus,
+                    );
+                },
+            };
 
         self * inv_rhs
     }
@@ -293,41 +329,46 @@ struct Gf256Tables {
     exp: [u8; GF256_MODULUS],
 }
 
-static GF256_TABLES: std::sync::LazyLock<Gf256Tables> = std::sync::LazyLock::new(|| {
+static GF256_TABLES:
+    std::sync::LazyLock<Gf256Tables> =
+    std::sync::LazyLock::new(|| {
 
-    let mut log_table = [0u8; GF256_MODULUS];
+        let mut log_table =
+            [0u8; GF256_MODULUS];
 
-    let mut exp_table = [0u8; GF256_MODULUS];
+        let mut exp_table =
+            [0u8; GF256_MODULUS];
 
-    let mut x: u16 = 1;
+        let mut x: u16 = 1;
 
-    //for i in 0..255 {
-    for (i, value) in exp_table
-        .iter_mut()
-        .enumerate()
-        .take(255)
-    {
+        //for i in 0..255 {
+        for (i, value) in exp_table
+            .iter_mut()
+            .enumerate()
+            .take(255)
+        {
 
-        //exp_table[i] = x as u8;
-        *value = x as u8;
+            //exp_table[i] = x as u8;
+            *value = x as u8;
 
-        log_table[x as usize] = i as u8;
+            log_table[x as usize] =
+                i as u8;
 
-        x <<= 1;
+            x <<= 1;
 
-        if x >= 256 {
+            if x >= 256 {
 
-            x ^= GF256_GENERATOR_POLY;
+                x ^= GF256_GENERATOR_POLY;
+            }
         }
-    }
 
-    exp_table[255] = exp_table[0];
+        exp_table[255] = exp_table[0];
 
-    Gf256Tables {
-        log: log_table,
-        exp: exp_table,
-    }
-});
+        Gf256Tables {
+            log: log_table,
+            exp: exp_table,
+        }
+    });
 
 /// Performs addition in GF(2^8).
 ///
@@ -359,11 +400,17 @@ pub fn gf256_mul(
         return 0;
     }
 
-    let log_a = u16::from(GF256_TABLES.log[a as usize]);
+    let log_a = u16::from(
+        GF256_TABLES.log[a as usize],
+    );
 
-    let log_b = u16::from(GF256_TABLES.log[b as usize]);
+    let log_b = u16::from(
+        GF256_TABLES.log[b as usize],
+    );
 
-    GF256_TABLES.exp[((log_a + log_b) % 255) as usize]
+    GF256_TABLES.exp[((log_a + log_b)
+        % 255)
+        as usize]
 }
 
 /// Computes the multiplicative inverse in GF(2^8).
@@ -372,14 +419,24 @@ pub fn gf256_mul(
 /// * Panics if `a` is 0, as 0 has no multiplicative inverse.
 #[inline]
 
-pub fn gf256_inv(a: u8) -> Result<u8, String> {
+pub fn gf256_inv(
+    a: u8
+) -> Result<u8, String> {
 
     if a == 0 {
 
-        return Err("Cannot invert 0".to_string());
+        return Err("Cannot invert 0"
+            .to_string());
     }
 
-    Ok(GF256_TABLES.exp[(255 - u16::from(GF256_TABLES.log[a as usize])) as usize])
+    Ok(
+        GF256_TABLES.exp[(255
+            - u16::from(
+                GF256_TABLES.log
+                    [a as usize],
+            ))
+            as usize],
+    )
 }
 
 /// Performs division in GF(2^8).
@@ -397,7 +454,8 @@ pub fn gf256_div(
 
     if b == 0 {
 
-        return Err("Division by zero".to_string());
+        return Err("Division by zero"
+            .to_string());
     }
 
     if a == 0 {
@@ -405,11 +463,20 @@ pub fn gf256_div(
         return Ok(0);
     }
 
-    let log_a = u16::from(GF256_TABLES.log[a as usize]);
+    let log_a = u16::from(
+        GF256_TABLES.log[a as usize],
+    );
 
-    let log_b = u16::from(GF256_TABLES.log[b as usize]);
+    let log_b = u16::from(
+        GF256_TABLES.log[b as usize],
+    );
 
-    Ok(GF256_TABLES.exp[((log_a + 255 - log_b) % 255) as usize])
+    Ok(
+        GF256_TABLES.exp[((log_a + 255
+            - log_b)
+            % 255)
+            as usize],
+    )
 }
 
 /// Performs exponentiation in GF(2^8).
@@ -430,9 +497,13 @@ pub fn gf256_pow(
         return 0;
     }
 
-    let log_a = u16::from(GF256_TABLES.log[a as usize]);
+    let log_a = u16::from(
+        GF256_TABLES.log[a as usize],
+    );
 
-    let new_log = (u128::from(log_a) * u128::from(exp)) % 255;
+    let new_log = (u128::from(log_a)
+        * u128::from(exp))
+        % 255;
 
     GF256_TABLES.exp[new_log as usize]
 }

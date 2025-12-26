@@ -6,7 +6,9 @@ use std::os::raw::c_char;
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_group_create(json_str: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_group_create(
+    json_str: *const c_char
+) -> *mut c_char {
 
     let group: Group = match from_json_string(json_str) {
         | Some(g) => g,
@@ -68,12 +70,17 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_group_is_abelian(group_json: *const c_char) -> bool {
+pub unsafe extern "C" fn rssn_json_group_is_abelian(
+    group_json: *const c_char
+) -> bool {
 
-    let group: Group = match from_json_string(group_json) {
-        | Some(g) => g,
-        | None => return false,
-    };
+    let group: Group =
+        match from_json_string(
+            group_json,
+        ) {
+            | Some(g) => g,
+            | None => return false,
+        };
 
     group.is_abelian()
 }
@@ -85,15 +92,19 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
     a_json: *const c_char,
 ) -> usize {
 
-    let group: Group = match from_json_string(group_json) {
-        | Some(g) => g,
-        | None => return 0,
-    };
+    let group: Group =
+        match from_json_string(
+            group_json,
+        ) {
+            | Some(g) => g,
+            | None => return 0,
+        };
 
-    let a: GroupElement = match from_json_string(a_json) {
-        | Some(e) => e,
-        | None => return 0,
-    };
+    let a: GroupElement =
+        match from_json_string(a_json) {
+            | Some(e) => e,
+            | None => return 0,
+        };
 
     group
         .element_order(&a)
@@ -111,14 +122,17 @@ pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
         | None => return std::ptr::null_mut(),
     };
 
-    let classes = group.conjugacy_classes();
+    let classes =
+        group.conjugacy_classes();
 
     to_json_string(&classes)
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_group_center(group_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_group_center(
+    group_json: *const c_char
+) -> *mut c_char {
 
     let group: Group = match from_json_string(group_json) {
         | Some(g) => g,
@@ -132,12 +146,15 @@ pub unsafe extern "C" fn rssn_json_group_center(group_json: *const c_char) -> *m
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_representation_create(json_str: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_representation_create(
+    json_str: *const c_char
+) -> *mut c_char {
 
-    let rep: Representation = match from_json_string(json_str) {
-        | Some(r) => r,
-        | None => return std::ptr::null_mut(),
-    };
+    let rep: Representation =
+        match from_json_string(json_str) {
+            | Some(r) => r,
+            | None => return std::ptr::null_mut(),
+        };
 
     to_json_string(&rep)
 }
@@ -149,27 +166,35 @@ pub unsafe extern "C" fn rssn_json_representation_is_valid(
     group_json: *const c_char,
 ) -> bool {
 
-    let rep: Representation = match from_json_string(rep_json) {
-        | Some(r) => r,
-        | None => return false,
-    };
+    let rep: Representation =
+        match from_json_string(rep_json)
+        {
+            | Some(r) => r,
+            | None => return false,
+        };
 
-    let group: Group = match from_json_string(group_json) {
-        | Some(g) => g,
-        | None => return false,
-    };
+    let group: Group =
+        match from_json_string(
+            group_json,
+        ) {
+            | Some(g) => g,
+            | None => return false,
+        };
 
     rep.is_valid(&group)
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_character(rep_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_character(
+    rep_json: *const c_char
+) -> *mut c_char {
 
-    let rep: Representation = match from_json_string(rep_json) {
-        | Some(r) => r,
-        | None => return std::ptr::null_mut(),
-    };
+    let rep: Representation =
+        match from_json_string(rep_json) {
+            | Some(r) => r,
+            | None => return std::ptr::null_mut(),
+        };
 
     let chars = character(&rep);
 

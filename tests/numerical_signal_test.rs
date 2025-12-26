@@ -15,9 +15,14 @@ fn test_fft_basic() {
 
     let output = fft(&mut input);
 
-    assert!((output[0].re - 4.0).abs() < 1e-9);
+    assert!(
+        (output[0].re - 4.0).abs()
+            < 1e-9
+    );
 
-    assert!((output[1].re).abs() < 1e-9);
+    assert!(
+        (output[1].re).abs() < 1e-9
+    );
 }
 
 #[test]
@@ -44,7 +49,8 @@ fn test_cross_correlation_basic() {
 
     let v = vec![0.0, 1.0, 0.5];
 
-    let result = cross_correlation(&a, &v);
+    let result =
+        cross_correlation(&a, &v);
 
     // v_rev = [0.5, 1.0, 0.0]
     // a * v_rev = [1, 2, 3] * [0.5, 1, 0]
@@ -67,17 +73,27 @@ fn test_windows() {
 
     assert!((hann[0]).abs() < 1e-9);
 
-    assert!((hann[2] - 1.0).abs() < 1e-9);
+    assert!(
+        (hann[2] - 1.0).abs() < 1e-9
+    );
 
     assert!((hann[4]).abs() < 1e-9);
 
     let hamming = hamming_window(5);
 
-    assert!((hamming[0] - 0.08).abs() < 1e-9);
+    assert!(
+        (hamming[0] - 0.08).abs()
+            < 1e-9
+    );
 
-    assert!((hamming[2] - 1.0).abs() < 1e-9);
+    assert!(
+        (hamming[2] - 1.0).abs() < 1e-9
+    );
 
-    assert!((hamming[4] - 0.08).abs() < 1e-9);
+    assert!(
+        (hamming[4] - 0.08).abs()
+            < 1e-9
+    );
 }
 
 proptest! {

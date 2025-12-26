@@ -32,90 +32,121 @@ struct RecurrenceInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_factorial_json(input_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_comb_factorial_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
     let input: NInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some(
+                        "Invalid JSON input".to_string(),
+                    ),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let res = combinatorics::factorial(input.n);
+    let res = combinatorics::factorial(
+        input.n,
+    );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_permutations_json(input_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_comb_permutations_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
-    let input: NKInput = match from_json_string(input_json) {
+    let input: NKInput = match from_json_string(input_json)
+    {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some(
+                        "Invalid JSON input".to_string(),
+                    ),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let res = combinatorics::permutations(input.n, input.k);
+    let res =
+        combinatorics::permutations(
+            input.n, input.k,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_combinations_json(input_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_comb_combinations_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
-    let input: NKInput = match from_json_string(input_json) {
+    let input: NKInput = match from_json_string(input_json)
+    {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some(
+                        "Invalid JSON input".to_string(),
+                    ),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let res = combinatorics::combinations(input.n, input.k);
+    let res =
+        combinatorics::combinations(
+            input.n, input.k,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -126,20 +157,25 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
     input_json: *const c_char
 ) -> *mut c_char {
 
-    let input: RecurrenceInput = match from_json_string(input_json) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
+    let input: RecurrenceInput =
+        match from_json_string(input_json) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        f64,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON input"
+                                .to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     match combinatorics::solve_recurrence_numerical(
         &input.coeffs,
@@ -157,12 +193,13 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some(e),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some(e),
+                })
                 .unwrap(),
             )
         },
@@ -182,88 +219,113 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
     input_json: *const c_char
 ) -> *mut c_char {
 
-    let input: NKInput = match from_json_string(input_json) {
+    let input: NKInput = match from_json_string(input_json)
+    {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some(
+                        "Invalid JSON input".to_string(),
+                    ),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let res = combinatorics::stirling_second(input.n, input.k);
+    let res =
+        combinatorics::stirling_second(
+            input.n, input.k,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_bell_json(input_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_comb_bell_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
     let input: NInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some(
+                        "Invalid JSON input".to_string(),
+                    ),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let res = combinatorics::bell(input.n);
+    let res =
+        combinatorics::bell(input.n);
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_comb_catalan_json(input_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_comb_catalan_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
     let input: NInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some(
+                        "Invalid JSON input".to_string(),
+                    ),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let res = combinatorics::catalan(input.n);
+    let res =
+        combinatorics::catalan(input.n);
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -274,28 +336,37 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
     input_json: *const c_char
 ) -> *mut c_char {
 
-    let input: XNInput = match from_json_string(input_json) {
+    let input: XNInput = match from_json_string(input_json)
+    {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some(
+                        "Invalid JSON input".to_string(),
+                    ),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let res = combinatorics::rising_factorial(input.x, input.n);
+    let res =
+        combinatorics::rising_factorial(
+            input.x, input.n,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -306,28 +377,35 @@ pub unsafe extern "C" fn rssn_num_comb_falling_factorial_json(
     input_json: *const c_char
 ) -> *mut c_char {
 
-    let input: XNInput = match from_json_string(input_json) {
+    let input: XNInput = match from_json_string(input_json)
+    {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some(
+                        "Invalid JSON input".to_string(),
+                    ),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let res = combinatorics::falling_factorial(input.x, input.n);
+    let res =
+        combinatorics::falling_factorial(input.x, input.n);
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }

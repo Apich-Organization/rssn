@@ -82,11 +82,13 @@ pub fn taylor_series(
     order: usize,
 ) -> Expr {
 
-    let coeffs = calculate_taylor_coefficients(
-        expr, var, center, order,
-    );
+    let coeffs =
+        calculate_taylor_coefficients(
+            expr, var, center, order,
+        );
 
-    let mut series_sum = Expr::BigInt(BigInt::zero());
+    let mut series_sum =
+        Expr::BigInt(BigInt::zero());
 
     for (n, coeff) in coeffs
         .iter()
@@ -95,19 +97,24 @@ pub fn taylor_series(
 
         let power_term = Expr::new_pow(
             Expr::new_sub(
-                Expr::Variable(var.to_string()),
+                Expr::Variable(
+                    var.to_string(),
+                ),
                 center.clone(),
             ),
-            Expr::BigInt(BigInt::from(n)),
+            Expr::BigInt(BigInt::from(
+                n,
+            )),
         );
 
-        series_sum = simplify(&Expr::new_add(
-            series_sum,
-            Expr::new_mul(
-                coeff.clone(),
-                power_term,
-            ),
-        ));
+        series_sum =
+            simplify(&Expr::new_add(
+                series_sum,
+                Expr::new_mul(
+                    coeff.clone(),
+                    power_term,
+                ),
+            ));
     }
 
     series_sum
@@ -133,33 +140,40 @@ pub fn calculate_taylor_coefficients(
     order: usize,
 ) -> Vec<Expr> {
 
-    let mut coeffs = Vec::with_capacity(order + 1);
+    let mut coeffs =
+        Vec::with_capacity(order + 1);
 
-    let mut current_derivative = expr.clone();
+    let mut current_derivative =
+        expr.clone();
 
     for n in 0..=order {
 
-        let evaluated_derivative = evaluate_at_point(
-            &current_derivative,
-            var,
-            center,
-        );
+        let evaluated_derivative =
+            evaluate_at_point(
+                &current_derivative,
+                var,
+                center,
+            );
 
         let n_factorial = factorial(n);
 
-        let term_coefficient = simplify(&Expr::new_div(
-            evaluated_derivative,
-            Expr::Constant(n_factorial),
-        ));
+        let term_coefficient =
+            simplify(&Expr::new_div(
+                evaluated_derivative,
+                Expr::Constant(
+                    n_factorial,
+                ),
+            ));
 
         coeffs.push(term_coefficient);
 
         if n < order {
 
-            current_derivative = differentiate(
-                &current_derivative,
-                var,
-            );
+            current_derivative =
+                differentiate(
+                    &current_derivative,
+                    var,
+                );
         }
     }
 
@@ -199,24 +213,35 @@ pub fn laurent_series(
 
         let term = Expr::new_pow(
             Expr::new_sub(
-                Expr::Variable(var.to_string()),
+                Expr::Variable(
+                    var.to_string(),
+                ),
                 center.clone(),
             ),
-            Expr::BigInt(BigInt::from(k)),
+            Expr::BigInt(BigInt::from(
+                k,
+            )),
         );
 
-        let test_expr = simplify(&Expr::new_mul(
-            expr.clone(),
-            term,
-        ));
+        let test_expr =
+            simplify(&Expr::new_mul(
+                expr.clone(),
+                term,
+            ));
 
-        let val_at_center = simplify(&evaluate_at_point(
-            &test_expr, var, center,
-        ));
+        let val_at_center = simplify(
+            &evaluate_at_point(
+                &test_expr, var, center,
+            ),
+        );
 
-        if let Expr::Constant(c) = val_at_center {
+        if let Expr::Constant(c) =
+            val_at_center
+        {
 
-            if c.is_finite() && c.abs() > 1e-9 {
+            if c.is_finite()
+                && c.abs() > 1e-9
+            {
 
                 g_z = test_expr;
 
@@ -231,7 +256,9 @@ pub fn laurent_series(
             return Expr::Series(
                 Arc::new(expr.clone()),
                 var.to_string(),
-                Arc::new(center.clone()),
+                Arc::new(
+                    center.clone(),
+                ),
                 Arc::new(Expr::BigInt(
                     BigInt::from(order),
                 )),
@@ -245,7 +272,9 @@ pub fn laurent_series(
 
     let divisor = Expr::new_pow(
         Expr::new_sub(
-            Expr::Variable(var.to_string()),
+            Expr::Variable(
+                var.to_string(),
+            ),
             center.clone(),
         ),
         Expr::BigInt(BigInt::from(k)),
@@ -284,28 +313,32 @@ pub fn fourier_series(
         Expr::BigInt(BigInt::from(2)),
     ));
 
-    let neg_l = simplify(&Expr::new_neg(
-        l.clone(),
-    ));
+    let neg_l = simplify(
+        &Expr::new_neg(l.clone()),
+    );
 
     let a0_integrand = expr.clone();
 
-    let a0_integral = definite_integrate(
-        &a0_integrand,
-        var,
-        &neg_l,
-        &l,
-    );
+    let a0_integral =
+        definite_integrate(
+            &a0_integrand,
+            var,
+            &neg_l,
+            &l,
+        );
 
     let a0 = simplify(&Expr::new_div(
         a0_integral,
         l.clone(),
     ));
 
-    let mut series_sum = simplify(&Expr::new_div(
-        a0,
-        Expr::BigInt(BigInt::from(2)),
-    ));
+    let mut series_sum =
+        simplify(&Expr::new_div(
+            a0,
+            Expr::BigInt(BigInt::from(
+                2,
+            )),
+        ));
 
     for n in 1..=order {
 
@@ -319,57 +352,75 @@ pub fn fourier_series(
             l.clone(),
         );
 
-        let an_integrand = Expr::new_mul(
-            expr.clone(),
-            Expr::new_cos(n_pi_x_over_l.clone()),
-        );
+        let an_integrand =
+            Expr::new_mul(
+                expr.clone(),
+                Expr::new_cos(
+                    n_pi_x_over_l
+                        .clone(),
+                ),
+            );
 
-        let an_integral = definite_integrate(
-            &an_integrand,
-            var,
-            &neg_l,
-            &l,
-        );
+        let an_integral =
+            definite_integrate(
+                &an_integrand,
+                var,
+                &neg_l,
+                &l,
+            );
 
-        let an = simplify(&Expr::new_div(
-            an_integral,
-            l.clone(),
-        ));
+        let an =
+            simplify(&Expr::new_div(
+                an_integral,
+                l.clone(),
+            ));
 
         let an_term = Expr::new_mul(
             an,
-            Expr::new_cos(n_pi_x_over_l.clone()),
+            Expr::new_cos(
+                n_pi_x_over_l.clone(),
+            ),
         );
 
-        series_sum = simplify(&Expr::new_add(
-            series_sum, an_term,
-        ));
+        series_sum =
+            simplify(&Expr::new_add(
+                series_sum, an_term,
+            ));
 
-        let bn_integrand = Expr::new_mul(
-            expr.clone(),
-            Expr::new_sin(n_pi_x_over_l.clone()),
-        );
+        let bn_integrand =
+            Expr::new_mul(
+                expr.clone(),
+                Expr::new_sin(
+                    n_pi_x_over_l
+                        .clone(),
+                ),
+            );
 
-        let bn_integral = definite_integrate(
-            &bn_integrand,
-            var,
-            &neg_l,
-            &l,
-        );
+        let bn_integral =
+            definite_integrate(
+                &bn_integrand,
+                var,
+                &neg_l,
+                &l,
+            );
 
-        let bn = simplify(&Expr::new_div(
-            bn_integral,
-            l.clone(),
-        ));
+        let bn =
+            simplify(&Expr::new_div(
+                bn_integral,
+                l.clone(),
+            ));
 
         let bn_term = Expr::new_mul(
             bn,
-            Expr::new_sin(n_pi_x_over_l.clone()),
+            Expr::new_sin(
+                n_pi_x_over_l.clone(),
+            ),
         );
 
-        series_sum = simplify(&Expr::new_add(
-            series_sum, bn_term,
-        ));
+        series_sum =
+            simplify(&Expr::new_add(
+                series_sum, bn_term,
+            ));
     }
 
     series_sum
@@ -398,18 +449,29 @@ pub fn summation(
     upper_bound: &Expr,
 ) -> Expr {
 
-    if let (Expr::Constant(lower), Expr::Variable(upper_name)) = (
+    if let (
+        Expr::Constant(lower),
+        Expr::Variable(upper_name),
+    ) = (
         lower_bound,
         upper_bound,
     ) {
 
-        if let Expr::Add(a, d_n) = expr {
+        if let Expr::Add(a, d_n) = expr
+        {
 
-            if let Expr::Mul(d, n_var) = &**d_n {
+            if let Expr::Mul(d, n_var) =
+                &**d_n
+            {
 
-                if let Expr::Variable(n_name) = &**n_var {
+                if let Expr::Variable(
+                    n_name,
+                ) = &**n_var
+                {
 
-                    if n_name == var && *lower == 0.0 {
+                    if n_name == var
+                        && *lower == 0.0
+                    {
 
                         let n = Arc::new(Expr::Variable(
                             upper_name.clone(),
@@ -451,9 +513,14 @@ pub fn summation(
         )
     ) {
 
-        if let Expr::Power(base, exp) = expr {
+        if let Expr::Power(base, exp) =
+            expr
+        {
 
-            if let Expr::Variable(exp_var_name) = &**exp {
+            if let Expr::Variable(
+                exp_var_name,
+            ) = &**exp
+            {
 
                 if exp_var_name == var {
 
@@ -469,14 +536,21 @@ pub fn summation(
         }
     }
 
-    if let (Some(lower_val), Some(upper_val)) = (
+    if let (
+        Some(lower_val),
+        Some(upper_val),
+    ) = (
         lower_bound.to_f64(),
         upper_bound.to_f64(),
     ) {
 
-        let mut sum = Expr::BigInt(BigInt::zero());
+        let mut sum = Expr::BigInt(
+            BigInt::zero(),
+        );
 
-        for i in lower_val as i64..=upper_val as i64 {
+        for i in lower_val as i64
+            ..=upper_val as i64
+        {
 
             sum = simplify(&Expr::new_add(
                 sum,
@@ -521,14 +595,20 @@ pub fn product(
     upper_bound: &Expr,
 ) -> Expr {
 
-    if let (Some(lower_val), Some(upper_val)) = (
+    if let (
+        Some(lower_val),
+        Some(upper_val),
+    ) = (
         lower_bound.to_f64(),
         upper_bound.to_f64(),
     ) {
 
-        let mut prod = Expr::BigInt(BigInt::one());
+        let mut prod =
+            Expr::BigInt(BigInt::one());
 
-        for i in lower_val as i64..=upper_val as i64 {
+        for i in lower_val as i64
+            ..=upper_val as i64
+        {
 
             prod = simplify(&Expr::new_mul(
                 prod,
@@ -546,8 +626,12 @@ pub fn product(
         Expr::Product(
             Arc::new(expr.clone()),
             var.to_string(),
-            Arc::new(lower_bound.clone()),
-            Arc::new(upper_bound.clone()),
+            Arc::new(
+                lower_bound.clone(),
+            ),
+            Arc::new(
+                upper_bound.clone(),
+            ),
         )
     }
 }
@@ -571,7 +655,13 @@ pub fn analyze_convergence(
     var: &str,
 ) -> Expr {
 
-    if let Expr::Summation(term, index_var, _, _) = series_expr {
+    if let Expr::Summation(
+        term,
+        index_var,
+        _,
+        _,
+    ) = series_expr
+    {
 
         if index_var == var {
 
@@ -586,18 +676,24 @@ pub fn analyze_convergence(
                 ),
             );
 
-            let ratio = simplify(&Expr::new_abs(
-                Expr::new_div(
-                    an_plus_1,
-                    an.as_ref().clone(),
+            let ratio = simplify(
+                &Expr::new_abs(
+                    Expr::new_div(
+                        an_plus_1,
+                        an.as_ref()
+                            .clone(),
+                    ),
                 ),
-            ));
-
-            let limit_expr = Expr::Limit(
-                Arc::new(ratio),
-                var.to_string(),
-                Arc::new(Expr::Infinity),
             );
+
+            let limit_expr =
+                Expr::Limit(
+                    Arc::new(ratio),
+                    var.to_string(),
+                    Arc::new(
+                        Expr::Infinity,
+                    ),
+                );
 
             return Expr::Lt(
                 Arc::new(limit_expr),
@@ -647,31 +743,38 @@ pub fn asymptotic_expansion(
 
     if let Expr::Div(_p, _q) = expr {
 
-        let y = Expr::Variable("y".to_string());
+        let y = Expr::Variable(
+            "y".to_string(),
+        );
 
         let one_over_y = Expr::new_div(
             Expr::Constant(1.0),
             y,
         );
 
-        let substituted_expr = substitute(
-            expr,
-            var,
-            &one_over_y,
-        );
+        let substituted_expr =
+            substitute(
+                expr,
+                var,
+                &one_over_y,
+            );
 
-        let simplified_expr_in_y = simplify(&substituted_expr);
+        let simplified_expr_in_y =
+            simplify(&substituted_expr);
 
-        let taylor_series_in_y = taylor_series(
-            &simplified_expr_in_y,
-            "y",
-            &Expr::Constant(0.0),
-            order,
-        );
+        let taylor_series_in_y =
+            taylor_series(
+                &simplified_expr_in_y,
+                "y",
+                &Expr::Constant(0.0),
+                order,
+            );
 
         let one_over_x = Expr::new_div(
             Expr::Constant(1.0),
-            Expr::Variable(var.to_string()),
+            Expr::Variable(
+                var.to_string(),
+            ),
         );
 
         let final_series = substitute(
@@ -721,12 +824,13 @@ pub fn analytic_continuation(
     order: usize,
 ) -> Expr {
 
-    let series_representation = taylor_series(
-        expr,
-        var,
-        original_center,
-        order + 5,
-    );
+    let series_representation =
+        taylor_series(
+            expr,
+            var,
+            original_center,
+            order + 5,
+        );
 
     taylor_series(
         &series_representation,

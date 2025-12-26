@@ -17,7 +17,8 @@ unsafe fn parse_c_str_array(
         return None;
     }
 
-    let mut vars = Vec::with_capacity(len);
+    let mut vars =
+        Vec::with_capacity(len);
 
     for i in 0..len {
 
@@ -31,7 +32,9 @@ unsafe fn parse_c_str_array(
         let c_str = CStr::from_ptr(ptr);
 
         match c_str.to_str() {
-            | Ok(s) => vars.push(s.to_string()),
+            | Ok(s) => {
+                vars.push(s.to_string())
+            },
             | Err(_) => return None,
         }
     }
@@ -52,16 +55,23 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
     free_vars_len: c_int,
 ) -> bool {
 
-    if equations_ptr.is_null() || sol_vars_ptr.is_null() || sol_exprs_ptr.is_null() {
+    if equations_ptr.is_null()
+        || sol_vars_ptr.is_null()
+        || sol_exprs_ptr.is_null()
+    {
 
         return false;
     }
 
-    let mut equations = Vec::with_capacity(equations_len as usize);
+    let mut equations =
+        Vec::with_capacity(
+            equations_len as usize,
+        );
 
     for i in 0..equations_len {
 
-        let ptr = *equations_ptr.add(i as usize);
+        let ptr = *equations_ptr
+            .add(i as usize);
 
         if ptr.is_null() {
 
@@ -71,19 +81,21 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
         equations.push((*ptr).clone());
     }
 
-    let sol_vars = match parse_c_str_array(
-        sol_vars_ptr,
-        sol_len as usize,
-    ) {
-        | Some(v) => v,
-        | None => return false,
-    };
+    let sol_vars =
+        match parse_c_str_array(
+            sol_vars_ptr,
+            sol_len as usize,
+        ) {
+            | Some(v) => v,
+            | None => return false,
+        };
 
     let mut solution = HashMap::new();
 
     for i in 0..sol_len {
 
-        let expr_ptr = *sol_exprs_ptr.add(i as usize);
+        let expr_ptr = *sol_exprs_ptr
+            .add(i as usize);
 
         if expr_ptr.is_null() {
 
@@ -91,26 +103,30 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
         }
 
         solution.insert(
-            sol_vars[i as usize].clone(),
+            sol_vars[i as usize]
+                .clone(),
             (*expr_ptr).clone(),
         );
     }
 
-    let free_vars_strings = match parse_c_str_array(
-        free_vars_ptr,
-        free_vars_len as usize,
-    ) {
-        | Some(v) => v,
-        | None => return false,
-    };
+    let free_vars_strings =
+        match parse_c_str_array(
+            free_vars_ptr,
+            free_vars_len as usize,
+        ) {
+            | Some(v) => v,
+            | None => return false,
+        };
 
-    let free_vars: Vec<&str> = free_vars_strings
-        .iter()
-        .map(|s| s.as_str())
-        .collect();
+    let free_vars: Vec<&str> =
+        free_vars_strings
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
     proof::verify_equation_solution(
-        &equations, &solution, &free_vars,
+        &equations, &solution,
+        &free_vars,
     )
 }
 
@@ -123,15 +139,21 @@ pub unsafe extern "C" fn rssn_verify_indefinite_integral_handle(
     var_ptr: *const c_char,
 ) -> bool {
 
-    if integrand_ptr.is_null() || integral_result_ptr.is_null() || var_ptr.is_null() {
+    if integrand_ptr.is_null()
+        || integral_result_ptr.is_null()
+        || var_ptr.is_null()
+    {
 
         return false;
     }
 
-    let var = match CStr::from_ptr(var_ptr).to_str() {
-        | Ok(s) => s,
-        | Err(_) => return false,
-    };
+    let var =
+        match CStr::from_ptr(var_ptr)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => return false,
+        };
 
     proof::verify_indefinite_integral(
         &*integrand_ptr,
@@ -151,15 +173,21 @@ pub unsafe extern "C" fn rssn_verify_definite_integral_handle(
     symbolic_result_ptr: *const Expr,
 ) -> bool {
 
-    if integrand_ptr.is_null() || var_ptr.is_null() || symbolic_result_ptr.is_null() {
+    if integrand_ptr.is_null()
+        || var_ptr.is_null()
+        || symbolic_result_ptr.is_null()
+    {
 
         return false;
     }
 
-    let var = match CStr::from_ptr(var_ptr).to_str() {
-        | Ok(s) => s,
-        | Err(_) => return false,
-    };
+    let var =
+        match CStr::from_ptr(var_ptr)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => return false,
+        };
 
     proof::verify_definite_integral(
         &*integrand_ptr,
@@ -179,20 +207,32 @@ pub unsafe extern "C" fn rssn_verify_ode_solution_handle(
     var_ptr: *const c_char,
 ) -> bool {
 
-    if ode_ptr.is_null() || solution_ptr.is_null() || func_name_ptr.is_null() || var_ptr.is_null() {
+    if ode_ptr.is_null()
+        || solution_ptr.is_null()
+        || func_name_ptr.is_null()
+        || var_ptr.is_null()
+    {
 
         return false;
     }
 
-    let func_name = match CStr::from_ptr(func_name_ptr).to_str() {
-        | Ok(s) => s,
-        | Err(_) => return false,
-    };
+    let func_name =
+        match CStr::from_ptr(
+            func_name_ptr,
+        )
+        .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => return false,
+        };
 
-    let var = match CStr::from_ptr(var_ptr).to_str() {
-        | Ok(s) => s,
-        | Err(_) => return false,
-    };
+    let var =
+        match CStr::from_ptr(var_ptr)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => return false,
+        };
 
     proof::verify_ode_solution(
         &*ode_ptr,
@@ -210,7 +250,9 @@ pub unsafe extern "C" fn rssn_verify_matrix_inverse_handle(
     inverse_ptr: *const Expr,
 ) -> bool {
 
-    if original_ptr.is_null() || inverse_ptr.is_null() {
+    if original_ptr.is_null()
+        || inverse_ptr.is_null()
+    {
 
         return false;
     }
@@ -230,15 +272,21 @@ pub unsafe extern "C" fn rssn_verify_derivative_handle(
     var_ptr: *const c_char,
 ) -> bool {
 
-    if original_func_ptr.is_null() || derivative_func_ptr.is_null() || var_ptr.is_null() {
+    if original_func_ptr.is_null()
+        || derivative_func_ptr.is_null()
+        || var_ptr.is_null()
+    {
 
         return false;
     }
 
-    let var = match CStr::from_ptr(var_ptr).to_str() {
-        | Ok(s) => s,
-        | Err(_) => return false,
-    };
+    let var =
+        match CStr::from_ptr(var_ptr)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => return false,
+        };
 
     proof::verify_derivative(
         &*original_func_ptr,
@@ -257,15 +305,22 @@ pub unsafe extern "C" fn rssn_verify_limit_handle(
     limit_val_ptr: *const Expr,
 ) -> bool {
 
-    if f_ptr.is_null() || var_ptr.is_null() || target_ptr.is_null() || limit_val_ptr.is_null() {
+    if f_ptr.is_null()
+        || var_ptr.is_null()
+        || target_ptr.is_null()
+        || limit_val_ptr.is_null()
+    {
 
         return false;
     }
 
-    let var = match CStr::from_ptr(var_ptr).to_str() {
-        | Ok(s) => s,
-        | Err(_) => return false,
-    };
+    let var =
+        match CStr::from_ptr(var_ptr)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => return false,
+        };
 
     proof::verify_limit(
         &*f_ptr,

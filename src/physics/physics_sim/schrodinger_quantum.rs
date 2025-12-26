@@ -13,7 +13,9 @@ use serde::{
 };
 
 /// Parameters for the Schrodinger simulation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct SchrodingerParameters {
     pub nx: usize,
@@ -41,15 +43,23 @@ pub fn run_schrodinger_simulation(
     initial_psi: &mut [Complex<f64>],
 ) -> Result<Vec<Array2<f64>>, String> {
 
-    let dx = params.lx / params.nx as f64;
+    let dx =
+        params.lx / params.nx as f64;
 
-    let dy = params.ly / params.ny as f64;
+    let dy =
+        params.ly / params.ny as f64;
 
-    let kx = create_k_grid(params.nx, dx);
+    let kx =
+        create_k_grid(params.nx, dx);
 
-    let ky = create_k_grid(params.ny, dy);
+    let ky =
+        create_k_grid(params.ny, dy);
 
-    let mut kinetic_operator = vec![Complex::default(); params.nx * params.ny];
+    let mut kinetic_operator =
+        vec![
+            Complex::default();
+            params.nx * params.ny
+        ];
 
     let hbar = params.hbar;
 
@@ -71,50 +81,73 @@ pub fn run_schrodinger_simulation(
                 .enumerate()
             {
 
-                let k_sq = kx[i].powi(2) + ky_sq;
+                let k_sq = kx[i]
+                    .powi(2)
+                    + ky_sq;
 
-                let phase = -hbar * k_sq / (2.0 * mass) * dt;
+                let phase = -hbar
+                    * k_sq
+                    / (2.0 * mass)
+                    * dt;
 
-                *val = Complex::from_polar(1.0, phase);
+                *val =
+                    Complex::from_polar(
+                        1.0, phase,
+                    );
             }
         });
 
-    let potential_operator: Vec<_> = params
-        .potential
-        .par_iter()
-        .map(|&v| {
+    let potential_operator: Vec<_> =
+        params
+            .potential
+            .par_iter()
+            .map(|&v| {
 
-            let phase = -v * params.dt / (2.0 * params.hbar);
+                let phase = -v
+                    * params.dt
+                    / (2.0
+                        * params.hbar);
 
-            Complex::from_polar(1.0, phase)
-        })
-        .collect();
+                Complex::from_polar(
+                    1.0, phase,
+                )
+            })
+            .collect();
 
     let mut snapshots = Vec::new();
 
-    let mut psi = initial_psi.to_owned();
+    let mut psi =
+        initial_psi.to_owned();
 
     for t_step in 0..params.time_steps {
 
         psi.par_iter_mut()
             .zip(&potential_operator)
-            .for_each(|(p, v_op)| *p *= v_op);
+            .for_each(|(p, v_op)| {
+                *p *= v_op
+            });
 
         fft2d(
-            &mut psi, params.nx, params.ny,
+            &mut psi, params.nx,
+            params.ny,
         );
 
         psi.par_iter_mut()
             .zip(&kinetic_operator)
-            .for_each(|(p, k_op)| *p *= k_op);
+            .for_each(|(p, k_op)| {
+                *p *= k_op
+            });
 
         ifft2d(
-            &mut psi, params.nx, params.ny,
+            &mut psi, params.nx,
+            params.ny,
         );
 
         psi.par_iter_mut()
             .zip(&potential_operator)
-            .for_each(|(p, v_op)| *p *= v_op);
+            .for_each(|(p, v_op)| {
+                *p *= v_op
+            });
 
         if t_step % 10 == 0 {
 
@@ -125,10 +158,15 @@ pub fn run_schrodinger_simulation(
 
             snapshots.push(
                 Array2::from_shape_vec(
-                    (params.ny, params.nx),
+                    (
+                        params.ny,
+                        params.nx,
+                    ),
                     probability_density,
                 )
-                .map_err(|e| e.to_string())?,
+                .map_err(|e| {
+                    e.to_string()
+                })?,
             );
         }
     }
@@ -138,15 +176,21 @@ pub fn run_schrodinger_simulation(
 
 /// An example scenario simulating a wave packet hitting a double slit.
 
-pub fn simulate_double_slit_scenario() -> Result<(), String> {
+pub fn simulate_double_slit_scenario(
+) -> Result<(), String> {
 
     const NX: usize = 256;
 
     const NY: usize = 256;
 
-    println!("Running 2D Schrodinger simulation for a double slit...");
+    println!(
+        "Running 2D Schrodinger \
+         simulation for a double \
+         slit..."
+    );
 
-    let mut potential = vec![0.0; NX * NY];
+    let mut potential =
+        vec![0.0; NX * NY];
 
     let slit_center_y = NY / 2;
 
@@ -158,31 +202,46 @@ pub fn simulate_double_slit_scenario() -> Result<(), String> {
 
     for j in 0..NY {
 
-        let is_slit1 = j > slit_center_y - slit_spacing / 2 - slit_width
-            && j < slit_center_y - slit_spacing / 2;
+        let is_slit1 = j
+            > slit_center_y
+                - slit_spacing / 2
+                - slit_width
+            && j < slit_center_y
+                - slit_spacing / 2;
 
-        let is_slit2 = j > slit_center_y + slit_spacing / 2
-            && j < slit_center_y + slit_spacing / 2 + slit_width;
+        let is_slit2 = j
+            > slit_center_y
+                + slit_spacing / 2
+            && j < slit_center_y
+                + slit_spacing / 2
+                + slit_width;
 
         if !is_slit1 && !is_slit2 {
 
-            potential[j * NX + barrier_x] = 1e5;
+            potential
+                [j * NX + barrier_x] =
+                1e5;
         }
     }
 
-    let params = SchrodingerParameters {
-        nx: NX,
-        ny: NY,
-        lx: NX as f64,
-        ly: NY as f64,
-        dt: 0.1,
-        time_steps: 300,
-        hbar: 1.0,
-        mass: 1.0,
-        potential,
-    };
+    let params =
+        SchrodingerParameters {
+            nx: NX,
+            ny: NY,
+            lx: NX as f64,
+            ly: NY as f64,
+            dt: 0.1,
+            time_steps: 300,
+            hbar: 1.0,
+            mass: 1.0,
+            potential,
+        };
 
-    let mut initial_psi = vec![Complex::default(); NX * NY];
+    let mut initial_psi =
+        vec![
+            Complex::default();
+            NX * NY
+        ];
 
     let initial_pos = (
         NX as f64 / 10.0,
@@ -197,31 +256,50 @@ pub fn simulate_double_slit_scenario() -> Result<(), String> {
 
         for i in 0..NX {
 
-            let dx = i as f64 - initial_pos.0;
+            let dx = i as f64
+                - initial_pos.0;
 
-            let dy = j as f64 - initial_pos.1;
+            let dy = j as f64
+                - initial_pos.1;
 
-            let norm_sq = dx * dx + dy * dy;
+            let norm_sq =
+                dx * dx + dy * dy;
 
-            let phase = initial_momentum.0 * dx + initial_momentum.1 * dy;
+            let phase = initial_momentum
+                .0
+                * dx
+                + initial_momentum.1
+                    * dy;
 
-            let envelope = (-norm_sq / (2.0 * packet_width_sq)).exp();
+            let envelope = (-norm_sq
+                / (2.0
+                    * packet_width_sq))
+                .exp();
 
-            initial_psi[j * NX + i] = Complex::from_polar(envelope, phase);
+            initial_psi[j * NX + i] =
+                Complex::from_polar(
+                    envelope, phase,
+                );
         }
     }
 
-    let snapshots = run_schrodinger_simulation(
-        &params,
-        &mut initial_psi,
-    )?;
+    let snapshots =
+        run_schrodinger_simulation(
+            &params,
+            &mut initial_psi,
+        )?;
 
-    if let Some(final_state) = snapshots.last() {
+    if let Some(final_state) =
+        snapshots.last()
+    {
 
-        let filename = "schrodinger_double_slit.npy";
+        let filename =
+            "schrodinger_double_slit.\
+             npy";
 
         println!(
-            "Saving final probability density to {}",
+            "Saving final probability \
+             density to {}",
             filename
         );
 
@@ -231,7 +309,10 @@ pub fn simulate_double_slit_scenario() -> Result<(), String> {
         )?;
     } else {
 
-        println!("Simulation produced no snapshots.");
+        println!(
+            "Simulation produced no \
+             snapshots."
+        );
     }
 
     Ok(())

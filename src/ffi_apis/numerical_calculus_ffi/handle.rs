@@ -18,24 +18,37 @@ pub unsafe extern "C" fn rssn_num_calculus_partial_derivative(
     result: *mut f64,
 ) -> i32 {
 
-    if f.is_null() || var.is_null() || result.is_null() {
+    if f.is_null()
+        || var.is_null()
+        || result.is_null()
+    {
 
         return -1;
     }
 
     let f_expr = &*f;
 
-    let var_str = match CStr::from_ptr(var).to_str() {
-        | Ok(s) => s,
-        | Err(_) => {
+    let var_str =
+        match CStr::from_ptr(var)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => {
 
-            update_last_error("Invalid UTF-8 string for variable name".to_string());
+                update_last_error(
+                    "Invalid UTF-8 \
+                     string for \
+                     variable name"
+                        .to_string(),
+                );
 
-            return -1;
-        },
-    };
+                return -1;
+            },
+        };
 
-    match calculus::partial_derivative(f_expr, var_str, x) {
+    match calculus::partial_derivative(
+        f_expr, var_str, x,
+    ) {
         | Ok(val) => {
 
             *result = val;
@@ -62,14 +75,18 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
     n_vars: usize,
 ) -> *mut Vec<f64> {
 
-    if f.is_null() || vars.is_null() || point.is_null() {
+    if f.is_null()
+        || vars.is_null()
+        || point.is_null()
+    {
 
         return ptr::null_mut();
     }
 
     let f_expr = &*f;
 
-    let mut vars_list = Vec::with_capacity(n_vars);
+    let mut vars_list =
+        Vec::with_capacity(n_vars);
 
     for i in 0..n_vars {
 
@@ -78,19 +95,25 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
         if v_ptr.is_null() {
 
             update_last_error(format!(
-                "Variable at index {} is null",
+                "Variable at index {} \
+                 is null",
                 i
             ));
 
             return ptr::null_mut();
         }
 
-        match CStr::from_ptr(v_ptr).to_str() {
-            | Ok(s) => vars_list.push(s),
+        match CStr::from_ptr(v_ptr)
+            .to_str()
+        {
+            | Ok(s) => {
+                vars_list.push(s)
+            },
             | Err(_) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 for variable at index {}",
+                    "Invalid UTF-8 for variable at index \
+                     {}",
                     i
                 ));
 
@@ -99,14 +122,21 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
         }
     }
 
-    let point_slice = std::slice::from_raw_parts(point, n_vars);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point, n_vars,
+        );
 
     match calculus::gradient(
         f_expr,
         &vars_list,
         point_slice,
     ) {
-        | Ok(grad) => Box::into_raw(Box::new(grad)),
+        | Ok(grad) => {
+            Box::into_raw(Box::new(
+                grad,
+            ))
+        },
         | Err(e) => {
 
             update_last_error(e);
@@ -128,30 +158,42 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
     n_vars: usize,
 ) -> *mut Matrix<f64> {
 
-    if funcs.is_null() || vars.is_null() || point.is_null() {
+    if funcs.is_null()
+        || vars.is_null()
+        || point.is_null()
+    {
 
         return ptr::null_mut();
     }
 
-    let mut funcs_list = Vec::with_capacity(n_funcs);
+    let mut funcs_list =
+        Vec::with_capacity(n_funcs);
 
     for i in 0..n_funcs {
 
-        funcs_list.push((*(*funcs.add(i))).clone());
+        funcs_list.push(
+            (*(*funcs.add(i))).clone(),
+        );
     }
 
-    let mut vars_list = Vec::with_capacity(n_vars);
+    let mut vars_list =
+        Vec::with_capacity(n_vars);
 
     for i in 0..n_vars {
 
         let v_ptr = *vars.add(i);
 
-        match CStr::from_ptr(v_ptr).to_str() {
-            | Ok(s) => vars_list.push(s),
+        match CStr::from_ptr(v_ptr)
+            .to_str()
+        {
+            | Ok(s) => {
+                vars_list.push(s)
+            },
             | Err(_) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 for variable at index {}",
+                    "Invalid UTF-8 for variable at index \
+                     {}",
                     i
                 ));
 
@@ -160,7 +202,10 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
         }
     }
 
-    let point_slice = std::slice::from_raw_parts(point, n_vars);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point, n_vars,
+        );
 
     match calculus::jacobian(
         &funcs_list,
@@ -171,9 +216,18 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
 
             let rows = jac_vecs.len();
 
-            let cols = if rows > 0 { jac_vecs[0].len() } else { 0 };
+            let cols = if rows > 0 {
 
-            let mut flattened = Vec::with_capacity(rows * cols);
+                jac_vecs[0].len()
+            } else {
+
+                0
+            };
+
+            let mut flattened =
+                Vec::with_capacity(
+                    rows * cols,
+                );
 
             for row in jac_vecs {
 
@@ -182,7 +236,8 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
 
             Box::into_raw(Box::new(
                 Matrix::new(
-                    rows, cols, flattened,
+                    rows, cols,
+                    flattened,
                 ),
             ))
         },
@@ -206,25 +261,34 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
     n_vars: usize,
 ) -> *mut Matrix<f64> {
 
-    if f.is_null() || vars.is_null() || point.is_null() {
+    if f.is_null()
+        || vars.is_null()
+        || point.is_null()
+    {
 
         return ptr::null_mut();
     }
 
     let f_expr = &*f;
 
-    let mut vars_list = Vec::with_capacity(n_vars);
+    let mut vars_list =
+        Vec::with_capacity(n_vars);
 
     for i in 0..n_vars {
 
         let v_ptr = *vars.add(i);
 
-        match CStr::from_ptr(v_ptr).to_str() {
-            | Ok(s) => vars_list.push(s),
+        match CStr::from_ptr(v_ptr)
+            .to_str()
+        {
+            | Ok(s) => {
+                vars_list.push(s)
+            },
             | Err(_) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 for variable at index {}",
+                    "Invalid UTF-8 for variable at index \
+                     {}",
                     i
                 ));
 
@@ -233,7 +297,10 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
         }
     }
 
-    let point_slice = std::slice::from_raw_parts(point, n_vars);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point, n_vars,
+        );
 
     match calculus::hessian(
         f_expr,
@@ -244,9 +311,18 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
 
             let rows = hess_vecs.len();
 
-            let cols = if rows > 0 { hess_vecs[0].len() } else { 0 };
+            let cols = if rows > 0 {
 
-            let mut flattened = Vec::with_capacity(rows * cols);
+                hess_vecs[0].len()
+            } else {
+
+                0
+            };
+
+            let mut flattened =
+                Vec::with_capacity(
+                    rows * cols,
+                );
 
             for row in hess_vecs {
 
@@ -255,7 +331,8 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
 
             Box::into_raw(Box::new(
                 Matrix::new(
-                    rows, cols, flattened,
+                    rows, cols,
+                    flattened,
                 ),
             ))
         },

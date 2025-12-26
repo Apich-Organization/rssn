@@ -63,7 +63,11 @@ fn test_particle_kinetic_energy() {
     );
 
     // KE = 0.5 * 2 * (3² + 4² + 0²) = 1 * 25 = 25
-    assert!((p.kinetic_energy() - 25.0).abs() < 1e-10);
+    assert!(
+        (p.kinetic_energy() - 25.0)
+            .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -96,7 +100,9 @@ fn test_particle_speed() {
         vec![3.0, 4.0, 0.0],
     );
 
-    assert!((p.speed() - 5.0).abs() < 1e-10);
+    assert!(
+        (p.speed() - 5.0).abs() < 1e-10
+    );
 }
 
 #[test]
@@ -149,10 +155,16 @@ fn test_lennard_jones_equilibrium() {
         vec![0.0, 0.0, 0.0],
     );
 
-    let (potential, force) = lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap();
+    let (potential, force) =
+        lennard_jones_interaction(
+            &p1, &p2, 1.0, 1.0,
+        )
+        .unwrap();
 
     // Potential at equilibrium is -ε
-    assert!((potential + 1.0).abs() < 1e-10);
+    assert!(
+        (potential + 1.0).abs() < 1e-10
+    );
 
     // Force should be approximately zero
     let force_mag: f64 = force
@@ -183,7 +195,11 @@ fn test_lennard_jones_repulsive() {
         vec![0.0, 0.0, 0.0],
     );
 
-    let (potential, _force) = lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap();
+    let (potential, _force) =
+        lennard_jones_interaction(
+            &p1, &p2, 1.0, 1.0,
+        )
+        .unwrap();
 
     assert!(potential > 0.0);
 }
@@ -210,10 +226,11 @@ fn test_morse_at_equilibrium() {
         vec![0.0, 0.0, 0.0],
     );
 
-    let (potential, _force) = morse_interaction(
-        &p1, &p2, 1.0, 1.0, 1.0,
-    )
-    .unwrap();
+    let (potential, _force) =
+        morse_interaction(
+            &p1, &p2, 1.0, 1.0, 1.0,
+        )
+        .unwrap();
 
     // At r = re, potential should be 0
     assert!(potential.abs() < 1e-10);
@@ -237,10 +254,11 @@ fn test_morse_stretched() {
         vec![0.0, 0.0, 0.0],
     );
 
-    let (potential, _force) = morse_interaction(
-        &p1, &p2, 1.0, 1.0, 1.0,
-    )
-    .unwrap();
+    let (potential, _force) =
+        morse_interaction(
+            &p1, &p2, 1.0, 1.0, 1.0,
+        )
+        .unwrap();
 
     // At r > re, potential should be positive
     assert!(potential > 0.0);
@@ -268,7 +286,11 @@ fn test_harmonic_at_equilibrium() {
         vec![0.0, 0.0, 0.0],
     );
 
-    let (potential, _force) = harmonic_interaction(&p1, &p2, 100.0, 1.0).unwrap();
+    let (potential, _force) =
+        harmonic_interaction(
+            &p1, &p2, 100.0, 1.0,
+        )
+        .unwrap();
 
     // At r = r0, potential should be 0
     assert!(potential.abs() < 1e-10);
@@ -292,10 +314,17 @@ fn test_harmonic_stretched() {
         vec![0.0, 0.0, 0.0],
     );
 
-    let (potential, _force) = harmonic_interaction(&p1, &p2, 100.0, 1.0).unwrap();
+    let (potential, _force) =
+        harmonic_interaction(
+            &p1, &p2, 100.0, 1.0,
+        )
+        .unwrap();
 
     // V = 0.5 * 100 * (1.5 - 1.0)² = 50 * 0.25 = 12.5
-    assert!((potential - 12.5).abs() < 1e-10);
+    assert!(
+        (potential - 12.5).abs()
+            < 1e-10
+    );
 }
 
 // ============================================================================
@@ -322,10 +351,16 @@ fn test_coulomb_like_charges() {
         1.0,
     );
 
-    let (potential, _force) = coulomb_interaction(&p1, &p2, 1.0).unwrap();
+    let (potential, _force) =
+        coulomb_interaction(
+            &p1, &p2, 1.0,
+        )
+        .unwrap();
 
     // V = k * q1 * q2 / r = 1 * 1 * 1 / 1 = 1
-    assert!((potential - 1.0).abs() < 1e-10);
+    assert!(
+        (potential - 1.0).abs() < 1e-10
+    );
 }
 
 #[test]
@@ -348,10 +383,16 @@ fn test_coulomb_opposite_charges() {
         -1.0,
     );
 
-    let (potential, _force) = coulomb_interaction(&p1, &p2, 1.0).unwrap();
+    let (potential, _force) =
+        coulomb_interaction(
+            &p1, &p2, 1.0,
+        )
+        .unwrap();
 
     // V = k * q1 * q2 / r = 1 * 1 * (-1) / 1 = -1
-    assert!((potential + 1.0).abs() < 1e-10);
+    assert!(
+        (potential + 1.0).abs() < 1e-10
+    );
 }
 
 // ============================================================================
@@ -377,7 +418,9 @@ fn test_total_kinetic_energy() {
         ),
     ];
 
-    let ke = total_kinetic_energy(&particles);
+    let ke = total_kinetic_energy(
+        &particles,
+    );
 
     // KE = 0.5 * 1 * 1 + 0.5 * 1 * 1 = 1.0
     assert!((ke - 1.0).abs() < 1e-10);
@@ -402,7 +445,9 @@ fn test_total_momentum() {
         ),
     ];
 
-    let mom = total_momentum(&particles).unwrap();
+    let mom =
+        total_momentum(&particles)
+            .unwrap();
 
     // Opposite velocities should cancel
     assert!(mom[0].abs() < 1e-10);
@@ -427,9 +472,13 @@ fn test_center_of_mass() {
         ),
     ];
 
-    let com = center_of_mass(&particles).unwrap();
+    let com =
+        center_of_mass(&particles)
+            .unwrap();
 
-    assert!((com[0] - 1.0).abs() < 1e-10);
+    assert!(
+        (com[0] - 1.0).abs() < 1e-10
+    );
 }
 
 #[test]
@@ -437,12 +486,13 @@ fn test_center_of_mass() {
 fn test_temperature() {
 
     // With 3D particles and KE = (3/2) * N * T, T = 2 * KE / (3 * N)
-    let particles = vec![Particle::new(
-        0,
-        1.0,
-        vec![0.0, 0.0, 0.0],
-        vec![1.0, 1.0, 1.0],
-    )];
+    let particles =
+        vec![Particle::new(
+            0,
+            1.0,
+            vec![0.0, 0.0, 0.0],
+            vec![1.0, 1.0, 1.0],
+        )];
 
     let t = temperature(&particles);
 
@@ -458,41 +508,52 @@ fn test_temperature() {
 
 fn test_velocity_rescale() {
 
-    let mut particles = vec![Particle::new(
-        0,
-        1.0,
-        vec![0.0, 0.0, 0.0],
-        vec![1.0, 1.0, 1.0],
-    )];
+    let mut particles =
+        vec![Particle::new(
+            0,
+            1.0,
+            vec![0.0, 0.0, 0.0],
+            vec![1.0, 1.0, 1.0],
+        )];
 
-    let initial_temp = temperature(&particles);
+    let initial_temp =
+        temperature(&particles);
 
-    let target_temp = 2.0 * initial_temp;
+    let target_temp =
+        2.0 * initial_temp;
 
     velocity_rescale(
         &mut particles,
         target_temp,
     );
 
-    let final_temp = temperature(&particles);
+    let final_temp =
+        temperature(&particles);
 
-    assert!((final_temp - target_temp).abs() < 1e-10);
+    assert!(
+        (final_temp - target_temp)
+            .abs()
+            < 1e-10
+    );
 }
 
 #[test]
 
 fn test_berendsen_thermostat() {
 
-    let mut particles = vec![Particle::new(
-        0,
-        1.0,
-        vec![0.0, 0.0, 0.0],
-        vec![1.0, 1.0, 1.0],
-    )];
+    let mut particles =
+        vec![Particle::new(
+            0,
+            1.0,
+            vec![0.0, 0.0, 0.0],
+            vec![1.0, 1.0, 1.0],
+        )];
 
-    let initial_temp = temperature(&particles);
+    let initial_temp =
+        temperature(&particles);
 
-    let target_temp = 2.0 * initial_temp;
+    let target_temp =
+        2.0 * initial_temp;
 
     berendsen_thermostat(
         &mut particles,
@@ -501,7 +562,8 @@ fn test_berendsen_thermostat() {
         0.01,
     );
 
-    let final_temp = temperature(&particles);
+    let final_temp =
+        temperature(&particles);
 
     // Temperature should move toward target
     assert!(final_temp > initial_temp);
@@ -515,17 +577,29 @@ fn test_berendsen_thermostat() {
 
 fn test_apply_pbc() {
 
-    let position = vec![11.0, -1.0, 5.0];
+    let position =
+        vec![11.0, -1.0, 5.0];
 
-    let box_size = vec![10.0, 10.0, 10.0];
+    let box_size =
+        vec![10.0, 10.0, 10.0];
 
-    let wrapped = apply_pbc(&position, &box_size);
+    let wrapped =
+        apply_pbc(&position, &box_size);
 
-    assert!((wrapped[0] - 1.0).abs() < 1e-10);
+    assert!(
+        (wrapped[0] - 1.0).abs()
+            < 1e-10
+    );
 
-    assert!((wrapped[1] - 9.0).abs() < 1e-10);
+    assert!(
+        (wrapped[1] - 9.0).abs()
+            < 1e-10
+    );
 
-    assert!((wrapped[2] - 5.0).abs() < 1e-10);
+    assert!(
+        (wrapped[2] - 5.0).abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -534,13 +608,20 @@ fn test_minimum_image_distance() {
 
     let r = vec![8.0, -8.0, 0.0];
 
-    let box_size = vec![10.0, 10.0, 10.0];
+    let box_size =
+        vec![10.0, 10.0, 10.0];
 
-    let r_mic = minimum_image_distance(&r, &box_size);
+    let r_mic = minimum_image_distance(
+        &r, &box_size,
+    );
 
-    assert!((r_mic[0] + 2.0).abs() < 1e-10);
+    assert!(
+        (r_mic[0] + 2.0).abs() < 1e-10
+    );
 
-    assert!((r_mic[1] - 2.0).abs() < 1e-10);
+    assert!(
+        (r_mic[1] - 2.0).abs() < 1e-10
+    );
 }
 
 // ============================================================================
@@ -565,7 +646,9 @@ fn test_mean_square_displacement() {
         vec![0.0, 0.0, 0.0],
     )];
 
-    let msd = mean_square_displacement(&initial, &current);
+    let msd = mean_square_displacement(
+        &initial, &current,
+    );
 
     // MSD = 3² + 4² = 25
     assert!((msd - 25.0).abs() < 1e-10);
@@ -590,11 +673,14 @@ fn test_radial_distribution_function() {
         ),
     ];
 
-    let box_size = vec![10.0, 10.0, 10.0];
+    let box_size =
+        vec![10.0, 10.0, 10.0];
 
-    let (r_values, g_r) = radial_distribution_function(
-        &particles, &box_size, 10, 5.0,
-    );
+    let (r_values, g_r) =
+        radial_distribution_function(
+            &particles, &box_size, 10,
+            5.0,
+        );
 
     assert_eq!(r_values.len(), 10);
 
@@ -609,7 +695,10 @@ fn test_radial_distribution_function() {
 
 fn test_create_cubic_lattice() {
 
-    let particles = create_cubic_lattice(3, 1.0, 1.0);
+    let particles =
+        create_cubic_lattice(
+            3, 1.0, 1.0,
+        );
 
     assert_eq!(particles.len(), 27); // 3³ = 27
 }
@@ -618,7 +707,8 @@ fn test_create_cubic_lattice() {
 
 fn test_create_fcc_lattice() {
 
-    let particles = create_fcc_lattice(2, 1.0, 1.0);
+    let particles =
+        create_fcc_lattice(2, 1.0, 1.0);
 
     assert_eq!(particles.len(), 32); // 4 × 2³ = 32
 }
@@ -642,9 +732,12 @@ fn test_remove_com_velocity() {
         ),
     ];
 
-    remove_com_velocity(&mut particles).unwrap();
+    remove_com_velocity(&mut particles)
+        .unwrap();
 
-    let mom = total_momentum(&particles).unwrap();
+    let mom =
+        total_momentum(&particles)
+            .unwrap();
 
     assert!(mom[0].abs() < 1e-10);
 }

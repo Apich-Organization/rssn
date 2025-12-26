@@ -12,7 +12,8 @@ fn test_dot_product_json() {
 
     let input = r#"{"v1": {"x": 1.0, "y": 0.0, "z": 0.0}, "v2": {"x": 0.0, "y": 1.0, "z": 0.0}}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -20,9 +21,17 @@ fn test_dot_product_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         assert_eq!(parsed["ok"], 0.0);
     }
@@ -34,7 +43,8 @@ fn test_cross_product_json() {
 
     let input = r#"{"v1": {"x": 1.0, "y": 0.0, "z": 0.0}, "v2": {"x": 0.0, "y": 1.0, "z": 0.0}}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -42,9 +52,17 @@ fn test_cross_product_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         assert_eq!(
             parsed["ok"]["z"],
@@ -59,7 +77,8 @@ fn test_normalize_json() {
 
     let input = r#"{"x": 3.0, "y": 4.0, "z": 0.0}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -70,9 +89,17 @@ fn test_normalize_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         let x = parsed["ok"]["x"]
             .as_f64()
@@ -82,9 +109,13 @@ fn test_normalize_json() {
             .as_f64()
             .unwrap();
 
-        assert!((x - 0.6).abs() < 1e-10);
+        assert!(
+            (x - 0.6).abs() < 1e-10
+        );
 
-        assert!((y - 0.8).abs() < 1e-10);
+        assert!(
+            (y - 0.8).abs() < 1e-10
+        );
     }
 }
 
@@ -94,7 +125,8 @@ fn test_magnitude_json() {
 
     let input = r#"{"x": 3.0, "y": 4.0, "z": 0.0}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -105,9 +137,17 @@ fn test_magnitude_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         assert_eq!(parsed["ok"], 5.0);
     }
@@ -119,7 +159,8 @@ fn test_translation_matrix_json() {
 
     let input = r#"{"dx": 1.0, "dy": 2.0, "dz": 3.0}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -127,9 +168,17 @@ fn test_translation_matrix_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         let data = parsed["ok"]
             .as_array()
@@ -152,7 +201,8 @@ fn test_rotation_matrix_x_json() {
 
     let input = r#"{"angle": 0.0}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -160,9 +210,17 @@ fn test_rotation_matrix_x_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         let data = parsed["ok"]
             .as_array()
@@ -185,7 +243,8 @@ fn test_quaternion_multiply_json() {
 
     let input = r#"{"q1": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0}, "q2": {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0}}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -193,9 +252,17 @@ fn test_quaternion_multiply_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         // Identity * Identity = Identity
         assert_eq!(
@@ -221,7 +288,8 @@ fn test_ray_sphere_intersection_json() {
         "sphere_radius": 1.0
     }"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -229,18 +297,30 @@ fn test_ray_sphere_intersection_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         // Should hit at t=4
-        assert!(parsed["ok"].is_object());
+        assert!(
+            parsed["ok"].is_object()
+        );
 
         let t = parsed["ok"]["t"]
             .as_f64()
             .unwrap();
 
-        assert!((t - 4.0).abs() < 1e-10);
+        assert!(
+            (t - 4.0).abs() < 1e-10
+        );
     }
 }
 
@@ -256,7 +336,8 @@ fn test_bezier_cubic_json() {
         "t": 0.0
     }"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -264,9 +345,17 @@ fn test_bezier_cubic_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         // At t=0, should be at p0
         assert_eq!(
@@ -287,7 +376,8 @@ fn test_angle_between_json() {
 
     let input = r#"{"v1": {"x": 1.0, "y": 0.0, "z": 0.0}, "v2": {"x": 0.0, "y": 1.0, "z": 0.0}}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -295,16 +385,30 @@ fn test_angle_between_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed: serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         let angle = parsed["ok"]
             .as_f64()
             .unwrap();
 
         // Should be pi/2
-        assert!((angle - std::f64::consts::PI / 2.0).abs() < 1e-10);
+        assert!(
+            (angle
+                - std::f64::consts::PI
+                    / 2.0)
+                .abs()
+                < 1e-10
+        );
     }
 }
 
@@ -333,7 +437,9 @@ fn test_magnitude_handle() {
             3.0, 4.0, 0.0,
         );
 
-    assert!((result - 5.0).abs() < 1e-10);
+    assert!(
+        (result - 5.0).abs() < 1e-10
+    );
 }
 
 #[test]
@@ -379,9 +485,13 @@ fn test_normalize_handle() {
 
         assert_eq!(result, 0);
 
-        assert!((out_x - 0.6).abs() < 1e-10);
+        assert!(
+            (out_x - 0.6).abs() < 1e-10
+        );
 
-        assert!((out_y - 0.8).abs() < 1e-10);
+        assert!(
+            (out_y - 0.8).abs() < 1e-10
+        );
     }
 }
 
@@ -394,7 +504,13 @@ fn test_angle_between_handle() {
             1.0, 0.0, 0.0, 0.0, 1.0, 0.0,
         );
 
-    assert!((result - std::f64::consts::PI / 2.0).abs() < 1e-10);
+    assert!(
+        (result
+            - std::f64::consts::PI
+                / 2.0)
+            .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -403,7 +519,11 @@ fn test_degrees_to_radians_handle() {
 
     let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_degrees_to_radians(180.0);
 
-    assert!((result - std::f64::consts::PI).abs() < 1e-10);
+    assert!(
+        (result - std::f64::consts::PI)
+            .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -412,12 +532,15 @@ fn test_radians_to_degrees_handle() {
 
     let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_radians_to_degrees(std::f64::consts::PI);
 
-    assert!((result - 180.0).abs() < 1e-10);
+    assert!(
+        (result - 180.0).abs() < 1e-10
+    );
 }
 
 #[test]
 
-fn test_ray_sphere_intersection_handle() {
+fn test_ray_sphere_intersection_handle()
+{
 
     let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_ray_sphere_intersection(
         0.0, 0.0, -5.0,  // ray origin
@@ -426,12 +549,15 @@ fn test_ray_sphere_intersection_handle() {
         1.0,             // sphere radius
     );
 
-    assert!((result - 4.0).abs() < 1e-10);
+    assert!(
+        (result - 4.0).abs() < 1e-10
+    );
 }
 
 #[test]
 
-fn test_ray_sphere_intersection_miss_handle() {
+fn test_ray_sphere_intersection_miss_handle(
+) {
 
     let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_ray_sphere_intersection(
         0.0, 10.0, -5.0, // ray origin (misses)

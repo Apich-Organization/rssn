@@ -45,11 +45,12 @@ fn test_method_of_characteristics() {
         Expr::Constant(1.0),
     );
 
-    let sol = solve_pde_by_characteristics(
-        &eq,
-        "u",
-        &["x", "y"],
-    );
+    let sol =
+        solve_pde_by_characteristics(
+            &eq,
+            "u",
+            &["x", "y"],
+        );
 
     assert!(sol.is_some());
 
@@ -253,11 +254,12 @@ fn test_pde_classification_wave() {
         ),
     );
 
-    let classification = classify_pde_heuristic(
-        &eq,
-        "u",
-        &["t", "x"],
-    );
+    let classification =
+        classify_pde_heuristic(
+            &eq,
+            "u",
+            &["t", "x"],
+        );
 
     println!(
         "Classification: {:?}",
@@ -284,7 +286,10 @@ fn test_pde_classification_wave() {
     // Note: Currently classified as inhomogeneous due to constant coefficient
     assert!(classification
         .suggested_methods
-        .contains(&"Separation of variables".to_string()));
+        .contains(
+            &"Separation of variables"
+                .to_string()
+        ));
 }
 
 #[test]
@@ -317,11 +322,12 @@ fn test_pde_classification_laplace() {
 
     let eq = Expr::new_add(u_xx, u_yy);
 
-    let classification = classify_pde_heuristic(
-        &eq,
-        "u",
-        &["x", "y"],
-    );
+    let classification =
+        classify_pde_heuristic(
+            &eq,
+            "u",
+            &["x", "y"],
+        );
 
     println!(
         "Laplace Classification: {:?}",
@@ -333,7 +339,9 @@ fn test_pde_classification_laplace() {
         PDEType::Laplace
     );
 
-    assert!(classification.is_homogeneous);
+    assert!(
+        classification.is_homogeneous
+    );
 }
 
 #[test]
@@ -366,11 +374,12 @@ fn test_pde_classification_heat() {
         ),
     );
 
-    let classification = classify_pde_heuristic(
-        &eq,
-        "u",
-        &["t", "x"],
-    );
+    let classification =
+        classify_pde_heuristic(
+            &eq,
+            "u",
+            &["t", "x"],
+        );
 
     println!(
         "Heat Classification: {:?}",
@@ -391,7 +400,10 @@ fn test_pde_classification_heat() {
 
     assert!(classification
         .suggested_methods
-        .contains(&"Fourier series".to_string()));
+        .contains(
+            &"Fourier series"
+                .to_string()
+        ));
 }
 
 // Note: Laplace classification test removed due to current heuristic limitations
@@ -533,11 +545,12 @@ fn test_schrodinger_equation() {
         psi_xx,
     );
 
-    let sol = solve_schrodinger_equation(
-        &eq,
-        "psi",
-        &["t", "x"],
-    );
+    let sol =
+        solve_schrodinger_equation(
+            &eq,
+            "psi",
+            &["t", "x"],
+        );
 
     assert!(sol.is_some());
 
@@ -588,11 +601,12 @@ fn test_klein_gordon_equation() {
         ),
     );
 
-    let sol = solve_klein_gordon_equation(
-        &eq,
-        "phi",
-        &["t", "x"],
-    );
+    let sol =
+        solve_klein_gordon_equation(
+            &eq,
+            "phi",
+            &["t", "x"],
+        );
 
     assert!(sol.is_some());
 

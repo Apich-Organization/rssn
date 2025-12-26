@@ -9,31 +9,81 @@ use std::sync::Arc;
 
 // --- Helper Functions ---
 
-fn evaluate_expr(expr: &Expr) -> Option<f64> {
+fn evaluate_expr(
+    expr: &Expr
+) -> Option<f64> {
 
     match expr {
         | Expr::Constant(v) => Some(*v),
         | Expr::BigInt(v) => v.to_f64(),
-        | Expr::Rational(v) => v.to_f64(),
-        | Expr::Add(a, b) => Some(evaluate_expr(a)? + evaluate_expr(b)?),
-        | Expr::Sub(a, b) => Some(evaluate_expr(a)? - evaluate_expr(b)?),
-        | Expr::Mul(a, b) => Some(evaluate_expr(a)? * evaluate_expr(b)?),
-        | Expr::Div(a, b) => Some(evaluate_expr(a)? / evaluate_expr(b)?),
-        | Expr::Power(a, b) => Some(evaluate_expr(a)?.powf(evaluate_expr(b)?)),
-        | Expr::Log(a) => Some(evaluate_expr(a)?.ln()),
-        | Expr::LogBase(a, b) => Some(evaluate_expr(a)?.log(evaluate_expr(b)?)),
-        | Expr::Neg(a) => Some(-evaluate_expr(a)?),
-        | Expr::Dag(node) => evaluate_dag(node),
+        | Expr::Rational(v) => {
+            v.to_f64()
+        },
+        | Expr::Add(a, b) => {
+            Some(
+                evaluate_expr(a)?
+                    + evaluate_expr(b)?,
+            )
+        },
+        | Expr::Sub(a, b) => {
+            Some(
+                evaluate_expr(a)?
+                    - evaluate_expr(b)?,
+            )
+        },
+        | Expr::Mul(a, b) => {
+            Some(
+                evaluate_expr(a)?
+                    * evaluate_expr(b)?,
+            )
+        },
+        | Expr::Div(a, b) => {
+            Some(
+                evaluate_expr(a)?
+                    / evaluate_expr(b)?,
+            )
+        },
+        | Expr::Power(a, b) => {
+            Some(
+                evaluate_expr(a)?.powf(
+                    evaluate_expr(b)?,
+                ),
+            )
+        },
+        | Expr::Log(a) => {
+            Some(evaluate_expr(a)?.ln())
+        },
+        | Expr::LogBase(a, b) => {
+            Some(
+                evaluate_expr(a)?.log(
+                    evaluate_expr(b)?,
+                ),
+            )
+        },
+        | Expr::Neg(a) => {
+            Some(-evaluate_expr(a)?)
+        },
+        | Expr::Dag(node) => {
+            evaluate_dag(node)
+        },
         | _ => None,
     }
 }
 
-fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
+fn evaluate_dag(
+    node: &rssn::symbolic::core::DagNode
+) -> Option<f64> {
 
     match &node.op {
-        | DagOp::Constant(v) => Some(v.into_inner()),
-        | DagOp::BigInt(v) => v.to_f64(),
-        | DagOp::Rational(v) => v.to_f64(),
+        | DagOp::Constant(v) => {
+            Some(v.into_inner())
+        },
+        | DagOp::BigInt(v) => {
+            v.to_f64()
+        },
+        | DagOp::Rational(v) => {
+            v.to_f64()
+        },
         | DagOp::Add => {
 
             let mut sum = 0.0;
@@ -51,35 +101,63 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
 
             for c in &node.children {
 
-                prod *= evaluate_dag(c)?;
+                prod *=
+                    evaluate_dag(c)?;
             }
 
             Some(prod)
         },
         | DagOp::Sub => {
-            if node.children.len() == 2 {
 
-                Some(evaluate_dag(&node.children[0])? - evaluate_dag(&node.children[1])?)
+            if node.children.len() == 2
+            {
+
+                Some(
+                    evaluate_dag(
+                        &node.children
+                            [0],
+                    )? - evaluate_dag(
+                        &node.children
+                            [1],
+                    )?,
+                )
             } else {
 
                 None
             }
         },
         | DagOp::Div => {
-            if node.children.len() == 2 {
 
-                Some(evaluate_dag(&node.children[0])? / evaluate_dag(&node.children[1])?)
+            if node.children.len() == 2
+            {
+
+                Some(
+                    evaluate_dag(
+                        &node.children
+                            [0],
+                    )? / evaluate_dag(
+                        &node.children
+                            [1],
+                    )?,
+                )
             } else {
 
                 None
             }
         },
         | DagOp::Power => {
-            if node.children.len() == 2 {
+
+            if node.children.len() == 2
+            {
 
                 Some(
-                    evaluate_dag(&node.children[0])?.powf(evaluate_dag(
-                        &node.children[1],
+                    evaluate_dag(
+                        &node.children
+                            [0],
+                    )?
+                    .powf(evaluate_dag(
+                        &node.children
+                            [1],
                     )?),
                 )
             } else {
@@ -109,7 +187,13 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
                 .is_empty()
             {
 
-                Some(evaluate_dag(&node.children[0])?.ln())
+                Some(
+                    evaluate_dag(
+                        &node.children
+                            [0],
+                    )?
+                    .ln(),
+                )
             } else {
 
                 None
@@ -124,11 +208,15 @@ fn assert_approx_eq(
     expected: f64,
 ) {
 
-    if let Some(val) = evaluate_expr(expr) {
+    if let Some(val) =
+        evaluate_expr(expr)
+    {
 
         assert!(
-            (val - expected).abs() < 1e-6,
-            "Expected {}, got {} (from {:?})",
+            (val - expected).abs()
+                < 1e-6,
+            "Expected {}, got {} \
+             (from {:?})",
             expected,
             val,
             expr
@@ -136,7 +224,9 @@ fn assert_approx_eq(
     } else {
 
         panic!(
-            "Checking approx eq for {:?} failed to evaluate to float",
+            "Checking approx eq for \
+             {:?} failed to evaluate \
+             to float",
             expr
         );
     }
@@ -179,9 +269,12 @@ fn test_kl_divergence() {
         Expr::Constant(0.75),
     ];
 
-    let kl = kl_divergence(&p, &q).unwrap();
+    let kl =
+        kl_divergence(&p, &q).unwrap();
 
-    let expected = 0.5 * (0.5 / 0.25f64).log2() + 0.5 * (0.5 / 0.75f64).log2();
+    let expected = 0.5
+        * (0.5 / 0.25f64).log2()
+        + 0.5 * (0.5 / 0.75f64).log2();
 
     assert_approx_eq(&kl, expected);
 }
@@ -201,9 +294,12 @@ fn test_cross_entropy() {
         Expr::Constant(0.75),
     ];
 
-    let ce = cross_entropy(&p, &q).unwrap();
+    let ce =
+        cross_entropy(&p, &q).unwrap();
 
-    let expected = -(0.5 * (0.25f64).log2() + 0.5 * (0.75f64).log2());
+    let expected = -(0.5
+        * (0.25f64).log2()
+        + 0.5 * (0.75f64).log2());
 
     assert_approx_eq(&ce, expected);
 }
@@ -244,7 +340,8 @@ fn test_joint_entropy() {
         ],
     ]);
 
-    let joint_h = joint_entropy(&matrix).unwrap();
+    let joint_h =
+        joint_entropy(&matrix).unwrap();
 
     assert_approx_eq(&joint_h, 2.0);
 }
@@ -268,7 +365,9 @@ fn test_mutual_information() {
         ],
     ]);
 
-    let mi = mutual_information(&matrix).unwrap();
+    let mi =
+        mutual_information(&matrix)
+            .unwrap();
 
     assert_approx_eq(&mi, 0.0);
 
@@ -279,26 +378,29 @@ fn test_mutual_information() {
     // H(X)=1, H(Y)=1, H(X,Y)=1 (since pairs are (0,0) or (1,1) with 0.5)
     // I(X;Y) = 1 + 1 - 1 = 1.
 
-    let matrix_dep = Expr::Matrix(vec![
-        vec![
-            Expr::Constant(0.5),
-            Expr::Constant(1e-10),
-        ], // Use small epsilon for 0 log 0 if log(0) causes issues, or check if 0 handled
-        // Actually log(0) usually undefined/neg inf.
-        // Logic might need to handle 0 probability by skipping term or using limit.
-        // Let's see how shannon_entropy handles 0.
-        // It does p * log(p). 0 * -inf is NaN if not handled.
-        // Let's use small eps for test.
-        vec![
-            Expr::Constant(1e-10),
-            Expr::Constant(0.5),
-        ],
-    ]);
+    let matrix_dep =
+        Expr::Matrix(vec![
+            vec![
+                Expr::Constant(0.5),
+                Expr::Constant(1e-10),
+            ], // Use small epsilon for 0 log 0 if log(0) causes issues, or check if 0 handled
+            // Actually log(0) usually undefined/neg inf.
+            // Logic might need to handle 0 probability by skipping term or using limit.
+            // Let's see how shannon_entropy handles 0.
+            // It does p * log(p). 0 * -inf is NaN if not handled.
+            // Let's use small eps for test.
+            vec![
+                Expr::Constant(1e-10),
+                Expr::Constant(0.5),
+            ],
+        ]);
 
     // Note: 1e-10 * log(1e-10) is very small close to 0.
     // H(0.5, 0.5, eps, eps) ~ 1.
 
-    let mi_dep = mutual_information(&matrix_dep).unwrap();
+    let mi_dep =
+        mutual_information(&matrix_dep)
+            .unwrap();
 
     assert_approx_eq(&mi_dep, 1.0);
 }

@@ -28,7 +28,8 @@ fn main() {
         ],
     ]);
 
-    let product = matrix::mul_matrices(&a, &inv);
+    let product =
+        matrix::mul_matrices(&a, &inv);
 
     println!(
         "Product: {:?}",
@@ -42,11 +43,15 @@ fn main() {
         simplified
     );
 
-    if let Expr::Matrix(prod_mat) = simplified {
+    if let Expr::Matrix(prod_mat) =
+        simplified
+    {
 
         for i in 0..prod_mat.len() {
 
-            for j in 0..prod_mat[i].len() {
+            for j in
+                0..prod_mat[i].len()
+            {
 
                 println!(
                     "Element [{}][{}]: {:?}",

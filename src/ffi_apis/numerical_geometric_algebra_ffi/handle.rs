@@ -20,7 +20,8 @@ pub unsafe extern "C" fn rssn_num_ga_create(
 ) -> *mut Multivector3D {
 
     let mv = Multivector3D::new(
-        s, v1, v2, v3, b12, b23, b31, pss,
+        s, v1, v2, v3, b12, b23, b31,
+        pss,
     );
 
     Box::into_raw(Box::new(mv))
@@ -29,7 +30,9 @@ pub unsafe extern "C" fn rssn_num_ga_create(
 /// Frees a Multivector3D.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ga_free(mv: *mut Multivector3D) {
+pub unsafe extern "C" fn rssn_num_ga_free(
+    mv: *mut Multivector3D
+) {
 
     if !mv.is_null() {
 
@@ -57,7 +60,11 @@ pub unsafe extern "C" fn rssn_num_ga_get_components(
 
     if mv.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_ga_get_components".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_ga_get_components"
+                .to_string(),
+        );
 
         return -1;
     }
@@ -245,7 +252,9 @@ pub unsafe extern "C" fn rssn_num_ga_dot(
 /// Returns the reverse of a Multivector3D.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ga_reverse(mv: *const Multivector3D) -> *mut Multivector3D {
+pub unsafe extern "C" fn rssn_num_ga_reverse(
+    mv: *const Multivector3D
+) -> *mut Multivector3D {
 
     if mv.is_null() {
 
@@ -265,7 +274,9 @@ pub unsafe extern "C" fn rssn_num_ga_reverse(mv: *const Multivector3D) -> *mut M
 /// Returns the norm of a Multivector3D.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ga_norm(mv: *const Multivector3D) -> f64 {
+pub unsafe extern "C" fn rssn_num_ga_norm(
+    mv: *const Multivector3D
+) -> f64 {
 
     if mv.is_null() {
 
@@ -283,7 +294,9 @@ pub unsafe extern "C" fn rssn_num_ga_norm(mv: *const Multivector3D) -> f64 {
 /// Returns the inverse of a Multivector3D.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ga_inv(mv: *const Multivector3D) -> *mut Multivector3D {
+pub unsafe extern "C" fn rssn_num_ga_inv(
+    mv: *const Multivector3D
+) -> *mut Multivector3D {
 
     if mv.is_null() {
 
@@ -296,10 +309,16 @@ pub unsafe extern "C" fn rssn_num_ga_inv(mv: *const Multivector3D) -> *mut Multi
     };
 
     match a.inv() {
-        | Some(res) => Box::into_raw(Box::new(res)),
+        | Some(res) => {
+            Box::into_raw(Box::new(res))
+        },
         | None => {
 
-            update_last_error("Multivector is not invertible".to_string());
+            update_last_error(
+                "Multivector is not \
+                 invertible"
+                    .to_string(),
+            );
 
             ptr::null_mut()
         },

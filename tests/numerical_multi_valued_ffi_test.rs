@@ -27,7 +27,9 @@ fn test_mv_handle_ffi() {
 
     unsafe {
 
-        let z = Expr::Variable("z".to_string());
+        let z = Expr::Variable(
+            "z".to_string(),
+        );
 
         let f = Expr::new_sub(
             Expr::new_pow(
@@ -60,7 +62,9 @@ fn test_mv_handle_ffi() {
 
         assert_eq!(status, 0);
 
-        assert!((res_re - 1.0).abs() < 1e-5);
+        assert!(
+            (res_re - 1.0).abs() < 1e-5
+        );
 
         assert!(res_im.abs() < 1e-5);
     }
@@ -72,7 +76,9 @@ fn test_mv_json_ffi() {
 
     unsafe {
 
-        let z = Expr::Variable("z".to_string());
+        let z = Expr::Variable(
+            "z".to_string(),
+        );
 
         let f = Expr::new_sub(
             Expr::new_pow(
@@ -107,19 +113,30 @@ fn test_mv_json_ffi() {
             max_iter: 100,
         };
 
-        let json_str = serde_json::to_string(&input).unwrap();
+        let json_str =
+            serde_json::to_string(
+                &input,
+            )
+            .unwrap();
 
-        let c_json = CString::new(json_str).unwrap();
+        let c_json =
+            CString::new(json_str)
+                .unwrap();
 
         let res_ptr = json::rssn_num_mv_newton_method_complex_json(c_json.as_ptr());
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         // Check result
         let res_obj = v["ok"]
@@ -130,7 +147,9 @@ fn test_mv_json_ffi() {
             .as_f64()
             .unwrap();
 
-        assert!((re - 1.0).abs() < 1e-5);
+        assert!(
+            (re - 1.0).abs() < 1e-5
+        );
 
         rssn_free_string(res_ptr);
     }
@@ -142,7 +161,9 @@ fn test_mv_bincode_ffi() {
 
     unsafe {
 
-        let z = Expr::Variable("z".to_string());
+        let z = Expr::Variable(
+            "z".to_string(),
+        );
 
         let f = Expr::new_sub(
             Expr::new_pow(
@@ -184,21 +205,35 @@ fn test_mv_bincode_ffi() {
             max_iter: 100,
         };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_mv_newton_method_complex_bincode(buffer);
 
         assert!(!res_buffer.is_null());
 
-        let res: FfiResult<ComplexResult, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res: FfiResult<
+            ComplexResult,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
         let root = res.ok.unwrap();
 
-        assert!((root.re - 1.0).abs() < 1e-5);
+        assert!(
+            (root.re - 1.0).abs()
+                < 1e-5
+        );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 }
 
@@ -234,7 +269,9 @@ fn test_mv_handle_others() {
             &mut res_im,
         );
 
-        assert!((res_re + 1.0).abs() < 1e-9);
+        assert!(
+            (res_re + 1.0).abs() < 1e-9
+        );
 
         assert!(res_im.abs() < 1e-9);
     }
@@ -261,19 +298,30 @@ fn test_mv_json_others() {
             k: 0,
         };
 
-        let json_str = serde_json::to_string(&input).unwrap();
+        let json_str =
+            serde_json::to_string(
+                &input,
+            )
+            .unwrap();
 
-        let c_json = CString::new(json_str).unwrap();
+        let c_json =
+            CString::new(json_str)
+                .unwrap();
 
         let res_ptr = json::rssn_num_mv_complex_log_k_json(c_json.as_ptr());
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         let res_obj = v["ok"]
             .as_object()
@@ -323,22 +371,36 @@ fn test_mv_bincode_others() {
             k: 0,
         };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_mv_complex_sqrt_k_bincode(buffer);
 
         assert!(!res_buffer.is_null());
 
-        let res: FfiResult<ComplexResult, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res: FfiResult<
+            ComplexResult,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
         let root = res.ok.unwrap();
 
-        assert!((root.re - 1.0).abs() < 1e-9);
+        assert!(
+            (root.re - 1.0).abs()
+                < 1e-9
+        );
 
         assert!(root.im.abs() < 1e-9);
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 }

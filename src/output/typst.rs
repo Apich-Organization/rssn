@@ -29,15 +29,23 @@ pub(crate) fn to_typst_prec(
     root_precedence: u8,
 ) -> String {
 
-    let mut results: HashMap<*const Expr, TypstResult> = HashMap::new();
+    let mut results: HashMap<
+        *const Expr,
+        TypstResult,
+    > = HashMap::new();
 
-    let mut stack: Vec<Expr> = vec![root_expr.clone()];
+    let mut stack: Vec<Expr> =
+        vec![root_expr.clone()];
 
-    while let Some(expr) = stack.last() {
+    while let Some(expr) = stack.last()
+    {
 
-        let expr_ptr = &*expr as *const Expr;
+        let expr_ptr =
+            &*expr as *const Expr;
 
-        if results.contains_key(&expr_ptr) {
+        if results
+            .contains_key(&expr_ptr)
+        {
 
             stack.pop();
 
@@ -52,11 +60,14 @@ pub(crate) fn to_typst_prec(
 
         if all_children_processed {
 
-            let current_expr = stack
-                .pop()
-                .expect("Value is valid");
+            let current_expr =
+                stack.pop().expect(
+                    "Value is valid",
+                );
 
-            let current_expr_ptr = &current_expr as *const Expr;
+            let current_expr_ptr =
+                &current_expr
+                    as *const Expr;
 
             let get_child_res = |i: usize| -> &TypstResult {
 
@@ -276,19 +287,29 @@ pub(crate) fn to_typst_prec(
                 .rev()
             {
 
-                if !results.contains_key(&(child as *const Expr)) {
+                if !results
+                    .contains_key(
+                    &(child
+                        as *const Expr),
+                ) {
 
-                    let child_clone = child.clone();
+                    let child_clone =
+                        child.clone();
 
-                    stack.push(child_clone);
+                    stack.push(
+                        child_clone,
+                    );
                 }
             }
         }
     }
 
-    let final_result = &results[&(root_expr as *const Expr)];
+    let final_result = &results
+        [&(root_expr as *const Expr)];
 
-    if final_result.precedence < root_precedence {
+    if final_result.precedence
+        < root_precedence
+    {
 
         format!(
             "({})",

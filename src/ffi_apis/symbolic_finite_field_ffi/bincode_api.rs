@@ -10,15 +10,24 @@ pub extern "C" fn rssn_bincode_prime_field_element_new(
     modulus_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let value: Option<BigInt> = from_bincode_buffer(&value_buf);
+    let value: Option<BigInt> =
+        from_bincode_buffer(&value_buf);
 
-    let modulus: Option<BigInt> = from_bincode_buffer(&modulus_buf);
+    let modulus: Option<BigInt> =
+        from_bincode_buffer(
+            &modulus_buf,
+        );
 
-    if let (Some(v), Some(m)) = (value, modulus) {
+    if let (Some(v), Some(m)) =
+        (value, modulus)
+    {
 
         let field = PrimeField::new(m);
 
-        let element = PrimeFieldElement::new(v, field);
+        let element =
+            PrimeFieldElement::new(
+                v, field,
+            );
 
         to_bincode_buffer(&element)
     } else {
@@ -35,11 +44,17 @@ pub extern "C" fn rssn_bincode_prime_field_element_add(
     b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<PrimeFieldElement> = from_bincode_buffer(&a_buf);
+    let a: Option<PrimeFieldElement> =
+        from_bincode_buffer(&a_buf);
 
-    let b: Option<PrimeFieldElement> = from_bincode_buffer(&b_buf);
+    let b: Option<PrimeFieldElement> =
+        from_bincode_buffer(&b_buf);
 
-    if let (Some(a_elem), Some(b_elem)) = (a, b) {
+    if let (
+        Some(a_elem),
+        Some(b_elem),
+    ) = (a, b)
+    {
 
         let result = a_elem + b_elem;
 
@@ -58,11 +73,17 @@ pub extern "C" fn rssn_bincode_prime_field_element_sub(
     b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<PrimeFieldElement> = from_bincode_buffer(&a_buf);
+    let a: Option<PrimeFieldElement> =
+        from_bincode_buffer(&a_buf);
 
-    let b: Option<PrimeFieldElement> = from_bincode_buffer(&b_buf);
+    let b: Option<PrimeFieldElement> =
+        from_bincode_buffer(&b_buf);
 
-    if let (Some(a_elem), Some(b_elem)) = (a, b) {
+    if let (
+        Some(a_elem),
+        Some(b_elem),
+    ) = (a, b)
+    {
 
         let result = a_elem - b_elem;
 
@@ -81,11 +102,17 @@ pub extern "C" fn rssn_bincode_prime_field_element_mul(
     b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<PrimeFieldElement> = from_bincode_buffer(&a_buf);
+    let a: Option<PrimeFieldElement> =
+        from_bincode_buffer(&a_buf);
 
-    let b: Option<PrimeFieldElement> = from_bincode_buffer(&b_buf);
+    let b: Option<PrimeFieldElement> =
+        from_bincode_buffer(&b_buf);
 
-    if let (Some(a_elem), Some(b_elem)) = (a, b) {
+    if let (
+        Some(a_elem),
+        Some(b_elem),
+    ) = (a, b)
+    {
 
         let result = a_elem * b_elem;
 
@@ -104,11 +131,17 @@ pub extern "C" fn rssn_bincode_prime_field_element_div(
     b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<PrimeFieldElement> = from_bincode_buffer(&a_buf);
+    let a: Option<PrimeFieldElement> =
+        from_bincode_buffer(&a_buf);
 
-    let b: Option<PrimeFieldElement> = from_bincode_buffer(&b_buf);
+    let b: Option<PrimeFieldElement> =
+        from_bincode_buffer(&b_buf);
 
-    if let (Some(a_elem), Some(b_elem)) = (a, b) {
+    if let (
+        Some(a_elem),
+        Some(b_elem),
+    ) = (a, b)
+    {
 
         let result = a_elem / b_elem;
 
@@ -126,13 +159,19 @@ pub extern "C" fn rssn_bincode_prime_field_element_inverse(
     elem_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let elem: Option<PrimeFieldElement> = from_bincode_buffer(&elem_buf);
+    let elem: Option<
+        PrimeFieldElement,
+    > = from_bincode_buffer(&elem_buf);
 
     if let Some(e) = elem {
 
         match e.inverse() {
-            | Some(inv) => to_bincode_buffer(&inv),
-            | None => BincodeBuffer::empty(),
+            | Some(inv) => {
+                to_bincode_buffer(&inv)
+            },
+            | None => {
+                BincodeBuffer::empty()
+            },
         }
     } else {
 
@@ -148,15 +187,27 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_new(
     modulus_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let coeffs: Option<Vec<PrimeFieldElement>> = from_bincode_buffer(&coeffs_buf);
+    let coeffs: Option<
+        Vec<PrimeFieldElement>,
+    > = from_bincode_buffer(
+        &coeffs_buf,
+    );
 
-    let modulus: Option<BigInt> = from_bincode_buffer(&modulus_buf);
+    let modulus: Option<BigInt> =
+        from_bincode_buffer(
+            &modulus_buf,
+        );
 
-    if let (Some(c), Some(m)) = (coeffs, modulus) {
+    if let (Some(c), Some(m)) =
+        (coeffs, modulus)
+    {
 
         let field = PrimeField::new(m);
 
-        let poly = FiniteFieldPolynomial::new(c, field);
+        let poly =
+            FiniteFieldPolynomial::new(
+                c, field,
+            );
 
         to_bincode_buffer(&poly)
     } else {
@@ -168,9 +219,13 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_new(
 /// Gets the degree of a finite field polynomial (Bincode)
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_finite_field_polynomial_degree(poly_buf: BincodeBuffer) -> i64 {
+pub extern "C" fn rssn_bincode_finite_field_polynomial_degree(
+    poly_buf: BincodeBuffer
+) -> i64 {
 
-    let poly: Option<FiniteFieldPolynomial> = from_bincode_buffer(&poly_buf);
+    let poly: Option<
+        FiniteFieldPolynomial,
+    > = from_bincode_buffer(&poly_buf);
 
     if let Some(p) = poly {
 
@@ -189,30 +244,54 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_long_division(
     divisor_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let dividend: Option<FiniteFieldPolynomial> = from_bincode_buffer(&dividend_buf);
+    let dividend: Option<
+        FiniteFieldPolynomial,
+    > = from_bincode_buffer(
+        &dividend_buf,
+    );
 
-    let divisor: Option<FiniteFieldPolynomial> = from_bincode_buffer(&divisor_buf);
+    let divisor: Option<
+        FiniteFieldPolynomial,
+    > = from_bincode_buffer(
+        &divisor_buf,
+    );
 
-    if let (Some(div), Some(divisor_poly)) = (dividend, divisor) {
+    if let (
+        Some(div),
+        Some(divisor_poly),
+    ) = (dividend, divisor)
+    {
 
-        match div.long_division(&divisor_poly) {
-            | Ok((quotient, remainder)) => {
+        match div.long_division(
+            &divisor_poly,
+        ) {
+            | Ok((
+                quotient,
+                remainder,
+            )) => {
 
-                #[derive(serde::Serialize)]
+                #[derive(
+                    serde::Serialize,
+                )]
 
                 struct DivisionResult {
                     quotient: FiniteFieldPolynomial,
                     remainder: FiniteFieldPolynomial,
                 }
 
-                let result = DivisionResult {
-                    quotient,
-                    remainder,
-                };
+                let result =
+                    DivisionResult {
+                        quotient,
+                        remainder,
+                    };
 
-                to_bincode_buffer(&result)
+                to_bincode_buffer(
+                    &result,
+                )
             },
-            | Err(_) => BincodeBuffer::empty(),
+            | Err(_) => {
+                BincodeBuffer::empty()
+            },
         }
     } else {
 

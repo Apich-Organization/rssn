@@ -12,19 +12,22 @@ use std::ffi::{
 
 #[test]
 
-fn test_numerical_calculus_handle_ffi() {
+fn test_numerical_calculus_handle_ffi()
+{
 
     unsafe {
 
         let x = Expr::new_variable("x");
 
-        let two = Expr::new_constant(2.0);
+        let two =
+            Expr::new_constant(2.0);
 
         let f = Expr::new_pow(x, two);
 
         let mut res = 0.0;
 
-        let var_name = CString::new("x").unwrap();
+        let var_name =
+            CString::new("x").unwrap();
 
         let status = handle::rssn_num_calculus_partial_derivative(
             &f,
@@ -35,7 +38,9 @@ fn test_numerical_calculus_handle_ffi() {
 
         assert_eq!(status, 0);
 
-        assert_approx_eq!(res, 4.0, 1e-5f64);
+        assert_approx_eq!(
+            res, 4.0, 1e-5f64
+        );
     }
 }
 
@@ -57,29 +62,43 @@ fn test_numerical_gradient_json_ffi() {
             y,
         );
 
-        let f_json = serde_json::to_string(&f).unwrap();
+        let f_json =
+            serde_json::to_string(&f)
+                .unwrap();
 
         let json_input = format!(
             r#"{{"expr": {}, "vars": ["x", "y"], "point": [2.0, 3.0]}}"#,
             f_json
         );
 
-        let c_json = CString::new(json_input).unwrap();
+        let c_json =
+            CString::new(json_input)
+                .unwrap();
 
         let res_ptr = json::rssn_numerical_gradient_json(c_json.as_ptr());
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
         let v: serde_json::Value =
-            serde_json::from_str(res_str).expect("Failed to parse result JSON");
+            serde_json::from_str(
+                res_str,
+            )
+            .expect(
+                "Failed to parse \
+                 result JSON",
+            );
 
         let ok = v["ok"]
             .as_array()
-            .expect("Result 'ok' should be an array");
+            .expect(
+                "Result 'ok' should \
+                 be an array",
+            );
 
         assert_approx_eq!(
             ok[0]
@@ -103,7 +122,8 @@ fn test_numerical_gradient_json_ffi() {
 
 #[test]
 
-fn test_numerical_hessian_bincode_ffi() {
+fn test_numerical_hessian_bincode_ffi()
+{
 
     unsafe {
 
@@ -137,7 +157,8 @@ fn test_numerical_hessian_bincode_ffi() {
             point: vec![2.0],
         };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_numerical_hessian_bincode(buffer);
 
@@ -151,8 +172,16 @@ fn test_numerical_hessian_bincode_ffi() {
             err: Option<E>,
         }
 
-        let res: FfiResult<Vec<Vec<f64>>, String> =
-            from_bincode_buffer(&res_buffer).expect("Failed to decode bincode result");
+        let res: FfiResult<
+            Vec<Vec<f64>>,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .expect(
+            "Failed to decode bincode \
+             result",
+        );
 
         assert!(res.err.is_none());
 
@@ -162,8 +191,12 @@ fn test_numerical_hessian_bincode_ffi() {
             1e-4f64
         );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 }

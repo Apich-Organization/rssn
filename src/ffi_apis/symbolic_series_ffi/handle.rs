@@ -33,7 +33,8 @@ pub extern "C" fn rssn_taylor_series_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -42,7 +43,8 @@ pub extern "C" fn rssn_taylor_series_handle(
     };
 
     let result = taylor_series(
-        expr_ref, &var_str, center_ref, order,
+        expr_ref, &var_str, center_ref,
+        order,
     );
 
     Box::into_raw(Box::new(result))
@@ -71,7 +73,8 @@ pub extern "C" fn rssn_laurent_series_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -80,7 +83,8 @@ pub extern "C" fn rssn_laurent_series_handle(
     };
 
     let result = laurent_series(
-        expr_ref, &var_str, center_ref, order,
+        expr_ref, &var_str, center_ref,
+        order,
     );
 
     Box::into_raw(Box::new(result))
@@ -109,7 +113,8 @@ pub extern "C" fn rssn_fourier_series_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -118,7 +123,8 @@ pub extern "C" fn rssn_fourier_series_handle(
     };
 
     let result = fourier_series(
-        expr_ref, &var_str, period_ref, order,
+        expr_ref, &var_str, period_ref,
+        order,
     );
 
     Box::into_raw(Box::new(result))
@@ -152,7 +158,8 @@ pub extern "C" fn rssn_summation_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -161,7 +168,8 @@ pub extern "C" fn rssn_summation_handle(
     };
 
     let result = summation(
-        expr_ref, &var_str, lower_ref, upper_ref,
+        expr_ref, &var_str, lower_ref,
+        upper_ref,
     );
 
     Box::into_raw(Box::new(result))
@@ -195,7 +203,8 @@ pub extern "C" fn rssn_product_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -204,7 +213,8 @@ pub extern "C" fn rssn_product_handle(
     };
 
     let result = product(
-        expr_ref, &var_str, lower_ref, upper_ref,
+        expr_ref, &var_str, lower_ref,
+        upper_ref,
     );
 
     Box::into_raw(Box::new(result))
@@ -226,7 +236,8 @@ pub extern "C" fn rssn_series_analyze_convergence_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -234,7 +245,10 @@ pub extern "C" fn rssn_series_analyze_convergence_handle(
             .into_owned()
     };
 
-    let result = crate::symbolic::convergence::analyze_convergence(series_ref, &var_str);
+    let result =
+        crate::symbolic::convergence::analyze_convergence(
+            series_ref, &var_str,
+        );
 
     Box::into_raw(Box::new(result))
 }
@@ -262,7 +276,8 @@ pub extern "C" fn rssn_asymptotic_expansion_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -271,7 +286,8 @@ pub extern "C" fn rssn_asymptotic_expansion_handle(
     };
 
     let result = asymptotic_expansion(
-        expr_ref, &var_str, point_ref, order,
+        expr_ref, &var_str, point_ref,
+        order,
     );
 
     Box::into_raw(Box::new(result))
@@ -306,7 +322,8 @@ pub extern "C" fn rssn_analytic_continuation_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)

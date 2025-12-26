@@ -16,7 +16,8 @@ fn test_run_fdtd_simulation_basic() {
         source_freq: 0.1,
     };
 
-    let snapshots = run_fdtd_simulation(&params);
+    let snapshots =
+        run_fdtd_simulation(&params);
 
     // 100 / 5 = 20 snapshots (actually 0, 5, ..., 95, so 20 snapshots)
     assert!(snapshots.len() >= 19);
@@ -41,13 +42,15 @@ fn test_run_fdtd_simulation_basic() {
 
 #[test]
 
-fn test_simulate_and_save_final_state_smoke() {
+fn test_simulate_and_save_final_state_smoke(
+) {
 
-    let res = simulate_and_save_final_state(
-        50,
-        50,
-        "test_fdtd.npy",
-    );
+    let res =
+        simulate_and_save_final_state(
+            50,
+            50,
+            "test_fdtd.npy",
+        );
 
     assert!(res.is_ok());
     // Cleanup if needed, but we ignored .npy in gitignore

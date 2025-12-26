@@ -20,7 +20,12 @@ use std::sync::Arc;
 ///
 /// The equation has the form: `y(x) = f(x) + lambda * integral_a_b(K(x, t) * y(t) dt)`,
 /// where `y(x)` is the unknown function to be solved for.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 
 pub struct FredholmEquation {
     /// The unknown function `y(x)`.
@@ -105,14 +110,19 @@ impl FredholmEquation {
 
         for _ in 0..iterations {
 
-            let integral_term = Expr::new_mul(
-                self.kernel.clone(),
-                substitute(
-                    &y_n,
-                    &self.var_x,
-                    &Expr::Variable(self.var_t.clone()),
-                ),
-            );
+            let integral_term =
+                Expr::new_mul(
+                    self.kernel.clone(),
+                    substitute(
+                        &y_n,
+                        &self.var_x,
+                        &Expr::Variable(
+                            self.var_t
+                                .clone(
+                                ),
+                        ),
+                    ),
+                );
 
             let integrated_val = integrate(
                 &integral_term,
@@ -121,13 +131,16 @@ impl FredholmEquation {
                 Some(&self.upper_bound),
             );
 
-            let next_y_n = simplify(&Expr::new_add(
-                self.f_x.clone(),
-                Expr::new_mul(
-                    self.lambda.clone(),
-                    integrated_val,
+            let next_y_n = simplify(
+                &Expr::new_add(
+                    self.f_x.clone(),
+                    Expr::new_mul(
+                        self.lambda
+                            .clone(),
+                        integrated_val,
+                    ),
                 ),
-            ));
+            );
 
             y_n = next_y_n;
         }
@@ -155,37 +168,53 @@ impl FredholmEquation {
         b_funcs: Vec<Expr>,
     ) -> Result<Expr, String> {
 
-        if a_funcs.len() != b_funcs.len() {
+        if a_funcs.len()
+            != b_funcs.len()
+        {
 
-            return Err("Number of a_i(x) functions must match b_i(t) functions".to_string());
+            return Err(
+                "Number of a_i(x) \
+                 functions must match \
+                 b_i(t) functions"
+                    .to_string(),
+            );
         }
 
         let m = a_funcs.len();
 
-        let c_vars: Vec<String> = (0..m)
+        let c_vars: Vec<String> = (0
+            ..m)
             .map(|i| format!("c{i}"))
             .collect();
 
-        let mut system_eqs: Vec<Expr> = Vec::new();
+        let mut system_eqs: Vec<Expr> =
+            Vec::new();
 
         for k in 0..m {
 
             let b_k_t = substitute(
                 &b_funcs[k],
                 &self.var_x,
-                &Expr::Variable(self.var_t.clone()),
+                &Expr::Variable(
+                    self.var_t.clone(),
+                ),
             );
 
             let f_t = substitute(
                 &self.f_x,
                 &self.var_x,
-                &Expr::Variable(self.var_t.clone()),
+                &Expr::Variable(
+                    self.var_t.clone(),
+                ),
             );
 
-            let beta_k_integrand = simplify(&Expr::new_mul(
-                b_k_t.clone(),
-                f_t,
-            ));
+            let beta_k_integrand =
+                simplify(
+                    &Expr::new_mul(
+                        b_k_t.clone(),
+                        f_t,
+                    ),
+                );
 
             let beta_k = integrate(
                 &beta_k_integrand,
@@ -194,20 +223,29 @@ impl FredholmEquation {
                 Some(&self.upper_bound),
             );
 
-            let mut lhs_sum_terms = Vec::new();
+            let mut lhs_sum_terms =
+                Vec::new();
 
             for i in 0..m {
 
                 let a_i_t = substitute(
                     &a_funcs[i],
                     &self.var_x,
-                    &Expr::Variable(self.var_t.clone()),
+                    &Expr::Variable(
+                        self.var_t
+                            .clone(),
+                    ),
                 );
 
-                let alpha_ki_integrand = simplify(&Expr::new_mul(
-                    b_k_t.clone(),
-                    a_i_t,
-                ));
+                let alpha_ki_integrand =
+                    simplify(
+                        &Expr::new_mul(
+                            b_k_t
+                                .clone(
+                                ),
+                            a_i_t,
+                        ),
+                    );
 
                 let alpha_ki = integrate(
                     &alpha_ki_integrand,
@@ -216,17 +254,31 @@ impl FredholmEquation {
                     Some(&self.upper_bound),
                 );
 
-                let c_i_var = Expr::Variable(c_vars[i].clone());
+                let c_i_var =
+                    Expr::Variable(
+                        c_vars[i]
+                            .clone(),
+                    );
 
-                let term = simplify(&Expr::new_mul(
-                    self.lambda.clone(),
-                    Expr::new_mul(c_i_var, alpha_ki),
-                ));
+                let term = simplify(
+                    &Expr::new_mul(
+                        self.lambda
+                            .clone(),
+                        Expr::new_mul(
+                            c_i_var,
+                            alpha_ki,
+                        ),
+                    ),
+                );
 
-                lhs_sum_terms.push(term);
+                lhs_sum_terms
+                    .push(term);
             }
 
-            let c_k_var = Expr::Variable(c_vars[k].clone());
+            let c_k_var =
+                Expr::Variable(
+                    c_vars[k].clone(),
+                );
 
             let sum_of_terms = lhs_sum_terms
                 .into_iter()
@@ -240,10 +292,12 @@ impl FredholmEquation {
                     },
                 );
 
-            let equation_lhs = simplify(&Expr::new_sub(
-                c_k_var,
-                sum_of_terms,
-            ));
+            let equation_lhs = simplify(
+                &Expr::new_sub(
+                    c_k_var,
+                    sum_of_terms,
+                ),
+            );
 
             system_eqs.push(Expr::Eq(
                 Arc::new(equation_lhs),
@@ -251,24 +305,33 @@ impl FredholmEquation {
             ));
         }
 
-        let c_solved = solve_linear_system(
-            &Expr::System(system_eqs),
-            &c_vars,
-        )?;
+        let c_solved =
+            solve_linear_system(
+                &Expr::System(
+                    system_eqs,
+                ),
+                &c_vars,
+            )?;
 
-        let mut solution_sum_terms = Vec::new();
+        let mut solution_sum_terms =
+            Vec::new();
 
         for i in 0..m {
 
-            let c_i_val = c_solved[i].clone();
+            let c_i_val =
+                c_solved[i].clone();
 
-            let a_i_x = a_funcs[i].clone();
+            let a_i_x =
+                a_funcs[i].clone();
 
-            let term = simplify(&Expr::new_mul(
-                c_i_val, a_i_x,
-            ));
+            let term = simplify(
+                &Expr::new_mul(
+                    c_i_val, a_i_x,
+                ),
+            );
 
-            solution_sum_terms.push(term);
+            solution_sum_terms
+                .push(term);
         }
 
         let sum_of_solution_terms = solution_sum_terms
@@ -299,7 +362,12 @@ impl FredholmEquation {
 ///
 /// The equation has the form: `y(x) = f(x) + lambda * integral_a_x(K(x, t) * y(t) dt)`.
 /// It is similar to the Fredholm equation, but the upper limit of integration is the variable `x`.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 
 pub struct VolterraEquation {
     /// The unknown function `y(x)`.
@@ -381,13 +449,16 @@ impl VolterraEquation {
             let y_n_t = substitute(
                 &y_n,
                 &self.var_x,
-                &Expr::Variable(self.var_t.clone()),
+                &Expr::Variable(
+                    self.var_t.clone(),
+                ),
             );
 
-            let integral_term = Expr::new_mul(
-                self.kernel.clone(),
-                y_n_t,
-            );
+            let integral_term =
+                Expr::new_mul(
+                    self.kernel.clone(),
+                    y_n_t,
+                );
 
             let integrated_val = integrate(
                 &integral_term,
@@ -398,13 +469,16 @@ impl VolterraEquation {
                 )),
             );
 
-            let next_y_n = simplify(&Expr::new_add(
-                self.f_x.clone(),
-                Expr::new_mul(
-                    self.lambda.clone(),
-                    integrated_val,
+            let next_y_n = simplify(
+                &Expr::new_add(
+                    self.f_x.clone(),
+                    Expr::new_mul(
+                        self.lambda
+                            .clone(),
+                        integrated_val,
+                    ),
                 ),
-            ));
+            );
 
             y_n = next_y_n;
         }
@@ -421,7 +495,9 @@ impl VolterraEquation {
     /// # Returns
     /// A `Result<Expr, String>` which is the solution `y(x)` on success, or an error message.
 
-    pub fn solve_by_differentiation(&self) -> Result<Expr, String> {
+    pub fn solve_by_differentiation(
+        &self
+    ) -> Result<Expr, String> {
 
         let y_prime = differentiate(
             &self.y_x,
@@ -436,13 +512,16 @@ impl VolterraEquation {
         let k_x_x = substitute(
             &self.kernel,
             &self.var_t,
-            &Expr::Variable(self.var_x.clone()),
+            &Expr::Variable(
+                self.var_x.clone(),
+            ),
         );
 
-        let term1 = simplify(&Expr::new_mul(
-            k_x_x,
-            self.y_x.clone(),
-        ));
+        let term1 =
+            simplify(&Expr::new_mul(
+                k_x_x,
+                self.y_x.clone(),
+            ));
 
         let dk_dx = differentiate(
             &self.kernel,
@@ -452,12 +531,14 @@ impl VolterraEquation {
         let y_t = substitute(
             &self.y_x,
             &self.var_x,
-            &Expr::Variable(self.var_t.clone()),
+            &Expr::Variable(
+                self.var_t.clone(),
+            ),
         );
 
-        let integrand = simplify(&Expr::new_mul(
-            dk_dx, y_t,
-        ));
+        let integrand = simplify(
+            &Expr::new_mul(dk_dx, y_t),
+        );
 
         let integral_term = integrate(
             &integrand,
@@ -468,13 +549,17 @@ impl VolterraEquation {
             )),
         );
 
-        let rhs = simplify(&Expr::new_add(
-            f_prime,
-            Expr::new_mul(
-                self.lambda.clone(),
-                Expr::new_add(term1, integral_term),
-            ),
-        ));
+        let rhs =
+            simplify(&Expr::new_add(
+                f_prime,
+                Expr::new_mul(
+                    self.lambda.clone(),
+                    Expr::new_add(
+                        term1,
+                        integral_term,
+                    ),
+                ),
+            ));
 
         let ode_expr = Expr::Eq(
             Arc::new(y_prime),
@@ -482,7 +567,8 @@ impl VolterraEquation {
         );
 
         Err(format!(
-            "Conversion to ODE resulted in: {ode_expr}"
+            "Conversion to ODE \
+             resulted in: {ode_expr}"
         ))
     }
 }
@@ -518,23 +604,32 @@ pub fn solve_airfoil_equation(
 
     let pi = Expr::Pi;
 
-    let sqrt_1_minus_t2 = Expr::new_sqrt(Expr::new_sub(
-        one.clone(),
-        Expr::new_pow(
-            Expr::Variable(var_t.to_string()),
-            Expr::Constant(2.0),
-        ),
-    ));
+    let sqrt_1_minus_t2 =
+        Expr::new_sqrt(Expr::new_sub(
+            one.clone(),
+            Expr::new_pow(
+                Expr::Variable(
+                    var_t.to_string(),
+                ),
+                Expr::Constant(2.0),
+            ),
+        ));
 
     let t_minus_x = Expr::new_sub(
-        Expr::Variable(var_t.to_string()),
-        Expr::Variable(var_x.to_string()),
+        Expr::Variable(
+            var_t.to_string(),
+        ),
+        Expr::Variable(
+            var_x.to_string(),
+        ),
     );
 
     let f_t = substitute(
         f_x,
         var_x,
-        &Expr::Variable(var_t.to_string()),
+        &Expr::Variable(
+            var_t.to_string(),
+        ),
     );
 
     let integrand = Expr::new_mul(
@@ -552,13 +647,16 @@ pub fn solve_airfoil_equation(
         Some(&one),
     );
 
-    let sqrt_1_minus_x2 = Expr::new_sqrt(Expr::new_sub(
-        one,
-        Expr::new_pow(
-            Expr::Variable(var_x.to_string()),
-            Expr::Constant(2.0),
-        ),
-    ));
+    let sqrt_1_minus_x2 =
+        Expr::new_sqrt(Expr::new_sub(
+            one,
+            Expr::new_pow(
+                Expr::Variable(
+                    var_x.to_string(),
+                ),
+                Expr::Constant(2.0),
+            ),
+        ));
 
     let factor1 = Expr::new_div(
         Expr::Constant(-1.0),
@@ -573,7 +671,8 @@ pub fn solve_airfoil_equation(
         integral_part,
     );
 
-    let const_c = Expr::Variable("C".to_string());
+    let const_c =
+        Expr::Variable("C".to_string());
 
     let term2 = Expr::new_div(
         const_c,

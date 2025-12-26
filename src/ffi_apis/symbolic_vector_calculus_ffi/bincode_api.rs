@@ -50,11 +50,18 @@ pub extern "C" fn rssn_line_integral_scalar_bincode(
         len: input_len,
     };
 
-    let input: Option<LineIntegralScalarInput> = from_bincode_buffer(&input_buffer);
+    let input: Option<
+        LineIntegralScalarInput,
+    > = from_bincode_buffer(
+        &input_buffer,
+    );
 
     let input = match input {
         | Some(i) => i,
-        | None => return BincodeBuffer::empty(),
+        | None => {
+            return BincodeBuffer::empty(
+            )
+        },
     };
 
     let result = line_integral_scalar(
@@ -78,11 +85,18 @@ pub extern "C" fn rssn_line_integral_vector_bincode(
         len: input_len,
     };
 
-    let input: Option<LineIntegralVectorInput> = from_bincode_buffer(&input_buffer);
+    let input: Option<
+        LineIntegralVectorInput,
+    > = from_bincode_buffer(
+        &input_buffer,
+    );
 
     let input = match input {
         | Some(i) => i,
-        | None => return BincodeBuffer::empty(),
+        | None => {
+            return BincodeBuffer::empty(
+            )
+        },
     };
 
     let result = line_integral_vector(
@@ -106,11 +120,18 @@ pub extern "C" fn rssn_surface_integral_bincode(
         len: input_len,
     };
 
-    let input: Option<SurfaceIntegralInput> = from_bincode_buffer(&input_buffer);
+    let input: Option<
+        SurfaceIntegralInput,
+    > = from_bincode_buffer(
+        &input_buffer,
+    );
 
     let input = match input {
         | Some(i) => i,
-        | None => return BincodeBuffer::empty(),
+        | None => {
+            return BincodeBuffer::empty(
+            )
+        },
     };
 
     let result = surface_integral(
@@ -134,11 +155,18 @@ pub extern "C" fn rssn_volume_integral_bincode(
         len: input_len,
     };
 
-    let input: Option<VolumeIntegralInput> = from_bincode_buffer(&input_buffer);
+    let input: Option<
+        VolumeIntegralInput,
+    > = from_bincode_buffer(
+        &input_buffer,
+    );
 
     let input = match input {
         | Some(i) => i,
-        | None => return BincodeBuffer::empty(),
+        | None => {
+            return BincodeBuffer::empty(
+            )
+        },
     };
 
     let result = volume_integral(

@@ -21,7 +21,14 @@ use std::ops::{
 };
 
 /// Represents a symbolic vector in 3D space.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Vector {
     pub x: Expr,
@@ -131,38 +138,41 @@ impl Vector {
         other: &Self,
     ) -> Self {
 
-        let x_comp = simplify(&Expr::new_sub(
-            Expr::new_mul(
-                self.y.clone(),
-                other.z.clone(),
-            ),
-            Expr::new_mul(
-                self.z.clone(),
-                other.y.clone(),
-            ),
-        ));
+        let x_comp =
+            simplify(&Expr::new_sub(
+                Expr::new_mul(
+                    self.y.clone(),
+                    other.z.clone(),
+                ),
+                Expr::new_mul(
+                    self.z.clone(),
+                    other.y.clone(),
+                ),
+            ));
 
-        let y_comp = simplify(&Expr::new_sub(
-            Expr::new_mul(
-                self.z.clone(),
-                other.x.clone(),
-            ),
-            Expr::new_mul(
-                self.x.clone(),
-                other.z.clone(),
-            ),
-        ));
+        let y_comp =
+            simplify(&Expr::new_sub(
+                Expr::new_mul(
+                    self.z.clone(),
+                    other.x.clone(),
+                ),
+                Expr::new_mul(
+                    self.x.clone(),
+                    other.z.clone(),
+                ),
+            ));
 
-        let z_comp = simplify(&Expr::new_sub(
-            Expr::new_mul(
-                self.x.clone(),
-                other.y.clone(),
-            ),
-            Expr::new_mul(
-                self.y.clone(),
-                other.x.clone(),
-            ),
-        ));
+        let z_comp =
+            simplify(&Expr::new_sub(
+                Expr::new_mul(
+                    self.x.clone(),
+                    other.y.clone(),
+                ),
+                Expr::new_mul(
+                    self.y.clone(),
+                    other.x.clone(),
+                ),
+            ));
 
         Self::new(
             x_comp, y_comp, z_comp,
@@ -246,12 +256,16 @@ impl Vector {
 
         let mag_self = self.magnitude();
 
-        let mag_other = other.magnitude();
+        let mag_other =
+            other.magnitude();
 
-        let cos_theta = simplify(&Expr::new_div(
-            dot_prod,
-            Expr::new_mul(mag_self, mag_other),
-        ));
+        let cos_theta =
+            simplify(&Expr::new_div(
+                dot_prod,
+                Expr::new_mul(
+                    mag_self, mag_other,
+                ),
+            ));
 
         simplify(&Expr::new_arccos(
             cos_theta,
@@ -276,7 +290,8 @@ impl Vector {
 
         let dot_prod = self.dot(other);
 
-        let mag_other_sq = other.dot(other); // |B|^2 = B . B
+        let mag_other_sq =
+            other.dot(other); // |B|^2 = B . B
 
         if is_zero(&mag_other_sq) {
 
@@ -288,10 +303,11 @@ impl Vector {
             );
         }
 
-        let scalar = simplify(&Expr::new_div(
-            dot_prod,
-            mag_other_sq,
-        ));
+        let scalar =
+            simplify(&Expr::new_div(
+                dot_prod,
+                mag_other_sq,
+            ));
 
         other.scalar_mul(&scalar)
     }
@@ -379,11 +395,20 @@ pub fn gradient(
     vars: (&str, &str, &str),
 ) -> Vector {
 
-    let df_dx = differentiate(scalar_field, vars.0);
+    let df_dx = differentiate(
+        scalar_field,
+        vars.0,
+    );
 
-    let df_dy = differentiate(scalar_field, vars.1);
+    let df_dy = differentiate(
+        scalar_field,
+        vars.1,
+    );
 
-    let df_dz = differentiate(scalar_field, vars.2);
+    let df_dz = differentiate(
+        scalar_field,
+        vars.2,
+    );
 
     Vector::new(df_dx, df_dy, df_dz)
 }
@@ -476,17 +501,20 @@ pub fn curl(
         vars.1,
     );
 
-    let x_comp = simplify(&Expr::new_sub(
-        d_fz_dy, d_fy_dz,
-    ));
+    let x_comp =
+        simplify(&Expr::new_sub(
+            d_fz_dy, d_fy_dz,
+        ));
 
-    let y_comp = simplify(&Expr::new_sub(
-        d_fx_dz, d_fz_dx,
-    ));
+    let y_comp =
+        simplify(&Expr::new_sub(
+            d_fx_dz, d_fz_dx,
+        ));
 
-    let z_comp = simplify(&Expr::new_sub(
-        d_fy_dx, d_fx_dy,
-    ));
+    let z_comp =
+        simplify(&Expr::new_sub(
+            d_fy_dx, d_fx_dy,
+        ));
 
     Vector::new(
         x_comp, y_comp, z_comp,
@@ -514,7 +542,8 @@ pub fn directional_derivative(
     vars: (&str, &str, &str),
 ) -> Expr {
 
-    let grad_f = gradient(scalar_field, vars);
+    let grad_f =
+        gradient(scalar_field, vars);
 
     grad_f.dot(direction)
 }
@@ -538,8 +567,17 @@ pub fn partial_derivative_vector(
 ) -> Vector {
 
     Vector::new(
-        differentiate(&vector_field.x, var),
-        differentiate(&vector_field.y, var),
-        differentiate(&vector_field.z, var),
+        differentiate(
+            &vector_field.x,
+            var,
+        ),
+        differentiate(
+            &vector_field.y,
+            var,
+        ),
+        differentiate(
+            &vector_field.z,
+            var,
+        ),
     )
 }

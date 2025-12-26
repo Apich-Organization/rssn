@@ -30,17 +30,21 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: ActionInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
+    let input: ActionInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    f64,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode input".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode input".to_string(),
+                    ),
+                })
+            },
+        };
 
     match calculus_of_variations::evaluate_action(
         &input.lagrangian,

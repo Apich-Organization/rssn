@@ -37,19 +37,25 @@ struct PbcInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
+    buffer: BincodeBuffer
+) -> BincodeBuffer {
 
-    let input: LennardJonesInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<InteractionOutput, String> {
+    let input: LennardJonesInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    InteractionOutput,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
     let p1 = physics_md::Particle::new(
         0,
@@ -73,7 +79,8 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(buffer: BincodeBuffer
     ) {
         | Ok((potential, force)) => {
 
-            let output = InteractionOutput { potential, force };
+            let output =
+                InteractionOutput { potential, force };
 
             to_bincode_buffer(&FfiResult {
                 ok: Some(output),
@@ -81,29 +88,34 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(buffer: BincodeBuffer
             })
         },
         | Err(e) => {
-            to_bincode_buffer(
-                &FfiResult::<InteractionOutput, String> {
-                    ok: None,
-                    err: Some(e),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<
+                InteractionOutput,
+                String,
+            > {
+                ok: None,
+                err: Some(e),
+            })
         },
     }
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(
+    buffer: BincodeBuffer
+) -> BincodeBuffer {
 
-    let input: PbcInput = match from_bincode_buffer(&buffer) {
+    let input: PbcInput = match from_bincode_buffer(&buffer)
+    {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<f64>, String> {
-                    ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            > {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            })
         },
     };
 

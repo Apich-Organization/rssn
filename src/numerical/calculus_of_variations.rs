@@ -80,7 +80,8 @@ pub fn evaluate_action(
     t_range: (f64, f64),
 ) -> Result<f64, String> {
 
-    let path_dot = differentiate(path, t_var);
+    let path_dot =
+        differentiate(path, t_var);
 
     let integrand_with_y = substitute(
         lagrangian, path_var, path,
@@ -129,7 +130,9 @@ pub fn euler_lagrange(
     path_dot_var: &str,
 ) -> Expr {
 
-    let dl_dy = differentiate(lagrangian, path_var);
+    let dl_dy = differentiate(
+        lagrangian, path_var,
+    );
 
     let dl_dy_dot = differentiate(
         lagrangian,
@@ -143,16 +146,23 @@ pub fn euler_lagrange(
     // For now, we'll return a simplified version or just the partials if full EL ODE generation is complex.
     // But we can actually perform the full chain rule if we define y_ddot as another variable.
 
-    let y_dot_sym = Expr::new_variable(path_dot_var);
+    let y_dot_sym = Expr::new_variable(
+        path_dot_var,
+    );
 
-    let y_ddot_sym = Expr::new_variable(&format!(
-        "{}_dot",
-        path_dot_var
-    ));
+    let y_ddot_sym =
+        Expr::new_variable(&format!(
+            "{}_dot",
+            path_dot_var
+        ));
 
-    let d_dt_explicit = differentiate(&dl_dy_dot, t_var);
+    let d_dt_explicit = differentiate(
+        &dl_dy_dot, t_var,
+    );
 
-    let d_dy = differentiate(&dl_dy_dot, path_var);
+    let d_dy = differentiate(
+        &dl_dy_dot, path_var,
+    );
 
     let d_dy_dot = differentiate(
         &dl_dy_dot,
@@ -163,9 +173,13 @@ pub fn euler_lagrange(
     let d_dt_total = Expr::new_add(
         Expr::new_add(
             d_dt_explicit,
-            Expr::new_mul(d_dy, y_dot_sym),
+            Expr::new_mul(
+                d_dy, y_dot_sym,
+            ),
         ),
-        Expr::new_mul(d_dy_dot, y_ddot_sym),
+        Expr::new_mul(
+            d_dy_dot, y_ddot_sym,
+        ),
     );
 
     Expr::new_sub(d_dt_total, dl_dy)

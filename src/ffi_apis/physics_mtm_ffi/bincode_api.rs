@@ -26,17 +26,18 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: Multigrid2DInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
-                "Invalid Bincode".to_string(),
-            ))
-        },
-    };
+    let input: Multigrid2DInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
+                    "Invalid Bincode".to_string(),
+                ))
+            },
+        };
 
     match physics_mtm::solve_poisson_2d_multigrid(
         input.n,

@@ -14,7 +14,10 @@ pub extern "C" fn rssn_json_euler_lagrange(
     var: *const c_char,
 ) -> *mut c_char {
 
-    let lagrangian: Option<Expr> = from_json_string(lagrangian_json);
+    let lagrangian: Option<Expr> =
+        from_json_string(
+            lagrangian_json,
+        );
 
     let func_str = unsafe {
 
@@ -23,9 +26,11 @@ pub extern "C" fn rssn_json_euler_lagrange(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -36,9 +41,11 @@ pub extern "C" fn rssn_json_euler_lagrange(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -46,7 +53,9 @@ pub extern "C" fn rssn_json_euler_lagrange(
         lagrangian, func_str, var_str,
     ) {
 
-        let result = calculus_of_variations::euler_lagrange(&l, f, v);
+        let result = calculus_of_variations::euler_lagrange(
+            &l, f, v,
+        );
 
         to_json_string(&result)
     } else {
@@ -64,7 +73,10 @@ pub extern "C" fn rssn_json_solve_euler_lagrange(
     var: *const c_char,
 ) -> *mut c_char {
 
-    let lagrangian: Option<Expr> = from_json_string(lagrangian_json);
+    let lagrangian: Option<Expr> =
+        from_json_string(
+            lagrangian_json,
+        );
 
     let func_str = unsafe {
 
@@ -73,9 +85,11 @@ pub extern "C" fn rssn_json_solve_euler_lagrange(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -86,9 +100,11 @@ pub extern "C" fn rssn_json_solve_euler_lagrange(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -96,7 +112,10 @@ pub extern "C" fn rssn_json_solve_euler_lagrange(
         lagrangian, func_str, var_str,
     ) {
 
-        let result = calculus_of_variations::solve_euler_lagrange(&l, f, v);
+        let result =
+            calculus_of_variations::solve_euler_lagrange(
+                &l, f, v,
+            );
 
         to_json_string(&result)
     } else {
@@ -114,7 +133,10 @@ pub extern "C" fn rssn_json_hamiltons_principle(
     var: *const c_char,
 ) -> *mut c_char {
 
-    let lagrangian: Option<Expr> = from_json_string(lagrangian_json);
+    let lagrangian: Option<Expr> =
+        from_json_string(
+            lagrangian_json,
+        );
 
     let func_str = unsafe {
 
@@ -123,9 +145,11 @@ pub extern "C" fn rssn_json_hamiltons_principle(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -136,9 +160,11 @@ pub extern "C" fn rssn_json_hamiltons_principle(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -146,7 +172,10 @@ pub extern "C" fn rssn_json_hamiltons_principle(
         lagrangian, func_str, var_str,
     ) {
 
-        let result = calculus_of_variations::hamiltons_principle(&l, f, v);
+        let result =
+            calculus_of_variations::hamiltons_principle(
+                &l, f, v,
+            );
 
         to_json_string(&result)
     } else {

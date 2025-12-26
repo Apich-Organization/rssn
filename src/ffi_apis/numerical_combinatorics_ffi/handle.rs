@@ -14,12 +14,17 @@ pub unsafe extern "C" fn rssn_num_comb_factorial(
 
     if result.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_comb_factorial".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_comb_factorial"
+                .to_string(),
+        );
 
         return -1;
     }
 
-    *result = combinatorics::factorial(n);
+    *result =
+        combinatorics::factorial(n);
 
     0
 }
@@ -35,12 +40,19 @@ pub unsafe extern "C" fn rssn_num_comb_permutations(
 
     if result.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_comb_permutations".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_comb_permutations"
+                .to_string(),
+        );
 
         return -1;
     }
 
-    *result = combinatorics::permutations(n, k);
+    *result =
+        combinatorics::permutations(
+            n, k,
+        );
 
     0
 }
@@ -56,12 +68,19 @@ pub unsafe extern "C" fn rssn_num_comb_combinations(
 
     if result.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_comb_combinations".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_comb_combinations"
+                .to_string(),
+        );
 
         return -1;
     }
 
-    *result = combinatorics::combinations(n, k);
+    *result =
+        combinatorics::combinations(
+            n, k,
+        );
 
     0
 }
@@ -78,19 +97,30 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
     result: *mut f64,
 ) -> i32 {
 
-    if coeffs.is_null() || initial_conditions.is_null() || result.is_null() {
+    if coeffs.is_null()
+        || initial_conditions.is_null()
+        || result.is_null()
+    {
 
-        update_last_error("Null pointer passed to rssn_num_comb_solve_recurrence".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_comb_solve_recurrence"
+                .to_string(),
+        );
 
         return -1;
     }
 
-    let coeffs_slice = slice::from_raw_parts(coeffs, coeffs_len);
+    let coeffs_slice =
+        slice::from_raw_parts(
+            coeffs, coeffs_len,
+        );
 
-    let initial_slice = slice::from_raw_parts(
-        initial_conditions,
-        initial_len,
-    );
+    let initial_slice =
+        slice::from_raw_parts(
+            initial_conditions,
+            initial_len,
+        );
 
     match combinatorics::solve_recurrence_numerical(
         coeffs_slice,
@@ -123,12 +153,19 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second(
 
     if result.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_comb_stirling_second".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_comb_stirling_second"
+                .to_string(),
+        );
 
         return -1;
     }
 
-    *result = combinatorics::stirling_second(n, k);
+    *result =
+        combinatorics::stirling_second(
+            n, k,
+        );
 
     0
 }
@@ -143,7 +180,11 @@ pub unsafe extern "C" fn rssn_num_comb_bell(
 
     if result.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_comb_bell".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_comb_bell"
+                .to_string(),
+        );
 
         return -1;
     }
@@ -163,7 +204,11 @@ pub unsafe extern "C" fn rssn_num_comb_catalan(
 
     if result.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_comb_catalan".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_comb_catalan"
+                .to_string(),
+        );
 
         return -1;
     }
@@ -184,12 +229,19 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial(
 
     if result.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_comb_rising_factorial".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_comb_rising_factorial"
+                .to_string(),
+        );
 
         return -1;
     }
 
-    *result = combinatorics::rising_factorial(x, n);
+    *result =
+        combinatorics::rising_factorial(
+            x, n,
+        );
 
     0
 }
@@ -205,7 +257,11 @@ pub unsafe extern "C" fn rssn_num_comb_falling_factorial(
 
     if result.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_comb_falling_factorial".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_comb_falling_factorial"
+                .to_string(),
+        );
 
         return -1;
     }

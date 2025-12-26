@@ -36,7 +36,8 @@ fn test_solve_linear_diophantine() {
 
     let vars = vec!["x", "y"];
 
-    let result = solve_diophantine(&eq, &vars);
+    let result =
+        solve_diophantine(&eq, &vars);
 
     assert!(result.is_ok());
 
@@ -65,7 +66,9 @@ fn test_solve_pell() {
                 Expr::new_constant(2.0),
                 Expr::new_pow(
                     y.clone(),
-                    Expr::new_constant(2.0),
+                    Expr::new_constant(
+                        2.0,
+                    ),
                 ),
             ),
         )),
@@ -76,7 +79,8 @@ fn test_solve_pell() {
 
     let vars = vec!["x", "y"];
 
-    let result = solve_diophantine(&eq, &vars);
+    let result =
+        solve_diophantine(&eq, &vars);
 
     assert!(result.is_ok());
 
@@ -127,7 +131,8 @@ fn test_solve_pythagorean() {
 
     let vars = vec!["x", "y", "z"];
 
-    let result = solve_diophantine(&eq, &vars);
+    let result =
+        solve_diophantine(&eq, &vars);
 
     assert!(result.is_ok());
 
@@ -142,11 +147,14 @@ fn test_extended_gcd() {
 
     // gcd(10, 6) = 2
     // 10x + 6y = 2 -> 10(-1) + 6(2) = -10 + 12 = 2
-    let a = Expr::BigInt(BigInt::from(10));
+    let a =
+        Expr::BigInt(BigInt::from(10));
 
-    let b = Expr::BigInt(BigInt::from(6));
+    let b =
+        Expr::BigInt(BigInt::from(6));
 
-    let (g, x, y) = extended_gcd(&a, &b);
+    let (g, x, y) =
+        extended_gcd(&a, &b);
 
     assert_eq!(
         g,
@@ -178,20 +186,33 @@ fn test_chinese_remainder() {
 
     let congruences = vec![
         (
-            Expr::BigInt(BigInt::from(2)),
-            Expr::BigInt(BigInt::from(3)),
+            Expr::BigInt(BigInt::from(
+                2,
+            )),
+            Expr::BigInt(BigInt::from(
+                3,
+            )),
         ),
         (
-            Expr::BigInt(BigInt::from(3)),
-            Expr::BigInt(BigInt::from(5)),
+            Expr::BigInt(BigInt::from(
+                3,
+            )),
+            Expr::BigInt(BigInt::from(
+                5,
+            )),
         ),
         (
-            Expr::BigInt(BigInt::from(2)),
-            Expr::BigInt(BigInt::from(7)),
+            Expr::BigInt(BigInt::from(
+                2,
+            )),
+            Expr::BigInt(BigInt::from(
+                7,
+            )),
         ),
     ];
 
-    let result = chinese_remainder(&congruences);
+    let result =
+        chinese_remainder(&congruences);
 
     assert!(result.is_some());
 
@@ -200,28 +221,36 @@ fn test_chinese_remainder() {
     // The function returns Expr::Mod(23, 105)
     let res = result.unwrap();
 
-    let (val, modulus) = if let Expr::Dag(node) = res {
+    let (val, modulus) =
+        if let Expr::Dag(node) = res {
 
-        if let Expr::Mod(v, m) = node
-            .to_expr()
-            .unwrap()
+            if let Expr::Mod(v, m) =
+                node.to_expr()
+                    .unwrap()
+            {
+
+                (v, m)
+            } else {
+
+                panic!(
+                    "Expected Mod \
+                     expression \
+                     inside Dag"
+                );
+            }
+        } else if let Expr::Mod(v, m) =
+            res
         {
 
             (v, m)
         } else {
 
-            panic!("Expected Mod expression inside Dag");
-        }
-    } else if let Expr::Mod(v, m) = res {
-
-        (v, m)
-    } else {
-
-        panic!(
-            "Expected Mod expression, got {:?}",
-            res
-        );
-    };
+            panic!(
+                "Expected Mod \
+                 expression, got {:?}",
+                res
+            );
+        };
 
     assert_eq!(
         *val,

@@ -32,35 +32,58 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
         return -1;
     }
 
-    let t_var_str = match CStr::from_ptr(t_var).to_str() {
-        | Ok(s) => s,
-        | Err(_) => {
+    let t_var_str =
+        match CStr::from_ptr(t_var)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => {
 
-            update_last_error("Invalid UTF-8 for t_var".to_string());
+                update_last_error(
+                    "Invalid UTF-8 \
+                     for t_var"
+                        .to_string(),
+                );
 
-            return -1;
-        },
-    };
+                return -1;
+            },
+        };
 
-    let path_var_str = match CStr::from_ptr(path_var).to_str() {
-        | Ok(s) => s,
-        | Err(_) => {
+    let path_var_str =
+        match CStr::from_ptr(path_var)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => {
 
-            update_last_error("Invalid UTF-8 for path_var".to_string());
+                update_last_error(
+                    "Invalid UTF-8 \
+                     for path_var"
+                        .to_string(),
+                );
 
-            return -1;
-        },
-    };
+                return -1;
+            },
+        };
 
-    let path_dot_var_str = match CStr::from_ptr(path_dot_var).to_str() {
-        | Ok(s) => s,
-        | Err(_) => {
+    let path_dot_var_str =
+        match CStr::from_ptr(
+            path_dot_var,
+        )
+        .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => {
 
-            update_last_error("Invalid UTF-8 for path_dot_var".to_string());
+                update_last_error(
+                    "Invalid UTF-8 \
+                     for path_dot_var"
+                        .to_string(),
+                );
 
-            return -1;
-        },
-    };
+                return -1;
+            },
+        };
 
     match calculus_of_variations::evaluate_action(
         &*lagrangian,
@@ -96,40 +119,67 @@ pub unsafe extern "C" fn rssn_num_cov_euler_lagrange(
     path_dot_var: *const c_char,
 ) -> *mut Expr {
 
-    if lagrangian.is_null() || t_var.is_null() || path_var.is_null() || path_dot_var.is_null() {
+    if lagrangian.is_null()
+        || t_var.is_null()
+        || path_var.is_null()
+        || path_dot_var.is_null()
+    {
 
         return ptr::null_mut();
     }
 
-    let t_var_str = match CStr::from_ptr(t_var).to_str() {
-        | Ok(s) => s,
-        | Err(_) => {
+    let t_var_str =
+        match CStr::from_ptr(t_var)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => {
 
-            update_last_error("Invalid UTF-8 for t_var".to_string());
+                update_last_error(
+                    "Invalid UTF-8 \
+                     for t_var"
+                        .to_string(),
+                );
 
-            return ptr::null_mut();
-        },
-    };
+                return ptr::null_mut();
+            },
+        };
 
-    let path_var_str = match CStr::from_ptr(path_var).to_str() {
-        | Ok(s) => s,
-        | Err(_) => {
+    let path_var_str =
+        match CStr::from_ptr(path_var)
+            .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => {
 
-            update_last_error("Invalid UTF-8 for path_var".to_string());
+                update_last_error(
+                    "Invalid UTF-8 \
+                     for path_var"
+                        .to_string(),
+                );
 
-            return ptr::null_mut();
-        },
-    };
+                return ptr::null_mut();
+            },
+        };
 
-    let path_dot_var_str = match CStr::from_ptr(path_dot_var).to_str() {
-        | Ok(s) => s,
-        | Err(_) => {
+    let path_dot_var_str =
+        match CStr::from_ptr(
+            path_dot_var,
+        )
+        .to_str()
+        {
+            | Ok(s) => s,
+            | Err(_) => {
 
-            update_last_error("Invalid UTF-8 for path_dot_var".to_string());
+                update_last_error(
+                    "Invalid UTF-8 \
+                     for path_dot_var"
+                        .to_string(),
+                );
 
-            return ptr::null_mut();
-        },
-    };
+                return ptr::null_mut();
+            },
+        };
 
     let res = calculus_of_variations::euler_lagrange(
         &*lagrangian,

@@ -31,29 +31,45 @@ pub unsafe extern "C" fn rssn_num_sparse_create(
     nnz: usize,
 ) -> *mut CsMat<f64> {
 
-    if row_indices.is_null() || col_indices.is_null() || values.is_null() {
+    if row_indices.is_null()
+        || col_indices.is_null()
+        || values.is_null()
+    {
 
-        update_last_error("Null pointer passed to rssn_num_sparse_create".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_sparse_create"
+                .to_string(),
+        );
 
         return ptr::null_mut();
     }
 
     let r_idx = unsafe {
 
-        std::slice::from_raw_parts(row_indices, nnz)
+        std::slice::from_raw_parts(
+            row_indices,
+            nnz,
+        )
     };
 
     let c_idx = unsafe {
 
-        std::slice::from_raw_parts(col_indices, nnz)
+        std::slice::from_raw_parts(
+            col_indices,
+            nnz,
+        )
     };
 
     let vals = unsafe {
 
-        std::slice::from_raw_parts(values, nnz)
+        std::slice::from_raw_parts(
+            values, nnz,
+        )
     };
 
-    let mut triplets = Vec::with_capacity(nnz);
+    let mut triplets =
+        Vec::with_capacity(nnz);
 
     for i in 0..nnz {
 
@@ -72,13 +88,16 @@ pub unsafe extern "C" fn rssn_num_sparse_create(
 /// Frees a sparse matrix object.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_sparse_free(matrix: *mut CsMat<f64>) {
+pub unsafe extern "C" fn rssn_num_sparse_free(
+    matrix: *mut CsMat<f64>
+) {
 
     if !matrix.is_null() {
 
         unsafe {
 
-            let _ = Box::from_raw(matrix);
+            let _ =
+                Box::from_raw(matrix);
         }
     }
 }
@@ -86,7 +105,9 @@ pub unsafe extern "C" fn rssn_num_sparse_free(matrix: *mut CsMat<f64>) {
 /// Returns the number of rows.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_sparse_get_rows(matrix: *const CsMat<f64>) -> usize {
+pub unsafe extern "C" fn rssn_num_sparse_get_rows(
+    matrix: *const CsMat<f64>
+) -> usize {
 
     if matrix.is_null() {
 
@@ -102,7 +123,9 @@ pub unsafe extern "C" fn rssn_num_sparse_get_rows(matrix: *const CsMat<f64>) -> 
 /// Returns the number of columns.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_sparse_get_cols(matrix: *const CsMat<f64>) -> usize {
+pub unsafe extern "C" fn rssn_num_sparse_get_cols(
+    matrix: *const CsMat<f64>
+) -> usize {
 
     if matrix.is_null() {
 
@@ -118,7 +141,9 @@ pub unsafe extern "C" fn rssn_num_sparse_get_cols(matrix: *const CsMat<f64>) -> 
 /// Returns the number of non-zero elements.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_sparse_get_nnz(matrix: *const CsMat<f64>) -> usize {
+pub unsafe extern "C" fn rssn_num_sparse_get_nnz(
+    matrix: *const CsMat<f64>
+) -> usize {
 
     if matrix.is_null() {
 
@@ -143,9 +168,16 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
     result: *mut f64,
 ) -> i32 {
 
-    if matrix.is_null() || vector.is_null() || result.is_null() {
+    if matrix.is_null()
+        || vector.is_null()
+        || result.is_null()
+    {
 
-        update_last_error("Null pointer passed to rssn_num_sparse_spmv".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_sparse_spmv"
+                .to_string(),
+        );
 
         return -1;
     }
@@ -157,7 +189,9 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
 
     let v = unsafe {
 
-        std::slice::from_raw_parts(vector, vec_len)
+        std::slice::from_raw_parts(
+            vector, vec_len,
+        )
     };
 
     match sparse::sp_mat_vec_mul(m, v) {
@@ -165,7 +199,12 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
 
             if res.len() != m.rows() {
 
-                update_last_error("Internal error: result length mismatch".to_string());
+                update_last_error(
+                    "Internal error: \
+                     result length \
+                     mismatch"
+                        .to_string(),
+                );
 
                 return -1;
             }
@@ -190,7 +229,9 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
 /// Computes the Frobenius norm.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_sparse_frobenius_norm(matrix: *const CsMat<f64>) -> f64 {
+pub unsafe extern "C" fn rssn_num_sparse_frobenius_norm(
+    matrix: *const CsMat<f64>
+) -> f64 {
 
     if matrix.is_null() {
 
@@ -213,7 +254,9 @@ pub unsafe extern "C" fn rssn_num_sparse_trace(
     out_trace: *mut f64,
 ) -> i32 {
 
-    if matrix.is_null() || out_trace.is_null() {
+    if matrix.is_null()
+        || out_trace.is_null()
+    {
 
         return -1;
     }

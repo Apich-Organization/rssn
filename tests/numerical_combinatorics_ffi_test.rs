@@ -29,7 +29,9 @@ fn test_comb_handle_ffi() {
         let mut res = 0.0;
 
         // Factorial
-        handle::rssn_num_comb_factorial(5, &mut res);
+        handle::rssn_num_comb_factorial(
+            5, &mut res,
+        );
 
         assert_eq!(res, 120.0);
 
@@ -70,15 +72,22 @@ fn test_comb_json_ffi() {
         // Factorial
         let json_input = r#"{"n": 5}"#;
 
-        let c_json = CString::new(json_input).unwrap();
+        let c_json =
+            CString::new(json_input)
+                .unwrap();
 
         let res_ptr = json::rssn_num_comb_factorial_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert_eq!(
             v["ok"]
@@ -96,15 +105,22 @@ fn test_comb_json_ffi() {
             "target_n": 5
         }"#;
 
-        let c_json = CString::new(json_input).unwrap();
+        let c_json =
+            CString::new(json_input)
+                .unwrap();
 
         let res_ptr = json::rssn_num_comb_solve_recurrence_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert_eq!(
             v["ok"]
@@ -131,46 +147,74 @@ fn test_comb_bincode_ffi() {
 
         let input = NInput { n: 5 };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_comb_factorial_bincode(buffer);
 
-        let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res: FfiResult<
+            f64,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
         assert_eq!(
             res.ok.unwrap(),
             120.0
         );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
 
         #[derive(Serialize)]
 
         struct RecurrenceInput {
             coeffs: Vec<f64>,
-            initial_conditions: Vec<f64>,
+            initial_conditions:
+                Vec<f64>,
             target_n: usize,
         }
 
         let input = RecurrenceInput {
             coeffs: vec![1.0, 1.0],
-            initial_conditions: vec![0.0, 1.0],
+            initial_conditions: vec![
+                0.0, 1.0,
+            ],
             target_n: 5,
         };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_comb_solve_recurrence_bincode(buffer);
 
-        let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res: FfiResult<
+            f64,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
-        assert_eq!(res.ok.unwrap(), 5.0);
+        assert_eq!(
+            res.ok.unwrap(),
+            5.0
+        );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 }
 
@@ -188,12 +232,16 @@ fn test_comb_handle_others() {
         assert_eq!(res, 3.0);
 
         // Bell: B(3) = 5
-        handle::rssn_num_comb_bell(3, &mut res);
+        handle::rssn_num_comb_bell(
+            3, &mut res,
+        );
 
         assert_eq!(res, 5.0);
 
         // Catalan: C_3 = 5
-        handle::rssn_num_comb_catalan(3, &mut res);
+        handle::rssn_num_comb_catalan(
+            3, &mut res,
+        );
 
         assert_eq!(res, 5.0);
 
@@ -236,19 +284,31 @@ fn test_comb_json_others() {
         }
 
         // Stirling S(3, 2) = 3
-        let input = NKInput { n: 3, k: 2 };
+        let input =
+            NKInput { n: 3, k: 2 };
 
-        let json_str = serde_json::to_string(&input).unwrap();
+        let json_str =
+            serde_json::to_string(
+                &input,
+            )
+            .unwrap();
 
-        let c_json = CString::new(json_str).unwrap();
+        let c_json =
+            CString::new(json_str)
+                .unwrap();
 
         let res_ptr = json::rssn_num_comb_stirling_second_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert_eq!(
             v["ok"]
@@ -260,19 +320,31 @@ fn test_comb_json_others() {
         rssn_free_string(res_ptr);
 
         // Rising factorial 2^(3) = 24
-        let input = XNInput { x: 2.0, n: 3 };
+        let input =
+            XNInput { x: 2.0, n: 3 };
 
-        let json_str = serde_json::to_string(&input).unwrap();
+        let json_str =
+            serde_json::to_string(
+                &input,
+            )
+            .unwrap();
 
-        let c_json = CString::new(json_str).unwrap();
+        let c_json =
+            CString::new(json_str)
+                .unwrap();
 
         let res_ptr = json::rssn_num_comb_rising_factorial_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert_eq!(
             v["ok"]
@@ -307,31 +379,59 @@ fn test_comb_bincode_others() {
         // Bell B(3) = 5
         let input = NInput { n: 3 };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_comb_bell_bincode(buffer);
 
-        let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res: FfiResult<
+            f64,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
-        assert_eq!(res.ok.unwrap(), 5.0);
+        assert_eq!(
+            res.ok.unwrap(),
+            5.0
+        );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
 
         // Catalan C_3 = 5
         let input = NInput { n: 3 };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_comb_catalan_bincode(buffer);
 
-        let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res: FfiResult<
+            f64,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
-        assert_eq!(res.ok.unwrap(), 5.0);
+        assert_eq!(
+            res.ok.unwrap(),
+            5.0
+        );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 }

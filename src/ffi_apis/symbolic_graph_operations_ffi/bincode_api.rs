@@ -17,7 +17,8 @@ pub unsafe extern "C" fn rssn_bincode_graph_induced_subgraph(
         nodes: Vec<String>,
     }
 
-    let input: Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf)
+    {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
@@ -33,7 +34,9 @@ pub unsafe extern "C" fn rssn_bincode_graph_induced_subgraph(
 /// Computes the union of two graphs.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_graph_union(input_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_graph_union(
+    input_buf: BincodeBuffer
+) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
 
@@ -42,12 +45,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_union(input_buf: BincodeBuffer) -> B
         g2: Graph<String>,
     }
 
-    let input: Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf)
+    {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = union(&input.g1, &input.g2);
+    let result =
+        union(&input.g1, &input.g2);
 
     to_bincode_buffer(&result)
 }
@@ -66,12 +71,15 @@ pub unsafe extern "C" fn rssn_bincode_graph_intersection(
         g2: Graph<String>,
     }
 
-    let input: Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf)
+    {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = intersection(&input.g1, &input.g2);
+    let result = intersection(
+        &input.g1, &input.g2,
+    );
 
     to_bincode_buffer(&result)
 }
@@ -90,14 +98,18 @@ pub unsafe extern "C" fn rssn_bincode_graph_cartesian_product(
         g2: Graph<String>,
     }
 
-    let input: Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf)
+    {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result_expr = cartesian_product(&input.g1, &input.g2);
+    let result_expr = cartesian_product(
+        &input.g1, &input.g2,
+    );
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result =
+        convert_expr_graph_to_string_graph(result_expr);
 
     to_bincode_buffer(&result)
 }
@@ -116,14 +128,18 @@ pub unsafe extern "C" fn rssn_bincode_graph_tensor_product(
         g2: Graph<String>,
     }
 
-    let input: Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf)
+    {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result_expr = tensor_product(&input.g1, &input.g2);
+    let result_expr = tensor_product(
+        &input.g1, &input.g2,
+    );
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result =
+        convert_expr_graph_to_string_graph(result_expr);
 
     to_bincode_buffer(&result)
 }
@@ -131,12 +147,15 @@ pub unsafe extern "C" fn rssn_bincode_graph_tensor_product(
 /// Computes the complement of a graph.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_graph_complement(graph_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_graph_complement(
+    graph_buf: BincodeBuffer
+) -> BincodeBuffer {
 
-    let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
-        | Some(g) => g,
-        | None => return BincodeBuffer::empty(),
-    };
+    let graph: Graph<String> =
+        match from_bincode_buffer(&graph_buf) {
+            | Some(g) => g,
+            | None => return BincodeBuffer::empty(),
+        };
 
     let result = complement(&graph);
 
@@ -157,14 +176,18 @@ pub unsafe extern "C" fn rssn_bincode_graph_disjoint_union(
         g2: Graph<String>,
     }
 
-    let input: Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf)
+    {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result_expr = disjoint_union(&input.g1, &input.g2);
+    let result_expr = disjoint_union(
+        &input.g1, &input.g2,
+    );
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result =
+        convert_expr_graph_to_string_graph(result_expr);
 
     to_bincode_buffer(&result)
 }
@@ -172,7 +195,9 @@ pub unsafe extern "C" fn rssn_bincode_graph_disjoint_union(
 /// Computes the join of two graphs.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_graph_join(input_buf: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_graph_join(
+    input_buf: BincodeBuffer
+) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
 
@@ -181,14 +206,17 @@ pub unsafe extern "C" fn rssn_bincode_graph_join(input_buf: BincodeBuffer) -> Bi
         g2: Graph<String>,
     }
 
-    let input: Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf)
+    {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result_expr = join(&input.g1, &input.g2);
+    let result_expr =
+        join(&input.g1, &input.g2);
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result =
+        convert_expr_graph_to_string_graph(result_expr);
 
     to_bincode_buffer(&result)
 }

@@ -134,7 +134,9 @@ pub fn covariance(
     data2: &[Expr],
 ) -> Expr {
 
-    if data1.len() != data2.len() || data1.is_empty() {
+    if data1.len() != data2.len()
+        || data1.is_empty()
+    {
 
         return Expr::Constant(0.0);
     }
@@ -160,7 +162,9 @@ pub fn covariance(
                 mu_y.clone(),
             );
 
-            Expr::new_mul(diff_x, diff_y)
+            Expr::new_mul(
+                diff_x, diff_y,
+            )
         })
         .reduce(|acc, e| {
 
@@ -195,7 +199,8 @@ pub fn correlation(
     data2: &[Expr],
 ) -> Expr {
 
-    let cov_xy = covariance(data1, data2);
+    let cov_xy =
+        covariance(data1, data2);
 
     let std_dev_x = std_dev(data1);
 
@@ -203,6 +208,8 @@ pub fn correlation(
 
     simplify(&Expr::new_div(
         cov_xy,
-        Expr::new_mul(std_dev_x, std_dev_y),
+        Expr::new_mul(
+            std_dev_x, std_dev_y,
+        ),
     ))
 }

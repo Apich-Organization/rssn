@@ -31,7 +31,9 @@ pub fn vec_add(
     if v1.len() != v2.len() {
 
         return Err(format!(
-            "Dimension mismatch: v1.len() = {}, v2.len() = {}",
+            "Dimension mismatch: \
+             v1.len() = {}, v2.len() \
+             = {}",
             v1.len(),
             v2.len()
         ));
@@ -64,7 +66,9 @@ pub fn vec_sub(
     if v1.len() != v2.len() {
 
         return Err(format!(
-            "Dimension mismatch: v1.len() = {}, v2.len() = {}",
+            "Dimension mismatch: \
+             v1.len() = {}, v2.len() \
+             = {}",
             v1.len(),
             v2.len()
         ));
@@ -116,7 +120,9 @@ pub fn dot_product(
     if v1.len() != v2.len() {
 
         return Err(format!(
-            "Dimension mismatch: v1.len() = {}, v2.len() = {}",
+            "Dimension mismatch: \
+             v1.len() = {}, v2.len() \
+             = {}",
             v1.len(),
             v2.len()
         ));
@@ -211,13 +217,19 @@ pub fn lp_norm(
 /// * `Ok(Vec<f64>)` - The unit vector.
 /// * `Err(String)` - If the vector is a zero vector and cannot be normalized.
 
-pub fn normalize(v: &[f64]) -> Result<Vec<f64>, String> {
+pub fn normalize(
+    v: &[f64]
+) -> Result<Vec<f64>, String> {
 
     let n = norm(v);
 
     if n == 0.0 {
 
-        return Err("Cannot normalize a zero vector.".to_string());
+        return Err(
+            "Cannot normalize a zero \
+             vector."
+                .to_string(),
+        );
     }
 
     Ok(scalar_mul(
@@ -243,7 +255,10 @@ pub fn cross_product(
 
     if v1.len() != 3 || v2.len() != 3 {
 
-        return Err("Cross product is only defined for 3D vectors.".to_string());
+        return Err("Cross product \
+                    is only defined \
+                    for 3D vectors."
+            .to_string());
     }
 
     Ok(vec![
@@ -294,7 +309,8 @@ pub fn angle(
 
     let dot = dot_product(v1, v2)?;
 
-    let cos_theta = (dot / (n1 * n2)).clamp(-1.0, 1.0);
+    let cos_theta = (dot / (n1 * n2))
+        .clamp(-1.0, 1.0);
 
     Ok(cos_theta.acos())
 }
@@ -310,7 +326,10 @@ pub fn project(
 
     if v1.len() != v2.len() {
 
-        return Err("Vectors must have the same dimension.".to_string());
+        return Err("Vectors must \
+                    have the same \
+                    dimension."
+            .to_string());
     }
 
     let dot = dot_product(v1, v2)?;
@@ -340,12 +359,16 @@ pub fn reflect(
 
     if v.len() != n.len() {
 
-        return Err("Vectors must have the same dimension.".to_string());
+        return Err("Vectors must \
+                    have the same \
+                    dimension."
+            .to_string());
     }
 
     let dot = dot_product(v, n)?;
 
-    let scaled_n = scalar_mul(n, 2.0 * dot);
+    let scaled_n =
+        scalar_mul(n, 2.0 * dot);
 
     vec_sub(v, &scaled_n)
 }
@@ -365,13 +388,18 @@ pub fn lerp(
 
     if v1.len() != v2.len() {
 
-        return Err("Vectors must have the same dimension.".to_string());
+        return Err("Vectors must \
+                    have the same \
+                    dimension."
+            .to_string());
     }
 
     Ok(v1
         .iter()
         .zip(v2.iter())
-        .map(|(&a, &b)| (1.0 - t).mul_add(a, t * b))
+        .map(|(&a, &b)| {
+            (1.0 - t).mul_add(a, t * b)
+        })
         .collect())
 }
 
@@ -398,7 +426,10 @@ pub fn is_parallel(
 
     if v1.len() != v2.len() {
 
-        return Err("Vectors must have the same dimension.".to_string());
+        return Err("Vectors must \
+                    have the same \
+                    dimension."
+            .to_string());
     }
 
     let n1 = norm(v1);
@@ -412,9 +443,13 @@ pub fn is_parallel(
 
     let dot = dot_product(v1, v2)?;
 
-    let cos_theta = (dot / (n1 * n2)).abs();
+    let cos_theta =
+        (dot / (n1 * n2)).abs();
 
-    Ok((1.0 - cos_theta).abs() < epsilon)
+    Ok(
+        (1.0 - cos_theta).abs()
+            < epsilon,
+    )
 }
 
 /// Computes the cosine similarity between two vectors.
@@ -430,7 +465,12 @@ pub fn cosine_similarity(
 
     if n1 == 0.0 || n2 == 0.0 {
 
-        return Err("Cosine similarity is undefined for zero vectors.".to_string());
+        return Err(
+            "Cosine similarity is \
+             undefined for zero \
+             vectors."
+                .to_string(),
+        );
     }
 
     let dot = dot_product(v1, v2)?;

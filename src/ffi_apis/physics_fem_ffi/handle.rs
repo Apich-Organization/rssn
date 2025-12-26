@@ -25,7 +25,8 @@ pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
                 *out_size = res.len();
             }
 
-            let mut res = res.into_boxed_slice();
+            let mut res =
+                res.into_boxed_slice();
 
             let ptr = res.as_mut_ptr();
 
@@ -55,6 +56,8 @@ pub unsafe extern "C" fn rssn_free_f64_array(
 
     if !ptr.is_null() {
 
-        let _ = Box::from_raw(std::slice::from_raw_parts_mut(ptr, size));
+        let _ = Box::from_raw(
+            std::slice::from_raw_parts_mut(ptr, size),
+        );
     }
 }

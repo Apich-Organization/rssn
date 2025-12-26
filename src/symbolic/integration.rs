@@ -58,17 +58,21 @@ pub fn integrate_rational_function(
         .clone()
         .long_division(q.clone(), x);
 
-    let integral_of_quotient = poly_integrate(&quotient, x);
+    let integral_of_quotient =
+        poly_integrate(&quotient, x);
 
     if remainder
         .terms
         .is_empty()
     {
 
-        return Ok(integral_of_quotient);
+        return Ok(
+            integral_of_quotient,
+        );
     }
 
-    let q_prime = differentiate_poly(q, x);
+    let q_prime =
+        differentiate_poly(q, x);
 
     let d = gcd(
         q.clone(),
@@ -81,9 +85,11 @@ pub fn integrate_rational_function(
         .long_division(d.clone(), x)
         .0;
 
-    let (a_poly, c_poly) = build_and_solve_hermite_system(
-        &remainder, &b, &d, &q_prime, x,
-    )?;
+    let (a_poly, c_poly) =
+        build_and_solve_hermite_system(
+            &remainder, &b, &d,
+            &q_prime, x,
+        )?;
 
     let rational_part = Expr::new_div(
         sparse_poly_to_expr(&c_poly),
@@ -124,22 +130,34 @@ pub(crate) fn build_and_solve_hermite_system(
     let deg_b = b.degree(x) as usize;
 
     let a_coeffs: Vec<_> = (0..deg_b)
-        .map(|i| Expr::Variable(format!("a{i}")))
+        .map(|i| {
+            Expr::Variable(format!(
+                "a{i}"
+            ))
+        })
         .collect();
 
     let c_coeffs: Vec<_> = (0..deg_d)
-        .map(|i| Expr::Variable(format!("c{i}")))
+        .map(|i| {
+            Expr::Variable(format!(
+                "c{i}"
+            ))
+        })
         .collect();
 
-    let a_sym = poly_from_coeffs(&a_coeffs, x);
+    let a_sym =
+        poly_from_coeffs(&a_coeffs, x);
 
-    let c_sym = poly_from_coeffs(&c_coeffs, x);
+    let c_sym =
+        poly_from_coeffs(&c_coeffs, x);
 
-    let c_prime_sym = differentiate_poly(&c_sym, x);
+    let c_prime_sym =
+        differentiate_poly(&c_sym, x);
 
-    let t = (b.clone() * q_prime.clone())
-        .long_division(d.clone(), x)
-        .0;
+    let t = (b.clone()
+        * q_prime.clone())
+    .long_division(d.clone(), x)
+    .0;
 
     let term1 = b.clone() * c_prime_sym;
 
@@ -147,7 +165,8 @@ pub(crate) fn build_and_solve_hermite_system(
 
     let term3 = d.clone() * a_sym;
 
-    let rhs_poly = (term1 - term2) + term3;
+    let rhs_poly =
+        (term1 - term2) + term3;
 
     let mut equations = Vec::new();
 
@@ -157,16 +176,22 @@ pub(crate) fn build_and_solve_hermite_system(
 
         let p_coeff = p
             .get_coeff_for_power(x, i)
-            .unwrap_or_else(|| Expr::Constant(0.0));
+            .unwrap_or_else(|| {
+                Expr::Constant(0.0)
+            });
 
         let rhs_coeff = rhs_poly
             .get_coeff_for_power(x, i)
-            .unwrap_or_else(|| Expr::Constant(0.0));
+            .unwrap_or_else(|| {
+                Expr::Constant(0.0)
+            });
 
-        equations.push(simplify(&Expr::Eq(
-            Arc::new(p_coeff),
-            Arc::new(rhs_coeff),
-        )));
+        equations.push(simplify(
+            &Expr::Eq(
+                Arc::new(p_coeff),
+                Arc::new(rhs_coeff),
+            ),
+        ));
     }
 
     let mut unknown_vars_str: Vec<String> = a_coeffs
@@ -189,41 +214,75 @@ pub(crate) fn build_and_solve_hermite_system(
         &equations,
         &unknown_vars,
     )
-    .ok_or("Failed to solve linear system for coefficients.")?;
+    .ok_or(
+        "Failed to solve linear \
+         system for coefficients.",
+    )?;
 
-    let sol_map: HashMap<_, _> = solutions
-        .into_iter()
-        .collect();
+    let sol_map: HashMap<_, _> =
+        solutions
+            .into_iter()
+            .collect();
 
-    let final_a_coeffs: Result<Vec<Expr>, _> = a_coeffs
+    let final_a_coeffs: Result<
+        Vec<Expr>,
+        _,
+    > = a_coeffs
         .iter()
         .map(|v| {
 
             sol_map
                 .get(v)
                 .cloned()
-                .ok_or_else(|| format!("Solver did not return a solution for coefficient {v}"))
+                .ok_or_else(|| {
+                    format!(
+                        "Solver did \
+                         not return a \
+                         solution for \
+                         coefficient \
+                         {v}"
+                    )
+                })
         })
         .collect();
 
-    let final_a_coeffs = final_a_coeffs?;
+    let final_a_coeffs =
+        final_a_coeffs?;
 
-    let final_c_coeffs: Result<Vec<Expr>, _> = c_coeffs
+    let final_c_coeffs: Result<
+        Vec<Expr>,
+        _,
+    > = c_coeffs
         .iter()
         .map(|v| {
 
             sol_map
                 .get(v)
                 .cloned()
-                .ok_or_else(|| format!("Solver did not return a solution for coefficient {v}"))
+                .ok_or_else(|| {
+                    format!(
+                        "Solver did \
+                         not return a \
+                         solution for \
+                         coefficient \
+                         {v}"
+                    )
+                })
         })
         .collect();
 
-    let final_c_coeffs = final_c_coeffs?;
+    let final_c_coeffs =
+        final_c_coeffs?;
 
     Ok((
-        poly_from_coeffs(&final_a_coeffs, x),
-        poly_from_coeffs(&final_c_coeffs, x),
+        poly_from_coeffs(
+            &final_a_coeffs,
+            x,
+        ),
+        poly_from_coeffs(
+            &final_c_coeffs,
+            x,
+        ),
     ))
 }
 
@@ -235,43 +294,80 @@ pub fn risch_norman_integrate(
     x: &str,
 ) -> Expr {
 
-    if let Some(t) = find_outermost_transcendental(expr, x) {
+    if let Some(t) =
+        find_outermost_transcendental(
+            expr, x,
+        )
+    {
 
-        if let Ok((a_t, d_t)) = expr_to_rational_poly(expr, &t, x) {
+        if let Ok((a_t, d_t)) =
+            expr_to_rational_poly(
+                expr, &t, x,
+            )
+        {
 
-            let (p_t, r_t) = a_t.long_division(d_t.clone(), x);
+            let (p_t, r_t) = a_t
+                .long_division(
+                    d_t.clone(),
+                    x,
+                );
 
-            let poly_integral = match t {
-                | Expr::Exp(_) => integrate_poly_exp(&p_t, &t, x),
-                | Expr::Log(_) => integrate_poly_log(&p_t, &t, x),
-                | _ => Err("Unsupported transcendental type".to_string()),
+            let poly_integral = match t
+            {
+                | Expr::Exp(_) => {
+                    integrate_poly_exp(
+                        &p_t, &t, x,
+                    )
+                },
+                | Expr::Log(_) => {
+                    integrate_poly_log(
+                        &p_t, &t, x,
+                    )
+                },
+                | _ => Err(
+                    "Unsupported \
+                     transcendental \
+                     type"
+                        .to_string(),
+                ),
             };
 
-            let rational_integral = if r_t.terms.is_empty() {
+            let rational_integral =
+                if r_t.terms.is_empty()
+                {
 
-                Ok(Expr::Constant(0.0))
-            } else {
+                    Ok(Expr::Constant(
+                        0.0,
+                    ))
+                } else {
 
-                hermite_integrate_rational(
+                    hermite_integrate_rational(
                     &r_t,
                     &d_t,
                     &t.to_string(),
                 )
-            };
+                };
 
             if let (Ok(pi), Ok(ri)) = (
                 poly_integral,
                 rational_integral,
             ) {
 
-                return simplify(&Expr::new_add(
-                    pi, ri,
-                ));
+                return simplify(
+                    &Expr::new_add(
+                        pi, ri,
+                    ),
+                );
             }
         }
     }
 
-    integrate_rational_function_expr(expr, x).unwrap_or_else(|_| integrate(expr, x, None, None))
+    integrate_rational_function_expr(
+        expr, x,
+    )
+    .unwrap_or_else(|_| {
+        integrate(expr, x, None, None)
+    })
 }
 
 /// Integrates the polynomial part of a transcendental function extension F(t) for the logarithmic case.
@@ -289,46 +385,65 @@ pub(crate) fn integrate_poly_log(
         return Ok(Expr::Constant(0.0));
     }
 
-    let n = p_in_t.degree(t_var) as usize;
+    let n =
+        p_in_t.degree(t_var) as usize;
 
-    let p_coeffs = p_in_t.get_coeffs_as_vec(t_var);
+    let p_coeffs =
+        p_in_t.get_coeffs_as_vec(t_var);
 
     let p_n = p_coeffs[0].clone();
 
-    let q_n = risch_norman_integrate(&p_n, x);
+    let q_n =
+        risch_norman_integrate(&p_n, x);
 
     if let Expr::Integral { .. } = q_n {
 
-        return Err("Recursive integration of leading coefficient failed.".to_string());
+        return Err(
+            "Recursive integration of \
+             leading coefficient \
+             failed."
+                .to_string(),
+        );
     }
 
     let t_pow_n = SparsePolynomial {
         terms: BTreeMap::from([(
-            Monomial(BTreeMap::from([(
-                t_var.to_string(),
-                n as u32,
-            )])),
+            Monomial(BTreeMap::from([
+                (
+                    t_var.to_string(),
+                    n as u32,
+                ),
+            ])),
             Expr::Constant(1.0),
         )]),
     };
 
-    let _q_poly_term = poly_mul_scalar_expr(&t_pow_n, &q_n);
+    let _q_poly_term =
+        poly_mul_scalar_expr(
+            &t_pow_n, &q_n,
+        );
 
     // Compute d/dx(q(x) * t^n) = q'(x) * t^n + q(x) * n * t^(n-1) * (dt/dx)
     // We need to differentiate q(x) with respect to x, then multiply by t^n
     // Plus q(x) * n * t^(n-1) * (dt/dx)
 
     // First term: q'(x) * t^n
-    let q_n_deriv = differentiate(&q_n, x);
+    let q_n_deriv =
+        differentiate(&q_n, x);
 
-    let term1 = poly_mul_scalar_expr(&t_pow_n, &q_n_deriv);
+    let term1 = poly_mul_scalar_expr(
+        &t_pow_n, &q_n_deriv,
+    );
 
     // Second term: q(x) * n * t^(n-1) * (dt/dx)
     // For t = ln(x), dt/dx = 1/x
-    let dt_dx = if let Expr::Log(arg) = t {
+    let dt_dx = if let Expr::Log(arg) =
+        t
+    {
 
         // dt/dx for ln(f(x)) = f'(x)/f(x)
-        let f_prime = differentiate(arg, x);
+        let f_prime =
+            differentiate(arg, x);
 
         simplify(&Expr::new_div(
             f_prime,
@@ -336,7 +451,11 @@ pub(crate) fn integrate_poly_log(
         ))
     } else {
 
-        return Err("Only logarithmic case is currently supported".to_string());
+        return Err(
+            "Only logarithmic case is \
+             currently supported"
+                .to_string(),
+        );
     };
 
     let mut deriv = term1;
@@ -353,26 +472,34 @@ pub(crate) fn integrate_poly_log(
             )]),
         };
 
-        let coeff = simplify(&Expr::new_mul(
-            Expr::new_mul(
-                q_n.clone(),
-                Expr::Constant(n as f64),
-            ),
-            dt_dx,
-        ));
+        let coeff =
+            simplify(&Expr::new_mul(
+                Expr::new_mul(
+                    q_n.clone(),
+                    Expr::Constant(
+                        n as f64,
+                    ),
+                ),
+                dt_dx,
+            ));
 
-        let term2 = poly_mul_scalar_expr(
-            &t_pow_n_minus_1,
-            &coeff,
-        );
+        let term2 =
+            poly_mul_scalar_expr(
+                &t_pow_n_minus_1,
+                &coeff,
+            );
 
         deriv = deriv + term2;
     }
 
-    let mut p_star = (*p_in_t).clone() - deriv;
+    let mut p_star =
+        (*p_in_t).clone() - deriv;
 
     p_star.prune_zeros(); // Remove zero coefficients to ensure degree decreases
-    let recursive_integral = integrate_poly_log(&p_star, t, x)?;
+    let recursive_integral =
+        integrate_poly_log(
+            &p_star, t, x,
+        )?;
 
     let q_term_expr = Expr::new_mul(
         q_n,
@@ -405,7 +532,8 @@ pub(crate) fn find_outermost_transcendental(
 
             if contains_var(arg, x) {
 
-                found_exp = Some(e.clone());
+                found_exp =
+                    Some(e.clone());
             }
         }
 
@@ -413,7 +541,8 @@ pub(crate) fn find_outermost_transcendental(
 
             if contains_var(arg, x) {
 
-                found_log = Some(e.clone());
+                found_log =
+                    Some(e.clone());
             }
         }
     });
@@ -433,41 +562,57 @@ pub fn integrate_poly_exp(
     x: &str,
 ) -> Result<Expr, String> {
 
-    let g = if let Expr::Exp(inner) = t {
+    let g = if let Expr::Exp(inner) = t
+    {
 
         &**inner
     } else {
 
-        return Err("t is not exponential".to_string());
+        return Err(
+            "t is not exponential"
+                .to_string(),
+        );
     };
 
     let g_prime = differentiate(g, x);
 
-    let p_coeffs = p_in_t.get_coeffs_as_vec(x);
+    let p_coeffs =
+        p_in_t.get_coeffs_as_vec(x);
 
     let n = p_in_t.degree(x) as usize;
 
-    let mut q_coeffs = vec![Expr::Constant(0.0); n + 1];
+    let mut q_coeffs =
+        vec![
+            Expr::Constant(0.0);
+            n + 1
+        ];
 
     for i in (0..=n).rev() {
 
         let p_i = p_coeffs
             .get(i)
             .cloned()
-            .unwrap_or_else(|| Expr::Constant(0.0));
+            .unwrap_or_else(|| {
+                Expr::Constant(0.0)
+            });
 
         let rhs = if i < n {
 
-            let q_i_plus_1 = q_coeffs[i + 1].clone();
+            let q_i_plus_1 =
+                q_coeffs[i + 1].clone();
 
             let factor = Expr::new_mul(
-                Expr::Constant((i + 1) as f64),
+                Expr::Constant(
+                    (i + 1) as f64,
+                ),
                 g_prime.clone(),
             );
 
             simplify(&Expr::new_sub(
                 p_i,
-                Expr::new_mul(factor, q_i_plus_1),
+                Expr::new_mul(
+                    factor, q_i_plus_1,
+                ),
             ))
         } else {
 
@@ -476,19 +621,28 @@ pub fn integrate_poly_exp(
 
         let q_i_var = format!("q_{i}");
 
-        let q_i_expr = Expr::Variable(q_i_var.clone());
+        let q_i_expr = Expr::Variable(
+            q_i_var.clone(),
+        );
 
-        let q_i_prime = differentiate(&q_i_expr, x);
+        let q_i_prime =
+            differentiate(&q_i_expr, x);
 
-        let ode_p_term = simplify(&Expr::new_mul(
-            Expr::Constant(i as f64),
-            g_prime.clone(),
-        ));
+        let ode_p_term =
+            simplify(&Expr::new_mul(
+                Expr::Constant(
+                    i as f64,
+                ),
+                g_prime.clone(),
+            ));
 
         let ode = simplify(&Expr::Eq(
             Arc::new(Expr::new_add(
                 q_i_prime,
-                Expr::new_mul(ode_p_term, q_i_expr),
+                Expr::new_mul(
+                    ode_p_term,
+                    q_i_expr,
+                ),
             )),
             Arc::new(rhs),
         ));
@@ -497,18 +651,22 @@ pub fn integrate_poly_exp(
             &ode, &q_i_var, x, None,
         );
 
-        if let Expr::Eq(_, sol) = sol_eq {
+        if let Expr::Eq(_, sol) = sol_eq
+        {
 
-            q_coeffs[i] = sol.as_ref().clone();
+            q_coeffs[i] =
+                sol.as_ref().clone();
         } else {
 
             return Err(format!(
-                "Failed to solve ODE for coefficient q_{i}"
+                "Failed to solve ODE \
+                 for coefficient q_{i}"
             ));
         }
     }
 
-    let q_poly = poly_from_coeffs(&q_coeffs, x);
+    let q_poly =
+        poly_from_coeffs(&q_coeffs, x);
 
     Ok(substitute(
         &sparse_poly_to_expr(&q_poly),
@@ -538,7 +696,8 @@ pub fn poly_from_coeffs(
             &coeff.clone(),
         )) {
 
-            let mut mono_map = BTreeMap::new();
+            let mut mono_map =
+                BTreeMap::new();
 
             let power = (n - i) as u32;
 
@@ -568,24 +727,39 @@ pub fn partial_fraction_integrate(
     x: &str,
 ) -> Result<Expr, String> {
 
-    let z = Expr::Variable("z".to_string());
+    let z =
+        Expr::Variable("z".to_string());
 
-    let b_prime = differentiate_poly(b, x);
+    let b_prime =
+        differentiate_poly(b, x);
 
-    let r_poly_sym = a.clone() - (b_prime.clone() * poly_from_coeffs(&[z], x));
+    let r_poly_sym = a.clone()
+        - (b_prime.clone()
+            * poly_from_coeffs(
+                &[z],
+                x,
+            ));
 
-    let sylvester_mat = sylvester_matrix(&r_poly_sym, b, x);
+    let sylvester_mat =
+        sylvester_matrix(
+            &r_poly_sym,
+            b,
+            x,
+        );
 
-    let resultant = determinant(&sylvester_mat);
+    let resultant =
+        determinant(&sylvester_mat);
 
-    let roots_c = solve(&resultant, "z");
+    let roots_c =
+        solve(&resultant, "z");
 
     if roots_c.is_empty() {
 
         return Ok(Expr::Constant(0.0));
     }
 
-    let mut total_log_sum = Expr::Constant(0.0);
+    let mut total_log_sum =
+        Expr::Constant(0.0);
 
     for c_i in roots_c {
 
@@ -602,18 +776,20 @@ pub fn partial_fraction_integrate(
             x,
         );
 
-        let log_term = Expr::new_log(sparse_poly_to_expr(
-            &v_i,
-        ));
+        let log_term = Expr::new_log(
+            sparse_poly_to_expr(&v_i),
+        );
 
-        let term = simplify(&Expr::new_mul(
-            c_i, log_term,
-        ));
+        let term =
+            simplify(&Expr::new_mul(
+                c_i, log_term,
+            ));
 
-        total_log_sum = simplify(&Expr::new_add(
-            total_log_sum,
-            term,
-        ));
+        total_log_sum =
+            simplify(&Expr::new_add(
+                total_log_sum,
+                term,
+            ));
     }
 
     Ok(total_log_sum)
@@ -631,11 +807,20 @@ pub(crate) fn sylvester_matrix(
 
     let m = q.degree(x) as usize;
 
-    let mut matrix = vec![vec![Expr::Constant(0.0); n + m]; n + m];
+    let mut matrix =
+        vec![
+            vec![
+                Expr::Constant(0.0);
+                n + m
+            ];
+            n + m
+        ];
 
-    let p_coeffs = p.get_coeffs_as_vec(x);
+    let p_coeffs =
+        p.get_coeffs_as_vec(x);
 
-    let q_coeffs = q.get_coeffs_as_vec(x);
+    let q_coeffs =
+        q.get_coeffs_as_vec(x);
 
     for i in 0..m {
 
@@ -644,7 +829,9 @@ pub(crate) fn sylvester_matrix(
             matrix[i][i + j] = p_coeffs
                 .get(j)
                 .cloned()
-                .unwrap_or_else(|| Expr::Constant(0.0));
+                .unwrap_or_else(|| {
+                    Expr::Constant(0.0)
+                });
         }
     }
 
@@ -669,7 +856,8 @@ pub(crate) fn poly_integrate(
     x: &str,
 ) -> Expr {
 
-    let mut integral_expr = Expr::Constant(0.0);
+    let mut integral_expr =
+        Expr::Constant(0.0);
 
     if p.terms.is_empty() {
 
@@ -687,23 +875,27 @@ pub(crate) fn poly_integrate(
 
         let new_exp = exp + 1.0;
 
-        let new_coeff = simplify(&Expr::new_div(
-            coeff.clone(),
-            Expr::Constant(new_exp),
-        ));
+        let new_coeff =
+            simplify(&Expr::new_div(
+                coeff.clone(),
+                Expr::Constant(new_exp),
+            ));
 
         let term = Expr::new_mul(
             new_coeff,
             Expr::new_pow(
-                Expr::Variable(x.to_string()),
+                Expr::Variable(
+                    x.to_string(),
+                ),
                 Expr::Constant(new_exp),
             ),
         );
 
-        integral_expr = simplify(&Expr::new_add(
-            integral_expr,
-            term,
-        ));
+        integral_expr =
+            simplify(&Expr::new_add(
+                integral_expr,
+                term,
+            ));
     }
 
     integral_expr
@@ -731,17 +923,21 @@ pub fn hermite_integrate_rational(
         .clone()
         .long_division(q.clone(), x);
 
-    let integral_of_quotient = poly_integrate(&quotient, x);
+    let integral_of_quotient =
+        poly_integrate(&quotient, x);
 
     if remainder
         .terms
         .is_empty()
     {
 
-        return Ok(integral_of_quotient);
+        return Ok(
+            integral_of_quotient,
+        );
     }
 
-    let q_prime = differentiate_poly(q, x);
+    let q_prime =
+        differentiate_poly(q, x);
 
     let d = gcd(
         q.clone(),
@@ -754,9 +950,11 @@ pub fn hermite_integrate_rational(
         .long_division(d.clone(), x)
         .0;
 
-    let (a_poly, c_poly) = build_and_solve_hermite_system(
-        &remainder, &b, &d, &q_prime, x,
-    )?;
+    let (a_poly, c_poly) =
+        build_and_solve_hermite_system(
+            &remainder, &b, &d,
+            &q_prime, x,
+        )?;
 
     let rational_part = Expr::new_div(
         sparse_poly_to_expr(&c_poly),
@@ -784,28 +982,45 @@ pub(crate) fn integrate_square_free_rational_part(
     x: &str,
 ) -> Result<Expr, String> {
 
-    let z = Expr::Variable("z".to_string());
+    let z =
+        Expr::Variable("z".to_string());
 
-    let b_prime = differentiate_poly(b, x);
+    let b_prime =
+        differentiate_poly(b, x);
 
-    let r_poly_sym = a.clone() - (b_prime.clone() * expr_to_sparse_poly(&z));
+    let r_poly_sym = a.clone()
+        - (b_prime.clone()
+            * expr_to_sparse_poly(&z));
 
-    let sylvester_mat = sylvester_matrix(&r_poly_sym, b, x);
+    let sylvester_mat =
+        sylvester_matrix(
+            &r_poly_sym,
+            b,
+            x,
+        );
 
-    let resultant = determinant(&sylvester_mat);
+    let resultant =
+        determinant(&sylvester_mat);
 
-    let roots_c = solve(&resultant, "z");
+    let roots_c =
+        solve(&resultant, "z");
 
     if roots_c.is_empty() {
 
         return Ok(Expr::Constant(0.0));
     }
 
-    let mut total_log_sum = Expr::Constant(0.0);
+    let mut total_log_sum =
+        Expr::Constant(0.0);
 
     for c_i in roots_c {
 
-        let a_minus_ci_b_prime = a.clone() - (b_prime.clone() * expr_to_sparse_poly(&c_i));
+        let a_minus_ci_b_prime = a
+            .clone()
+            - (b_prime.clone()
+                * expr_to_sparse_poly(
+                    &c_i,
+                ));
 
         let v_i = gcd(
             a_minus_ci_b_prime,
@@ -813,18 +1028,20 @@ pub(crate) fn integrate_square_free_rational_part(
             x,
         );
 
-        let log_term = Expr::new_log(sparse_poly_to_expr(
-            &v_i,
-        ));
+        let log_term = Expr::new_log(
+            sparse_poly_to_expr(&v_i),
+        );
 
-        let term = simplify(&Expr::new_mul(
-            c_i, log_term,
-        ));
+        let term =
+            simplify(&Expr::new_mul(
+                c_i, log_term,
+            ));
 
-        total_log_sum = simplify(&Expr::new_add(
-            total_log_sum,
-            term,
-        ));
+        total_log_sum =
+            simplify(&Expr::new_add(
+                total_log_sum,
+                term,
+            ));
     }
 
     Ok(total_log_sum)
@@ -848,7 +1065,10 @@ pub(crate) fn expr_to_rational_poly(
     // First, we need to replace occurrences of t in expr with a variable
     let t_var_name = "t_var";
 
-    let expr_with_t_var = substitute_expr_for_var(expr, t, t_var_name);
+    let expr_with_t_var =
+        substitute_expr_for_var(
+            expr, t, t_var_name,
+        );
 
     let poly = crate::symbolic::polynomial::expr_to_sparse_poly(
         &expr_with_t_var,
@@ -875,41 +1095,69 @@ fn substitute_expr_for_var(
 
     if expr == target {
 
-        return Expr::Variable(var_name.to_string());
+        return Expr::Variable(
+            var_name.to_string(),
+        );
     }
 
     match expr {
         | Expr::Add(a, b) => {
             Expr::new_add(
-                substitute_expr_for_var(a, target, var_name),
-                substitute_expr_for_var(b, target, var_name),
+                substitute_expr_for_var(
+                    a, target, var_name,
+                ),
+                substitute_expr_for_var(
+                    b, target, var_name,
+                ),
             )
         },
         | Expr::Sub(a, b) => {
             Expr::new_sub(
-                substitute_expr_for_var(a, target, var_name),
-                substitute_expr_for_var(b, target, var_name),
+                substitute_expr_for_var(
+                    a, target, var_name,
+                ),
+                substitute_expr_for_var(
+                    b, target, var_name,
+                ),
             )
         },
         | Expr::Mul(a, b) => {
             Expr::new_mul(
-                substitute_expr_for_var(a, target, var_name),
-                substitute_expr_for_var(b, target, var_name),
+                substitute_expr_for_var(
+                    a, target, var_name,
+                ),
+                substitute_expr_for_var(
+                    b, target, var_name,
+                ),
             )
         },
         | Expr::Div(a, b) => {
             Expr::new_div(
-                substitute_expr_for_var(a, target, var_name),
-                substitute_expr_for_var(b, target, var_name),
+                substitute_expr_for_var(
+                    a, target, var_name,
+                ),
+                substitute_expr_for_var(
+                    b, target, var_name,
+                ),
             )
         },
         | Expr::Power(a, b) => {
             Expr::new_pow(
-                substitute_expr_for_var(a, target, var_name),
-                substitute_expr_for_var(b, target, var_name),
+                substitute_expr_for_var(
+                    a, target, var_name,
+                ),
+                substitute_expr_for_var(
+                    b, target, var_name,
+                ),
             )
         },
-        | Expr::Neg(a) => Expr::new_neg(substitute_expr_for_var(a, target, var_name)),
+        | Expr::Neg(a) => {
+            Expr::new_neg(
+                substitute_expr_for_var(
+                    a, target, var_name,
+                ),
+            )
+        },
         | _ => expr.clone(),
     }
 }
@@ -928,7 +1176,9 @@ pub fn integrate_rational_function_expr(
         )]),
     };
 
-    integrate_rational_function(&p, &q, x)
+    integrate_rational_function(
+        &p, &q, x,
+    )
 }
 
 #[must_use]

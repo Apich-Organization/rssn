@@ -14,25 +14,35 @@ pub unsafe extern "C" fn rssn_num_poly_create(
 
     if coeffs.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_poly_create".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_poly_create"
+                .to_string(),
+        );
 
         return ptr::null_mut();
     }
 
     let c = unsafe {
 
-        std::slice::from_raw_parts(coeffs, len)
+        std::slice::from_raw_parts(
+            coeffs, len,
+        )
     };
 
     Box::into_raw(Box::new(
-        Polynomial { coeffs: c.to_vec() },
+        Polynomial {
+            coeffs: c.to_vec(),
+        },
     ))
 }
 
 /// Frees a polynomial object.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_poly_free(poly: *mut Polynomial) {
+pub unsafe extern "C" fn rssn_num_poly_free(
+    poly: *mut Polynomial
+) {
 
     if !poly.is_null() {
 
@@ -65,7 +75,9 @@ pub unsafe extern "C" fn rssn_num_poly_eval(
 /// Returns the degree of a polynomial.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_poly_degree(poly: *const Polynomial) -> usize {
+pub unsafe extern "C" fn rssn_num_poly_degree(
+    poly: *const Polynomial
+) -> usize {
 
     if poly.is_null() {
 
@@ -81,7 +93,9 @@ pub unsafe extern "C" fn rssn_num_poly_degree(poly: *const Polynomial) -> usize 
 /// Computes the derivative.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_poly_derivative(poly: *const Polynomial) -> *mut Polynomial {
+pub unsafe extern "C" fn rssn_num_poly_derivative(
+    poly: *const Polynomial
+) -> *mut Polynomial {
 
     if poly.is_null() {
 
@@ -99,7 +113,9 @@ pub unsafe extern "C" fn rssn_num_poly_derivative(poly: *const Polynomial) -> *m
 /// Computes the integral.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_poly_integral(poly: *const Polynomial) -> *mut Polynomial {
+pub unsafe extern "C" fn rssn_num_poly_integral(
+    poly: *const Polynomial
+) -> *mut Polynomial {
 
     if poly.is_null() {
 

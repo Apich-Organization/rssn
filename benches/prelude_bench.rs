@@ -5,7 +5,9 @@ use criterion::{
 use rssn::prelude::*;
 use std::hint::black_box;
 
-fn bench_prelude_sin(c: &mut Criterion) {
+fn bench_prelude_sin(
+    c: &mut Criterion
+) {
 
     c.bench_function("prelude_sin", |b| {
 

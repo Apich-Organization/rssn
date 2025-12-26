@@ -7,7 +7,9 @@ use rssn::physics::physics_fdm::*;
 
 fn test_grid_indexing_1d() {
 
-    let mut grid = FdmGrid::new(Dimensions::D1(10));
+    let mut grid = FdmGrid::new(
+        Dimensions::D1(10),
+    );
 
     grid[5] = 42.0;
 
@@ -18,9 +20,9 @@ fn test_grid_indexing_1d() {
 
 fn test_grid_indexing_2d() {
 
-    let mut grid = FdmGrid::new(Dimensions::D2(
-        10, 10,
-    ));
+    let mut grid = FdmGrid::new(
+        Dimensions::D2(10, 10),
+    );
 
     grid[(5, 5)] = 42.0;
 
@@ -98,14 +100,15 @@ fn test_poisson_solver() {
 
     let height = 20;
 
-    let mut source = FdmGrid::new(Dimensions::D2(
-        width, height,
-    ));
+    let mut source = FdmGrid::new(
+        Dimensions::D2(width, height),
+    );
 
     source[(10, 10)] = 10.0; // Positive source => Concave up => Minimum at source
 
     let u = solve_poisson_2d(
-        width, height, &source, 1.0, 1.0, 1.5, 1000, 1e-6,
+        width, height, &source, 1.0,
+        1.0, 1.5, 1000, 1e-6,
     );
 
     // Potential should be minimum (most negative) at the negative source
@@ -132,7 +135,9 @@ fn test_poisson_solver() {
         min_val + 1e-10
     );
 
-    assert!(u[(10, 10)] <= min_val + 1e-10);
+    assert!(
+        u[(10, 10)] <= min_val + 1e-10
+    );
 }
 
 #[test]

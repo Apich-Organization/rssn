@@ -10,7 +10,8 @@ use rssn::numerical::interpolate::{
 /// Given points (0,0), (1,1), and (2,4), the interpolating polynomial should be x^2.
 #[test]
 
-fn test_lagrange_interpolation_quadratic() {
+fn test_lagrange_interpolation_quadratic(
+) {
 
     let points = vec![
         (0.0, 0.0),
@@ -18,20 +19,24 @@ fn test_lagrange_interpolation_quadratic() {
         (2.0, 4.0),
     ];
 
-    let poly = match lagrange_interpolation(&points) {
-        | Ok(p) => p,
-        | Err(e) => {
+    let poly =
+        match lagrange_interpolation(
+            &points,
+        ) {
+            | Ok(p) => p,
+            | Err(e) => {
 
-            panic!(
+                panic!(
                 "Lagrange interpolation failed: {}",
                 e
             )
-        },
-    };
+            },
+        };
 
     // The expected polynomial is 1.0 * x^2 + 0.0 * x + 0.0
     // The coefficients are stored from highest degree to lowest.
-    let expected_coeffs = vec![1.0, 0.0, 0.0];
+    let expected_coeffs =
+        vec![1.0, 0.0, 0.0];
 
     assert_eq!(
         poly.coeffs.len(),
@@ -44,7 +49,9 @@ fn test_lagrange_interpolation_quadratic() {
         .zip(expected_coeffs.iter())
     {
 
-        assert_approx_eq!(*c1, *c2, 1e-9);
+        assert_approx_eq!(
+            *c1, *c2, 1e-9
+        );
     }
 }
 
@@ -52,26 +59,31 @@ fn test_lagrange_interpolation_quadratic() {
 /// Given points (1,2) and (3,4), the interpolating polynomial should be x + 1.
 #[test]
 
-fn test_lagrange_interpolation_linear() {
+fn test_lagrange_interpolation_linear()
+{
 
     let points = vec![
         (1.0, 2.0),
         (3.0, 4.0),
     ];
 
-    let poly = match lagrange_interpolation(&points) {
-        | Ok(p) => p,
-        | Err(e) => {
+    let poly =
+        match lagrange_interpolation(
+            &points,
+        ) {
+            | Ok(p) => p,
+            | Err(e) => {
 
-            panic!(
+                panic!(
                 "Lagrange interpolation failed: {}",
                 e
             )
-        },
-    };
+            },
+        };
 
     // The expected polynomial is 1.0 * x + 1.0
-    let expected_coeffs = vec![1.0, 1.0];
+    let expected_coeffs =
+        vec![1.0, 1.0];
 
     assert_eq!(
         poly.coeffs.len(),
@@ -84,7 +96,9 @@ fn test_lagrange_interpolation_linear() {
         .zip(expected_coeffs.iter())
     {
 
-        assert_approx_eq!(*c1, *c2, 1e-9);
+        assert_approx_eq!(
+            *c1, *c2, 1e-9
+        );
     }
 }
 
@@ -92,7 +106,8 @@ fn test_lagrange_interpolation_linear() {
 /// The test ensures that the spline passes through the given data points.
 #[test]
 
-fn test_cubic_spline_interpolation_passes_through_points() {
+fn test_cubic_spline_interpolation_passes_through_points(
+) {
 
     let points = vec![
         (0.0, 0.0),
@@ -101,20 +116,29 @@ fn test_cubic_spline_interpolation_passes_through_points() {
         (3.0, 1.0),
     ];
 
-    let spline = match cubic_spline_interpolation(&points) {
-        | Ok(s) => s,
-        | Err(e) => {
+    let spline =
+        match cubic_spline_interpolation(
+            &points,
+        ) {
+            | Ok(s) => s,
+            | Err(e) => {
 
-            panic!(
-                "Cubic spline interpolation failed: {}",
-                e
-            )
-        },
-    };
+                panic!(
+                    "Cubic spline \
+                     interpolation \
+                     failed: {}",
+                    e
+                )
+            },
+        };
 
     for (x, y) in &points {
 
-        assert_approx_eq!(spline(*x), *y, 1e-9);
+        assert_approx_eq!(
+            spline(*x),
+            *y,
+            1e-9
+        );
     }
 }
 
@@ -122,7 +146,8 @@ fn test_cubic_spline_interpolation_passes_through_points() {
 /// For a simple linear set of points, the spline should behave linearly.
 #[test]
 
-fn test_cubic_spline_interpolation_intermediate_point() {
+fn test_cubic_spline_interpolation_intermediate_point(
+) {
 
     let points = vec![
         (0.0, 0.0),
@@ -131,16 +156,21 @@ fn test_cubic_spline_interpolation_intermediate_point() {
         (3.0, 6.0),
     ];
 
-    let spline = match cubic_spline_interpolation(&points) {
-        | Ok(s) => s,
-        | Err(e) => {
+    let spline =
+        match cubic_spline_interpolation(
+            &points,
+        ) {
+            | Ok(s) => s,
+            | Err(e) => {
 
-            panic!(
-                "Cubic spline interpolation failed: {}",
-                e
-            )
-        },
-    };
+                panic!(
+                    "Cubic spline \
+                     interpolation \
+                     failed: {}",
+                    e
+                )
+            },
+        };
 
     // Test a point halfway between two data points.
     assert_approx_eq!(

@@ -30,19 +30,22 @@ struct WaveEquationInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(
+    buffer: BincodeBuffer
+) -> BincodeBuffer {
 
-    let input: WaveEquationInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(&FfiResult::<
-                FdmGrid<f64>,
-                String,
-            >::err(
-                "Invalid Bincode".to_string(),
-            ))
-        },
-    };
+    let input: WaveEquationInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    FdmGrid<f64>,
+                    String,
+                >::err(
+                    "Invalid Bincode".to_string(),
+                ))
+            },
+        };
 
     let result = physics_fdm::solve_wave_equation_2d(
         input.width,
@@ -54,9 +57,11 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(buffer: BincodeBuffer) ->
         input.steps,
         |x, y| {
 
-            let dx_cen = x as f64 - (input.width / 2) as f64;
+            let dx_cen =
+                x as f64 - (input.width / 2) as f64;
 
-            let dy_cen = y as f64 - (input.height / 2) as f64;
+            let dy_cen =
+                y as f64 - (input.height / 2) as f64;
 
             let dist2 = dx_cen.powi(2) + dy_cen.powi(2);
 

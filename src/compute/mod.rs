@@ -98,9 +98,11 @@
 //! use std::sync::Arc;
 //!
 //! // Parsing cache
-//! let parsing_cache = ParsingCache::new();
+//! let parsing_cache =
+//!     ParsingCache::new();
 //!
-//! let expr = Arc::new(Expr::Constant(42.0));
+//! let expr =
+//!     Arc::new(Expr::Constant(42.0));
 //!
 //! parsing_cache.set(
 //!     "my_expr".to_string(),
@@ -108,14 +110,18 @@
 //! );
 //!
 //! // Later...
-//! if let Some(cached_expr) = parsing_cache.get("my_expr")
+//! if let Some(cached_expr) =
+//!     parsing_cache.get("my_expr")
 //! {
 //!
-//!     println!("Found cached expression");
+//!     println!(
+//!         "Found cached expression"
+//!     );
 //! }
 //!
 //! // Result cache
-//! let result_cache = ComputationResultCache::new();
+//! let result_cache =
+//!     ComputationResultCache::new();
 //!
 //! result_cache.set(
 //!     expr.clone(),

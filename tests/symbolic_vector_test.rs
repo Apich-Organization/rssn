@@ -79,13 +79,17 @@ fn test_vector_dot_product() {
         .unwrap_or(dot.clone());
 
     // Check if it's 32
-    if let Expr::Constant(val) = dot_ast {
+    if let Expr::Constant(val) = dot_ast
+    {
 
-        assert!((val - 32.0).abs() < 1e-10);
+        assert!(
+            (val - 32.0).abs() < 1e-10
+        );
     } else {
 
         println!(
-            "Dot product (not fully simplified): {:?}",
+            "Dot product (not fully \
+             simplified): {:?}",
             dot_ast
         );
         // For now, just check it's not an error
@@ -205,12 +209,18 @@ fn test_vector_angle() {
     );
 
     // Check if it's arccos(0)
-    if let Expr::ArcCos(arg) = angle_ast {
+    if let Expr::ArcCos(arg) = angle_ast
+    {
 
-        if let Expr::Constant(val) = *arg {
+        if let Expr::Constant(val) =
+            *arg
+        {
 
             assert!(val.abs() < 1e-10);
-        } else if let Expr::BigInt(ref val) = *arg {
+        } else if let Expr::BigInt(
+            ref val,
+        ) = *arg
+        {
 
             assert!(val == &num_bigint::BigInt::from(0));
         } else {
@@ -223,7 +233,8 @@ fn test_vector_angle() {
     } else {
 
         println!(
-            "Angle not in expected form: {:?}",
+            "Angle not in expected \
+             form: {:?}",
             angle_ast
         );
     }
@@ -283,10 +294,14 @@ fn test_vector_calculus_gradient() {
             x.clone(),
             Expr::new_constant(2.0),
         ),
-        Expr::new_mul(y.clone(), z.clone()),
+        Expr::new_mul(
+            y.clone(),
+            z.clone(),
+        ),
     );
 
-    let grad = gradient(&f, ("x", "y", "z"));
+    let grad =
+        gradient(&f, ("x", "y", "z"));
 
     // Check x comp: 2x
     println!(

@@ -34,23 +34,30 @@ struct OptimizeResponse {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn numerical_optimize_solve_bincode(
+    buffer: BincodeBuffer
+) -> BincodeBuffer {
 
-    let request: OptimizeRequest = match from_bincode_buffer(&buffer) {
-        | Some(req) => req,
-        | None => {
+    let request: OptimizeRequest =
+        match from_bincode_buffer(
+            &buffer,
+        ) {
+            | Some(req) => req,
+            | None => {
 
-            let response = OptimizeResponse {
-                success: false,
-                best_param: None,
-                best_cost: None,
-                iterations: None,
-                error: Some("Invalid Bincode Input".to_string()),
-            };
+                let response = OptimizeResponse {
+                    success: false,
+                    best_param: None,
+                    best_cost: None,
+                    iterations: None,
+                    error: Some(
+                        "Invalid Bincode Input".to_string(),
+                    ),
+                };
 
-            return to_bincode_buffer(&response);
-        },
-    };
+                return to_bincode_buffer(&response);
+            },
+        };
 
     let init_param = Array1::from(
         request
@@ -61,7 +68,8 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
     let config = OptimizationConfig {
         max_iters: request.max_iters,
         tolerance: request.tolerance,
-        problem_type: ProblemType::Custom,
+        problem_type:
+            ProblemType::Custom,
         dimension: request
             .init_param
             .len(),
@@ -81,7 +89,8 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
                 .rosenbrock_b
                 .unwrap_or(100.0);
 
-            let problem = Rosenbrock { a, b };
+            let problem =
+                Rosenbrock { a, b };
 
             match EquationOptimizer::solve_with_gradient_descent(
                 problem, init_param, &config,
@@ -156,8 +165,10 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
                 best_cost: None,
                 iterations: None,
                 error: Some(format!(
-                    "Unknown problem type: {}",
-                    request.problem_type
+                    "Unknown problem \
+                     type: {}",
+                    request
+                        .problem_type
                 )),
             }
         },

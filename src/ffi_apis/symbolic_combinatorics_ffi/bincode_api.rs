@@ -48,7 +48,9 @@ pub unsafe extern "C" fn rssn_bincode_combinations(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_catalan_number(n: usize) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_catalan_number(
+    n: usize
+) -> BincodeBuffer {
 
     let result = catalan_number(n);
 
@@ -62,14 +64,19 @@ pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
     k: usize,
 ) -> BincodeBuffer {
 
-    let result = stirling_number_second_kind(n, k);
+    let result =
+        stirling_number_second_kind(
+            n, k,
+        );
 
     to_bincode_buffer(&result)
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_bell_number(n: usize) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_bell_number(
+    n: usize
+) -> BincodeBuffer {
 
     let result = bell_number(n);
 

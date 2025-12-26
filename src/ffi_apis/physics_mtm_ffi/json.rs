@@ -34,20 +34,21 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: Multigrid1DInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    "Invalid JSON".to_string(),
-                ))
-                .unwrap(),
-            )
-        },
-    };
+    let input: Multigrid1DInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<f64>,
+                        String,
+                    >::err(
+                        "Invalid JSON".to_string(),
+                    ))
+                    .unwrap(),
+                )
+            },
+        };
 
     match physics_mtm::solve_poisson_1d_multigrid(
         input.n_interior,
@@ -85,20 +86,21 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: Multigrid2DInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    "Invalid JSON".to_string(),
-                ))
-                .unwrap(),
-            )
-        },
-    };
+    let input: Multigrid2DInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<f64>,
+                        String,
+                    >::err(
+                        "Invalid JSON".to_string(),
+                    ))
+                    .unwrap(),
+                )
+            },
+        };
 
     match physics_mtm::solve_poisson_2d_multigrid(
         input.n,

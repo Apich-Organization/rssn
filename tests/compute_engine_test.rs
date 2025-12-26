@@ -24,7 +24,8 @@ fn test_parse_and_submit_valid() {
 
     let engine = ComputeEngine::new();
 
-    let result = engine.parse_and_submit("2 + 2");
+    let result = engine
+        .parse_and_submit("2 + 2");
 
     assert!(result.is_ok());
 
@@ -40,7 +41,8 @@ fn test_parse_and_submit_invalid() {
     let engine = ComputeEngine::new();
 
     // Use a truly invalid expression that will fail parsing
-    let result = engine.parse_and_submit("((((");
+    let result =
+        engine.parse_and_submit("((((");
 
     // Note: The parser might be lenient, so we just check it doesn't panic
     // If it succeeds, that's also acceptable behavior
@@ -53,7 +55,8 @@ fn test_submit_direct() {
 
     let engine = ComputeEngine::new();
 
-    let expr = Arc::new(Expr::Constant(42.0));
+    let expr =
+        Arc::new(Expr::Constant(42.0));
 
     let id = engine.submit(expr);
 
@@ -95,7 +98,8 @@ fn test_get_status_nonexistent() {
 
     let engine = ComputeEngine::new();
 
-    let status = engine.get_status("nonexistent-id");
+    let status = engine
+        .get_status("nonexistent-id");
 
     assert!(status.is_none());
 }
@@ -111,13 +115,18 @@ fn test_get_progress() {
         .unwrap();
 
     // Progress should exist
-    let progress = engine.get_progress(&id);
+    let progress =
+        engine.get_progress(&id);
 
     assert!(progress.is_some());
 
     let progress = progress.unwrap();
 
-    assert!(progress.percentage >= 0.0 && progress.percentage <= 100.0);
+    assert!(
+        progress.percentage >= 0.0
+            && progress.percentage
+                <= 100.0
+    );
 
     assert!(!progress
         .description
@@ -130,14 +139,16 @@ fn test_get_progress_nonexistent() {
 
     let engine = ComputeEngine::new();
 
-    let progress = engine.get_progress("nonexistent-id");
+    let progress = engine
+        .get_progress("nonexistent-id");
 
     assert!(progress.is_none());
 }
 
 #[test]
 
-fn test_get_result_eventually_completes() {
+fn test_get_result_eventually_completes(
+) {
 
     let engine = ComputeEngine::new();
 
@@ -175,15 +186,21 @@ fn test_pause_and_resume() {
         .unwrap();
 
     // Wait a bit for computation to start
-    thread::sleep(Duration::from_millis(500));
+    thread::sleep(
+        Duration::from_millis(500),
+    );
 
     // Pause the computation
     engine.pause(&id);
 
-    thread::sleep(Duration::from_millis(500));
+    thread::sleep(
+        Duration::from_millis(500),
+    );
 
     // Check if paused (might be in various states due to timing)
-    if let Some(status) = engine.get_status(&id) {
+    if let Some(status) =
+        engine.get_status(&id)
+    {
 
         println!(
             "Status after pause: {:?}",
@@ -194,7 +211,9 @@ fn test_pause_and_resume() {
     // Resume the computation
     engine.resume(&id);
 
-    thread::sleep(Duration::from_millis(500));
+    thread::sleep(
+        Duration::from_millis(500),
+    );
 
     // Should exist and be in some valid state
     // Due to async nature, we can't guarantee exact state
@@ -214,13 +233,17 @@ fn test_cancel() {
         .unwrap();
 
     // Wait a bit for computation to start
-    thread::sleep(Duration::from_millis(100));
+    thread::sleep(
+        Duration::from_millis(100),
+    );
 
     // Cancel the computation
     engine.cancel(&id);
 
     // Computation should no longer exist in registry
-    thread::sleep(Duration::from_millis(100));
+    thread::sleep(
+        Duration::from_millis(100),
+    );
 
     let status = engine.get_status(&id);
 
@@ -292,7 +315,8 @@ fn test_parsing_cache() {
 
 fn test_default_trait() {
 
-    let engine = ComputeEngine::default();
+    let engine =
+        ComputeEngine::default();
 
     let id = engine
         .parse_and_submit("1 + 1")
@@ -328,22 +352,30 @@ fn test_concurrent_submissions() {
     use std::sync::Arc;
     use std::thread;
 
-    let engine = Arc::new(ComputeEngine::new());
+    let engine =
+        Arc::new(ComputeEngine::new());
 
     let mut handles = vec![];
 
     for i in 0..5 {
 
-        let engine_clone = Arc::clone(&engine);
+        let engine_clone =
+            Arc::clone(&engine);
 
-        let handle = thread::spawn(move || {
+        let handle =
+            thread::spawn(move || {
 
-            let input = format!("{} + {}", i, i);
+                let input = format!(
+                    "{} + {}",
+                    i, i
+                );
 
-            engine_clone
-                .parse_and_submit(&input)
-                .unwrap()
-        });
+                engine_clone
+                    .parse_and_submit(
+                        &input,
+                    )
+                    .unwrap()
+            });
 
         handles.push(handle);
     }

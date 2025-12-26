@@ -9,7 +9,9 @@
 //! - Polynomial operations over finite fields
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
-#![allow(clippy::no_mangle_with_rust_abi)]
+#![allow(
+    clippy::no_mangle_with_rust_abi
+)]
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::number_theory::extended_gcd;
@@ -45,17 +47,23 @@ impl FiniteField {
     /// An `Arc<Self>` pointing to the newly created field structure.
     #[must_use]
 
-    pub fn new(modulus: i64) -> Arc<Self> {
+    pub fn new(
+        modulus: i64
+    ) -> Arc<Self> {
 
         Arc::new(Self {
-            modulus: BigInt::from(modulus),
+            modulus: BigInt::from(
+                modulus,
+            ),
         })
     }
 
     /// Creates a finite field from a `BigInt` modulus.
     #[must_use]
 
-    pub fn from_bigint(modulus: BigInt) -> Arc<Self> {
+    pub fn from_bigint(
+        modulus: BigInt
+    ) -> Arc<Self> {
 
         Arc::new(Self { modulus })
     }
@@ -89,7 +97,10 @@ impl FieldElement {
         field: Arc<FiniteField>,
     ) -> Self {
 
-        let reduced = ((value % &field.modulus) + &field.modulus) % &field.modulus;
+        let reduced = ((value
+            % &field.modulus)
+            + &field.modulus)
+            % &field.modulus;
 
         Self {
             value: reduced,
@@ -123,10 +134,14 @@ impl FieldElement {
     /// * `None` if the element is not invertible (i.e., its value is not coprime to the modulus).
     #[must_use]
 
-    pub fn inverse(&self) -> Option<Self> {
+    pub fn inverse(
+        &self
+    ) -> Option<Self> {
 
         let (g, x, _) = extended_gcd(
-            &Expr::BigInt(self.value.clone()),
+            &Expr::BigInt(
+                self.value.clone(),
+            ),
             &Expr::BigInt(
                 self.field
                     .modulus
@@ -140,14 +155,21 @@ impl FieldElement {
 
                 let inv = x
                     .to_bigint()
-                    .unwrap_or_default();
+                    .unwrap_or_default(
+                    );
 
-                let modulus = &self.field.modulus;
+                let modulus =
+                    &self.field.modulus;
 
-                return Some(Self::new(
-                    (inv % modulus + modulus) % modulus,
-                    self.field.clone(),
-                ));
+                return Some(
+                    Self::new(
+                        (inv % modulus
+                            + modulus)
+                            % modulus,
+                        self.field
+                            .clone(),
+                    ),
+                );
             }
         }
 
@@ -189,16 +211,21 @@ impl FieldElement {
 
             if e & 1 == 1 {
 
-                result = (result * base.clone()).unwrap_or_else(|_| {
+                result = (result
+                    * base.clone())
+                .unwrap_or_else(|_| {
 
                     Self::new(
                         BigInt::zero(),
-                        self.field.clone(),
+                        self.field
+                            .clone(),
                     )
                 });
             }
 
-            base = (base.clone() * base.clone()).unwrap_or_else(|_| {
+            base = (base.clone()
+                * base.clone())
+            .unwrap_or_else(|_| {
 
                 Self::new(
                     BigInt::zero(),
@@ -223,10 +250,17 @@ impl Add for FieldElement {
 
         if self.field != rhs.field {
 
-            return Err("Cannot add elements from different fields.".to_string());
+            return Err(
+                "Cannot add elements \
+                 from different \
+                 fields."
+                    .to_string(),
+            );
         }
 
-        let val = (self.value + rhs.value) % &self.field.modulus;
+        let val = (self.value
+            + rhs.value)
+            % &self.field.modulus;
 
         Ok(Self::new(
             val, self.field,
@@ -244,10 +278,18 @@ impl Sub for FieldElement {
 
         if self.field != rhs.field {
 
-            return Err("Cannot subtract elements from different fields.".to_string());
+            return Err(
+                "Cannot subtract \
+                 elements from \
+                 different fields."
+                    .to_string(),
+            );
         }
 
-        let val = (self.value - rhs.value + &self.field.modulus) % &self.field.modulus;
+        let val = (self.value
+            - rhs.value
+            + &self.field.modulus)
+            % &self.field.modulus;
 
         Ok(Self::new(
             val, self.field,
@@ -265,10 +307,17 @@ impl Mul for FieldElement {
 
         if self.field != rhs.field {
 
-            return Err("Cannot multiply elements from different fields.".to_string());
+            return Err(
+                "Cannot multiply \
+                 elements from \
+                 different fields."
+                    .to_string(),
+            );
         }
 
-        let val = (self.value * rhs.value) % &self.field.modulus;
+        let val = (self.value
+            * rhs.value)
+            % &self.field.modulus;
 
         Ok(Self::new(
             val, self.field,
@@ -286,12 +335,22 @@ impl Div for FieldElement {
 
         if self.field != rhs.field {
 
-            return Err("Cannot divide elements from different fields.".to_string());
+            return Err(
+                "Cannot divide \
+                 elements from \
+                 different fields."
+                    .to_string(),
+            );
         }
 
         let inv_rhs = rhs
             .inverse()
-            .ok_or_else(|| "Division by zero or non-invertible element.".to_string())?;
+            .ok_or_else(|| {
+                "Division by zero or \
+                 non-invertible \
+                 element."
+                    .to_string()
+            })?;
 
         self.mul(inv_rhs)
     }
@@ -302,7 +361,9 @@ impl Neg for FieldElement {
 
     fn neg(self) -> Self {
 
-        let val = (-self.value + &self.field.modulus) % &self.field.modulus;
+        let val = (-self.value
+            + &self.field.modulus)
+            % &self.field.modulus;
 
         Self::new(val, self.field)
     }
@@ -314,7 +375,8 @@ impl PartialEq for FieldElement {
         other: &Self,
     ) -> bool {
 
-        self.field == other.field && self.value == other.value
+        self.field == other.field
+            && self.value == other.value
     }
 }
 
@@ -330,35 +392,40 @@ struct Gf256Tables {
     exp: [u8; GF256_MODULUS],
 }
 
-static GF256_TABLES: std::sync::LazyLock<Gf256Tables> = std::sync::LazyLock::new(|| {
+static GF256_TABLES:
+    std::sync::LazyLock<Gf256Tables> =
+    std::sync::LazyLock::new(|| {
 
-    let mut log_table = [0u8; GF256_MODULUS];
+        let mut log_table =
+            [0u8; GF256_MODULUS];
 
-    let mut exp_table = [0u8; GF256_MODULUS];
+        let mut exp_table =
+            [0u8; GF256_MODULUS];
 
-    let mut x: u16 = 1;
+        let mut x: u16 = 1;
 
-    for i in 0..255 {
+        for i in 0..255 {
 
-        exp_table[i] = x as u8;
+            exp_table[i] = x as u8;
 
-        log_table[x as usize] = i as u8;
+            log_table[x as usize] =
+                i as u8;
 
-        x <<= 1;
+            x <<= 1;
 
-        if x >= 256 {
+            if x >= 256 {
 
-            x ^= GF256_GENERATOR_POLY;
+                x ^= GF256_GENERATOR_POLY;
+            }
         }
-    }
 
-    exp_table[255] = exp_table[0];
+        exp_table[255] = exp_table[0];
 
-    Gf256Tables {
-        log: log_table,
-        exp: exp_table,
-    }
-});
+        Gf256Tables {
+            log: log_table,
+            exp: exp_table,
+        }
+    });
 
 /// Computes the exponentiation (anti-logarithm) in GF(2^8).
 ///
@@ -386,11 +453,17 @@ pub fn gf256_exp(log_val: u8) -> u8 {
 /// # Returns
 /// `Ok(log)` if a is non-zero, `Err` if a is zero
 
-pub fn gf256_log(a: u8) -> Result<u8, String> {
+pub fn gf256_log(
+    a: u8
+) -> Result<u8, String> {
 
     if a == 0 {
 
-        return Err("Logarithm of zero is undefined".to_string());
+        return Err(
+            "Logarithm of zero is \
+             undefined"
+                .to_string(),
+        );
     }
 
     Ok(GF256_TABLES.log[a as usize])
@@ -427,11 +500,20 @@ pub fn gf256_mul(
         0
     } else {
 
-        let log_a = u16::from(GF256_TABLES.log[a as usize]);
+        let log_a = u16::from(
+            GF256_TABLES.log
+                [a as usize],
+        );
 
-        let log_b = u16::from(GF256_TABLES.log[b as usize]);
+        let log_b = u16::from(
+            GF256_TABLES.log
+                [b as usize],
+        );
 
-        GF256_TABLES.exp[((log_a + log_b) % 255) as usize]
+        GF256_TABLES.exp[((log_a
+            + log_b)
+            % 255)
+            as usize]
     }
 }
 
@@ -440,14 +522,24 @@ pub fn gf256_mul(
 /// The inverse is calculated using the logarithm and exponentiation tables.
 #[inline]
 
-pub fn gf256_inv(a: u8) -> Result<u8, String> {
+pub fn gf256_inv(
+    a: u8
+) -> Result<u8, String> {
 
     if a == 0 {
 
-        return Err("Cannot invert 0".to_string());
+        return Err("Cannot invert 0"
+            .to_string());
     }
 
-    Ok(GF256_TABLES.exp[(255 - u16::from(GF256_TABLES.log[a as usize])) as usize])
+    Ok(
+        GF256_TABLES.exp[(255
+            - u16::from(
+                GF256_TABLES.log
+                    [a as usize],
+            ))
+            as usize],
+    )
 }
 
 /// Performs division in GF(2^8).
@@ -462,7 +554,8 @@ pub fn gf256_div(
 
     if b == 0 {
 
-        return Err("Division by zero".to_string());
+        return Err("Division by zero"
+            .to_string());
     }
 
     if a == 0 {
@@ -470,11 +563,20 @@ pub fn gf256_div(
         return Ok(0);
     }
 
-    let log_a = u16::from(GF256_TABLES.log[a as usize]);
+    let log_a = u16::from(
+        GF256_TABLES.log[a as usize],
+    );
 
-    let log_b = u16::from(GF256_TABLES.log[b as usize]);
+    let log_b = u16::from(
+        GF256_TABLES.log[b as usize],
+    );
 
-    Ok(GF256_TABLES.exp[((log_a + 255 - log_b) % 255) as usize])
+    Ok(
+        GF256_TABLES.exp[((log_a + 255
+            - log_b)
+            % 255)
+            as usize],
+    )
 }
 
 /// Computes a^exp in GF(2^8).
@@ -504,11 +606,15 @@ pub fn gf256_pow(
         return 1;
     }
 
-    let log_a = u16::from(GF256_TABLES.log[a as usize]);
+    let log_a = u16::from(
+        GF256_TABLES.log[a as usize],
+    );
 
-    let log_result = (log_a * u16::from(exp)) % 255;
+    let log_result =
+        (log_a * u16::from(exp)) % 255;
 
-    GF256_TABLES.exp[log_result as usize]
+    GF256_TABLES.exp
+        [log_result as usize]
 }
 
 /// Evaluates a polynomial over GF(2^8) at a given point `x`.
@@ -555,18 +661,28 @@ pub fn poly_add_gf256(
     p2: &[u8],
 ) -> Vec<u8> {
 
-    let mut result = vec![0; std::cmp::max(p1.len(), p2.len())];
+    let mut result = vec![
+        0;
+        std::cmp::max(
+            p1.len(),
+            p2.len()
+        )
+    ];
 
     let res_len = result.len();
 
     for i in 0..p1.len() {
 
-        result[i + res_len - p1.len()] = p1[i];
+        result
+            [i + res_len - p1.len()] =
+            p1[i];
     }
 
     for i in 0..p2.len() {
 
-        result[i + res_len - p2.len()] ^= p2[i];
+        result
+            [i + res_len - p2.len()] ^=
+            p2[i];
     }
 
     result
@@ -595,13 +711,18 @@ pub fn poly_mul_gf256(
         return vec![];
     }
 
-    let mut result = vec![0; p1.len() + p2.len() - 1];
+    let mut result =
+        vec![
+            0;
+            p1.len() + p2.len() - 1
+        ];
 
     for i in 0..p1.len() {
 
         for j in 0..p2.len() {
 
-            result[i + j] ^= gf256_mul(p1[i], p2[j]);
+            result[i + j] ^=
+                gf256_mul(p1[i], p2[j]);
         }
     }
 
@@ -640,7 +761,9 @@ pub fn poly_scale_gf256(
 /// The derivative polynomial
 #[must_use]
 
-pub fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
+pub fn poly_derivative_gf256(
+    poly: &[u8]
+) -> Vec<u8> {
 
     if poly.len() <= 1 {
 
@@ -648,7 +771,8 @@ pub fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
     }
 
     let n = poly.len() - 1; // degree
-    let mut result = Vec::with_capacity(n);
+    let mut result =
+        Vec::with_capacity(n);
 
     for (i, &coeff) in poly
         .iter()
@@ -671,7 +795,9 @@ pub fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
     }
 
     // Remove leading zeros
-    while result.len() > 1 && result[0] == 0 {
+    while result.len() > 1
+        && result[0] == 0
+    {
 
         result.remove(0);
     }
@@ -695,38 +821,52 @@ pub fn poly_gcd_gf256(
 ) -> Vec<u8> {
 
     // Remove leading zeros
-    let strip_leading = |p: &[u8]| -> Vec<u8> {
+    let strip_leading =
+        |p: &[u8]| -> Vec<u8> {
 
-        let first_non_zero = p
-            .iter()
-            .position(|&x| x != 0)
-            .unwrap_or(p.len());
+            let first_non_zero = p
+                .iter()
+                .position(|&x| x != 0)
+                .unwrap_or(p.len());
 
-        if first_non_zero >= p.len() {
+            if first_non_zero >= p.len()
+            {
 
-            vec![0]
-        } else {
+                vec![0]
+            } else {
 
-            p[first_non_zero..].to_vec()
-        }
-    };
+                p[first_non_zero..]
+                    .to_vec()
+            }
+        };
 
     let mut a = strip_leading(p1);
 
     let mut b = strip_leading(p2);
 
-    while b.len() > 1 || (b.len() == 1 && b[0] != 0) {
+    while b.len() > 1
+        || (b.len() == 1 && b[0] != 0)
+    {
 
-        if b.is_empty() || (b.len() == 1 && b[0] == 0) {
+        if b.is_empty()
+            || (b.len() == 1
+                && b[0] == 0)
+        {
 
             break;
         }
 
         // Compute remainder of a / b
-        let remainder = match poly_div_gf256(a.clone(), &b) {
-            | Ok(r) => strip_leading(&r),
-            | Err(_) => break,
-        };
+        let remainder =
+            match poly_div_gf256(
+                a.clone(),
+                &b,
+            ) {
+                | Ok(r) => {
+                    strip_leading(&r)
+                },
+                | Err(_) => break,
+            };
 
         a = b;
 
@@ -736,9 +876,12 @@ pub fn poly_gcd_gf256(
     // Make monic (leading coefficient = 1)
     if !a.is_empty() && a[0] != 0 {
 
-        if let Ok(inv) = gf256_inv(a[0]) {
+        if let Ok(inv) = gf256_inv(a[0])
+        {
 
-            a = poly_scale_gf256(&a, inv);
+            a = poly_scale_gf256(
+                &a, inv,
+            );
         }
     }
 
@@ -763,16 +906,20 @@ pub fn poly_div_gf256(
 
     if divisor.is_empty() {
 
-        return Err("Divisor cannot be empty".to_string());
+        return Err("Divisor cannot \
+                    be empty"
+            .to_string());
     }
 
     let divisor_len = divisor.len();
 
     let lead_divisor = divisor[0];
 
-    let lead_divisor_inv = gf256_inv(lead_divisor)?;
+    let lead_divisor_inv =
+        gf256_inv(lead_divisor)?;
 
-    while dividend.len() >= divisor_len {
+    while dividend.len() >= divisor_len
+    {
 
         let lead_dividend = dividend[0];
 
@@ -783,7 +930,9 @@ pub fn poly_div_gf256(
 
         for i in 0..divisor_len {
 
-            let term = gf256_mul(coeff, divisor[i]);
+            let term = gf256_mul(
+                coeff, divisor[i],
+            );
 
             dividend[i] ^= term;
         }
@@ -799,7 +948,9 @@ pub(crate) fn expr_to_field_elements(
     field: &Arc<FiniteField>,
 ) -> Result<Vec<FieldElement>, String> {
 
-    if let Expr::Polynomial(coeffs) = p_expr {
+    if let Expr::Polynomial(coeffs) =
+        p_expr
+    {
 
         coeffs
             .iter()
@@ -813,16 +964,23 @@ pub(crate) fn expr_to_field_elements(
     } else {
 
         Err(format!(
-            "Expression is not a polynomial: {p_expr}"
+            "Expression is not a \
+             polynomial: {p_expr}"
         ))
     }
 }
 
-pub(crate) fn field_elements_to_expr(coeffs: &[FieldElement]) -> Expr {
+pub(crate) fn field_elements_to_expr(
+    coeffs: &[FieldElement]
+) -> Expr {
 
     let expr_coeffs = coeffs
         .iter()
-        .map(|c| Expr::BigInt(c.value.clone()))
+        .map(|c| {
+            Expr::BigInt(
+                c.value.clone(),
+            )
+        })
         .collect();
 
     Expr::Polynomial(expr_coeffs)
@@ -845,9 +1003,13 @@ pub fn poly_add_gf(
     field: &Arc<FiniteField>,
 ) -> Result<Expr, String> {
 
-    let c1 = expr_to_field_elements(p1_expr, field)?;
+    let c1 = expr_to_field_elements(
+        p1_expr, field,
+    )?;
 
-    let c2 = expr_to_field_elements(p2_expr, field)?;
+    let c2 = expr_to_field_elements(
+        p2_expr, field,
+    )?;
 
     let mut result_coeffs = vec![];
 
@@ -855,7 +1017,8 @@ pub fn poly_add_gf(
 
     let len2 = c2.len();
 
-    let max_len = std::cmp::max(len1, len2);
+    let max_len =
+        std::cmp::max(len1, len2);
 
     for i in 0..max_len {
 
@@ -881,12 +1044,17 @@ pub fn poly_add_gf(
             )
         };
 
-        result_coeffs.push((val1 + val2)?);
+        result_coeffs
+            .push((val1 + val2)?);
     }
 
     result_coeffs.reverse();
 
-    Ok(field_elements_to_expr(&result_coeffs))
+    Ok(
+        field_elements_to_expr(
+            &result_coeffs,
+        ),
+    )
 }
 
 /// Multiplies two polynomials whose coefficients are `FieldElement`s from a given finite field.
@@ -906,9 +1074,13 @@ pub fn poly_mul_gf(
     field: &Arc<FiniteField>,
 ) -> Result<Expr, String> {
 
-    let c1 = expr_to_field_elements(p1_expr, field)?;
+    let c1 = expr_to_field_elements(
+        p1_expr, field,
+    )?;
 
-    let c2 = expr_to_field_elements(p2_expr, field)?;
+    let c2 = expr_to_field_elements(
+        p2_expr, field,
+    )?;
 
     if c1.is_empty() || c2.is_empty() {
 
@@ -933,13 +1105,22 @@ pub fn poly_mul_gf(
 
         for j in 0..=deg2 {
 
-            let term_mul = (c1[i].clone() * c2[j].clone())?;
+            let term_mul = (c1[i]
+                .clone()
+                * c2[j].clone())?;
 
-            result_coeffs[i + j] = (result_coeffs[i + j].clone() + term_mul)?;
+            result_coeffs[i + j] =
+                (result_coeffs[i + j]
+                    .clone()
+                    + term_mul)?;
         }
     }
 
-    Ok(field_elements_to_expr(&result_coeffs))
+    Ok(
+        field_elements_to_expr(
+            &result_coeffs,
+        ),
+    )
 }
 
 /// Divides two polynomials whose coefficients are `FieldElement`s from a given finite field.
@@ -960,16 +1141,23 @@ pub fn poly_div_gf(
     field: &Arc<FiniteField>,
 ) -> Result<(Expr, Expr), String> {
 
-    let mut num = expr_to_field_elements(p1_expr, field)?;
+    let mut num =
+        expr_to_field_elements(
+            p1_expr, field,
+        )?;
 
-    let den = expr_to_field_elements(p2_expr, field)?;
+    let den = expr_to_field_elements(
+        p2_expr, field,
+    )?;
 
     if den
         .iter()
         .all(|c| c.value.is_zero())
     {
 
-        return Err("Division by zero polynomial".to_string());
+        return Err("Division by \
+                    zero polynomial"
+            .to_string());
     }
 
     let mut quotient = vec![
@@ -982,31 +1170,49 @@ pub fn poly_div_gf(
 
     let lead_den_inv = den
         .first()
-        .ok_or("Divisor polynomial is empty.".to_string())?
+        .ok_or(
+            "Divisor polynomial is \
+             empty."
+                .to_string(),
+        )?
         .inverse()
-        .ok_or("Leading coefficient is not invertible".to_string())?;
+        .ok_or(
+            "Leading coefficient is \
+             not invertible"
+                .to_string(),
+        )?;
 
     while num.len() >= den.len() {
 
-        let lead_num = match num.first() {
+        let lead_num = match num.first()
+        {
             | Some(n) => n.clone(),
-            | None => return Err("Dividend became empty unexpectedly.".to_string()),
+            | None => return Err(
+                "Dividend became \
+                 empty unexpectedly."
+                    .to_string(),
+            ),
         };
 
-        let coeff = (lead_num * lead_den_inv.clone())?;
+        let coeff = (lead_num
+            * lead_den_inv.clone())?;
 
-        let degree_diff = num.len() - den.len();
+        let degree_diff =
+            num.len() - den.len();
 
-        quotient[degree_diff] = coeff.clone();
+        quotient[degree_diff] =
+            coeff.clone();
 
         for (i, den_coeff) in den
             .iter()
             .enumerate()
         {
 
-            let term = (coeff.clone() * den_coeff.clone())?;
+            let term = (coeff.clone()
+                * den_coeff.clone())?;
 
-            num[i] = (num[i].clone() - term)?;
+            num[i] = (num[i].clone()
+                - term)?;
         }
 
         num.remove(0);
@@ -1014,26 +1220,39 @@ pub fn poly_div_gf(
 
     let first_non_zero = num
         .iter()
-        .position(|c| !c.value.is_zero())
+        .position(|c| {
+            !c.value.is_zero()
+        })
         .unwrap_or(num.len());
 
-    let remainder = &num[first_non_zero..];
+    let remainder =
+        &num[first_non_zero..];
 
     Ok((
-        field_elements_to_expr(&quotient),
-        field_elements_to_expr(remainder),
+        field_elements_to_expr(
+            &quotient,
+        ),
+        field_elements_to_expr(
+            remainder,
+        ),
     ))
 }
 
 trait ToBigInt {
-    fn to_bigint(&self) -> Option<BigInt>;
+    fn to_bigint(
+        &self
+    ) -> Option<BigInt>;
 }
 
 impl ToBigInt for Expr {
-    fn to_bigint(&self) -> Option<BigInt> {
+    fn to_bigint(
+        &self
+    ) -> Option<BigInt> {
 
         match self {
-            | Self::BigInt(i) => Some(i.clone()),
+            | Self::BigInt(i) => {
+                Some(i.clone())
+            },
             | Self::Constant(_) => None,
             | _ => None,
         }

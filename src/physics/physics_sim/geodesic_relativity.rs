@@ -11,7 +11,9 @@ use std::fs::File;
 use std::io::Write;
 
 /// Parameters for the geodesic simulation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct GeodesicParameters {
     pub black_hole_mass: f64,
@@ -35,7 +37,8 @@ impl GeodesicParameters {
 
         let m = self.black_hole_mass;
 
-        -m / r + l * l / (2.0 * r * r) - m * l * l / r.powi(3)
+        -m / r + l * l / (2.0 * r * r)
+            - m * l * l / r.powi(3)
     }
 }
 
@@ -64,10 +67,16 @@ impl OdeSystem for SchwarzschildSystem {
 
         let l = r * r * phi_dot;
 
-        let r_ddot = -self.mass / r.powi(2) + l.powi(2) / r.powi(3)
-            - 3.0 * self.mass * l.powi(2) / r.powi(4);
+        let r_ddot = -self.mass
+            / r.powi(2)
+            + l.powi(2) / r.powi(3)
+            - 3.0
+                * self.mass
+                * l.powi(2)
+                / r.powi(4);
 
-        let phi_ddot = -2.0 * r_dot * phi_dot / r;
+        let phi_ddot =
+            -2.0 * r_dot * phi_dot / r;
 
         dy[0] = r_dot;
 
@@ -93,13 +102,16 @@ impl OdeSystem for SchwarzschildSystem {
 /// A `Vec` of `(f64, f64)` tuples, where each tuple is an `(x, y)` coordinate
 /// in Cartesian space, representing the simulated orbit.
 
-pub fn run_geodesic_simulation(params: &GeodesicParameters) -> Vec<(f64, f64)> {
+pub fn run_geodesic_simulation(
+    params: &GeodesicParameters
+) -> Vec<(f64, f64)> {
 
     let system = SchwarzschildSystem {
         mass: params.black_hole_mass,
     };
 
-    let solver = DormandPrince54::default();
+    let solver =
+        DormandPrince54::default();
 
     let t_span = (
         0.0,
@@ -141,36 +153,45 @@ pub fn run_geodesic_simulation(params: &GeodesicParameters) -> Vec<(f64, f64)> {
 ///
 /// The results are saved to `.csv` files for external visualization.
 
-pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
+pub fn simulate_black_hole_orbits_scenario(
+) -> std::io::Result<()> {
 
-    println!("Running Black Hole orbit simulation...");
+    println!(
+        "Running Black Hole orbit \
+         simulation..."
+    );
 
     let black_hole_mass = 1.0;
 
-    let stable_orbit_params = GeodesicParameters {
-        black_hole_mass,
-        initial_state: [
-            10.0, 0.0, 0.0, 0.035,
-        ],
-        proper_time_end: 1500.0,
-        initial_dt: 0.1,
-    };
+    let stable_orbit_params =
+        GeodesicParameters {
+            black_hole_mass,
+            initial_state: [
+                10.0, 0.0, 0.0, 0.035,
+            ],
+            proper_time_end: 1500.0,
+            initial_dt: 0.1,
+        };
 
-    let plunging_orbit_params = GeodesicParameters {
-        black_hole_mass,
-        initial_state: [10.0, 0.0, 0.0, 0.02],
-        proper_time_end: 500.0,
-        initial_dt: 0.1,
-    };
+    let plunging_orbit_params =
+        GeodesicParameters {
+            black_hole_mass,
+            initial_state: [
+                10.0, 0.0, 0.0, 0.02,
+            ],
+            proper_time_end: 500.0,
+            initial_dt: 0.1,
+        };
 
-    let photon_orbit_params = GeodesicParameters {
-        black_hole_mass,
-        initial_state: [
-            10.0, -1.0, 0.0, 0.03,
-        ],
-        proper_time_end: 50.0,
-        initial_dt: 0.01,
-    };
+    let photon_orbit_params =
+        GeodesicParameters {
+            black_hole_mass,
+            initial_state: [
+                10.0, -1.0, 0.0, 0.03,
+            ],
+            proper_time_end: 50.0,
+            initial_dt: 0.01,
+        };
 
     let orbits = vec![
         (
@@ -196,17 +217,32 @@ pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
                 name
             );
 
-            let path = run_geodesic_simulation(&params);
+            let path =
+                run_geodesic_simulation(
+                    &params,
+                );
 
-            let filename = format!("orbit_{}.csv", name);
+            let filename = format!(
+                "orbit_{}.csv",
+                name
+            );
 
-            if let Ok(mut file) = File::create(&filename) {
+            if let Ok(mut file) =
+                File::create(&filename)
+            {
 
-                let _ = writeln!(file, "x,y");
+                let _ = writeln!(
+                    file,
+                    "x,y"
+                );
 
                 for (x, y) in path {
 
-                    let _ = writeln!(file, "{},{}", x, y);
+                    let _ = writeln!(
+                        file,
+                        "{},{}",
+                        x, y
+                    );
                 }
 
                 println!(

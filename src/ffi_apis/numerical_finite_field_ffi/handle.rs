@@ -16,14 +16,18 @@ pub extern "C" fn rssn_num_ff_pfe_new(
 ) -> *mut PrimeFieldElement {
 
     Box::into_raw(Box::new(
-        PrimeFieldElement::new(value, modulus),
+        PrimeFieldElement::new(
+            value, modulus,
+        ),
     ))
 }
 
 /// Frees a PrimeFieldElement.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ff_pfe_free(pfe: *mut PrimeFieldElement) {
+pub unsafe extern "C" fn rssn_num_ff_pfe_free(
+    pfe: *mut PrimeFieldElement
+) {
 
     if !pfe.is_null() {
 
@@ -50,10 +54,16 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
 
         (*pfe).inverse()
     } {
-        | Some(inv) => Box::into_raw(Box::new(inv)),
+        | Some(inv) => {
+            Box::into_raw(Box::new(inv))
+        },
         | None => {
 
-            update_last_error("Element is not invertible".to_string());
+            update_last_error(
+                "Element is not \
+                 invertible"
+                    .to_string(),
+            );
 
             ptr::null_mut()
         },
@@ -154,7 +164,8 @@ pub extern "C" fn rssn_num_ff_gf256_div(
     b: u8,
 ) -> u8 {
 
-    match finite_field::gf256_div(a, b) {
+    match finite_field::gf256_div(a, b)
+    {
         | Ok(res) => res,
         | Err(e) => {
 

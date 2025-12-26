@@ -31,7 +31,9 @@ pub extern "C" fn rssn_physics_sim_gpe_run_ground_state_finder(
         trap_strength,
     };
 
-    match gpe_superfluidity::run_gpe_ground_state_finder(&params) {
+    match gpe_superfluidity::run_gpe_ground_state_finder(
+        &params,
+    ) {
         | Ok(res) => {
 
             let rows = res.nrows();

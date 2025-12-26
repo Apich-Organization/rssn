@@ -26,7 +26,14 @@ use std::sync::Arc;
 /// Represents a quantum state using Dirac notation (Ket).
 ///
 /// Symbolically, a ket is represented as `|state>`.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+)]
 
 pub struct Ket {
     pub state: Expr,
@@ -35,7 +42,14 @@ pub struct Ket {
 /// Represents a quantum state using Dirac notation (Bra).
 ///
 /// Symbolically, a bra is represented as `<state|`.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+)]
 
 pub struct Bra {
     pub state: Expr,
@@ -65,15 +79,26 @@ pub fn bra_ket(
         var: Arc::new(Expr::Variable(
             "x".to_string(),
         )),
-        lower_bound: Arc::new(Expr::NegativeInfinity),
-        upper_bound: Arc::new(Expr::Infinity),
+        lower_bound: Arc::new(
+            Expr::NegativeInfinity,
+        ),
+        upper_bound: Arc::new(
+            Expr::Infinity,
+        ),
     })
 }
 
 /// Represents a quantum operator.
 ///
 /// Symbolically, an operator `A` acts on a state `|ψ>` as `A|ψ>`.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+)]
 
 pub struct Operator {
     pub op: Expr,
@@ -100,10 +125,12 @@ impl Operator {
     ) -> Ket {
 
         Ket {
-            state: simplify(&Expr::new_mul(
-                self.op.clone(),
-                ket.state.clone(),
-            )),
+            state: simplify(
+                &Expr::new_mul(
+                    self.op.clone(),
+                    ket.state.clone(),
+                ),
+            ),
         }
     }
 }
@@ -141,9 +168,11 @@ pub fn expectation_value(
         state: psi.state.clone(),
     };
 
-    let numerator = bra_ket(&bra, &op.apply(psi));
+    let numerator =
+        bra_ket(&bra, &op.apply(psi));
 
-    let denominator = bra_ket(&bra, psi);
+    let denominator =
+        bra_ket(&bra, psi);
 
     simplify(&Expr::new_div(
         numerator,
@@ -166,9 +195,11 @@ pub fn uncertainty(
         ),
     };
 
-    let exp_a_sq = expectation_value(&op_sq, psi);
+    let exp_a_sq =
+        expectation_value(&op_sq, psi);
 
-    let exp_a = expectation_value(op, psi);
+    let exp_a =
+        expectation_value(op, psi);
 
     let exp_a_whole_sq = Expr::new_pow(
         exp_a,
@@ -186,10 +217,14 @@ pub fn uncertainty(
 /// Computes the probability density at a point: `ρ(x) = |ψ(x)|^2`.
 #[must_use]
 
-pub fn probability_density(psi: &Ket) -> Expr {
+pub fn probability_density(
+    psi: &Ket
+) -> Expr {
 
     simplify(&Expr::new_pow(
-        Expr::new_abs(psi.state.clone()),
+        Expr::new_abs(
+            psi.state.clone(),
+        ),
         Expr::Constant(2.0),
     ))
 }
@@ -197,9 +232,12 @@ pub fn probability_density(psi: &Ket) -> Expr {
 /// Hamiltonian for a free particle: `H = -ħ² / (2m) * ∇²`.
 #[must_use]
 
-pub fn hamiltonian_free_particle(m: &Expr) -> Operator {
+pub fn hamiltonian_free_particle(
+    m: &Expr
+) -> Operator {
 
-    let hbar = Expr::new_variable("hbar");
+    let hbar =
+        Expr::new_variable("hbar");
 
     let hbar_sq = Expr::new_pow(
         hbar,
@@ -211,11 +249,12 @@ pub fn hamiltonian_free_particle(m: &Expr) -> Operator {
         m.clone(),
     );
 
-    let coeff = Expr::new_neg(Expr::new_div(
-        hbar_sq, two_m,
-    ));
+    let coeff = Expr::new_neg(
+        Expr::new_div(hbar_sq, two_m),
+    );
 
-    let laplacian = Expr::new_variable("d2_dx2");
+    let laplacian =
+        Expr::new_variable("d2_dx2");
 
     Operator {
         op: simplify(&Expr::new_mul(
@@ -232,7 +271,8 @@ pub fn hamiltonian_harmonic_oscillator(
     omega: &Expr,
 ) -> Operator {
 
-    let free_h = hamiltonian_free_particle(m);
+    let free_h =
+        hamiltonian_free_particle(m);
 
     let half = Expr::Constant(0.5);
 
@@ -252,7 +292,9 @@ pub fn hamiltonian_harmonic_oscillator(
         half,
         Expr::new_mul(
             m.clone(),
-            Expr::new_mul(omega_sq, x_sq),
+            Expr::new_mul(
+                omega_sq, x_sq,
+            ),
         ),
     );
 
@@ -266,22 +308,27 @@ pub fn hamiltonian_harmonic_oscillator(
 /// Angular momentum operator `L_z`: `L_z = -i * ħ * ∂/∂φ`.
 #[must_use]
 
-pub fn angular_momentum_z() -> Operator {
+pub fn angular_momentum_z() -> Operator
+{
 
     let i = Expr::new_complex(
         Expr::Constant(0.0),
         Expr::Constant(1.0),
     );
 
-    let hbar = Expr::new_variable("hbar");
+    let hbar =
+        Expr::new_variable("hbar");
 
     let i_hbar = Expr::new_mul(i, hbar);
 
-    let d_dphi = Expr::new_variable("d_dphi");
+    let d_dphi =
+        Expr::new_variable("d_dphi");
 
     Operator {
         op: simplify(&Expr::new_neg(
-            Expr::new_mul(i_hbar, d_dphi),
+            Expr::new_mul(
+                i_hbar, d_dphi,
+            ),
         )),
     }
 }
@@ -289,7 +336,8 @@ pub fn angular_momentum_z() -> Operator {
 /// Returns the Pauli matrices: `σ_x, σ_y, σ_z`.
 #[must_use]
 
-pub fn pauli_matrices() -> (Expr, Expr, Expr) {
+pub fn pauli_matrices(
+) -> (Expr, Expr, Expr) {
 
     let zero = Expr::Constant(0.0);
 
@@ -300,7 +348,8 @@ pub fn pauli_matrices() -> (Expr, Expr, Expr) {
         Expr::Constant(1.0),
     );
 
-    let neg_i = Expr::new_neg(i.clone());
+    let neg_i =
+        Expr::new_neg(i.clone());
 
     let sigma_x = Expr::Matrix(vec![
         vec![
@@ -334,9 +383,12 @@ pub fn pauli_matrices() -> (Expr, Expr, Expr) {
 /// Spin operator: `S = ħ/2 * σ`.
 #[must_use]
 
-pub fn spin_operator(pauli: &Expr) -> Expr {
+pub fn spin_operator(
+    pauli: &Expr
+) -> Expr {
 
-    let hbar = Expr::new_variable("hbar");
+    let hbar =
+        Expr::new_variable("hbar");
 
     let half_hbar = Expr::new_mul(
         Expr::Constant(0.5),
@@ -357,9 +409,11 @@ pub fn solve_time_independent_schrodinger(
     wave_function: &Ket,
 ) -> (Vec<Expr>, Vec<Ket>) {
 
-    let h_psi = hamiltonian.apply(wave_function);
+    let h_psi = hamiltonian
+        .apply(wave_function);
 
-    let e = Expr::Variable("E".to_string());
+    let e =
+        Expr::Variable("E".to_string());
 
     let e_psi = Expr::new_mul(
         e,
@@ -368,13 +422,19 @@ pub fn solve_time_independent_schrodinger(
             .clone(),
     );
 
-    let equation = Expr::new_sub(h_psi.state, e_psi);
+    let equation = Expr::new_sub(
+        h_psi.state,
+        e_psi,
+    );
 
-    let solutions = solve(&equation, "E");
+    let solutions =
+        solve(&equation, "E");
 
     let eigenfunctions = solutions
         .iter()
-        .map(|_sol| wave_function.clone())
+        .map(|_sol| {
+            wave_function.clone()
+        })
         .collect();
 
     (
@@ -396,7 +456,9 @@ pub fn time_dependent_schrodinger_equation(
         Expr::Constant(1.0),
     );
 
-    let hbar = Expr::Variable("hbar".to_string());
+    let hbar = Expr::Variable(
+        "hbar".to_string(),
+    );
 
     let i_hbar = Expr::new_mul(i, hbar);
 
@@ -405,7 +467,8 @@ pub fn time_dependent_schrodinger_equation(
         "t",
     );
 
-    let lhs = Expr::new_mul(i_hbar, d_psi_dt);
+    let lhs =
+        Expr::new_mul(i_hbar, d_psi_dt);
 
     let rhs = hamiltonian
         .apply(wave_function)
@@ -429,25 +492,33 @@ pub fn dirac_equation(
         Expr::Constant(1.0),
     );
 
-    let hbar = Expr::new_variable("hbar");
+    let hbar =
+        Expr::new_variable("hbar");
 
     let c = Expr::new_variable("c");
 
-    let gamma_mu = Expr::new_variable("gamma_mu");
+    let gamma_mu =
+        Expr::new_variable("gamma_mu");
 
-    let d_mu = Expr::new_variable("partial_mu");
+    let d_mu = Expr::new_variable(
+        "partial_mu",
+    );
 
     let term1 = Expr::new_mul(
         i,
         Expr::new_mul(
             hbar,
-            Expr::new_mul(gamma_mu, d_mu),
+            Expr::new_mul(
+                gamma_mu, d_mu,
+            ),
         ),
     );
 
-    let term2 = Expr::new_mul(m.clone(), c);
+    let term2 =
+        Expr::new_mul(m.clone(), c);
 
-    let dirac_op = Expr::new_sub(term1, term2);
+    let dirac_op =
+        Expr::new_sub(term1, term2);
 
     simplify(&Expr::new_mul(
         dirac_op,
@@ -463,11 +534,13 @@ pub fn klein_gordon_equation(
     m: &Expr,
 ) -> Expr {
 
-    let hbar = Expr::new_variable("hbar");
+    let hbar =
+        Expr::new_variable("hbar");
 
     let c = Expr::new_variable("c");
 
-    let dalembertian = Expr::new_variable("d_mu_d_mu");
+    let dalembertian =
+        Expr::new_variable("d_mu_d_mu");
 
     let mc_hbar = Expr::new_div(
         Expr::new_mul(m.clone(), c),
@@ -504,7 +577,8 @@ pub fn first_order_energy_correction(
                 .state
                 .clone(),
         },
-        &perturbation.apply(unperturbed_state),
+        &perturbation
+            .apply(unperturbed_state),
     )
 }
 
@@ -517,7 +591,8 @@ pub fn scattering_amplitude(
     potential: &Operator,
 ) -> Expr {
 
-    let term = potential.apply(initial_state);
+    let term =
+        potential.apply(initial_state);
 
     bra_ket(
         &Bra {

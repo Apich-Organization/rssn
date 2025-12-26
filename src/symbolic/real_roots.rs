@@ -45,7 +45,8 @@ pub fn sturm_sequence(
         return vec![];
     }
 
-    let p_prime = differentiate_poly(poly, var);
+    let p_prime =
+        differentiate_poly(poly, var);
 
     let common_divisor = gcd(
         poly.clone(),
@@ -55,14 +56,18 @@ pub fn sturm_sequence(
 
     let p0 = poly
         .clone()
-        .long_division(common_divisor, var)
+        .long_division(
+            common_divisor,
+            var,
+        )
         .0;
 
     let mut seq = Vec::new();
 
     seq.push(p0.clone());
 
-    let p1 = differentiate_poly(&p0, var);
+    let p1 =
+        differentiate_poly(&p0, var);
 
     if p1.terms.is_empty() {
 
@@ -85,7 +90,10 @@ pub fn sturm_sequence(
 
         let (_, remainder) = p_prev
             .clone()
-            .long_division(p_curr.clone(), var);
+            .long_division(
+                p_curr.clone(),
+                var,
+            );
 
         if remainder
             .terms
@@ -113,7 +121,8 @@ pub(crate) fn count_sign_changes(
 
     let mut changes = 0;
 
-    let mut last_sign: Option<i8> = None;
+    let mut last_sign: Option<i8> =
+        None;
 
     let mut vars = HashMap::new();
 
@@ -139,7 +148,8 @@ pub(crate) fn count_sign_changes(
 
         if let Some(s) = sign {
 
-            if let Some(ls) = last_sign {
+            if let Some(ls) = last_sign
+            {
 
                 if s != ls {
 
@@ -179,11 +189,16 @@ pub fn count_real_roots_in_interval(
 
     let seq = sturm_sequence(poly, var);
 
-    let changes_a = count_sign_changes(&seq, a, var);
+    let changes_a = count_sign_changes(
+        &seq, a, var,
+    );
 
-    let changes_b = count_sign_changes(&seq, b, var);
+    let changes_b = count_sign_changes(
+        &seq, b, var,
+    );
 
-    Ok(changes_a.saturating_sub(changes_b))
+    Ok(changes_a
+        .saturating_sub(changes_b))
 }
 
 /// Finds isolating intervals for all distinct real roots of a polynomial.
@@ -212,33 +227,46 @@ pub fn isolate_real_roots(
         .long_division(
             gcd(
                 poly.clone(),
-                differentiate_poly(poly, var),
+                differentiate_poly(
+                    poly, var,
+                ),
                 var,
             ),
             var,
         )
         .0;
 
-    let seq = sturm_sequence(&sq_free, var);
+    let seq =
+        sturm_sequence(&sq_free, var);
 
-    let bound = root_bound(&sq_free, var)?;
+    let bound =
+        root_bound(&sq_free, var)?;
 
     let mut roots = Vec::new();
 
-    let mut stack = vec![(-bound, bound)];
+    let mut stack =
+        vec![(-bound, bound)];
 
-    while let Some((a, b)) = stack.pop() {
+    while let Some((a, b)) = stack.pop()
+    {
 
         if b - a < precision {
 
             continue;
         }
 
-        let changes_a = count_sign_changes(&seq, a, var);
+        let changes_a =
+            count_sign_changes(
+                &seq, a, var,
+            );
 
-        let changes_b = count_sign_changes(&seq, b, var);
+        let changes_b =
+            count_sign_changes(
+                &seq, b, var,
+            );
 
-        let num_roots = changes_a.saturating_sub(changes_b);
+        let num_roots = changes_a
+            .saturating_sub(changes_b);
 
         if num_roots == 1 {
 
@@ -246,11 +274,21 @@ pub fn isolate_real_roots(
 
             let mut high = b;
 
-            while high - low > precision {
+            while high - low > precision
+            {
 
-                let mid = f64::midpoint(low, high);
+                let mid = f64::midpoint(
+                    low, high,
+                );
 
-                if count_sign_changes(&seq, low, var) - count_sign_changes(&seq, mid, var) > 0 {
+                if count_sign_changes(
+                    &seq, low, var,
+                )
+                    - count_sign_changes(
+                        &seq, mid, var,
+                    )
+                    > 0
+                {
 
                     high = mid;
                 } else {
@@ -262,7 +300,8 @@ pub fn isolate_real_roots(
             roots.push((low, high));
         } else if num_roots > 1 {
 
-            let mid = f64::midpoint(a, b);
+            let mid =
+                f64::midpoint(a, b);
 
             stack.push((a, mid));
 
@@ -286,25 +325,35 @@ pub(crate) fn root_bound(
     var: &str,
 ) -> Result<f64, String> {
 
-    let coeffs = poly.get_coeffs_as_vec(var);
+    let coeffs =
+        poly.get_coeffs_as_vec(var);
 
     if coeffs.is_empty() {
 
         return Ok(1.0);
     }
 
-    let leading_coeff_expr = match coeffs.first() {
-        | Some(c) => c,
-        | None => unreachable!(),
-    };
+    let leading_coeff_expr =
+        match coeffs.first() {
+            | Some(c) => c,
+            | None => unreachable!(),
+        };
 
     let simplified_lc = crate::symbolic::simplify_dag::simplify(&leading_coeff_expr.clone());
 
-    let lc = as_f64(&simplified_lc).ok_or("Leading coefficient is not numerical.")?;
+    let lc = as_f64(&simplified_lc)
+        .ok_or(
+            "Leading coefficient is \
+             not numerical.",
+        )?;
 
     if lc == 0.0 {
 
-        return Err("Leading coefficient cannot be zero.".to_string());
+        return Err(
+            "Leading coefficient \
+             cannot be zero."
+                .to_string(),
+        );
     }
 
     let max_coeff = coeffs
@@ -333,7 +382,9 @@ pub fn eval_expr(
             eval_expr(
                 &node
                     .to_expr()
-                    .expect("Dag Eval Expr"),
+                    .expect(
+                        "Dag Eval Expr",
+                    ),
                 vars,
             )
         },
@@ -347,12 +398,30 @@ pub fn eval_expr(
                 .get(v)
                 .unwrap_or(&0.0)
         },
-        | Expr::Add(a, b) => eval_expr(a, vars) + eval_expr(b, vars),
-        | Expr::Sub(a, b) => eval_expr(a, vars) - eval_expr(b, vars),
-        | Expr::Mul(a, b) => eval_expr(a, vars) * eval_expr(b, vars),
-        | Expr::Div(a, b) => eval_expr(a, vars) / eval_expr(b, vars),
-        | Expr::Power(b, e) => eval_expr(b, vars).powf(eval_expr(e, vars)),
-        | Expr::Neg(a) => -eval_expr(a, vars),
+        | Expr::Add(a, b) => {
+            eval_expr(a, vars)
+                + eval_expr(b, vars)
+        },
+        | Expr::Sub(a, b) => {
+            eval_expr(a, vars)
+                - eval_expr(b, vars)
+        },
+        | Expr::Mul(a, b) => {
+            eval_expr(a, vars)
+                * eval_expr(b, vars)
+        },
+        | Expr::Div(a, b) => {
+            eval_expr(a, vars)
+                / eval_expr(b, vars)
+        },
+        | Expr::Power(b, e) => {
+            eval_expr(b, vars).powf(
+                eval_expr(e, vars),
+            )
+        },
+        | Expr::Neg(a) => {
+            -eval_expr(a, vars)
+        },
         | _ => 0.0,
     }
 }

@@ -6,7 +6,8 @@ use crate::physics::physics_em;
 /// Simulates the oscillator forward Euler scenario and returns the results as a Matrix handle.
 #[no_mangle]
 
-pub extern "C" fn rssn_physics_em_simulate_oscillator_forward() -> *mut Matrix<f64> {
+pub extern "C" fn rssn_physics_em_simulate_oscillator_forward(
+) -> *mut Matrix<f64> {
 
     let results = physics_em::simulate_oscillator_forward_euler_scenario();
 
@@ -19,7 +20,8 @@ pub extern "C" fn rssn_physics_em_simulate_oscillator_forward() -> *mut Matrix<f
 
     let cols = results[0].1.len() + 1;
 
-    let mut flattened = Vec::with_capacity(rows * cols);
+    let mut flattened =
+        Vec::with_capacity(rows * cols);
 
     for (t, y) in results {
 
@@ -38,7 +40,8 @@ pub extern "C" fn rssn_physics_em_simulate_oscillator_forward() -> *mut Matrix<f
 /// Simulates the gravity semi-implicit Euler scenario and returns the results as a Matrix handle.
 #[no_mangle]
 
-pub extern "C" fn rssn_physics_em_simulate_gravity_semi_implicit() -> *mut Matrix<f64> {
+pub extern "C" fn rssn_physics_em_simulate_gravity_semi_implicit(
+) -> *mut Matrix<f64> {
 
     match physics_em::simulate_gravity_semi_implicit_euler_scenario() {
         | Ok(results) => {
@@ -74,7 +77,8 @@ pub extern "C" fn rssn_physics_em_simulate_gravity_semi_implicit() -> *mut Matri
 /// Simulates the stiff decay scenario using backward Euler and returns a Matrix handle.
 #[no_mangle]
 
-pub extern "C" fn rssn_physics_em_simulate_stiff_decay_backward() -> *mut Matrix<f64> {
+pub extern "C" fn rssn_physics_em_simulate_stiff_decay_backward(
+) -> *mut Matrix<f64> {
 
     match physics_em::simulate_stiff_decay_scenario() {
         | Ok(results) => {
@@ -88,7 +92,8 @@ pub extern "C" fn rssn_physics_em_simulate_stiff_decay_backward() -> *mut Matrix
 
             let cols = results[0].1.len() + 1;
 
-            let mut flattened = Vec::with_capacity(rows * cols);
+            let mut flattened =
+                Vec::with_capacity(rows * cols);
 
             for (t, y) in results {
 

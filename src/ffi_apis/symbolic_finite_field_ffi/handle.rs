@@ -14,7 +14,8 @@ pub extern "C" fn rssn_prime_field_element_new_handle(
 
         if value.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*value
@@ -24,18 +25,22 @@ pub extern "C" fn rssn_prime_field_element_new_handle(
 
         if modulus.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*modulus
     };
 
-    let field = PrimeField::new(modulus_ref.clone());
-
-    let element = PrimeFieldElement::new(
-        value_ref.clone(),
-        field,
+    let field = PrimeField::new(
+        modulus_ref.clone(),
     );
+
+    let element =
+        PrimeFieldElement::new(
+            value_ref.clone(),
+            field,
+        );
 
     Box::into_raw(Box::new(element))
 }
@@ -52,7 +57,8 @@ pub extern "C" fn rssn_prime_field_element_add_handle(
 
         if a.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*a
@@ -62,13 +68,15 @@ pub extern "C" fn rssn_prime_field_element_add_handle(
 
         if b.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*b
     };
 
-    let result = a_ref.clone() + b_ref.clone();
+    let result =
+        a_ref.clone() + b_ref.clone();
 
     Box::into_raw(Box::new(result))
 }
@@ -85,7 +93,8 @@ pub extern "C" fn rssn_prime_field_element_mul_handle(
 
         if a.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*a
@@ -95,13 +104,15 @@ pub extern "C" fn rssn_prime_field_element_mul_handle(
 
         if b.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*b
     };
 
-    let result = a_ref.clone() * b_ref.clone();
+    let result =
+        a_ref.clone() * b_ref.clone();
 
     Box::into_raw(Box::new(result))
 }
@@ -117,14 +128,17 @@ pub extern "C" fn rssn_prime_field_element_inverse_handle(
 
         if elem.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*elem
     };
 
     match elem_ref.inverse() {
-        | Some(inv) => Box::into_raw(Box::new(inv)),
+        | Some(inv) => {
+            Box::into_raw(Box::new(inv))
+        },
         | None => std::ptr::null_mut(),
     }
 }
@@ -132,7 +146,9 @@ pub extern "C" fn rssn_prime_field_element_inverse_handle(
 /// Frees a prime field element (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_prime_field_element_free_handle(elem: *mut PrimeFieldElement) {
+pub extern "C" fn rssn_prime_field_element_free_handle(
+    elem: *mut PrimeFieldElement
+) {
 
     if !elem.is_null() {
 

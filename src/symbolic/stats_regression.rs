@@ -28,12 +28,14 @@ use std::sync::Arc;
 /// A tuple `(b0, b1)` where each element is a symbolic expression for the coefficient.
 #[must_use]
 
-pub fn simple_linear_regression_symbolic(data: &[(Expr, Expr)]) -> (Expr, Expr) {
+pub fn simple_linear_regression_symbolic(
+    data: &[(Expr, Expr)]
+) -> (Expr, Expr) {
 
-    let (xs, ys): (Vec<_>, Vec<_>) = data
-        .iter()
-        .cloned()
-        .unzip();
+    let (xs, ys): (Vec<_>, Vec<_>) =
+        data.iter()
+            .cloned()
+            .unzip();
 
     let mean_x = mean(&xs);
 
@@ -49,7 +51,10 @@ pub fn simple_linear_regression_symbolic(data: &[(Expr, Expr)]) -> (Expr, Expr) 
 
     let b0 = simplify(&Expr::new_sub(
         mean_y,
-        Expr::new_mul(b1.clone(), mean_x),
+        Expr::new_mul(
+            b1.clone(),
+            mean_x,
+        ),
     ));
 
     (b0, b1)
@@ -80,7 +85,8 @@ pub fn nonlinear_regression_symbolic(
     params: &[&str],
 ) -> Option<Vec<(Expr, Expr)>> {
 
-    let mut s_expr = Expr::Constant(0.0);
+    let mut s_expr =
+        Expr::Constant(0.0);
 
     let x_var = vars
         .first()
@@ -91,7 +97,8 @@ pub fn nonlinear_regression_symbolic(
 
     for (x_i, y_i) in data {
 
-        let mut model_at_point = model.clone();
+        let mut model_at_point =
+            model.clone();
 
         model_at_point = crate::symbolic::calculus::substitute(
             &model_at_point,
@@ -109,7 +116,10 @@ pub fn nonlinear_regression_symbolic(
             Expr::Constant(2.0),
         );
 
-        s_expr = Expr::new_add(s_expr, residual_sq);
+        s_expr = Expr::new_add(
+            s_expr,
+            residual_sq,
+        );
     }
 
     let mut grad_eqs = Vec::new();
@@ -120,7 +130,9 @@ pub fn nonlinear_regression_symbolic(
 
         grad_eqs.push(Expr::Eq(
             Arc::new(deriv),
-            Arc::new(Expr::Constant(0.0)),
+            Arc::new(Expr::Constant(
+                0.0,
+            )),
         ));
     }
 
@@ -146,25 +158,31 @@ pub fn polynomial_regression_symbolic(
     degree: usize,
 ) -> Result<Vec<Expr>, String> {
 
-    let (xs, ys): (Vec<_>, Vec<_>) = data
-        .iter()
-        .cloned()
-        .unzip();
+    let (xs, ys): (Vec<_>, Vec<_>) =
+        data.iter()
+            .cloned()
+            .unzip();
 
     let n = data.len();
 
-    let mut x_matrix_rows = Vec::with_capacity(n);
+    let mut x_matrix_rows =
+        Vec::with_capacity(n);
 
     for x_i in &xs {
 
-        let mut row = Vec::with_capacity(degree + 1);
+        let mut row =
+            Vec::with_capacity(
+                degree + 1,
+            );
 
         for j in 0..=degree {
 
             row.push(simplify(
                 &Expr::new_pow(
                     x_i.clone(),
-                    Expr::Constant(j as f64),
+                    Expr::Constant(
+                        j as f64,
+                    ),
                 ),
             ));
         }
@@ -172,9 +190,13 @@ pub fn polynomial_regression_symbolic(
         x_matrix_rows.push(row);
     }
 
-    let x_matrix = Expr::Matrix(x_matrix_rows);
+    let x_matrix =
+        Expr::Matrix(x_matrix_rows);
 
-    let x_matrix_t = matrix::transpose_matrix(&x_matrix);
+    let x_matrix_t =
+        matrix::transpose_matrix(
+            &x_matrix,
+        );
 
     let xt_x = matrix::mul_matrices(
         &x_matrix_t,
@@ -190,20 +212,30 @@ pub fn polynomial_regression_symbolic(
         ),
     );
 
-    let _coeff_vars: Vec<String> = (0..=degree)
+    let _coeff_vars: Vec<String> = (0
+        ..=degree)
         .map(|i| format!("c{i}"))
         .collect();
 
-    let result = matrix::solve_linear_system(&xt_x, &xt_y);
+    let result =
+        matrix::solve_linear_system(
+            &xt_x, &xt_y,
+        );
 
     match result {
         | Ok(Expr::Matrix(rows)) => {
             Ok(rows
                 .into_iter()
-                .map(|row| row[0].clone())
+                .map(|row| {
+                    row[0].clone()
+                })
                 .collect())
         },
-        | Ok(_) => Err("Solver returned a non-vector solution.".to_string()),
+        | Ok(_) => {
+            Err("Solver returned a \
+                 non-vector solution."
+                .to_string())
+        },
         | Err(e) => Err(e),
     }
 }

@@ -14,7 +14,9 @@ use std::os::raw::c_double;
 /// Computes the gamma function Γ(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_gamma_numerical(x: c_double) -> c_double {
+pub extern "C" fn rssn_gamma_numerical(
+    x: c_double
+) -> c_double {
 
     special::gamma_numerical(x)
 }
@@ -22,7 +24,9 @@ pub extern "C" fn rssn_gamma_numerical(x: c_double) -> c_double {
 /// Computes the natural logarithm of the gamma function ln(Γ(x)).
 #[no_mangle]
 
-pub extern "C" fn rssn_ln_gamma_numerical(x: c_double) -> c_double {
+pub extern "C" fn rssn_ln_gamma_numerical(
+    x: c_double
+) -> c_double {
 
     special::ln_gamma_numerical(x)
 }
@@ -30,7 +34,9 @@ pub extern "C" fn rssn_ln_gamma_numerical(x: c_double) -> c_double {
 /// Computes the digamma function ψ(x) = d/dx ln(Γ(x)).
 #[no_mangle]
 
-pub extern "C" fn rssn_digamma_numerical(x: c_double) -> c_double {
+pub extern "C" fn rssn_digamma_numerical(
+    x: c_double
+) -> c_double {
 
     special::digamma_numerical(x)
 }
@@ -66,7 +72,9 @@ pub extern "C" fn rssn_regularized_incomplete_beta(
     x: c_double,
 ) -> c_double {
 
-    special::regularized_incomplete_beta(a, b, x)
+    special::regularized_incomplete_beta(
+        a, b, x,
+    )
 }
 
 /// Computes the regularized lower incomplete gamma function P(a, x).
@@ -98,7 +106,9 @@ pub extern "C" fn rssn_regularized_gamma_q(
 /// Computes the error function erf(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_erf_numerical(x: c_double) -> c_double {
+pub extern "C" fn rssn_erf_numerical(
+    x: c_double
+) -> c_double {
 
     special::erf_numerical(x)
 }
@@ -106,7 +116,9 @@ pub extern "C" fn rssn_erf_numerical(x: c_double) -> c_double {
 /// Computes the complementary error function erfc(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_erfc_numerical(x: c_double) -> c_double {
+pub extern "C" fn rssn_erfc_numerical(
+    x: c_double
+) -> c_double {
 
     special::erfc_numerical(x)
 }
@@ -114,7 +126,9 @@ pub extern "C" fn rssn_erfc_numerical(x: c_double) -> c_double {
 /// Computes the inverse error function erf⁻¹(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_inverse_erf(x: c_double) -> c_double {
+pub extern "C" fn rssn_inverse_erf(
+    x: c_double
+) -> c_double {
 
     special::inverse_erf(x)
 }
@@ -122,7 +136,9 @@ pub extern "C" fn rssn_inverse_erf(x: c_double) -> c_double {
 /// Computes the inverse complementary error function erfc⁻¹(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_inverse_erfc(x: c_double) -> c_double {
+pub extern "C" fn rssn_inverse_erfc(
+    x: c_double
+) -> c_double {
 
     special::inverse_erfc(x)
 }
@@ -134,7 +150,9 @@ pub extern "C" fn rssn_inverse_erfc(x: c_double) -> c_double {
 /// Computes the factorial n!.
 #[no_mangle]
 
-pub extern "C" fn rssn_factorial(n: u64) -> u64 {
+pub extern "C" fn rssn_factorial(
+    n: u64
+) -> u64 {
 
     special::factorial(n)
 }
@@ -142,7 +160,9 @@ pub extern "C" fn rssn_factorial(n: u64) -> u64 {
 /// Computes the double factorial n!!.
 #[no_mangle]
 
-pub extern "C" fn rssn_double_factorial(n: u64) -> u64 {
+pub extern "C" fn rssn_double_factorial(
+    n: u64
+) -> u64 {
 
     special::double_factorial(n)
 }
@@ -183,7 +203,9 @@ pub extern "C" fn rssn_falling_factorial(
 /// Computes the natural logarithm of the factorial ln(n!).
 #[no_mangle]
 
-pub extern "C" fn rssn_ln_factorial(n: u64) -> c_double {
+pub extern "C" fn rssn_ln_factorial(
+    n: u64
+) -> c_double {
 
     special::ln_factorial(n)
 }
@@ -195,7 +217,9 @@ pub extern "C" fn rssn_ln_factorial(n: u64) -> c_double {
 /// Computes the Bessel function of the first kind J₀(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_bessel_j0(x: c_double) -> c_double {
+pub extern "C" fn rssn_bessel_j0(
+    x: c_double
+) -> c_double {
 
     special::bessel_j0(x)
 }
@@ -203,7 +227,9 @@ pub extern "C" fn rssn_bessel_j0(x: c_double) -> c_double {
 /// Computes the Bessel function of the first kind J₁(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_bessel_j1(x: c_double) -> c_double {
+pub extern "C" fn rssn_bessel_j1(
+    x: c_double
+) -> c_double {
 
     special::bessel_j1(x)
 }
@@ -211,7 +237,9 @@ pub extern "C" fn rssn_bessel_j1(x: c_double) -> c_double {
 /// Computes the Bessel function of the second kind Y₀(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_bessel_y0(x: c_double) -> c_double {
+pub extern "C" fn rssn_bessel_y0(
+    x: c_double
+) -> c_double {
 
     special::bessel_y0(x)
 }
@@ -219,7 +247,9 @@ pub extern "C" fn rssn_bessel_y0(x: c_double) -> c_double {
 /// Computes the Bessel function of the second kind Y₁(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_bessel_y1(x: c_double) -> c_double {
+pub extern "C" fn rssn_bessel_y1(
+    x: c_double
+) -> c_double {
 
     special::bessel_y1(x)
 }
@@ -227,7 +257,9 @@ pub extern "C" fn rssn_bessel_y1(x: c_double) -> c_double {
 /// Computes the modified Bessel function of the first kind I₀(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_bessel_i0(x: c_double) -> c_double {
+pub extern "C" fn rssn_bessel_i0(
+    x: c_double
+) -> c_double {
 
     special::bessel_i0(x)
 }
@@ -235,7 +267,9 @@ pub extern "C" fn rssn_bessel_i0(x: c_double) -> c_double {
 /// Computes the modified Bessel function of the first kind I₁(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_bessel_i1(x: c_double) -> c_double {
+pub extern "C" fn rssn_bessel_i1(
+    x: c_double
+) -> c_double {
 
     special::bessel_i1(x)
 }
@@ -243,7 +277,9 @@ pub extern "C" fn rssn_bessel_i1(x: c_double) -> c_double {
 /// Computes the modified Bessel function of the second kind K₀(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_bessel_k0(x: c_double) -> c_double {
+pub extern "C" fn rssn_bessel_k0(
+    x: c_double
+) -> c_double {
 
     special::bessel_k0(x)
 }
@@ -251,7 +287,9 @@ pub extern "C" fn rssn_bessel_k0(x: c_double) -> c_double {
 /// Computes the modified Bessel function of the second kind K₁(x).
 #[no_mangle]
 
-pub extern "C" fn rssn_bessel_k1(x: c_double) -> c_double {
+pub extern "C" fn rssn_bessel_k1(
+    x: c_double
+) -> c_double {
 
     special::bessel_k1(x)
 }
@@ -263,7 +301,9 @@ pub extern "C" fn rssn_bessel_k1(x: c_double) -> c_double {
 /// Computes the normalized sinc function sin(πx)/(πx).
 #[no_mangle]
 
-pub extern "C" fn rssn_sinc(x: c_double) -> c_double {
+pub extern "C" fn rssn_sinc(
+    x: c_double
+) -> c_double {
 
     special::sinc(x)
 }
@@ -271,7 +311,9 @@ pub extern "C" fn rssn_sinc(x: c_double) -> c_double {
 /// Computes the Riemann zeta function ζ(s).
 #[no_mangle]
 
-pub extern "C" fn rssn_zeta_numerical(s: c_double) -> c_double {
+pub extern "C" fn rssn_zeta_numerical(
+    s: c_double
+) -> c_double {
 
     special::zeta(s)
 }

@@ -39,21 +39,33 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
     result: *mut f64,
 ) -> i32 {
 
-    if expr_ptr.is_null() || var_ptr.is_null() || result.is_null() {
+    if expr_ptr.is_null()
+        || var_ptr.is_null()
+        || result.is_null()
+    {
 
-        update_last_error("Null pointer passed to rssn_numerical_quadrature".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_numerical_quadrature"
+                .to_string(),
+        );
 
         return -1;
     }
 
     let expr = &*expr_ptr;
 
-    let var_str = match CStr::from_ptr(var_ptr).to_str() {
+    let var_str = match CStr::from_ptr(
+        var_ptr,
+    )
+    .to_str()
+    {
         | Ok(s) => s,
         | Err(e) => {
 
             update_last_error(format!(
-                "Invalid UTF-8 in variable name: {}",
+                "Invalid UTF-8 in \
+                 variable name: {}",
                 e
             ));
 

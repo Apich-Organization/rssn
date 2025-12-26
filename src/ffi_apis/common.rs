@@ -34,11 +34,15 @@ impl BincodeBuffer {
 
     /// Creates a buffer from a Vec<u8>.
 
-    pub fn from_vec(bytes: Vec<u8>) -> Self {
+    pub fn from_vec(
+        bytes: Vec<u8>
+    ) -> Self {
 
         let len = bytes.len();
 
-        let data = Box::into_raw(bytes.into_boxed_slice()) as *mut u8;
+        let data = Box::into_raw(
+            bytes.into_boxed_slice(),
+        ) as *mut u8;
 
         Self { data, len }
     }
@@ -47,7 +51,8 @@ impl BincodeBuffer {
 
     pub fn is_null(&self) -> bool {
 
-        self.data.is_null() || self.len == 0
+        self.data.is_null()
+            || self.len == 0
     }
 
     /// Converts the buffer to a slice (unsafe).
@@ -55,14 +60,18 @@ impl BincodeBuffer {
     /// # Safety
     /// The buffer must be valid and not yet freed.
 
-    pub unsafe fn as_slice(&self) -> &[u8] {
+    pub unsafe fn as_slice(
+        &self
+    ) -> &[u8] {
 
         if self.is_null() {
 
             &[]
         } else {
 
-            std::slice::from_raw_parts(self.data, self.len)
+            std::slice::from_raw_parts(
+                self.data, self.len,
+            )
         }
     }
 }
@@ -74,13 +83,16 @@ impl BincodeBuffer {
 /// This function should only be called once per string.
 #[no_mangle]
 
-pub extern "C" fn rssn_free_string(s: *mut c_char) {
+pub extern "C" fn rssn_free_string(
+    s: *mut c_char
+) {
 
     if !s.is_null() {
 
         unsafe {
 
-            let _ = CString::from_raw(s);
+            let _ =
+                CString::from_raw(s);
         }
     }
 }
@@ -92,7 +104,9 @@ pub extern "C" fn rssn_free_string(s: *mut c_char) {
 /// This function should only be called once per buffer.
 #[no_mangle]
 
-pub extern "C" fn rssn_free_bincode_buffer(buffer: BincodeBuffer) {
+pub extern "C" fn rssn_free_bincode_buffer(
+    buffer: BincodeBuffer
+) {
 
     if !buffer.is_null() {
 
@@ -112,11 +126,15 @@ pub extern "C" fn rssn_free_bincode_buffer(buffer: BincodeBuffer) {
 ///
 /// Returns null on error.
 
-pub fn to_c_string(s: String) -> *mut c_char {
+pub fn to_c_string(
+    s: String
+) -> *mut c_char {
 
     match CString::new(s) {
         | Ok(c_str) => c_str.into_raw(),
-        | Err(_) => std::ptr::null_mut(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -124,11 +142,17 @@ pub fn to_c_string(s: String) -> *mut c_char {
 ///
 /// Returns null on error.
 
-pub fn to_json_string<T: serde::Serialize>(value: &T) -> *mut c_char {
+pub fn to_json_string<
+    T: serde::Serialize,
+>(
+    value: &T
+) -> *mut c_char {
 
     match serde_json::to_string(value) {
         | Ok(json) => to_c_string(json),
-        | Err(_) => std::ptr::null_mut(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -136,7 +160,11 @@ pub fn to_json_string<T: serde::Serialize>(value: &T) -> *mut c_char {
 ///
 /// Returns None on error.
 
-pub fn from_json_string<T: serde::de::DeserializeOwned>(json: *const c_char) -> Option<T> {
+pub fn from_json_string<
+    T: serde::de::DeserializeOwned,
+>(
+    json: *const c_char
+) -> Option<T> {
 
     if json.is_null() {
 
@@ -145,12 +173,18 @@ pub fn from_json_string<T: serde::de::DeserializeOwned>(json: *const c_char) -> 
 
     unsafe {
 
-        let c_str = std::ffi::CStr::from_ptr(json);
+        let c_str =
+            std::ffi::CStr::from_ptr(
+                json,
+            );
 
         c_str
             .to_str()
             .ok()
-            .and_then(|s| serde_json::from_str(s).ok())
+            .and_then(|s| {
+                serde_json::from_str(s)
+                    .ok()
+            })
     }
 }
 
@@ -158,7 +192,11 @@ pub fn from_json_string<T: serde::de::DeserializeOwned>(json: *const c_char) -> 
 ///
 /// Returns empty buffer on error.
 
-pub fn to_bincode_buffer<T: serde::Serialize>(value: &T) -> BincodeBuffer {
+pub fn to_bincode_buffer<
+    T: serde::Serialize,
+>(
+    value: &T
+) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
         value,
@@ -173,7 +211,11 @@ pub fn to_bincode_buffer<T: serde::Serialize>(value: &T) -> BincodeBuffer {
 ///
 /// Returns None on error.
 
-pub fn from_bincode_buffer<T: serde::de::DeserializeOwned>(buffer: &BincodeBuffer) -> Option<T> {
+pub fn from_bincode_buffer<
+    T: serde::de::DeserializeOwned,
+>(
+    buffer: &BincodeBuffer
+) -> Option<T> {
 
     if buffer.is_null() {
 
@@ -197,7 +239,9 @@ pub fn from_bincode_buffer<T: serde::de::DeserializeOwned>(buffer: &BincodeBuffe
 ///
 /// Returns None if the pointer is null or the string is not valid UTF-8.
 
-pub unsafe fn c_str_to_str<'a>(s: *const c_char) -> Option<&'a str> {
+pub unsafe fn c_str_to_str<'a>(
+    s: *const c_char
+) -> Option<&'a str> {
 
     if s.is_null() {
 
@@ -220,7 +264,8 @@ mod tests {
 
     fn test_bincode_buffer_empty() {
 
-        let buffer = BincodeBuffer::empty();
+        let buffer =
+            BincodeBuffer::empty();
 
         assert!(buffer.is_null());
     }
@@ -231,7 +276,10 @@ mod tests {
 
         let vec = vec![1, 2, 3, 4];
 
-        let buffer = BincodeBuffer::from_vec(vec);
+        let buffer =
+            BincodeBuffer::from_vec(
+                vec,
+            );
 
         assert!(!buffer.is_null());
 
@@ -245,14 +293,17 @@ mod tests {
             );
         }
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 
     #[test]
 
     fn test_to_c_string() {
 
-        let s = "Hello, World!".to_string();
+        let s =
+            "Hello, World!".to_string();
 
         let c_str = to_c_string(s);
 

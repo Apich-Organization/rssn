@@ -39,7 +39,9 @@ pub unsafe extern "C" fn rssn_rewrite_rule_new(
 /// The caller must ensure `rule` was created by this module and hasn't been freed yet.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_rewrite_rule_free(rule: *mut RewriteRule) {
+pub unsafe extern "C" fn rssn_rewrite_rule_free(
+    rule: *mut RewriteRule
+) {
 
     if !rule.is_null() {
 
@@ -55,7 +57,9 @@ pub unsafe extern "C" fn rssn_rewrite_rule_free(rule: *mut RewriteRule) {
 /// The caller must ensure `rule` is a valid RewriteRule pointer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(rule: *const RewriteRule) -> *mut Expr {
+pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(
+    rule: *const RewriteRule
+) -> *mut Expr {
 
     if rule.is_null() {
 
@@ -75,7 +79,9 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(rule: *const RewriteRule) -> 
 /// The caller must ensure `rule` is a valid RewriteRule pointer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_rewrite_rule_get_rhs(rule: *const RewriteRule) -> *mut Expr {
+pub unsafe extern "C" fn rssn_rewrite_rule_get_rhs(
+    rule: *const RewriteRule
+) -> *mut Expr {
 
     if rule.is_null() {
 
@@ -99,7 +105,10 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
     rules_len: usize,
 ) -> *mut Expr {
 
-    if expr.is_null() || (rules_len > 0 && rules.is_null()) {
+    if expr.is_null()
+        || (rules_len > 0
+            && rules.is_null())
+    {
 
         return std::ptr::null_mut();
     }
@@ -107,11 +116,15 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
     let expr_ref = &*expr;
 
     // Convert rules array
-    let mut rules_vec = Vec::with_capacity(rules_len);
+    let mut rules_vec =
+        Vec::with_capacity(rules_len);
 
     if rules_len > 0 {
 
-        let rules_slice = std::slice::from_raw_parts(rules, rules_len);
+        let rules_slice =
+            std::slice::from_raw_parts(
+                rules, rules_len,
+            );
 
         for &rule_ptr in rules_slice {
 
@@ -120,11 +133,16 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
                 return std::ptr::null_mut();
             }
 
-            rules_vec.push((*rule_ptr).clone());
+            rules_vec.push(
+                (*rule_ptr).clone(),
+            );
         }
     }
 
-    let result = apply_rules_to_normal_form(expr_ref, &rules_vec);
+    let result =
+        apply_rules_to_normal_form(
+            expr_ref, &rules_vec,
+        );
 
     Box::into_raw(Box::new(result))
 }
@@ -142,20 +160,26 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
     equations_len: usize,
 ) -> *mut Vec<RewriteRule> {
 
-    if equations_len > 0 && equations.is_null() {
+    if equations_len > 0
+        && equations.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     // Convert equations array
-    let mut equations_vec = Vec::with_capacity(equations_len);
+    let mut equations_vec =
+        Vec::with_capacity(
+            equations_len,
+        );
 
     if equations_len > 0 {
 
-        let equations_slice = std::slice::from_raw_parts(
-            equations,
-            equations_len,
-        );
+        let equations_slice =
+            std::slice::from_raw_parts(
+                equations,
+                equations_len,
+            );
 
         for &eq_ptr in equations_slice {
 
@@ -164,13 +188,21 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
                 return std::ptr::null_mut();
             }
 
-            equations_vec.push((*eq_ptr).clone());
+            equations_vec.push(
+                (*eq_ptr).clone(),
+            );
         }
     }
 
     match knuth_bendix(&equations_vec) {
-        | Ok(rules) => Box::into_raw(Box::new(rules)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(rules) => {
+            Box::into_raw(Box::new(
+                rules,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -180,7 +212,9 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
 /// The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_rules_vec_len(rules: *const Vec<RewriteRule>) -> usize {
+pub unsafe extern "C" fn rssn_rules_vec_len(
+    rules: *const Vec<RewriteRule>
+) -> usize {
 
     if rules.is_null() {
 
@@ -227,7 +261,9 @@ pub unsafe extern "C" fn rssn_rules_vec_get(
 /// The caller must ensure `rules` was created by this module and hasn't been freed yet.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_rules_vec_free(rules: *mut Vec<RewriteRule>) {
+pub unsafe extern "C" fn rssn_rules_vec_free(
+    rules: *mut Vec<RewriteRule>
+) {
 
     if !rules.is_null() {
 
@@ -243,7 +279,9 @@ pub unsafe extern "C" fn rssn_rules_vec_free(rules: *mut Vec<RewriteRule>) {
 /// The caller must free the returned string.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_rewrite_rule_to_string(rule: *const RewriteRule) -> *mut c_char {
+pub unsafe extern "C" fn rssn_rewrite_rule_to_string(
+    rule: *const RewriteRule
+) -> *mut c_char {
 
     if rule.is_null() {
 

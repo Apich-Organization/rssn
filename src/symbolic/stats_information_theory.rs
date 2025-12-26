@@ -21,20 +21,29 @@ use crate::symbolic::simplify_dag::simplify;
 /// An `Expr` representing the symbolic Shannon entropy.
 #[must_use]
 
-pub fn shannon_entropy(probs: &[Expr]) -> Expr {
+pub fn shannon_entropy(
+    probs: &[Expr]
+) -> Expr {
 
-    let log2 = Expr::new_log(Expr::Constant(2.0));
+    let log2 = Expr::new_log(
+        Expr::Constant(2.0),
+    );
 
     let sum = probs
         .iter()
         .map(|p| {
 
             let log2_p = Expr::new_div(
-                Expr::new_log(p.clone()),
+                Expr::new_log(
+                    p.clone(),
+                ),
                 log2.clone(),
             );
 
-            Expr::new_mul(p.clone(), log2_p)
+            Expr::new_mul(
+                p.clone(),
+                log2_p,
+            )
         })
         .reduce(|acc, e| {
 
@@ -68,22 +77,33 @@ pub fn kl_divergence(
 
     if p_dist.len() != q_dist.len() {
 
-        return Err("Distributions must have the same length".to_string());
+        return Err("Distributions \
+                    must have the \
+                    same length"
+            .to_string());
     }
 
-    let log2 = Expr::new_log(Expr::Constant(2.0));
+    let log2 = Expr::new_log(
+        Expr::Constant(2.0),
+    );
 
     let sum = p_dist
         .iter()
         .zip(q_dist.iter())
         .map(|(p, q)| {
 
-            let ratio = Expr::new_div(p.clone(), q.clone());
-
-            let log2_ratio = Expr::new_div(
-                Expr::new_log(ratio),
-                log2.clone(),
+            let ratio = Expr::new_div(
+                p.clone(),
+                q.clone(),
             );
+
+            let log2_ratio =
+                Expr::new_div(
+                    Expr::new_log(
+                        ratio,
+                    ),
+                    log2.clone(),
+                );
 
             Expr::new_mul(
                 p.clone(),
@@ -122,10 +142,15 @@ pub fn cross_entropy(
 
     if p_dist.len() != q_dist.len() {
 
-        return Err("Distributions must have the same length".to_string());
+        return Err("Distributions \
+                    must have the \
+                    same length"
+            .to_string());
     }
 
-    let log2 = Expr::new_log(Expr::Constant(2.0));
+    let log2 = Expr::new_log(
+        Expr::Constant(2.0),
+    );
 
     let sum = p_dist
         .iter()
@@ -133,11 +158,16 @@ pub fn cross_entropy(
         .map(|(p, q)| {
 
             let log2_q = Expr::new_div(
-                Expr::new_log(q.clone()),
+                Expr::new_log(
+                    q.clone(),
+                ),
                 log2.clone(),
             );
 
-            Expr::new_mul(p.clone(), log2_q)
+            Expr::new_mul(
+                p.clone(),
+                log2_q,
+            )
         })
         .reduce(|acc, e| {
 
@@ -165,22 +195,30 @@ pub fn cross_entropy(
 /// A `Result` containing an `Expr` representing the symbolic joint entropy, or an error
 /// if the input is not a matrix.
 
-pub fn joint_entropy(joint_probs: &Expr) -> Result<Expr, String> {
+pub fn joint_entropy(
+    joint_probs: &Expr
+) -> Result<Expr, String> {
 
-    if let Expr::Matrix(rows) = joint_probs {
+    if let Expr::Matrix(rows) =
+        joint_probs
+    {
 
-        let flat_probs: Vec<Expr> = rows
-            .iter()
-            .flatten()
-            .cloned()
-            .collect();
+        let flat_probs: Vec<Expr> =
+            rows.iter()
+                .flatten()
+                .cloned()
+                .collect();
 
         Ok(shannon_entropy(
             &flat_probs,
         ))
     } else {
 
-        Err("Input must be a matrix of joint probabilities.".to_string())
+        Err(
+            "Input must be a matrix \
+             of joint probabilities."
+                .to_string(),
+        )
     }
 }
 
@@ -197,9 +235,13 @@ pub fn joint_entropy(joint_probs: &Expr) -> Result<Expr, String> {
 /// A `Result` containing an `Expr` representing the symbolic conditional entropy, or an error
 /// if the input is not a matrix.
 
-pub fn conditional_entropy(joint_probs: &Expr) -> Result<Expr, String> {
+pub fn conditional_entropy(
+    joint_probs: &Expr
+) -> Result<Expr, String> {
 
-    if let Expr::Matrix(rows) = joint_probs {
+    if let Expr::Matrix(rows) =
+        joint_probs
+    {
 
         let p_x: Vec<Expr> = rows
             .iter()
@@ -214,14 +256,19 @@ pub fn conditional_entropy(joint_probs: &Expr) -> Result<Expr, String> {
 
         let h_x = shannon_entropy(&p_x);
 
-        let h_xy = joint_entropy(joint_probs)?;
+        let h_xy =
+            joint_entropy(joint_probs)?;
 
         Ok(simplify(
             &Expr::new_sub(h_xy, h_x),
         ))
     } else {
 
-        Err("Input must be a matrix of joint probabilities.".to_string())
+        Err(
+            "Input must be a matrix \
+             of joint probabilities."
+                .to_string(),
+        )
     }
 }
 
@@ -238,9 +285,13 @@ pub fn conditional_entropy(joint_probs: &Expr) -> Result<Expr, String> {
 /// A `Result` containing an `Expr` representing the symbolic mutual information, or an error
 /// if the input is not a matrix.
 
-pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
+pub fn mutual_information(
+    joint_probs: &Expr
+) -> Result<Expr, String> {
 
-    if let Expr::Matrix(rows) = joint_probs {
+    if let Expr::Matrix(rows) =
+        joint_probs
+    {
 
         let p_x: Vec<Expr> = rows
             .iter()
@@ -253,12 +304,17 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
             })
             .collect();
 
-        let num_cols = rows.first().map_or(
-            0,
-            std::vec::Vec::len,
-        );
+        let num_cols =
+            rows.first().map_or(
+                0,
+                std::vec::Vec::len,
+            );
 
-        let mut p_y = vec![Expr::Constant(0.0); num_cols];
+        let mut p_y =
+            vec![
+                Expr::Constant(0.0);
+                num_cols
+            ];
 
         for row in rows {
 
@@ -267,10 +323,12 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
                 .enumerate()
             {
 
-                p_y[j] = simplify(&Expr::new_add(
-                    p_y[j].clone(),
-                    p_ij.clone(),
-                ));
+                p_y[j] = simplify(
+                    &Expr::new_add(
+                        p_y[j].clone(),
+                        p_ij.clone(),
+                    ),
+                );
             }
         }
 
@@ -278,7 +336,8 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
 
         let h_y = shannon_entropy(&p_y);
 
-        let h_xy = joint_entropy(joint_probs)?;
+        let h_xy =
+            joint_entropy(joint_probs)?;
 
         Ok(simplify(
             &Expr::new_sub(
@@ -288,7 +347,11 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
         ))
     } else {
 
-        Err("Input must be a matrix of joint probabilities.".to_string())
+        Err(
+            "Input must be a matrix \
+             of joint probabilities."
+                .to_string(),
+        )
     }
 }
 
@@ -305,7 +368,9 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
 /// An `Expr` representing the symbolic Gini impurity.
 #[must_use]
 
-pub fn gini_impurity(probs: &[Expr]) -> Expr {
+pub fn gini_impurity(
+    probs: &[Expr]
+) -> Expr {
 
     let sum_of_squares = probs
         .iter()

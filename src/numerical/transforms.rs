@@ -16,7 +16,9 @@ use std::f64::consts::PI;
 /// # Arguments
 /// * `data` - A mutable slice of `Complex<f64>` representing the input sequence.
 
-pub(crate) fn fft_cooley_tukey_in_place(data: &mut [Complex<f64>]) {
+pub(crate) fn fft_cooley_tukey_in_place(
+    data: &mut [Complex<f64>]
+) {
 
     let n = data.len();
 
@@ -59,15 +61,18 @@ pub(crate) fn fft_cooley_tukey_in_place(data: &mut [Complex<f64>]) {
 
         for i in (0..n).step_by(len) {
 
-            let mut w = Complex::new(1.0, 0.0);
+            let mut w =
+                Complex::new(1.0, 0.0);
 
             for k in 0..half_len {
 
                 let even_idx = i + k;
 
-                let odd_idx = i + k + half_len;
+                let odd_idx =
+                    i + k + half_len;
 
-                let t = w * data[odd_idx];
+                let t =
+                    w * data[odd_idx];
 
                 let u = data[even_idx];
 
@@ -109,7 +114,9 @@ pub(crate) fn fft_cooley_tukey_in_place(data: &mut [Complex<f64>]) {
 /// assert!((data[0].re - 4.0).abs() < 1e-9);
 /// ```
 
-pub fn fft(data: &mut Vec<Complex<f64>>) {
+pub fn fft(
+    data: &mut Vec<Complex<f64>>
+) {
 
     let n = data.len();
 
@@ -118,7 +125,8 @@ pub fn fft(data: &mut Vec<Complex<f64>>) {
         return;
     }
 
-    let next_pow_of_2 = n.next_power_of_two();
+    let next_pow_of_2 =
+        n.next_power_of_two();
 
     if n != next_pow_of_2 {
 
@@ -162,7 +170,9 @@ pub fn fft(data: &mut Vec<Complex<f64>>) {
 /// assert!((data[0].im - original[0].im).abs() < 1e-9);
 /// ```
 
-pub fn ifft(data: &mut Vec<Complex<f64>>) {
+pub fn ifft(
+    data: &mut Vec<Complex<f64>>
+) {
 
     let n = data.len();
 
@@ -171,7 +181,8 @@ pub fn ifft(data: &mut Vec<Complex<f64>>) {
         return;
     }
 
-    let next_pow_of_2 = n.next_power_of_two();
+    let next_pow_of_2 =
+        n.next_power_of_two();
 
     if n != next_pow_of_2 {
 
@@ -222,7 +233,9 @@ pub fn ifft(data: &mut Vec<Complex<f64>>) {
 /// assert!((data[0].re - 2.0).abs() < 1e-9);
 /// ```
 
-pub fn fft_slice(data: &mut [Complex<f64>]) {
+pub fn fft_slice(
+    data: &mut [Complex<f64>]
+) {
 
     fft_cooley_tukey_in_place(data);
 }
@@ -255,10 +268,16 @@ pub fn fft_slice(data: &mut [Complex<f64>]) {
 ///
 /// ifft_slice(&mut data);
 ///
-/// assert!((data[0].re - original[0].re).abs() < 1e-9);
+/// assert!(
+///     (data[0].re - original[0].re)
+///         .abs()
+///         < 1e-9
+/// );
 /// ```
 
-pub fn ifft_slice(data: &mut [Complex<f64>]) {
+pub fn ifft_slice(
+    data: &mut [Complex<f64>]
+) {
 
     let n = data.len();
 

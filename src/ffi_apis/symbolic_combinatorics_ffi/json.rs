@@ -10,14 +10,22 @@ pub unsafe extern "C" fn rssn_json_permutations(
     k_json: *const c_char,
 ) -> *mut c_char {
 
-    let n: Expr = match from_json_string(n_json) {
+    let n: Expr = match from_json_string(
+        n_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let k: Expr = match from_json_string(k_json) {
+    let k: Expr = match from_json_string(
+        k_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     let result = permutations(n, k);
@@ -32,14 +40,22 @@ pub unsafe extern "C" fn rssn_json_combinations(
     k_json: *const c_char,
 ) -> *mut c_char {
 
-    let n: Expr = match from_json_string(n_json) {
+    let n: Expr = match from_json_string(
+        n_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let k: Expr = match from_json_string(k_json) {
+    let k: Expr = match from_json_string(
+        k_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     let result = combinations(&n, k);
@@ -49,7 +65,9 @@ pub unsafe extern "C" fn rssn_json_combinations(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_catalan_number(n: usize) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_catalan_number(
+    n: usize
+) -> *mut c_char {
 
     let result = catalan_number(n);
 
@@ -63,14 +81,19 @@ pub unsafe extern "C" fn rssn_json_stirling_number_second_kind(
     k: usize,
 ) -> *mut c_char {
 
-    let result = stirling_number_second_kind(n, k);
+    let result =
+        stirling_number_second_kind(
+            n, k,
+        );
 
     to_json_string(&result)
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_bell_number(n: usize) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_bell_number(
+    n: usize
+) -> *mut c_char {
 
     let result = bell_number(n);
 

@@ -22,20 +22,21 @@ pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: Poisson1DInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    "Invalid JSON".to_string(),
-                ))
-                .unwrap(),
-            )
-        },
-    };
+    let input: Poisson1DInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<f64>,
+                        String,
+                    >::err(
+                        "Invalid JSON".to_string(),
+                    ))
+                    .unwrap(),
+                )
+            },
+        };
 
     match physics_fem::solve_poisson_1d(
         input.n_elements,
@@ -44,23 +45,27 @@ pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_json(
     ) {
         | Ok(res) => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::ok(
-                    res
-                ))
+                serde_json::to_string(
+                    &FfiResult::<
+                        Vec<f64>,
+                        String,
+                    >::ok(
+                        res
+                    ),
+                )
                 .unwrap(),
             )
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    e
-                ))
+                serde_json::to_string(
+                    &FfiResult::<
+                        Vec<f64>,
+                        String,
+                    >::err(
+                        e
+                    ),
+                )
                 .unwrap(),
             )
         },

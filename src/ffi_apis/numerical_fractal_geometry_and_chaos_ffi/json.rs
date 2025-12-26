@@ -146,36 +146,45 @@ struct DimensionInput {
 // Mandelbrot set
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let input: MandelbrotSetInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<u32>>, String> {
+    let input: MandelbrotSetInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<Vec<u32>>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::generate_mandelbrot_set(
-        input.width,
-        input.height,
-        input.x_range,
-        input.y_range,
-        input.max_iter,
-    );
+    let result =
+        fractal_geometry_and_chaos::generate_mandelbrot_set(
+            input.width,
+            input.height,
+            input.x_range,
+            input.y_range,
+            input.max_iter,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -186,32 +195,39 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: MandelbrotPointInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<u32, String> {
+    let input: MandelbrotPointInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        u32,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::mandelbrot_escape_time(
-        input.c_real,
-        input.c_imag,
-        input.max_iter,
-    );
+    let result =
+        fractal_geometry_and_chaos::mandelbrot_escape_time(
+            input.c_real,
+            input.c_imag,
+            input.max_iter,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -219,37 +235,44 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
 // Julia set
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let input: JuliaSetInput = match from_json_string(input) {
+    let input: JuliaSetInput = match from_json_string(input)
+    {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<u32>>, String> {
-                        ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    Vec<Vec<u32>>,
+                    String,
+                > {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let result = fractal_geometry_and_chaos::generate_julia_set(
-        input.width,
-        input.height,
-        input.x_range,
-        input.y_range,
-        input.c,
-        input.max_iter,
-    );
+    let result =
+        fractal_geometry_and_chaos::generate_julia_set(
+            input.width,
+            input.height,
+            input.x_range,
+            input.y_range,
+            input.c,
+            input.max_iter,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -260,34 +283,41 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: JuliaPointInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<u32, String> {
+    let input: JuliaPointInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        u32,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::julia_escape_time(
-        input.z_real,
-        input.z_imag,
-        input.c_real,
-        input.c_imag,
-        input.max_iter,
-    );
+    let result =
+        fractal_geometry_and_chaos::julia_escape_time(
+            input.z_real,
+            input.z_imag,
+            input.c_real,
+            input.c_imag,
+            input.max_iter,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -303,12 +333,13 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64, f64)>, String> {
-                        ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    Vec<(f64, f64, f64)>,
+                    String,
+                > {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
             )
         },
@@ -321,10 +352,12 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -335,20 +368,24 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: LorenzCustomInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64, f64)>, String> {
+    let input: LorenzCustomInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<(f64, f64, f64)>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     let result = fractal_geometry_and_chaos::generate_lorenz_attractor_custom(
         input.start_point,
@@ -360,10 +397,12 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -375,16 +414,18 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: RosslerInput = match from_json_string(input) {
+    let input: RosslerInput = match from_json_string(input)
+    {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64, f64)>, String> {
-                        ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    Vec<(f64, f64, f64)>,
+                    String,
+                > {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
             )
         },
@@ -400,10 +441,12 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -411,35 +454,41 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
 // Henon map
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
+    input: *const c_char
+) -> *mut c_char {
 
     let input: HenonInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64)>, String> {
-                        ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    Vec<(f64, f64)>,
+                    String,
+                > {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let result = fractal_geometry_and_chaos::generate_henon_map(
-        input.start_point,
-        input.num_steps,
-        input.a,
-        input.b,
-    );
+    let result =
+        fractal_geometry_and_chaos::generate_henon_map(
+            input.start_point,
+            input.num_steps,
+            input.a,
+            input.b,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -447,37 +496,46 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(input: *const c_char) -
 // Tinkerbell map
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let input: TinkerbellInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64)>, String> {
+    let input: TinkerbellInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<(f64, f64)>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::generate_tinkerbell_map(
-        input.start_point,
-        input.num_steps,
-        input.a,
-        input.b,
-        input.c,
-        input.d,
-    );
+    let result =
+        fractal_geometry_and_chaos::generate_tinkerbell_map(
+            input.start_point,
+            input.num_steps,
+            input.a,
+            input.b,
+            input.c,
+            input.d,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -485,34 +543,43 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(input: *const c_ch
 // Logistic map
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let input: LogisticMapInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<f64>, String> {
+    let input: LogisticMapInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<f64>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::logistic_map_iterate(
-        input.x0,
-        input.r,
-        input.num_steps,
-    );
+    let result =
+        fractal_geometry_and_chaos::logistic_map_iterate(
+            input.x0,
+            input.r,
+            input.num_steps,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -520,36 +587,45 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(input: *const c_char
 // Bifurcation diagram
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let input: BifurcationInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64)>, String> {
+    let input: BifurcationInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<(f64, f64)>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::logistic_bifurcation(
-        input.r_range,
-        input.num_r_values,
-        input.transient,
-        input.num_points,
-        input.x0,
-    );
+    let result =
+        fractal_geometry_and_chaos::logistic_bifurcation(
+            input.r_range,
+            input.num_r_values,
+            input.transient,
+            input.num_points,
+            input.x0,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -561,20 +637,24 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: LyapunovLogisticInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
+    let input: LyapunovLogisticInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        f64,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     let result = fractal_geometry_and_chaos::lyapunov_exponent_logistic(
         input.r,
@@ -584,10 +664,12 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -598,20 +680,24 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: LyapunovLorenzInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
+    let input: LyapunovLorenzInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        f64,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     let result = fractal_geometry_and_chaos::lyapunov_exponent_lorenz(
         input.start_point,
@@ -623,10 +709,12 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -638,31 +726,38 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: DimensionInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
+    let input: DimensionInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        f64,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::box_counting_dimension(
-        &input.points,
-        input.num_scales,
-    );
+    let result =
+        fractal_geometry_and_chaos::box_counting_dimension(
+            &input.points,
+            input.num_scales,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -673,31 +768,38 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: DimensionInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
+    let input: DimensionInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        f64,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::correlation_dimension(
-        &input.points,
-        input.num_scales,
-    );
+    let result =
+        fractal_geometry_and_chaos::correlation_dimension(
+            &input.points,
+            input.num_scales,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(result),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(result),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }

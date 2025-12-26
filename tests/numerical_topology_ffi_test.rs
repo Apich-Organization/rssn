@@ -44,7 +44,9 @@ fn test_topology_handle_ffi() {
             2,
         );
 
-        assert!((dist - 5.0).abs() < 1e-9);
+        assert!(
+            (dist - 5.0).abs() < 1e-9
+        );
     }
 }
 
@@ -60,17 +62,24 @@ fn test_topology_json_ffi() {
             "max_dim": 1
         }"#;
 
-        let c_json = CString::new(json_input).unwrap();
+        let c_json =
+            CString::new(json_input)
+                .unwrap();
 
         let res_ptr = json::rssn_num_topology_betti_numbers_json(c_json.as_ptr());
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         let betti = v["ok"]
             .as_array()
@@ -126,7 +135,8 @@ fn test_topology_bincode_ffi() {
             max_dim: 1,
         };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_topology_betti_numbers_bincode(buffer);
 
@@ -140,15 +150,25 @@ fn test_topology_bincode_ffi() {
             err: Option<E>,
         }
 
-        let res: FfiResult<Vec<usize>, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res: FfiResult<
+            Vec<usize>,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
         assert_eq!(
             res.ok.unwrap()[0],
             1
         );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 }

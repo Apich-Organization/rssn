@@ -9,12 +9,15 @@ use std::sync::Arc;
 
 #[test]
 
-fn test_simplify_double_negation_boolean() {
+fn test_simplify_double_negation_boolean(
+) {
 
     // Not(Not(True)) -> True
-    let expr = Expr::Not(Arc::new(Expr::Not(
-        Arc::new(Expr::Boolean(true)),
-    )));
+    let expr = Expr::Not(Arc::new(
+        Expr::Not(Arc::new(
+            Expr::Boolean(true),
+        )),
+    ));
 
     let result = simplify_logic(&expr);
 
@@ -316,7 +319,8 @@ fn test_is_satisfiable_simple_sat() {
 
 #[test]
 
-fn test_is_satisfiable_with_quantifier() {
+fn test_is_satisfiable_with_quantifier()
+{
 
     // ForAll(x, P(x)) should return None (undecidable)
     let p = Expr::Predicate {
@@ -513,7 +517,9 @@ fn test_complex_sat_problem() {
             b.clone(),
         ]),
         Expr::Or(vec![
-            Expr::Not(Arc::new(a.clone())),
+            Expr::Not(Arc::new(
+                a.clone(),
+            )),
             c.clone(),
         ]),
         Expr::Or(vec![
@@ -594,7 +600,8 @@ fn test_and_flattening() {
     } else {
 
         panic!(
-            "Expected And expression, got {:?}",
+            "Expected And expression, \
+             got {:?}",
             result
         );
     }

@@ -9,7 +9,8 @@ fn test_simplex_symbolic_boundary() {
     // 1-simplex (edge) [0, 1]
     let simplex = Simplex::new(&[0, 1]);
 
-    let (faces, coeffs) = simplex.symbolic_boundary();
+    let (faces, coeffs) =
+        simplex.symbolic_boundary();
 
     // Boundary should be [1] - [0]
     assert_eq!(faces.len(), 2);
@@ -51,7 +52,8 @@ fn test_simplex_symbolic_boundary() {
 fn test_symbolic_boundary_matrix() {
 
     // Triangle [0, 1, 2]
-    let mut complex = SimplicialComplex::new();
+    let mut complex =
+        SimplicialComplex::new();
 
     complex.add_simplex(&[0, 1, 2]);
 
@@ -62,7 +64,9 @@ fn test_symbolic_boundary_matrix() {
         .get_symbolic_boundary_matrix(2)
         .unwrap();
 
-    if let Expr::Matrix(rows) = boundary_matrix {
+    if let Expr::Matrix(rows) =
+        boundary_matrix
+    {
 
         assert_eq!(rows.len(), 3); // 3 edges
         assert_eq!(rows[0].len(), 1); // 1 triangle
@@ -87,19 +91,24 @@ fn test_symbolic_boundary_matrix() {
 
 #[test]
 
-fn test_apply_symbolic_boundary_operator() {
+fn test_apply_symbolic_boundary_operator(
+) {
 
     // Triangle [0, 1, 2]
-    let mut complex = SimplicialComplex::new();
+    let mut complex =
+        SimplicialComplex::new();
 
     complex.add_simplex(&[0, 1, 2]);
 
-    let triangle = Simplex::new(&[0, 1, 2]);
+    let triangle =
+        Simplex::new(&[0, 1, 2]);
 
-    let mut chain = SymbolicChain::new(2);
+    let mut chain =
+        SymbolicChain::new(2);
 
     // Chain: a * [0, 1, 2]
-    let a = Expr::Variable("a".to_string());
+    let a =
+        Expr::Variable("a".to_string());
 
     chain
         .add_term(triangle, a.clone())
@@ -145,6 +154,8 @@ fn test_apply_symbolic_boundary_operator() {
 
         let is_neg_a_zero = rssn::symbolic::simplify::is_zero(&is_neg_a);
 
-        assert!(is_a_zero || is_neg_a_zero);
+        assert!(
+            is_a_zero || is_neg_a_zero
+        );
     }
 }

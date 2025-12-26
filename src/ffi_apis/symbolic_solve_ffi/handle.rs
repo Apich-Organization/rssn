@@ -21,7 +21,8 @@ pub extern "C" fn rssn_solve_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -29,7 +30,8 @@ pub extern "C" fn rssn_solve_handle(
             .into_owned()
     };
 
-    let result = solve(expr_ref, &var_str);
+    let result =
+        solve(expr_ref, &var_str);
 
     Box::into_raw(Box::new(result))
 }
@@ -56,8 +58,14 @@ pub extern "C" fn rssn_solve_system_handle(
         .map(|s| s.as_str())
         .collect();
 
-    match solve_system(eqs_ref, &vars_str) {
-        | Some(result) => Box::into_raw(Box::new(result)),
+    match solve_system(
+        eqs_ref, &vars_str,
+    ) {
+        | Some(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
         | None => std::ptr::null_mut(),
     }
 }
@@ -79,8 +87,16 @@ pub extern "C" fn rssn_solve_linear_system_handle(
         &*vars
     };
 
-    match solve_linear_system(sys_ref, vars_ref) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+    match solve_linear_system(
+        sys_ref, vars_ref,
+    ) {
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }

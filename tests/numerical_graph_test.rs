@@ -52,7 +52,8 @@ fn test_dijkstra() {
 
     graph.add_edge(0, 2, 4.0); // 1+2 = 3 < 4
 
-    let (dist, prev) = dijkstra(&graph, 0);
+    let (dist, prev) =
+        dijkstra(&graph, 0);
 
     assert_eq!(dist[0], 0.0);
 
@@ -85,11 +86,24 @@ fn test_page_rank() {
     );
 
     // Should be equal due to symmetry
-    assert!((scores[0] - scores[1]).abs() < 1e-4);
+    assert!(
+        (scores[0] - scores[1]).abs()
+            < 1e-4
+    );
 
-    assert!((scores[1] - scores[2]).abs() < 1e-4);
+    assert!(
+        (scores[1] - scores[2]).abs()
+            < 1e-4
+    );
 
-    assert!((scores[0] + scores[1] + scores[2] - 1.0).abs() < 1e-6);
+    assert!(
+        (scores[0]
+            + scores[1]
+            + scores[2]
+            - 1.0)
+            .abs()
+            < 1e-6
+    );
 
     // Star graph: 1->0, 2->0
     let mut graph2 = Graph::new(3);

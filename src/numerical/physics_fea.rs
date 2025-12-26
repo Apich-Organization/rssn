@@ -39,7 +39,8 @@
 //!     area: 0.001,
 //! };
 //!
-//! let k = element.local_stiffness_matrix();
+//! let k = element
+//!     .local_stiffness_matrix();
 //! ```
 
 use crate::numerical::matrix::Matrix;
@@ -53,7 +54,14 @@ use serde::{
 // ============================================================================
 
 /// Material properties for structural analysis.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Material {
     /// Young's modulus (Pa)
@@ -143,7 +151,10 @@ impl Material {
 
     pub fn shear_modulus(&self) -> f64 {
 
-        self.youngs_modulus / (2.0 * (1.0 + self.poissons_ratio))
+        self.youngs_modulus
+            / (2.0
+                * (1.0 + self
+                    .poissons_ratio))
     }
 
     /// Bulk modulus K = E / (3(1-2ν))
@@ -151,7 +162,10 @@ impl Material {
 
     pub fn bulk_modulus(&self) -> f64 {
 
-        self.youngs_modulus / (3.0 * (1.0 - 2.0 * self.poissons_ratio))
+        self.youngs_modulus
+            / (3.0
+                * (1.0 - 2.0 * self
+                    .poissons_ratio))
     }
 }
 
@@ -160,7 +174,14 @@ impl Material {
 // ============================================================================
 
 /// A node in the finite element mesh.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Node2D {
     pub id: usize,
@@ -198,7 +219,14 @@ impl Node2D {
 }
 
 /// A node in 3D space.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Node3D {
     pub id: usize,
@@ -246,9 +274,13 @@ impl LinearElement1D {
     /// A `Matrix<f64>` representing the local stiffness matrix.
     #[must_use]
 
-    pub fn local_stiffness_matrix(&self) -> Matrix<f64> {
+    pub fn local_stiffness_matrix(
+        &self
+    ) -> Matrix<f64> {
 
-        let k = self.youngs_modulus * self.area / self.length;
+        let k = self.youngs_modulus
+            * self.area
+            / self.length;
 
         Matrix::new(
             2,
@@ -282,17 +314,23 @@ pub fn assemble_global_stiffness_matrix(
     )],
 ) -> Matrix<f64> {
 
-    let mut global_k = Matrix::zeros(num_nodes, num_nodes);
+    let mut global_k = Matrix::zeros(
+        num_nodes, num_nodes,
+    );
 
     for (local_k, n1, n2) in elements {
 
-        *global_k.get_mut(*n1, *n1) += local_k.get(0, 0);
+        *global_k.get_mut(*n1, *n1) +=
+            local_k.get(0, 0);
 
-        *global_k.get_mut(*n1, *n2) += local_k.get(0, 1);
+        *global_k.get_mut(*n1, *n2) +=
+            local_k.get(0, 1);
 
-        *global_k.get_mut(*n2, *n1) += local_k.get(1, 0);
+        *global_k.get_mut(*n2, *n1) +=
+            local_k.get(1, 0);
 
-        *global_k.get_mut(*n2, *n2) += local_k.get(1, 1);
+        *global_k.get_mut(*n2, *n2) +=
+            local_k.get(1, 1);
     }
 
     global_k
@@ -322,10 +360,15 @@ pub fn solve_static_structural(
 
     if forces.len() != n {
 
-        return Err("Force vector dimension mismatch.".to_string());
+        return Err("Force vector \
+                    dimension mismatch.\
+                    "
+        .to_string());
     }
 
-    for &(node_idx, prescribed_disp) in fixed_dofs {
+    for &(node_idx, prescribed_disp) in
+        fixed_dofs
+    {
 
         for (i, var) in forces
             .iter_mut()
@@ -335,31 +378,47 @@ pub fn solve_static_structural(
 
             if i != node_idx {
 
-                *var -= global_k.get(i, node_idx) * prescribed_disp;
+                *var -= global_k
+                    .get(i, node_idx)
+                    * prescribed_disp;
             }
         }
 
         for i in 0..n {
 
-            *global_k.get_mut(node_idx, i) = 0.0;
+            *global_k
+                .get_mut(node_idx, i) =
+                0.0;
 
-            *global_k.get_mut(i, node_idx) = 0.0;
+            *global_k
+                .get_mut(i, node_idx) =
+                0.0;
         }
 
-        *global_k.get_mut(node_idx, node_idx) = 1.0;
+        *global_k.get_mut(
+            node_idx, node_idx,
+        ) = 1.0;
 
-        forces[node_idx] = prescribed_disp;
+        forces[node_idx] =
+            prescribed_disp;
     }
 
-    let solution = crate::numerical::solve::solve_linear_system(&global_k, &forces)?;
+    let solution =
+        crate::numerical::solve::solve_linear_system(
+            &global_k, &forces,
+        )?;
 
-    if let crate::numerical::solve::LinearSolution::Unique(u) = solution {
+    if let crate::numerical::solve::LinearSolution::Unique(
+        u,
+    ) = solution
+    {
 
         Ok(u)
     } else {
 
         Err(
-            "System is singular or has infinite solutions after applying boundary conditions."
+            "System is singular or has infinite solutions \
+             after applying boundary conditions."
                 .to_string(),
         )
     }
@@ -417,13 +476,17 @@ impl TriangleElement2D {
 
         let (x3, y3) = self.coords[2];
 
-        0.5 * ((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)).abs()
+        0.5 * ((x2 - x1) * (y3 - y1)
+            - (x3 - x1) * (y2 - y1))
+            .abs()
     }
 
     /// Computes the constitutive (D) matrix for plane stress or plane strain.
     #[must_use]
 
-    pub fn constitutive_matrix(&self) -> Matrix<f64> {
+    pub fn constitutive_matrix(
+        &self
+    ) -> Matrix<f64> {
 
         let e = self
             .material
@@ -435,7 +498,8 @@ impl TriangleElement2D {
 
         if self.plane_stress {
 
-            let factor = e / (1.0 - nu * nu);
+            let factor =
+                e / (1.0 - nu * nu);
 
             Matrix::new(
                 3,
@@ -449,13 +513,16 @@ impl TriangleElement2D {
                     0.0,
                     0.0,
                     0.0,
-                    factor * (1.0 - nu) / 2.0,
+                    factor * (1.0 - nu)
+                        / 2.0,
                 ],
             )
         } else {
 
             // Plane strain
-            let factor = e / ((1.0 + nu) * (1.0 - 2.0 * nu));
+            let factor = e
+                / ((1.0 + nu)
+                    * (1.0 - 2.0 * nu));
 
             Matrix::new(
                 3,
@@ -469,7 +536,10 @@ impl TriangleElement2D {
                     0.0,
                     0.0,
                     0.0,
-                    factor * (1.0 - 2.0 * nu) / 2.0,
+                    factor
+                        * (1.0
+                            - 2.0 * nu)
+                        / 2.0,
                 ],
             )
         }
@@ -478,7 +548,9 @@ impl TriangleElement2D {
     /// Computes the strain-displacement (B) matrix.
     #[must_use]
 
-    pub fn b_matrix(&self) -> Matrix<f64> {
+    pub fn b_matrix(
+        &self
+    ) -> Matrix<f64> {
 
         let (x1, y1) = self.coords[0];
 
@@ -508,9 +580,12 @@ impl TriangleElement2D {
             3,
             6,
             vec![
-                b1, 0.0, b2, 0.0, b3, 0.0, // Row 1: ∂u/∂x
-                0.0, g1, 0.0, g2, 0.0, g3, // Row 2: ∂v/∂y
-                g1, b1, g2, b2, g3, b3, // Row 3: ∂u/∂y + ∂v/∂x
+                b1, 0.0, b2, 0.0, b3,
+                0.0, // Row 1: ∂u/∂x
+                0.0, g1, 0.0, g2, 0.0,
+                g3, // Row 2: ∂v/∂y
+                g1, b1, g2, b2, g3,
+                b3, // Row 3: ∂u/∂y + ∂v/∂x
             ],
         )
     }
@@ -518,11 +593,14 @@ impl TriangleElement2D {
     /// Computes the local stiffness matrix (6x6).
     #[must_use]
 
-    pub fn local_stiffness_matrix(&self) -> Matrix<f64> {
+    pub fn local_stiffness_matrix(
+        &self
+    ) -> Matrix<f64> {
 
         let b = self.b_matrix();
 
-        let d = self.constitutive_matrix();
+        let d =
+            self.constitutive_matrix();
 
         let a = self.area();
 
@@ -549,12 +627,14 @@ impl TriangleElement2D {
         assert_eq!(
             displacements.len(),
             6,
-            "Need 6 displacement values for CST element"
+            "Need 6 displacement \
+             values for CST element"
         );
 
         let b = self.b_matrix();
 
-        let d = self.constitutive_matrix();
+        let d =
+            self.constitutive_matrix();
 
         // Strain = B * u
         let mut strain = vec![0.0; 3];
@@ -563,7 +643,9 @@ impl TriangleElement2D {
 
             for j in 0..6 {
 
-                strain[i] += *b.get(i, j) * displacements[j];
+                strain[i] += *b
+                    .get(i, j)
+                    * displacements[j];
             }
         }
 
@@ -574,7 +656,9 @@ impl TriangleElement2D {
 
             for j in 0..3 {
 
-                stress[i] += *d.get(i, j) * strain[j];
+                stress[i] += *d
+                    .get(i, j)
+                    * strain[j];
             }
         }
 
@@ -584,7 +668,9 @@ impl TriangleElement2D {
     /// Computes von Mises stress from stress components [σx, σy, τxy].
     #[must_use]
 
-    pub fn von_mises_stress(stress: &[f64]) -> f64 {
+    pub fn von_mises_stress(
+        stress: &[f64]
+    ) -> f64 {
 
         assert_eq!(stress.len(), 3);
 
@@ -594,7 +680,9 @@ impl TriangleElement2D {
 
         let txy = stress[2];
 
-        ((sx * sx - sx * sy + sy * sy) + 3.0 * txy * txy).sqrt()
+        ((sx * sx - sx * sy + sy * sy)
+            + 3.0 * txy * txy)
+            .sqrt()
     }
 }
 
@@ -603,7 +691,13 @@ impl TriangleElement2D {
 // ============================================================================
 
 /// 2D Euler-Bernoulli beam element with axial and bending DOFs.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct BeamElement2D {
     /// Element length
@@ -643,7 +737,9 @@ impl BeamElement2D {
     /// DOFs: [u1, v1, θ1, u2, v2, θ2]
     #[must_use]
 
-    pub fn local_stiffness_matrix(&self) -> Matrix<f64> {
+    pub fn local_stiffness_matrix(
+        &self
+    ) -> Matrix<f64> {
 
         let e = self.youngs_modulus;
 
@@ -713,7 +809,9 @@ impl BeamElement2D {
     /// Computes the transformation matrix from local to global coordinates.
     #[must_use]
 
-    pub fn transformation_matrix(&self) -> Matrix<f64> {
+    pub fn transformation_matrix(
+        &self
+    ) -> Matrix<f64> {
 
         let c = self.angle.cos();
 
@@ -723,8 +821,14 @@ impl BeamElement2D {
             6,
             6,
             vec![
-                c, s, 0.0, 0.0, 0.0, 0.0, -s, c, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-                0.0, 0.0, 0.0, c, s, 0.0, 0.0, 0.0, 0.0, -s, c, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+                c, s, 0.0, 0.0, 0.0,
+                0.0, -s, c, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0,
+                1.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, c, s,
+                0.0, 0.0, 0.0, 0.0, -s,
+                c, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 1.0,
             ],
         )
     }
@@ -732,11 +836,15 @@ impl BeamElement2D {
     /// Computes the global stiffness matrix.
     #[must_use]
 
-    pub fn global_stiffness_matrix(&self) -> Matrix<f64> {
+    pub fn global_stiffness_matrix(
+        &self
+    ) -> Matrix<f64> {
 
-        let k_local = self.local_stiffness_matrix();
+        let k_local = self
+            .local_stiffness_matrix();
 
-        let t = self.transformation_matrix();
+        let t = self
+            .transformation_matrix();
 
         let tt = t.transpose();
 
@@ -812,7 +920,13 @@ impl BeamElement2D {
 // ============================================================================
 
 /// 1D thermal element for heat conduction analysis.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct ThermalElement1D {
     /// Element length
@@ -843,9 +957,13 @@ impl ThermalElement1D {
     /// Computes the conductivity (stiffness) matrix.
     #[must_use]
 
-    pub fn conductivity_matrix(&self) -> Matrix<f64> {
+    pub fn conductivity_matrix(
+        &self
+    ) -> Matrix<f64> {
 
-        let k = self.conductivity * self.area / self.length;
+        let k = self.conductivity
+            * self.area
+            / self.length;
 
         Matrix::new(
             2,
@@ -895,13 +1013,17 @@ impl ThermalTriangle2D {
 
         let (x3, y3) = self.coords[2];
 
-        0.5 * ((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)).abs()
+        0.5 * ((x2 - x1) * (y3 - y1)
+            - (x3 - x1) * (y2 - y1))
+            .abs()
     }
 
     /// Computes the conductivity matrix (3x3).
     #[must_use]
 
-    pub fn conductivity_matrix(&self) -> Matrix<f64> {
+    pub fn conductivity_matrix(
+        &self
+    ) -> Matrix<f64> {
 
         let (x1, y1) = self.coords[0];
 
@@ -934,15 +1056,33 @@ impl ThermalTriangle2D {
             3,
             3,
             vec![
-                factor * (b1 * b1 + c1 * c1),
-                factor * (b1 * b2 + c1 * c2),
-                factor * (b1 * b3 + c1 * c3),
-                factor * (b2 * b1 + c2 * c1),
-                factor * (b2 * b2 + c2 * c2),
-                factor * (b2 * b3 + c2 * c3),
-                factor * (b3 * b1 + c3 * c1),
-                factor * (b3 * b2 + c3 * c2),
-                factor * (b3 * b3 + c3 * c3),
+                factor
+                    * (b1 * b1
+                        + c1 * c1),
+                factor
+                    * (b1 * b2
+                        + c1 * c2),
+                factor
+                    * (b1 * b3
+                        + c1 * c3),
+                factor
+                    * (b2 * b1
+                        + c2 * c1),
+                factor
+                    * (b2 * b2
+                        + c2 * c2),
+                factor
+                    * (b2 * b3
+                        + c2 * c3),
+                factor
+                    * (b3 * b1
+                        + c3 * c1),
+                factor
+                    * (b3 * b2
+                        + c3 * c2),
+                factor
+                    * (b3 * b3
+                        + c3 * c3),
             ],
         )
     }
@@ -964,7 +1104,8 @@ pub fn apply_boundary_conditions_penalty(
 
     for &(dof, value) in fixed_dofs {
 
-        *global_k.get_mut(dof, dof) += penalty;
+        *global_k.get_mut(dof, dof) +=
+            penalty;
 
         forces[dof] += penalty * value;
     }
@@ -981,7 +1122,9 @@ pub fn assemble_2d_stiffness_matrix(
     )],
 ) -> Matrix<f64> {
 
-    let mut global_k = Matrix::zeros(num_dofs, num_dofs);
+    let mut global_k = Matrix::zeros(
+        num_dofs, num_dofs,
+    );
 
     for (local_k, dof_map) in elements {
 
@@ -993,7 +1136,9 @@ pub fn assemble_2d_stiffness_matrix(
 
                 let gj = dof_map[j];
 
-                *global_k.get_mut(gi, gj) += local_k.get(i, j);
+                *global_k
+                    .get_mut(gi, gj) +=
+                    local_k.get(i, j);
             }
         }
     }
@@ -1009,13 +1154,16 @@ pub fn compute_element_strain(
     displacements: &[f64],
 ) -> Vec<f64> {
 
-    let mut strain = vec![0.0; b_matrix.rows()];
+    let mut strain =
+        vec![0.0; b_matrix.rows()];
 
     for i in 0..b_matrix.rows() {
 
         for j in 0..b_matrix.cols() {
 
-            strain[i] += *b_matrix.get(i, j) * displacements[j];
+            strain[i] += *b_matrix
+                .get(i, j)
+                * displacements[j];
         }
     }
 
@@ -1026,7 +1174,9 @@ pub fn compute_element_strain(
 /// Returns (sigma1, sigma2, angle) where sigma1 >= sigma2.
 #[must_use]
 
-pub fn principal_stresses(stress: &[f64]) -> (f64, f64, f64) {
+pub fn principal_stresses(
+    stress: &[f64]
+) -> (f64, f64, f64) {
 
     assert_eq!(
         stress.len(),
@@ -1044,7 +1194,8 @@ pub fn principal_stresses(stress: &[f64]) -> (f64, f64, f64) {
 
     let diff = (sx - sy) / 2.0;
 
-    let r = (diff * diff + txy * txy).sqrt();
+    let r = (diff * diff + txy * txy)
+        .sqrt();
 
     let sigma1 = avg + r;
 
@@ -1101,7 +1252,9 @@ pub fn create_rectangular_mesh(
     Vec<[usize; 3]>,
 ) {
 
-    let mut nodes = Vec::with_capacity((nx + 1) * (ny + 1));
+    let mut nodes = Vec::with_capacity(
+        (nx + 1) * (ny + 1),
+    );
 
     let dx = width / nx as f64;
 
@@ -1123,7 +1276,8 @@ pub fn create_rectangular_mesh(
     }
 
     // Create triangular elements (2 per rectangle)
-    let mut elements = Vec::with_capacity(2 * nx * ny);
+    let mut elements =
+        Vec::with_capacity(2 * nx * ny);
 
     for j in 0..ny {
 
@@ -1161,38 +1315,72 @@ pub fn refine_mesh(
 
     let mut new_nodes = nodes.to_vec();
 
-    let mut new_elements = Vec::with_capacity(elements.len() * 4);
+    let mut new_elements =
+        Vec::with_capacity(
+            elements.len() * 4,
+        );
 
-    let mut edge_midpoints: std::collections::HashMap<(usize, usize), usize> =
-        std::collections::HashMap::new();
+    let mut edge_midpoints: std::collections::HashMap<
+        (usize, usize),
+        usize,
+    > = std::collections::HashMap::new();
 
     for &[n1, n2, n3] in elements {
 
         // Get or create midpoint nodes
-        let mut get_midpoint = |a: usize, b: usize| -> usize {
+        let mut get_midpoint =
+            |a: usize,
+             b: usize|
+             -> usize {
 
-            let key = if a < b { (a, b) } else { (b, a) };
+                let key = if a < b {
 
-            if let Some(&idx) = edge_midpoints.get(&key) {
+                    (a, b)
+                } else {
 
-                idx
-            } else {
+                    (b, a)
+                };
 
-                let mid_x = (new_nodes[a].x + new_nodes[b].x) / 2.0;
+                if let Some(&idx) =
+                    edge_midpoints
+                        .get(&key)
+                {
 
-                let mid_y = (new_nodes[a].y + new_nodes[b].y) / 2.0;
+                    idx
+                } else {
 
-                let idx = new_nodes.len();
+                    let mid_x =
+                        (new_nodes[a].x
+                            + new_nodes
+                                [b]
+                                .x)
+                            / 2.0;
 
-                new_nodes.push(Node2D::new(
-                    idx, mid_x, mid_y,
-                ));
+                    let mid_y =
+                        (new_nodes[a].y
+                            + new_nodes
+                                [b]
+                                .y)
+                            / 2.0;
 
-                edge_midpoints.insert(key, idx);
+                    let idx =
+                        new_nodes.len();
 
-                idx
-            }
-        };
+                    new_nodes.push(
+                        Node2D::new(
+                            idx, mid_x,
+                            mid_y,
+                        ),
+                    );
+
+                    edge_midpoints
+                        .insert(
+                            key, idx,
+                        );
+
+                    idx
+                }
+            };
 
         let m12 = get_midpoint(n1, n2);
 
@@ -1201,13 +1389,17 @@ pub fn refine_mesh(
         let m31 = get_midpoint(n3, n1);
 
         // Create 4 new triangles
-        new_elements.push([n1, m12, m31]);
+        new_elements
+            .push([n1, m12, m31]);
 
-        new_elements.push([m12, n2, m23]);
+        new_elements
+            .push([m12, n2, m23]);
 
-        new_elements.push([m31, m23, n3]);
+        new_elements
+            .push([m31, m23, n3]);
 
-        new_elements.push([m12, m23, m31]);
+        new_elements
+            .push([m12, m23, m31]);
     }
 
     (

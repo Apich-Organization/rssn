@@ -33,21 +33,30 @@ struct GramSchmidtInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fa_l2_norm_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_fa_l2_norm_bincode(
+    buffer: BincodeBuffer
+) -> BincodeBuffer {
 
-    let input: PointsInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
+    let input: PointsInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    f64,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode input".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode input".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let res = functional_analysis::l2_norm(&input.points);
+    let res =
+        functional_analysis::l2_norm(
+            &input.points,
+        );
 
     let ffi_res = FfiResult {
         ok: Some(res),
@@ -59,21 +68,29 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm_bincode(buffer: BincodeBuffer) -> B
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fa_inner_product_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_fa_inner_product_bincode(
+    buffer: BincodeBuffer
+) -> BincodeBuffer {
 
-    let input: InnerProductInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
+    let input: InnerProductInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    f64,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode input".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode input".to_string(),
+                    ),
+                })
+            },
+        };
 
-    match functional_analysis::inner_product(&input.f, &input.g) {
+    match functional_analysis::inner_product(
+        &input.f, &input.g,
+    ) {
         | Ok(res) => {
             to_bincode_buffer(&FfiResult {
                 ok: Some(res),
@@ -93,19 +110,25 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product_bincode(buffer: BincodeBuffer
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_bincode(
+    buffer: BincodeBuffer
+) -> BincodeBuffer {
 
-    let input: GramSchmidtInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<Vec<(f64, f64)>>, String> {
+    let input: GramSchmidtInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<Vec<(f64, f64)>>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode input".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode input".to_string(),
+                    ),
+                })
+            },
+        };
 
     match functional_analysis::gram_schmidt(&input.basis) {
         | Ok(res) => {
@@ -115,12 +138,13 @@ pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_bincode(buffer: BincodeBuffer)
             })
         },
         | Err(e) => {
-            to_bincode_buffer(
-                &FfiResult::<Vec<Vec<(f64, f64)>>, String> {
-                    ok: None,
-                    err: Some(e),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<
+                Vec<Vec<(f64, f64)>>,
+                String,
+            > {
+                ok: None,
+                err: Some(e),
+            })
         },
     }
 }

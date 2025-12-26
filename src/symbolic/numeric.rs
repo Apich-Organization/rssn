@@ -31,53 +31,124 @@ const F64_EPSILON: f64 = 1e-9;
 /// otherwise `None`.
 #[must_use]
 
-pub fn evaluate_numerical(expr: &Expr) -> Option<f64> {
+pub fn evaluate_numerical(
+    expr: &Expr
+) -> Option<f64> {
 
     match expr {
         | Expr::Dag(node) => {
             evaluate_numerical(
                 &node
                     .to_expr()
-                    .expect("Eva Numerical"),
+                    .expect(
+                        "Eva Numerical",
+                    ),
             )
         },
         | Expr::Constant(c) => Some(*c),
         | Expr::BigInt(i) => i.to_f64(),
-        | Expr::Rational(r) => r.to_f64(),
+        | Expr::Rational(r) => {
+            r.to_f64()
+        },
         | Expr::Pi => Some(consts::PI),
         | Expr::E => Some(consts::E),
-        | Expr::Add(a, b) => Some(evaluate_numerical(a)? + evaluate_numerical(b)?),
-        | Expr::Sub(a, b) => Some(evaluate_numerical(a)? - evaluate_numerical(b)?),
-        | Expr::Mul(a, b) => Some(evaluate_numerical(a)? * evaluate_numerical(b)?),
-        | Expr::Div(a, b) => Some(evaluate_numerical(a)? / evaluate_numerical(b)?),
+        | Expr::Add(a, b) => Some(
+            evaluate_numerical(a)?
+                + evaluate_numerical(
+                    b,
+                )?,
+        ),
+        | Expr::Sub(a, b) => Some(
+            evaluate_numerical(a)?
+                - evaluate_numerical(
+                    b,
+                )?,
+        ),
+        | Expr::Mul(a, b) => Some(
+            evaluate_numerical(a)?
+                * evaluate_numerical(
+                    b,
+                )?,
+        ),
+        | Expr::Div(a, b) => Some(
+            evaluate_numerical(a)?
+                / evaluate_numerical(
+                    b,
+                )?,
+        ),
         | Expr::Power(b, e) => {
             Some(
-                evaluate_numerical(b)?.powf(evaluate_numerical(
-                    e,
-                )?),
+                evaluate_numerical(b)?
+                    .powf(
+                    evaluate_numerical(
+                        e,
+                    )?,
+                ),
             )
         },
-        | Expr::Sqrt(a) => Some(evaluate_numerical(a)?.sqrt()),
-        | Expr::Log(a) => Some(evaluate_numerical(a)?.ln()),
-        | Expr::Exp(a) => Some(evaluate_numerical(a)?.exp()),
-        | Expr::Abs(a) => Some(evaluate_numerical(a)?.abs()),
+        | Expr::Sqrt(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .sqrt(),
+            )
+        },
+        | Expr::Log(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .ln(),
+            )
+        },
+        | Expr::Exp(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .exp(),
+            )
+        },
+        | Expr::Abs(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .abs(),
+            )
+        },
         | Expr::Sin(a) => {
 
-            let val = evaluate_numerical(a)?;
+            let val =
+                evaluate_numerical(a)?;
 
-            if (val.abs() - consts::PI).abs() < F64_EPSILON {
+            if (val.abs() - consts::PI)
+                .abs()
+                < F64_EPSILON
+            {
 
                 Some(0.0)
-            } else if (val - consts::FRAC_PI_6).abs() < F64_EPSILON {
+            } else if (val
+                - consts::FRAC_PI_6)
+                .abs()
+                < F64_EPSILON
+            {
 
                 Some(0.5)
-            } else if (val - consts::FRAC_PI_4).abs() < F64_EPSILON {
+            } else if (val
+                - consts::FRAC_PI_4)
+                .abs()
+                < F64_EPSILON
+            {
 
                 Some(consts::FRAC_1_SQRT_2)
-            } else if (val - consts::FRAC_PI_3).abs() < F64_EPSILON {
+            } else if (val
+                - consts::FRAC_PI_3)
+                .abs()
+                < F64_EPSILON
+            {
 
-                Some(3.0f64.sqrt() / 2.0)
-            } else if (val - consts::FRAC_PI_2).abs() < F64_EPSILON {
+                Some(
+                    3.0f64.sqrt() / 2.0,
+                )
+            } else if (val
+                - consts::FRAC_PI_2)
+                .abs()
+                < F64_EPSILON
+            {
 
                 Some(1.0)
             } else {
@@ -87,21 +158,44 @@ pub fn evaluate_numerical(expr: &Expr) -> Option<f64> {
         },
         | Expr::Cos(a) => {
 
-            let val = evaluate_numerical(a)?;
+            let val =
+                evaluate_numerical(a)?;
 
-            if (val.abs() - consts::FRAC_PI_2).abs() < F64_EPSILON {
+            if (val.abs()
+                - consts::FRAC_PI_2)
+                .abs()
+                < F64_EPSILON
+            {
 
                 Some(0.0)
-            } else if (val - consts::FRAC_PI_6).abs() < F64_EPSILON {
+            } else if (val
+                - consts::FRAC_PI_6)
+                .abs()
+                < F64_EPSILON
+            {
 
-                Some(3.0f64.sqrt() / 2.0)
-            } else if (val - consts::FRAC_PI_4).abs() < F64_EPSILON {
+                Some(
+                    3.0f64.sqrt() / 2.0,
+                )
+            } else if (val
+                - consts::FRAC_PI_4)
+                .abs()
+                < F64_EPSILON
+            {
 
                 Some(consts::FRAC_1_SQRT_2)
-            } else if (val - consts::FRAC_PI_3).abs() < F64_EPSILON {
+            } else if (val
+                - consts::FRAC_PI_3)
+                .abs()
+                < F64_EPSILON
+            {
 
                 Some(0.5)
-            } else if (val.abs() - consts::PI).abs() < F64_EPSILON {
+            } else if (val.abs()
+                - consts::PI)
+                .abs()
+                < F64_EPSILON
+            {
 
                 Some(-1.0)
             } else {
@@ -111,15 +205,24 @@ pub fn evaluate_numerical(expr: &Expr) -> Option<f64> {
         },
         | Expr::Tan(a) => {
 
-            let val = evaluate_numerical(a)?;
+            let val =
+                evaluate_numerical(a)?;
 
             if val.abs() < F64_EPSILON {
 
                 Some(0.0)
-            } else if (val - consts::FRAC_PI_4).abs() < F64_EPSILON {
+            } else if (val
+                - consts::FRAC_PI_4)
+                .abs()
+                < F64_EPSILON
+            {
 
                 Some(1.0)
-            } else if (val.abs() - consts::FRAC_PI_2).abs() < F64_EPSILON {
+            } else if (val.abs()
+                - consts::FRAC_PI_2)
+                .abs()
+                < F64_EPSILON
+            {
 
                 Some(f64::INFINITY)
             } else {
@@ -127,20 +230,68 @@ pub fn evaluate_numerical(expr: &Expr) -> Option<f64> {
                 Some(val.tan())
             }
         },
-        | Expr::ArcSin(a) => Some(evaluate_numerical(a)?.asin()),
-        | Expr::ArcCos(a) => Some(evaluate_numerical(a)?.acos()),
-        | Expr::ArcTan(a) => Some(evaluate_numerical(a)?.atan()),
-        | Expr::Sinh(a) => Some(evaluate_numerical(a)?.sinh()),
-        | Expr::Cosh(a) => Some(evaluate_numerical(a)?.cosh()),
-        | Expr::Tanh(a) => Some(evaluate_numerical(a)?.tanh()),
-        | Expr::ArcSinh(a) => Some(evaluate_numerical(a)?.asinh()),
-        | Expr::ArcCosh(a) => Some(evaluate_numerical(a)?.acosh()),
-        | Expr::ArcTanh(a) => Some(evaluate_numerical(a)?.atanh()),
+        | Expr::ArcSin(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .asin(),
+            )
+        },
+        | Expr::ArcCos(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .acos(),
+            )
+        },
+        | Expr::ArcTan(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .atan(),
+            )
+        },
+        | Expr::Sinh(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .sinh(),
+            )
+        },
+        | Expr::Cosh(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .cosh(),
+            )
+        },
+        | Expr::Tanh(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .tanh(),
+            )
+        },
+        | Expr::ArcSinh(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .asinh(),
+            )
+        },
+        | Expr::ArcCosh(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .acosh(),
+            )
+        },
+        | Expr::ArcTanh(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .atanh(),
+            )
+        },
         | Expr::Factorial(a) => {
 
-            let n = evaluate_numerical(a)?;
+            let n =
+                evaluate_numerical(a)?;
 
-            if n.fract() == 0.0 && n >= 0.0 {
+            if n.fract() == 0.0
+                && n >= 0.0
+            {
 
                 let mut result = 1.0;
 
@@ -157,11 +308,17 @@ pub fn evaluate_numerical(expr: &Expr) -> Option<f64> {
         },
         | Expr::Gamma(a) => {
 
-            let _val = evaluate_numerical(a)?;
+            let _val =
+                evaluate_numerical(a)?;
 
             None
         },
-        | Expr::Floor(a) => Some(evaluate_numerical(a)?.floor()),
+        | Expr::Floor(a) => {
+            Some(
+                evaluate_numerical(a)?
+                    .floor(),
+            )
+        },
         | Expr::Neg(a) => {
             Some(-evaluate_numerical(
                 a,

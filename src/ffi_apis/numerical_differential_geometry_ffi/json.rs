@@ -22,22 +22,29 @@ struct DgPointInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(input_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
-    let input: DgPointInput = match from_json_string(input_json) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
+    let input: DgPointInput =
+        match from_json_string(input_json) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<Vec<f64>>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON input"
+                                .to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     match differential_geometry::metric_tensor_at_point(
         input.system,
@@ -50,7 +57,9 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(input_json: *const c_cha
                 err: None::<String>,
             };
 
-            to_c_string(serde_json::to_string(&ffi_res).unwrap())
+            to_c_string(
+                serde_json::to_string(&ffi_res).unwrap(),
+            )
         },
         | Err(e) => {
 
@@ -59,7 +68,9 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(input_json: *const c_cha
                 err: Some(e),
             };
 
-            to_c_string(serde_json::to_string(&ffi_res).unwrap())
+            to_c_string(
+                serde_json::to_string(&ffi_res).unwrap(),
+            )
         },
     }
 }
@@ -70,20 +81,25 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_json(
     input_json: *const c_char
 ) -> *mut c_char {
 
-    let input: DgPointInput = match from_json_string(input_json) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<Vec<f64>>>, String> {
+    let input: DgPointInput =
+        match from_json_string(input_json) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<Vec<Vec<f64>>>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON input"
+                                .to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     match differential_geometry::christoffel_symbols(
         input.system,
@@ -96,7 +112,9 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_json(
                 err: None::<String>,
             };
 
-            to_c_string(serde_json::to_string(&ffi_res).unwrap())
+            to_c_string(
+                serde_json::to_string(&ffi_res).unwrap(),
+            )
         },
         | Err(e) => {
 
@@ -105,29 +123,38 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_json(
                 err: Some(e),
             };
 
-            to_c_string(serde_json::to_string(&ffi_res).unwrap())
+            to_c_string(
+                serde_json::to_string(&ffi_res).unwrap(),
+            )
         },
     }
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_json(input_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
-    let input: DgPointInput = match from_json_string(input_json) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
+    let input: DgPointInput =
+        match from_json_string(input_json) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<Vec<f64>>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON input"
+                                .to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     match differential_geometry::ricci_tensor(
         input.system,
@@ -140,7 +167,9 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_json(input_json: *const c_char
                 err: None::<String>,
             };
 
-            to_c_string(serde_json::to_string(&ffi_res).unwrap())
+            to_c_string(
+                serde_json::to_string(&ffi_res).unwrap(),
+            )
         },
         | Err(e) => {
 
@@ -149,29 +178,38 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_json(input_json: *const c_char
                 err: Some(e),
             };
 
-            to_c_string(serde_json::to_string(&ffi_res).unwrap())
+            to_c_string(
+                serde_json::to_string(&ffi_res).unwrap(),
+            )
         },
     }
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_json(input_json: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
-    let input: DgPointInput = match from_json_string(input_json) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
+    let input: DgPointInput =
+        match from_json_string(input_json) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        f64,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON input"
+                                .to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     match differential_geometry::ricci_scalar(
         input.system,
@@ -184,7 +222,9 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_json(input_json: *const c_char
                 err: None::<String>,
             };
 
-            to_c_string(serde_json::to_string(&ffi_res).unwrap())
+            to_c_string(
+                serde_json::to_string(&ffi_res).unwrap(),
+            )
         },
         | Err(e) => {
 
@@ -193,7 +233,9 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_json(input_json: *const c_char
                 err: Some(e),
             };
 
-            to_c_string(serde_json::to_string(&ffi_res).unwrap())
+            to_c_string(
+                serde_json::to_string(&ffi_res).unwrap(),
+            )
         },
     }
 }

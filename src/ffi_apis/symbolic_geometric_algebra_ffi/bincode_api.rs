@@ -12,11 +12,15 @@ pub extern "C" fn rssn_bincode_multivector_scalar(
     value_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let value: Option<Expr> = from_bincode_buffer(&value_buf);
+    let value: Option<Expr> =
+        from_bincode_buffer(&value_buf);
 
     if let Some(val) = value {
 
-        let mv = Multivector::scalar((p, q, r), val);
+        let mv = Multivector::scalar(
+            (p, q, r),
+            val,
+        );
 
         to_bincode_buffer(&mv)
     } else {
@@ -33,13 +37,18 @@ pub extern "C" fn rssn_bincode_multivector_geometric_product(
     b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<Multivector> = from_bincode_buffer(&a_buf);
+    let a: Option<Multivector> =
+        from_bincode_buffer(&a_buf);
 
-    let b: Option<Multivector> = from_bincode_buffer(&b_buf);
+    let b: Option<Multivector> =
+        from_bincode_buffer(&b_buf);
 
-    if let (Some(mv_a), Some(mv_b)) = (a, b) {
+    if let (Some(mv_a), Some(mv_b)) =
+        (a, b)
+    {
 
-        let result = mv_a.geometric_product(&mv_b);
+        let result = mv_a
+            .geometric_product(&mv_b);
 
         to_bincode_buffer(&result)
     } else {
@@ -56,13 +65,18 @@ pub extern "C" fn rssn_bincode_multivector_outer_product(
     b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<Multivector> = from_bincode_buffer(&a_buf);
+    let a: Option<Multivector> =
+        from_bincode_buffer(&a_buf);
 
-    let b: Option<Multivector> = from_bincode_buffer(&b_buf);
+    let b: Option<Multivector> =
+        from_bincode_buffer(&b_buf);
 
-    if let (Some(mv_a), Some(mv_b)) = (a, b) {
+    if let (Some(mv_a), Some(mv_b)) =
+        (a, b)
+    {
 
-        let result = mv_a.outer_product(&mv_b);
+        let result =
+            mv_a.outer_product(&mv_b);
 
         to_bincode_buffer(&result)
     } else {
@@ -79,13 +93,18 @@ pub extern "C" fn rssn_bincode_multivector_inner_product(
     b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a: Option<Multivector> = from_bincode_buffer(&a_buf);
+    let a: Option<Multivector> =
+        from_bincode_buffer(&a_buf);
 
-    let b: Option<Multivector> = from_bincode_buffer(&b_buf);
+    let b: Option<Multivector> =
+        from_bincode_buffer(&b_buf);
 
-    if let (Some(mv_a), Some(mv_b)) = (a, b) {
+    if let (Some(mv_a), Some(mv_b)) =
+        (a, b)
+    {
 
-        let result = mv_a.inner_product(&mv_b);
+        let result =
+            mv_a.inner_product(&mv_b);
 
         to_bincode_buffer(&result)
     } else {
@@ -97,13 +116,17 @@ pub extern "C" fn rssn_bincode_multivector_inner_product(
 /// Computes reverse (Bincode)
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_multivector_reverse(mv_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_multivector_reverse(
+    mv_buf: BincodeBuffer
+) -> BincodeBuffer {
 
-    let mv: Option<Multivector> = from_bincode_buffer(&mv_buf);
+    let mv: Option<Multivector> =
+        from_bincode_buffer(&mv_buf);
 
     if let Some(multivector) = mv {
 
-        let result = multivector.reverse();
+        let result =
+            multivector.reverse();
 
         to_bincode_buffer(&result)
     } else {
@@ -120,11 +143,13 @@ pub extern "C" fn rssn_bincode_multivector_grade_projection(
     grade: u32,
 ) -> BincodeBuffer {
 
-    let mv: Option<Multivector> = from_bincode_buffer(&mv_buf);
+    let mv: Option<Multivector> =
+        from_bincode_buffer(&mv_buf);
 
     if let Some(multivector) = mv {
 
-        let result = multivector.grade_projection(grade);
+        let result = multivector
+            .grade_projection(grade);
 
         to_bincode_buffer(&result)
     } else {
@@ -136,13 +161,17 @@ pub extern "C" fn rssn_bincode_multivector_grade_projection(
 /// Computes magnitude (Bincode)
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_multivector_magnitude(mv_buf: BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_multivector_magnitude(
+    mv_buf: BincodeBuffer
+) -> BincodeBuffer {
 
-    let mv: Option<Multivector> = from_bincode_buffer(&mv_buf);
+    let mv: Option<Multivector> =
+        from_bincode_buffer(&mv_buf);
 
     if let Some(multivector) = mv {
 
-        let result = multivector.magnitude();
+        let result =
+            multivector.magnitude();
 
         to_bincode_buffer(&result)
     } else {

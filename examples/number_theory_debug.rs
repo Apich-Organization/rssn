@@ -32,7 +32,8 @@ fn main() {
 
     let vars = vec!["x", "y", "z"];
 
-    let result = solve_diophantine(&eq, &vars);
+    let result =
+        solve_diophantine(&eq, &vars);
 
     println!(
         "Result Pythagorean: {:?}",

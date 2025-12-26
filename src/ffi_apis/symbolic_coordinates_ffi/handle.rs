@@ -14,9 +14,17 @@ pub extern "C" fn rssn_transform_point_handle(
         &*point
     };
 
-    match transform_point(point_ref, from, to) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+    match transform_point(
+        point_ref, from, to,
+    ) {
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -33,19 +41,35 @@ pub extern "C" fn rssn_transform_expression_handle(
         &*expr
     };
 
-    match transform_expression(expr_ref, from, to) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+    match transform_expression(
+        expr_ref, from, to,
+    ) {
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_coordinates_get_metric_tensor_handle(system: CoordinateSystem) -> *mut Expr {
+pub extern "C" fn rssn_coordinates_get_metric_tensor_handle(
+    system: CoordinateSystem
+) -> *mut Expr {
 
     match get_metric_tensor(system) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -62,9 +86,17 @@ pub extern "C" fn rssn_transform_contravariant_vector_handle(
         &*comps
     };
 
-    match transform_contravariant_vector(comps_ref, from, to) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+    match transform_contravariant_vector(
+        comps_ref, from, to,
+    ) {
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -81,9 +113,17 @@ pub extern "C" fn rssn_transform_covariant_vector_handle(
         &*comps
     };
 
-    match transform_covariant_vector(comps_ref, from, to) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+    match transform_covariant_vector(
+        comps_ref, from, to,
+    ) {
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -99,9 +139,17 @@ pub extern "C" fn rssn_transform_divergence_handle(
         &*comps
     };
 
-    match transform_divergence(comps_ref, from) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+    match transform_divergence(
+        comps_ref, from,
+    ) {
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -117,9 +165,17 @@ pub extern "C" fn rssn_transform_curl_handle(
         &*comps
     };
 
-    match transform_curl(comps_ref, from) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+    match transform_curl(
+        comps_ref, from,
+    ) {
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -145,7 +201,13 @@ pub extern "C" fn rssn_transform_gradient_handle(
     match transform_gradient(
         scalar_ref, vars_ref, from, to,
     ) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }

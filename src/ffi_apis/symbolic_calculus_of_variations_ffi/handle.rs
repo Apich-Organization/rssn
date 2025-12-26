@@ -5,7 +5,9 @@ use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-unsafe fn c_str_to_str<'a>(s: *const c_char) -> Option<&'a str> {
+unsafe fn c_str_to_str<'a>(
+    s: *const c_char
+) -> Option<&'a str> {
 
     if s.is_null() {
 
@@ -30,21 +32,32 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
     var: *const c_char,
 ) -> *mut Expr {
 
-    if lagrangian.is_null() || func.is_null() || var.is_null() {
+    if lagrangian.is_null()
+        || func.is_null()
+        || var.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let lagrangian_ref = &*lagrangian;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     Box::into_raw(Box::new(
@@ -68,21 +81,32 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
     var: *const c_char,
 ) -> *mut Expr {
 
-    if lagrangian.is_null() || func.is_null() || var.is_null() {
+    if lagrangian.is_null()
+        || func.is_null()
+        || var.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let lagrangian_ref = &*lagrangian;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     Box::into_raw(Box::new(
@@ -106,21 +130,32 @@ pub unsafe extern "C" fn rssn_hamiltons_principle(
     var: *const c_char,
 ) -> *mut Expr {
 
-    if lagrangian.is_null() || func.is_null() || var.is_null() {
+    if lagrangian.is_null()
+        || func.is_null()
+        || var.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let lagrangian_ref = &*lagrangian;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     Box::into_raw(Box::new(

@@ -29,7 +29,11 @@ fn test_ising_handle_ffi() {
             16
         );
 
-        assert!(handle.magnetization >= 0.0 && handle.magnetization <= 1.0);
+        assert!(
+            handle.magnetization >= 0.0
+                && handle.magnetization
+                    <= 1.0
+        );
 
         rssn::ffi_apis::physics_sim_ising_ffi::handle::rssn_physics_sim_ising_free_result(handle);
     }
@@ -46,7 +50,8 @@ fn test_ising_json_ffi() {
         "mc_steps": 10
     }"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -56,9 +61,13 @@ fn test_ising_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr).to_string_lossy();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_string_lossy();
 
-        assert!(res_str.contains("\"ok\":"));
+        assert!(
+            res_str.contains("\"ok\":")
+        );
 
         rssn::ffi_apis::ffi_api::free_string(res_ptr);
     }

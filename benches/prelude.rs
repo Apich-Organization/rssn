@@ -26,10 +26,13 @@ use rssn::prelude;
 
 // use nalgebra::DVector; // Example dependency for numerical benchmarks
 
-pub fn criterion_benchmark(c: &mut Criterion) {
+pub fn criterion_benchmark(
+    c: &mut Criterion
+) {
 
     // --- BENCHMARK GROUP: PRELUDE ---
-    let mut group = c.benchmark_group("prelude");
+    let mut group =
+        c.benchmark_group("prelude");
 
     // Example Setup: Define a fixed input
     // let input_vector = DVector::<f64>::new_random(100);

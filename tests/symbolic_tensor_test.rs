@@ -137,7 +137,8 @@ fn test_tensor_addition_symbolic() {
 
 #[test]
 
-fn test_tensor_scalar_multiplication_symbolic() {
+fn test_tensor_scalar_multiplication_symbolic(
+) {
 
     // T = [[a, b], [c, d]]
     // k * T = [[k*a, k*b], [k*c, k*d]]
@@ -190,7 +191,8 @@ fn test_tensor_scalar_multiplication_symbolic() {
 
 #[test]
 
-fn test_tensor_outer_product_symbolic() {
+fn test_tensor_outer_product_symbolic()
+{
 
     // v1 = [a, b], v2 = [c, d]
     // v1 ⊗ v2 = [[a*c, a*d], [b*c, b*d]]
@@ -303,9 +305,11 @@ fn test_tensor_contraction_symbolic() {
 fn test_metric_tensor_symbolic() {
 
     // Create a simple 2D Euclidean metric: g = [[1, 0], [0, 1]]
-    let one = Expr::BigInt(BigInt::one());
+    let one =
+        Expr::BigInt(BigInt::one());
 
-    let zero = Expr::BigInt(BigInt::zero());
+    let zero =
+        Expr::BigInt(BigInt::zero());
 
     let g = Tensor::new(
         vec![
@@ -318,7 +322,8 @@ fn test_metric_tensor_symbolic() {
     )
     .unwrap();
 
-    let metric = MetricTensor::new(g).unwrap();
+    let metric =
+        MetricTensor::new(g).unwrap();
 
     // Check that inverse is also identity
     let one_ast = one
@@ -364,12 +369,15 @@ fn test_metric_tensor_symbolic() {
 
 #[test]
 
-fn test_metric_tensor_raise_lower_index_symbolic() {
+fn test_metric_tensor_raise_lower_index_symbolic(
+) {
 
     // Use identity metric for simplicity
-    let one = Expr::BigInt(BigInt::one());
+    let one =
+        Expr::BigInt(BigInt::one());
 
-    let zero = Expr::BigInt(BigInt::zero());
+    let zero =
+        Expr::BigInt(BigInt::zero());
 
     let g = Tensor::new(
         vec![
@@ -382,7 +390,8 @@ fn test_metric_tensor_raise_lower_index_symbolic() {
     )
     .unwrap();
 
-    let metric = MetricTensor::new(g).unwrap();
+    let metric =
+        MetricTensor::new(g).unwrap();
 
     // Create a symbolic vector [a, b]
     let a = Expr::new_variable("a");
@@ -463,7 +472,9 @@ fn test_tensor_to_matrix_expr() {
         .to_matrix_expr()
         .unwrap();
 
-    if let Expr::Matrix(rows) = matrix_expr {
+    if let Expr::Matrix(rows) =
+        matrix_expr
+    {
 
         assert_eq!(rows.len(), 2);
 
@@ -478,6 +489,9 @@ fn test_tensor_to_matrix_expr() {
         assert_eq!(rows[1][1], d);
     } else {
 
-        panic!("Expected Matrix expression");
+        panic!(
+            "Expected Matrix \
+             expression"
+        );
     }
 }

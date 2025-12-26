@@ -35,7 +35,9 @@ pub extern "C" fn rssn_physics_fdm_grid_new(
 /// Frees a FdmGrid handle.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fdm_grid_free(grid: *mut FdmGrid<f64>) {
+pub unsafe extern "C" fn rssn_physics_fdm_grid_free(
+    grid: *mut FdmGrid<f64>
+) {
 
     if !grid.is_null() {
 
@@ -46,7 +48,9 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_free(grid: *mut FdmGrid<f64>) {
 /// Returns the size of the grid data.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fdm_grid_len(grid: *mut FdmGrid<f64>) -> usize {
+pub unsafe extern "C" fn rssn_physics_fdm_grid_len(
+    grid: *mut FdmGrid<f64>
+) -> usize {
 
     if grid.is_null() {
 
@@ -59,7 +63,9 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_len(grid: *mut FdmGrid<f64>) -> u
 /// Returns a pointer to the grid data.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fdm_grid_data(grid: *mut FdmGrid<f64>) -> *mut f64 {
+pub unsafe extern "C" fn rssn_physics_fdm_grid_data(
+    grid: *mut FdmGrid<f64>
+) -> *mut f64 {
 
     if grid.is_null() {
 
@@ -74,7 +80,8 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_data(grid: *mut FdmGrid<f64>) -> 
 /// Simulates 2D heat conduction and returns a new FdmGrid handle.
 #[no_mangle]
 
-pub extern "C" fn rssn_physics_fdm_simulate_heat_2d() -> *mut FdmGrid<f64> {
+pub extern "C" fn rssn_physics_fdm_simulate_heat_2d(
+) -> *mut FdmGrid<f64> {
 
     Box::into_raw(Box::new(
         physics_fdm::simulate_2d_heat_conduction_scenario(),
@@ -84,9 +91,11 @@ pub extern "C" fn rssn_physics_fdm_simulate_heat_2d() -> *mut FdmGrid<f64> {
 /// Simulates 2D wave propagation and returns a new FdmGrid handle.
 #[no_mangle]
 
-pub extern "C" fn rssn_physics_fdm_simulate_wave_2d() -> *mut FdmGrid<f64> {
+pub extern "C" fn rssn_physics_fdm_simulate_wave_2d(
+) -> *mut FdmGrid<f64> {
 
     Box::into_raw(Box::new(
-        physics_fdm::simulate_2d_wave_propagation_scenario(),
+        physics_fdm::simulate_2d_wave_propagation_scenario(
+        ),
     ))
 }

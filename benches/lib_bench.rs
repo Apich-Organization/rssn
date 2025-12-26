@@ -6,13 +6,23 @@ use rssn::is_exclusive;
 use std::hint::black_box;
 use std::sync::Arc;
 
-fn bench_is_exclusive(c: &mut Criterion) {
+fn bench_is_exclusive(
+    c: &mut Criterion
+) {
 
     let arc = Arc::new(10);
 
     c.bench_function(
         "is_exclusive_true",
-        |b| b.iter(|| is_exclusive(black_box(&arc))),
+        |b| {
+
+            b.iter(|| {
+
+                is_exclusive(black_box(
+                    &arc,
+                ))
+            })
+        },
     );
 
     let arc2 = Arc::new(20);
@@ -21,7 +31,15 @@ fn bench_is_exclusive(c: &mut Criterion) {
 
     c.bench_function(
         "is_exclusive_false",
-        |b| b.iter(|| is_exclusive(black_box(&arc2))),
+        |b| {
+
+            b.iter(|| {
+
+                is_exclusive(black_box(
+                    &arc2,
+                ))
+            })
+        },
     );
 }
 

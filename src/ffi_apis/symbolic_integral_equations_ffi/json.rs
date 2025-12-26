@@ -46,18 +46,26 @@ struct AirfoilInput {
 /// Solves a Fredholm equation using the Neumann series method (JSON).
 #[no_mangle]
 
-pub extern "C" fn rssn_fredholm_solve_neumann_json(input_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_fredholm_solve_neumann_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
-    let input: Option<FredholmNeumannInput> = from_json_string(input_json);
+    let input: Option<
+        FredholmNeumannInput,
+    > = from_json_string(input_json);
 
     let input = match input {
         | Some(i) => i,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     let result = input
         .equation
-        .solve_neumann_series(input.iterations);
+        .solve_neumann_series(
+            input.iterations,
+        );
 
     to_json_string(&result)
 }
@@ -65,13 +73,19 @@ pub extern "C" fn rssn_fredholm_solve_neumann_json(input_json: *const c_char) ->
 /// Solves a Fredholm equation with a separable kernel (JSON).
 #[no_mangle]
 
-pub extern "C" fn rssn_fredholm_solve_separable_json(input_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_fredholm_solve_separable_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
-    let input: Option<FredholmSeparableInput> = from_json_string(input_json);
+    let input: Option<
+        FredholmSeparableInput,
+    > = from_json_string(input_json);
 
     let input = match input {
         | Some(i) => i,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match input
@@ -80,21 +94,31 @@ pub extern "C" fn rssn_fredholm_solve_separable_json(input_json: *const c_char) 
             input.a_funcs,
             input.b_funcs,
         ) {
-        | Ok(result) => to_json_string(&result),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            to_json_string(&result)
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
 /// Solves a Volterra equation using successive approximations (JSON).
 #[no_mangle]
 
-pub extern "C" fn rssn_volterra_solve_successive_json(input_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_volterra_solve_successive_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
-    let input: Option<VolterraSuccessiveInput> = from_json_string(input_json);
+    let input: Option<
+        VolterraSuccessiveInput,
+    > = from_json_string(input_json);
 
     let input = match input {
         | Some(i) => i,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     let result = input
@@ -111,29 +135,44 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation_json(
     input_json: *const c_char
 ) -> *mut c_char {
 
-    let equation: Option<VolterraEquation> = from_json_string(input_json);
+    let equation: Option<
+        VolterraEquation,
+    > = from_json_string(input_json);
 
     let equation = match equation {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    match equation.solve_by_differentiation() {
-        | Ok(result) => to_json_string(&result),
-        | Err(_) => std::ptr::null_mut(),
+    match equation
+        .solve_by_differentiation()
+    {
+        | Ok(result) => {
+            to_json_string(&result)
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
 /// Solves the airfoil singular integral equation (JSON).
 #[no_mangle]
 
-pub extern "C" fn rssn_solve_airfoil_equation_json(input_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_solve_airfoil_equation_json(
+    input_json: *const c_char
+) -> *mut c_char {
 
-    let input: Option<AirfoilInput> = from_json_string(input_json);
+    let input: Option<AirfoilInput> =
+        from_json_string(input_json);
 
     let input = match input {
         | Some(i) => i,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     let result = solve_airfoil_equation(

@@ -6,7 +6,8 @@ use rssn::physics::physics_mtm::*;
 
 #[test]
 
-fn test_solve_poisson_1d_multigrid_basic() {
+fn test_solve_poisson_1d_multigrid_basic(
+) {
 
     let result = simulate_1d_poisson_multigrid_scenario().unwrap();
 
@@ -22,21 +23,26 @@ fn test_solve_poisson_1d_multigrid_basic() {
         let expected = x * (1.0 - x);
 
         println!(
-            "i-{} result[i]-{} expected-{}",
+            "i-{} result[i]-{} \
+             expected-{}",
             i, result[i], expected
         );
 
-        assert_approx_eq!(result[i], expected, 0.05);
+        assert_approx_eq!(
+            result[i], expected, 0.05
+        );
     }
 }
 
 #[test]
 
-fn test_solve_poisson_2d_multigrid_basic() {
+fn test_solve_poisson_2d_multigrid_basic(
+) {
 
     let result = simulate_2d_poisson_multigrid_scenario().unwrap();
 
-    let n = (result.len() as f64).sqrt() as usize;
+    let n = (result.len() as f64).sqrt()
+        as usize;
 
     let h = 1.0 / (n - 1) as f64;
 

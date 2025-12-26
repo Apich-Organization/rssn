@@ -17,7 +17,13 @@ use serde::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub enum ExtremumType {
     LocalMin,
@@ -26,7 +32,9 @@ pub enum ExtremumType {
     Unknown,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(
+    Debug, Serialize, Deserialize,
+)]
 
 pub struct CriticalPoint {
     pub point: HashMap<Expr, Expr>,
@@ -51,30 +59,43 @@ pub struct CriticalPoint {
 pub fn find_extrema(
     f: &Expr,
     vars: &[&str],
-) -> Result<Vec<CriticalPoint>, String> {
+) -> Result<Vec<CriticalPoint>, String>
+{
 
     let mut grad_eqs = Vec::new();
 
     for &var in vars {
 
-        let deriv = differentiate(f, var);
+        let deriv =
+            differentiate(f, var);
 
         grad_eqs.push(Expr::Eq(
             Arc::new(deriv),
-            Arc::new(Expr::Constant(0.0)),
+            Arc::new(Expr::Constant(
+                0.0,
+            )),
         ));
     }
 
-    let critical_points_sol = match solve_system(&grad_eqs, vars) {
-        | Some(sol) => sol,
-        | None => return Ok(vec![]),
-    };
+    let critical_points_sol =
+        match solve_system(
+            &grad_eqs, vars,
+        ) {
+            | Some(sol) => sol,
+            | None => {
+                return Ok(vec![])
+            },
+        };
 
-    let crit_point_map: HashMap<Expr, Expr> = critical_points_sol
+    let crit_point_map: HashMap<
+        Expr,
+        Expr,
+    > = critical_points_sol
         .into_iter()
         .collect();
 
-    let hessian = hessian_matrix(f, vars);
+    let hessian =
+        hessian_matrix(f, vars);
 
     let mut hessian_at_point = hessian;
 
@@ -87,9 +108,14 @@ pub fn find_extrema(
         );
     }
 
-    let (eigenvalues_expr, _) = eigen_decomposition(&hessian_at_point)?;
+    let (eigenvalues_expr, _) =
+        eigen_decomposition(
+            &hessian_at_point,
+        )?;
 
-    if let Expr::Matrix(eig_rows) = eigenvalues_expr {
+    if let Expr::Matrix(eig_rows) =
+        eigenvalues_expr
+    {
 
         let eigenvalues: Vec<f64> = eig_rows
             .iter()
@@ -133,11 +159,18 @@ pub fn find_extrema(
         ])
     } else {
 
-        Err("Could not determine eigenvalues of the Hessian.".to_string())
+        Err(
+            "Could not determine \
+             eigenvalues of the \
+             Hessian."
+                .to_string(),
+        )
     }
 }
 
-fn evaluate_constant_expr(expr: &Expr) -> Option<f64> {
+fn evaluate_constant_expr(
+    expr: &Expr
+) -> Option<f64> {
 
     use num_traits::ToPrimitive;
 
@@ -184,17 +217,30 @@ pub fn hessian_matrix(
 
     let n = vars.len();
 
-    let mut matrix = vec![vec![Expr::Constant(0.0); n]; n];
+    let mut matrix =
+        vec![
+            vec![
+                Expr::Constant(0.0);
+                n
+            ];
+            n
+        ];
 
     for i in 0..n {
 
         for j in 0..n {
 
-            let df_dxi = differentiate(f, vars[i]);
+            let df_dxi = differentiate(
+                f, vars[i],
+            );
 
-            let d2f_dxj_dxi = differentiate(&df_dxi, vars[j]);
+            let d2f_dxj_dxi =
+                differentiate(
+                    &df_dxi, vars[j],
+                );
 
-            matrix[i][j] = simplify(&d2f_dxj_dxi);
+            matrix[i][j] =
+                simplify(&d2f_dxj_dxi);
         }
     }
 
@@ -219,7 +265,10 @@ pub fn find_constrained_extrema(
     f: &Expr,
     constraints: &[Expr],
     vars: &[&str],
-) -> Result<Vec<HashMap<Expr, Expr>>, String> {
+) -> Result<
+    Vec<HashMap<Expr, Expr>>,
+    String,
+> {
 
     let mut lambda_vars = Vec::new();
 
@@ -237,16 +286,23 @@ pub fn find_constrained_extrema(
         .enumerate()
     {
 
-        let lambda_i = Expr::Variable(lambda_vars[i].clone());
+        let lambda_i = Expr::Variable(
+            lambda_vars[i].clone(),
+        );
 
-        let term = Expr::new_mul(lambda_i, g.clone());
+        let term = Expr::new_mul(
+            lambda_i,
+            g.clone(),
+        );
 
-        lagrangian = simplify(&Expr::new_sub(
-            lagrangian, term,
-        ));
+        lagrangian =
+            simplify(&Expr::new_sub(
+                lagrangian, term,
+            ));
     }
 
-    let mut all_vars: Vec<&str> = vars.to_vec();
+    let mut all_vars: Vec<&str> =
+        vars.to_vec();
 
     let lambda_vars_str: Vec<&str> = lambda_vars
         .iter()
@@ -259,15 +315,22 @@ pub fn find_constrained_extrema(
 
     for &var in &all_vars {
 
-        let deriv = differentiate(&lagrangian, var);
+        let deriv = differentiate(
+            &lagrangian,
+            var,
+        );
 
         grad_eqs.push(Expr::Eq(
             Arc::new(deriv),
-            Arc::new(Expr::Constant(0.0)),
+            Arc::new(Expr::Constant(
+                0.0,
+            )),
         ));
     }
 
-    match solve_system(&grad_eqs, &all_vars) {
+    match solve_system(
+        &grad_eqs, &all_vars,
+    ) {
         | Some(solution) => {
             Ok(vec![solution
                 .into_iter()

@@ -7,7 +7,8 @@ use std::os::raw::c_char;
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_lie_algebra_so3_create() -> *mut LieAlgebra {
+pub unsafe extern "C" fn rssn_lie_algebra_so3_create(
+) -> *mut LieAlgebra {
 
     let algebra = so3();
 
@@ -16,7 +17,8 @@ pub unsafe extern "C" fn rssn_lie_algebra_so3_create() -> *mut LieAlgebra {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_lie_algebra_su2_create() -> *mut LieAlgebra {
+pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
+) -> *mut LieAlgebra {
 
     let algebra = su2();
 
@@ -25,7 +27,9 @@ pub unsafe extern "C" fn rssn_lie_algebra_su2_create() -> *mut LieAlgebra {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_lie_algebra_free(ptr: *mut LieAlgebra) {
+pub unsafe extern "C" fn rssn_lie_algebra_free(
+    ptr: *mut LieAlgebra
+) {
 
     if !ptr.is_null() {
 
@@ -35,20 +39,26 @@ pub unsafe extern "C" fn rssn_lie_algebra_free(ptr: *mut LieAlgebra) {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_lie_algebra_get_dimension(ptr: *const LieAlgebra) -> usize {
+pub unsafe extern "C" fn rssn_lie_algebra_get_dimension(
+    ptr: *const LieAlgebra
+) -> usize {
 
     (*ptr).dimension
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_lie_algebra_get_name(ptr: *const LieAlgebra) -> *mut c_char {
+pub unsafe extern "C" fn rssn_lie_algebra_get_name(
+    ptr: *const LieAlgebra
+) -> *mut c_char {
 
     let name = &(*ptr).name;
 
-    std::ffi::CString::new(name.as_str())
-        .unwrap()
-        .into_raw()
+    std::ffi::CString::new(
+        name.as_str(),
+    )
+    .unwrap()
+    .into_raw()
 }
 
 #[no_mangle]
@@ -82,8 +92,14 @@ pub unsafe extern "C" fn rssn_lie_bracket(
 ) -> *mut Expr {
 
     match lie_bracket(&*x, &*y) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -97,8 +113,14 @@ pub unsafe extern "C" fn rssn_exponential_map(
 ) -> *mut Expr {
 
     match exponential_map(&*x, order) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -111,9 +133,17 @@ pub unsafe extern "C" fn rssn_adjoint_representation_group(
     x: *const Expr,
 ) -> *mut Expr {
 
-    match adjoint_representation_group(&*g, &*x) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+    match adjoint_representation_group(
+        &*g, &*x,
+    ) {
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -124,9 +154,17 @@ pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
     y: *const Expr,
 ) -> *mut Expr {
 
-    match adjoint_representation_algebra(&*x, &*y) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+    match adjoint_representation_algebra(
+        &*x, &*y,
+    ) {
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -145,25 +183,39 @@ pub unsafe extern "C" fn rssn_commutator_table(
 
             let rows = table.len();
 
-            let cols = if rows > 0 { table[0].len() } else { 0 };
+            let cols = if rows > 0 {
+
+                table[0].len()
+            } else {
+
+                0
+            };
 
             *out_rows = rows;
 
             *out_cols = cols;
 
-            let mut flat_ptrs = Vec::with_capacity(rows * cols);
+            let mut flat_ptrs =
+                Vec::with_capacity(
+                    rows * cols,
+                );
 
             for row in table {
 
                 for elem in row {
 
-                    flat_ptrs.push(Box::into_raw(
-                        Box::new(elem),
-                    ));
+                    flat_ptrs.push(
+                        Box::into_raw(
+                            Box::new(
+                                elem,
+                            ),
+                        ),
+                    );
                 }
             }
 
-            let ptr = flat_ptrs.as_mut_ptr();
+            let ptr =
+                flat_ptrs.as_mut_ptr();
 
             std::mem::forget(flat_ptrs);
 
@@ -184,9 +236,13 @@ pub unsafe extern "C" fn rssn_commutator_table(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_check_jacobi_identity(algebra: *const LieAlgebra) -> bool {
+pub unsafe extern "C" fn rssn_check_jacobi_identity(
+    algebra: *const LieAlgebra
+) -> bool {
 
-    match check_jacobi_identity(&*algebra) {
+    match check_jacobi_identity(
+        &*algebra,
+    ) {
         | Ok(result) => result,
         | Err(_) => false,
     }
@@ -196,13 +252,17 @@ pub unsafe extern "C" fn rssn_check_jacobi_identity(algebra: *const LieAlgebra) 
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_so3_generators(out_len: *mut usize) -> *mut *mut Expr {
+pub unsafe extern "C" fn rssn_so3_generators(
+    out_len: *mut usize
+) -> *mut *mut Expr {
 
     let generators = so3_generators();
 
     *out_len = generators.len();
 
-    let mut ptrs = Vec::with_capacity(generators.len());
+    let mut ptrs = Vec::with_capacity(
+        generators.len(),
+    );
 
     for gen in generators {
 
@@ -220,13 +280,17 @@ pub unsafe extern "C" fn rssn_so3_generators(out_len: *mut usize) -> *mut *mut E
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_su2_generators(out_len: *mut usize) -> *mut *mut Expr {
+pub unsafe extern "C" fn rssn_su2_generators(
+    out_len: *mut usize
+) -> *mut *mut Expr {
 
     let generators = su2_generators();
 
     *out_len = generators.len();
 
-    let mut ptrs = Vec::with_capacity(generators.len());
+    let mut ptrs = Vec::with_capacity(
+        generators.len(),
+    );
 
     for gen in generators {
 

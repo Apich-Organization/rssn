@@ -10,7 +10,9 @@ use serde::{
 use std::os::raw::c_char;
 
 /// Build information structure for JSON serialization.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct BuildInfo {
     pub build_date: String,
@@ -24,19 +26,28 @@ pub struct BuildInfo {
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_build_info_json() -> *mut c_char {
+pub extern "C" fn rssn_get_build_info_json(
+) -> *mut c_char {
 
     let info = BuildInfo {
-        build_date: crate::constant::get_build_date().to_string(),
-        commit_sha: crate::constant::get_commit_sha().to_string(),
-        rustc_version: crate::constant::get_rustc_version().to_string(),
-        cargo_target_triple: crate::constant::get_cargo_target_triple().to_string(),
-        system_info: crate::constant::get_system_info().to_string(),
+        build_date: crate::constant::get_build_date()
+            .to_string(),
+        commit_sha: crate::constant::get_commit_sha()
+            .to_string(),
+        rustc_version: crate::constant::get_rustc_version()
+            .to_string(),
+        cargo_target_triple:
+            crate::constant::get_cargo_target_triple()
+                .to_string(),
+        system_info: crate::constant::get_system_info()
+            .to_string(),
     };
 
     match serde_json::to_string(&info) {
         | Ok(json) => to_c_string(json),
-        | Err(_) => std::ptr::null_mut(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -44,13 +55,18 @@ pub extern "C" fn rssn_get_build_info_json() -> *mut c_char {
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_build_date_json() -> *mut c_char {
+pub extern "C" fn rssn_get_build_date_json(
+) -> *mut c_char {
 
-    let date = crate::constant::get_build_date();
+    let date =
+        crate::constant::get_build_date(
+        );
 
     match serde_json::to_string(&date) {
         | Ok(json) => to_c_string(json),
-        | Err(_) => std::ptr::null_mut(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -58,12 +74,17 @@ pub extern "C" fn rssn_get_build_date_json() -> *mut c_char {
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_commit_sha_json() -> *mut c_char {
+pub extern "C" fn rssn_get_commit_sha_json(
+) -> *mut c_char {
 
-    let sha = crate::constant::get_commit_sha();
+    let sha =
+        crate::constant::get_commit_sha(
+        );
 
     match serde_json::to_string(&sha) {
         | Ok(json) => to_c_string(json),
-        | Err(_) => std::ptr::null_mut(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }

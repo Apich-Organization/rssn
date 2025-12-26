@@ -24,7 +24,9 @@ struct Heat2DInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_json(
+    input: *const c_char
+) -> *mut c_char {
 
     let input: Heat2DInput = match from_json_string(input) {
         | Some(i) => i,
@@ -47,10 +49,12 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_json(input: *const c_cha
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::ok(res))
+        serde_json::to_string(
+            &FfiResult::<
+                Vec<f64>,
+                String,
+            >::ok(res),
+        )
         .unwrap(),
     )
 }

@@ -13,14 +13,22 @@ fn test_so3_generators() {
     // Check that each generator is a 3x3 matrix
     for gen in &generators {
 
-        if let Expr::Matrix(rows) = &gen.0 {
+        if let Expr::Matrix(rows) =
+            &gen.0
+        {
 
             assert_eq!(rows.len(), 3);
 
-            assert_eq!(rows[0].len(), 3);
+            assert_eq!(
+                rows[0].len(),
+                3
+            );
         } else {
 
-            panic!("Generator is not a matrix");
+            panic!(
+                "Generator is not a \
+                 matrix"
+            );
         }
     }
 }
@@ -36,14 +44,22 @@ fn test_su2_generators() {
     // Check that each generator is a 2x2 matrix
     for gen in &generators {
 
-        if let Expr::Matrix(rows) = &gen.0 {
+        if let Expr::Matrix(rows) =
+            &gen.0
+        {
 
             assert_eq!(rows.len(), 2);
 
-            assert_eq!(rows[0].len(), 2);
+            assert_eq!(
+                rows[0].len(),
+                2
+            );
         } else {
 
-            panic!("Generator is not a matrix");
+            panic!(
+                "Generator is not a \
+                 matrix"
+            );
         }
     }
 }
@@ -63,13 +79,18 @@ fn test_lie_bracket_antisymmetry() {
 
     let yx = lie_bracket(y, x).unwrap();
 
-    let neg_yx = matrix::scalar_mul_matrix(
-        &Expr::Constant(-1.0),
-        &yx,
-    );
+    let neg_yx =
+        matrix::scalar_mul_matrix(
+            &Expr::Constant(-1.0),
+            &yx,
+        );
 
     // Check if xy equals -yx
-    if let (Expr::Matrix(xy_mat), Expr::Matrix(neg_yx_mat)) = (&xy, &neg_yx) {
+    if let (
+        Expr::Matrix(xy_mat),
+        Expr::Matrix(neg_yx_mat),
+    ) = (&xy, &neg_yx)
+    {
 
         for i in 0..3 {
 
@@ -120,13 +141,17 @@ fn test_exponential_map() {
         assert_eq!(rows[0].len(), 3);
     } else {
 
-        panic!("Exponential map did not return a matrix");
+        panic!(
+            "Exponential map did not \
+             return a matrix"
+        );
     }
 }
 
 #[test]
 
-fn test_adjoint_representation_algebra() {
+fn test_adjoint_representation_algebra()
+{
 
     let so3_algebra = so3();
 
@@ -135,7 +160,10 @@ fn test_adjoint_representation_algebra() {
     let y = &so3_algebra.basis[1].0;
 
     // ad_X(Y) = [X, Y]
-    let ad_xy = adjoint_representation_algebra(x, y);
+    let ad_xy =
+        adjoint_representation_algebra(
+            x, y,
+        );
 
     let bracket_xy = lie_bracket(x, y);
 
@@ -156,7 +184,8 @@ fn test_commutator_table() {
 
     let so3_algebra = so3();
 
-    let table = commutator_table(&so3_algebra);
+    let table =
+        commutator_table(&so3_algebra);
 
     assert!(table.is_ok());
 
@@ -173,7 +202,11 @@ fn test_commutator_table() {
     // Diagonal elements should be zero (anti-symmetry: [X, X] = 0)
     for i in 0..3 {
 
-        assert!(matrix::is_zero_matrix(&table[i][i]));
+        assert!(
+            matrix::is_zero_matrix(
+                &table[i][i]
+            )
+        );
     }
 }
 
@@ -183,7 +216,9 @@ fn test_jacobi_identity_so3() {
 
     let so3_algebra = so3();
 
-    let result = check_jacobi_identity(&so3_algebra);
+    let result = check_jacobi_identity(
+        &so3_algebra,
+    );
 
     assert!(result.is_ok());
     // For so(3), the Jacobi identity should hold
@@ -197,7 +232,9 @@ fn test_jacobi_identity_su2() {
 
     let su2_algebra = su2();
 
-    let result = check_jacobi_identity(&su2_algebra);
+    let result = check_jacobi_identity(
+        &su2_algebra,
+    );
 
     assert!(result.is_ok());
     // For su(2), the Jacobi identity should hold
@@ -256,23 +293,33 @@ fn test_su2_structure() {
 fn test_exponential_map_identity() {
 
     // exp(0) should be the identity matrix
-    let zero_matrix = Expr::Matrix(vec![
-        vec![
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
-        ],
-        vec![
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
-        ],
-    ]);
+    let zero_matrix =
+        Expr::Matrix(vec![
+            vec![
+                Expr::Constant(0.0),
+                Expr::Constant(0.0),
+            ],
+            vec![
+                Expr::Constant(0.0),
+                Expr::Constant(0.0),
+            ],
+        ]);
 
-    let exp_zero = exponential_map(&zero_matrix, 5).unwrap();
+    let exp_zero = exponential_map(
+        &zero_matrix,
+        5,
+    )
+    .unwrap();
 
-    let identity = matrix::identity_matrix(2);
+    let identity =
+        matrix::identity_matrix(2);
 
     // exp(0) should equal I
-    if let (Expr::Matrix(exp_mat), Expr::Matrix(id_mat)) = (&exp_zero, &identity) {
+    if let (
+        Expr::Matrix(exp_mat),
+        Expr::Matrix(id_mat),
+    ) = (&exp_zero, &identity)
+    {
 
         assert_eq!(
             exp_mat.len(),
@@ -313,19 +360,27 @@ fn test_adjoint_representation_group() {
         ],
     ]);
 
-    let result = adjoint_representation_group(&g, &x);
+    let result =
+        adjoint_representation_group(
+            &g, &x,
+        );
 
     assert!(result.is_ok());
 
     // Result should be a matrix
-    if let Expr::Matrix(rows) = result.unwrap() {
+    if let Expr::Matrix(rows) =
+        result.unwrap()
+    {
 
         assert_eq!(rows.len(), 2);
 
         assert_eq!(rows[0].len(), 2);
     } else {
 
-        panic!("Adjoint representation did not return a matrix");
+        panic!(
+            "Adjoint representation \
+             did not return a matrix"
+        );
     }
 }
 
@@ -338,16 +393,25 @@ fn test_serialization() {
     let so3_algebra = so3();
 
     // Test serialization
-    let serialized = serde_json::to_string(&so3_algebra);
+    let serialized =
+        serde_json::to_string(
+            &so3_algebra,
+        );
 
     assert!(serialized.is_ok());
 
     // Test deserialization
-    let deserialized: Result<LieAlgebra, _> = serde_json::from_str(&serialized.unwrap());
+    let deserialized: Result<
+        LieAlgebra,
+        _,
+    > = serde_json::from_str(
+        &serialized.unwrap(),
+    );
 
     assert!(deserialized.is_ok());
 
-    let recovered = deserialized.unwrap();
+    let recovered =
+        deserialized.unwrap();
 
     assert_eq!(
         recovered.name,

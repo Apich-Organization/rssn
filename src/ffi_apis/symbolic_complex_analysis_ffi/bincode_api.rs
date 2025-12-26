@@ -12,28 +12,34 @@ pub unsafe extern "C" fn path_continuation_new_bincode(
     order: usize,
 ) -> BincodeBuffer {
 
-    let func: Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let func: Expr =
+        match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
-    let start_point: Expr = match from_bincode_buffer(&start_point_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let start_point: Expr =
+        match from_bincode_buffer(&start_point_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let path_continuation = PathContinuation::new(
-        &func,
-        var_str,
-        &start_point,
-        order,
-    );
+    let path_continuation =
+        PathContinuation::new(
+            &func,
+            var_str,
+            &start_point,
+            order,
+        );
 
-    to_bincode_buffer(&path_continuation)
+    to_bincode_buffer(
+        &path_continuation,
+    )
 }
 
 #[no_mangle]
@@ -43,19 +49,29 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
     path_points_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let mut pc: PathContinuation = match from_bincode_buffer(&pc_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let mut pc: PathContinuation =
+        match from_bincode_buffer(&pc_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let path_points: Vec<Expr> = match from_bincode_buffer(&path_points_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let path_points: Vec<Expr> =
+        match from_bincode_buffer(&path_points_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    match pc.continue_along_path(&path_points) {
-        | Ok(_) => to_bincode_buffer(&"OK".to_string()),
-        | Err(e) => to_bincode_buffer(&e),
+    match pc.continue_along_path(
+        &path_points,
+    ) {
+        | Ok(_) => {
+            to_bincode_buffer(
+                &"OK".to_string(),
+            )
+        },
+        | Err(e) => {
+            to_bincode_buffer(&e)
+        },
     }
 }
 
@@ -65,12 +81,15 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
     pc_bincode: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let pc: PathContinuation = match from_bincode_buffer(&pc_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let pc: PathContinuation =
+        match from_bincode_buffer(&pc_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    to_bincode_buffer(&pc.get_final_expression())
+    to_bincode_buffer(
+        &pc.get_final_expression(),
+    )
 }
 
 #[no_mangle]
@@ -82,19 +101,26 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
     order: usize,
 ) -> f64 {
 
-    let series_expr: Expr = match from_bincode_buffer(&series_expr_bincode) {
-        | Some(e) => e,
-        | None => return 0.0,
-    };
+    let series_expr: Expr =
+        match from_bincode_buffer(
+            &series_expr_bincode,
+        ) {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
-    let center: Expr = match from_bincode_buffer(&center_bincode) {
-        | Some(e) => e,
-        | None => return 0.0,
-    };
+    let center: Expr =
+        match from_bincode_buffer(
+            &center_bincode,
+        ) {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
     crate::symbolic::complex_analysis::estimate_radius_of_convergence(
         &series_expr,
@@ -112,17 +138,26 @@ pub unsafe extern "C" fn complex_distance_bincode(
     p2_bincode: BincodeBuffer,
 ) -> f64 {
 
-    let p1: Expr = match from_bincode_buffer(&p1_bincode) {
-        | Some(e) => e,
-        | None => return 0.0,
-    };
+    let p1: Expr =
+        match from_bincode_buffer(
+            &p1_bincode,
+        ) {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
-    let p2: Expr = match from_bincode_buffer(&p2_bincode) {
-        | Some(e) => e,
-        | None => return 0.0,
-    };
+    let p2: Expr =
+        match from_bincode_buffer(
+            &p2_bincode,
+        ) {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
-    crate::symbolic::complex_analysis::complex_distance(&p1, &p2).unwrap_or(0.0)
+    crate::symbolic::complex_analysis::complex_distance(
+        &p1, &p2,
+    )
+    .unwrap_or(0.0)
 }
 
 #[no_mangle]
@@ -134,19 +169,22 @@ pub unsafe extern "C" fn classify_singularity_bincode(
     order: usize,
 ) -> BincodeBuffer {
 
-    let func: Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let func: Expr =
+        match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
-    let singularity: Expr = match from_bincode_buffer(&singularity_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let singularity: Expr =
+        match from_bincode_buffer(&singularity_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
     let singularity_type = crate::symbolic::complex_analysis::classify_singularity(
         &func,
@@ -167,23 +205,27 @@ pub unsafe extern "C" fn laurent_series_bincode(
     order: usize,
 ) -> BincodeBuffer {
 
-    let func: Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let func: Expr =
+        match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
-    let center: Expr = match from_bincode_buffer(&center_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let center: Expr =
+        match from_bincode_buffer(&center_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let series = crate::symbolic::complex_analysis::laurent_series(
-        &func, var_str, &center, order,
-    );
+    let series =
+        crate::symbolic::complex_analysis::laurent_series(
+            &func, var_str, &center, order,
+        );
 
     to_bincode_buffer(&series)
 }
@@ -196,19 +238,22 @@ pub unsafe extern "C" fn calculate_residue_bincode(
     singularity_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let func: Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let func: Expr =
+        match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
-    let singularity: Expr = match from_bincode_buffer(&singularity_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let singularity: Expr =
+        match from_bincode_buffer(&singularity_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
     let residue = crate::symbolic::complex_analysis::calculate_residue(
         &func,
@@ -227,19 +272,22 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
     singularities_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let func: Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let func: Expr =
+        match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
-    let singularities: Vec<Expr> = match from_bincode_buffer(&singularities_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let singularities: Vec<Expr> =
+        match from_bincode_buffer(&singularities_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
     let result = crate::symbolic::complex_analysis::contour_integral_residue_theorem(
         &func,
@@ -279,16 +327,22 @@ pub unsafe extern "C" fn mobius_transformation_new_bincode(
         | None => return BincodeBuffer::empty(),
     };
 
-    let mobius = MobiusTransformation::new(a, b, c, d);
+    let mobius =
+        MobiusTransformation::new(
+            a, b, c, d,
+        );
 
     to_bincode_buffer(&mobius)
 }
 
 #[no_mangle]
 
-pub extern "C" fn mobius_transformation_identity_bincode() -> BincodeBuffer {
+pub extern "C" fn mobius_transformation_identity_bincode(
+) -> BincodeBuffer {
 
-    let mobius = MobiusTransformation::identity();
+    let mobius =
+        MobiusTransformation::identity(
+        );
 
     to_bincode_buffer(&mobius)
 }
@@ -300,10 +354,11 @@ pub unsafe extern "C" fn mobius_transformation_apply_bincode(
     z_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let mobius: MobiusTransformation = match from_bincode_buffer(&mobius_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let mobius: MobiusTransformation =
+        match from_bincode_buffer(&mobius_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
     let z: Expr = match from_bincode_buffer(&z_bincode) {
         | Some(e) => e,
@@ -322,17 +377,20 @@ pub unsafe extern "C" fn mobius_transformation_compose_bincode(
     mobius2_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let mobius1: MobiusTransformation = match from_bincode_buffer(&mobius1_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let mobius1: MobiusTransformation =
+        match from_bincode_buffer(&mobius1_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let mobius2: MobiusTransformation = match from_bincode_buffer(&mobius2_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let mobius2: MobiusTransformation =
+        match from_bincode_buffer(&mobius2_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let result = mobius1.compose(&mobius2);
+    let result =
+        mobius1.compose(&mobius2);
 
     to_bincode_buffer(&result)
 }
@@ -343,10 +401,11 @@ pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
     mobius_bincode: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let mobius: MobiusTransformation = match from_bincode_buffer(&mobius_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let mobius: MobiusTransformation =
+        match from_bincode_buffer(&mobius_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
     let result = mobius.inverse();
 
@@ -361,14 +420,16 @@ pub unsafe extern "C" fn cauchy_integral_formula_bincode(
     z0_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let func: Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let func: Expr =
+        match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
     let z0: Expr = match from_bincode_buffer(&z0_bincode) {
         | Some(e) => e,
@@ -389,14 +450,16 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
     n: usize,
 ) -> BincodeBuffer {
 
-    let func: Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+    let func: Expr =
+        match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
     let z0: Expr = match from_bincode_buffer(&z0_bincode) {
         | Some(e) => e,
@@ -412,56 +475,70 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_exp_bincode(z_bincode: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn complex_exp_bincode(
+    z_bincode: BincodeBuffer
+) -> BincodeBuffer {
 
     let z: Expr = match from_bincode_buffer(&z_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = crate::symbolic::complex_analysis::complex_exp(&z);
+    let result =
+        crate::symbolic::complex_analysis::complex_exp(&z);
 
     to_bincode_buffer(&result)
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_log_bincode(z_bincode: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn complex_log_bincode(
+    z_bincode: BincodeBuffer
+) -> BincodeBuffer {
 
     let z: Expr = match from_bincode_buffer(&z_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = crate::symbolic::complex_analysis::complex_log(&z);
+    let result =
+        crate::symbolic::complex_analysis::complex_log(&z);
 
     to_bincode_buffer(&result)
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_arg_bincode(z_bincode: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn complex_arg_bincode(
+    z_bincode: BincodeBuffer
+) -> BincodeBuffer {
 
     let z: Expr = match from_bincode_buffer(&z_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = crate::symbolic::complex_analysis::complex_arg(&z);
+    let result =
+        crate::symbolic::complex_analysis::complex_arg(&z);
 
     to_bincode_buffer(&result)
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_modulus_bincode(z_bincode: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn complex_modulus_bincode(
+    z_bincode: BincodeBuffer
+) -> BincodeBuffer {
 
     let z: Expr = match from_bincode_buffer(&z_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = crate::symbolic::complex_analysis::complex_modulus(&z);
+    let result =
+        crate::symbolic::complex_analysis::complex_modulus(
+            &z,
+        );
 
     to_bincode_buffer(&result)
 }

@@ -17,7 +17,8 @@ unsafe fn parse_c_str_array(
         return None;
     }
 
-    let mut vars = Vec::with_capacity(len);
+    let mut vars =
+        Vec::with_capacity(len);
 
     for i in 0..len {
 
@@ -31,7 +32,9 @@ unsafe fn parse_c_str_array(
         let c_str = CStr::from_ptr(ptr);
 
         match c_str.to_str() {
-            | Ok(s) => vars.push(s.to_string()),
+            | Ok(s) => {
+                vars.push(s.to_string())
+            },
             | Err(_) => return None,
         }
     }
@@ -65,14 +68,23 @@ pub extern "C" fn rssn_find_extrema_handle(
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> = vars_strings
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+        let vars_refs: Vec<&str> =
+            vars_strings
+                .iter()
+                .map(|s| s.as_str())
+                .collect();
 
-        match find_extrema(expr, &vars_refs) {
-            | Ok(points) => Box::into_raw(Box::new(points)),
-            | Err(_) => std::ptr::null_mut(),
+        match find_extrema(
+            expr, &vars_refs,
+        ) {
+            | Ok(points) => {
+                Box::into_raw(Box::new(
+                    points,
+                ))
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -103,12 +115,15 @@ pub extern "C" fn rssn_hessian_matrix_handle(
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> = vars_strings
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+        let vars_refs: Vec<&str> =
+            vars_strings
+                .iter()
+                .map(|s| s.as_str())
+                .collect();
 
-        let hessian = hessian_matrix(expr, &vars_refs);
+        let hessian = hessian_matrix(
+            expr, &vars_refs,
+        );
 
         Box::into_raw(Box::new(hessian))
     }
@@ -124,7 +139,9 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
     vars_len: c_int,
 ) -> *mut Vec<HashMap<Expr, Expr>> {
 
-    if expr_ptr.is_null() || constraints_ptr.is_null() {
+    if expr_ptr.is_null()
+        || constraints_ptr.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -133,7 +150,8 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
 
         let expr = &*expr_ptr;
 
-        let constraints = &*constraints_ptr;
+        let constraints =
+            &*constraints_ptr;
 
         let vars_strings = match parse_c_str_array(
             vars_ptr,
@@ -143,18 +161,25 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> = vars_strings
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+        let vars_refs: Vec<&str> =
+            vars_strings
+                .iter()
+                .map(|s| s.as_str())
+                .collect();
 
         match find_constrained_extrema(
             expr,
             constraints,
             &vars_refs,
         ) {
-            | Ok(solutions) => Box::into_raw(Box::new(solutions)),
-            | Err(_) => std::ptr::null_mut(),
+            | Ok(solutions) => {
+                Box::into_raw(Box::new(
+                    solutions,
+                ))
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -162,7 +187,9 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
 /// Frees a Vec<CriticalPoint> handle
 #[no_mangle]
 
-pub extern "C" fn rssn_free_critical_point_vec_handle(ptr: *mut Vec<CriticalPoint>) {
+pub extern "C" fn rssn_free_critical_point_vec_handle(
+    ptr: *mut Vec<CriticalPoint>
+) {
 
     if !ptr.is_null() {
 
@@ -176,7 +203,9 @@ pub extern "C" fn rssn_free_critical_point_vec_handle(ptr: *mut Vec<CriticalPoin
 /// Frees a Vec<HashMap<Expr, Expr>> handle
 #[no_mangle]
 
-pub extern "C" fn rssn_free_solution_vec_handle(ptr: *mut Vec<HashMap<Expr, Expr>>) {
+pub extern "C" fn rssn_free_solution_vec_handle(
+    ptr: *mut Vec<HashMap<Expr, Expr>>
+) {
 
     if !ptr.is_null() {
 

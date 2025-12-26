@@ -8,7 +8,10 @@ fn test_mean() {
         1.0, 2.0, 3.0, 4.0, 5.0,
     ];
 
-    assert!((mean(&data) - 3.0).abs() < 1e-10);
+    assert!(
+        (mean(&data) - 3.0).abs()
+            < 1e-10
+    );
 
     let empty: Vec<f64> = vec![];
 
@@ -20,7 +23,8 @@ fn test_mean() {
 fn test_variance() {
 
     let data = vec![
-        2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0,
+        2.0, 4.0, 4.0, 4.0, 5.0, 5.0,
+        7.0, 9.0,
     ];
 
     let var = variance(&data);
@@ -37,7 +41,10 @@ fn test_geometric_mean() {
     let gm = geometric_mean(&data);
 
     // (1*2*4*8)^(1/4) = 64^(1/4) = 2.828...
-    assert!((gm - 2.8284271247461903).abs() < 1e-10);
+    assert!(
+        (gm - 2.8284271247461903).abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -49,7 +56,10 @@ fn test_harmonic_mean() {
     let hm = harmonic_mean(&data);
 
     // 3 / (1/1 + 1/2 + 1/4) = 3 / 1.75 = 1.714...
-    assert!((hm - 1.7142857142857142).abs() < 1e-10);
+    assert!(
+        (hm - 1.7142857142857142).abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -60,7 +70,10 @@ fn test_range() {
         1.0, 5.0, 3.0, 9.0, 2.0,
     ];
 
-    assert!((range(&data) - 8.0).abs() < 1e-10);
+    assert!(
+        (range(&data) - 8.0).abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -79,7 +92,9 @@ fn test_z_scores() {
     assert!(z[2].abs() < 1e-10);
 
     // z[0] and z[4] should be symmetric
-    assert!((z[0] + z[4]).abs() < 1e-10);
+    assert!(
+        (z[0] + z[4]).abs() < 1e-10
+    );
 }
 
 #[test]
@@ -87,7 +102,8 @@ fn test_z_scores() {
 fn test_mode() {
 
     let data = vec![
-        1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0,
+        1.0, 2.0, 2.0, 3.0, 3.0, 3.0,
+        4.0,
     ];
 
     let m = mode(&data, 0);
@@ -95,7 +111,8 @@ fn test_mode() {
     assert_eq!(m, Some(3.0));
 
     // No mode when all unique
-    let unique = vec![1.0, 2.0, 3.0, 4.0];
+    let unique =
+        vec![1.0, 2.0, 3.0, 4.0];
 
     assert_eq!(
         mode(&unique, 0),
@@ -141,9 +158,12 @@ fn test_correlation() {
         10.0, 8.0, 6.0, 4.0, 2.0,
     ];
 
-    let corr_neg = correlation(&x, &y_neg);
+    let corr_neg =
+        correlation(&x, &y_neg);
 
-    assert!((corr_neg + 1.0).abs() < 1e-10); // Perfect negative correlation
+    assert!(
+        (corr_neg + 1.0).abs() < 1e-10
+    ); // Perfect negative correlation
 }
 
 #[test]
@@ -158,7 +178,8 @@ fn test_simple_linear_regression() {
         (4.0, 9.0),
     ];
 
-    let (slope, intercept) = simple_linear_regression(&data);
+    let (slope, intercept) =
+        simple_linear_regression(&data);
 
     assert!(
         (slope - 2.0).abs() < 1e-10,
@@ -189,7 +210,12 @@ fn test_shannon_entropy() {
     // Certain event: H = 0
     let certain = vec![1.0, 0.0, 0.0];
 
-    assert!((shannon_entropy(&certain) - 0.0).abs() < 1e-10);
+    assert!(
+        (shannon_entropy(&certain)
+            - 0.0)
+            .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -216,11 +242,15 @@ fn test_welch_t_test() {
 
 fn test_chi_squared() {
 
-    let observed = vec![10.0, 20.0, 30.0];
+    let observed =
+        vec![10.0, 20.0, 30.0];
 
-    let expected = vec![10.0, 20.0, 30.0];
+    let expected =
+        vec![10.0, 20.0, 30.0];
 
-    let (chi, p) = chi_squared_test(&observed, &expected);
+    let (chi, p) = chi_squared_test(
+        &observed, &expected,
+    );
 
     assert!(chi.abs() < 1e-10); // Perfect match
     assert!((p - 1.0).abs() < 0.1);
@@ -234,7 +264,8 @@ fn test_coefficient_of_variation() {
         10.0, 20.0, 30.0, 40.0, 50.0,
     ];
 
-    let cv = coefficient_of_variation(&data);
+    let cv =
+        coefficient_of_variation(&data);
 
     assert!(cv > 0.0);
 }
@@ -250,9 +281,12 @@ fn test_standard_error() {
     let se = standard_error(&data);
 
     // SE = std_dev / sqrt(n)
-    let expected = std_dev(&data) / (5.0_f64).sqrt();
+    let expected = std_dev(&data)
+        / (5.0_f64).sqrt();
 
-    assert!((se - expected).abs() < 1e-10);
+    assert!(
+        (se - expected).abs() < 1e-10
+    );
 }
 
 // Property-based tests

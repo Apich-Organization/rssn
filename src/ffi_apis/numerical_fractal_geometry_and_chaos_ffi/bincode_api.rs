@@ -86,25 +86,30 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: MandelbrotSetInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<Vec<u32>>, String> {
+    let input: MandelbrotSetInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<Vec<u32>>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::generate_mandelbrot_set(
-        input.width,
-        input.height,
-        input.x_range,
-        input.y_range,
-        input.max_iter,
-    );
+    let result =
+        fractal_geometry_and_chaos::generate_mandelbrot_set(
+            input.width,
+            input.height,
+            input.x_range,
+            input.y_range,
+            input.max_iter,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -118,23 +123,28 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: MandelbrotPointInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<u32, String> {
+    let input: MandelbrotPointInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    u32,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::mandelbrot_escape_time(
-        input.c_real,
-        input.c_imag,
-        input.max_iter,
-    );
+    let result =
+        fractal_geometry_and_chaos::mandelbrot_escape_time(
+            input.c_real,
+            input.c_imag,
+            input.max_iter,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -149,26 +159,31 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: JuliaSetInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<Vec<u32>>, String> {
+    let input: JuliaSetInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<Vec<u32>>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::generate_julia_set(
-        input.width,
-        input.height,
-        input.x_range,
-        input.y_range,
-        input.c,
-        input.max_iter,
-    );
+    let result =
+        fractal_geometry_and_chaos::generate_julia_set(
+            input.width,
+            input.height,
+            input.x_range,
+            input.y_range,
+            input.c,
+            input.max_iter,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -183,17 +198,21 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: LorenzInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<(f64, f64, f64)>, String> {
+    let input: LorenzInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<(f64, f64, f64)>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
     let result = fractal_geometry_and_chaos::generate_lorenz_attractor(
         input.start_point,
@@ -214,24 +233,29 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: HenonInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<(f64, f64)>, String> {
+    let input: HenonInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<(f64, f64)>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::generate_henon_map(
-        input.start_point,
-        input.num_steps,
-        input.a,
-        input.b,
-    );
+    let result =
+        fractal_geometry_and_chaos::generate_henon_map(
+            input.start_point,
+            input.num_steps,
+            input.a,
+            input.b,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -246,23 +270,28 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: LogisticMapInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<f64>, String> {
+    let input: LogisticMapInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::logistic_map_iterate(
-        input.x0,
-        input.r,
-        input.num_steps,
-    );
+    let result =
+        fractal_geometry_and_chaos::logistic_map_iterate(
+            input.x0,
+            input.r,
+            input.num_steps,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -277,17 +306,21 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: LyapunovLogisticInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
+    let input: LyapunovLogisticInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    f64,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
     let result = fractal_geometry_and_chaos::lyapunov_exponent_logistic(
         input.r,
@@ -309,22 +342,27 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: DimensionInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
+    let input: DimensionInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    f64,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::box_counting_dimension(
-        &input.points,
-        input.num_scales,
-    );
+    let result =
+        fractal_geometry_and_chaos::box_counting_dimension(
+            &input.points,
+            input.num_scales,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -339,22 +377,27 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: DimensionInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
+    let input: DimensionInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    f64,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = fractal_geometry_and_chaos::correlation_dimension(
-        &input.points,
-        input.num_scales,
-    );
+    let result =
+        fractal_geometry_and_chaos::correlation_dimension(
+            &input.points,
+            input.num_scales,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),

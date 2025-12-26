@@ -25,7 +25,9 @@ pub type Nodes = Vec<(f64, f64)>;
 pub type Elements = Vec<[usize; 4]>;
 
 /// Parameters for the linear elasticity simulation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct ElasticityParameters {
     pub nodes: Nodes,
@@ -59,9 +61,18 @@ pub fn element_stiffness_matrix(
     //
     // If the element geometry or node ordering changes, this matrix must be recomputed accordingly.
     let b_mat = array![
-        [-0.25, 0.0, 0.25, 0.0, 0.25, 0.0, -0.25, 0.0],
-        [0.0, -0.25, 0.0, -0.25, 0.0, 0.25, 0.0, 0.25],
-        [-0.25, -0.25, -0.25, 0.25, 0.25, 0.25, 0.25, -0.25]
+        [
+            -0.25, 0.0, 0.25, 0.0,
+            0.25, 0.0, -0.25, 0.0
+        ],
+        [
+            0.0, -0.25, 0.0, -0.25,
+            0.0, 0.25, 0.0, 0.25
+        ],
+        [
+            -0.25, -0.25, -0.25, 0.25,
+            0.25, 0.25, 0.25, -0.25
+        ]
     ];
 
     let c_mat = (e / (1.0 - nu * nu))
@@ -93,7 +104,9 @@ pub fn element_stiffness_matrix(
 /// A `Result` containing a `Vec<f64>` of nodal displacements (u, v for each node),
 /// or an error string if the linear system cannot be solved.
 
-pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f64>, String> {
+pub fn run_elasticity_simulation(
+    params: &ElasticityParameters
+) -> Result<Vec<f64>, String> {
 
     let n_nodes = params.nodes.len();
 
@@ -151,13 +164,17 @@ pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f6
         })
         .collect();
 
-    let mut f_global = Array1::<f64>::zeros(n_dofs);
+    let mut f_global =
+        Array1::<f64>::zeros(n_dofs);
 
-    for &(node_idx, fx, fy) in &params.loads {
+    for &(node_idx, fx, fy) in
+        &params.loads
+    {
 
         f_global[node_idx * 2] += fx;
 
-        f_global[node_idx * 2 + 1] += fy;
+        f_global[node_idx * 2 + 1] +=
+            fy;
     }
 
     // Handle boundary conditions: zero out rows and columns of fixed DOFs
@@ -173,35 +190,49 @@ pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f6
         })
         .collect();
 
-    let mut filtered_triplets: Vec<(usize, usize, f64)> = triplets
+    let mut filtered_triplets: Vec<(
+        usize,
+        usize,
+        f64,
+    )> = triplets
         .into_par_iter()
-        .filter(|(r, c, _)| !fixed_dofs.contains(r) && !fixed_dofs.contains(c))
+        .filter(|(r, c, _)| {
+            !fixed_dofs.contains(r)
+                && !fixed_dofs
+                    .contains(c)
+        })
         .collect();
 
-    for &node_idx in &params.fixed_nodes {
+    for &node_idx in &params.fixed_nodes
+    {
 
         let dof1 = node_idx * 2;
 
         let dof2 = node_idx * 2 + 1;
 
-        filtered_triplets.push((dof1, dof1, 1.0));
+        filtered_triplets
+            .push((dof1, dof1, 1.0));
 
-        filtered_triplets.push((dof2, dof2, 1.0));
+        filtered_triplets
+            .push((dof2, dof2, 1.0));
 
         f_global[dof1] = 0.0;
 
         f_global[dof2] = 0.0;
     }
 
-    let k_global: CsMat<f64> = csr_from_triplets(
-        n_dofs,
-        n_dofs,
-        &filtered_triplets,
-    );
+    let k_global: CsMat<f64> =
+        csr_from_triplets(
+            n_dofs,
+            n_dofs,
+            &filtered_triplets,
+        );
 
-    let displacements = solve_conjugate_gradient(
-        &k_global, &f_global, None, 5000, 1e-9,
-    )?;
+    let displacements =
+        solve_conjugate_gradient(
+            &k_global, &f_global, None,
+            5000, 1e-9,
+        )?;
 
     Ok(displacements.to_vec())
 }
@@ -213,9 +244,13 @@ pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f6
 /// the elasticity simulation and saves the original and deformed node positions
 /// to CSV files for visualization.
 
-pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
+pub fn simulate_cantilever_beam_scenario(
+) -> Result<(), String> {
 
-    println!("Running 2D Cantilever Beam simulation...");
+    println!(
+        "Running 2D Cantilever Beam \
+         simulation..."
+    );
 
     let beam_length = 10.0;
 
@@ -232,13 +267,16 @@ pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
         for i in 0..=nx {
 
             nodes.push((
-                i as f64 * beam_length / nx as f64,
-                j as f64 * beam_height / ny as f64,
+                i as f64 * beam_length
+                    / nx as f64,
+                j as f64 * beam_height
+                    / ny as f64,
             ));
         }
     }
 
-    let mut elements: Elements = Vec::new();
+    let mut elements: Elements =
+        Vec::new();
 
     for j in 0..ny {
 
@@ -246,17 +284,23 @@ pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
 
             let n1 = j * (nx + 1) + i;
 
-            let n2 = j * (nx + 1) + i + 1;
+            let n2 =
+                j * (nx + 1) + i + 1;
 
-            let n3 = (j + 1) * (nx + 1) + i + 1;
+            let n3 = (j + 1) * (nx + 1)
+                + i
+                + 1;
 
-            let n4 = (j + 1) * (nx + 1) + i;
+            let n4 =
+                (j + 1) * (nx + 1) + i;
 
-            elements.push([n1, n2, n3, n4]);
+            elements
+                .push([n1, n2, n3, n4]);
         }
     }
 
-    let fixed_nodes: Vec<usize> = (0..=ny)
+    let fixed_nodes: Vec<usize> = (0
+        ..=ny)
         .map(|j| j * (nx + 1))
         .collect();
 
@@ -275,9 +319,14 @@ pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
         loads,
     };
 
-    let d = run_elasticity_simulation(&params)?;
+    let d = run_elasticity_simulation(
+        &params,
+    )?;
 
-    println!("Simulation finished. Saving results...");
+    println!(
+        "Simulation finished. Saving \
+         results..."
+    );
 
     let mut new_nodes = nodes.clone();
 
@@ -288,13 +337,21 @@ pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
         new_nodes[i].1 += d[i * 2 + 1];
     }
 
-    let mut orig_file = File::create("beam_original.csv").map_err(|e| e.to_string())?;
+    let mut orig_file = File::create(
+        "beam_original.csv",
+    )
+    .map_err(|e| e.to_string())?;
 
-    let mut def_file = File::create("beam_deformed.csv").map_err(|e| e.to_string())?;
+    let mut def_file = File::create(
+        "beam_deformed.csv",
+    )
+    .map_err(|e| e.to_string())?;
 
-    writeln!(orig_file, "x,y").map_err(|e| e.to_string())?;
+    writeln!(orig_file, "x,y")
+        .map_err(|e| e.to_string())?;
 
-    writeln!(def_file, "x,y").map_err(|e| e.to_string())?;
+    writeln!(def_file, "x,y")
+        .map_err(|e| e.to_string())?;
 
     for n in &nodes {
 
@@ -316,7 +373,11 @@ pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     }
 
-    println!("Original and deformed node positions saved to .csv files.");
+    println!(
+        "Original and deformed node \
+         positions saved to .csv \
+         files."
+    );
 
     Ok(())
 }

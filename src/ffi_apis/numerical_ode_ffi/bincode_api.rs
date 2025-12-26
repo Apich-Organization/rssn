@@ -28,17 +28,23 @@ struct OdeInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ode_solve_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_ode_solve_bincode(
+    buffer: BincodeBuffer
+) -> BincodeBuffer {
 
-    let input: OdeInput = match from_bincode_buffer(&buffer) {
+    let input: OdeInput = match from_bincode_buffer(&buffer)
+    {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<Vec<f64>>, String> {
-                    ok: None,
-                    err: Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<
+                Vec<Vec<f64>>,
+                String,
+            > {
+                ok: None,
+                err: Some(
+                    "Invalid Bincode input".to_string(),
+                ),
+            })
         },
     };
 

@@ -13,11 +13,15 @@ pub extern "C" fn rssn_json_multivector_scalar(
     value_json: *const c_char,
 ) -> *mut c_char {
 
-    let value: Option<Expr> = from_json_string(value_json);
+    let value: Option<Expr> =
+        from_json_string(value_json);
 
     if let Some(val) = value {
 
-        let mv = Multivector::scalar((p, q, r), val);
+        let mv = Multivector::scalar(
+            (p, q, r),
+            val,
+        );
 
         to_json_string(&mv)
     } else {
@@ -34,13 +38,18 @@ pub extern "C" fn rssn_json_multivector_geometric_product(
     b_json: *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<Multivector> = from_json_string(a_json);
+    let a: Option<Multivector> =
+        from_json_string(a_json);
 
-    let b: Option<Multivector> = from_json_string(b_json);
+    let b: Option<Multivector> =
+        from_json_string(b_json);
 
-    if let (Some(mv_a), Some(mv_b)) = (a, b) {
+    if let (Some(mv_a), Some(mv_b)) =
+        (a, b)
+    {
 
-        let result = mv_a.geometric_product(&mv_b);
+        let result = mv_a
+            .geometric_product(&mv_b);
 
         to_json_string(&result)
     } else {
@@ -57,13 +66,18 @@ pub extern "C" fn rssn_json_multivector_outer_product(
     b_json: *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<Multivector> = from_json_string(a_json);
+    let a: Option<Multivector> =
+        from_json_string(a_json);
 
-    let b: Option<Multivector> = from_json_string(b_json);
+    let b: Option<Multivector> =
+        from_json_string(b_json);
 
-    if let (Some(mv_a), Some(mv_b)) = (a, b) {
+    if let (Some(mv_a), Some(mv_b)) =
+        (a, b)
+    {
 
-        let result = mv_a.outer_product(&mv_b);
+        let result =
+            mv_a.outer_product(&mv_b);
 
         to_json_string(&result)
     } else {
@@ -80,13 +94,18 @@ pub extern "C" fn rssn_json_multivector_inner_product(
     b_json: *const c_char,
 ) -> *mut c_char {
 
-    let a: Option<Multivector> = from_json_string(a_json);
+    let a: Option<Multivector> =
+        from_json_string(a_json);
 
-    let b: Option<Multivector> = from_json_string(b_json);
+    let b: Option<Multivector> =
+        from_json_string(b_json);
 
-    if let (Some(mv_a), Some(mv_b)) = (a, b) {
+    if let (Some(mv_a), Some(mv_b)) =
+        (a, b)
+    {
 
-        let result = mv_a.inner_product(&mv_b);
+        let result =
+            mv_a.inner_product(&mv_b);
 
         to_json_string(&result)
     } else {
@@ -98,13 +117,17 @@ pub extern "C" fn rssn_json_multivector_inner_product(
 /// Computes reverse (JSON)
 #[no_mangle]
 
-pub extern "C" fn rssn_json_multivector_reverse(mv_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_multivector_reverse(
+    mv_json: *const c_char
+) -> *mut c_char {
 
-    let mv: Option<Multivector> = from_json_string(mv_json);
+    let mv: Option<Multivector> =
+        from_json_string(mv_json);
 
     if let Some(multivector) = mv {
 
-        let result = multivector.reverse();
+        let result =
+            multivector.reverse();
 
         to_json_string(&result)
     } else {
@@ -121,11 +144,13 @@ pub extern "C" fn rssn_json_multivector_grade_projection(
     grade: u32,
 ) -> *mut c_char {
 
-    let mv: Option<Multivector> = from_json_string(mv_json);
+    let mv: Option<Multivector> =
+        from_json_string(mv_json);
 
     if let Some(multivector) = mv {
 
-        let result = multivector.grade_projection(grade);
+        let result = multivector
+            .grade_projection(grade);
 
         to_json_string(&result)
     } else {
@@ -137,13 +162,17 @@ pub extern "C" fn rssn_json_multivector_grade_projection(
 /// Computes magnitude (JSON)
 #[no_mangle]
 
-pub extern "C" fn rssn_json_multivector_magnitude(mv_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_multivector_magnitude(
+    mv_json: *const c_char
+) -> *mut c_char {
 
-    let mv: Option<Multivector> = from_json_string(mv_json);
+    let mv: Option<Multivector> =
+        from_json_string(mv_json);
 
     if let Some(multivector) = mv {
 
-        let result = multivector.magnitude();
+        let result =
+            multivector.magnitude();
 
         to_json_string(&result)
     } else {

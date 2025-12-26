@@ -114,7 +114,9 @@ pub fn translation_3d(
 /// An `Expr::Matrix` representing the 2D rotation transformation.
 #[must_use]
 
-pub fn rotation_2d(angle: Expr) -> Expr {
+pub fn rotation_2d(
+    angle: Expr
+) -> Expr {
 
     let c = cos(angle.clone());
 
@@ -123,7 +125,9 @@ pub fn rotation_2d(angle: Expr) -> Expr {
     Expr::Matrix(vec![
         vec![
             c.clone(),
-            Expr::Neg(Arc::new(s.clone())),
+            Expr::Neg(Arc::new(
+                s.clone(),
+            )),
             Expr::BigInt(BigInt::zero()),
         ],
         vec![
@@ -148,7 +152,9 @@ pub fn rotation_2d(angle: Expr) -> Expr {
 /// An `Expr::Matrix` representing the 3D rotation transformation around the X-axis.
 #[must_use]
 
-pub fn rotation_3d_x(angle: Expr) -> Expr {
+pub fn rotation_3d_x(
+    angle: Expr
+) -> Expr {
 
     let c = cos(angle.clone());
 
@@ -164,7 +170,9 @@ pub fn rotation_3d_x(angle: Expr) -> Expr {
         vec![
             Expr::BigInt(BigInt::zero()),
             c.clone(),
-            Expr::Neg(Arc::new(s.clone())),
+            Expr::Neg(Arc::new(
+                s.clone(),
+            )),
             Expr::BigInt(BigInt::zero()),
         ],
         vec![
@@ -191,7 +199,9 @@ pub fn rotation_3d_x(angle: Expr) -> Expr {
 /// An `Expr::Matrix` representing the 3D rotation transformation around the Y-axis.
 #[must_use]
 
-pub fn rotation_3d_y(angle: Expr) -> Expr {
+pub fn rotation_3d_y(
+    angle: Expr
+) -> Expr {
 
     let c = cos(angle.clone());
 
@@ -234,7 +244,9 @@ pub fn rotation_3d_y(angle: Expr) -> Expr {
 /// An `Expr::Matrix` representing the 3D rotation transformation around the Z-axis.
 #[must_use]
 
-pub fn rotation_3d_z(angle: Expr) -> Expr {
+pub fn rotation_3d_z(
+    angle: Expr
+) -> Expr {
 
     let c = cos(angle.clone());
 
@@ -243,7 +255,9 @@ pub fn rotation_3d_z(angle: Expr) -> Expr {
     Expr::Matrix(vec![
         vec![
             c.clone(),
-            Expr::Neg(Arc::new(s.clone())),
+            Expr::Neg(Arc::new(
+                s.clone(),
+            )),
             Expr::BigInt(BigInt::zero()),
             Expr::BigInt(BigInt::zero()),
         ],
@@ -572,7 +586,9 @@ pub fn look_at(
     up: &Vector,
 ) -> Expr {
 
-    let f = (center.clone() - eye.clone()).normalize();
+    let f = (center.clone()
+        - eye.clone())
+    .normalize();
 
     let s = f
         .cross(up)
@@ -585,13 +601,17 @@ pub fn look_at(
             s.x.clone(),
             s.y.clone(),
             s.z.clone(),
-            Expr::Neg(Arc::new(s.dot(eye))),
+            Expr::Neg(Arc::new(
+                s.dot(eye),
+            )),
         ],
         vec![
             u.x.clone(),
             u.y.clone(),
             u.z.clone(),
-            Expr::Neg(Arc::new(u.dot(eye))),
+            Expr::Neg(Arc::new(
+                u.dot(eye),
+            )),
         ],
         vec![
             Expr::Neg(Arc::new(
@@ -619,7 +639,9 @@ pub fn look_at(
 /// A Bézier curve of degree `n` is defined by `n + 1` control points. The curve
 /// starts at the first control point and ends at the last control point,
 /// passing smoothly between them based on the Bernstein polynomial basis.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(
+    Clone, Debug, PartialEq, Eq,
+)]
 
 pub struct BezierCurve {
     /// The control points defining the curve shape.
@@ -662,9 +684,11 @@ impl BezierCurve {
             .enumerate()
         {
 
-            let i_bigint = BigInt::from(i);
+            let i_bigint =
+                BigInt::from(i);
 
-            let n_bigint = BigInt::from(n);
+            let n_bigint =
+                BigInt::from(n);
 
             let bernstein = Expr::new_mul(
                 Expr::Binomial(
@@ -692,7 +716,10 @@ impl BezierCurve {
                 ),
             );
 
-            result = result + pt.scalar_mul(&bernstein);
+            result = result
+                + pt.scalar_mul(
+                    &bernstein,
+                );
         }
 
         result
@@ -723,31 +750,48 @@ impl BezierCurve {
         {
 
             return Vector::new(
-                Expr::BigInt(BigInt::zero()),
-                Expr::BigInt(BigInt::zero()),
-                Expr::BigInt(BigInt::zero()),
+                Expr::BigInt(
+                    BigInt::zero(),
+                ),
+                Expr::BigInt(
+                    BigInt::zero(),
+                ),
+                Expr::BigInt(
+                    BigInt::zero(),
+                ),
             );
         }
 
         // Derivative control points: n * (P_{i+1} - P_i)
-        let n = Expr::BigInt(BigInt::from(
-            self.degree as i64,
-        ));
+        let n =
+            Expr::BigInt(BigInt::from(
+                self.degree as i64,
+            ));
 
-        let derivative_points: Vec<Vector> = (0..self
+        let derivative_points: Vec<
+            Vector,
+        > = (0..self
             .control_points
             .len()
             - 1)
             .map(|i| {
 
-                let diff = self.control_points[i + 1].clone() - self.control_points[i].clone();
+                let diff = self
+                    .control_points
+                    [i + 1]
+                    .clone()
+                    - self
+                        .control_points
+                        [i]
+                        .clone();
 
                 diff.scalar_mul(&n)
             })
             .collect();
 
         let derivative_curve = Self {
-            control_points: derivative_points,
+            control_points:
+                derivative_points,
             degree: self.degree - 1,
         };
 
@@ -775,16 +819,22 @@ impl BezierCurve {
             .control_points
             .len();
 
-        let mut pyramid: Vec<Vec<Vector>> = vec![self
+        let mut pyramid: Vec<
+            Vec<Vector>,
+        > = vec![self
             .control_points
             .clone()];
 
         // Build the De Casteljau pyramid
         for level in 1..n {
 
-            let prev = &pyramid[level - 1];
+            let prev =
+                &pyramid[level - 1];
 
-            let mut current = Vec::with_capacity(n - level);
+            let mut current =
+                Vec::with_capacity(
+                    n - level,
+                );
 
             for i in 0..(n - level) {
 
@@ -793,33 +843,49 @@ impl BezierCurve {
                     t.clone(),
                 ));
 
-                let left = prev[i].scalar_mul(&one_minus_t);
+                let left = prev[i]
+                    .scalar_mul(
+                        &one_minus_t,
+                    );
 
-                let right = prev[i + 1].scalar_mul(t);
+                let right = prev[i + 1]
+                    .scalar_mul(t);
 
-                current.push(left + right);
+                current
+                    .push(left + right);
             }
 
             pyramid.push(current);
         }
 
         // Left curve: first element of each level
-        let left_points: Vec<Vector> = (0..n)
-            .map(|i| pyramid[i][0].clone())
-            .collect();
+        let left_points: Vec<Vector> =
+            (0..n)
+                .map(|i| {
+                    pyramid[i][0]
+                        .clone()
+                })
+                .collect();
 
         // Right curve: last element of each level (in reverse)
-        let right_points: Vec<Vector> = (0..n)
-            .map(|i| pyramid[n - 1 - i][i].clone())
-            .collect();
+        let right_points: Vec<Vector> =
+            (0..n)
+                .map(|i| {
+                    pyramid[n - 1 - i]
+                        [i]
+                        .clone()
+                })
+                .collect();
 
         (
             Self {
-                control_points: left_points,
+                control_points:
+                    left_points,
                 degree: self.degree,
             },
             Self {
-                control_points: right_points,
+                control_points:
+                    right_points,
                 degree: self.degree,
             },
         )
@@ -831,7 +897,9 @@ impl BezierCurve {
 /// B-splines provide local control over curve shape, meaning that moving a control
 /// point only affects a local region of the curve. The curve is defined by control
 /// points, a knot vector, and a degree.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(
+    Clone, Debug, PartialEq, Eq,
+)]
 
 pub struct BSplineCurve {
     /// The control points defining the curve shape.
@@ -862,28 +930,40 @@ impl BSplineCurve {
 
         let p = self.degree;
 
-        let k = self.knots.len() - 1 - p - 1;
+        let k = self.knots.len()
+            - 1
+            - p
+            - 1;
 
-        let mut d: Vec<Vector> = self.control_points[..=k + p].to_vec();
+        let mut d: Vec<Vector> = self
+            .control_points[..=k + p]
+            .to_vec();
 
         for r in 1..=p {
 
             for j in (r..=k + p).rev() {
 
-                let t_j = &self.knots[j];
+                let t_j =
+                    &self.knots[j];
 
-                let t_j_p1 = &self.knots[j + p + 1 - r];
+                let t_j_p1 = &self
+                    .knots
+                    [j + p + 1 - r];
 
-                let alpha = simplify(&Expr::new_div(
-                    Expr::new_sub(
-                        t.clone(),
-                        t_j.clone(),
+                let alpha = simplify(
+                    &Expr::new_div(
+                        Expr::new_sub(
+                            t.clone(),
+                            t_j.clone(),
+                        ),
+                        Expr::new_sub(
+                            t_j_p1
+                                .clone(
+                                ),
+                            t_j.clone(),
+                        ),
                     ),
-                    Expr::new_sub(
-                        t_j_p1.clone(),
-                        t_j.clone(),
-                    ),
-                ));
+                );
 
                 d[j] = d[j - 1].scalar_mul(&simplify(
                     &Expr::new_sub(
@@ -901,7 +981,9 @@ impl BSplineCurve {
 /// Represents a single polygon face in a mesh.
 /// The `indices` field contains a list of indices that point to vertices
 /// in the `vertices` list of a `PolygonMesh`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Hash,
+)]
 
 pub struct Polygon {
     pub indices: Vec<usize>,
@@ -911,7 +993,9 @@ impl Polygon {
     /// Creates a new polygon from a list of vertex indices.
     #[must_use]
 
-    pub const fn new(indices: Vec<usize>) -> Self {
+    pub const fn new(
+        indices: Vec<usize>
+    ) -> Self {
 
         Self { indices }
     }
@@ -920,7 +1004,9 @@ impl Polygon {
 /// Represents a 3D object as a polygon mesh.
 /// A mesh is composed of a list of vertices (3D points) and a list of polygons (faces)
 /// that connect those vertices.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(
+    Clone, Debug, PartialEq, Eq,
+)]
 
 pub struct PolygonMesh {
     pub vertices: Vec<Vector>,
@@ -962,7 +1048,9 @@ impl PolygonMesh {
         transformation: &Expr,
     ) -> Result<Self, String> {
 
-        if let Expr::Matrix(matrix) = transformation {
+        if let Expr::Matrix(matrix) =
+            transformation
+        {
 
             let transformed_vertices = self
                 .vertices
@@ -1014,14 +1102,19 @@ impl PolygonMesh {
                 .collect();
 
             Ok(Self {
-                vertices: transformed_vertices,
+                vertices:
+                    transformed_vertices,
                 polygons: self
                     .polygons
                     .clone(),
             })
         } else {
 
-            Err("Transformation must be an Expr::Matrix".to_string())
+            Err(
+                "Transformation must \
+                 be an Expr::Matrix"
+                    .to_string(),
+            )
         }
     }
 
@@ -1034,27 +1127,44 @@ impl PolygonMesh {
     /// A vector of `Vector` representing the normal for each polygon.
     #[must_use]
 
-    pub fn compute_normals(&self) -> Vec<Vector> {
+    pub fn compute_normals(
+        &self
+    ) -> Vec<Vector> {
 
         self.polygons
             .iter()
             .filter_map(|poly| {
-                if poly.indices.len() >= 3 {
+                if poly.indices.len()
+                    >= 3
+                {
 
-                    let v0 = &self.vertices[poly.indices[0]];
+                    let v0 = &self
+                        .vertices[poly
+                        .indices[0]];
 
-                    let v1 = &self.vertices[poly.indices[1]];
+                    let v1 = &self
+                        .vertices[poly
+                        .indices[1]];
 
-                    let v2 = &self.vertices[poly.indices[2]];
+                    let v2 = &self
+                        .vertices[poly
+                        .indices[2]];
 
-                    let edge1 = v1.clone() - v0.clone();
+                    let edge1 = v1
+                        .clone()
+                        - v0.clone();
 
-                    let edge2 = v2.clone() - v0.clone();
+                    let edge2 = v2
+                        .clone()
+                        - v0.clone();
 
                     Some(
                         edge1
-                            .cross(&edge2)
-                            .normalize(),
+                            .cross(
+                                &edge2,
+                            )
+                            .normalize(
+                            ),
                     )
                 } else {
 
@@ -1155,7 +1265,9 @@ pub fn shear_2d(
 /// An `Expr::Matrix` representing the 2D reflection transformation.
 #[must_use]
 
-pub fn reflection_2d(angle: Expr) -> Expr {
+pub fn reflection_2d(
+    angle: Expr
+) -> Expr {
 
     let two_angle = Expr::new_mul(
         Expr::Constant(2.0),
@@ -1210,7 +1322,9 @@ pub fn reflection_3d(
     Expr::Matrix(vec![
         vec![
             simplify(&Expr::new_sub(
-                Expr::BigInt(BigInt::one()),
+                Expr::BigInt(
+                    BigInt::one(),
+                ),
                 Expr::new_mul(
                     two.clone(),
                     Expr::new_mul(
@@ -1250,7 +1364,9 @@ pub fn reflection_3d(
                 ),
             )),
             simplify(&Expr::new_sub(
-                Expr::BigInt(BigInt::one()),
+                Expr::BigInt(
+                    BigInt::one(),
+                ),
                 Expr::new_mul(
                     two.clone(),
                     Expr::new_mul(
@@ -1274,20 +1390,31 @@ pub fn reflection_3d(
             simplify(&Expr::new_neg(
                 Expr::new_mul(
                     two.clone(),
-                    Expr::new_mul(nz.clone(), nx),
+                    Expr::new_mul(
+                        nz.clone(),
+                        nx,
+                    ),
                 ),
             )),
             simplify(&Expr::new_neg(
                 Expr::new_mul(
                     two.clone(),
-                    Expr::new_mul(nz.clone(), ny),
+                    Expr::new_mul(
+                        nz.clone(),
+                        ny,
+                    ),
                 ),
             )),
             simplify(&Expr::new_sub(
-                Expr::BigInt(BigInt::one()),
+                Expr::BigInt(
+                    BigInt::one(),
+                ),
                 Expr::new_mul(
                     two,
-                    Expr::new_mul(nz.clone(), nz),
+                    Expr::new_mul(
+                        nz.clone(),
+                        nz,
+                    ),
                 ),
             )),
             Expr::BigInt(BigInt::zero()),
@@ -1320,10 +1447,11 @@ pub fn rotation_axis_angle(
 
     let s = sin(angle);
 
-    let one_minus_c = simplify(&Expr::new_sub(
-        Expr::BigInt(BigInt::one()),
-        c.clone(),
-    ));
+    let one_minus_c =
+        simplify(&Expr::new_sub(
+            Expr::BigInt(BigInt::one()),
+            c.clone(),
+        ));
 
     let ux = axis.x.clone();
 
@@ -1427,7 +1555,10 @@ pub fn rotation_axis_angle(
             )),
             simplify(&Expr::new_add(
                 Expr::new_mul(
-                    Expr::new_mul(uz.clone(), uy),
+                    Expr::new_mul(
+                        uz.clone(),
+                        uy,
+                    ),
                     one_minus_c.clone(),
                 ),
                 Expr::new_mul(ux, s),
@@ -1435,7 +1566,10 @@ pub fn rotation_axis_angle(
             simplify(&Expr::new_add(
                 c,
                 Expr::new_mul(
-                    Expr::new_mul(uz.clone(), uz),
+                    Expr::new_mul(
+                        uz.clone(),
+                        uz,
+                    ),
                     one_minus_c,
                 ),
             )),

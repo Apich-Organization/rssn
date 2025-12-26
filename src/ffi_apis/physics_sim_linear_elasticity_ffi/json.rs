@@ -17,22 +17,25 @@ pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let params: ElasticityParameters = match from_json_string(input) {
-        | Some(p) => p,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    "Invalid JSON".to_string(),
-                ))
-                .unwrap(),
-            )
-        },
-    };
+    let params: ElasticityParameters =
+        match from_json_string(input) {
+            | Some(p) => p,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<f64>,
+                        String,
+                    >::err(
+                        "Invalid JSON".to_string(),
+                    ))
+                    .unwrap(),
+                )
+            },
+        };
 
-    match linear_elasticity::run_elasticity_simulation(&params) {
+    match linear_elasticity::run_elasticity_simulation(
+        &params,
+    ) {
         | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<

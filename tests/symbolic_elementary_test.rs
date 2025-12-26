@@ -106,7 +106,8 @@ fn test_binomial_coefficient() {
     use rssn::symbolic::elementary::binomial_coefficient;
 
     // Test C(5, 2) = 10
-    let result = binomial_coefficient(5, 2);
+    let result =
+        binomial_coefficient(5, 2);
 
     assert_eq!(
         result,
@@ -114,7 +115,8 @@ fn test_binomial_coefficient() {
     );
 
     // Test C(4, 0) = 1
-    let result = binomial_coefficient(4, 0);
+    let result =
+        binomial_coefficient(4, 0);
 
     assert_eq!(
         result,
@@ -122,7 +124,8 @@ fn test_binomial_coefficient() {
     );
 
     // Test C(4, 4) = 1
-    let result = binomial_coefficient(4, 4);
+    let result =
+        binomial_coefficient(4, 4);
 
     assert_eq!(
         result,
@@ -130,7 +133,8 @@ fn test_binomial_coefficient() {
     );
 
     // Test C(6, 3) = 20
-    let result = binomial_coefficient(6, 3);
+    let result =
+        binomial_coefficient(6, 3);
 
     assert_eq!(
         result,
@@ -147,7 +151,8 @@ fn test_power_and_sqrt() {
     let y = Expr::new_variable("y");
 
     // Test pow
-    let x_pow_y = pow(x.clone(), y.clone());
+    let x_pow_y =
+        pow(x.clone(), y.clone());
 
     assert!(matches!(
         x_pow_y,
@@ -267,9 +272,11 @@ fn test_inverse_hyperbolic() {
 fn test_expand_mul() {
 
     // Test (x+1)*(y+2) expansion using AST constructors
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
-    let y = Expr::Variable("y".to_string());
+    let y =
+        Expr::Variable("y".to_string());
 
     let one = Expr::Constant(1.0);
 
@@ -296,7 +303,10 @@ fn test_expand_mul() {
     // Just check it doesn't panic and returns something
     assert!(matches!(
         expanded,
-        Expr::Add(_, _) | Expr::Mul(_, _) | Expr::Dag(_) | _
+        Expr::Add(_, _)
+            | Expr::Mul(_, _)
+            | Expr::Dag(_)
+            | _
     ));
 }
 
@@ -305,11 +315,13 @@ fn test_expand_mul() {
 fn test_expand_power() {
 
     // Test (x+1)^2 expansion using AST constructors
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let one = Expr::Constant(1.0);
 
-    let two = Expr::BigInt(BigInt::from(2));
+    let two =
+        Expr::BigInt(BigInt::from(2));
 
     let x_plus_1 = Expr::Add(
         Arc::new(x.clone()),
@@ -327,7 +339,9 @@ fn test_expand_power() {
     // Just check it doesn't panic
     assert!(matches!(
         expanded,
-        Expr::Add(_, _) | Expr::Dag(_) | _
+        Expr::Add(_, _)
+            | Expr::Dag(_)
+            | _
     ));
 }
 
@@ -336,23 +350,29 @@ fn test_expand_power() {
 fn test_expand_log() {
 
     // Test log(x*y) expansion using AST constructors
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
-    let y = Expr::Variable("y".to_string());
+    let y =
+        Expr::Variable("y".to_string());
 
     let product = Expr::Mul(
         Arc::new(x.clone()),
         Arc::new(y.clone()),
     );
 
-    let log_product = Expr::Log(Arc::new(product));
+    let log_product =
+        Expr::Log(Arc::new(product));
 
     let expanded = expand(log_product);
 
     // Should expand to log(x) + log(y)
     assert!(matches!(
         expanded,
-        Expr::Add(_, _) | Expr::Log(_) | Expr::Dag(_) | _
+        Expr::Add(_, _)
+            | Expr::Log(_)
+            | Expr::Dag(_)
+            | _
     ));
 }
 
@@ -361,23 +381,29 @@ fn test_expand_log() {
 fn test_expand_trig() {
 
     // Test sin(x+y) expansion using AST constructors
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
-    let y = Expr::Variable("y".to_string());
+    let y =
+        Expr::Variable("y".to_string());
 
     let sum = Expr::Add(
         Arc::new(x.clone()),
         Arc::new(y.clone()),
     );
 
-    let sin_sum = Expr::Sin(Arc::new(sum));
+    let sin_sum =
+        Expr::Sin(Arc::new(sum));
 
     let expanded = expand(sin_sum);
 
     // Should expand using sum-angle formula
     assert!(matches!(
         expanded,
-        Expr::Add(_, _) | Expr::Sin(_) | Expr::Dag(_) | _
+        Expr::Add(_, _)
+            | Expr::Sin(_)
+            | Expr::Dag(_)
+            | _
     ));
 }
 
@@ -389,7 +415,8 @@ fn test_atan2() {
 
     let y = Expr::new_variable("y");
 
-    let atan2_yx = atan2(y.clone(), x.clone());
+    let atan2_yx =
+        atan2(y.clone(), x.clone());
 
     assert!(matches!(
         atan2_yx,

@@ -13,21 +13,26 @@ use crate::physics::physics_sim::gpe_superfluidity::{
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_sim_gpe_run_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_physics_sim_gpe_run_bincode(
+    buffer: BincodeBuffer
+) -> BincodeBuffer {
 
-    let params: GpeParameters = match from_bincode_buffer(&buffer) {
-        | Some(p) => p,
-        | None => {
-            return to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
-                "Invalid Bincode".to_string(),
-            ))
-        },
-    };
+    let params: GpeParameters =
+        match from_bincode_buffer(&buffer) {
+            | Some(p) => p,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
+                    "Invalid Bincode".to_string(),
+                ))
+            },
+        };
 
-    match gpe_superfluidity::run_gpe_ground_state_finder(&params) {
+    match gpe_superfluidity::run_gpe_ground_state_finder(
+        &params,
+    ) {
         | Ok(res) => {
             to_bincode_buffer(&FfiResult::<
                 Vec<f64>,

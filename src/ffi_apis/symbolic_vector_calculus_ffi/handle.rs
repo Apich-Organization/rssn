@@ -11,7 +11,9 @@ use std::ffi::{
 use std::os::raw::c_char;
 
 // Helper function to parse expression from C string
-fn parse_expr_from_cstr(ptr: *const c_char) -> Option<Expr> {
+fn parse_expr_from_cstr(
+    ptr: *const c_char
+) -> Option<Expr> {
 
     if ptr.is_null() {
 
@@ -20,13 +22,20 @@ fn parse_expr_from_cstr(ptr: *const c_char) -> Option<Expr> {
 
     unsafe {
 
-        let c_str = match CStr::from_ptr(ptr).to_str() {
-            | Ok(s) => s,
-            | Err(_) => return None,
-        };
+        let c_str =
+            match CStr::from_ptr(ptr)
+                .to_str()
+            {
+                | Ok(s) => s,
+                | Err(_) => {
+                    return None
+                },
+            };
 
         match parse_expr(c_str) {
-            | Ok(("", expr)) => Some(expr),
+            | Ok(("", expr)) => {
+                Some(expr)
+            },
             | _ => None,
         }
     }
@@ -75,7 +84,8 @@ pub extern "C" fn rssn_parametric_curve_new(
 
         if t_var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         match CStr::from_ptr(t_var).to_str() {
@@ -86,7 +96,8 @@ pub extern "C" fn rssn_parametric_curve_new(
 
     let curve = ParametricCurve {
         r: Vector::new(
-            r_x_expr, r_y_expr, r_z_expr,
+            r_x_expr, r_y_expr,
+            r_z_expr,
         ),
         t_var: t_var_str,
         t_bounds: (
@@ -101,13 +112,16 @@ pub extern "C" fn rssn_parametric_curve_new(
 /// Frees a ParametricCurve handle.
 #[no_mangle]
 
-pub extern "C" fn rssn_parametric_curve_free(curve: *mut ParametricCurve) {
+pub extern "C" fn rssn_parametric_curve_free(
+    curve: *mut ParametricCurve
+) {
 
     if !curve.is_null() {
 
         unsafe {
 
-            let _ = Box::from_raw(curve);
+            let _ =
+                Box::from_raw(curve);
         }
     }
 }
@@ -166,9 +180,12 @@ pub extern "C" fn rssn_parametric_surface_new(
 
     let (u_var_str, v_var_str) = unsafe {
 
-        if u_var.is_null() || v_var.is_null() {
+        if u_var.is_null()
+            || v_var.is_null()
+        {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         let u = match CStr::from_ptr(u_var).to_str() {
@@ -186,7 +203,8 @@ pub extern "C" fn rssn_parametric_surface_new(
 
     let surface = ParametricSurface {
         r: Vector::new(
-            r_x_expr, r_y_expr, r_z_expr,
+            r_x_expr, r_y_expr,
+            r_z_expr,
         ),
         u_var: u_var_str,
         u_bounds: (
@@ -206,13 +224,16 @@ pub extern "C" fn rssn_parametric_surface_new(
 /// Frees a ParametricSurface handle.
 #[no_mangle]
 
-pub extern "C" fn rssn_parametric_surface_free(surface: *mut ParametricSurface) {
+pub extern "C" fn rssn_parametric_surface_free(
+    surface: *mut ParametricSurface
+) {
 
     if !surface.is_null() {
 
         unsafe {
 
-            let _ = Box::from_raw(surface);
+            let _ =
+                Box::from_raw(surface);
         }
     }
 }
@@ -264,11 +285,19 @@ pub extern "C" fn rssn_volume_new(
         | None => return std::ptr::null_mut(),
     };
 
-    let (x_var_str, y_var_str, z_var_str) = unsafe {
+    let (
+        x_var_str,
+        y_var_str,
+        z_var_str,
+    ) = unsafe {
 
-        if x_var.is_null() || y_var.is_null() || z_var.is_null() {
+        if x_var.is_null()
+            || y_var.is_null()
+            || z_var.is_null()
+        {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         let x = match CStr::from_ptr(x_var).to_str() {
@@ -303,7 +332,8 @@ pub extern "C" fn rssn_volume_new(
             x_upper_expr,
         ),
         vars: (
-            x_var_str, y_var_str, z_var_str,
+            x_var_str, y_var_str,
+            z_var_str,
         ),
     };
 
@@ -313,13 +343,16 @@ pub extern "C" fn rssn_volume_new(
 /// Frees a Volume handle.
 #[no_mangle]
 
-pub extern "C" fn rssn_volume_free(volume: *mut Volume) {
+pub extern "C" fn rssn_volume_free(
+    volume: *mut Volume
+) {
 
     if !volume.is_null() {
 
         unsafe {
 
-            let _ = Box::from_raw(volume);
+            let _ =
+                Box::from_raw(volume);
         }
     }
 }
@@ -339,25 +372,32 @@ pub extern "C" fn rssn_line_integral_scalar(
         return std::ptr::null_mut();
     }
 
-    let field_expr = match parse_expr_from_cstr(scalar_field) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+    let field_expr =
+        match parse_expr_from_cstr(scalar_field) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
     unsafe {
 
         let curve_ref = &*curve;
 
-        let result = line_integral_scalar(
-            &field_expr,
-            curve_ref,
-        );
+        let result =
+            line_integral_scalar(
+                &field_expr,
+                curve_ref,
+            );
 
-        let result_str = format!("{}", result);
+        let result_str =
+            format!("{}", result);
 
         match CString::new(result_str) {
-            | Ok(c_str) => c_str.into_raw(),
-            | Err(_) => std::ptr::null_mut(),
+            | Ok(c_str) => {
+                c_str.into_raw()
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -402,13 +442,21 @@ pub extern "C" fn rssn_line_integral_vector(
 
         let curve_ref = &*curve;
 
-        let result = line_integral_vector(&field, curve_ref);
+        let result =
+            line_integral_vector(
+                &field, curve_ref,
+            );
 
-        let result_str = format!("{}", result);
+        let result_str =
+            format!("{}", result);
 
         match CString::new(result_str) {
-            | Ok(c_str) => c_str.into_raw(),
-            | Err(_) => std::ptr::null_mut(),
+            | Ok(c_str) => {
+                c_str.into_raw()
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -453,13 +501,21 @@ pub extern "C" fn rssn_surface_integral(
 
         let surface_ref = &*surface;
 
-        let result = surface_integral(&field, surface_ref);
+        let result = surface_integral(
+            &field,
+            surface_ref,
+        );
 
-        let result_str = format!("{}", result);
+        let result_str =
+            format!("{}", result);
 
         match CString::new(result_str) {
-            | Ok(c_str) => c_str.into_raw(),
-            | Err(_) => std::ptr::null_mut(),
+            | Ok(c_str) => {
+                c_str.into_raw()
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -477,10 +533,11 @@ pub extern "C" fn rssn_volume_integral(
         return std::ptr::null_mut();
     }
 
-    let field_expr = match parse_expr_from_cstr(scalar_field) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+    let field_expr =
+        match parse_expr_from_cstr(scalar_field) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
     unsafe {
 
@@ -491,11 +548,16 @@ pub extern "C" fn rssn_volume_integral(
             volume_ref,
         );
 
-        let result_str = format!("{}", result);
+        let result_str =
+            format!("{}", result);
 
         match CString::new(result_str) {
-            | Ok(c_str) => c_str.into_raw(),
-            | Err(_) => std::ptr::null_mut(),
+            | Ok(c_str) => {
+                c_str.into_raw()
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     }
 }

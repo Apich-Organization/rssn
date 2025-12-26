@@ -19,7 +19,8 @@ use rssn::symbolic::simplify_dag;
 // --- 1. Standard Unit/Integration Tests ---
 #[test]
 
-fn test_initial_conditions_or_edge_cases() {
+fn test_initial_conditions_or_edge_cases(
+) {
     // Example: Test a function with input '0' or large, known values.
     // let result = symbolic::simplify::some_function(42.0);
     // assert_approx_eq!(result, 1.0, 1e-6);
@@ -56,13 +57,18 @@ fn test_simplify_add_x_x() {
 
     let x = Expr::new_variable("x");
 
-    let expr = Expr::new_add(x.clone(), x.clone());
+    let expr = Expr::new_add(
+        x.clone(),
+        x.clone(),
+    );
 
-    let simplified = simplify_dag::simplify(&expr);
+    let simplified =
+        simplify_dag::simplify(&expr);
 
     let two = Expr::new_constant(2.0);
 
-    let expected = Expr::new_mul(two, x);
+    let expected =
+        Expr::new_mul(two, x);
 
     assert_eq!(simplified, expected);
 }
@@ -73,20 +79,28 @@ fn test_simplify_add_2x_3x() {
 
     let x = Expr::new_variable("x");
 
-    let two = Expr::new_bigint(BigInt::from(2));
+    let two = Expr::new_bigint(
+        BigInt::from(2),
+    );
 
-    let three = Expr::new_bigint(BigInt::from(3));
+    let three = Expr::new_bigint(
+        BigInt::from(3),
+    );
 
-    let five = Expr::new_bigint(BigInt::from(5));
+    let five = Expr::new_bigint(
+        BigInt::from(5),
+    );
 
     let expr = Expr::new_add(
         Expr::new_mul(two, x.clone()),
         Expr::new_mul(three, x.clone()),
     );
 
-    let simplified = simplify_dag::simplify(&expr);
+    let simplified =
+        simplify_dag::simplify(&expr);
 
-    let expected = Expr::new_mul(five, x);
+    let expected =
+        Expr::new_mul(five, x);
 
     assert_eq!(simplified, expected);
 }
@@ -108,7 +122,8 @@ fn test_simplify_nested_add() {
         Expr::new_add(x.clone(), two),
     );
 
-    let simplified = simplify_dag::simplify(&expr);
+    let simplified =
+        simplify_dag::simplify(&expr);
 
     let expected = Expr::new_add(
         three,
@@ -135,15 +150,21 @@ fn test_simplify_nested_add() {
 
 fn test_simplify_constants() {
 
-    let one = Expr::new_bigint(BigInt::from(1));
+    let one = Expr::new_bigint(
+        BigInt::from(1),
+    );
 
-    let two = Expr::new_bigint(BigInt::from(2));
+    let two = Expr::new_bigint(
+        BigInt::from(2),
+    );
 
-    let three = Expr::BigInt(BigInt::from(3));
+    let three =
+        Expr::BigInt(BigInt::from(3));
 
     let expr = Expr::new_add(one, two);
 
-    let simplified = simplify_dag::simplify(&expr);
+    let simplified =
+        simplify_dag::simplify(&expr);
 
     assert_eq!(simplified, three);
 }

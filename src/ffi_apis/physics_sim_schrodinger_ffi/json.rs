@@ -30,22 +30,25 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: SchrodingerInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    "Invalid JSON".to_string(),
-                ))
-                .unwrap(),
-            )
-        },
-    };
+    let input: SchrodingerInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<f64>,
+                        String,
+                    >::err(
+                        "Invalid JSON".to_string(),
+                    ))
+                    .unwrap(),
+                )
+            },
+        };
 
-    let mut initial_psi: Vec<Complex<f64>> = input
+    let mut initial_psi: Vec<
+        Complex<f64>,
+    > = input
         .initial_psi_re
         .iter()
         .zip(
@@ -53,7 +56,9 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
                 .initial_psi_im
                 .iter(),
         )
-        .map(|(&r, &i)| Complex::new(r, i))
+        .map(|(&r, &i)| {
+            Complex::new(r, i)
+        })
         .collect();
 
     match schrodinger_quantum::run_schrodinger_simulation(
@@ -61,6 +66,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
         &mut initial_psi,
     ) {
         | Ok(snapshots) => {
+
             if let Some(final_state) = snapshots.last() {
 
                 to_c_string(

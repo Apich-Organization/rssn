@@ -47,8 +47,10 @@
 //! );
 //!
 //! let (potential, force) =
-//!     lennard_jones_interaction(&p1, &p2, 1.0, 1.0)
-//!         .unwrap();
+//!     lennard_jones_interaction(
+//!         &p1, &p2, 1.0, 1.0,
+//!     )
+//!     .unwrap();
 //! ```
 
 use crate::numerical::vector::{
@@ -68,26 +70,31 @@ use serde::{
 
 /// Boltzmann constant in SI units (J/K)
 
-pub const BOLTZMANN_CONSTANT_SI: f64 = 1.380_649e-23;
+pub const BOLTZMANN_CONSTANT_SI: f64 =
+    1.380_649e-23;
 
 /// Avogadro's number (1/mol)
 
-pub const AVOGADRO_NUMBER: f64 = 6.022_140_76e23;
+pub const AVOGADRO_NUMBER: f64 =
+    6.022_140_76e23;
 
 /// Reduced unit for temperature (using argon as reference)
 /// 1 reduced temperature = ε/k_B ≈ 120 K for argon
 
-pub const TEMPERATURE_UNIT_ARGON: f64 = 119.8;
+pub const TEMPERATURE_UNIT_ARGON: f64 =
+    119.8;
 
 /// Reduced unit for length (using argon as reference)
 /// 1 reduced length = σ ≈ 3.4 Å for argon
 
-pub const LENGTH_UNIT_ARGON: f64 = 3.4e-10;
+pub const LENGTH_UNIT_ARGON: f64 =
+    3.4e-10;
 
 /// Reduced unit for energy (using argon as reference)
 /// 1 reduced energy = ε ≈ 1.65e-21 J for argon
 
-pub const ENERGY_UNIT_ARGON: f64 = 1.65e-21;
+pub const ENERGY_UNIT_ARGON: f64 =
+    1.65e-21;
 
 // ============================================================================
 // Particle Definition
@@ -95,7 +102,9 @@ pub const ENERGY_UNIT_ARGON: f64 = 1.65e-21;
 
 /// Represents a particle in a molecular dynamics simulation.
 /// cbindgen:ignore
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct Particle {
     /// Unique identifier
@@ -165,7 +174,9 @@ impl Particle {
     /// Returns the kinetic energy of the particle: KE = 0.5 * m * v²
     #[must_use]
 
-    pub fn kinetic_energy(&self) -> f64 {
+    pub fn kinetic_energy(
+        &self
+    ) -> f64 {
 
         let v2: f64 = self
             .velocity
@@ -254,11 +265,16 @@ pub fn lennard_jones_interaction(
 
     let sigma_over_r = sigma / r;
 
-    let sigma_over_r6 = sigma_over_r.powi(6);
+    let sigma_over_r6 =
+        sigma_over_r.powi(6);
 
-    let sigma_over_r12 = sigma_over_r6.powi(2);
+    let sigma_over_r12 =
+        sigma_over_r6.powi(2);
 
-    let potential = 4.0 * epsilon * (sigma_over_r12 - sigma_over_r6);
+    let potential = 4.0
+        * epsilon
+        * (sigma_over_r12
+            - sigma_over_r6);
 
     let force_magnitude = 24.0
         * epsilon
@@ -302,10 +318,15 @@ pub fn integrate_velocity_verlet<F>(
     mut force_calculator: F,
 ) -> Result<Vec<Vec<Particle>>, String>
 where
-    F: FnMut(&mut Vec<Particle>) -> Result<(), String>,
+    F: FnMut(
+        &mut Vec<Particle>,
+    ) -> Result<(), String>,
 {
 
-    let mut trajectory = Vec::with_capacity(num_steps + 1);
+    let mut trajectory =
+        Vec::with_capacity(
+            num_steps + 1,
+        );
 
     trajectory.push(particles.clone());
 
@@ -322,12 +343,18 @@ where
 
             p.velocity = vec_add(
                 &p.velocity,
-                &scalar_mul(&acc, 0.5 * dt),
+                &scalar_mul(
+                    &acc,
+                    0.5 * dt,
+                ),
             )?;
 
             p.position = vec_add(
                 &p.position,
-                &scalar_mul(&p.velocity, dt),
+                &scalar_mul(
+                    &p.velocity,
+                    dt,
+                ),
             )?;
         }
 
@@ -342,11 +369,15 @@ where
 
             p.velocity = vec_add(
                 &p.velocity,
-                &scalar_mul(&acc, 0.5 * dt),
+                &scalar_mul(
+                    &acc,
+                    0.5 * dt,
+                ),
             )?;
         }
 
-        trajectory.push(particles.clone());
+        trajectory
+            .push(particles.clone());
     }
 
     Ok(trajectory)
@@ -389,14 +420,21 @@ pub fn morse_interaction(
         ));
     }
 
-    let exp_term = (-a * (r - re)).exp();
+    let exp_term =
+        (-a * (r - re)).exp();
 
     let one_minus_exp = 1.0 - exp_term;
 
-    let potential = de * one_minus_exp * one_minus_exp;
+    let potential = de
+        * one_minus_exp
+        * one_minus_exp;
 
     // Force = -dV/dr = 2 * De * a * (1 - exp) * exp
-    let force_magnitude = 2.0 * de * a * one_minus_exp * exp_term;
+    let force_magnitude = 2.0
+        * de
+        * a
+        * one_minus_exp
+        * exp_term;
 
     let force_on_p1 = scalar_mul(
         &r_vec,
@@ -486,10 +524,16 @@ pub fn coulomb_interaction(
         ));
     }
 
-    let potential = k_coulomb * p1.charge * p2.charge / r;
+    let potential = k_coulomb
+        * p1.charge
+        * p2.charge
+        / r;
 
     // Force = -dV/dr * r_hat = k * q1 * q2 / r² * r_hat
-    let force_magnitude = k_coulomb * p1.charge * p2.charge / (r * r);
+    let force_magnitude = k_coulomb
+        * p1.charge
+        * p2.charge
+        / (r * r);
 
     let force_on_p1 = scalar_mul(
         &r_vec,
@@ -539,9 +583,13 @@ pub fn soft_sphere_interaction(
 
     let sigma_over_r = sigma / r;
 
-    let potential = epsilon * sigma_over_r.powi(n);
+    let potential =
+        epsilon * sigma_over_r.powi(n);
 
-    let force_magnitude = (n as f64) * epsilon * sigma_over_r.powi(n) / r;
+    let force_magnitude = (n as f64)
+        * epsilon
+        * sigma_over_r.powi(n)
+        / r;
 
     let force_on_p1 = scalar_mul(
         &r_vec,
@@ -561,7 +609,9 @@ pub fn soft_sphere_interaction(
 /// Calculates the total kinetic energy of the system.
 #[must_use]
 
-pub fn total_kinetic_energy(particles: &[Particle]) -> f64 {
+pub fn total_kinetic_energy(
+    particles: &[Particle]
+) -> f64 {
 
     particles
         .iter()
@@ -571,11 +621,15 @@ pub fn total_kinetic_energy(particles: &[Particle]) -> f64 {
 
 /// Calculates the total momentum of the system.
 
-pub fn total_momentum(particles: &[Particle]) -> Result<Vec<f64>, String> {
+pub fn total_momentum(
+    particles: &[Particle]
+) -> Result<Vec<f64>, String> {
 
     if particles.is_empty() {
 
-        return Err("Empty particle list".to_string());
+        return Err("Empty particle \
+                    list"
+            .to_string());
     }
 
     let dim = particles[0]
@@ -602,11 +656,15 @@ pub fn total_momentum(particles: &[Particle]) -> Result<Vec<f64>, String> {
 
 /// Calculates the center of mass of the system.
 
-pub fn center_of_mass(particles: &[Particle]) -> Result<Vec<f64>, String> {
+pub fn center_of_mass(
+    particles: &[Particle]
+) -> Result<Vec<f64>, String> {
 
     if particles.is_empty() {
 
-        return Err("Empty particle list".to_string());
+        return Err("Empty particle \
+                    list"
+            .to_string());
     }
 
     let dim = particles[0]
@@ -645,7 +703,9 @@ pub fn center_of_mass(particles: &[Particle]) -> Result<Vec<f64>, String> {
 /// In reduced units with k_B = 1: T = 2 * KE / (dim * N)
 #[must_use]
 
-pub fn temperature(particles: &[Particle]) -> f64 {
+pub fn temperature(
+    particles: &[Particle]
+) -> f64 {
 
     if particles.is_empty() {
 
@@ -656,7 +716,8 @@ pub fn temperature(particles: &[Particle]) -> f64 {
         .position
         .len();
 
-    let ke = total_kinetic_energy(particles);
+    let ke =
+        total_kinetic_energy(particles);
 
     let n = particles.len();
 
@@ -674,7 +735,9 @@ pub fn pressure(
     virial: f64,
 ) -> f64 {
 
-    if particles.is_empty() || volume <= 0.0 {
+    if particles.is_empty()
+        || volume <= 0.0
+    {
 
         return 0.0;
     }
@@ -689,7 +752,9 @@ pub fn pressure(
 
 /// Removes center of mass velocity from the system.
 
-pub fn remove_com_velocity(particles: &mut [Particle]) -> Result<(), String> {
+pub fn remove_com_velocity(
+    particles: &mut [Particle]
+) -> Result<(), String> {
 
     if particles.is_empty() {
 
@@ -700,7 +765,8 @@ pub fn remove_com_velocity(particles: &mut [Particle]) -> Result<(), String> {
         .position
         .len();
 
-    let mut total_momentum = vec![0.0; dim];
+    let mut total_momentum =
+        vec![0.0; dim];
 
     let mut total_mass = 0.0;
 
@@ -714,14 +780,16 @@ pub fn remove_com_velocity(particles: &mut [Particle]) -> Result<(), String> {
             .enumerate()
         {
 
-            total_momentum[i] += p.mass * v;
+            total_momentum[i] +=
+                p.mass * v;
         }
     }
 
-    let com_velocity: Vec<f64> = total_momentum
-        .iter()
-        .map(|m| m / total_mass)
-        .collect();
+    let com_velocity: Vec<f64> =
+        total_momentum
+            .iter()
+            .map(|m| m / total_mass)
+            .collect();
 
     for p in particles.iter_mut() {
 
@@ -751,14 +819,17 @@ pub fn velocity_rescale(
     target_temp: f64,
 ) {
 
-    let current_temp = temperature(particles);
+    let current_temp =
+        temperature(particles);
 
     if current_temp <= 0.0 {
 
         return;
     }
 
-    let scale = (target_temp / current_temp).sqrt();
+    let scale = (target_temp
+        / current_temp)
+        .sqrt();
 
     for p in particles.iter_mut() {
 
@@ -789,14 +860,20 @@ pub fn berendsen_thermostat(
     dt: f64,
 ) {
 
-    let current_temp = temperature(particles);
+    let current_temp =
+        temperature(particles);
 
     if current_temp <= 0.0 {
 
         return;
     }
 
-    let scale = (1.0 + (dt / tau) * (target_temp / current_temp - 1.0)).sqrt();
+    let scale = (1.0
+        + (dt / tau)
+            * (target_temp
+                / current_temp
+                - 1.0))
+        .sqrt();
 
     for p in particles.iter_mut() {
 
@@ -897,7 +974,8 @@ pub fn radial_distribution_function(
 
     let dr = r_max / num_bins as f64;
 
-    let mut histogram = vec![0usize; num_bins];
+    let mut histogram =
+        vec![0usize; num_bins];
 
     // Count pairs in each bin
     for i in 0..n {
@@ -909,17 +987,21 @@ pub fn radial_distribution_function(
                 &particles[j].position,
             ) {
 
-                let r_mic = minimum_image_distance(&r_vec, box_size);
+                let r_mic = minimum_image_distance(
+                    &r_vec, box_size,
+                );
 
                 let r = norm(&r_mic);
 
                 if r < r_max {
 
-                    let bin = (r / dr) as usize;
+                    let bin = (r / dr)
+                        as usize;
 
                     if bin < num_bins {
 
-                        histogram[bin] += 2; // Count both i-j and j-i
+                        histogram
+                            [bin] += 2; // Count both i-j and j-i
                     }
                 }
             }
@@ -935,7 +1017,8 @@ pub fn radial_distribution_function(
 
     let pi = std::f64::consts::PI;
 
-    let r_values: Vec<f64> = (0..num_bins)
+    let r_values: Vec<f64> = (0
+        ..num_bins)
         .map(|i| (i as f64 + 0.5) * dr)
         .collect();
 
@@ -944,16 +1027,26 @@ pub fn radial_distribution_function(
         .enumerate()
         .map(|(i, &count)| {
 
-            let r = (i as f64 + 0.5) * dr;
+            let r =
+                (i as f64 + 0.5) * dr;
 
-            let shell_volume =
-                (4.0 / 3.0) * pi * (((i + 1) as f64 * dr).powi(3) - (i as f64 * dr).powi(3));
+            let shell_volume = (4.0
+                / 3.0)
+                * pi
+                * (((i + 1) as f64
+                    * dr)
+                    .powi(3)
+                    - (i as f64 * dr)
+                        .powi(3));
 
-            let ideal_count = rho * shell_volume * n as f64;
+            let ideal_count = rho
+                * shell_volume
+                * n as f64;
 
             if ideal_count > 0.0 {
 
-                count as f64 / ideal_count
+                count as f64
+                    / ideal_count
             } else {
 
                 0.0
@@ -974,7 +1067,9 @@ pub fn mean_square_displacement(
     current: &[Particle],
 ) -> f64 {
 
-    if initial.len() != current.len() || initial.is_empty() {
+    if initial.len() != current.len()
+        || initial.is_empty()
+    {
 
         return 0.0;
     }
@@ -1017,25 +1112,36 @@ pub fn initialize_velocities_maxwell_boltzmann(
     let next_random = || {
 
         rng_state = rng_state
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1442695040888963407);
+            .wrapping_mul(
+                6364136223846793005,
+            )
+            .wrapping_add(
+                1442695040888963407,
+            );
 
-        (rng_state >> 33) as f64 / (1u64 << 31) as f64
+        (rng_state >> 33) as f64
+            / (1u64 << 31) as f64
     };
 
     // Box-Muller transform for Gaussian random numbers
-    let gaussian = |rng: &mut dyn FnMut() -> f64| -> f64 {
+    let gaussian =
+        |rng: &mut dyn FnMut()
+            -> f64|
+         -> f64 {
 
-        let u1 = rng();
+            let u1 = rng();
 
-        let u2 = rng();
+            let u2 = rng();
 
-        (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos()
-    };
+            (-2.0 * u1.ln()).sqrt()
+            * (2.0 * std::f64::consts::PI * u2).cos()
+        };
 
     for p in particles.iter_mut() {
 
-        let sigma = (target_temp / p.mass).sqrt();
+        let sigma = (target_temp
+            / p.mass)
+            .sqrt();
 
         for v in p
             .velocity
@@ -1049,15 +1155,19 @@ pub fn initialize_velocities_maxwell_boltzmann(
                     .wrapping_mul(6364136223846793005)
                     .wrapping_add(1442695040888963407);
 
-                (rng_state >> 33) as f64 / (1u64 << 31) as f64
+                (rng_state >> 33) as f64
+                    / (1u64 << 31)
+                        as f64
             };
 
-            *v = sigma * gaussian(&mut rng_fn);
+            *v = sigma
+                * gaussian(&mut rng_fn);
         }
     }
 
     // Remove center of mass velocity
-    let _ = remove_com_velocity(particles);
+    let _ =
+        remove_com_velocity(particles);
 
     // Rescale to exact target temperature
     velocity_rescale(
@@ -1075,7 +1185,12 @@ pub fn create_cubic_lattice(
     mass: f64,
 ) -> Vec<Particle> {
 
-    let mut particles = Vec::with_capacity(n_per_side * n_per_side * n_per_side);
+    let mut particles =
+        Vec::with_capacity(
+            n_per_side
+                * n_per_side
+                * n_per_side,
+        );
 
     let mut id = 0;
 
@@ -1091,11 +1206,16 @@ pub fn create_cubic_lattice(
                     k as f64 * lattice_constant,
                 ];
 
-                let velocity = vec![0.0, 0.0, 0.0];
+                let velocity =
+                    vec![0.0, 0.0, 0.0];
 
-                particles.push(Particle::new(
-                    id, mass, position, velocity,
-                ));
+                particles.push(
+                    Particle::new(
+                        id, mass,
+                        position,
+                        velocity,
+                    ),
+                );
 
                 id += 1;
             }
@@ -1114,7 +1234,12 @@ pub fn create_fcc_lattice(
     mass: f64,
 ) -> Vec<Particle> {
 
-    let mut particles = Vec::with_capacity(4 * n_cells * n_cells * n_cells);
+    let mut particles =
+        Vec::with_capacity(
+            4 * n_cells
+                * n_cells
+                * n_cells,
+        );
 
     let mut id = 0;
 
@@ -1135,16 +1260,25 @@ pub fn create_fcc_lattice(
                 for b in &basis {
 
                     let position = vec![
-                        (i as f64 + b[0]) * lattice_constant,
-                        (j as f64 + b[1]) * lattice_constant,
-                        (k as f64 + b[2]) * lattice_constant,
+                        (i as f64 + b[0])
+                            * lattice_constant,
+                        (j as f64 + b[1])
+                            * lattice_constant,
+                        (k as f64 + b[2])
+                            * lattice_constant,
                     ];
 
-                    let velocity = vec![0.0, 0.0, 0.0];
+                    let velocity = vec![
+                        0.0, 0.0, 0.0,
+                    ];
 
-                    particles.push(Particle::new(
-                        id, mass, position, velocity,
-                    ));
+                    particles.push(
+                        Particle::new(
+                            id, mass,
+                            position,
+                            velocity,
+                        ),
+                    );
 
                     id += 1;
                 }

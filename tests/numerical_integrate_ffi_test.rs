@@ -13,18 +13,22 @@ use std::ffi::{
 
 #[test]
 
-fn test_numerical_quadrature_handle_ffi() {
+fn test_numerical_quadrature_handle_ffi(
+) {
 
     unsafe {
 
         // Integrate x^2 from 0 to 1
         let x = Expr::new_variable("x");
 
-        let two = Expr::new_constant(2.0);
+        let two =
+            Expr::new_constant(2.0);
 
-        let expr = Expr::new_pow(x, two);
+        let expr =
+            Expr::new_pow(x, two);
 
-        let var = CString::new("x").unwrap();
+        let var =
+            CString::new("x").unwrap();
 
         let mut result: f64 = 0.0;
 
@@ -70,48 +74,71 @@ fn test_numerical_quadrature_handle_ffi() {
 
 #[test]
 
-fn test_numerical_quadrature_json_ffi() {
+fn test_numerical_quadrature_json_ffi()
+{
 
     unsafe {
 
         // Integrate x^2 from 0 to 1 using JSON
         let x = Expr::new_variable("x");
 
-        let two = Expr::new_constant(2.0);
+        let two =
+            Expr::new_constant(2.0);
 
-        let expr = Expr::new_pow(x, two);
+        let expr =
+            Expr::new_pow(x, two);
 
-        let expr_json = serde_json::to_string(&expr).unwrap();
+        let expr_json =
+            serde_json::to_string(
+                &expr,
+            )
+            .unwrap();
 
         let json_input = format!(
             r#"{{"expr": {}, "var": "x", "a": 0.0, "b": 1.0, "n_steps": 100, "method": "Simpson"}}"#,
             expr_json
         );
 
-        let c_json = CString::new(json_input).unwrap();
+        let c_json =
+            CString::new(json_input)
+                .unwrap();
 
         let res_ptr = json::rssn_numerical_quadrature_json(c_json.as_ptr());
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
         let v: serde_json::Value =
-            serde_json::from_str(res_str).expect("Failed to parse result JSON");
+            serde_json::from_str(
+                res_str,
+            )
+            .expect(
+                "Failed to parse \
+                 result JSON",
+            );
 
-        if let Some(err) = v.get("err") {
+        if let Some(err) = v.get("err")
+        {
 
             if !err.is_null() {
 
-                panic!("FFI error: {}", err);
+                panic!(
+                    "FFI error: {}",
+                    err
+                );
             }
         }
 
         let ok = v["ok"]
             .as_f64()
-            .expect("Result 'ok' should be f64");
+            .expect(
+                "Result 'ok' should \
+                 be f64",
+            );
 
         assert_approx_eq!(
             ok,
@@ -125,7 +152,8 @@ fn test_numerical_quadrature_json_ffi() {
 
 #[test]
 
-fn test_numerical_quadrature_bincode_ffi() {
+fn test_numerical_quadrature_bincode_ffi(
+) {
 
     unsafe {
 
@@ -151,9 +179,11 @@ fn test_numerical_quadrature_bincode_ffi() {
 
         let x = Expr::new_variable("x");
 
-        let two = Expr::new_constant(2.0);
+        let two =
+            Expr::new_constant(2.0);
 
-        let expr = Expr::new_pow(x, two);
+        let expr =
+            Expr::new_pow(x, two);
 
         let input = QuadratureInput {
             expr,
@@ -164,7 +194,8 @@ fn test_numerical_quadrature_bincode_ffi() {
             method: QuadratureMethod::Romberg,
         };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_numerical_quadrature_bincode(buffer);
 
@@ -179,8 +210,16 @@ fn test_numerical_quadrature_bincode_ffi() {
             err: Option<E>,
         }
 
-        let res: FfiResult<f64, String> =
-            from_bincode_buffer(&res_buffer).expect("Failed to decode bincode result");
+        let res: FfiResult<
+            f64,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .expect(
+            "Failed to decode bincode \
+             result",
+        );
 
         assert!(res.err.is_none());
 
@@ -191,8 +230,12 @@ fn test_numerical_quadrature_bincode_ffi() {
             1e-8f64
         );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 }

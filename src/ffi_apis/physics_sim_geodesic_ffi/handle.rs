@@ -28,11 +28,14 @@ pub extern "C" fn rssn_physics_sim_geodesic_run(
         initial_dt,
     };
 
-    let path = geodesic_relativity::run_geodesic_simulation(&params);
+    let path = geodesic_relativity::run_geodesic_simulation(
+        &params,
+    );
 
     let n = path.len();
 
-    let mut data = Vec::with_capacity(n * 2);
+    let mut data =
+        Vec::with_capacity(n * 2);
 
     for (x, y) in path {
 

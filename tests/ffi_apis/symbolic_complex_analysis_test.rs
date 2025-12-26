@@ -7,13 +7,15 @@ use std::ptr;
 
 fn test_path_continuation_new() {
 
-    let func = Expr::new_sin(Expr::Variable(
-        "z".to_string(),
-    ));
+    let func = Expr::new_sin(
+        Expr::Variable("z".to_string()),
+    );
 
-    let var = CString::new("z").unwrap();
+    let var =
+        CString::new("z").unwrap();
 
-    let start_point = Expr::Constant(0.0);
+    let start_point =
+        Expr::Constant(0.0);
 
     let order = 5;
 

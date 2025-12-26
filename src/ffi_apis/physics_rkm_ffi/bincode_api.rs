@@ -36,25 +36,29 @@ struct OdeResult {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(
+    buffer: BincodeBuffer
+) -> BincodeBuffer {
 
-    let input: LorenzInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(&FfiResult::<
-                OdeResult,
-                String,
-            >::err(
-                "Invalid Bincode".to_string(),
-            ))
-        },
-    };
+    let input: LorenzInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    OdeResult,
+                    String,
+                >::err(
+                    "Invalid Bincode".to_string(),
+                ))
+            },
+        };
 
-    let system = physics_rkm::LorenzSystem {
-        sigma: input.sigma,
-        rho: input.rho,
-        beta: input.beta,
-    };
+    let system =
+        physics_rkm::LorenzSystem {
+            sigma: input.sigma,
+            rho: input.rho,
+            beta: input.beta,
+        };
 
     let solver = DormandPrince54::new();
 
@@ -66,9 +70,13 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(buffer: BincodeBuffer) 
         input.tol,
     );
 
-    let mut time = Vec::with_capacity(results.len());
+    let mut time = Vec::with_capacity(
+        results.len(),
+    );
 
-    let mut states = Vec::with_capacity(results.len());
+    let mut states = Vec::with_capacity(
+        results.len(),
+    );
 
     for (t, y) in results {
 

@@ -9,28 +9,68 @@ use std::sync::Arc;
 
 // --- Helper Functions ---
 
-fn evaluate_expr(expr: &Expr) -> Option<f64> {
+fn evaluate_expr(
+    expr: &Expr
+) -> Option<f64> {
 
     match expr {
         | Expr::Constant(v) => Some(*v),
         | Expr::BigInt(v) => v.to_f64(),
-        | Expr::Rational(v) => v.to_f64(),
-        | Expr::Add(a, b) => Some(evaluate_expr(a)? + evaluate_expr(b)?),
-        | Expr::Sub(a, b) => Some(evaluate_expr(a)? - evaluate_expr(b)?),
-        | Expr::Mul(a, b) => Some(evaluate_expr(a)? * evaluate_expr(b)?),
-        | Expr::Div(a, b) => Some(evaluate_expr(a)? / evaluate_expr(b)?),
-        | Expr::Power(a, b) => Some(evaluate_expr(a)?.powf(evaluate_expr(b)?)),
-        | Expr::Dag(node) => evaluate_dag(node),
+        | Expr::Rational(v) => {
+            v.to_f64()
+        },
+        | Expr::Add(a, b) => {
+            Some(
+                evaluate_expr(a)?
+                    + evaluate_expr(b)?,
+            )
+        },
+        | Expr::Sub(a, b) => {
+            Some(
+                evaluate_expr(a)?
+                    - evaluate_expr(b)?,
+            )
+        },
+        | Expr::Mul(a, b) => {
+            Some(
+                evaluate_expr(a)?
+                    * evaluate_expr(b)?,
+            )
+        },
+        | Expr::Div(a, b) => {
+            Some(
+                evaluate_expr(a)?
+                    / evaluate_expr(b)?,
+            )
+        },
+        | Expr::Power(a, b) => {
+            Some(
+                evaluate_expr(a)?.powf(
+                    evaluate_expr(b)?,
+                ),
+            )
+        },
+        | Expr::Dag(node) => {
+            evaluate_dag(node)
+        },
         | _ => None,
     }
 }
 
-fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
+fn evaluate_dag(
+    node: &rssn::symbolic::core::DagNode
+) -> Option<f64> {
 
     match &node.op {
-        | DagOp::Constant(v) => Some(v.into_inner()),
-        | DagOp::BigInt(v) => v.to_f64(),
-        | DagOp::Rational(v) => v.to_f64(),
+        | DagOp::Constant(v) => {
+            Some(v.into_inner())
+        },
+        | DagOp::BigInt(v) => {
+            v.to_f64()
+        },
+        | DagOp::Rational(v) => {
+            v.to_f64()
+        },
         | DagOp::Add => {
 
             let mut sum = 0.0;
@@ -48,35 +88,63 @@ fn evaluate_dag(node: &rssn::symbolic::core::DagNode) -> Option<f64> {
 
             for c in &node.children {
 
-                prod *= evaluate_dag(c)?;
+                prod *=
+                    evaluate_dag(c)?;
             }
 
             Some(prod)
         },
         | DagOp::Sub => {
-            if node.children.len() == 2 {
 
-                Some(evaluate_dag(&node.children[0])? - evaluate_dag(&node.children[1])?)
+            if node.children.len() == 2
+            {
+
+                Some(
+                    evaluate_dag(
+                        &node.children
+                            [0],
+                    )? - evaluate_dag(
+                        &node.children
+                            [1],
+                    )?,
+                )
             } else {
 
                 None
             }
         },
         | DagOp::Div => {
-            if node.children.len() == 2 {
 
-                Some(evaluate_dag(&node.children[0])? / evaluate_dag(&node.children[1])?)
+            if node.children.len() == 2
+            {
+
+                Some(
+                    evaluate_dag(
+                        &node.children
+                            [0],
+                    )? / evaluate_dag(
+                        &node.children
+                            [1],
+                    )?,
+                )
             } else {
 
                 None
             }
         },
         | DagOp::Power => {
-            if node.children.len() == 2 {
+
+            if node.children.len() == 2
+            {
 
                 Some(
-                    evaluate_dag(&node.children[0])?.powf(evaluate_dag(
-                        &node.children[1],
+                    evaluate_dag(
+                        &node.children
+                            [0],
+                    )?
+                    .powf(evaluate_dag(
+                        &node.children
+                            [1],
                     )?),
                 )
             } else {
@@ -93,11 +161,15 @@ fn assert_approx_eq(
     expected: f64,
 ) {
 
-    if let Some(val) = evaluate_expr(expr) {
+    if let Some(val) =
+        evaluate_expr(expr)
+    {
 
         assert!(
-            (val - expected).abs() < 1e-6,
-            "Expected {}, got {} (from {:?})",
+            (val - expected).abs()
+                < 1e-6,
+            "Expected {}, got {} \
+             (from {:?})",
             expected,
             val,
             expr
@@ -105,7 +177,9 @@ fn assert_approx_eq(
     } else {
 
         panic!(
-            "Checking approx eq for {:?} failed to evaluate to float",
+            "Checking approx eq for \
+             {:?} failed to evaluate \
+             to float",
             expr
         );
     }
@@ -169,7 +243,10 @@ fn test_polynomial_regression() {
         ),
     ];
 
-    let result = polynomial_regression_symbolic(&data, 2);
+    let result =
+        polynomial_regression_symbolic(
+            &data, 2,
+        );
 
     assert!(result.is_ok());
 
@@ -220,7 +297,10 @@ fn test_nonlinear_regression_simple() {
 
     // Model: a*x + b
     let model = Expr::new_add(
-        Expr::new_mul(a.clone(), x.clone()),
+        Expr::new_mul(
+            a.clone(),
+            x.clone(),
+        ),
         b.clone(),
     );
 
@@ -228,12 +308,13 @@ fn test_nonlinear_regression_simple() {
     // dSSR/da = 0, dSSR/db = 0
     // This is a linear system in a and b, so solve_system should handle it if it handles linear systems.
 
-    let result = nonlinear_regression_symbolic(
-        &data,
-        &model,
-        &["x"],
-        &["a", "b"],
-    );
+    let result =
+        nonlinear_regression_symbolic(
+            &data,
+            &model,
+            &["x"],
+            &["a", "b"],
+        );
 
     if let Some(solutions) = result {
 
@@ -249,12 +330,16 @@ fn test_nonlinear_regression_simple() {
 
             if var == a {
 
-                assert_approx_eq(&val, 2.0);
+                assert_approx_eq(
+                    &val, 2.0,
+                );
 
                 found_a = true;
             } else if var == b {
 
-                assert_approx_eq(&val, 1.0);
+                assert_approx_eq(
+                    &val, 1.0,
+                );
 
                 found_b = true;
             }
@@ -265,7 +350,11 @@ fn test_nonlinear_regression_simple() {
         assert!(found_b);
     } else {
 
-        println!("Nonlinear regression returned None - might be solver limitation");
+        println!(
+            "Nonlinear regression \
+             returned None - might be \
+             solver limitation"
+        );
         // Don't fail if solver is known to be limited, but for now let's hope it works for linear-in-params
         // If it fails, we know we need to improve solver or skip test.
     }

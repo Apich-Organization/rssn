@@ -47,21 +47,26 @@ pub extern "C" fn rssn_matrix_mul_handle(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_matrix_transpose_handle(matrix: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_matrix_transpose_handle(
+    matrix: *const Expr
+) -> *mut Expr {
 
     let matrix = unsafe {
 
         &*matrix
     };
 
-    let result = transpose_matrix(matrix);
+    let result =
+        transpose_matrix(matrix);
 
     Box::into_raw(Box::new(result))
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_matrix_determinant_handle(matrix: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_matrix_determinant_handle(
+    matrix: *const Expr
+) -> *mut Expr {
 
     let matrix = unsafe {
 
@@ -75,7 +80,9 @@ pub extern "C" fn rssn_matrix_determinant_handle(matrix: *const Expr) -> *mut Ex
 
 #[no_mangle]
 
-pub extern "C" fn rssn_matrix_inverse_handle(matrix: *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_matrix_inverse_handle(
+    matrix: *const Expr
+) -> *mut Expr {
 
     let matrix = unsafe {
 
@@ -105,13 +112,19 @@ pub extern "C" fn rssn_matrix_solve_linear_system_handle(
     };
 
     match solve_linear_system(a, b) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
         | Err(e) => {
             Box::into_raw(Box::new(
-                Expr::Variable(format!(
-                    "Error: {}",
-                    e
-                )),
+                Expr::Variable(
+                    format!(
+                        "Error: {}",
+                        e
+                    ),
+                ),
             ))
         },
     }

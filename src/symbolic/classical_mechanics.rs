@@ -28,7 +28,9 @@ use std::sync::Arc;
 ///
 /// Represents the kinematic state of a particle, including its position,
 /// velocity, and acceleration vectors.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct Kinematics {
     /// The position vector of the particle (e.g., `r(t)`).
@@ -51,9 +53,14 @@ impl Kinematics {
         t_var: &str,
     ) -> Self {
 
-        let velocity = differentiate(&position, t_var);
+        let velocity = differentiate(
+            &position, t_var,
+        );
 
-        let acceleration = differentiate(&velocity, t_var);
+        let acceleration =
+            differentiate(
+                &velocity, t_var,
+            );
 
         Self {
             position,
@@ -205,7 +212,10 @@ pub fn work_line_integral(
     path: &ParametricCurve,
 ) -> Expr {
 
-    line_integral_vector(force_field, path)
+    line_integral_vector(
+        force_field,
+        path,
+    )
 }
 
 /// Calculates the power delivered by a force, `P = F · v`.
@@ -288,7 +298,8 @@ pub fn rotational_kinetic_energy(
         Expr::new_mul(
             moment_of_inertia.clone(),
             Expr::new_pow(
-                angular_velocity.clone(),
+                angular_velocity
+                    .clone(),
                 Expr::Constant(2.0),
             ),
         ),
@@ -335,14 +346,18 @@ pub fn euler_lagrange_equation(
 ) -> Expr {
 
     // 1. Partial derivative wrt q
-    let dl_dq = differentiate(lagrangian, q);
+    let dl_dq =
+        differentiate(lagrangian, q);
 
     // 2. Partial derivative wrt q_dot
-    let dl_dq_dot = differentiate(lagrangian, q_dot);
+    let dl_dq_dot = differentiate(
+        lagrangian, q_dot,
+    );
 
     // 3. Before taking d/dt, we must ensure q and q_dot are substituted with
     // their symbolic time-dependent forms if we want d/dt to be non-zero.
-    let q_time = Expr::Variable(q.to_string()); // In a more advanced version, this could be q(t)
+    let q_time =
+        Expr::Variable(q.to_string()); // In a more advanced version, this could be q(t)
     let q_dot_time = Expr::Derivative(
         Arc::new(q_time),
         t_var.to_string(),

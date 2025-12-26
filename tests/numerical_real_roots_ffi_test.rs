@@ -12,7 +12,8 @@ fn test_find_roots_handle_ffi() {
     unsafe {
 
         // x^2 - 1 = 0 => roots -1, 1
-        let coeffs = vec![1.0, 0.0, -1.0];
+        let coeffs =
+            vec![1.0, 0.0, -1.0];
 
         let roots_ptr = handle::rssn_real_roots_find_roots(
             coeffs.as_ptr(),
@@ -34,9 +35,14 @@ fn test_find_roots_handle_ffi() {
         );
 
         // Sorted: -1.0, 1.0
-        assert!((out[0] - (-1.0)).abs() < 1e-9);
+        assert!(
+            (out[0] - (-1.0)).abs()
+                < 1e-9
+        );
 
-        assert!((out[1] - 1.0).abs() < 1e-9);
+        assert!(
+            (out[1] - 1.0).abs() < 1e-9
+        );
 
         handle::rssn_real_roots_free_vec(roots_ptr);
     }
@@ -51,15 +57,22 @@ fn test_find_roots_json_ffi() {
         // x^2 - 1 = 0
         let json_input = r#"{"coeffs": [1.0, 0.0, -1.0], "tolerance": 1e-9}"#;
 
-        let c_json = CString::new(json_input).unwrap();
+        let c_json =
+            CString::new(json_input)
+                .unwrap();
 
         let res_ptr = json::rssn_real_roots_find_roots_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         // FfiResult with Option<Vec<f64>>
         let ok = &v["ok"];
@@ -81,6 +94,7 @@ fn test_find_roots_json_ffi() {
                 < 1e-9
         );
 
-        let _ = CString::from_raw(res_ptr);
+        let _ =
+            CString::from_raw(res_ptr);
     }
 }

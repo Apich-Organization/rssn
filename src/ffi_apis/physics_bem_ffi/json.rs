@@ -63,13 +63,20 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(
         .map(|bc| {
 
             match bc {
-                | BemBoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
-                | BemBoundaryCondition::Flux(v) => BoundaryCondition::Flux(v),
+                | BemBoundaryCondition::Potential(v) => {
+                    BoundaryCondition::Potential(v)
+                },
+                | BemBoundaryCondition::Flux(v) => {
+                    BoundaryCondition::Flux(v)
+                },
             }
         })
         .collect();
 
-    match physics_bem::solve_laplace_bem_2d(&input.points, &bcs) {
+    match physics_bem::solve_laplace_bem_2d(
+        &input.points,
+        &bcs,
+    ) {
         | Ok((u, q)) => {
             to_c_string(
                 serde_json::to_string(&FfiResult::<

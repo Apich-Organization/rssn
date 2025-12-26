@@ -24,14 +24,22 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
     initial_psi_im_ptr: *const f64,
 ) -> *mut Matrix<f64> {
 
-    if potential_ptr.is_null() || initial_psi_re_ptr.is_null() || initial_psi_im_ptr.is_null() {
+    if potential_ptr.is_null()
+        || initial_psi_re_ptr.is_null()
+        || initial_psi_im_ptr.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let n = nx * ny;
 
-    let potential = std::slice::from_raw_parts(potential_ptr, n).to_vec();
+    let potential =
+        std::slice::from_raw_parts(
+            potential_ptr,
+            n,
+        )
+        .to_vec();
 
     let re = std::slice::from_raw_parts(
         initial_psi_re_ptr,
@@ -43,29 +51,35 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
         n,
     );
 
-    let mut initial_psi: Vec<Complex<f64>> = re
+    let mut initial_psi: Vec<
+        Complex<f64>,
+    > = re
         .iter()
         .zip(im.iter())
-        .map(|(&r, &i)| Complex::new(r, i))
+        .map(|(&r, &i)| {
+            Complex::new(r, i)
+        })
         .collect();
 
-    let params = SchrodingerParameters {
-        nx,
-        ny,
-        lx,
-        ly,
-        dt,
-        time_steps,
-        hbar,
-        mass,
-        potential,
-    };
+    let params =
+        SchrodingerParameters {
+            nx,
+            ny,
+            lx,
+            ly,
+            dt,
+            time_steps,
+            hbar,
+            mass,
+            potential,
+        };
 
     match schrodinger_quantum::run_schrodinger_simulation(
         &params,
         &mut initial_psi,
     ) {
         | Ok(snapshots) => {
+
             if let Some(final_state) = snapshots.last() {
 
                 let rows = final_state.nrows();

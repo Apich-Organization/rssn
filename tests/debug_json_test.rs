@@ -22,12 +22,17 @@ fn see_json() {
     );
 
     let input = EvalInput {
-        expr: Expr::Variable("z".to_string()),
+        expr: Expr::Variable(
+            "z".to_string(),
+        ),
         vars,
     };
 
     println!(
         "{}",
-        serde_json::to_string_pretty(&input).unwrap()
+        serde_json::to_string_pretty(
+            &input
+        )
+        .unwrap()
     );
 }

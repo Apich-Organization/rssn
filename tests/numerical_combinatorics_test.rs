@@ -10,7 +10,11 @@ fn test_factorial() {
 
     assert_eq!(factorial(5), 120.0);
 
-    assert!((factorial(10) - 3628800.0).abs() < 1e-9);
+    assert!(
+        (factorial(10) - 3628800.0)
+            .abs()
+            < 1e-9
+    );
 }
 
 #[test]
@@ -70,17 +74,26 @@ fn test_solve_recurrence_numerical() {
 
     // F(0)=0, F(1)=1, F(2)=1, F(3)=2, F(4)=3, F(5)=5
     assert_eq!(
-        solve_recurrence_numerical(&coeffs, &initial, 0).unwrap(),
+        solve_recurrence_numerical(
+            &coeffs, &initial, 0
+        )
+        .unwrap(),
         0.0
     );
 
     assert_eq!(
-        solve_recurrence_numerical(&coeffs, &initial, 1).unwrap(),
+        solve_recurrence_numerical(
+            &coeffs, &initial, 1
+        )
+        .unwrap(),
         1.0
     );
 
     assert_eq!(
-        solve_recurrence_numerical(&coeffs, &initial, 5).unwrap(),
+        solve_recurrence_numerical(
+            &coeffs, &initial, 5
+        )
+        .unwrap(),
         5.0
     );
 }

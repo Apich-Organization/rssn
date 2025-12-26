@@ -34,7 +34,8 @@ pub fn taylor_coefficients(
     order: usize,
 ) -> Result<Vec<f64>, String> {
 
-    let mut coeffs = Vec::with_capacity(order + 1);
+    let mut coeffs =
+        Vec::with_capacity(order + 1);
 
     let mut current_f = f.clone();
 
@@ -53,7 +54,10 @@ pub fn taylor_coefficients(
 
     for i in 1..=order {
 
-        current_f = crate::symbolic::calculus::differentiate(&current_f, var);
+        current_f =
+            crate::symbolic::calculus::differentiate(
+                &current_f, var,
+            );
 
         factorial *= i as f64;
 

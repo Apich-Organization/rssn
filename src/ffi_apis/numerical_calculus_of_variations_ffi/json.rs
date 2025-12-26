@@ -30,20 +30,25 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
     input_json: *const c_char
 ) -> *mut c_char {
 
-    let input: ActionInput = match from_json_string(input_json) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
+    let input: ActionInput =
+        match from_json_string(input_json) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        f64,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON input".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON input"
+                                .to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     match calculus_of_variations::evaluate_action(
         &input.lagrangian,
@@ -60,7 +65,9 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
                 err: None::<String>,
             };
 
-            to_c_string(serde_json::to_string(&ffi_res).unwrap())
+            to_c_string(
+                serde_json::to_string(&ffi_res).unwrap(),
+            )
         },
         | Err(e) => {
 
@@ -69,7 +76,9 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
                 err: Some(e),
             };
 
-            to_c_string(serde_json::to_string(&ffi_res).unwrap())
+            to_c_string(
+                serde_json::to_string(&ffi_res).unwrap(),
+            )
         },
     }
 }

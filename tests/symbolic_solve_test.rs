@@ -14,13 +14,15 @@ fn assert_is_value(
     expected: f64,
 ) {
 
-    let val = evaluate_numerical(expr).unwrap_or_else(|| {
+    let val = evaluate_numerical(expr)
+        .unwrap_or_else(|| {
 
-        panic!(
-            "Failed to evaluate expression: {:?}",
-            expr
-        )
-    });
+            panic!(
+                "Failed to evaluate \
+                 expression: {:?}",
+                expr
+            )
+        });
 
     assert!(
         (val - expected).abs() < 1e-10,
@@ -47,7 +49,10 @@ fn test_solve_linear() {
 
     assert_eq!(solutions.len(), 1);
 
-    assert_is_value(&solutions[0], -2.0);
+    assert_is_value(
+        &solutions[0],
+        -2.0,
+    );
 }
 
 #[test]
@@ -73,7 +78,10 @@ fn test_solve_quadratic() {
         .any(|s| {
 
             evaluate_numerical(s)
-                .map(|v| (v - 2.0).abs() < 1e-10)
+                .map(|v| {
+                    (v - 2.0).abs()
+                        < 1e-10
+                })
                 .unwrap_or(false)
         });
 
@@ -82,7 +90,10 @@ fn test_solve_quadratic() {
         .any(|s| {
 
             evaluate_numerical(s)
-                .map(|v| (v - -2.0).abs() < 1e-10)
+                .map(|v| {
+                    (v - -2.0).abs()
+                        < 1e-10
+                })
                 .unwrap_or(false)
         });
 
@@ -122,14 +133,19 @@ fn test_solve_linear_system() {
         Expr::new_constant(1.0),
     );
 
-    let system = Expr::System(vec![eq1, eq2]);
+    let system =
+        Expr::System(vec![eq1, eq2]);
 
     let vars = vec![
         "x".to_string(),
         "y".to_string(),
     ];
 
-    let solutions = solve_linear_system(&system, &vars).unwrap();
+    let solutions =
+        solve_linear_system(
+            &system, &vars,
+        )
+        .unwrap();
 
     assert_eq!(solutions.len(), 2);
 

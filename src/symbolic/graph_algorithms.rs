@@ -30,41 +30,57 @@ use std::sync::Arc;
 /// This is used internally by algorithms that need to compare weights.
 /// Returns None if the expression cannot be evaluated to a number.
 
-fn try_numeric_value(expr: &Expr) -> Option<f64> {
+fn try_numeric_value(
+    expr: &Expr
+) -> Option<f64> {
 
     match expr {
-        | Expr::Constant(val) => Some(*val),
-        | Expr::BigInt(val) => val.to_f64(),
-        | Expr::Rational(val) => val.to_f64(),
+        | Expr::Constant(val) => {
+            Some(*val)
+        },
+        | Expr::BigInt(val) => {
+            val.to_f64()
+        },
+        | Expr::Rational(val) => {
+            val.to_f64()
+        },
         | Expr::Add(lhs, rhs) => {
 
-            let l = try_numeric_value(lhs)?;
+            let l =
+                try_numeric_value(lhs)?;
 
-            let r = try_numeric_value(rhs)?;
+            let r =
+                try_numeric_value(rhs)?;
 
             Some(l + r)
         },
         | Expr::Sub(lhs, rhs) => {
 
-            let l = try_numeric_value(lhs)?;
+            let l =
+                try_numeric_value(lhs)?;
 
-            let r = try_numeric_value(rhs)?;
+            let r =
+                try_numeric_value(rhs)?;
 
             Some(l - r)
         },
         | Expr::Mul(lhs, rhs) => {
 
-            let l = try_numeric_value(lhs)?;
+            let l =
+                try_numeric_value(lhs)?;
 
-            let r = try_numeric_value(rhs)?;
+            let r =
+                try_numeric_value(rhs)?;
 
             Some(l * r)
         },
         | Expr::Div(lhs, rhs) => {
 
-            let l = try_numeric_value(lhs)?;
+            let l =
+                try_numeric_value(lhs)?;
 
-            let r = try_numeric_value(rhs)?;
+            let r =
+                try_numeric_value(rhs)?;
 
             if r == 0.0 {
 
@@ -76,7 +92,9 @@ fn try_numeric_value(expr: &Expr) -> Option<f64> {
         },
         | Expr::Neg(inner) => {
 
-            let v = try_numeric_value(inner)?;
+            let v = try_numeric_value(
+                inner,
+            )?;
 
             Some(-v)
         },
@@ -86,7 +104,10 @@ fn try_numeric_value(expr: &Expr) -> Option<f64> {
 
             for e in list {
 
-                sum += try_numeric_value(e)?;
+                sum +=
+                    try_numeric_value(
+                        e,
+                    )?;
             }
 
             Some(sum)
@@ -97,15 +118,23 @@ fn try_numeric_value(expr: &Expr) -> Option<f64> {
 
             for e in list {
 
-                prod *= try_numeric_value(e)?;
+                prod *=
+                    try_numeric_value(
+                        e,
+                    )?;
             }
 
             Some(prod)
         },
         | Expr::Dag(node) => {
-            if let Ok(inner) = node.to_expr() {
 
-                try_numeric_value(&inner)
+            if let Ok(inner) =
+                node.to_expr()
+            {
+
+                try_numeric_value(
+                    &inner,
+                )
             } else {
 
                 None
@@ -114,12 +143,19 @@ fn try_numeric_value(expr: &Expr) -> Option<f64> {
         // Try to simplify and extract
         | _ => {
 
-            let simplified = simplify(&expr.clone());
+            let simplified =
+                simplify(&expr.clone());
 
             match simplified {
-                | Expr::Constant(val) => Some(val),
-                | Expr::BigInt(val) => val.to_f64(),
-                | Expr::Rational(val) => val.to_f64(),
+                | Expr::Constant(
+                    val,
+                ) => Some(val),
+                | Expr::BigInt(val) => {
+                    val.to_f64()
+                },
+                | Expr::Rational(
+                    val,
+                ) => val.to_f64(),
                 | _ => None,
             }
         },
@@ -172,7 +208,10 @@ pub fn dfs<V>(
     start_node: usize,
 ) -> Vec<usize>
 where
-    V: Eq + Hash + Clone + std::fmt::Debug,
+    V: Eq
+        + Hash
+        + Clone
+        + std::fmt::Debug,
 {
 
     let mut visited = HashSet::new();
@@ -195,21 +234,27 @@ pub(crate) fn dfs_recursive<V>(
     visited: &mut HashSet<usize>,
     result: &mut Vec<usize>,
 ) where
-    V: Eq + Hash + Clone + std::fmt::Debug,
+    V: Eq
+        + Hash
+        + Clone
+        + std::fmt::Debug,
 {
 
     visited.insert(u);
 
     result.push(u);
 
-    if let Some(neighbors) = graph.adj.get(u) {
+    if let Some(neighbors) =
+        graph.adj.get(u)
+    {
 
         for &(v, _) in neighbors {
 
             if !visited.contains(&v) {
 
                 dfs_recursive(
-                    graph, v, visited, result,
+                    graph, v, visited,
+                    result,
                 );
             }
         }
@@ -233,7 +278,10 @@ pub fn bfs<V>(
     start_node: usize,
 ) -> Vec<usize>
 where
-    V: Eq + Hash + Clone + std::fmt::Debug,
+    V: Eq
+        + Hash
+        + Clone
+        + std::fmt::Debug,
 {
 
     let mut visited = HashSet::new();
@@ -246,15 +294,20 @@ where
 
     queue.push_back(start_node);
 
-    while let Some(u) = queue.pop_front() {
+    while let Some(u) =
+        queue.pop_front()
+    {
 
         result.push(u);
 
-        if let Some(neighbors) = graph.adj.get(u) {
+        if let Some(neighbors) =
+            graph.adj.get(u)
+        {
 
             for &(v, _) in neighbors {
 
-                if !visited.contains(&v) {
+                if !visited.contains(&v)
+                {
 
                     visited.insert(v);
 
@@ -279,7 +332,12 @@ where
 /// A `Vec<Vec<usize>>` where each inner `Vec` represents a connected component.
 #[must_use]
 
-pub fn connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn connected_components<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>
 ) -> Vec<Vec<usize>> {
 
@@ -287,15 +345,21 @@ pub fn connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     let mut components = Vec::new();
 
-    for node_id in 0..graph.nodes.len() {
+    for node_id in 0..graph.nodes.len()
+    {
 
         if !visited.contains(&node_id) {
 
-            let component = bfs(graph, node_id);
+            let component =
+                bfs(graph, node_id);
 
-            for &visited_node in &component {
+            for &visited_node in
+                &component
+            {
 
-                visited.insert(visited_node);
+                visited.insert(
+                    visited_node,
+                );
             }
 
             components.push(component);
@@ -317,9 +381,17 @@ pub fn connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// `true` if the graph is connected, `false` otherwise.
 #[must_use]
 
-pub fn is_connected<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Graph<V>) -> bool {
+pub fn is_connected<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
+    graph: &Graph<V>
+) -> bool {
 
-    connected_components(graph).len() == 1
+    connected_components(graph).len()
+        == 1
 }
 
 /// Finds all strongly connected components (SCCs) of a directed graph using Tarjan's algorithm.
@@ -334,7 +406,12 @@ pub fn is_connected<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &G
 /// A `Vec<Vec<usize>>` where each inner `Vec` represents a strongly connected component.
 #[must_use]
 
-pub fn strongly_connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn strongly_connected_components<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>
 ) -> Vec<Vec<usize>> {
 
@@ -344,13 +421,15 @@ pub fn strongly_connected_components<V: Eq + std::hash::Hash + Clone + std::fmt:
 
     let mut on_stack = HashSet::new();
 
-    let mut discovery_times = HashMap::new();
+    let mut discovery_times =
+        HashMap::new();
 
     let mut low_link = HashMap::new();
 
     let mut time = 0;
 
-    for node_id in 0..graph.nodes.len() {
+    for node_id in 0..graph.nodes.len()
+    {
 
         tarjan_scc_util(
             graph,
@@ -367,7 +446,12 @@ pub fn strongly_connected_components<V: Eq + std::hash::Hash + Clone + std::fmt:
     scc
 }
 
-pub(crate) fn tarjan_scc_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub(crate) fn tarjan_scc_util<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     u: usize,
     time: &mut usize,
@@ -388,31 +472,52 @@ pub(crate) fn tarjan_scc_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>
 
     on_stack.insert(u);
 
-    if let Some(neighbors) = graph.adj.get(u) {
+    if let Some(neighbors) =
+        graph.adj.get(u)
+    {
 
         for &(v, _) in neighbors {
 
             if !disc.contains_key(&v) {
 
                 tarjan_scc_util(
-                    graph, v, time, disc, low, stack, on_stack, scc,
+                    graph, v, time,
+                    disc, low, stack,
+                    on_stack, scc,
                 );
 
-                if let (Some(&low_u), Some(&low_v)) = (
+                if let (
+                    Some(&low_u),
+                    Some(&low_v),
+                ) = (
                     low.get(&u),
                     low.get(&v),
                 ) {
 
-                    low.insert(u, low_u.min(low_v));
+                    low.insert(
+                        u,
+                        low_u
+                            .min(low_v),
+                    );
                 }
-            } else if on_stack.contains(&v) {
+            } else if on_stack
+                .contains(&v)
+            {
 
-                if let (Some(&low_u), Some(&disc_v)) = (
+                if let (
+                    Some(&low_u),
+                    Some(&disc_v),
+                ) = (
                     low.get(&u),
                     disc.get(&v),
                 ) {
 
-                    low.insert(u, low_u.min(disc_v));
+                    low.insert(
+                        u,
+                        low_u.min(
+                            disc_v,
+                        ),
+                    );
                 }
             }
         }
@@ -422,7 +527,9 @@ pub(crate) fn tarjan_scc_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>
 
         let mut component = Vec::new();
 
-        while let Some(top) = stack.pop() {
+        while let Some(top) =
+            stack.pop()
+        {
 
             on_stack.remove(&top);
 
@@ -450,15 +557,25 @@ pub(crate) fn tarjan_scc_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>
 /// `true` if a cycle is found, `false` otherwise.
 #[must_use]
 
-pub fn has_cycle<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Graph<V>) -> bool {
+pub fn has_cycle<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
+    graph: &Graph<V>
+) -> bool {
 
     let mut visited = HashSet::new();
 
     if graph.is_directed {
 
-        let mut recursion_stack = HashSet::new();
+        let mut recursion_stack =
+            HashSet::new();
 
-        for node_id in 0..graph.nodes.len() {
+        for node_id in
+            0..graph.nodes.len()
+        {
 
             if !visited.contains(&node_id)
                 && has_cycle_directed_util(
@@ -474,7 +591,9 @@ pub fn has_cycle<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Grap
         }
     } else {
 
-        for node_id in 0..graph.nodes.len() {
+        for node_id in
+            0..graph.nodes.len()
+        {
 
             if !visited.contains(&node_id)
                 && has_cycle_undirected_util(
@@ -493,7 +612,12 @@ pub fn has_cycle<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Grap
     false
 }
 
-pub(crate) fn has_cycle_directed_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub(crate) fn has_cycle_directed_util<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     u: usize,
     visited: &mut HashSet<usize>,
@@ -504,7 +628,9 @@ pub(crate) fn has_cycle_directed_util<V: Eq + std::hash::Hash + Clone + std::fmt
 
     rec_stack.insert(u);
 
-    if let Some(neighbors) = graph.adj.get(u) {
+    if let Some(neighbors) =
+        graph.adj.get(u)
+    {
 
         for &(v, _) in neighbors {
 
@@ -516,7 +642,9 @@ pub(crate) fn has_cycle_directed_util<V: Eq + std::hash::Hash + Clone + std::fmt
 
                     return true;
                 }
-            } else if rec_stack.contains(&v) {
+            } else if rec_stack
+                .contains(&v)
+            {
 
                 return true;
             }
@@ -528,7 +656,12 @@ pub(crate) fn has_cycle_directed_util<V: Eq + std::hash::Hash + Clone + std::fmt
     false
 }
 
-pub(crate) fn has_cycle_undirected_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub(crate) fn has_cycle_undirected_util<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     u: usize,
     visited: &mut HashSet<usize>,
@@ -537,7 +670,9 @@ pub(crate) fn has_cycle_undirected_util<V: Eq + std::hash::Hash + Clone + std::f
 
     visited.insert(u);
 
-    if let Some(neighbors) = graph.adj.get(u) {
+    if let Some(neighbors) =
+        graph.adj.get(u)
+    {
 
         for &(v, _) in neighbors {
 
@@ -552,7 +687,8 @@ pub(crate) fn has_cycle_undirected_util<V: Eq + std::hash::Hash + Clone + std::f
 
                     return true;
                 }
-            } else if Some(v) != parent {
+            } else if Some(v) != parent
+            {
 
                 return true;
             }
@@ -576,7 +712,12 @@ pub(crate) fn has_cycle_undirected_util<V: Eq + std::hash::Hash + Clone + std::f
 /// and `articulation_points` is a `Vec<usize>`.
 #[must_use]
 
-pub fn find_bridges_and_articulation_points<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn find_bridges_and_articulation_points<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>
 ) -> (
     Vec<(usize, usize)>,
@@ -585,17 +726,20 @@ pub fn find_bridges_and_articulation_points<V: Eq + std::hash::Hash + Clone + st
 
     let mut bridges = Vec::new();
 
-    let mut articulation_points = HashSet::new();
+    let mut articulation_points =
+        HashSet::new();
 
     let mut visited = HashSet::new();
 
-    let mut discovery_times = HashMap::new();
+    let mut discovery_times =
+        HashMap::new();
 
     let mut low_link = HashMap::new();
 
     let mut time = 0;
 
-    for node_id in 0..graph.nodes.len() {
+    for node_id in 0..graph.nodes.len()
+    {
 
         if !visited.contains(&node_id) {
 
@@ -621,7 +765,12 @@ pub fn find_bridges_and_articulation_points<V: Eq + std::hash::Hash + Clone + st
     )
 }
 
-pub(crate) fn b_and_ap_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub(crate) fn b_and_ap_util<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     u: usize,
     parent: Option<usize>,
@@ -643,7 +792,9 @@ pub(crate) fn b_and_ap_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     let mut children = 0;
 
-    if let Some(neighbors) = graph.adj.get(u) {
+    if let Some(neighbors) =
+        graph.adj.get(u)
+    {
 
         for &(v, _) in neighbors {
 
@@ -654,12 +805,20 @@ pub(crate) fn b_and_ap_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
             if visited.contains(&v) {
 
-                if let (Some(&low_u), Some(&disc_v)) = (
+                if let (
+                    Some(&low_u),
+                    Some(&disc_v),
+                ) = (
                     low.get(&u),
                     disc.get(&v),
                 ) {
 
-                    low.insert(u, low_u.min(disc_v));
+                    low.insert(
+                        u,
+                        low_u.min(
+                            disc_v,
+                        ),
+                    );
                 }
             } else {
 
@@ -677,43 +836,63 @@ pub(crate) fn b_and_ap_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
                     ap,
                 );
 
-                if let (Some(&low_u), Some(&low_v)) = (
+                if let (
+                    Some(&low_u),
+                    Some(&low_v),
+                ) = (
                     low.get(&u),
                     low.get(&v),
                 ) {
 
-                    low.insert(u, low_u.min(low_v));
+                    low.insert(
+                        u,
+                        low_u
+                            .min(low_v),
+                    );
                 }
 
                 if parent.is_some() {
 
-                    if let (Some(&low_v), Some(&disc_u)) = (
+                    if let (
+                        Some(&low_v),
+                        Some(&disc_u),
+                    ) = (
                         low.get(&v),
                         disc.get(&u),
                     ) {
 
-                        if low_v >= disc_u {
+                        if low_v
+                            >= disc_u
+                        {
 
-                            ap.insert(u);
+                            ap.insert(
+                                u,
+                            );
                         }
                     }
                 }
 
-                if let (Some(&low_v), Some(&disc_u)) = (
+                if let (
+                    Some(&low_v),
+                    Some(&disc_u),
+                ) = (
                     low.get(&v),
                     disc.get(&u),
                 ) {
 
                     if low_v > disc_u {
 
-                        bridges.push((u, v));
+                        bridges.push((
+                            u, v,
+                        ));
                     }
                 }
             }
         }
     }
 
-    if parent.is_none() && children > 1 {
+    if parent.is_none() && children > 1
+    {
 
         ap.insert(u);
     }
@@ -726,7 +905,9 @@ pub struct DSU {
 }
 
 impl DSU {
-    pub(crate) fn new(n: usize) -> Self {
+    pub(crate) fn new(
+        n: usize
+    ) -> Self {
 
         Self {
             parent: (0..n).collect(),
@@ -743,7 +924,8 @@ impl DSU {
             return i;
         }
 
-        self.parent[i] = self.find(self.parent[i]);
+        self.parent[i] =
+            self.find(self.parent[i]);
 
         self.parent[i]
     }
@@ -760,7 +942,8 @@ impl DSU {
 
         if root_i != root_j {
 
-            self.parent[root_i] = root_j;
+            self.parent[root_i] =
+                root_j;
         }
     }
 }
@@ -778,7 +961,12 @@ impl DSU {
 /// A `Vec<(usize, usize, Expr)>` representing the edges `(u, v, weight)` that form the MST.
 #[must_use]
 
-pub fn kruskal_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn kruskal_mst<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>
 ) -> Vec<(usize, usize, Expr)> {
 
@@ -795,7 +983,8 @@ pub fn kruskal_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    let mut dsu = DSU::new(graph.nodes.len());
+    let mut dsu =
+        DSU::new(graph.nodes.len());
 
     let mut mst = Vec::new();
 
@@ -827,7 +1016,12 @@ pub fn kruskal_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// The maximum flow value as an `f64`.
 #[must_use]
 
-pub fn edmonds_karp_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn edmonds_karp_max_flow<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     capacity_graph: &Graph<V>,
     s: usize,
     t: usize,
@@ -837,18 +1031,27 @@ pub fn edmonds_karp_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         .nodes
         .len();
 
-    let mut residual_capacity = vec![vec![0.0; n]; n];
+    let mut residual_capacity =
+        vec![vec![0.0; n]; n];
 
     for u in 0..n {
 
-        if let Some(neighbors) = capacity_graph
-            .adj
-            .get(u)
+        if let Some(neighbors) =
+            capacity_graph
+                .adj
+                .get(u)
         {
 
-            for &(v, ref cap) in neighbors {
+            for &(v, ref cap) in
+                neighbors
+            {
 
-                residual_capacity[u][v] = try_numeric_value(cap).unwrap_or(0.0);
+                residual_capacity[u]
+                    [v] =
+                    try_numeric_value(
+                        cap,
+                    )
+                    .unwrap_or(0.0);
             }
         }
     }
@@ -857,11 +1060,12 @@ pub fn edmonds_karp_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     loop {
 
-        let (parent, path_flow) = bfs_for_augmenting_path(
-            &residual_capacity,
-            s,
-            t,
-        );
+        let (parent, path_flow) =
+            bfs_for_augmenting_path(
+                &residual_capacity,
+                s,
+                t,
+            );
 
         if path_flow == 0.0 {
 
@@ -876,9 +1080,11 @@ pub fn edmonds_karp_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
             if let Some(u) = parent[v] {
 
-                residual_capacity[u][v] -= path_flow;
+                residual_capacity[u]
+                    [v] -= path_flow;
 
-                residual_capacity[v][u] += path_flow;
+                residual_capacity[v]
+                    [u] += path_flow;
 
                 v = u;
             } else {
@@ -908,23 +1114,35 @@ pub(crate) fn bfs_for_augmenting_path(
 
     let mut queue = VecDeque::new();
 
-    let mut path_flow = vec![f64::INFINITY; n];
+    let mut path_flow =
+        vec![f64::INFINITY; n];
 
     queue.push_back(s);
 
-    while let Some(u) = queue.pop_front() {
+    while let Some(u) =
+        queue.pop_front()
+    {
 
         for v in 0..n {
 
-            if parent[v].is_none() && v != s && capacity[u][v] > 0.0 {
+            if parent[v].is_none()
+                && v != s
+                && capacity[u][v] > 0.0
+            {
 
                 parent[v] = Some(u);
 
-                path_flow[v] = path_flow[u].min(capacity[u][v]);
+                path_flow[v] =
+                    path_flow[u].min(
+                        capacity[u][v],
+                    );
 
                 if v == t {
 
-                    return (parent, path_flow[t]);
+                    return (
+                        parent,
+                        path_flow[t],
+                    );
                 }
 
                 queue.push_back(v);
@@ -951,7 +1169,12 @@ pub(crate) fn bfs_for_augmenting_path(
 /// The maximum flow value as an `f64`.
 #[must_use]
 
-pub fn dinic_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn dinic_max_flow<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     capacity_graph: &Graph<V>,
     s: usize,
     t: usize,
@@ -961,18 +1184,27 @@ pub fn dinic_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         .nodes
         .len();
 
-    let mut residual_capacity = vec![vec![0.0; n]; n];
+    let mut residual_capacity =
+        vec![vec![0.0; n]; n];
 
     for u in 0..n {
 
-        if let Some(neighbors) = capacity_graph
-            .adj
-            .get(u)
+        if let Some(neighbors) =
+            capacity_graph
+                .adj
+                .get(u)
         {
 
-            for &(v, ref cap) in neighbors {
+            for &(v, ref cap) in
+                neighbors
+            {
 
-                residual_capacity[u][v] = try_numeric_value(cap).unwrap_or(0.0);
+                residual_capacity[u]
+                    [v] =
+                    try_numeric_value(
+                        cap,
+                    )
+                    .unwrap_or(0.0);
             }
         }
     }
@@ -1038,7 +1270,9 @@ pub(crate) fn dinic_bfs(
 
         for v in 0..capacity.len() {
 
-            if level[v] < 0 && capacity[u][v] > 0.0 {
+            if level[v] < 0
+                && capacity[u][v] > 0.0
+            {
 
                 level[v] = level[u] + 1;
 
@@ -1073,7 +1307,9 @@ pub(crate) fn dinic_dfs(
 
         let v = ptr[u];
 
-        if level[v] != level[u] + 1 || cap[u][v] == 0.0 {
+        if level[v] != level[u] + 1
+            || cap[u][v] == 0.0
+        {
 
             ptr[u] += 1;
 
@@ -1124,7 +1360,12 @@ pub(crate) fn dinic_dfs(
 /// `predecessors` is a `HashMap` from node ID to its predecessor on the shortest path.
 /// Returns an error string if a negative-weight cycle is detected.
 
-pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn bellman_ford<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     start_node: usize,
 ) -> Result<
@@ -1137,13 +1378,15 @@ pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     let n = graph.nodes.len();
 
-    let mut dist: HashMap<usize, Expr> = HashMap::new();
+    let mut dist: HashMap<usize, Expr> =
+        HashMap::new();
 
     let mut prev = HashMap::new();
 
     let infinity = Expr::Infinity;
 
-    for node_id in 0..graph.nodes.len() {
+    for node_id in 0..graph.nodes.len()
+    {
 
         dist.insert(
             node_id,
@@ -1160,16 +1403,26 @@ pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
         for u in 0..n {
 
-            if let Some(neighbors) = graph.adj.get(u) {
+            if let Some(neighbors) =
+                graph.adj.get(u)
+            {
 
-                for &(v, ref weight) in neighbors {
+                for &(v, ref weight) in
+                    neighbors
+                {
 
-                    let dist_u = &dist[&u];
+                    let dist_u =
+                        &dist[&u];
 
-                    let dist_v = &dist[&v];
+                    let dist_v =
+                        &dist[&v];
 
                     // Check if dist[u] + weight < dist[v]
-                    let new_dist = symbolic_add(dist_u, weight);
+                    let new_dist =
+                        symbolic_add(
+                            dist_u,
+                            weight,
+                        );
 
                     // For comparison, we need numeric values
                     let dist_u_val = try_numeric_value(dist_u).unwrap_or(f64::INFINITY);
@@ -1178,11 +1431,21 @@ pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
                     let dist_v_val = try_numeric_value(dist_v).unwrap_or(f64::INFINITY);
 
-                    if dist_u_val != f64::INFINITY && dist_u_val + weight_val < dist_v_val {
+                    if dist_u_val
+                        != f64::INFINITY
+                        && dist_u_val
+                            + weight_val
+                            < dist_v_val
+                    {
 
-                        dist.insert(v, new_dist);
+                        dist.insert(
+                            v, new_dist,
+                        );
 
-                        prev.insert(v, Some(u));
+                        prev.insert(
+                            v,
+                            Some(u),
+                        );
                     }
                 }
             }
@@ -1192,17 +1455,44 @@ pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     // Check for negative cycles
     for u in 0..n {
 
-        if let Some(neighbors) = graph.adj.get(u) {
+        if let Some(neighbors) =
+            graph.adj.get(u)
+        {
 
-            for &(v, ref weight) in neighbors {
+            for &(v, ref weight) in
+                neighbors
+            {
 
-                let dist_u_val = try_numeric_value(&dist[&u]).unwrap_or(f64::INFINITY);
+                let dist_u_val =
+                    try_numeric_value(
+                        &dist[&u],
+                    )
+                    .unwrap_or(
+                        f64::INFINITY,
+                    );
 
-                let weight_val = try_numeric_value(weight).unwrap_or(f64::INFINITY);
+                let weight_val =
+                    try_numeric_value(
+                        weight,
+                    )
+                    .unwrap_or(
+                        f64::INFINITY,
+                    );
 
-                let dist_v_val = try_numeric_value(&dist[&v]).unwrap_or(f64::INFINITY);
+                let dist_v_val =
+                    try_numeric_value(
+                        &dist[&v],
+                    )
+                    .unwrap_or(
+                        f64::INFINITY,
+                    );
 
-                if dist_u_val != f64::INFINITY && dist_u_val + weight_val < dist_v_val {
+                if dist_u_val
+                    != f64::INFINITY
+                    && dist_u_val
+                        + weight_val
+                        < dist_v_val
+                {
 
                     return Err("Graph contains a negative-weight cycle.".to_string());
                 }
@@ -1229,7 +1519,12 @@ pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 #[allow(unused_variables)]
 #[must_use]
 
-pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn min_cost_max_flow<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     s: usize,
     t: usize,
@@ -1237,17 +1532,25 @@ pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     let n = graph.nodes.len();
 
-    let mut capacity = vec![vec![0.0; n]; n];
+    let mut capacity =
+        vec![vec![0.0; n]; n];
 
-    let mut cost = vec![vec![0.0; n]; n];
+    let mut cost =
+        vec![vec![0.0; n]; n];
 
     for u in 0..n {
 
-        if let Some(neighbors) = graph.adj.get(u) {
+        if let Some(neighbors) =
+            graph.adj.get(u)
+        {
 
-            for &(v, ref weight) in neighbors {
+            for &(v, ref weight) in
+                neighbors
+            {
 
-                if let Expr::Tuple(t) = weight {
+                if let Expr::Tuple(t) =
+                    weight
+                {
 
                     if t.len() == 2 {
 
@@ -1266,7 +1569,8 @@ pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     loop {
 
-        let mut dist = vec![f64::INFINITY; n];
+        let mut dist =
+            vec![f64::INFINITY; n];
 
         let mut parent = vec![None; n];
 
@@ -1296,20 +1600,26 @@ pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
             break;
         }
 
-        let mut path_flow = f64::INFINITY;
+        let mut path_flow =
+            f64::INFINITY;
 
         let mut curr = t;
 
-        while let Some(prev) = parent[curr] {
+        while let Some(prev) =
+            parent[curr]
+        {
 
-            path_flow = path_flow.min(capacity[prev][curr]);
+            path_flow = path_flow.min(
+                capacity[prev][curr],
+            );
 
             curr = prev;
         }
 
         flow += path_flow;
 
-        total_cost += path_flow * dist[t];
+        total_cost +=
+            path_flow * dist[t];
 
         let mut v = t;
 
@@ -1339,7 +1649,12 @@ pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// `None` if not bipartite.
 #[must_use]
 
-pub fn is_bipartite<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn is_bipartite<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>
 ) -> Option<Vec<i8>> {
 
@@ -1351,24 +1666,36 @@ pub fn is_bipartite<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
         if colors[i] == -1 {
 
-            let mut queue = VecDeque::new();
+            let mut queue =
+                VecDeque::new();
 
             queue.push_back(i);
 
             colors[i] = 0;
 
-            while let Some(u) = queue.pop_front() {
+            while let Some(u) =
+                queue.pop_front()
+            {
 
-                if let Some(neighbors) = graph.adj.get(u) {
+                if let Some(neighbors) =
+                    graph.adj.get(u)
+                {
 
-                    for &(v, _) in neighbors {
+                    for &(v, _) in
+                        neighbors
+                    {
 
-                        if colors[v] == -1 {
+                        if colors[v]
+                            == -1
+                        {
 
                             colors[v] = 1 - colors[u];
 
                             queue.push_back(v);
-                        } else if colors[v] == colors[u] {
+                        } else if colors
+                            [v]
+                            == colors[u]
+                        {
 
                             return None;
                         }
@@ -1395,7 +1722,12 @@ pub fn is_bipartite<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// A `Vec<(usize, usize)>` representing the edges `(u, v)` in the maximum matching.
 #[must_use]
 
-pub fn bipartite_maximum_matching<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn bipartite_maximum_matching<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     partition: &[i8],
 ) -> Vec<(usize, usize)> {
@@ -1412,7 +1744,8 @@ pub fn bipartite_maximum_matching<V: Eq + std::hash::Hash + Clone + std::fmt::De
 
     for &u in &u_nodes {
 
-        let mut visited = vec![false; n];
+        let mut visited =
+            vec![false; n];
 
         bpm_dfs(
             graph,
@@ -1431,7 +1764,8 @@ pub fn bipartite_maximum_matching<V: Eq + std::hash::Hash + Clone + std::fmt::De
 
             if partition[v] == 1 {
 
-                matching_edges.push((*u, v));
+                matching_edges
+                    .push((*u, v));
             }
         }
     }
@@ -1439,14 +1773,21 @@ pub fn bipartite_maximum_matching<V: Eq + std::hash::Hash + Clone + std::fmt::De
     matching_edges
 }
 
-fn bpm_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+fn bpm_dfs<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     u: usize,
     visited: &mut Vec<bool>,
     match_r: &mut Vec<Option<usize>>,
 ) -> bool {
 
-    if let Some(neighbors) = graph.adj.get(u) {
+    if let Some(neighbors) =
+        graph.adj.get(u)
+    {
 
         for &(v, _) in neighbors {
 
@@ -1460,13 +1801,15 @@ fn bpm_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
                 if match_r[v].is_none()
                     || bpm_dfs(
                         graph,
-                        match_r[v].unwrap(),
+                        match_r[v]
+                            .unwrap(),
                         visited,
                         match_r,
                     )
                 {
 
-                    match_r[v] = Some(u);
+                    match_r[v] =
+                        Some(u);
 
                     return true;
                 }
@@ -1491,7 +1834,12 @@ fn bpm_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// A `Vec<(usize, usize, Expr)>` representing the edges `(u, v, weight)` that form the MST.
 #[must_use]
 
-pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn prim_mst<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     start_node: usize,
 ) -> Vec<(usize, usize, Expr)> {
@@ -1511,9 +1859,17 @@ pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         .get(start_node)
     {
 
-        for &(v, ref weight) in neighbors {
+        for &(v, ref weight) in
+            neighbors
+        {
 
-            let cost = try_numeric_value(weight).unwrap_or(f64::INFINITY);
+            let cost =
+                try_numeric_value(
+                    weight,
+                )
+                .unwrap_or(
+                    f64::INFINITY,
+                );
 
             pq.push((
                 ordered_float::OrderedFloat(-cost),
@@ -1524,7 +1880,9 @@ pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         }
     }
 
-    while let Some((_, u, v, weight)) = pq.pop() {
+    while let Some((_, u, v, weight)) =
+        pq.pop()
+    {
 
         if visited[v] {
 
@@ -1535,9 +1893,15 @@ pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
         mst.push((u, v, weight));
 
-        if let Some(neighbors) = graph.adj.get(v) {
+        if let Some(neighbors) =
+            graph.adj.get(v)
+        {
 
-            for &(next_v, ref next_weight) in neighbors {
+            for &(
+                next_v,
+                ref next_weight,
+            ) in neighbors
+            {
 
                 if !visited[next_v] {
 
@@ -1570,13 +1934,22 @@ pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// A `Result` containing a `Vec<usize>` of node indices in topological order,
 /// or an error string if the graph has a cycle.
 
-pub fn topological_sort_kahn<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn topological_sort_kahn<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>
 ) -> Result<Vec<usize>, String> {
 
     if !graph.is_directed {
 
-        return Err("Topological sort is only defined for directed graphs.".to_string());
+        return Err("Topological \
+                    sort is only \
+                    defined for \
+                    directed graphs."
+            .to_string());
     }
 
     let n = graph.nodes.len();
@@ -1585,20 +1958,26 @@ pub fn topological_sort_kahn<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     for i in 0..n {
 
-        in_degree[i] = graph.in_degree(i);
+        in_degree[i] =
+            graph.in_degree(i);
     }
 
-    let mut queue: VecDeque<usize> = (0..n)
+    let mut queue: VecDeque<usize> = (0
+        ..n)
         .filter(|&i| in_degree[i] == 0)
         .collect();
 
     let mut sorted_order = Vec::new();
 
-    while let Some(u) = queue.pop_front() {
+    while let Some(u) =
+        queue.pop_front()
+    {
 
         sorted_order.push(u);
 
-        if let Some(neighbors) = graph.adj.get(u) {
+        if let Some(neighbors) =
+            graph.adj.get(u)
+        {
 
             for &(v, _) in neighbors {
 
@@ -1617,7 +1996,12 @@ pub fn topological_sort_kahn<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         Ok(sorted_order)
     } else {
 
-        Err("Graph has a cycle, topological sort is not possible.".to_string())
+        Err(
+            "Graph has a cycle, \
+             topological sort is not \
+             possible."
+                .to_string(),
+        )
     }
 }
 
@@ -1633,7 +2017,12 @@ pub fn topological_sort_kahn<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// A `Vec<usize>` containing the node IDs in topological order.
 #[must_use]
 
-pub fn topological_sort_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn topological_sort_dfs<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>
 ) -> Vec<usize> {
 
@@ -1641,7 +2030,8 @@ pub fn topological_sort_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     let mut stack = Vec::new();
 
-    for node_id in 0..graph.nodes.len() {
+    for node_id in 0..graph.nodes.len()
+    {
 
         if !visited.contains(&node_id) {
 
@@ -1659,7 +2049,12 @@ pub fn topological_sort_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     stack
 }
 
-pub(crate) fn topo_dfs_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub(crate) fn topo_dfs_util<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     u: usize,
     visited: &mut HashSet<usize>,
@@ -1668,14 +2063,17 @@ pub(crate) fn topo_dfs_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     visited.insert(u);
 
-    if let Some(neighbors) = graph.adj.get(u) {
+    if let Some(neighbors) =
+        graph.adj.get(u)
+    {
 
         for &(v, _) in neighbors {
 
             if !visited.contains(&v) {
 
                 topo_dfs_util(
-                    graph, v, visited, stack,
+                    graph, v, visited,
+                    stack,
                 );
             }
         }
@@ -1697,7 +2095,12 @@ pub(crate) fn topo_dfs_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// `None` if the graph contains a cycle.
 #[must_use]
 
-pub fn topological_sort<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn topological_sort<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>
 ) -> Option<Vec<usize>> {
 
@@ -1719,7 +2122,12 @@ pub fn topological_sort<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// A `Vec<usize>` of node indices representing the minimum vertex cover.
 #[must_use]
 
-pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn bipartite_minimum_vertex_cover<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     partition: &[i8],
     matching: &[(usize, usize)],
@@ -1727,7 +2135,8 @@ pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt
 
     let mut u_nodes = HashSet::new();
 
-    let mut matched_nodes_u = HashSet::new();
+    let mut matched_nodes_u =
+        HashSet::new();
 
     for i in 0..partition.len() {
 
@@ -1755,9 +2164,12 @@ pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt
 
     let mut visited = HashSet::new();
 
-    let mut queue = VecDeque::from(unmatched_u);
+    let mut queue =
+        VecDeque::from(unmatched_u);
 
-    while let Some(u) = queue.pop_front() {
+    while let Some(u) =
+        queue.pop_front()
+    {
 
         if visited.contains(&u) {
 
@@ -1766,13 +2178,20 @@ pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt
 
         visited.insert(u);
 
-        if let Some(neighbors) = graph.adj.get(u) {
+        if let Some(neighbors) =
+            graph.adj.get(u)
+        {
 
             for &(v, _) in neighbors {
 
-                if !matching.contains(&(u, v))
-                    && !matching.contains(&(v, u))
-                    && !visited.contains(&v)
+                if !matching
+                    .contains(&(u, v))
+                    && !matching
+                        .contains(&(
+                            v, u,
+                        ))
+                    && !visited
+                        .contains(&v)
                 {
 
                     queue.push_back(v);
@@ -1793,7 +2212,9 @@ pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt
 
     for i in 0..partition.len() {
 
-        if partition[i] == 1 && visited.contains(&i) {
+        if partition[i] == 1
+            && visited.contains(&i)
+        {
 
             cover.push(i);
         }
@@ -1816,7 +2237,12 @@ pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt
 #[allow(unused_variables)]
 #[must_use]
 
-pub fn hopcroft_karp_bipartite_matching<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn hopcroft_karp_bipartite_matching<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     partition: &[i8],
 ) -> Vec<(usize, usize)> {
@@ -1879,7 +2305,12 @@ pub fn hopcroft_karp_bipartite_matching<V: Eq + std::hash::Hash + Clone + std::f
     result
 }
 
-pub(crate) fn hopcroft_karp_bfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub(crate) fn hopcroft_karp_bfs<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     u_nodes: &[usize],
     pair_u: &mut [Option<usize>],
@@ -1904,15 +2335,25 @@ pub(crate) fn hopcroft_karp_bfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
 
     let mut found_path = false;
 
-    while let Some(u) = queue.pop_front() {
+    while let Some(u) =
+        queue.pop_front()
+    {
 
-        if let Some(neighbors) = graph.adj.get(u) {
+        if let Some(neighbors) =
+            graph.adj.get(u)
+        {
 
             for &(v, _) in neighbors {
 
-                if let Some(next_u_opt) = pair_v.get(v) {
+                if let Some(
+                    next_u_opt,
+                ) = pair_v.get(v)
+                {
 
-                    if let Some(next_u) = next_u_opt {
+                    if let Some(
+                        next_u,
+                    ) = next_u_opt
+                    {
 
                         if dist[*next_u] == usize::MAX {
 
@@ -1922,7 +2363,8 @@ pub(crate) fn hopcroft_karp_bfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
                         }
                     } else {
 
-                        found_path = true;
+                        found_path =
+                            true;
                     }
                 }
             }
@@ -1932,7 +2374,12 @@ pub(crate) fn hopcroft_karp_bfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
     found_path
 }
 
-pub(crate) fn hopcroft_karp_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub(crate) fn hopcroft_karp_dfs<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     u: usize,
     pair_u: &mut [Option<usize>],
@@ -1940,13 +2387,19 @@ pub(crate) fn hopcroft_karp_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
     dist: &mut [usize],
 ) -> bool {
 
-    if let Some(neighbors) = graph.adj.get(u) {
+    if let Some(neighbors) =
+        graph.adj.get(u)
+    {
 
         for &(v, _) in neighbors {
 
-            if let Some(next_u_opt) = pair_v.get(v) {
+            if let Some(next_u_opt) =
+                pair_v.get(v)
+            {
 
-                if let Some(next_u) = next_u_opt {
+                if let Some(next_u) =
+                    next_u_opt
+                {
 
                     if dist[*next_u] == dist[u] + 1
                         && hopcroft_karp_dfs(
@@ -1990,9 +2443,15 @@ pub(crate) fn hopcroft_karp_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
 /// A `Vec<(usize, usize)>` representing the edges `(u, v)` in the maximum matching.
 #[allow(unused_variables)]
 
-pub fn blossom_algorithm<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn blossom_algorithm<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>
-) -> Result<Vec<(usize, usize)>, String> {
+) -> Result<Vec<(usize, usize)>, String>
+{
 
     let n = graph.nodes.len();
 
@@ -2012,11 +2471,15 @@ pub fn blossom_algorithm<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
                 let mut u = path[0];
 
-                for &v in path.iter().skip(1) {
+                for &v in
+                    path.iter().skip(1)
+                {
 
-                    matching[u] = Some(v);
+                    matching[u] =
+                        Some(v);
 
-                    matching[v] = Some(u);
+                    matching[v] =
+                        Some(u);
 
                     u = v;
                 }
@@ -2041,7 +2504,10 @@ pub fn blossom_algorithm<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 }
 
 pub(crate) fn find_augmenting_path_with_blossoms<
-    V: Eq + std::hash::Hash + Clone + std::fmt::Debug,
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
 >(
     graph: &Graph<V>,
     start_node: usize,
@@ -2052,7 +2518,8 @@ pub(crate) fn find_augmenting_path_with_blossoms<
 
     let mut parent = vec![None; n];
 
-    let mut origin = (0..n).collect::<Vec<_>>();
+    let mut origin =
+        (0..n).collect::<Vec<_>>();
 
     let mut level = vec![-1; n];
 
@@ -2062,41 +2529,63 @@ pub(crate) fn find_augmenting_path_with_blossoms<
 
     queue.push_back(start_node);
 
-    while let Some(u) = queue.pop_front() {
+    while let Some(u) =
+        queue.pop_front()
+    {
 
-        if let Some(neighbors) = graph.adj.get(u) {
+        if let Some(neighbors) =
+            graph.adj.get(u)
+        {
 
             for &(v, _) in neighbors {
 
                 if level[v] == -1 {
 
-                    if let Some(w) = matching[v] {
+                    if let Some(w) =
+                        matching[v]
+                    {
 
-                        parent[v] = Some(u);
+                        parent[v] =
+                            Some(u);
 
                         level[v] = 1;
 
                         level[w] = 0;
 
-                        queue.push_back(w);
+                        queue
+                            .push_back(
+                                w,
+                            );
                     } else {
 
-                        parent[v] = Some(u);
+                        parent[v] =
+                            Some(u);
 
-                        let mut path = vec![v, u];
+                        let mut path =
+                            vec![v, u];
 
-                        let mut curr = u;
+                        let mut curr =
+                            u;
 
-                        while let Some(p) = parent[curr] {
+                        while let Some(
+                            p,
+                        ) =
+                            parent[curr]
+                        {
 
-                            path.push(p);
+                            path.push(
+                                p,
+                            );
 
                             curr = p;
                         }
 
-                        return Ok(path);
+                        return Ok(
+                            path,
+                        );
                     }
-                } else if level[v] == 0 {
+                } else if level[v] == 0
+                {
 
                     let base = find_common_ancestor(
                         &origin, &parent, u, v,
@@ -2138,7 +2627,8 @@ pub(crate) fn find_common_ancestor(
     mut v: usize,
 ) -> Result<usize, String> {
 
-    let mut visited = vec![false; origin.len()];
+    let mut visited =
+        vec![false; origin.len()];
 
     loop {
 
@@ -2169,7 +2659,12 @@ pub(crate) fn find_common_ancestor(
             v = p;
         } else {
 
-            return Err("Could not find a common ancestor in blossom algorithm.".to_string());
+            return Err(
+                "Could not find a \
+                 common ancestor in \
+                 blossom algorithm."
+                    .to_string(),
+            );
         }
     }
 }
@@ -2225,26 +2720,40 @@ pub(crate) fn contract_blossom(
 /// `(distance_from_start, predecessor_node_id)`.
 #[must_use]
 
-pub fn shortest_path_unweighted<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn shortest_path_unweighted<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     start_node: usize,
-) -> HashMap<usize, (usize, Option<usize>)> {
+) -> HashMap<
+    usize,
+    (usize, Option<usize>),
+> {
 
     let mut distances = HashMap::new();
 
-    let mut predecessors = HashMap::new();
+    let mut predecessors =
+        HashMap::new();
 
     let mut queue = VecDeque::new();
 
     distances.insert(start_node, 0);
 
-    predecessors.insert(start_node, None);
+    predecessors
+        .insert(start_node, None);
 
     queue.push_back(start_node);
 
-    while let Some(u) = queue.pop_front() {
+    while let Some(u) =
+        queue.pop_front()
+    {
 
-        let u_dist = if let Some(d) = distances.get(&u) {
+        let u_dist = if let Some(d) =
+            distances.get(&u)
+        {
 
             *d
         } else {
@@ -2252,7 +2761,9 @@ pub fn shortest_path_unweighted<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
             continue;
         };
 
-        if let Some(neighbors) = graph.adj.get(u) {
+        if let Some(neighbors) =
+            graph.adj.get(u)
+        {
 
             for &(v, _) in neighbors {
 
@@ -2300,10 +2811,16 @@ pub fn shortest_path_unweighted<V: Eq + std::hash::Hash + Clone + std::fmt::Debu
 /// A `HashMap<usize, (Expr, Option<usize>)>` where keys are node IDs and values are
 /// `(shortest_distance, predecessor_node_id)`.
 
-pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
+pub fn dijkstra<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
     graph: &Graph<V>,
     start_node: usize,
-) -> HashMap<usize, (Expr, Option<usize>)> {
+) -> HashMap<usize, (Expr, Option<usize>)>
+{
 
     let mut dist = HashMap::new();
 
@@ -2311,7 +2828,8 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 
     let mut pq = std::collections::BinaryHeap::new();
 
-    for node_id in 0..graph.nodes.len() {
+    for node_id in 0..graph.nodes.len()
+    {
 
         dist.insert(
             node_id,
@@ -2331,28 +2849,41 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
         start_node,
     ));
 
-    while let Some((cost, u)) = pq.pop() {
+    while let Some((cost, u)) = pq.pop()
+    {
 
         let cost = -cost.0;
 
         if cost
             > dist
                 .get(&u)
-                .and_then(try_numeric_value)
-                .unwrap_or(f64::INFINITY)
+                .and_then(
+                    try_numeric_value,
+                )
+                .unwrap_or(
+                    f64::INFINITY,
+                )
         {
 
             continue;
         }
 
-        if let Some(neighbors) = graph.adj.get(u) {
+        if let Some(neighbors) =
+            graph.adj.get(u)
+        {
 
-            for &(v, ref weight) in neighbors {
+            for &(v, ref weight) in
+                neighbors
+            {
 
-                let new_dist = simplify(&Expr::new_add(
-                    Expr::Constant(cost),
-                    weight.clone(),
-                ));
+                let new_dist = simplify(
+                    &Expr::new_add(
+                        Expr::Constant(
+                            cost,
+                        ),
+                        weight.clone(),
+                    ),
+                );
 
                 if try_numeric_value(&new_dist).unwrap_or(f64::INFINITY)
                     < dist
@@ -2408,24 +2939,41 @@ pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
 /// An `Expr::Matrix` where `M[i][j]` is the shortest distance from node `i` to node `j`.
 #[must_use]
 
-pub fn floyd_warshall<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Graph<V>) -> Expr {
+pub fn floyd_warshall<
+    V: Eq
+        + std::hash::Hash
+        + Clone
+        + std::fmt::Debug,
+>(
+    graph: &Graph<V>
+) -> Expr {
 
     let n = graph.nodes.len();
 
-    let mut dist = vec![vec![Expr::Infinity; n]; n];
+    let mut dist =
+        vec![
+            vec![Expr::Infinity; n];
+            n
+        ];
 
     for i in 0..n {
 
-        dist[i][i] = Expr::Constant(0.0);
+        dist[i][i] =
+            Expr::Constant(0.0);
     }
 
     for u in 0..n {
 
-        if let Some(neighbors) = graph.adj.get(u) {
+        if let Some(neighbors) =
+            graph.adj.get(u)
+        {
 
-            for &(v, ref weight) in neighbors {
+            for &(v, ref weight) in
+                neighbors
+            {
 
-                dist[u][v] = weight.clone();
+                dist[u][v] =
+                    weight.clone();
             }
         }
     }
@@ -2436,16 +2984,31 @@ pub fn floyd_warshall<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: 
 
             for j in 0..n {
 
-                let new_dist = simplify(&Expr::new_add(
-                    dist[i][k].clone(),
-                    dist[k][j].clone(),
-                ));
+                let new_dist = simplify(
+                    &Expr::new_add(
+                        dist[i][k]
+                            .clone(),
+                        dist[k][j]
+                            .clone(),
+                    ),
+                );
 
-                if try_numeric_value(&dist[i][j]).unwrap_or(f64::INFINITY)
-                    > try_numeric_value(&new_dist).unwrap_or(f64::INFINITY)
+                if try_numeric_value(
+                    &dist[i][j],
+                )
+                .unwrap_or(
+                    f64::INFINITY,
+                )
+                    > try_numeric_value(
+                        &new_dist,
+                    )
+                    .unwrap_or(
+                        f64::INFINITY,
+                    )
                 {
 
-                    dist[i][j] = new_dist;
+                    dist[i][j] =
+                        new_dist;
                 }
             }
         }
@@ -2468,7 +3031,9 @@ pub fn floyd_warshall<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: 
 /// `eigenvalues` is a column vector of eigenvalues.
 /// `eigenvectors_matrix` is a matrix where each column is an eigenvector.
 
-pub fn spectral_analysis(matrix: &Expr) -> Result<(Expr, Expr), String> {
+pub fn spectral_analysis(
+    matrix: &Expr
+) -> Result<(Expr, Expr), String> {
 
     crate::symbolic::matrix::eigen_decomposition(matrix)
 }
@@ -2485,7 +3050,9 @@ pub fn spectral_analysis(matrix: &Expr) -> Result<(Expr, Expr), String> {
 /// A `Result` containing an `Expr` representing the algebraic connectivity,
 /// or an error string if computation fails or the graph has fewer than 2 eigenvalues.
 
-pub fn algebraic_connectivity<V>(graph: &Graph<V>) -> Result<Expr, String>
+pub fn algebraic_connectivity<V>(
+    graph: &Graph<V>
+) -> Result<Expr, String>
 where
     V: Clone,
     V: Debug,
@@ -2493,27 +3060,41 @@ where
     V: Hash,
 {
 
-    let laplacian = graph.to_laplacian_matrix();
+    let laplacian =
+        graph.to_laplacian_matrix();
 
-    let (eigenvalues, _) = spectral_analysis(&laplacian)?;
+    let (eigenvalues, _) =
+        spectral_analysis(&laplacian)?;
 
-    if let Expr::Matrix(eig_vec) = eigenvalues {
+    if let Expr::Matrix(eig_vec) =
+        eigenvalues
+    {
 
         if eig_vec.len() < 2 {
 
-            return Err("Graph has fewer than 2 eigenvalues.".to_string());
+            return Err(
+                "Graph has fewer than \
+                 2 eigenvalues."
+                    .to_string(),
+            );
         }
 
-        let mut numerical_eigenvalues = Vec::new();
+        let mut numerical_eigenvalues =
+            Vec::new();
 
         for val_expr in eig_vec
             .iter()
             .flatten()
         {
 
-            if let Some(val) = try_numeric_value(val_expr) {
+            if let Some(val) =
+                try_numeric_value(
+                    val_expr,
+                )
+            {
 
-                numerical_eigenvalues.push(val);
+                numerical_eigenvalues
+                    .push(val);
             } else {
 
                 return Err("Eigenvalues are not all numerical, cannot sort.".to_string());
@@ -2531,6 +3112,10 @@ where
         ))
     } else {
 
-        Err("Eigenvalue computation did not return a vector.".to_string())
+        Err(
+            "Eigenvalue computation \
+             did not return a vector."
+                .to_string(),
+        )
     }
 }

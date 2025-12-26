@@ -8,9 +8,12 @@ use std::os::raw::c_char;
 /// Computes the symbolic mean of a set of expressions using JSON.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_mean(data_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_mean(
+    data_json: *const c_char
+) -> *mut c_char {
 
-    let data: Option<Vec<Expr>> = from_json_string(data_json);
+    let data: Option<Vec<Expr>> =
+        from_json_string(data_json);
 
     if let Some(d) = data {
 
@@ -26,13 +29,17 @@ pub extern "C" fn rssn_json_mean(data_json: *const c_char) -> *mut c_char {
 /// Computes the symbolic variance of a set of expressions using JSON.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_variance(data_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_variance(
+    data_json: *const c_char
+) -> *mut c_char {
 
-    let data: Option<Vec<Expr>> = from_json_string(data_json);
+    let data: Option<Vec<Expr>> =
+        from_json_string(data_json);
 
     if let Some(d) = data {
 
-        let result = stats::variance(&d);
+        let result =
+            stats::variance(&d);
 
         to_json_string(&result)
     } else {
@@ -44,9 +51,12 @@ pub extern "C" fn rssn_json_variance(data_json: *const c_char) -> *mut c_char {
 /// Computes the symbolic standard deviation of a set of expressions using JSON.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_std_dev(data_json: *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_std_dev(
+    data_json: *const c_char
+) -> *mut c_char {
 
-    let data: Option<Vec<Expr>> = from_json_string(data_json);
+    let data: Option<Vec<Expr>> =
+        from_json_string(data_json);
 
     if let Some(d) = data {
 
@@ -67,13 +77,18 @@ pub extern "C" fn rssn_json_covariance(
     data2_json: *const c_char,
 ) -> *mut c_char {
 
-    let data1: Option<Vec<Expr>> = from_json_string(data1_json);
+    let data1: Option<Vec<Expr>> =
+        from_json_string(data1_json);
 
-    let data2: Option<Vec<Expr>> = from_json_string(data2_json);
+    let data2: Option<Vec<Expr>> =
+        from_json_string(data2_json);
 
-    if let (Some(d1), Some(d2)) = (data1, data2) {
+    if let (Some(d1), Some(d2)) =
+        (data1, data2)
+    {
 
-        let result = stats::covariance(&d1, &d2);
+        let result =
+            stats::covariance(&d1, &d2);
 
         to_json_string(&result)
     } else {
@@ -90,13 +105,19 @@ pub extern "C" fn rssn_json_correlation(
     data2_json: *const c_char,
 ) -> *mut c_char {
 
-    let data1: Option<Vec<Expr>> = from_json_string(data1_json);
+    let data1: Option<Vec<Expr>> =
+        from_json_string(data1_json);
 
-    let data2: Option<Vec<Expr>> = from_json_string(data2_json);
+    let data2: Option<Vec<Expr>> =
+        from_json_string(data2_json);
 
-    if let (Some(d1), Some(d2)) = (data1, data2) {
+    if let (Some(d1), Some(d2)) =
+        (data1, data2)
+    {
 
-        let result = stats::correlation(&d1, &d2);
+        let result = stats::correlation(
+            &d1, &d2,
+        );
 
         to_json_string(&result)
     } else {

@@ -12,13 +12,27 @@ pub unsafe extern "C" fn rssn_bincode_verify_equation_solution(
     free_vars_buf: BincodeBuffer,
 ) -> bool {
 
-    let equations: Option<Vec<Expr>> = from_bincode_buffer(&equations_buf);
+    let equations: Option<Vec<Expr>> =
+        from_bincode_buffer(
+            &equations_buf,
+        );
 
-    let solution: Option<HashMap<String, Expr>> = from_bincode_buffer(&solution_buf);
+    let solution: Option<
+        HashMap<String, Expr>,
+    > = from_bincode_buffer(
+        &solution_buf,
+    );
 
-    let free_vars: Option<Vec<String>> = from_bincode_buffer(&free_vars_buf);
+    let free_vars: Option<Vec<String>> =
+        from_bincode_buffer(
+            &free_vars_buf,
+        );
 
-    if let (Some(eqs), Some(sol), Some(free)) = (
+    if let (
+        Some(eqs),
+        Some(sol),
+        Some(free),
+    ) = (
         equations, solution, free_vars,
     ) {
 
@@ -45,13 +59,24 @@ pub unsafe extern "C" fn rssn_bincode_verify_indefinite_integral(
     var_buf: BincodeBuffer,
 ) -> bool {
 
-    let integrand: Option<Expr> = from_bincode_buffer(&integrand_buf);
+    let integrand: Option<Expr> =
+        from_bincode_buffer(
+            &integrand_buf,
+        );
 
-    let integral_result: Option<Expr> = from_bincode_buffer(&integral_result_buf);
+    let integral_result: Option<Expr> =
+        from_bincode_buffer(
+            &integral_result_buf,
+        );
 
-    let var: Option<String> = from_bincode_buffer(&var_buf);
+    let var: Option<String> =
+        from_bincode_buffer(&var_buf);
 
-    if let (Some(f), Some(int), Some(v)) = (
+    if let (
+        Some(f),
+        Some(int),
+        Some(v),
+    ) = (
         integrand,
         integral_result,
         var,

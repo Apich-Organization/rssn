@@ -5,11 +5,16 @@ use crate::symbolic::graph_operations::*;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-pub(crate) fn convert_expr_graph_to_string_graph(g: Graph<Expr>) -> Graph<String> {
+pub(crate) fn convert_expr_graph_to_string_graph(
+    g: Graph<Expr>
+) -> Graph<String> {
 
-    let mut new_graph = Graph::new(g.is_directed);
+    let mut new_graph =
+        Graph::new(g.is_directed);
 
-    let mut id_map = std::collections::HashMap::new();
+    let mut id_map =
+        std::collections::HashMap::new(
+        );
 
     for (i, node_label) in g
         .nodes
@@ -17,22 +22,27 @@ pub(crate) fn convert_expr_graph_to_string_graph(g: Graph<Expr>) -> Graph<String
         .enumerate()
     {
 
-        let label_str = format!("{:?}", node_label);
+        let label_str =
+            format!("{:?}", node_label);
 
-        let new_id = new_graph.add_node(label_str);
+        let new_id = new_graph
+            .add_node(label_str);
 
         id_map.insert(i, new_id);
     }
 
-    for (u, v, weight) in g.get_edges() {
+    for (u, v, weight) in g.get_edges()
+    {
 
         let u_new = id_map[&u];
 
         let v_new = id_map[&v];
 
         new_graph.add_edge(
-            &new_graph.nodes[u_new].clone(),
-            &new_graph.nodes[v_new].clone(),
+            &new_graph.nodes[u_new]
+                .clone(),
+            &new_graph.nodes[v_new]
+                .clone(),
             weight,
         );
     }
@@ -49,7 +59,9 @@ pub extern "C" fn rssn_graph_induced_subgraph(
     count: usize,
 ) -> *mut RssnGraph {
 
-    if ptr.is_null() || node_labels.is_null() {
+    if ptr.is_null()
+        || node_labels.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -59,7 +71,8 @@ pub extern "C" fn rssn_graph_induced_subgraph(
         &*(ptr as *const Graph<String>)
     };
 
-    let mut labels = Vec::with_capacity(count);
+    let mut labels =
+        Vec::with_capacity(count);
 
     for i in 0..count {
 
@@ -83,9 +96,12 @@ pub extern "C" fn rssn_graph_induced_subgraph(
         labels.push(label);
     }
 
-    let result = induced_subgraph(graph, &labels);
+    let result = induced_subgraph(
+        graph, &labels,
+    );
 
-    Box::into_raw(Box::new(result)) as *mut RssnGraph
+    Box::into_raw(Box::new(result))
+        as *mut RssnGraph
 }
 
 /// Computes the union of two graphs.
@@ -96,7 +112,8 @@ pub extern "C" fn rssn_graph_union(
     ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
-    if ptr1.is_null() || ptr2.is_null() {
+    if ptr1.is_null() || ptr2.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -113,7 +130,8 @@ pub extern "C" fn rssn_graph_union(
 
     let result = union(g1, g2);
 
-    Box::into_raw(Box::new(result)) as *mut RssnGraph
+    Box::into_raw(Box::new(result))
+        as *mut RssnGraph
 }
 
 /// Computes the intersection of two graphs.
@@ -124,7 +142,8 @@ pub extern "C" fn rssn_graph_intersection(
     ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
-    if ptr1.is_null() || ptr2.is_null() {
+    if ptr1.is_null() || ptr2.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -141,7 +160,8 @@ pub extern "C" fn rssn_graph_intersection(
 
     let result = intersection(g1, g2);
 
-    Box::into_raw(Box::new(result)) as *mut RssnGraph
+    Box::into_raw(Box::new(result))
+        as *mut RssnGraph
 }
 
 /// Computes the Cartesian product of two graphs.
@@ -152,7 +172,8 @@ pub extern "C" fn rssn_graph_cartesian_product(
     ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
-    if ptr1.is_null() || ptr2.is_null() {
+    if ptr1.is_null() || ptr2.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -167,11 +188,14 @@ pub extern "C" fn rssn_graph_cartesian_product(
         &*(ptr2 as *const Graph<String>)
     };
 
-    let result_expr = cartesian_product(g1, g2);
+    let result_expr =
+        cartesian_product(g1, g2);
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result =
+        convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result)) as *mut RssnGraph
+    Box::into_raw(Box::new(result))
+        as *mut RssnGraph
 }
 
 /// Computes the Tensor product of two graphs.
@@ -182,7 +206,8 @@ pub extern "C" fn rssn_graph_tensor_product(
     ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
-    if ptr1.is_null() || ptr2.is_null() {
+    if ptr1.is_null() || ptr2.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -197,17 +222,22 @@ pub extern "C" fn rssn_graph_tensor_product(
         &*(ptr2 as *const Graph<String>)
     };
 
-    let result_expr = tensor_product(g1, g2);
+    let result_expr =
+        tensor_product(g1, g2);
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result =
+        convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result)) as *mut RssnGraph
+    Box::into_raw(Box::new(result))
+        as *mut RssnGraph
 }
 
 /// Computes the complement of a graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_complement(ptr: *const RssnGraph) -> *mut RssnGraph {
+pub extern "C" fn rssn_graph_complement(
+    ptr: *const RssnGraph
+) -> *mut RssnGraph {
 
     if ptr.is_null() {
 
@@ -221,7 +251,8 @@ pub extern "C" fn rssn_graph_complement(ptr: *const RssnGraph) -> *mut RssnGraph
 
     let result = complement(graph);
 
-    Box::into_raw(Box::new(result)) as *mut RssnGraph
+    Box::into_raw(Box::new(result))
+        as *mut RssnGraph
 }
 
 /// Computes the disjoint union of two graphs.
@@ -232,7 +263,8 @@ pub extern "C" fn rssn_graph_disjoint_union(
     ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
-    if ptr1.is_null() || ptr2.is_null() {
+    if ptr1.is_null() || ptr2.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -247,11 +279,14 @@ pub extern "C" fn rssn_graph_disjoint_union(
         &*(ptr2 as *const Graph<String>)
     };
 
-    let result_expr = disjoint_union(g1, g2);
+    let result_expr =
+        disjoint_union(g1, g2);
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result =
+        convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result)) as *mut RssnGraph
+    Box::into_raw(Box::new(result))
+        as *mut RssnGraph
 }
 
 /// Computes the join of two graphs.
@@ -262,7 +297,8 @@ pub extern "C" fn rssn_graph_join(
     ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
-    if ptr1.is_null() || ptr2.is_null() {
+    if ptr1.is_null() || ptr2.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -279,7 +315,9 @@ pub extern "C" fn rssn_graph_join(
 
     let result_expr = join(g1, g2);
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result =
+        convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result)) as *mut RssnGraph
+    Box::into_raw(Box::new(result))
+        as *mut RssnGraph
 }

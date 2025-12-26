@@ -25,7 +25,11 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
 
     if funcs.is_null() || y0.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_ode_solve".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_ode_solve"
+                .to_string(),
+        );
 
         return ptr::null_mut();
     }
@@ -33,11 +37,14 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
     let method_enum = match method {
         | 0 => OdeSolverMethod::Euler,
         | 1 => OdeSolverMethod::Heun,
-        | 2 => OdeSolverMethod::RungeKutta4,
+        | 2 => {
+            OdeSolverMethod::RungeKutta4
+        },
         | _ => {
 
             update_last_error(format!(
-                "Invalid ODE solver method code: {}",
+                "Invalid ODE solver \
+                 method code: {}",
                 method
             ));
 
@@ -45,7 +52,8 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
         },
     };
 
-    let mut funcs_vec = Vec::with_capacity(n_funcs);
+    let mut funcs_vec =
+        Vec::with_capacity(n_funcs);
 
     for i in 0..n_funcs {
 
@@ -54,17 +62,22 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
         if f_ptr.is_null() {
 
             update_last_error(format!(
-                "Null function pointer at index {}",
+                "Null function \
+                 pointer at index {}",
                 i
             ));
 
             return ptr::null_mut();
         }
 
-        funcs_vec.push((*f_ptr).clone());
+        funcs_vec
+            .push((*f_ptr).clone());
     }
 
-    let y0_slice = std::slice::from_raw_parts(y0, n_y0);
+    let y0_slice =
+        std::slice::from_raw_parts(
+            y0, n_y0,
+        );
 
     match ode::solve_ode_system(
         &funcs_vec,
@@ -77,9 +90,18 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
 
             let rows = results.len();
 
-            let cols = if rows > 0 { results[0].len() } else { 0 };
+            let cols = if rows > 0 {
 
-            let mut flattened = Vec::with_capacity(rows * cols);
+                results[0].len()
+            } else {
+
+                0
+            };
+
+            let mut flattened =
+                Vec::with_capacity(
+                    rows * cols,
+                );
 
             for row in results {
 
@@ -88,7 +110,8 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
 
             Box::into_raw(Box::new(
                 Matrix::new(
-                    rows, cols, flattened,
+                    rows, cols,
+                    flattened,
                 ),
             ))
         },

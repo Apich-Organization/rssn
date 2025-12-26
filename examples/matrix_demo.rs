@@ -111,6 +111,8 @@ fn main() {
                 sol
             )
         },
-        | Err(e) => println!("Error: {}", e),
+        | Err(e) => {
+            println!("Error: {}", e)
+        },
     }
 }

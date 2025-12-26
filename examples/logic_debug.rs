@@ -45,21 +45,29 @@ fn main() {
             b.clone(),
         ]),
         Expr::Or(vec![
-            Expr::Not(Arc::new(a.clone())),
+            Expr::Not(Arc::new(
+                a.clone(),
+            )),
             c.clone(),
         ]),
         Expr::Or(vec![
-            Expr::Not(Arc::new(b.clone())),
-            Expr::Not(Arc::new(c.clone())),
+            Expr::Not(Arc::new(
+                b.clone(),
+            )),
+            Expr::Not(Arc::new(
+                c.clone(),
+            )),
         ]),
     ]);
 
     println!(
-        "\nComplex SAT expression: {:?}",
+        "\nComplex SAT expression: \
+         {:?}",
         expr2
     );
 
-    let result2 = is_satisfiable(&expr2);
+    let result2 =
+        is_satisfiable(&expr2);
 
     println!(
         "Complex SAT result: {:?}",

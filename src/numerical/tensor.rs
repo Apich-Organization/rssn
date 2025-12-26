@@ -27,7 +27,10 @@ pub fn tensordot(
 
     if axes_a.len() != axes_b.len() {
 
-        return Err("Contracted axes must have the same length.".to_string());
+        return Err("Contracted axes \
+                    must have the \
+                    same length."
+            .to_string());
     }
 
     for (&ax_a, &ax_b) in axes_a
@@ -35,21 +38,27 @@ pub fn tensordot(
         .zip(axes_b.iter())
     {
 
-        if a.shape()[ax_a] != b.shape()[ax_b] {
+        if a.shape()[ax_a]
+            != b.shape()[ax_b]
+        {
 
             return Err(format!(
-                "Dimension mismatch on contracted axes: {} != {}",
+                "Dimension mismatch \
+                 on contracted axes: \
+                 {} != {}",
                 a.shape()[ax_a],
                 b.shape()[ax_b]
             ));
         }
     }
 
-    let free_axes_a: Vec<_> = (0..a.ndim())
+    let free_axes_a: Vec<_> = (0..a
+        .ndim())
         .filter(|i| !axes_a.contains(i))
         .collect();
 
-    let free_axes_b: Vec<_> = (0..b.ndim())
+    let free_axes_b: Vec<_> = (0..b
+        .ndim())
         .filter(|i| !axes_b.contains(i))
         .collect();
 
@@ -106,7 +115,8 @@ pub fn tensordot(
 
     let result_mat = a_mat.dot(&b_mat);
 
-    let mut final_shape_dims = Vec::new();
+    let mut final_shape_dims =
+        Vec::new();
 
     final_shape_dims.extend(
         free_axes_a
@@ -146,25 +156,39 @@ pub fn outer_product(
     b: &ArrayD<f64>,
 ) -> Result<ArrayD<f64>, String> {
 
-    let mut new_shape = a.shape().to_vec();
+    let mut new_shape =
+        a.shape().to_vec();
 
-    new_shape.extend_from_slice(b.shape());
+    new_shape
+        .extend_from_slice(b.shape());
 
     let a_flat = a
         .as_slice()
-        .ok_or_else(|| "Input tensor 'a' is not contiguous".to_string())?;
+        .ok_or_else(|| {
+            "Input tensor 'a' is not \
+             contiguous"
+                .to_string()
+        })?;
 
     let b_flat = b
         .as_slice()
-        .ok_or_else(|| "Input tensor 'b' is not contiguous".to_string())?;
+        .ok_or_else(|| {
+            "Input tensor 'b' is not \
+             contiguous"
+                .to_string()
+        })?;
 
-    let mut result_data = Vec::with_capacity(a.len() * b.len());
+    let mut result_data =
+        Vec::with_capacity(
+            a.len() * b.len(),
+        );
 
     for val_a in a_flat {
 
         for val_b in b_flat {
 
-            result_data.push(val_a * val_b);
+            result_data
+                .push(val_a * val_b);
         }
     }
 
@@ -184,21 +208,30 @@ pub fn tensor_vec_mul(
 
     if tensor.ndim() < 1 {
 
-        return Err("Tensor must have at least one dimension.".to_string());
+        return Err("Tensor must \
+                    have at least \
+                    one dimension."
+            .to_string());
     }
 
-    let last_dim = tensor.shape()[tensor.ndim() - 1];
+    let last_dim = tensor.shape()
+        [tensor.ndim() - 1];
 
     if last_dim != vector.len() {
 
         return Err(format!(
-            "Dimension mismatch: last tensor dim {} != vector length {}",
+            "Dimension mismatch: last \
+             tensor dim {} != vector \
+             length {}",
             last_dim,
             vector.len()
         ));
     }
 
-    let vec_arr = ndarray::Array1::from_vec(vector.to_vec());
+    let vec_arr =
+        ndarray::Array1::from_vec(
+            vector.to_vec(),
+        );
 
     let res = tensordot(
         tensor,
@@ -219,16 +252,20 @@ pub fn inner_product(
 
     if a.shape() != b.shape() {
 
-        return Err("Tensors must have the same shape for inner product.".to_string());
+        return Err("Tensors must \
+                    have the same \
+                    shape for inner \
+                    product."
+            .to_string());
     }
 
-    let a_flat = a
-        .as_slice()
-        .ok_or("Tensor 'a' is not contiguous")?;
+    let a_flat = a.as_slice().ok_or(
+        "Tensor 'a' is not contiguous",
+    )?;
 
-    let b_flat = b
-        .as_slice()
-        .ok_or("Tensor 'b' is not contiguous")?;
+    let b_flat = b.as_slice().ok_or(
+        "Tensor 'b' is not contiguous",
+    )?;
 
     Ok(a_flat
         .iter()
@@ -247,12 +284,21 @@ pub fn contract(
 
     if axis1 == axis2 {
 
-        return Err("Axes must be different for contraction.".to_string());
+        return Err("Axes must be \
+                    different for \
+                    contraction."
+            .to_string());
     }
 
-    if a.shape()[axis1] != a.shape()[axis2] {
+    if a.shape()[axis1]
+        != a.shape()[axis2]
+    {
 
-        return Err("Dimensions along contraction axes must be equal.".to_string());
+        return Err("Dimensions \
+                    along contraction \
+                    axes must be \
+                    equal."
+            .to_string());
     }
 
     let n = a.shape()[axis1];
@@ -263,7 +309,8 @@ pub fn contract(
 
         if i != axis1 && i != axis2 {
 
-            new_shape.push(a.shape()[i]);
+            new_shape
+                .push(a.shape()[i]);
         }
     }
 
@@ -289,10 +336,21 @@ pub fn contract(
             sum += a[[i, i]];
         }
 
-        return Ok(ndarray::Array0::from_elem((), sum).into_dyn());
+        return Ok(
+            ndarray::Array0::from_elem(
+                (),
+                sum,
+            )
+            .into_dyn(),
+        );
     }
 
-    Err("General tensor contraction (trace) for rank > 2 not yet implemented.".to_string())
+    Err(
+        "General tensor contraction \
+         (trace) for rank > 2 not yet \
+         implemented."
+            .to_string(),
+    )
 }
 
 /// Computes the Frobenius norm of a tensor.
@@ -312,7 +370,9 @@ use serde::{
 };
 
 /// A serializable representation of an N-dimensional tensor.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(
+    Serialize, Deserialize, Debug, Clone,
+)]
 
 pub struct TensorData {
     pub shape: Vec<usize>,
@@ -333,7 +393,10 @@ impl From<&ArrayD<f64>> for TensorData {
 }
 
 impl TensorData {
-    pub fn to_arrayd(&self) -> Result<ArrayD<f64>, String> {
+    pub fn to_arrayd(
+        &self
+    ) -> Result<ArrayD<f64>, String>
+    {
 
         ArrayD::from_shape_vec(
             IxDyn(&self.shape),
@@ -366,10 +429,19 @@ mod tests {
         ]
         .into_dyn();
 
-        let res = tensordot(&a, &b, &[1], &[0]).unwrap();
+        let res = tensordot(
+            &a,
+            &b,
+            &[1],
+            &[0],
+        )
+        .unwrap();
 
         // Standard matrix multiplication
-        assert_eq!(res.shape(), &[2, 2]);
+        assert_eq!(
+            res.shape(),
+            &[2, 2]
+        );
 
         assert_eq!(
             res[[0, 0]],
@@ -381,13 +453,19 @@ mod tests {
 
     fn test_outer_product() {
 
-        let a = array![1.0, 2.0].into_dyn();
+        let a =
+            array![1.0, 2.0].into_dyn();
 
-        let b = array![3.0, 4.0].into_dyn();
+        let b =
+            array![3.0, 4.0].into_dyn();
 
-        let res = outer_product(&a, &b).unwrap();
+        let res = outer_product(&a, &b)
+            .unwrap();
 
-        assert_eq!(res.shape(), &[2, 2]);
+        assert_eq!(
+            res.shape(),
+            &[2, 2]
+        );
 
         assert_eq!(res[[0, 0]], 3.0);
 

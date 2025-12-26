@@ -23,29 +23,44 @@ struct SolveLinearInput {
 /// JSON FFI for solving linear systems.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_solve_linear_system_json(json_ptr: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_solve_linear_system_json(
+    json_ptr: *const c_char
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(json_ptr).to_str() {
+    let json_str = match CStr::from_ptr(
+        json_ptr,
+    )
+    .to_str()
+    {
         | Ok(s) => s,
-        | Err(_) => return std::ptr::null_mut(),
-    };
-
-    let input: SolveLinearInput = match serde_json::from_str(json_str) {
-        | Ok(v) => v,
-        | Err(e) => {
-            return CString::new(format!(
-                "{{\"err\": \"{}\"}}",
-                e
-            ))
-            .unwrap()
-            .into_raw()
+        | Err(_) => {
+            return std::ptr::null_mut()
         },
     };
 
-    let result = solve::solve_linear_system(
-        &input.matrix,
-        &input.vector,
-    );
+    let input: SolveLinearInput =
+        match serde_json::from_str(
+            json_str,
+        ) {
+            | Ok(v) => v,
+            | Err(e) => {
+                return CString::new(
+                    format!(
+                        "{{\"err\": \
+                         \"{}\"}}",
+                        e
+                    ),
+                )
+                .unwrap()
+                .into_raw()
+            },
+        };
+
+    let result =
+        solve::solve_linear_system(
+            &input.matrix,
+            &input.vector,
+        );
 
     let res = match result {
         | Ok(sol) => {
@@ -62,7 +77,10 @@ pub unsafe extern "C" fn rssn_solve_linear_system_json(json_ptr: *const c_char) 
         },
     };
 
-    CString::new(serde_json::to_string(&res).unwrap())
-        .unwrap()
-        .into_raw()
+    CString::new(
+        serde_json::to_string(&res)
+            .unwrap(),
+    )
+    .unwrap()
+    .into_raw()
 }

@@ -11,7 +11,8 @@ fn test_free_particle() {
 
     let x = "x";
 
-    let x_expr = Expr::Variable(x.to_string());
+    let x_expr =
+        Expr::Variable(x.to_string());
 
     // Manual derivative construction
     let v_expr = Expr::Derivative(
@@ -19,7 +20,8 @@ fn test_free_particle() {
         t.to_string(),
     );
 
-    let m = Expr::Variable("m".to_string());
+    let m =
+        Expr::Variable("m".to_string());
 
     let kinetic_energy = Expr::new_mul(
         Expr::new_mul(
@@ -34,7 +36,11 @@ fn test_free_particle() {
 
     let lagrangian = kinetic_energy;
 
-    let eq = euler_lagrange(&lagrangian, x, t);
+    let eq = euler_lagrange(
+        &lagrangian,
+        x,
+        t,
+    );
 
     let eq_str = format!("{:?}", eq);
 
@@ -60,16 +66,19 @@ fn test_harmonic_oscillator() {
 
     let x = "x";
 
-    let x_expr = Expr::Variable(x.to_string());
+    let x_expr =
+        Expr::Variable(x.to_string());
 
     let v_expr = Expr::Derivative(
         Arc::new(x_expr.clone()),
         t.to_string(),
     );
 
-    let m = Expr::Variable("m".to_string());
+    let m =
+        Expr::Variable("m".to_string());
 
-    let k = Expr::Variable("k".to_string());
+    let k =
+        Expr::Variable("k".to_string());
 
     let kinetic = Expr::new_mul(
         Expr::new_mul(
@@ -93,15 +102,22 @@ fn test_harmonic_oscillator() {
         ),
     );
 
-    let lagrangian = Expr::new_sub(kinetic, potential);
+    let lagrangian = Expr::new_sub(
+        kinetic, potential,
+    );
 
     // Eq: m x'' + k x = 0
-    let eq = euler_lagrange(&lagrangian, x, t);
+    let eq = euler_lagrange(
+        &lagrangian,
+        x,
+        t,
+    );
 
     let eq_str = format!("{:?}", eq);
 
     println!(
-        "Harmonic Oscillator Equation: {}",
+        "Harmonic Oscillator \
+         Equation: {}",
         eq_str
     );
 
@@ -119,18 +135,23 @@ fn test_pendulum_nonlinear() {
 
     let theta = "theta";
 
-    let theta_expr = Expr::Variable(theta.to_string());
+    let theta_expr = Expr::Variable(
+        theta.to_string(),
+    );
 
     let omega = Expr::Derivative(
         Arc::new(theta_expr.clone()),
         t.to_string(),
     );
 
-    let m = Expr::Variable("m".to_string());
+    let m =
+        Expr::Variable("m".to_string());
 
-    let l = Expr::Variable("l".to_string());
+    let l =
+        Expr::Variable("l".to_string());
 
-    let g = Expr::Variable("g".to_string());
+    let g =
+        Expr::Variable("g".to_string());
 
     let kinetic = Expr::new_mul(
         Expr::new_mul(
@@ -150,7 +171,10 @@ fn test_pendulum_nonlinear() {
     );
 
     let potential = Expr::new_mul(
-        Expr::new_mul(m.clone(), g.clone()),
+        Expr::new_mul(
+            m.clone(),
+            g.clone(),
+        ),
         Expr::new_mul(
             l.clone(),
             Expr::new_cos(theta_expr),
@@ -160,7 +184,9 @@ fn test_pendulum_nonlinear() {
     // Be careful with signs. PE usually U = -mgl cos(theta) (if y is down) or mgl(1-cos).
     // If L = T - V, and U = -mgl cos(theta), then L = T + mgl cos(theta).
 
-    let lagrangian = Expr::new_add(kinetic, potential);
+    let lagrangian = Expr::new_add(
+        kinetic, potential,
+    );
 
     // Eq: d/dt(dL/dtheta') - dL/dtheta = 0
     // dL/dtheta' = m l^2 theta'
@@ -181,7 +207,9 @@ fn test_pendulum_nonlinear() {
         eq_str
     );
 
-    assert!(eq_str.contains("sin(theta)"));
+    assert!(
+        eq_str.contains("sin(theta)")
+    );
 
     assert!(eq_str.contains("m")); // Mass should be present from kinetic term too
 }

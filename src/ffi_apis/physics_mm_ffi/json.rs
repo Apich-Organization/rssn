@@ -25,9 +25,12 @@ struct SphInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let mut input: SphInput = match from_json_string(input) {
+    let mut input: SphInput = match from_json_string(input)
+    {
         | Some(i) => i,
         | None => {
             return to_c_string(
@@ -47,27 +50,32 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(input: *const c_char) -
         .update(input.dt);
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            SPHSystem,
-            String,
-        >::ok(
-            input.system
-        ))
+        serde_json::to_string(
+            &FfiResult::<
+                SPHSystem,
+                String,
+            >::ok(
+                input.system
+            ),
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_mm_simulate_dam_break_json() -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_mm_simulate_dam_break_json(
+) -> *mut c_char {
 
     let res = physics_mm::simulate_dam_break_2d_scenario();
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            Vec<(f64, f64)>,
-            String,
-        >::ok(res))
+        serde_json::to_string(
+            &FfiResult::<
+                Vec<(f64, f64)>,
+                String,
+            >::ok(res),
+        )
         .unwrap(),
     )
 }

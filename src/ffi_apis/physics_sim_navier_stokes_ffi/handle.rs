@@ -23,16 +23,19 @@ pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
     lid_velocity: f64,
 ) -> NavierStokesResultHandles {
 
-    let params = navier_stokes_fluid::NavierStokesParameters {
-        nx,
-        ny,
-        re,
-        dt,
-        n_iter,
-        lid_velocity,
-    };
+    let params =
+        navier_stokes_fluid::NavierStokesParameters {
+            nx,
+            ny,
+            re,
+            dt,
+            n_iter,
+            lid_velocity,
+        };
 
-    match navier_stokes_fluid::run_lid_driven_cavity(&params) {
+    match navier_stokes_fluid::run_lid_driven_cavity(
+        &params,
+    ) {
         | Ok((u, v, p)) => {
 
             let u_mat = Matrix::new(
@@ -78,16 +81,19 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_free_results(
 
     if !handles.u.is_null() {
 
-        let _ = Box::from_raw(handles.u);
+        let _ =
+            Box::from_raw(handles.u);
     }
 
     if !handles.v.is_null() {
 
-        let _ = Box::from_raw(handles.v);
+        let _ =
+            Box::from_raw(handles.v);
     }
 
     if !handles.p.is_null() {
 
-        let _ = Box::from_raw(handles.p);
+        let _ =
+            Box::from_raw(handles.p);
     }
 }

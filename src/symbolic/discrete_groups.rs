@@ -43,21 +43,28 @@ pub fn cyclic_group(n: usize) -> Group {
         })
         .collect();
 
-    let mut multiplication_table = HashMap::new();
+    let mut multiplication_table =
+        HashMap::new();
 
     for i in 0..n {
 
         for j in 0..n {
 
-            let result_idx = (i + j) % n;
+            let result_idx =
+                (i + j) % n;
 
-            multiplication_table.insert(
-                (
-                    elements[i].clone(),
-                    elements[j].clone(),
-                ),
-                elements[result_idx].clone(),
-            );
+            multiplication_table
+                .insert(
+                    (
+                        elements[i]
+                            .clone(),
+                        elements[j]
+                            .clone(),
+                    ),
+                    elements
+                        [result_idx]
+                        .clone(),
+                );
         }
     }
 
@@ -82,33 +89,42 @@ pub fn cyclic_group(n: usize) -> Group {
 #[allow(clippy::cast_possible_wrap)]
 #[must_use]
 
-pub fn dihedral_group(n: usize) -> Group {
+pub fn dihedral_group(
+    n: usize
+) -> Group {
 
-    let mut elements = Vec::with_capacity(2 * n);
+    let mut elements =
+        Vec::with_capacity(2 * n);
 
     let rotations: Vec<_> = (0..n)
         .map(|i| {
 
-            GroupElement(Expr::Variable(
-                format!("r{i}"),
-            ))
+            GroupElement(
+                Expr::Variable(
+                    format!("r{i}"),
+                ),
+            )
         })
         .collect();
 
     let reflections: Vec<_> = (0..n)
         .map(|i| {
 
-            GroupElement(Expr::Variable(
-                format!("s{i}"),
-            ))
+            GroupElement(
+                Expr::Variable(
+                    format!("s{i}"),
+                ),
+            )
         })
         .collect();
 
     elements.extend(rotations.clone());
 
-    elements.extend(reflections.clone());
+    elements
+        .extend(reflections.clone());
 
-    let mut multiplication_table = HashMap::new();
+    let mut multiplication_table =
+        HashMap::new();
 
     for i in 0..n {
 
@@ -116,43 +132,67 @@ pub fn dihedral_group(n: usize) -> Group {
 
             let res_idx = (i + j) % n;
 
-            multiplication_table.insert(
-                (
-                    rotations[i].clone(),
-                    rotations[j].clone(),
-                ),
-                rotations[res_idx].clone(),
-            );
+            multiplication_table
+                .insert(
+                    (
+                        rotations[i]
+                            .clone(),
+                        rotations[j]
+                            .clone(),
+                    ),
+                    rotations[res_idx]
+                        .clone(),
+                );
 
-            let res_idx = (j as isize - i as isize).rem_euclid(n as isize) as usize;
+            let res_idx = (j as isize
+                - i as isize)
+                .rem_euclid(n as isize)
+                as usize;
 
-            multiplication_table.insert(
-                (
-                    rotations[i].clone(),
-                    reflections[j].clone(),
-                ),
-                reflections[res_idx].clone(),
-            );
+            multiplication_table
+                .insert(
+                    (
+                        rotations[i]
+                            .clone(),
+                        reflections[j]
+                            .clone(),
+                    ),
+                    reflections
+                        [res_idx]
+                        .clone(),
+                );
 
             let res_idx = (i + j) % n;
 
-            multiplication_table.insert(
-                (
-                    reflections[i].clone(),
-                    rotations[j].clone(),
-                ),
-                reflections[res_idx].clone(),
-            );
+            multiplication_table
+                .insert(
+                    (
+                        reflections[i]
+                            .clone(),
+                        rotations[j]
+                            .clone(),
+                    ),
+                    reflections
+                        [res_idx]
+                        .clone(),
+                );
 
-            let res_idx = (j as isize - i as isize).rem_euclid(n as isize) as usize;
+            let res_idx = (j as isize
+                - i as isize)
+                .rem_euclid(n as isize)
+                as usize;
 
-            multiplication_table.insert(
-                (
-                    reflections[i].clone(),
-                    reflections[j].clone(),
-                ),
-                rotations[res_idx].clone(),
-            );
+            multiplication_table
+                .insert(
+                    (
+                        reflections[i]
+                            .clone(),
+                        reflections[j]
+                            .clone(),
+                    ),
+                    rotations[res_idx]
+                        .clone(),
+                );
         }
     }
 
@@ -165,7 +205,9 @@ pub fn dihedral_group(n: usize) -> Group {
 
 /// Helper function to generate all permutations for `S_n`.
 
-pub(crate) fn generate_permutations(n: usize) -> Vec<Vec<usize>> {
+pub(crate) fn generate_permutations(
+    n: usize
+) -> Vec<Vec<usize>> {
 
     if n == 0 {
 
@@ -174,7 +216,8 @@ pub(crate) fn generate_permutations(n: usize) -> Vec<Vec<usize>> {
 
     let mut result = Vec::new();
 
-    let mut p: Vec<usize> = (0..n).collect();
+    let mut p: Vec<usize> =
+        (0..n).collect();
 
     let mut c: Vec<usize> = vec![0; n];
 
@@ -236,9 +279,12 @@ pub(crate) fn compose_permutations(
 /// # Returns
 /// A `Group` struct representing `S_n`.
 
-pub fn symmetric_group(n: usize) -> Result<Group, String> {
+pub fn symmetric_group(
+    n: usize
+) -> Result<Group, String> {
 
-    let perms_as_indices = generate_permutations(n);
+    let perms_as_indices =
+        generate_permutations(n);
 
     let elements: Vec<_> = perms_as_indices
         .iter()
@@ -255,21 +301,26 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
         })
         .collect();
 
-    let mut multiplication_table = HashMap::new();
+    let mut multiplication_table =
+        HashMap::new();
 
-    for (i, p1_indices) in perms_as_indices
-        .iter()
-        .enumerate()
-    {
-
-        for (j, p2_indices) in perms_as_indices
+    for (i, p1_indices) in
+        perms_as_indices
             .iter()
             .enumerate()
+    {
+
+        for (j, p2_indices) in
+            perms_as_indices
+                .iter()
+                .enumerate()
         {
 
-            let result_indices = compose_permutations(
-                p1_indices, p2_indices,
-            );
+            let result_indices =
+                compose_permutations(
+                    p1_indices,
+                    p2_indices,
+                );
 
             let result_idx = match perms_as_indices
                 .iter()
@@ -284,13 +335,18 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
                 },
             };
 
-            multiplication_table.insert(
-                (
-                    elements[i].clone(),
-                    elements[j].clone(),
-                ),
-                elements[result_idx].clone(),
-            );
+            multiplication_table
+                .insert(
+                    (
+                        elements[i]
+                            .clone(),
+                        elements[j]
+                            .clone(),
+                    ),
+                    elements
+                        [result_idx]
+                        .clone(),
+                );
         }
     }
 
@@ -343,21 +399,21 @@ pub fn symmetric_group(n: usize) -> Result<Group, String> {
 
 pub fn klein_four_group() -> Group {
 
-    let e = GroupElement(Expr::Variable(
-        "e".to_string(),
-    ));
+    let e = GroupElement(
+        Expr::Variable("e".to_string()),
+    );
 
-    let a = GroupElement(Expr::Variable(
-        "a".to_string(),
-    ));
+    let a = GroupElement(
+        Expr::Variable("a".to_string()),
+    );
 
-    let b = GroupElement(Expr::Variable(
-        "b".to_string(),
-    ));
+    let b = GroupElement(
+        Expr::Variable("b".to_string()),
+    );
 
-    let c = GroupElement(Expr::Variable(
-        "c".to_string(),
-    ));
+    let c = GroupElement(
+        Expr::Variable("c".to_string()),
+    );
 
     let elements = vec![
         e.clone(),

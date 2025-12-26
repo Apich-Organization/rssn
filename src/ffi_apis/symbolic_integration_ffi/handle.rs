@@ -15,7 +15,8 @@ pub extern "C" fn rssn_risch_norman_integrate_handle(
 
         if expr.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*expr
@@ -25,7 +26,8 @@ pub extern "C" fn rssn_risch_norman_integrate_handle(
 
         if x.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         CStr::from_ptr(x)
@@ -33,7 +35,9 @@ pub extern "C" fn rssn_risch_norman_integrate_handle(
             .into_owned()
     };
 
-    let result = risch_norman_integrate(expr_ref, &x_str);
+    let result = risch_norman_integrate(
+        expr_ref, &x_str,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -50,7 +54,8 @@ pub extern "C" fn rssn_integrate_rational_function_handle(
 
         if expr.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*expr
@@ -60,7 +65,8 @@ pub extern "C" fn rssn_integrate_rational_function_handle(
 
         if x.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         CStr::from_ptr(x)
@@ -68,7 +74,8 @@ pub extern "C" fn rssn_integrate_rational_function_handle(
             .into_owned()
     };
 
-    match integrate_rational_function_expr(expr_ref, &x_str) {
+    match integrate_rational_function_expr(expr_ref, &x_str)
+    {
         | Ok(result) => Box::into_raw(Box::new(result)),
         | Err(_) => std::ptr::null_mut(),
     }

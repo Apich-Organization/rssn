@@ -35,15 +35,18 @@ pub extern "C" fn rssn_fredholm_new(
             || var_t.is_null()
         {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
-        let var_x_str = match CStr::from_ptr(var_x).to_str() {
+        let var_x_str = match CStr::from_ptr(var_x).to_str()
+        {
             | Ok(s) => s.to_string(),
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let var_t_str = match CStr::from_ptr(var_t).to_str() {
+        let var_t_str = match CStr::from_ptr(var_t).to_str()
+        {
             | Ok(s) => s.to_string(),
             | Err(_) => return std::ptr::null_mut(),
         };
@@ -66,7 +69,9 @@ pub extern "C" fn rssn_fredholm_new(
 /// Frees a Fredholm integral equation.
 #[no_mangle]
 
-pub extern "C" fn rssn_fredholm_free(ptr: *mut FredholmEquation) {
+pub extern "C" fn rssn_fredholm_free(
+    ptr: *mut FredholmEquation
+) {
 
     if !ptr.is_null() {
 
@@ -89,10 +94,14 @@ pub extern "C" fn rssn_fredholm_solve_neumann(
 
         if eq.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
-        let result = (*eq).solve_neumann_series(iterations);
+        let result = (*eq)
+            .solve_neumann_series(
+                iterations,
+            );
 
         Box::into_raw(Box::new(result))
     }
@@ -111,16 +120,27 @@ pub extern "C" fn rssn_fredholm_solve_separable(
 
     unsafe {
 
-        if eq.is_null() || a_funcs.is_null() || b_funcs.is_null() {
+        if eq.is_null()
+            || a_funcs.is_null()
+            || b_funcs.is_null()
+        {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
-        let a_slice = std::slice::from_raw_parts(a_funcs, a_len);
+        let a_slice =
+            std::slice::from_raw_parts(
+                a_funcs, a_len,
+            );
 
-        let b_slice = std::slice::from_raw_parts(b_funcs, b_len);
+        let b_slice =
+            std::slice::from_raw_parts(
+                b_funcs, b_len,
+            );
 
-        let mut a_vec = Vec::with_capacity(a_len);
+        let mut a_vec =
+            Vec::with_capacity(a_len);
 
         for &ptr in a_slice {
 
@@ -132,7 +152,8 @@ pub extern "C" fn rssn_fredholm_solve_separable(
             a_vec.push((*ptr).clone());
         }
 
-        let mut b_vec = Vec::with_capacity(b_len);
+        let mut b_vec =
+            Vec::with_capacity(b_len);
 
         for &ptr in b_slice {
 
@@ -144,9 +165,18 @@ pub extern "C" fn rssn_fredholm_solve_separable(
             b_vec.push((*ptr).clone());
         }
 
-        match (*eq).solve_separable_kernel(a_vec, b_vec) {
-            | Ok(result) => Box::into_raw(Box::new(result)),
-            | Err(_) => std::ptr::null_mut(),
+        match (*eq)
+            .solve_separable_kernel(
+                a_vec, b_vec,
+            ) {
+            | Ok(result) => {
+                Box::into_raw(Box::new(
+                    result,
+                ))
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -175,15 +205,18 @@ pub extern "C" fn rssn_volterra_new(
             || var_t.is_null()
         {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
-        let var_x_str = match CStr::from_ptr(var_x).to_str() {
+        let var_x_str = match CStr::from_ptr(var_x).to_str()
+        {
             | Ok(s) => s.to_string(),
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let var_t_str = match CStr::from_ptr(var_t).to_str() {
+        let var_t_str = match CStr::from_ptr(var_t).to_str()
+        {
             | Ok(s) => s.to_string(),
             | Err(_) => return std::ptr::null_mut(),
         };
@@ -205,7 +238,9 @@ pub extern "C" fn rssn_volterra_new(
 /// Frees a Volterra integral equation.
 #[no_mangle]
 
-pub extern "C" fn rssn_volterra_free(ptr: *mut VolterraEquation) {
+pub extern "C" fn rssn_volterra_free(
+    ptr: *mut VolterraEquation
+) {
 
     if !ptr.is_null() {
 
@@ -228,10 +263,12 @@ pub extern "C" fn rssn_volterra_solve_successive(
 
         if eq.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
-        let result = (*eq).solve_successive_approximations(iterations);
+        let result = (*eq)
+            .solve_successive_approximations(iterations);
 
         Box::into_raw(Box::new(result))
     }
@@ -240,18 +277,29 @@ pub extern "C" fn rssn_volterra_solve_successive(
 /// Solves a Volterra equation by differentiation.
 #[no_mangle]
 
-pub extern "C" fn rssn_volterra_solve_by_differentiation(eq: *const VolterraEquation) -> *mut Expr {
+pub extern "C" fn rssn_volterra_solve_by_differentiation(
+    eq: *const VolterraEquation
+) -> *mut Expr {
 
     unsafe {
 
         if eq.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
-        match (*eq).solve_by_differentiation() {
-            | Ok(result) => Box::into_raw(Box::new(result)),
-            | Err(_) => std::ptr::null_mut(),
+        match (*eq)
+            .solve_by_differentiation()
+        {
+            | Ok(result) => {
+                Box::into_raw(Box::new(
+                    result,
+                ))
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -267,26 +315,33 @@ pub extern "C" fn rssn_solve_airfoil_equation(
 
     unsafe {
 
-        if f_x.is_null() || var_x.is_null() || var_t.is_null() {
+        if f_x.is_null()
+            || var_x.is_null()
+            || var_t.is_null()
+        {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
-        let var_x_str = match CStr::from_ptr(var_x).to_str() {
+        let var_x_str = match CStr::from_ptr(var_x).to_str()
+        {
             | Ok(s) => s,
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let var_t_str = match CStr::from_ptr(var_t).to_str() {
+        let var_t_str = match CStr::from_ptr(var_t).to_str()
+        {
             | Ok(s) => s,
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let result = solve_airfoil_equation(
-            &(*f_x),
-            var_x_str,
-            var_t_str,
-        );
+        let result =
+            solve_airfoil_equation(
+                &(*f_x),
+                var_x_str,
+                var_t_str,
+            );
 
         Box::into_raw(Box::new(result))
     }

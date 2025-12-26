@@ -86,17 +86,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: RsEncodeInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
+    let input: RsEncodeInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<u8>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
     match error_correction::reed_solomon_encode(
         &input.message,
@@ -125,17 +129,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: RsDecodeInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
+    let input: RsDecodeInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<u8>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
     let mut codeword = input.codeword;
 
@@ -166,17 +174,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: RsDecodeInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<bool, String> {
+    let input: RsDecodeInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    bool,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
     let result = error_correction::reed_solomon_check(
         &input.codeword,
@@ -196,19 +208,25 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: HammingInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
+    let input: HammingInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<u8>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    match error_correction::hamming_encode_numerical(&input.data) {
+    match error_correction::hamming_encode_numerical(
+        &input.data,
+    ) {
         | Some(codeword) => {
             to_bincode_buffer(&FfiResult {
                 ok: Some(codeword),
@@ -219,7 +237,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_bincode(
             to_bincode_buffer(
                 &FfiResult::<Vec<u8>, String> {
                     ok: None,
-                    err: Some("Input must be exactly 4 bytes".to_string()),
+                    err: Some(
+                        "Input must be exactly 4 bytes"
+                            .to_string(),
+                    ),
                 },
             )
         },
@@ -232,32 +253,41 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: HammingInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<HammingDecodeResult, String> {
+    let input: HammingInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    HammingDecodeResult,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    match error_correction::hamming_decode_numerical(&input.data) {
+    match error_correction::hamming_decode_numerical(
+        &input.data,
+    ) {
         | Ok((data, error_pos)) => {
             to_bincode_buffer(&FfiResult {
-                ok: Some(HammingDecodeResult { data, error_pos }),
+                ok: Some(
+                    HammingDecodeResult { data, error_pos },
+                ),
                 err: None::<String>,
             })
         },
         | Err(e) => {
-            to_bincode_buffer(
-                &FfiResult::<HammingDecodeResult, String> {
-                    ok: None,
-                    err: Some(e),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<
+                HammingDecodeResult,
+                String,
+            > {
+                ok: None,
+                err: Some(e),
+            })
         },
     }
 }
@@ -268,19 +298,25 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: HammingInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<bool, String> {
+    let input: HammingInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    bool,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = error_correction::hamming_check_numerical(&input.data);
+    let result = error_correction::hamming_check_numerical(
+        &input.data,
+    );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -294,19 +330,25 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: DistanceInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<usize, String> {
+    let input: DistanceInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    usize,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    match error_correction::hamming_distance_numerical(&input.a, &input.b) {
+    match error_correction::hamming_distance_numerical(
+        &input.a, &input.b,
+    ) {
         | Some(dist) => {
             to_bincode_buffer(&FfiResult {
                 ok: Some(dist),
@@ -317,7 +359,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_bincode(
             to_bincode_buffer(
                 &FfiResult::<usize, String> {
                     ok: None,
-                    err: Some("Vectors must have same length".to_string()),
+                    err: Some(
+                        "Vectors must have same length"
+                            .to_string(),
+                    ),
                 },
             )
         },
@@ -330,19 +375,25 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: HammingInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<usize, String> {
+    let input: HammingInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    usize,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = error_correction::hamming_weight_numerical(&input.data);
+    let result = error_correction::hamming_weight_numerical(
+        &input.data,
+    );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -357,19 +408,23 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: CrcInput = match from_bincode_buffer(&buffer) {
+    let input: CrcInput = match from_bincode_buffer(&buffer)
+    {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<u32, String> {
-                    ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<
+                u32,
+                String,
+            > {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            })
         },
     };
 
-    let result = error_correction::crc32_compute_numerical(&input.data);
+    let result = error_correction::crc32_compute_numerical(
+        &input.data,
+    );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -383,17 +438,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: Crc32VerifyInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<bool, String> {
+    let input: Crc32VerifyInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    bool,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
     let result = error_correction::crc32_verify_numerical(
         &input.data,
@@ -412,19 +471,24 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: CrcInput = match from_bincode_buffer(&buffer) {
+    let input: CrcInput = match from_bincode_buffer(&buffer)
+    {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<u16, String> {
-                    ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<
+                u16,
+                String,
+            > {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            })
         },
     };
 
-    let result = error_correction::crc16_compute(&input.data);
+    let result =
+        error_correction::crc16_compute(
+            &input.data,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -438,19 +502,24 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: CrcInput = match from_bincode_buffer(&buffer) {
+    let input: CrcInput = match from_bincode_buffer(&buffer)
+    {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<u8, String> {
-                    ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<
+                u8,
+                String,
+            > {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            })
         },
     };
 
-    let result = error_correction::crc8_compute(&input.data);
+    let result =
+        error_correction::crc8_compute(
+            &input.data,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -465,22 +534,27 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: InterleaveInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
+    let input: InterleaveInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<u8>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = error_correction::interleave(
-        &input.data,
-        input.depth,
-    );
+    let result =
+        error_correction::interleave(
+            &input.data,
+            input.depth,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -494,22 +568,27 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: InterleaveInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
+    let input: InterleaveInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    Vec<u8>,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = error_correction::deinterleave(
-        &input.data,
-        input.depth,
-    );
+    let result =
+        error_correction::deinterleave(
+            &input.data,
+            input.depth,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -524,19 +603,26 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: CodeRateInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
+    let input: CodeRateInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    f64,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = error_correction::code_rate(input.k, input.n);
+    let result =
+        error_correction::code_rate(
+            input.k, input.n,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -550,19 +636,26 @@ pub unsafe extern "C" fn rssn_num_error_correction_capability_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input: CapabilityInput = match from_bincode_buffer(&buffer) {
-        | Some(i) => i,
-        | None => {
-            return to_bincode_buffer(
-                &FfiResult::<usize, String> {
+    let input: CapabilityInput =
+        match from_bincode_buffer(&buffer) {
+            | Some(i) => i,
+            | None => {
+                return to_bincode_buffer(&FfiResult::<
+                    usize,
+                    String,
+                > {
                     ok: None,
-                    err: Some("Invalid Bincode".to_string()),
-                },
-            )
-        },
-    };
+                    err: Some(
+                        "Invalid Bincode".to_string(),
+                    ),
+                })
+            },
+        };
 
-    let result = error_correction::error_correction_capability(input.min_distance);
+    let result =
+        error_correction::error_correction_capability(
+            input.min_distance,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),

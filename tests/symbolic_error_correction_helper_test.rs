@@ -58,7 +58,8 @@ fn test_gf256_inv() {
     // a * inv(a) == 1
     for a in 1u8..=255u8 {
 
-        let inv_a = gf256_inv(a).unwrap();
+        let inv_a =
+            gf256_inv(a).unwrap();
 
         assert_eq!(
             gf256_mul(a, inv_a),
@@ -108,7 +109,8 @@ fn test_gf256_log() {
     // exp(log(a)) = a for all non-zero a
     for a in 1u8..=255u8 {
 
-        let log_a = gf256_log(a).unwrap();
+        let log_a =
+            gf256_log(a).unwrap();
 
         assert_eq!(gf256_exp(log_a), a);
     }
@@ -152,7 +154,8 @@ fn test_poly_eval_gf256() {
     // In GF(256): coefficients are [1, 1, 1] (highest degree first: x^2 + x + 1)
     // Horner: ((1 * 2) ^ 1) * 2 ^ 1 = (2 ^ 1) * 2 ^ 1 = 3 * 2 ^ 1 = 6 ^ 1 = 7
     let poly = vec![1u8, 1, 1]; // x^2 + x + 1
-    let result = poly_eval_gf256(&poly, 2);
+    let result =
+        poly_eval_gf256(&poly, 2);
 
     // Manual check: 1*4 ^ 1*2 ^ 1 = 4 ^ 2 ^ 1 = 7
     assert_eq!(result, 7);
@@ -165,7 +168,8 @@ fn test_poly_add_gf256() {
     // (x + 1) + (x^2 + 1) = x^2 + x
     let p1 = vec![1u8, 1]; // x + 1
     let p2 = vec![1u8, 0, 1]; // x^2 + 1
-    let result = poly_add_gf256(&p1, &p2);
+    let result =
+        poly_add_gf256(&p1, &p2);
 
     // Result: x^2 + x + (1 ^ 1) = x^2 + x = [1, 1, 0]
     assert_eq!(
@@ -181,7 +185,8 @@ fn test_poly_mul_gf256() {
     // (x + 1) * (x + 1) = x^2 + 2x + 1 = x^2 + 1 (since 2 = 0 in GF(2))
     let p1 = vec![1u8, 1]; // x + 1
     let p2 = vec![1u8, 1]; // x + 1
-    let result = poly_mul_gf256(&p1, &p2);
+    let result =
+        poly_mul_gf256(&p1, &p2);
 
     // x^2 + 2x + 1 => [1, 0, 1] in GF(2^8)
     assert_eq!(
@@ -196,14 +201,16 @@ fn test_poly_scale_gf256() {
 
     let poly = vec![1u8, 2, 3];
 
-    let scaled = poly_scale_gf256(&poly, 0);
+    let scaled =
+        poly_scale_gf256(&poly, 0);
 
     assert_eq!(
         scaled,
         vec![0, 0, 0]
     );
 
-    let scaled1 = poly_scale_gf256(&poly, 1);
+    let scaled1 =
+        poly_scale_gf256(&poly, 1);
 
     assert_eq!(scaled1, poly);
 }
@@ -215,7 +222,8 @@ fn test_poly_derivative_gf256() {
     // Derivative of x^2 + x + 1 = 2x + 1 = 0 + 1 = 1 (in char 2)
     // Actually in GF(2^8), d/dx[a*x^n] = n*a*x^(n-1), and n mod 2 matters
     let poly = vec![1u8, 1, 1]; // x^2 + x + 1
-    let deriv = poly_derivative_gf256(&poly);
+    let deriv =
+        poly_derivative_gf256(&poly);
 
     // x^2 has power 2 (even, vanishes), x has power 1 (odd, survives)
     assert!(!deriv.is_empty());
@@ -244,7 +252,8 @@ fn test_poly_gcd_gf256() {
 
 #[test]
 
-fn test_finite_field_element_arithmetic() {
+fn test_finite_field_element_arithmetic(
+) {
 
     let field = FiniteField::new(7); // GF(7)
     let a = FieldElement::new(
@@ -258,7 +267,8 @@ fn test_finite_field_element_arithmetic() {
     );
 
     // 3 + 5 = 8 = 1 (mod 7)
-    let sum = (a.clone() + b.clone()).unwrap();
+    let sum = (a.clone() + b.clone())
+        .unwrap();
 
     assert_eq!(
         sum.value,
@@ -266,7 +276,8 @@ fn test_finite_field_element_arithmetic() {
     );
 
     // 3 * 5 = 15 = 1 (mod 7)
-    let prod = (a.clone() * b.clone()).unwrap();
+    let prod = (a.clone() * b.clone())
+        .unwrap();
 
     assert_eq!(
         prod.value,
@@ -274,7 +285,8 @@ fn test_finite_field_element_arithmetic() {
     );
 
     // 3 - 5 = -2 = 5 (mod 7)
-    let diff = (a.clone() - b.clone()).unwrap();
+    let diff = (a.clone() - b.clone())
+        .unwrap();
 
     assert_eq!(
         diff.value,
@@ -365,9 +377,10 @@ fn test_field_element_inverse() {
         field.clone(),
     );
 
-    let inv_a = a
-        .inverse()
-        .expect("3 should be invertible in GF(7)");
+    let inv_a = a.inverse().expect(
+        "3 should be invertible in \
+         GF(7)",
+    );
 
     // 3 * 5 = 15 = 1 (mod 7), so inv(3) = 5
     assert_eq!(
@@ -395,21 +408,29 @@ fn test_poly_operations_gf() {
     ]);
 
     // Add: (x+1) + (x+2) = 2x + 3
-    let sum = poly_add_gf(&p1, &p2, &field).unwrap();
+    let sum =
+        poly_add_gf(&p1, &p2, &field)
+            .unwrap();
 
-    if let Expr::Polynomial(coeffs) = sum {
+    if let Expr::Polynomial(coeffs) =
+        sum
+    {
 
         assert_eq!(coeffs.len(), 2);
 
         // coeffs[0] = 2, coeffs[1] = 3
         assert_eq!(
             coeffs[0],
-            Expr::BigInt(BigInt::from(2))
+            Expr::BigInt(BigInt::from(
+                2
+            ))
         );
 
         assert_eq!(
             coeffs[1],
-            Expr::BigInt(BigInt::from(3))
+            Expr::BigInt(BigInt::from(
+                3
+            ))
         );
     } else {
 

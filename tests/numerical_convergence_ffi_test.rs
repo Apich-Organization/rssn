@@ -34,10 +34,15 @@ fn test_convergence_handle_ffi() {
 
         assert!(len > 0);
 
-        assert!((out.last().unwrap() - 1.0).abs() < 1e-10);
+        assert!(
+            (out.last().unwrap() - 1.0)
+                .abs()
+                < 1e-10
+        );
 
         // Richardson
-        let rich_seq = vec![1.08, 1.02, 1.005]; // Dummy sequence converging to 1
+        let rich_seq =
+            vec![1.08, 1.02, 1.005]; // Dummy sequence converging to 1
         let r_ptr = handle::rssn_convergence_richardson(
             rich_seq.as_ptr(),
             rich_seq.len(),
@@ -55,29 +60,38 @@ fn test_convergence_json_ffi() {
 
         // Wynn Epsilon
         let seq = vec![
-            1.0, 0.66666, 0.86666, 0.7238,
+            1.0, 0.66666, 0.86666,
+            0.7238,
         ]; // Alternating series partial sums
         let json_input = format!(
             r#"{{"sequence": {:?}}}"#,
             seq
         );
 
-        let c_json = CString::new(json_input).unwrap();
+        let c_json =
+            CString::new(json_input)
+                .unwrap();
 
         let res_ptr = json::rssn_convergence_wynn_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
         // Check valid JSON
-        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert!(v
             .get("ok")
             .is_some());
 
         // Free
-        let _ = CString::from_raw(res_ptr);
+        let _ =
+            CString::from_raw(res_ptr);
     }
 }

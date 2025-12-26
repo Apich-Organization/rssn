@@ -96,22 +96,28 @@ struct Burgers1DInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let input: FluidPropertiesInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<FluidPropertiesOutput, String> {
+    let input: FluidPropertiesInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        FluidPropertiesOutput,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     let fluid = physics_cfd::FluidProperties::new(
         input.density,
@@ -120,59 +126,81 @@ pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(input: *const c_char
         input.specific_heat,
     );
 
-    let output = FluidPropertiesOutput {
-        kinematic_viscosity: fluid.kinematic_viscosity(),
-        thermal_diffusivity: fluid.thermal_diffusivity(),
-        prandtl_number: fluid.prandtl_number(),
-    };
+    let output =
+        FluidPropertiesOutput {
+            kinematic_viscosity: fluid
+                .kinematic_viscosity(),
+            thermal_diffusivity: fluid
+                .thermal_diffusivity(),
+            prandtl_number: fluid
+                .prandtl_number(),
+        };
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(output),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(output),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(_input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(
+    _input: *const c_char
+) -> *mut c_char {
 
     let fluid = physics_cfd::FluidProperties::air();
 
-    let output = FluidPropertiesOutput {
-        kinematic_viscosity: fluid.kinematic_viscosity(),
-        thermal_diffusivity: fluid.thermal_diffusivity(),
-        prandtl_number: fluid.prandtl_number(),
-    };
+    let output =
+        FluidPropertiesOutput {
+            kinematic_viscosity: fluid
+                .kinematic_viscosity(),
+            thermal_diffusivity: fluid
+                .thermal_diffusivity(),
+            prandtl_number: fluid
+                .prandtl_number(),
+        };
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(output),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(output),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(_input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(
+    _input: *const c_char
+) -> *mut c_char {
 
     let fluid = physics_cfd::FluidProperties::water();
 
-    let output = FluidPropertiesOutput {
-        kinematic_viscosity: fluid.kinematic_viscosity(),
-        thermal_diffusivity: fluid.thermal_diffusivity(),
-        prandtl_number: fluid.prandtl_number(),
-    };
+    let output =
+        FluidPropertiesOutput {
+            kinematic_viscosity: fluid
+                .kinematic_viscosity(),
+            thermal_diffusivity: fluid
+                .thermal_diffusivity(),
+            prandtl_number: fluid
+                .prandtl_number(),
+        };
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(output),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(output),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -183,52 +211,62 @@ pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(_input: *const c_cha
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let input: ReynoldsInput = match from_json_string(input) {
+    let input: ReynoldsInput = match from_json_string(input)
+    {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
             )
         },
     };
 
-    let re = physics_cfd::reynolds_number(
-        input.velocity,
-        input.length,
-        input.kinematic_viscosity,
-    );
+    let re =
+        physics_cfd::reynolds_number(
+            input.velocity,
+            input.length,
+            input.kinematic_viscosity,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(re),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(re),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(
+    input: *const c_char
+) -> *mut c_char {
 
     let input: CflInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<
+                    f64,
+                    String,
+                > {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
             )
         },
@@ -241,10 +279,12 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(input: *const c_char) -> *
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(cfl),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(cfl),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -255,72 +295,90 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(input: *const c_char) -> *
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let input: Advection1DInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
+    let input: Advection1DInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<Vec<f64>>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let results = physics_cfd::solve_advection_1d(
-        &input.u0,
-        input.c,
-        input.dx,
-        input.dt,
-        input.num_steps,
-    );
+    let results =
+        physics_cfd::solve_advection_1d(
+            &input.u0,
+            input.c,
+            input.dx,
+            input.dt,
+            input.num_steps,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(results),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(results),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let input: Diffusion1DInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
+    let input: Diffusion1DInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<Vec<f64>>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let results = physics_cfd::solve_diffusion_1d(
-        &input.u0,
-        input.alpha,
-        input.dx,
-        input.dt,
-        input.num_steps,
-    );
+    let results =
+        physics_cfd::solve_diffusion_1d(
+            &input.u0,
+            input.alpha,
+            input.dx,
+            input.dt,
+            input.num_steps,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(results),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(results),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -331,20 +389,24 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
     input: *const c_char
 ) -> *mut c_char {
 
-    let input: AdvectionDiffusion1DInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
+    let input: AdvectionDiffusion1DInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<Vec<f64>>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
     let results = physics_cfd::solve_advection_diffusion_1d(
         &input.u0,
@@ -356,46 +418,57 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(results),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(results),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_cfd_solve_burgers_1d_json(input: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_cfd_solve_burgers_1d_json(
+    input: *const c_char
+) -> *mut c_char {
 
-    let input: Burgers1DInput = match from_json_string(input) {
-        | Some(i) => i,
-        | None => {
-            return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
+    let input: Burgers1DInput =
+        match from_json_string(input) {
+            | Some(i) => i,
+            | None => {
+                return to_c_string(
+                    serde_json::to_string(&FfiResult::<
+                        Vec<Vec<f64>>,
+                        String,
+                    > {
                         ok: None,
-                        err: Some("Invalid JSON".to_string()),
-                    },
+                        err: Some(
+                            "Invalid JSON".to_string(),
+                        ),
+                    })
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        },
-    };
+            },
+        };
 
-    let results = physics_cfd::solve_burgers_1d(
-        &input.u0,
-        input.nu,
-        input.dx,
-        input.dt,
-        input.num_steps,
-    );
+    let results =
+        physics_cfd::solve_burgers_1d(
+            &input.u0,
+            input.nu,
+            input.dx,
+            input.dt,
+            input.num_steps,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok: Some(results),
-            err: None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok: Some(results),
+                err: None::<String>,
+            },
+        )
         .unwrap(),
     )
 }

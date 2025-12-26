@@ -33,7 +33,9 @@ fn test_dg_handle_ffi() {
 
         assert_eq!(status, 0);
 
-        assert_approx_eq!(result, 0.0, 1e-9);
+        assert_approx_eq!(
+            result, 0.0, 1e-9
+        );
 
         let g_ptr = handle::rssn_num_dg_metric_tensor(
             CoordinateSystem::Cartesian,
@@ -68,17 +70,24 @@ fn test_dg_json_ffi() {
             std::f64::consts::PI / 2.0
         );
 
-        let c_json = CString::new(json_input).unwrap();
+        let c_json =
+            CString::new(json_input)
+                .unwrap();
 
         let res_ptr = json::rssn_num_dg_ricci_scalar_json(c_json.as_ptr());
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert_approx_eq!(
             v["ok"]
@@ -123,7 +132,8 @@ fn test_dg_bincode_ffi() {
             ],
         };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_dg_ricci_scalar_bincode(buffer);
 
@@ -137,7 +147,13 @@ fn test_dg_bincode_ffi() {
             err: Option<E>,
         }
 
-        let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res: FfiResult<
+            f64,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
         assert_approx_eq!(
             res.ok.unwrap(),
@@ -145,8 +161,12 @@ fn test_dg_bincode_ffi() {
             1e-9
         );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 }

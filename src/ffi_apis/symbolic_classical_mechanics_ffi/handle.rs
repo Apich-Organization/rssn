@@ -7,7 +7,9 @@ use crate::symbolic::vector_calculus::ParametricCurve;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-unsafe fn c_str_to_str<'a>(s: *const c_char) -> Option<&'a str> {
+unsafe fn c_str_to_str<'a>(
+    s: *const c_char
+) -> Option<&'a str> {
 
     if s.is_null() {
 
@@ -28,13 +30,17 @@ pub unsafe extern "C" fn rssn_kinetic_energy(
     velocity: *const Expr,
 ) -> *mut Expr {
 
-    if mass.is_null() || velocity.is_null() {
+    if mass.is_null()
+        || velocity.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     Box::into_raw(Box::new(
-        classical_mechanics::kinetic_energy(&*mass, &*velocity),
+        classical_mechanics::kinetic_energy(
+            &*mass, &*velocity,
+        ),
     ))
 }
 
@@ -52,7 +58,9 @@ pub unsafe extern "C" fn rssn_lagrangian(
     }
 
     Box::into_raw(Box::new(
-        classical_mechanics::lagrangian(&*t, &*v),
+        classical_mechanics::lagrangian(
+            &*t, &*v,
+        ),
     ))
 }
 
@@ -84,24 +92,38 @@ pub unsafe extern "C" fn rssn_euler_lagrange_equation(
     t_var: *const c_char,
 ) -> *mut Expr {
 
-    if lagrangian.is_null() || q.is_null() || q_dot.is_null() || t_var.is_null() {
+    if lagrangian.is_null()
+        || q.is_null()
+        || q_dot.is_null()
+        || t_var.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let q_str = match c_str_to_str(q) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let q_dot_str = match c_str_to_str(q_dot) {
+    let q_dot_str = match c_str_to_str(
+        q_dot,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let t_str = match c_str_to_str(t_var) {
+    let t_str = match c_str_to_str(
+        t_var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     Box::into_raw(Box::new(
@@ -128,7 +150,9 @@ pub unsafe extern "C" fn rssn_torque(
     }
 
     Box::into_raw(Box::new(
-        classical_mechanics::torque(&*r, &*force),
+        classical_mechanics::torque(
+            &*r, &*force,
+        ),
     ))
 }
 
@@ -140,13 +164,17 @@ pub unsafe extern "C" fn rssn_power(
     velocity: *const Vector,
 ) -> *mut Expr {
 
-    if force.is_null() || velocity.is_null() {
+    if force.is_null()
+        || velocity.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     Box::into_raw(Box::new(
-        classical_mechanics::power(&*force, &*velocity),
+        classical_mechanics::power(
+            &*force, &*velocity,
+        ),
     ))
 }
 
@@ -158,7 +186,9 @@ pub unsafe extern "C" fn rssn_work_line_integral(
     path: *const ParametricCurve,
 ) -> *mut Expr {
 
-    if force_field.is_null() || path.is_null() {
+    if force_field.is_null()
+        || path.is_null()
+    {
 
         return std::ptr::null_mut();
     }

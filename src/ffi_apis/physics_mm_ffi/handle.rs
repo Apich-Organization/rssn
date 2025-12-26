@@ -6,9 +6,11 @@ use crate::physics::physics_mm;
 /// Simulates the dam break scenario and returns the final particle positions as a Matrix handle (Nx2).
 #[no_mangle]
 
-pub extern "C" fn rssn_physics_mm_simulate_dam_break() -> *mut Matrix<f64> {
+pub extern "C" fn rssn_physics_mm_simulate_dam_break(
+) -> *mut Matrix<f64> {
 
-    let results = physics_mm::simulate_dam_break_2d_scenario();
+    let results =
+        physics_mm::simulate_dam_break_2d_scenario();
 
     let rows = results.len();
 
@@ -17,7 +19,8 @@ pub extern "C" fn rssn_physics_mm_simulate_dam_break() -> *mut Matrix<f64> {
         return std::ptr::null_mut();
     }
 
-    let mut flattened = Vec::with_capacity(rows * 2);
+    let mut flattened =
+        Vec::with_capacity(rows * 2);
 
     for (x, y) in results {
 
@@ -60,7 +63,9 @@ pub extern "C" fn rssn_physics_mm_sph_create(
 /// Frees an SPH system.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_mm_sph_free(system: *mut physics_mm::SPHSystem) {
+pub unsafe extern "C" fn rssn_physics_mm_sph_free(
+    system: *mut physics_mm::SPHSystem
+) {
 
     if !system.is_null() {
 
@@ -136,7 +141,10 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
 
         let rows = sys.particles.len();
 
-        let mut flattened = Vec::with_capacity(rows * 2);
+        let mut flattened =
+            Vec::with_capacity(
+                rows * 2,
+            );
 
         for p in &sys.particles {
 
@@ -146,7 +154,9 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
         }
 
         Box::into_raw(Box::new(
-            Matrix::new(rows, 2, flattened),
+            Matrix::new(
+                rows, 2, flattened,
+            ),
         ))
     } else {
 

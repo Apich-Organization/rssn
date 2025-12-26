@@ -69,7 +69,9 @@ use std::collections::HashMap;
 /// assert_eq!(result, 5.0);
 /// ```
 
-pub fn eval_expr<S: ::std::hash::BuildHasher>(
+pub fn eval_expr<
+    S: ::std::hash::BuildHasher,
+>(
     expr: &Expr,
     vars: &HashMap<String, f64, S>,
 ) -> Result<f64, String> {
@@ -79,7 +81,9 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
             let converted_expr = node
                 .to_expr()
-                .map_err(|e| format!("Invalid DAG node: {e}"))?;
+                .map_err(|e| {
+                    format!("Invalid DAG node: {e}")
+                })?;
 
             eval_expr(
                 &converted_expr,
@@ -89,20 +93,30 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         | Expr::Constant(c) => Ok(*c),
         | Expr::BigInt(i) => {
             i.to_f64()
-                .ok_or_else(|| "BigInt overflow during evaluation".to_string())
+                .ok_or_else(|| {
+                    "BigInt overflow during evaluation"
+                        .to_string()
+                })
         },
         | Expr::Rational(r) => {
             r.to_f64()
-                .ok_or_else(|| "Rational overflow during evaluation".to_string())
+                .ok_or_else(|| {
+                    "Rational overflow during evaluation"
+                        .to_string()
+                })
         },
         | Expr::Variable(v) => {
             vars.get(v)
                 .copied()
-                .ok_or_else(|| format!("Unknown variable: '{v}'"))
+                .ok_or_else(|| {
+                    format!("Unknown variable: '{v}'")
+                })
         },
 
         // Arithmetic
-        | Expr::Add(a, b) => Ok(eval_expr(a, vars)? + eval_expr(b, vars)?),
+        | Expr::Add(a, b) => {
+            Ok(eval_expr(a, vars)? + eval_expr(b, vars)?)
+        },
         | Expr::AddList(list) => {
 
             let mut sum = 0.0;
@@ -114,8 +128,12 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
             Ok(sum)
         },
-        | Expr::Sub(a, b) => Ok(eval_expr(a, vars)? - eval_expr(b, vars)?),
-        | Expr::Mul(a, b) => Ok(eval_expr(a, vars)? * eval_expr(b, vars)?),
+        | Expr::Sub(a, b) => {
+            Ok(eval_expr(a, vars)? - eval_expr(b, vars)?)
+        },
+        | Expr::Mul(a, b) => {
+            Ok(eval_expr(a, vars)? * eval_expr(b, vars)?)
+        },
         | Expr::MulList(list) => {
 
             let mut prod = 1.0;
@@ -147,13 +165,18 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
             if base == 0.0 && exp < 0.0 {
 
-                return Err("Undefined operation: 0^negative power".to_string());
+                return Err(
+                    "Undefined operation: 0^negative power"
+                        .to_string(),
+                );
             }
 
             if base < 0.0 && exp.fract() != 0.0 {
 
                 return Err(
-                    "Complex result: negative base raised to non-integer power".to_string(),
+                    "Complex result: negative base raised \
+                     to non-integer power"
+                        .to_string(),
                 );
             }
 
@@ -166,7 +189,10 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
             if val < 0.0 {
 
-                return Err("Square root of negative number".to_string());
+                return Err(
+                    "Square root of negative number"
+                        .to_string(),
+                );
             }
 
             Ok(val.sqrt())
@@ -176,9 +202,15 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         | Expr::Sin(a) => Ok(eval_expr(a, vars)?.sin()),
         | Expr::Cos(a) => Ok(eval_expr(a, vars)?.cos()),
         | Expr::Tan(a) => Ok(eval_expr(a, vars)?.tan()),
-        | Expr::Sec(a) => Ok(1.0 / eval_expr(a, vars)?.cos()),
-        | Expr::Csc(a) => Ok(1.0 / eval_expr(a, vars)?.sin()),
-        | Expr::Cot(a) => Ok(1.0 / eval_expr(a, vars)?.tan()),
+        | Expr::Sec(a) => {
+            Ok(1.0 / eval_expr(a, vars)?.cos())
+        },
+        | Expr::Csc(a) => {
+            Ok(1.0 / eval_expr(a, vars)?.sin())
+        },
+        | Expr::Cot(a) => {
+            Ok(1.0 / eval_expr(a, vars)?.tan())
+        },
 
         // Inverse Trigonometric
         | Expr::ArcSin(a) => {
@@ -187,7 +219,11 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
             if !(-1.0..=1.0).contains(&val) {
 
-                return Err("Inverse sine argument out of domain [-1, 1]".to_string());
+                return Err(
+                    "Inverse sine argument out of domain \
+                     [-1, 1]"
+                        .to_string(),
+                );
             }
 
             Ok(val.asin())
@@ -198,13 +234,20 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
             if !(-1.0..=1.0).contains(&val) {
 
-                return Err("Inverse cosine argument out of domain [-1, 1]".to_string());
+                return Err(
+                    "Inverse cosine argument out of \
+                     domain [-1, 1]"
+                        .to_string(),
+                );
             }
 
             Ok(val.acos())
         },
         | Expr::ArcTan(a) => Ok(eval_expr(a, vars)?.atan()),
-        | Expr::Atan2(y, x) => Ok(eval_expr(y, vars)?.atan2(eval_expr(x, vars)?)),
+        | Expr::Atan2(y, x) => {
+            Ok(eval_expr(y, vars)?
+                .atan2(eval_expr(x, vars)?))
+        },
         | Expr::ArcSec(a) => {
 
             let val = eval_expr(a, vars)?;
@@ -212,7 +255,9 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             if val.abs() < 1.0 {
 
                 return Err(
-                    "Inverse secant argument out of domain (-inf, -1] U [1, inf)".to_string(),
+                    "Inverse secant argument out of \
+                     domain (-inf, -1] U [1, inf)"
+                        .to_string(),
                 );
             }
 
@@ -225,31 +270,47 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             if val.abs() < 1.0 {
 
                 return Err(
-                    "Inverse cosecant argument out of domain (-inf, -1] U [1, inf)".to_string(),
+                    "Inverse cosecant argument out of \
+                     domain (-inf, -1] U [1, inf)"
+                        .to_string(),
                 );
             }
 
             Ok((1.0 / val).asin())
         },
-        | Expr::ArcCot(a) => Ok((1.0 / eval_expr(a, vars)?).atan()),
+        | Expr::ArcCot(a) => {
+            Ok((1.0 / eval_expr(a, vars)?).atan())
+        },
 
         // Hyperbolic
         | Expr::Sinh(a) => Ok(eval_expr(a, vars)?.sinh()),
         | Expr::Cosh(a) => Ok(eval_expr(a, vars)?.cosh()),
         | Expr::Tanh(a) => Ok(eval_expr(a, vars)?.tanh()),
-        | Expr::Sech(a) => Ok(1.0 / eval_expr(a, vars)?.cosh()),
-        | Expr::Csch(a) => Ok(1.0 / eval_expr(a, vars)?.sinh()),
-        | Expr::Coth(a) => Ok(1.0 / eval_expr(a, vars)?.tanh()),
+        | Expr::Sech(a) => {
+            Ok(1.0 / eval_expr(a, vars)?.cosh())
+        },
+        | Expr::Csch(a) => {
+            Ok(1.0 / eval_expr(a, vars)?.sinh())
+        },
+        | Expr::Coth(a) => {
+            Ok(1.0 / eval_expr(a, vars)?.tanh())
+        },
 
         // Inverse Hyperbolic
-        | Expr::ArcSinh(a) => Ok(eval_expr(a, vars)?.asinh()),
+        | Expr::ArcSinh(a) => {
+            Ok(eval_expr(a, vars)?.asinh())
+        },
         | Expr::ArcCosh(a) => {
 
             let val = eval_expr(a, vars)?;
 
             if val < 1.0 {
 
-                return Err("Inverse hyperbolic cosine argument < 1".to_string());
+                return Err(
+                    "Inverse hyperbolic cosine argument < \
+                     1"
+                    .to_string(),
+                );
             }
 
             Ok(val.acosh())
@@ -261,7 +322,9 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             if val <= -1.0 || val >= 1.0 {
 
                 return Err(
-                    "Inverse hyperbolic tangent argument out of domain (-1, 1)".to_string(),
+                    "Inverse hyperbolic tangent argument \
+                     out of domain (-1, 1)"
+                        .to_string(),
                 );
             }
 
@@ -276,7 +339,10 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
             if val <= 0.0 {
 
-                return Err("Logarithm of non-positive number".to_string());
+                return Err(
+                    "Logarithm of non-positive number"
+                        .to_string(),
+                );
             }
 
             Ok(val.ln())
@@ -289,12 +355,17 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
 
             if base <= 0.0 || base == 1.0 {
 
-                return Err("Invalid logarithm base".to_string());
+                return Err(
+                    "Invalid logarithm base".to_string(),
+                );
             }
 
             if val <= 0.0 {
 
-                return Err("Logarithm of non-positive number".to_string());
+                return Err(
+                    "Logarithm of non-positive number"
+                        .to_string(),
+                );
             }
 
             Ok(val.log(base))
@@ -310,12 +381,18 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         | Expr::Floor(a) => Ok(eval_expr(a, vars)?.floor()),
 
         // Comparison/Selection
-        | Expr::Max(a, b) => Ok(eval_expr(a, vars)?.max(eval_expr(b, vars)?)),
+        | Expr::Max(a, b) => {
+            Ok(
+                eval_expr(a, vars)?
+                    .max(eval_expr(b, vars)?),
+            )
+        },
 
         // Fallback or Unimplemented
         | _ => {
             Err(format!(
-                "Numerical evaluation of {expr:?} is not supported"
+                "Numerical evaluation of {expr:?} is not \
+                 supported"
             ))
         },
     }

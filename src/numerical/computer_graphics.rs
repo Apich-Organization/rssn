@@ -80,7 +80,14 @@ use std::ops::{
 // ============================================================================
 
 /// A 2D point.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Point2D {
     pub x: f64,
@@ -116,7 +123,14 @@ impl Point2D {
 }
 
 /// A 3D point.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Point3D {
     pub x: f64,
@@ -151,13 +165,16 @@ impl Point3D {
 
         let dz = self.z - other.z;
 
-        (dx * dx + dy * dy + dz * dz).sqrt()
+        (dx * dx + dy * dy + dz * dz)
+            .sqrt()
     }
 
     /// Returns the point as a vector from the origin.
     #[must_use]
 
-    pub const fn to_vector(&self) -> Vector3D {
+    pub const fn to_vector(
+        &self
+    ) -> Vector3D {
 
         Vector3D {
             x: self.x,
@@ -168,7 +185,14 @@ impl Point3D {
 }
 
 /// A 2D vector.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Vector2D {
     pub x: f64,
@@ -192,7 +216,9 @@ impl Vector2D {
 
     pub fn magnitude(&self) -> f64 {
 
-        (self.x * self.x + self.y * self.y).sqrt()
+        (self.x * self.x
+            + self.y * self.y)
+            .sqrt()
     }
 
     /// Normalizes the vector to have a magnitude of 1.
@@ -230,7 +256,9 @@ impl Vector2D {
     /// Returns the perpendicular vector (90 degrees counter-clockwise).
     #[must_use]
 
-    pub const fn perpendicular(&self) -> Self {
+    pub const fn perpendicular(
+        &self
+    ) -> Self {
 
         Self {
             x: -self.y,
@@ -312,7 +340,14 @@ impl Neg for Vector2D {
 }
 
 /// A 3D vector.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Vector3D {
     pub x: f64,
@@ -338,15 +373,22 @@ impl Vector3D {
 
     pub fn magnitude(&self) -> f64 {
 
-        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+        (self.x * self.x
+            + self.y * self.y
+            + self.z * self.z)
+            .sqrt()
     }
 
     /// Returns the squared magnitude (avoids sqrt).
     #[must_use]
 
-    pub fn magnitude_squared(&self) -> f64 {
+    pub fn magnitude_squared(
+        &self
+    ) -> f64 {
 
-        self.x * self.x + self.y * self.y + self.z * self.z
+        self.x * self.x
+            + self.y * self.y
+            + self.z * self.z
     }
 
     /// Normalizes the vector to have a magnitude of 1.
@@ -448,7 +490,14 @@ impl Neg for Vector3D {
 // ============================================================================
 
 /// RGBA color with values in [0, 1].
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Color {
     pub r: f64,
@@ -559,10 +608,18 @@ impl Color {
     ) -> Self {
 
         Self {
-            r: self.r + (other.r - self.r) * t,
-            g: self.g + (other.g - self.g) * t,
-            b: self.b + (other.b - self.b) * t,
-            a: self.a + (other.a - self.a) * t,
+            r: self.r
+                + (other.r - self.r)
+                    * t,
+            g: self.g
+                + (other.g - self.g)
+                    * t,
+            b: self.b
+                + (other.b - self.b)
+                    * t,
+            a: self.a
+                + (other.a - self.a)
+                    * t,
         }
     }
 }
@@ -590,7 +647,9 @@ pub fn dot_product(
     v2: &Vector3D,
 ) -> f64 {
 
-    v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
+    v1.x * v2.x
+        + v1.y * v2.y
+        + v1.z * v2.z
 }
 
 /// Computes the cross product of two 3D vectors.
@@ -618,7 +677,8 @@ pub fn reflect(
     normal: &Vector3D,
 ) -> Vector3D {
 
-    let dot = dot_product(incident, normal);
+    let dot =
+        dot_product(incident, normal);
 
     *incident - *normal * (2.0 * dot)
 }
@@ -641,7 +701,9 @@ pub fn refract(
 
     let cos_i = -dot_product(&i, &n);
 
-    let sin2_t = eta * eta * (1.0 - cos_i * cos_i);
+    let sin2_t = eta
+        * eta
+        * (1.0 - cos_i * cos_i);
 
     if sin2_t > 1.0 {
 
@@ -650,7 +712,10 @@ pub fn refract(
 
     let cos_t = (1.0 - sin2_t).sqrt();
 
-    Some(i * eta + n * (eta * cos_i - cos_t))
+    Some(
+        i * eta
+            + n * (eta * cos_i - cos_t),
+    )
 }
 
 /// Linear interpolation between two vectors.
@@ -676,7 +741,8 @@ pub fn slerp(
     t: f64,
 ) -> Vector3D {
 
-    let dot = dot_product(v1, v2).clamp(-1.0, 1.0);
+    let dot = dot_product(v1, v2)
+        .clamp(-1.0, 1.0);
 
     let theta = dot.acos();
 
@@ -687,9 +753,11 @@ pub fn slerp(
 
     let sin_theta = theta.sin();
 
-    let s1 = ((1.0 - t) * theta).sin() / sin_theta;
+    let s1 = ((1.0 - t) * theta).sin()
+        / sin_theta;
 
-    let s2 = (t * theta).sin() / sin_theta;
+    let s2 =
+        (t * theta).sin() / sin_theta;
 
     *v1 * s1 + *v2 * s2
 }
@@ -704,7 +772,8 @@ pub fn angle_between(
 
     let dot = dot_product(v1, v2);
 
-    let mags = v1.magnitude() * v2.magnitude();
+    let mags =
+        v1.magnitude() * v2.magnitude();
 
     if mags == 0.0 {
 
@@ -725,14 +794,16 @@ pub fn project(
     b: &Vector3D,
 ) -> Vector3D {
 
-    let b_mag_sq = b.magnitude_squared();
+    let b_mag_sq =
+        b.magnitude_squared();
 
     if b_mag_sq == 0.0 {
 
         Vector3D::new(0.0, 0.0, 0.0)
     } else {
 
-        *b * (dot_product(a, b) / b_mag_sq)
+        *b * (dot_product(a, b)
+            / b_mag_sq)
     }
 }
 
@@ -753,7 +824,10 @@ pub fn translation_matrix(
         4,
         4,
         vec![
-            1.0, 0.0, 0.0, dx, 0.0, 1.0, 0.0, dy, 0.0, 0.0, 1.0, dz, 0.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, dx, 0.0,
+            1.0, 0.0, dy, 0.0, 0.0,
+            1.0, dz, 0.0, 0.0, 0.0,
+            1.0,
         ],
     )
 }
@@ -771,7 +845,9 @@ pub fn scaling_matrix(
         4,
         4,
         vec![
-            sx, 0.0, 0.0, 0.0, 0.0, sy, 0.0, 0.0, 0.0, 0.0, sz, 0.0, 0.0, 0.0, 0.0, 1.0,
+            sx, 0.0, 0.0, 0.0, 0.0, sy,
+            0.0, 0.0, 0.0, 0.0, sz,
+            0.0, 0.0, 0.0, 0.0, 1.0,
         ],
     )
 }
@@ -779,7 +855,9 @@ pub fn scaling_matrix(
 /// Generates a 4x4 uniform scaling matrix.
 #[must_use]
 
-pub fn uniform_scaling_matrix(scale: f64) -> Matrix<f64> {
+pub fn uniform_scaling_matrix(
+    scale: f64
+) -> Matrix<f64> {
 
     scaling_matrix(scale, scale, scale)
 }
@@ -787,7 +865,9 @@ pub fn uniform_scaling_matrix(scale: f64) -> Matrix<f64> {
 /// Generates a 4x4 rotation matrix around the X-axis.
 #[must_use]
 
-pub fn rotation_matrix_x(angle_rad: f64) -> Matrix<f64> {
+pub fn rotation_matrix_x(
+    angle_rad: f64
+) -> Matrix<f64> {
 
     let (s, c) = angle_rad.sin_cos();
 
@@ -795,7 +875,9 @@ pub fn rotation_matrix_x(angle_rad: f64) -> Matrix<f64> {
         4,
         4,
         vec![
-            1.0, 0.0, 0.0, 0.0, 0.0, c, -s, 0.0, 0.0, s, c, 0.0, 0.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, 0.0, 0.0, c,
+            -s, 0.0, 0.0, s, c, 0.0,
+            0.0, 0.0, 0.0, 1.0,
         ],
     )
 }
@@ -803,7 +885,9 @@ pub fn rotation_matrix_x(angle_rad: f64) -> Matrix<f64> {
 /// Generates a 4x4 rotation matrix around the Y-axis.
 #[must_use]
 
-pub fn rotation_matrix_y(angle_rad: f64) -> Matrix<f64> {
+pub fn rotation_matrix_y(
+    angle_rad: f64
+) -> Matrix<f64> {
 
     let (s, c) = angle_rad.sin_cos();
 
@@ -811,7 +895,9 @@ pub fn rotation_matrix_y(angle_rad: f64) -> Matrix<f64> {
         4,
         4,
         vec![
-            c, 0.0, s, 0.0, 0.0, 1.0, 0.0, 0.0, -s, 0.0, c, 0.0, 0.0, 0.0, 0.0, 1.0,
+            c, 0.0, s, 0.0, 0.0, 1.0,
+            0.0, 0.0, -s, 0.0, c, 0.0,
+            0.0, 0.0, 0.0, 1.0,
         ],
     )
 }
@@ -819,7 +905,9 @@ pub fn rotation_matrix_y(angle_rad: f64) -> Matrix<f64> {
 /// Generates a 4x4 rotation matrix around the Z-axis.
 #[must_use]
 
-pub fn rotation_matrix_z(angle_rad: f64) -> Matrix<f64> {
+pub fn rotation_matrix_z(
+    angle_rad: f64
+) -> Matrix<f64> {
 
     let (s, c) = angle_rad.sin_cos();
 
@@ -827,7 +915,9 @@ pub fn rotation_matrix_z(angle_rad: f64) -> Matrix<f64> {
         4,
         4,
         vec![
-            c, -s, 0.0, 0.0, s, c, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+            c, -s, 0.0, 0.0, s, c, 0.0,
+            0.0, 0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0,
         ],
     )
 }
@@ -896,7 +986,9 @@ pub fn shearing_matrix(
         4,
         4,
         vec![
-            1.0, xy, xz, 0.0, yx, 1.0, yz, 0.0, zx, zy, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+            1.0, xy, xz, 0.0, yx, 1.0,
+            yz, 0.0, zx, zy, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0,
         ],
     )
 }
@@ -1005,9 +1097,11 @@ pub fn look_at_matrix(
     up: &Vector3D,
 ) -> Matrix<f64> {
 
-    let f = (*center - *eye).normalize();
+    let f =
+        (*center - *eye).normalize();
 
-    let s = cross_product(&f, up).normalize();
+    let s = cross_product(&f, up)
+        .normalize();
 
     let u = cross_product(&s, &f);
 
@@ -1038,13 +1132,17 @@ pub fn look_at_matrix(
 /// Identity 4x4 matrix.
 #[must_use]
 
-pub fn identity_matrix() -> Matrix<f64> {
+pub fn identity_matrix() -> Matrix<f64>
+{
 
     Matrix::new(
         4,
         4,
         vec![
-            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, 0.0, 0.0,
+            1.0, 0.0, 0.0, 0.0, 0.0,
+            1.0, 0.0, 0.0, 0.0, 0.0,
+            1.0,
         ],
     )
 }
@@ -1054,7 +1152,14 @@ pub fn identity_matrix() -> Matrix<f64> {
 // ============================================================================
 
 /// A quaternion for 3D rotations.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Quaternion {
     pub w: f64,
@@ -1100,7 +1205,8 @@ impl Quaternion {
 
         let half_angle = angle / 2.0;
 
-        let (s, c) = half_angle.sin_cos();
+        let (s, c) =
+            half_angle.sin_cos();
 
         let n = axis.normalize();
 
@@ -1121,17 +1227,24 @@ impl Quaternion {
         yaw: f64,
     ) -> Self {
 
-        let (sr, cr) = (roll / 2.0).sin_cos();
+        let (sr, cr) =
+            (roll / 2.0).sin_cos();
 
-        let (sp, cp) = (pitch / 2.0).sin_cos();
+        let (sp, cp) =
+            (pitch / 2.0).sin_cos();
 
-        let (sy, cy) = (yaw / 2.0).sin_cos();
+        let (sy, cy) =
+            (yaw / 2.0).sin_cos();
 
         Self {
-            w: cr * cp * cy + sr * sp * sy,
-            x: sr * cp * cy - cr * sp * sy,
-            y: cr * sp * cy + sr * cp * sy,
-            z: cr * cp * sy - sr * sp * cy,
+            w: cr * cp * cy
+                + sr * sp * sy,
+            x: sr * cp * cy
+                - cr * sp * sy,
+            y: cr * sp * cy
+                + sr * cp * sy,
+            z: cr * cp * sy
+                - sr * sp * cy,
         }
     }
 
@@ -1140,7 +1253,11 @@ impl Quaternion {
 
     pub fn magnitude(&self) -> f64 {
 
-        (self.w * self.w + self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+        (self.w * self.w
+            + self.x * self.x
+            + self.y * self.y
+            + self.z * self.z)
+            .sqrt()
     }
 
     /// Normalizes the quaternion.
@@ -1167,7 +1284,9 @@ impl Quaternion {
     /// Returns the conjugate of the quaternion.
     #[must_use]
 
-    pub const fn conjugate(&self) -> Self {
+    pub const fn conjugate(
+        &self
+    ) -> Self {
 
         Self {
             w: self.w,
@@ -1182,7 +1301,10 @@ impl Quaternion {
 
     pub fn inverse(&self) -> Self {
 
-        let mag_sq = self.w * self.w + self.x * self.x + self.y * self.y + self.z * self.z;
+        let mag_sq = self.w * self.w
+            + self.x * self.x
+            + self.y * self.y
+            + self.z * self.z;
 
         let conj = self.conjugate();
 
@@ -1203,10 +1325,22 @@ impl Quaternion {
     ) -> Self {
 
         Self {
-            w: self.w * other.w - self.x * other.x - self.y * other.y - self.z * other.z,
-            x: self.w * other.x + self.x * other.w + self.y * other.z - self.z * other.y,
-            y: self.w * other.y - self.x * other.z + self.y * other.w + self.z * other.x,
-            z: self.w * other.z + self.x * other.y - self.y * other.x + self.z * other.w,
+            w: self.w * other.w
+                - self.x * other.x
+                - self.y * other.y
+                - self.z * other.z,
+            x: self.w * other.x
+                + self.x * other.w
+                + self.y * other.z
+                - self.z * other.y,
+            y: self.w * other.y
+                - self.x * other.z
+                + self.y * other.w
+                + self.z * other.x,
+            z: self.w * other.z
+                + self.x * other.y
+                - self.y * other.x
+                + self.z * other.w,
         }
     }
 
@@ -1218,21 +1352,28 @@ impl Quaternion {
         v: &Vector3D,
     ) -> Vector3D {
 
-        let q_v = Self::new(0.0, v.x, v.y, v.z);
+        let q_v = Self::new(
+            0.0, v.x, v.y, v.z,
+        );
 
         let result = self
             .multiply(&q_v)
-            .multiply(&self.conjugate());
+            .multiply(
+                &self.conjugate(),
+            );
 
         Vector3D::new(
-            result.x, result.y, result.z,
+            result.x, result.y,
+            result.z,
         )
     }
 
     /// Converts the quaternion to a 4x4 rotation matrix.
     #[must_use]
 
-    pub fn to_matrix(&self) -> Matrix<f64> {
+    pub fn to_matrix(
+        &self
+    ) -> Matrix<f64> {
 
         let q = self.normalize();
 
@@ -1287,14 +1428,18 @@ impl Quaternion {
         t: f64,
     ) -> Self {
 
-        let mut dot = self.w * other.w + self.x * other.x + self.y * other.y + self.z * other.z;
+        let mut dot = self.w * other.w
+            + self.x * other.x
+            + self.y * other.y
+            + self.z * other.z;
 
         // If dot is negative, negate one quaternion to take the shorter path
         let (q2, dot) = if dot < 0.0 {
 
             (
                 Self::new(
-                    -other.w, -other.x, -other.y, -other.z,
+                    -other.w, -other.x,
+                    -other.y, -other.z,
                 ),
                 -dot,
             )
@@ -1307,10 +1452,18 @@ impl Quaternion {
         if dot > 0.9995 {
 
             return Self::new(
-                self.w + t * (q2.w - self.w),
-                self.x + t * (q2.x - self.x),
-                self.y + t * (q2.y - self.y),
-                self.z + t * (q2.z - self.z),
+                self.w
+                    + t * (q2.w
+                        - self.w),
+                self.x
+                    + t * (q2.x
+                        - self.x),
+                self.y
+                    + t * (q2.y
+                        - self.y),
+                self.z
+                    + t * (q2.z
+                        - self.z),
             )
             .normalize();
         }
@@ -1323,9 +1476,13 @@ impl Quaternion {
 
         let sin_theta_0 = theta_0.sin();
 
-        let s0 = (theta_0 - theta).cos() - dot * sin_theta / sin_theta_0;
+        let s0 = (theta_0 - theta)
+            .cos()
+            - dot * sin_theta
+                / sin_theta_0;
 
-        let s1 = sin_theta / sin_theta_0;
+        let s1 =
+            sin_theta / sin_theta_0;
 
         Self::new(
             s0 * self.w + s1 * q2.w,
@@ -1341,7 +1498,14 @@ impl Quaternion {
 // ============================================================================
 
 /// A ray defined by an origin point and direction.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Ray {
     pub origin: Point3D,
@@ -1369,15 +1533,25 @@ impl Ray {
     ) -> Point3D {
 
         Point3D {
-            x: self.origin.x + t * self.direction.x,
-            y: self.origin.y + t * self.direction.y,
-            z: self.origin.z + t * self.direction.z,
+            x: self.origin.x
+                + t * self.direction.x,
+            y: self.origin.y
+                + t * self.direction.y,
+            z: self.origin.z
+                + t * self.direction.z,
         }
     }
 }
 
 /// A sphere defined by center and radius.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Sphere {
     pub center: Point3D,
@@ -1398,7 +1572,14 @@ impl Sphere {
 }
 
 /// Result of a ray intersection.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Intersection {
     /// Parameter t where ray intersects.
@@ -1430,11 +1611,17 @@ pub fn ray_sphere_intersection(
         &ray.direction,
     );
 
-    let b = 2.0 * dot_product(&oc, &ray.direction);
+    let b = 2.0
+        * dot_product(
+            &oc,
+            &ray.direction,
+        );
 
-    let c = dot_product(&oc, &oc) - sphere.radius * sphere.radius;
+    let c = dot_product(&oc, &oc)
+        - sphere.radius * sphere.radius;
 
-    let discriminant = b * b - 4.0 * a * c;
+    let discriminant =
+        b * b - 4.0 * a * c;
 
     if discriminant < 0.0 {
 
@@ -1461,16 +1648,30 @@ pub fn ray_sphere_intersection(
     let point = ray.at(t);
 
     let normal = Vector3D::new(
-        (point.x - sphere.center.x) / sphere.radius,
-        (point.y - sphere.center.y) / sphere.radius,
-        (point.z - sphere.center.z) / sphere.radius,
+        (point.x - sphere.center.x)
+            / sphere.radius,
+        (point.y - sphere.center.y)
+            / sphere.radius,
+        (point.z - sphere.center.z)
+            / sphere.radius,
     );
 
-    Some(Intersection { t, point, normal })
+    Some(Intersection {
+        t,
+        point,
+        normal,
+    })
 }
 
 /// A plane defined by a point and normal.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Plane {
     pub point: Point3D,
@@ -1534,7 +1735,11 @@ pub fn ray_plane_intersection(
         -plane.normal
     };
 
-    Some(Intersection { t, point, normal })
+    Some(Intersection {
+        t,
+        point,
+        normal,
+    })
 }
 
 /// Computes ray-triangle intersection using Möller–Trumbore algorithm.
@@ -1588,7 +1793,10 @@ pub fn ray_triangle_intersection(
 
     let q = cross_product(&s, &edge1);
 
-    let v = f * dot_product(&ray.direction, &q);
+    let v = f * dot_product(
+        &ray.direction,
+        &q,
+    );
 
     if v < 0.0 || u + v > 1.0 {
 
@@ -1604,9 +1812,15 @@ pub fn ray_triangle_intersection(
 
     let point = ray.at(t);
 
-    let normal = cross_product(&edge1, &edge2).normalize();
+    let normal =
+        cross_product(&edge1, &edge2)
+            .normalize();
 
-    Some(Intersection { t, point, normal })
+    Some(Intersection {
+        t,
+        point,
+        normal,
+    })
 }
 
 // ============================================================================
@@ -1634,9 +1848,15 @@ pub fn bezier_quadratic(
     let mt2 = mt * mt;
 
     Point3D {
-        x: mt2 * p0.x + 2.0 * mt * t * p1.x + t2 * p2.x,
-        y: mt2 * p0.y + 2.0 * mt * t * p1.y + t2 * p2.y,
-        z: mt2 * p0.z + 2.0 * mt * t * p1.z + t2 * p2.z,
+        x: mt2 * p0.x
+            + 2.0 * mt * t * p1.x
+            + t2 * p2.x,
+        y: mt2 * p0.y
+            + 2.0 * mt * t * p1.y
+            + t2 * p2.y,
+        z: mt2 * p0.z
+            + 2.0 * mt * t * p1.z
+            + t2 * p2.z,
     }
 }
 
@@ -1666,9 +1886,18 @@ pub fn bezier_cubic(
     let mt3 = mt2 * mt;
 
     Point3D {
-        x: mt3 * p0.x + 3.0 * mt2 * t * p1.x + 3.0 * mt * t2 * p2.x + t3 * p3.x,
-        y: mt3 * p0.y + 3.0 * mt2 * t * p1.y + 3.0 * mt * t2 * p2.y + t3 * p3.y,
-        z: mt3 * p0.z + 3.0 * mt2 * t * p1.z + 3.0 * mt * t2 * p2.z + t3 * p3.z,
+        x: mt3 * p0.x
+            + 3.0 * mt2 * t * p1.x
+            + 3.0 * mt * t2 * p2.x
+            + t3 * p3.x,
+        y: mt3 * p0.y
+            + 3.0 * mt2 * t * p1.y
+            + 3.0 * mt * t2 * p2.y
+            + t3 * p3.y,
+        z: mt3 * p0.z
+            + 3.0 * mt2 * t * p1.z
+            + 3.0 * mt * t2 * p2.z
+            + t3 * p3.z,
     }
 }
 
@@ -1693,18 +1922,39 @@ pub fn catmull_rom(
         x: 0.5
             * ((2.0 * p1.x)
                 + (-p0.x + p2.x) * t
-                + (2.0 * p0.x - 5.0 * p1.x + 4.0 * p2.x - p3.x) * t2
-                + (-p0.x + 3.0 * p1.x - 3.0 * p2.x + p3.x) * t3),
+                + (2.0 * p0.x
+                    - 5.0 * p1.x
+                    + 4.0 * p2.x
+                    - p3.x)
+                    * t2
+                + (-p0.x + 3.0 * p1.x
+                    - 3.0 * p2.x
+                    + p3.x)
+                    * t3),
         y: 0.5
             * ((2.0 * p1.y)
                 + (-p0.y + p2.y) * t
-                + (2.0 * p0.y - 5.0 * p1.y + 4.0 * p2.y - p3.y) * t2
-                + (-p0.y + 3.0 * p1.y - 3.0 * p2.y + p3.y) * t3),
+                + (2.0 * p0.y
+                    - 5.0 * p1.y
+                    + 4.0 * p2.y
+                    - p3.y)
+                    * t2
+                + (-p0.y + 3.0 * p1.y
+                    - 3.0 * p2.y
+                    + p3.y)
+                    * t3),
         z: 0.5
             * ((2.0 * p1.z)
                 + (-p0.z + p2.z) * t
-                + (2.0 * p0.z - 5.0 * p1.z + 4.0 * p2.z - p3.z) * t2
-                + (-p0.z + 3.0 * p1.z - 3.0 * p2.z + p3.z) * t3),
+                + (2.0 * p0.z
+                    - 5.0 * p1.z
+                    + 4.0 * p2.z
+                    - p3.z)
+                    * t2
+                + (-p0.z + 3.0 * p1.z
+                    - 3.0 * p2.z
+                    + p3.z)
+                    * t3),
     }
 }
 
@@ -1715,17 +1965,23 @@ pub fn catmull_rom(
 /// Converts degrees to radians.
 #[must_use]
 
-pub fn degrees_to_radians(degrees: f64) -> f64 {
+pub fn degrees_to_radians(
+    degrees: f64
+) -> f64 {
 
-    degrees * std::f64::consts::PI / 180.0
+    degrees * std::f64::consts::PI
+        / 180.0
 }
 
 /// Converts radians to degrees.
 #[must_use]
 
-pub fn radians_to_degrees(radians: f64) -> f64 {
+pub fn radians_to_degrees(
+    radians: f64
+) -> f64 {
 
-    radians * 180.0 / std::f64::consts::PI
+    radians * 180.0
+        / std::f64::consts::PI
 }
 
 /// Applies a 4x4 transformation matrix to a 3D point.
@@ -1758,7 +2014,11 @@ pub fn transform_point(
 
     if w.abs() > 1e-10 && w != 1.0 {
 
-        Point3D::new(x / w, y / w, z / w)
+        Point3D::new(
+            x / w,
+            y / w,
+            z / w,
+        )
     } else {
 
         Point3D::new(x, y, z)
@@ -1773,11 +2033,17 @@ pub fn transform_vector(
     vector: &Vector3D,
 ) -> Vector3D {
 
-    let x = matrix.get(0, 0) * vector.x + matrix.get(0, 1) * vector.y + matrix.get(0, 2) * vector.z;
+    let x = matrix.get(0, 0) * vector.x
+        + matrix.get(0, 1) * vector.y
+        + matrix.get(0, 2) * vector.z;
 
-    let y = matrix.get(1, 0) * vector.x + matrix.get(1, 1) * vector.y + matrix.get(1, 2) * vector.z;
+    let y = matrix.get(1, 0) * vector.x
+        + matrix.get(1, 1) * vector.y
+        + matrix.get(1, 2) * vector.z;
 
-    let z = matrix.get(2, 0) * vector.x + matrix.get(2, 1) * vector.y + matrix.get(2, 2) * vector.z;
+    let z = matrix.get(2, 0) * vector.x
+        + matrix.get(2, 1) * vector.y
+        + matrix.get(2, 2) * vector.z;
 
     Vector3D::new(x, y, z)
 }
@@ -1829,9 +2095,11 @@ pub fn barycentric_coordinates(
         return (1.0, 0.0, 0.0);
     }
 
-    let v = (d11 * d20 - d01 * d21) / denom;
+    let v =
+        (d11 * d20 - d01 * d21) / denom;
 
-    let w = (d00 * d21 - d01 * d20) / denom;
+    let w =
+        (d00 * d21 - d01 * d20) / denom;
 
     let u = 1.0 - v - w;
 
