@@ -10,7 +10,10 @@ pub struct GaussQuadrature {
 }
 impl GaussQuadrature {
     pub(crate) fn new() -> Self {
-        let points = vec![-1.0 / 3.0_f64.sqrt(), 1.0 / 3.0_f64.sqrt()];
+        let points = vec![
+            -1.0 / 3.0_f64.sqrt(),
+            1.0 / 3.0_f64.sqrt(),
+        ];
         let weights = vec![1.0, 1.0];
         GaussQuadrature { points, weights }
     }
@@ -43,8 +46,14 @@ where
         .map(move |i| {
             let x1 = i as f64 * h;
             let x2 = (i + 1) as f64 * h;
-            let k_local = [[1.0 / h, -1.0 / h], [-1.0 / h, 1.0 / h]];
-            let f_local = [h / 2.0 * force_fn(x1), h / 2.0 * force_fn(x2)];
+            let k_local = [
+                [1.0 / h, -1.0 / h],
+                [-1.0 / h, 1.0 / h],
+            ];
+            let f_local = [
+                h / 2.0 * force_fn(x1),
+                h / 2.0 * force_fn(x2),
+            ];
             let nodes = [i, i + 1];
             let mut local_triplets = Vec::with_capacity(4);
             for r in 0..2 {

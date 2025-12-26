@@ -92,7 +92,9 @@ pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
     let black_hole_mass = 1.0;
     let stable_orbit_params = GeodesicParameters {
         black_hole_mass,
-        initial_state: [10.0, 0.0, 0.0, 0.035],
+        initial_state: [
+            10.0, 0.0, 0.0, 0.035,
+        ],
         proper_time_end: 1500.0,
         initial_dt: 0.1,
     };
@@ -104,7 +106,9 @@ pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
     };
     let photon_orbit_params = GeodesicParameters {
         black_hole_mass,
-        initial_state: [10.0, -1.0, 0.0, 0.03],
+        initial_state: [
+            10.0, -1.0, 0.0, 0.03,
+        ],
         proper_time_end: 50.0,
         initial_dt: 0.01,
     };

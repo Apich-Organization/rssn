@@ -104,7 +104,10 @@ fn test_shannon_entropy() {
     // H([0.5, 0.5]) = - (0.5 * log2(0.5) + 0.5 * log2(0.5))
     // log2(0.5) = -1.
     // H = - (0.5 * -1 + 0.5 * -1) = - (-0.5 - 0.5) = 1.0
-    let probs = vec![Expr::Constant(0.5), Expr::Constant(0.5)];
+    let probs = vec![
+        Expr::Constant(0.5),
+        Expr::Constant(0.5),
+    ];
     let ent = shannon_entropy(&probs);
     assert_approx_eq(&ent, 1.0);
 }
@@ -117,8 +120,14 @@ fn test_kl_divergence() {
     // = 0.5 * 1 + 0.5 * (1 - log2(3))
     // = 0.5 + 0.5 - 0.5 * log2(3) = 1 - 0.5 * 1.58496 = 1 - 0.79248 = 0.20752
 
-    let p = vec![Expr::Constant(0.5), Expr::Constant(0.5)];
-    let q = vec![Expr::Constant(0.25), Expr::Constant(0.75)];
+    let p = vec![
+        Expr::Constant(0.5),
+        Expr::Constant(0.5),
+    ];
+    let q = vec![
+        Expr::Constant(0.25),
+        Expr::Constant(0.75),
+    ];
 
     let kl = kl_divergence(&p, &q).unwrap();
     let expected = 0.5 * (0.5 / 0.25f64).log2() + 0.5 * (0.5 / 0.75f64).log2();
@@ -128,8 +137,14 @@ fn test_kl_divergence() {
 #[test]
 fn test_cross_entropy() {
     // H(P, Q) = H(P) + KL(P||Q) = 1.0 + 0.20752 = 1.20752
-    let p = vec![Expr::Constant(0.5), Expr::Constant(0.5)];
-    let q = vec![Expr::Constant(0.25), Expr::Constant(0.75)];
+    let p = vec![
+        Expr::Constant(0.5),
+        Expr::Constant(0.5),
+    ];
+    let q = vec![
+        Expr::Constant(0.25),
+        Expr::Constant(0.75),
+    ];
 
     let ce = cross_entropy(&p, &q).unwrap();
     let expected = -(0.5 * (0.25f64).log2() + 0.5 * (0.75f64).log2());
@@ -139,7 +154,10 @@ fn test_cross_entropy() {
 #[test]
 fn test_gini_impurity() {
     // G([0.5, 0.5]) = 1 - (0.5^2 + 0.5^2) = 1 - 0.5 = 0.5
-    let probs = vec![Expr::Constant(0.5), Expr::Constant(0.5)];
+    let probs = vec![
+        Expr::Constant(0.5),
+        Expr::Constant(0.5),
+    ];
     let gini = gini_impurity(&probs);
     assert_approx_eq(&gini, 0.5);
 }
@@ -153,8 +171,14 @@ fn test_joint_entropy() {
     // H(X,Y) = -4 * (0.25 * log2(0.25)) = - (-2) = 2.0
 
     let matrix = Expr::Matrix(vec![
-        vec![Expr::Constant(0.25), Expr::Constant(0.25)],
-        vec![Expr::Constant(0.25), Expr::Constant(0.25)],
+        vec![
+            Expr::Constant(0.25),
+            Expr::Constant(0.25),
+        ],
+        vec![
+            Expr::Constant(0.25),
+            Expr::Constant(0.25),
+        ],
     ]);
 
     let joint_h = joint_entropy(&matrix).unwrap();
@@ -168,8 +192,14 @@ fn test_mutual_information() {
     // I(X;Y) = 1 + 1 - 2 = 0.
 
     let matrix = Expr::Matrix(vec![
-        vec![Expr::Constant(0.25), Expr::Constant(0.25)],
-        vec![Expr::Constant(0.25), Expr::Constant(0.25)],
+        vec![
+            Expr::Constant(0.25),
+            Expr::Constant(0.25),
+        ],
+        vec![
+            Expr::Constant(0.25),
+            Expr::Constant(0.25),
+        ],
     ]);
 
     let mi = mutual_information(&matrix).unwrap();
@@ -183,13 +213,19 @@ fn test_mutual_information() {
     // I(X;Y) = 1 + 1 - 1 = 1.
 
     let matrix_dep = Expr::Matrix(vec![
-        vec![Expr::Constant(0.5), Expr::Constant(1e-10)], // Use small epsilon for 0 log 0 if log(0) causes issues, or check if 0 handled
+        vec![
+            Expr::Constant(0.5),
+            Expr::Constant(1e-10),
+        ], // Use small epsilon for 0 log 0 if log(0) causes issues, or check if 0 handled
         // Actually log(0) usually undefined/neg inf.
         // Logic might need to handle 0 probability by skipping term or using limit.
         // Let's see how shannon_entropy handles 0.
         // It does p * log(p). 0 * -inf is NaN if not handled.
         // Let's use small eps for test.
-        vec![Expr::Constant(1e-10), Expr::Constant(0.5)],
+        vec![
+            Expr::Constant(1e-10),
+            Expr::Constant(0.5),
+        ],
     ]);
 
     // Note: 1e-10 * log(1e-10) is very small close to 0.

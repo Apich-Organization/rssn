@@ -43,7 +43,10 @@ pub fn one_sample_t_test_symbolic(sample: &[Expr], target_mean: &Expr) -> Hypoth
             Expr::Constant(1.0),
             Expr::new_apply(
                 Expr::Variable("t_dist_cdf".to_string()),
-                Expr::Tuple(vec![Expr::new_abs(test_statistic.clone()), df.clone()]),
+                Expr::Tuple(vec![
+                    Expr::new_abs(test_statistic.clone()),
+                    df.clone(),
+                ]),
             ),
         ),
     );
@@ -109,7 +112,10 @@ pub fn two_sample_t_test_symbolic(
             Expr::Constant(1.0),
             Expr::new_apply(
                 Expr::Variable("t_dist_cdf".to_string()),
-                Expr::Tuple(vec![Expr::new_abs(test_statistic.clone()), df.clone()]),
+                Expr::Tuple(vec![
+                    Expr::new_abs(test_statistic.clone()),
+                    df.clone(),
+                ]),
             ),
         ),
     );
@@ -153,7 +159,9 @@ pub fn z_test_symbolic(sample: &[Expr], target_mean: &Expr, pop_std_dev: &Expr) 
             Expr::Constant(1.0),
             Expr::new_apply(
                 Expr::Variable("normal_cdf".to_string()),
-                Expr::Tuple(vec![Expr::new_abs(test_statistic.clone())]),
+                Expr::Tuple(vec![Expr::new_abs(
+                    test_statistic.clone(),
+                )]),
             ),
         ),
     );

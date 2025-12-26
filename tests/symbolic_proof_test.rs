@@ -40,12 +40,24 @@ fn test_verify_derivative() {
 fn test_verify_matrix_inverse() {
     // [[2, 0]; [0, 2]] inverse is [[0.5, 0]; [0, 0.5]]
     let a = Expr::Matrix(vec![
-        vec![Expr::Constant(2.0), Expr::Constant(0.0)],
-        vec![Expr::Constant(0.0), Expr::Constant(2.0)],
+        vec![
+            Expr::Constant(2.0),
+            Expr::Constant(0.0),
+        ],
+        vec![
+            Expr::Constant(0.0),
+            Expr::Constant(2.0),
+        ],
     ]);
     let inv = Expr::Matrix(vec![
-        vec![Expr::Constant(0.5), Expr::Constant(0.0)],
-        vec![Expr::Constant(0.0), Expr::Constant(0.5)],
+        vec![
+            Expr::Constant(0.5),
+            Expr::Constant(0.0),
+        ],
+        vec![
+            Expr::Constant(0.0),
+            Expr::Constant(0.5),
+        ],
     ]);
 
     assert!(verify_matrix_inverse(&a, &inv));

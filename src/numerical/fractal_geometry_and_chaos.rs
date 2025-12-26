@@ -1143,7 +1143,11 @@ pub fn sierpinski_triangle_ifs() -> (Vec<AffineTransform2D>, Vec<f64>) {
         AffineTransform2D::new(0.5, 0.0, 0.0, 0.5, 0.5, 0.0),
         AffineTransform2D::new(0.5, 0.0, 0.0, 0.5, 0.25, 0.5),
     ];
-    let probabilities = vec![1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0];
+    let probabilities = vec![
+        1.0 / 3.0,
+        1.0 / 3.0,
+        1.0 / 3.0,
+    ];
     (transforms, probabilities)
 }
 
@@ -1156,6 +1160,8 @@ pub fn barnsley_fern_ifs() -> (Vec<AffineTransform2D>, Vec<f64>) {
         AffineTransform2D::new(0.2, -0.26, 0.23, 0.22, 0.0, 1.6),
         AffineTransform2D::new(-0.15, 0.28, 0.26, 0.24, 0.0, 0.44),
     ];
-    let probabilities = vec![0.01, 0.85, 0.07, 0.07];
+    let probabilities = vec![
+        0.01, 0.85, 0.07, 0.07,
+    ];
     (transforms, probabilities)
 }

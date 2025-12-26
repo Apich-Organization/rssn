@@ -6,12 +6,24 @@ use rssn::symbolic::simplify_dag::simplify;
 #[test]
 fn test_add_matrices() {
     let m1 = Expr::Matrix(vec![
-        vec![Expr::new_constant(1.0), Expr::new_constant(2.0)],
-        vec![Expr::new_constant(3.0), Expr::new_constant(4.0)],
+        vec![
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
+        ],
+        vec![
+            Expr::new_constant(3.0),
+            Expr::new_constant(4.0),
+        ],
     ]);
     let m2 = Expr::Matrix(vec![
-        vec![Expr::new_constant(5.0), Expr::new_constant(6.0)],
-        vec![Expr::new_constant(7.0), Expr::new_constant(8.0)],
+        vec![
+            Expr::new_constant(5.0),
+            Expr::new_constant(6.0),
+        ],
+        vec![
+            Expr::new_constant(7.0),
+            Expr::new_constant(8.0),
+        ],
     ]);
     let sum = add_matrices(&m1, &m2);
     if let Expr::Matrix(rows) = sum {
@@ -27,12 +39,24 @@ fn test_add_matrices() {
 #[test]
 fn test_mul_matrices() {
     let m1 = Expr::Matrix(vec![
-        vec![Expr::new_constant(1.0), Expr::new_constant(2.0)],
-        vec![Expr::new_constant(3.0), Expr::new_constant(4.0)],
+        vec![
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
+        ],
+        vec![
+            Expr::new_constant(3.0),
+            Expr::new_constant(4.0),
+        ],
     ]);
     let m2 = Expr::Matrix(vec![
-        vec![Expr::new_constant(2.0), Expr::new_constant(0.0)],
-        vec![Expr::new_constant(1.0), Expr::new_constant(2.0)],
+        vec![
+            Expr::new_constant(2.0),
+            Expr::new_constant(0.0),
+        ],
+        vec![
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
+        ],
     ]);
     // [1 2] * [2 0] = [1*2+2*1 1*0+2*2] = [4 4]
     // [3 4]   [1 2]   [3*2+4*1 3*0+4*2]   [10 8]
@@ -50,8 +74,14 @@ fn test_mul_matrices() {
 #[test]
 fn test_transpose_matrix() {
     let m = Expr::Matrix(vec![
-        vec![Expr::new_constant(1.0), Expr::new_constant(2.0)],
-        vec![Expr::new_constant(3.0), Expr::new_constant(4.0)],
+        vec![
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
+        ],
+        vec![
+            Expr::new_constant(3.0),
+            Expr::new_constant(4.0),
+        ],
     ]);
     let t = transpose_matrix(&m);
     if let Expr::Matrix(rows) = t {
@@ -67,8 +97,14 @@ fn test_transpose_matrix() {
 #[test]
 fn test_determinant() {
     let m = Expr::Matrix(vec![
-        vec![Expr::new_constant(1.0), Expr::new_constant(2.0)],
-        vec![Expr::new_constant(3.0), Expr::new_constant(4.0)],
+        vec![
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
+        ],
+        vec![
+            Expr::new_constant(3.0),
+            Expr::new_constant(4.0),
+        ],
     ]);
     // det = 1*4 - 2*3 = 4 - 6 = -2
     let det = determinant(&m);
@@ -78,8 +114,14 @@ fn test_determinant() {
 #[test]
 fn test_inverse_matrix() {
     let m = Expr::Matrix(vec![
-        vec![Expr::new_constant(4.0), Expr::new_constant(7.0)],
-        vec![Expr::new_constant(2.0), Expr::new_constant(6.0)],
+        vec![
+            Expr::new_constant(4.0),
+            Expr::new_constant(7.0),
+        ],
+        vec![
+            Expr::new_constant(2.0),
+            Expr::new_constant(6.0),
+        ],
     ]);
     // det = 24 - 14 = 10
     // inv = 1/10 * [6 -7] = [0.6 -0.7]
@@ -100,12 +142,22 @@ fn test_solve_linear_system() {
     // 4x + 7y = 5
     // 2x + 6y = -2
     let a = Expr::Matrix(vec![
-        vec![Expr::new_constant(4.0), Expr::new_constant(7.0)],
-        vec![Expr::new_constant(2.0), Expr::new_constant(6.0)],
+        vec![
+            Expr::new_constant(4.0),
+            Expr::new_constant(7.0),
+        ],
+        vec![
+            Expr::new_constant(2.0),
+            Expr::new_constant(6.0),
+        ],
     ]);
     let b = Expr::Matrix(vec![
-        vec![Expr::new_constant(5.0)],
-        vec![Expr::new_constant(-2.0)],
+        vec![Expr::new_constant(
+            5.0,
+        )],
+        vec![Expr::new_constant(
+            -2.0,
+        )],
     ]);
     let sol = solve_linear_system(&a, &b).unwrap();
     if let Expr::Matrix(rows) = sol {

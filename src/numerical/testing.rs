@@ -252,10 +252,9 @@ pub(crate) fn solve_linear(coeffs: &[Expr]) -> Vec<Expr> {
             vec![Expr::NoSolution]
         };
     }
-    vec![simplify(&Expr::Neg(Arc::new(Expr::Div(
-        Arc::new(c0),
-        Arc::new(c1),
-    ))))]
+    vec![simplify(
+        &Expr::Neg(Arc::new(Expr::Div(Arc::new(c0), Arc::new(c1)))),
+    )]
 }
 pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
     /// Solves a quadratic equation `c2*x^2 + c1*x + c0 = 0`.
@@ -447,14 +446,27 @@ pub fn solve_transcendental_numerical(expr: &Expr, var: &str) -> Vec<Expr> {
     for _ in 0..100 {
         let y = match f(x0) {
             Some(val) => val,
-            None => return vec![Expr::Solve(Arc::new(expr.clone()), var.to_string())],
+            None => {
+                return vec![Expr::Solve(
+                    Arc::new(expr.clone()),
+                    var.to_string(),
+                )]
+            }
         };
         let y_prime = match f_prime(x0) {
             Some(val) => val,
-            None => return vec![Expr::Solve(Arc::new(expr.clone()), var.to_string())],
+            None => {
+                return vec![Expr::Solve(
+                    Arc::new(expr.clone()),
+                    var.to_string(),
+                )]
+            }
         };
         if y_prime.abs() < 1e-9 {
-            return vec![Expr::Solve(Arc::new(expr.clone()), var.to_string())];
+            return vec![Expr::Solve(
+                Arc::new(expr.clone()),
+                var.to_string(),
+            )];
         }
         let x1 = x0 - y / y_prime;
         if (x1 - x0).abs() < 1e-9 {
@@ -462,7 +474,10 @@ pub fn solve_transcendental_numerical(expr: &Expr, var: &str) -> Vec<Expr> {
         }
         x0 = x1;
     }
-    vec![Expr::Solve(Arc::new(expr.clone()), var.to_string())]
+    vec![Expr::Solve(
+        Arc::new(expr.clone()),
+        var.to_string(),
+    )]
 }
 pub(crate) fn evaluate_expr_with_vars(
     expr: &Expr,

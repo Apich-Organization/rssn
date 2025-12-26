@@ -191,8 +191,16 @@ mod tests {
 
     #[test]
     fn test_tensordot() {
-        let a = array![[1.0, 2.0], [3.0, 4.0]].into_dyn();
-        let b = array![[5.0, 6.0], [7.0, 8.0]].into_dyn();
+        let a = array![
+            [1.0, 2.0],
+            [3.0, 4.0]
+        ]
+        .into_dyn();
+        let b = array![
+            [5.0, 6.0],
+            [7.0, 8.0]
+        ]
+        .into_dyn();
         let res = tensordot(&a, &b, &[1], &[0]).unwrap();
         // Standard matrix multiplication
         assert_eq!(res.shape(), &[2, 2]);

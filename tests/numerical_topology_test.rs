@@ -15,7 +15,11 @@ fn test_vietoris_rips() {
     let p1 = [0.0, 0.0];
     let p2 = [0.5, 0.0];
     let p3 = [0.0, 0.5];
-    let points = vec![&p1 as &[f64], &p2 as &[f64], &p3 as &[f64]];
+    let points = vec![
+        &p1 as &[f64],
+        &p2 as &[f64],
+        &p3 as &[f64],
+    ];
 
     // With epsilon = 0.8, all points are connected to each other
     // Triangle should be formed.
@@ -33,7 +37,12 @@ fn test_betti_numbers() {
     let p2 = [1.0, 0.0];
     let p3 = [0.0, 1.0];
     let p4 = [1.0, 1.0];
-    let points = vec![&p1 as &[f64], &p2 as &[f64], &p3 as &[f64], &p4 as &[f64]];
+    let points = vec![
+        &p1 as &[f64],
+        &p2 as &[f64],
+        &p3 as &[f64],
+        &p4 as &[f64],
+    ];
 
     // epsilon = 1.1: Square shape with points connected but no middle connections.
     // Except it's a square, so it might have a hole if we don't triangulate.

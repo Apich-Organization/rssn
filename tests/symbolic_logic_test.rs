@@ -17,7 +17,10 @@ fn test_simplify_and_with_false() {
         name: "A".to_string(),
         args: vec![],
     };
-    let expr = Expr::And(vec![a, Expr::Boolean(false)]);
+    let expr = Expr::And(vec![
+        a,
+        Expr::Boolean(false),
+    ]);
     let result = simplify_logic(&expr);
     assert_eq!(result, Expr::Boolean(false));
 }
@@ -29,7 +32,10 @@ fn test_simplify_and_with_true() {
         name: "A".to_string(),
         args: vec![],
     };
-    let expr = Expr::And(vec![a.clone(), Expr::Boolean(true)]);
+    let expr = Expr::And(vec![
+        a.clone(),
+        Expr::Boolean(true),
+    ]);
     let result = simplify_logic(&expr);
     assert_eq!(result, a);
 }
@@ -41,7 +47,10 @@ fn test_simplify_or_with_true() {
         name: "A".to_string(),
         args: vec![],
     };
-    let expr = Expr::Or(vec![a, Expr::Boolean(true)]);
+    let expr = Expr::Or(vec![
+        a,
+        Expr::Boolean(true),
+    ]);
     let result = simplify_logic(&expr);
     assert_eq!(result, Expr::Boolean(true));
 }
@@ -53,7 +62,10 @@ fn test_simplify_or_with_false() {
         name: "A".to_string(),
         args: vec![],
     };
-    let expr = Expr::Or(vec![a.clone(), Expr::Boolean(false)]);
+    let expr = Expr::Or(vec![
+        a.clone(),
+        Expr::Boolean(false),
+    ]);
     let result = simplify_logic(&expr);
     assert_eq!(result, a);
 }
@@ -65,7 +77,10 @@ fn test_simplify_tautology() {
         name: "A".to_string(),
         args: vec![],
     };
-    let expr = Expr::Or(vec![a.clone(), Expr::Not(Arc::new(a))]);
+    let expr = Expr::Or(vec![
+        a.clone(),
+        Expr::Not(Arc::new(a)),
+    ]);
     let result = simplify_logic(&expr);
     assert_eq!(result, Expr::Boolean(true));
 }
@@ -117,7 +132,10 @@ fn test_to_cnf_distribution() {
         args: vec![],
     };
 
-    let expr = Expr::Or(vec![a.clone(), Expr::And(vec![b.clone(), c.clone()])]);
+    let expr = Expr::Or(vec![
+        a.clone(),
+        Expr::And(vec![b.clone(), c.clone()]),
+    ]);
 
     let result = to_cnf(&expr);
     // Verify it produces a result without panicking
@@ -161,7 +179,10 @@ fn test_is_satisfiable_true() {
         name: "A".to_string(),
         args: vec![],
     };
-    let expr = Expr::Or(vec![a.clone(), Expr::Not(Arc::new(a))]);
+    let expr = Expr::Or(vec![
+        a.clone(),
+        Expr::Not(Arc::new(a)),
+    ]);
     let result = is_satisfiable(&expr);
     assert_eq!(result, Some(true));
 }
@@ -173,7 +194,10 @@ fn test_is_satisfiable_false() {
         name: "A".to_string(),
         args: vec![],
     };
-    let expr = Expr::And(vec![a.clone(), Expr::Not(Arc::new(a))]);
+    let expr = Expr::And(vec![
+        a.clone(),
+        Expr::Not(Arc::new(a)),
+    ]);
     let result = is_satisfiable(&expr);
     assert_eq!(result, Some(false));
 }
@@ -199,7 +223,9 @@ fn test_is_satisfiable_with_quantifier() {
     // ForAll(x, P(x)) should return None (undecidable)
     let p = Expr::Predicate {
         name: "P".to_string(),
-        args: vec![Expr::Variable("x".to_string())],
+        args: vec![Expr::Variable(
+            "x".to_string(),
+        )],
     };
     let expr = Expr::ForAll("x".to_string(), Arc::new(p));
     let result = is_satisfiable(&expr);
@@ -265,7 +291,9 @@ fn test_de_morgan_forall() {
     // Not(ForAll(x, P(x))) -> Exists(x, Not(P(x)))
     let p = Expr::Predicate {
         name: "P".to_string(),
-        args: vec![Expr::Variable("x".to_string())],
+        args: vec![Expr::Variable(
+            "x".to_string(),
+        )],
     };
     let expr = Expr::Not(Arc::new(Expr::ForAll("x".to_string(), Arc::new(p))));
     let result = simplify_logic(&expr);
@@ -278,7 +306,9 @@ fn test_de_morgan_exists() {
     // Not(Exists(x, P(x))) -> ForAll(x, Not(P(x)))
     let p = Expr::Predicate {
         name: "P".to_string(),
-        args: vec![Expr::Variable("x".to_string())],
+        args: vec![Expr::Variable(
+            "x".to_string(),
+        )],
     };
     let expr = Expr::Not(Arc::new(Expr::Exists("x".to_string(), Arc::new(p))));
     let result = simplify_logic(&expr);
@@ -313,8 +343,14 @@ fn test_complex_sat_problem() {
 
     let expr = Expr::And(vec![
         Expr::Or(vec![a.clone(), b.clone()]),
-        Expr::Or(vec![Expr::Not(Arc::new(a.clone())), c.clone()]),
-        Expr::Or(vec![Expr::Not(Arc::new(b)), Expr::Not(Arc::new(c))]),
+        Expr::Or(vec![
+            Expr::Not(Arc::new(a.clone())),
+            c.clone(),
+        ]),
+        Expr::Or(vec![
+            Expr::Not(Arc::new(b)),
+            Expr::Not(Arc::new(c)),
+        ]),
     ]);
 
     let result = is_satisfiable(&expr);
@@ -351,7 +387,10 @@ fn test_and_flattening() {
         args: vec![],
     };
 
-    let expr = Expr::And(vec![Expr::And(vec![a.clone(), b.clone()]), c.clone()]);
+    let expr = Expr::And(vec![
+        Expr::And(vec![a.clone(), b.clone()]),
+        c.clone(),
+    ]);
 
     let result = simplify_logic(&expr);
     // Should flatten nested Ands

@@ -45,8 +45,16 @@ fn test_rosenbrock_optimization() {
 
 #[test]
 fn test_linear_regression() {
-    let x = Array2::from_shape_vec((5, 1), vec![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
-    let y = Array1::from(vec![5.0, 8.0, 11.0, 14.0, 17.0]);
+    let x = Array2::from_shape_vec(
+        (5, 1),
+        vec![
+            1.0, 2.0, 3.0, 4.0, 5.0,
+        ],
+    )
+    .unwrap();
+    let y = Array1::from(vec![
+        5.0, 8.0, 11.0, 14.0, 17.0,
+    ]);
     let problem = match LinearRegression::new(x, y) {
         Ok(p) => p,
         Err(e) => panic!("Failed to create LinearRegression problem: {}", e),

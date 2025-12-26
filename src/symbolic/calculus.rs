@@ -695,7 +695,10 @@ pub fn substitute_expr(expr: &Expr, to_replace: &Expr, replacement: &Expr) -> Ex
             | Expr::Mul(a, b)
             | Expr::Div(a, b)
             | Expr::Power(a, b) => {
-                vec![a.as_ref().clone(), b.as_ref().clone()]
+                vec![
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ]
             }
             Expr::Sin(a)
             | Expr::Cos(a)

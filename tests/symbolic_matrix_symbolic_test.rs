@@ -11,7 +11,10 @@ fn test_symbolic_determinant() {
     let c = Expr::new_variable("c");
     let d = Expr::new_variable("d");
 
-    let matrix = Expr::Matrix(vec![vec![a.clone(), b.clone()], vec![c.clone(), d.clone()]]);
+    let matrix = Expr::Matrix(vec![
+        vec![a.clone(), b.clone()],
+        vec![c.clone(), d.clone()],
+    ]);
 
     let det = determinant(&matrix);
     // Expected: a*d - b*c
@@ -42,8 +45,14 @@ fn test_symbolic_rref() {
     let zero = Expr::new_constant(0.0);
 
     let matrix = Expr::Matrix(vec![
-        vec![one.clone(), a.clone()],
-        vec![zero.clone(), one.clone()],
+        vec![
+            one.clone(),
+            a.clone(),
+        ],
+        vec![
+            zero.clone(),
+            one.clone(),
+        ],
     ]);
 
     let rref_res = rref(&matrix).unwrap();

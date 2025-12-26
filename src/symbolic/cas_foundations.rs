@@ -371,7 +371,9 @@ pub fn risch_integrate(expr: &Expr, var: &str) -> Expr {
 #[deprecated(since = "0.1.9", note = "Please use symbolic/grobner instead.")]
 #[must_use]
 pub fn grobner_basis(_polynomials: Vec<Expr>, _variables: Vec<String>) -> Vec<Expr> {
-    vec![Expr::Variable("GröbnerBasis(system)".to_string())]
+    vec![Expr::Variable(
+        "GröbnerBasis(system)".to_string(),
+    )]
 }
 /// Placeholder for Cylindrical Algebraic Decomposition (CAD) for real algebraic geometry.
 ///

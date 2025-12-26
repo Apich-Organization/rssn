@@ -15,7 +15,9 @@ fn test_find_roots_quadratic() {
 #[test]
 fn test_find_roots_cubic() {
     // (x-1)(x-2)(x-3) = x^3 - 6x^2 + 11x - 6
-    let poly = numerical_Polynomial::new(vec![1.0, -6.0, 11.0, -6.0]);
+    let poly = numerical_Polynomial::new(vec![
+        1.0, -6.0, 11.0, -6.0,
+    ]);
     let roots = numerical_find_roots(&poly, 1e-9).unwrap();
     assert_eq!(roots.len(), 3);
     assert_approx_eq!(roots[0], 1.0);

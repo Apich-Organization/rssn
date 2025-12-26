@@ -26,7 +26,9 @@ fn test_numerical_interpolate_handle_ffi() {
         handle::rssn_num_cubic_spline_free(handle);
 
         // Bezier
-        let cp = vec![0.0, 0.0, 1.0, 2.0, 2.0, 0.0];
+        let cp = vec![
+            0.0, 0.0, 1.0, 2.0, 2.0, 0.0,
+        ];
         let mut out = vec![0.0, 0.0];
         let status = handle::rssn_num_bezier_curve(cp.as_ptr(), 3, 2, 0.5, out.as_mut_ptr());
         assert_eq!(status, 0);
@@ -76,7 +78,11 @@ fn test_numerical_interpolate_bincode_ffi() {
         }
 
         let input = LagrangeInput {
-            points: vec![(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)],
+            points: vec![
+                (0.0, 0.0),
+                (1.0, 1.0),
+                (2.0, 4.0),
+            ],
         };
         let buffer = to_bincode_buffer(&input);
         let res_buffer = bincode_api::rssn_num_lagrange_interpolation_bincode(buffer);

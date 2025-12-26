@@ -11,7 +11,16 @@ fn test_tensor_creation() {
     let c = Expr::new_variable("c");
     let d = Expr::new_variable("d");
 
-    let tensor = Tensor::new(vec![a.clone(), b.clone(), c.clone(), d.clone()], vec![2, 2]).unwrap();
+    let tensor = Tensor::new(
+        vec![
+            a.clone(),
+            b.clone(),
+            c.clone(),
+            d.clone(),
+        ],
+        vec![2, 2],
+    )
+    .unwrap();
 
     assert_eq!(tensor.rank(), 2);
     assert_eq!(tensor.shape, vec![2, 2]);
@@ -35,8 +44,26 @@ fn test_tensor_addition_symbolic() {
     let g = Expr::new_variable("g");
     let h = Expr::new_variable("h");
 
-    let t1 = Tensor::new(vec![a.clone(), b.clone(), c.clone(), d.clone()], vec![2, 2]).unwrap();
-    let t2 = Tensor::new(vec![e.clone(), f.clone(), g.clone(), h.clone()], vec![2, 2]).unwrap();
+    let t1 = Tensor::new(
+        vec![
+            a.clone(),
+            b.clone(),
+            c.clone(),
+            d.clone(),
+        ],
+        vec![2, 2],
+    )
+    .unwrap();
+    let t2 = Tensor::new(
+        vec![
+            e.clone(),
+            f.clone(),
+            g.clone(),
+            h.clone(),
+        ],
+        vec![2, 2],
+    )
+    .unwrap();
 
     let sum = t1.add(&t2).unwrap();
 
@@ -59,7 +86,16 @@ fn test_tensor_scalar_multiplication_symbolic() {
     let d = Expr::new_variable("d");
     let k = Expr::new_variable("k");
 
-    let tensor = Tensor::new(vec![a.clone(), b.clone(), c.clone(), d.clone()], vec![2, 2]).unwrap();
+    let tensor = Tensor::new(
+        vec![
+            a.clone(),
+            b.clone(),
+            c.clone(),
+            d.clone(),
+        ],
+        vec![2, 2],
+    )
+    .unwrap();
     let scaled = tensor.scalar_mul(&k).unwrap();
 
     println!("Scaled[0,0]: {:?}", scaled.get(&[0, 0]).unwrap());
@@ -101,7 +137,16 @@ fn test_tensor_contraction_symbolic() {
     let c = Expr::new_variable("c");
     let d = Expr::new_variable("d");
 
-    let tensor = Tensor::new(vec![a.clone(), b.clone(), c.clone(), d.clone()], vec![2, 2]).unwrap();
+    let tensor = Tensor::new(
+        vec![
+            a.clone(),
+            b.clone(),
+            c.clone(),
+            d.clone(),
+        ],
+        vec![2, 2],
+    )
+    .unwrap();
     let trace = tensor.contract(0, 1).unwrap();
 
     // Trace should be rank-0 (scalar)
@@ -119,7 +164,12 @@ fn test_metric_tensor_symbolic() {
     let zero = Expr::BigInt(BigInt::zero());
 
     let g = Tensor::new(
-        vec![one.clone(), zero.clone(), zero.clone(), one.clone()],
+        vec![
+            one.clone(),
+            zero.clone(),
+            zero.clone(),
+            one.clone(),
+        ],
         vec![2, 2],
     )
     .unwrap();
@@ -152,7 +202,12 @@ fn test_metric_tensor_raise_lower_index_symbolic() {
     let zero = Expr::BigInt(BigInt::zero());
 
     let g = Tensor::new(
-        vec![one.clone(), zero.clone(), zero.clone(), one.clone()],
+        vec![
+            one.clone(),
+            zero.clone(),
+            zero.clone(),
+            one.clone(),
+        ],
         vec![2, 2],
     )
     .unwrap();
@@ -186,7 +241,16 @@ fn test_tensor_to_matrix_expr() {
     let c = Expr::new_variable("c");
     let d = Expr::new_variable("d");
 
-    let tensor = Tensor::new(vec![a.clone(), b.clone(), c.clone(), d.clone()], vec![2, 2]).unwrap();
+    let tensor = Tensor::new(
+        vec![
+            a.clone(),
+            b.clone(),
+            c.clone(),
+            d.clone(),
+        ],
+        vec![2, 2],
+    )
+    .unwrap();
     let matrix_expr = tensor.to_matrix_expr().unwrap();
 
     if let Expr::Matrix(rows) = matrix_expr {

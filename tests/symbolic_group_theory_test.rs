@@ -9,7 +9,11 @@ fn test_cyclic_group_c3() {
     let a = GroupElement(Expr::Constant(1.0));
     let b = GroupElement(Expr::Constant(2.0)); // a^2
 
-    let elements = vec![e.clone(), a.clone(), b.clone()];
+    let elements = vec![
+        e.clone(),
+        a.clone(),
+        b.clone(),
+    ];
 
     let mut table = HashMap::new();
     // e * x = x * e = x
@@ -56,7 +60,11 @@ fn test_representation_c3() {
     let a = GroupElement(Expr::Constant(1.0));
     let b = GroupElement(Expr::Constant(2.0));
 
-    let elements = vec![e.clone(), a.clone(), b.clone()];
+    let elements = vec![
+        e.clone(),
+        a.clone(),
+        b.clone(),
+    ];
 
     // Recreate group (needed for is_valid check)
     let mut table = HashMap::new();
@@ -71,7 +79,9 @@ fn test_representation_c3() {
     let group = Group::new(elements.clone(), table, e.clone());
 
     let mut matrices = HashMap::new();
-    let one_matrix = Expr::Matrix(vec![vec![Expr::Constant(1.0)]]);
+    let one_matrix = Expr::Matrix(vec![vec![
+        Expr::Constant(1.0),
+    ]]);
 
     matrices.insert(e.clone(), one_matrix.clone());
     matrices.insert(a.clone(), one_matrix.clone());

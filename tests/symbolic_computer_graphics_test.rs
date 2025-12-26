@@ -220,7 +220,10 @@ fn test_bezier_curve_evaluate_endpoints() {
     );
 
     let curve = BezierCurve {
-        control_points: vec![p0.clone(), p1.clone()],
+        control_points: vec![
+            p0.clone(),
+            p1.clone(),
+        ],
         degree: 1,
     };
 
@@ -316,7 +319,12 @@ fn test_polygon_mesh_new() {
         Expr::Constant(0.0),
     );
 
-    let mesh = PolygonMesh::new(vec![v0, v1, v2], vec![Polygon::new(vec![0, 1, 2])]);
+    let mesh = PolygonMesh::new(
+        vec![v0, v1, v2],
+        vec![Polygon::new(vec![
+            0, 1, 2,
+        ])],
+    );
 
     assert_eq!(mesh.vertices.len(), 3);
     assert_eq!(mesh.polygons.len(), 1);
@@ -370,7 +378,12 @@ fn test_polygon_mesh_compute_normals() {
         Expr::Constant(0.0),
     );
 
-    let mesh = PolygonMesh::new(vec![v0, v1, v2], vec![Polygon::new(vec![0, 1, 2])]);
+    let mesh = PolygonMesh::new(
+        vec![v0, v1, v2],
+        vec![Polygon::new(vec![
+            0, 1, 2,
+        ])],
+    );
 
     let normals = mesh.compute_normals();
     assert_eq!(normals.len(), 1);
@@ -403,7 +416,9 @@ fn test_polygon_mesh_triangulate() {
 
     let mesh = PolygonMesh::new(
         vec![v0, v1, v2, v3],
-        vec![Polygon::new(vec![0, 1, 2, 3])], // One quad
+        vec![Polygon::new(vec![
+            0, 1, 2, 3,
+        ])], // One quad
     );
 
     let triangulated = mesh.triangulate();

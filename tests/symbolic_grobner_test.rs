@@ -22,9 +22,15 @@ fn create_sparse_poly(terms: &[(Vec<(&str, u32)>, f64)]) -> SparsePolynomial {
 #[test]
 fn test_buchberger_simple() {
     // Test with a simple ideal: <x^2 - 1, xy - 1>
-    let poly1 = create_sparse_poly(&[(vec![("x", 2)], 1.0), (vec![], -1.0)]);
+    let poly1 = create_sparse_poly(&[
+        (vec![("x", 2)], 1.0),
+        (vec![], -1.0),
+    ]);
 
-    let poly2 = create_sparse_poly(&[(vec![("x", 1), ("y", 1)], 1.0), (vec![], -1.0)]);
+    let poly2 = create_sparse_poly(&[
+        (vec![("x", 1), ("y", 1)], 1.0),
+        (vec![], -1.0),
+    ]);
 
     let basis = vec![poly1, poly2];
     let result = buchberger(&basis, MonomialOrder::Lexicographical);
@@ -51,7 +57,10 @@ fn test_poly_division_simple() {
 #[test]
 fn test_poly_division_with_remainder() {
     // Divide x^2 + 1 by x
-    let dividend = create_sparse_poly(&[(vec![("x", 2)], 1.0), (vec![], 1.0)]);
+    let dividend = create_sparse_poly(&[
+        (vec![("x", 2)], 1.0),
+        (vec![], 1.0),
+    ]);
     let divisor = create_sparse_poly(&[(vec![("x", 1)], 1.0)]);
 
     let result = poly_division_multivariate(&dividend, &[divisor], MonomialOrder::Lexicographical);
@@ -74,7 +83,10 @@ fn test_buchberger_empty() {
 #[test]
 fn test_monomial_order() {
     // Test that different monomial orders work
-    let poly = create_sparse_poly(&[(vec![("x", 2), ("y", 1)], 1.0), (vec![("x", 1)], -1.0)]);
+    let poly = create_sparse_poly(&[
+        (vec![("x", 2), ("y", 1)], 1.0),
+        (vec![("x", 1)], -1.0),
+    ]);
 
     let basis = vec![poly];
 

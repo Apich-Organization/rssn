@@ -86,7 +86,10 @@ pub fn run_fdtd_simulation(params: &FdtdParameters) -> Vec<Array2<f64>> {
         // Add soft source
         let pulse = (-((t as f64 - 30.0).powi(2)) / 100.0).exp()
             * (2.0 * std::f64::consts::PI * params.source_freq * (t as f64)).sin();
-        ez[[params.source_pos.0, params.source_pos.1]] += pulse;
+        ez[[
+            params.source_pos.0,
+            params.source_pos.1,
+        ]] += pulse;
 
         // Apply PML/Boundary Damping in parallel
         (0..nx).into_par_iter().for_each(|i| {

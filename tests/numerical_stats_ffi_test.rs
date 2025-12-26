@@ -9,7 +9,9 @@ use std::ffi::{CStr, CString};
 #[test]
 fn test_stats_handle_ffi() {
     unsafe {
-        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let data = vec![
+            1.0, 2.0, 3.0, 4.0, 5.0,
+        ];
 
         // Mean
         let m = handle::rssn_num_stats_mean(data.as_ptr(), data.len());
@@ -44,7 +46,9 @@ fn test_stats_handle_ffi() {
         assert!(se > 0.0);
 
         // Covariance
-        let data2 = vec![2.0, 4.0, 6.0, 8.0, 10.0];
+        let data2 = vec![
+            2.0, 4.0, 6.0, 8.0, 10.0,
+        ];
         let cov = handle::rssn_num_stats_covariance(
             data.as_ptr(),
             data.len(),
@@ -141,7 +145,9 @@ struct RegressionInput {
 fn test_stats_json_ffi() {
     unsafe {
         let input = DataInput {
-            data: vec![1.0, 2.0, 3.0, 4.0, 5.0],
+            data: vec![
+                1.0, 2.0, 3.0, 4.0, 5.0,
+            ],
         };
         let json_str = serde_json::to_string(&input).unwrap();
         let c_json = CString::new(json_str).unwrap();
@@ -177,8 +183,12 @@ fn test_stats_json_ffi() {
 
         // Covariance
         let two_input = TwoDataInput {
-            data1: vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            data2: vec![2.0, 4.0, 6.0, 8.0, 10.0],
+            data1: vec![
+                1.0, 2.0, 3.0, 4.0, 5.0,
+            ],
+            data2: vec![
+                2.0, 4.0, 6.0, 8.0, 10.0,
+            ],
         };
         let json_str = serde_json::to_string(&two_input).unwrap();
         let c_json2 = CString::new(json_str).unwrap();
@@ -222,7 +232,9 @@ fn test_stats_bincode_ffi() {
         }
 
         let input = DataInputB {
-            data: vec![1.0, 2.0, 3.0, 4.0, 5.0],
+            data: vec![
+                1.0, 2.0, 3.0, 4.0, 5.0,
+            ],
         };
         let buffer = to_bincode_buffer(&input);
 
@@ -248,8 +260,12 @@ fn test_stats_bincode_ffi() {
         }
 
         let two_input = TwoDataB {
-            data1: vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            data2: vec![2.0, 4.0, 6.0, 8.0, 10.0],
+            data1: vec![
+                1.0, 2.0, 3.0, 4.0, 5.0,
+            ],
+            data2: vec![
+                2.0, 4.0, 6.0, 8.0, 10.0,
+            ],
         };
         let buffer2 = to_bincode_buffer(&two_input);
 

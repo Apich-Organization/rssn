@@ -46,7 +46,11 @@ fn test_fa_bincode_ffi() {
         }
 
         let input = PointsInput {
-            points: vec![(0.0, 1.0), (1.0, 1.0), (2.0, 1.0)],
+            points: vec![
+                (0.0, 1.0),
+                (1.0, 1.0),
+                (2.0, 1.0),
+            ],
         };
 
         let buffer = to_bincode_buffer(&input);

@@ -14,7 +14,10 @@ fn test_ifs_apply() {
 
     let ifs = IteratedFunctionSystem::new(
         vec![f1, f2],
-        vec![Expr::Constant(0.5), Expr::Constant(0.5)],
+        vec![
+            Expr::Constant(0.5),
+            Expr::Constant(0.5),
+        ],
         vec!["x".to_string()],
     );
 
@@ -34,7 +37,11 @@ fn test_similarity_dimension() {
     // Sierpinski triangle: 3 scalings of 1/2
     // D = -log(3)/log(1/2) = log(3)/log(2)
     let r = Expr::Constant(0.5);
-    let scalings = vec![r.clone(), r.clone(), r.clone()];
+    let scalings = vec![
+        r.clone(),
+        r.clone(),
+        r.clone(),
+    ];
 
     let dim = IteratedFunctionSystem::similarity_dimension(&scalings);
 

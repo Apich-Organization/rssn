@@ -392,7 +392,12 @@ impl SimplicialComplex {
         let k_simplices = self.get_simplices_by_dim(k)?;
         let k_minus_1_simplices = self.get_simplices_by_dim(k - 1)?;
 
-        let mut input_vec = vec![vec![Expr::BigInt(BigInt::zero())]; k_simplices.len()];
+        let mut input_vec = vec![
+            vec![Expr::BigInt(
+                BigInt::zero()
+            )];
+            k_simplices.len()
+        ];
         for (i, simplex) in k_simplices.iter().enumerate() {
             if let Some(coeff) = chain.terms.get(simplex) {
                 input_vec[i][0] = coeff.clone();

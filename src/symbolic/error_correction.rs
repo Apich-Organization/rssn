@@ -129,7 +129,9 @@ pub fn hamming_encode(data: &[u8]) -> Option<Vec<u8>> {
     let p1 = d3 ^ d5 ^ d7;
     let p2 = d3 ^ d6 ^ d7;
     let p4 = d5 ^ d6 ^ d7;
-    Some(vec![p1, p2, d3, p4, d5, d6, d7])
+    Some(vec![
+        p1, p2, d3, p4, d5, d6, d7,
+    ])
 }
 
 /// Checks if a Hamming(7,4) codeword is valid without correcting.
@@ -220,7 +222,10 @@ pub(crate) fn rs_generator_poly(n_sym: usize) -> Result<Vec<u8>, String> {
     }
     let mut g = vec![1];
     for i in 0..n_sym {
-        let p = vec![1, gf256_exp(i as u8)];
+        let p = vec![
+            1,
+            gf256_exp(i as u8),
+        ];
         g = poly_mul_gf256(&g, &p);
     }
     Ok(g)

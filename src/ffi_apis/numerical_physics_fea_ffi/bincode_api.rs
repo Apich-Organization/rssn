@@ -59,7 +59,9 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
             })
         }
     };
-    let vm = physics_fea::TriangleElement2D::von_mises_stress(&[input.sx, input.sy, input.txy]);
+    let vm = physics_fea::TriangleElement2D::von_mises_stress(&[
+        input.sx, input.sy, input.txy,
+    ]);
     to_bincode_buffer(&FfiResult {
         ok: Some(vm),
         err: None::<String>,
@@ -79,7 +81,9 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(
             })
         }
     };
-    let (sigma1, sigma2, angle) = physics_fea::principal_stresses(&[input.sx, input.sy, input.txy]);
+    let (sigma1, sigma2, angle) = physics_fea::principal_stresses(&[
+        input.sx, input.sy, input.txy,
+    ]);
     let output = PrincipalStressOutput {
         sigma1,
         sigma2,

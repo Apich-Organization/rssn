@@ -59,7 +59,10 @@ fn test_topology_bincode_ffi() {
         }
 
         let input = BettiInput {
-            points: vec![vec![0.0, 0.0], vec![1.0, 0.0]],
+            points: vec![
+                vec![0.0, 0.0],
+                vec![1.0, 0.0],
+            ],
             epsilon: 1.5,
             max_dim: 1,
         };

@@ -150,7 +150,10 @@ pub fn solve_recurrence(equation: Expr, initial_conditions: &[(Expr, Expr)], ter
 ///   - `Expr`: The non-homogeneous term `F(n)`.
 pub(crate) fn deconstruct_recurrence_eq(lhs: &Expr, rhs: &Expr, _term: &str) -> (Vec<Expr>, Expr) {
     let _simplified_lhs = simplify(&lhs.clone());
-    let coeffs = vec![Expr::Constant(-2.0), Expr::Constant(1.0)];
+    let coeffs = vec![
+        Expr::Constant(-2.0),
+        Expr::Constant(1.0),
+    ];
     (coeffs, rhs.clone())
 }
 /// Builds the characteristic equation from the coefficients of the homogeneous recurrence.
@@ -352,7 +355,10 @@ pub(crate) fn guess_particular_form(
             let k_n = arg.clone();
             let coeff_a_name = "A".to_string();
             let coeff_b_name = "B".to_string();
-            let unknown_coeffs = vec![coeff_a_name.clone(), coeff_b_name.clone()];
+            let unknown_coeffs = vec![
+                coeff_a_name.clone(),
+                coeff_b_name.clone(),
+            ];
             let form = Expr::new_add(
                 Expr::new_mul(Expr::Variable(coeff_a_name), Expr::new_cos(k_n.clone())),
                 Expr::new_mul(Expr::Variable(coeff_b_name), Expr::new_sin(k_n)),

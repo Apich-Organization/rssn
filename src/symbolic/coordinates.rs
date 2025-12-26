@@ -195,7 +195,11 @@ pub fn get_transform_rules(
 /// `cartesian_vars` are the variable names of the Cartesian system.
 /// `rules` are the expressions for Cartesian coordinates in terms of `from_vars`.
 pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRules, String> {
-    let cartesian_vars = vec!["x".to_string(), "y".to_string(), "z".to_string()];
+    let cartesian_vars = vec![
+        "x".to_string(),
+        "y".to_string(),
+        "z".to_string(),
+    ];
     match from {
         CoordinateSystem::Cartesian => Ok((
             cartesian_vars.clone(),
@@ -207,7 +211,11 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
             ],
         )),
         CoordinateSystem::Cylindrical => {
-            let cyl_vars = vec!["r".to_string(), "theta".to_string(), "z_cyl".to_string()];
+            let cyl_vars = vec![
+                "r".to_string(),
+                "theta".to_string(),
+                "z_cyl".to_string(),
+            ];
             let r = Expr::Variable("r".to_string());
             let theta = Expr::Variable("theta".to_string());
             let rules = vec![
@@ -267,14 +275,22 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
 /// `to_vars` are the variable names of the target system.
 /// `rules` are the expressions for `to_vars` in terms of Cartesian coordinates.
 pub(crate) fn get_from_cartesian_rules(to: CoordinateSystem) -> TransformationRules {
-    let cartesian_vars = vec!["x".to_string(), "y".to_string(), "z".to_string()];
+    let cartesian_vars = vec![
+        "x".to_string(),
+        "y".to_string(),
+        "z".to_string(),
+    ];
     let x = Expr::Variable("x".to_string());
     let y = Expr::Variable("y".to_string());
     let z = Expr::Variable("z".to_string());
     match to {
         CoordinateSystem::Cartesian => (cartesian_vars.clone(), cartesian_vars, vec![x, y, z]),
         CoordinateSystem::Cylindrical => {
-            let cyl_vars = vec!["r".to_string(), "theta".to_string(), "z_cyl".to_string()];
+            let cyl_vars = vec![
+                "r".to_string(),
+                "theta".to_string(),
+                "z_cyl".to_string(),
+            ];
             let rules = vec![
                 simplify(&Expr::Sqrt(Arc::new(Expr::Add(
                     Arc::new(Expr::Power(
@@ -520,7 +536,11 @@ pub fn get_metric_tensor(system: CoordinateSystem) -> Result<Expr, String> {
     };
     let vars = match system {
         CoordinateSystem::Cylindrical => {
-            vec!["r".to_string(), "theta".to_string(), "z_cyl".to_string()]
+            vec![
+                "r".to_string(),
+                "theta".to_string(),
+                "z_cyl".to_string(),
+            ]
         }
         CoordinateSystem::Spherical => {
             vec![
@@ -616,7 +636,9 @@ pub fn transform_curl(vector_comps: &[Expr], from: CoordinateSystem) -> Result<V
         ),
         simplify(&Expr::new_mul(h1, h2)),
     ));
-    Ok(vec![curl_1, curl_2, curl_3])
+    Ok(vec![
+        curl_1, curl_2, curl_3,
+    ])
 }
 /// Transforms the gradient of a scalar field from one coordinate system to another.
 ///
@@ -652,7 +674,11 @@ pub fn transform_gradient(
         field_cart = substitute(&field_cart, var, &rules[i]);
     }
     field_cart = simplify(&field_cart);
-    let cartesian_vars = vec!["x".to_string(), "y".to_string(), "z".to_string()];
+    let cartesian_vars = vec![
+        "x".to_string(),
+        "y".to_string(),
+        "z".to_string(),
+    ];
     let mut grad_cart_comps = Vec::new();
     for var in &cartesian_vars {
         grad_cart_comps.push(differentiate(&field_cart, var));

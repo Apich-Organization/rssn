@@ -170,13 +170,25 @@ pub fn pauli_matrices() -> (Expr, Expr, Expr) {
     let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
     let neg_i = Expr::new_neg(i.clone());
     let sigma_x = Expr::Matrix(vec![
-        vec![zero.clone(), one.clone()],
-        vec![one.clone(), zero.clone()],
+        vec![
+            zero.clone(),
+            one.clone(),
+        ],
+        vec![
+            one.clone(),
+            zero.clone(),
+        ],
     ]);
-    let sigma_y = Expr::Matrix(vec![vec![zero.clone(), neg_i], vec![i, zero.clone()]]);
+    let sigma_y = Expr::Matrix(vec![
+        vec![zero.clone(), neg_i],
+        vec![i, zero.clone()],
+    ]);
     let sigma_z = Expr::Matrix(vec![
         vec![one, zero.clone()],
-        vec![zero, Expr::Constant(-1.0)],
+        vec![
+            zero,
+            Expr::Constant(-1.0),
+        ],
     ]);
     (sigma_x, sigma_y, sigma_z)
 }

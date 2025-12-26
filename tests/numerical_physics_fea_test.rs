@@ -109,7 +109,11 @@ fn test_linear_element_1d() {
 fn test_triangle_element_area() {
     let elem = TriangleElement2D::new(
         [0, 1, 2],
-        [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)],
+        [
+            (0.0, 0.0),
+            (1.0, 0.0),
+            (0.0, 1.0),
+        ],
         0.01,
         Material::steel(),
         true,
@@ -121,7 +125,11 @@ fn test_triangle_element_area() {
 fn test_triangle_element_constitutive_matrix_plane_stress() {
     let elem = TriangleElement2D::new(
         [0, 1, 2],
-        [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)],
+        [
+            (0.0, 0.0),
+            (1.0, 0.0),
+            (0.0, 1.0),
+        ],
         0.01,
         Material::steel(),
         true,
@@ -137,7 +145,11 @@ fn test_triangle_element_constitutive_matrix_plane_stress() {
 fn test_triangle_element_b_matrix() {
     let elem = TriangleElement2D::new(
         [0, 1, 2],
-        [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)],
+        [
+            (0.0, 0.0),
+            (1.0, 0.0),
+            (0.0, 1.0),
+        ],
         0.01,
         Material::steel(),
         true,
@@ -151,7 +163,11 @@ fn test_triangle_element_b_matrix() {
 fn test_triangle_element_stiffness_matrix() {
     let elem = TriangleElement2D::new(
         [0, 1, 2],
-        [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)],
+        [
+            (0.0, 0.0),
+            (1.0, 0.0),
+            (0.0, 1.0),
+        ],
         0.01,
         Material::steel(),
         true,
@@ -251,7 +267,15 @@ fn test_thermal_element_1d() {
 
 #[test]
 fn test_thermal_triangle_2d() {
-    let elem = ThermalTriangle2D::new([(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)], 0.01, 50.0);
+    let elem = ThermalTriangle2D::new(
+        [
+            (0.0, 0.0),
+            (1.0, 0.0),
+            (0.0, 1.0),
+        ],
+        0.01,
+        50.0,
+    );
     assert!((elem.area() - 0.5).abs() < 1e-10);
     let k = elem.conductivity_matrix();
     assert_eq!(k.rows(), 3);
@@ -351,7 +375,10 @@ fn test_assemble_global_stiffness_matrix() {
     };
     let k1 = elem1.local_stiffness_matrix();
 
-    let elements = vec![(k1.clone(), 0, 1), (k1.clone(), 1, 2)];
+    let elements = vec![
+        (k1.clone(), 0, 1),
+        (k1.clone(), 1, 2),
+    ];
     let global_k = assemble_global_stiffness_matrix(3, &elements);
 
     assert_eq!(global_k.rows(), 3);
@@ -369,7 +396,10 @@ fn test_solve_static_structural() {
         area: 0.001,
     };
     let k_local = elem.local_stiffness_matrix();
-    let elements = vec![(k_local.clone(), 0, 1), (k_local.clone(), 1, 2)];
+    let elements = vec![
+        (k_local.clone(), 0, 1),
+        (k_local.clone(), 1, 2),
+    ];
     let global_k = assemble_global_stiffness_matrix(3, &elements);
 
     // Fixed at node 0, force at node 2

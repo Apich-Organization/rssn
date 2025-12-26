@@ -6,7 +6,11 @@ use rssn::prelude::*;
 
 #[test]
 fn test_tensor_basic() {
-    let a = array![[1.0, 2.0], [3.0, 4.0]].into_dyn();
+    let a = array![
+        [1.0, 2.0],
+        [3.0, 4.0]
+    ]
+    .into_dyn();
     assert_eq!(
         numerical_tensor_norm(&a),
         (1.0 + 4.0 + 9.0 + 16.0f64).sqrt()
@@ -28,7 +32,11 @@ fn test_tensor_inner_outer() {
 
 #[test]
 fn test_tensor_vec_mul() {
-    let a = array![[1.0, 2.0], [3.0, 4.0]].into_dyn();
+    let a = array![
+        [1.0, 2.0],
+        [3.0, 4.0]
+    ]
+    .into_dyn();
     let v = vec![1.0, 2.0];
     let res = numerical_tensor_vec_mul(&a, &v).unwrap();
     assert_eq!(res.shape(), &[2]);
@@ -38,7 +46,11 @@ fn test_tensor_vec_mul() {
 
 #[test]
 fn test_tensor_serde() {
-    let a = array![[1.0, 2.0], [3.0, 4.0]].into_dyn();
+    let a = array![
+        [1.0, 2.0],
+        [3.0, 4.0]
+    ]
+    .into_dyn();
     let data = numerical_TensorData::from(&a);
 
     let json = serde_json::to_string(&data).unwrap();

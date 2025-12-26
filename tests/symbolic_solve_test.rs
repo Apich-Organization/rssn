@@ -69,7 +69,10 @@ fn test_solve_linear_system() {
         Expr::new_constant(1.0),
     );
     let system = Expr::System(vec![eq1, eq2]);
-    let vars = vec!["x".to_string(), "y".to_string()];
+    let vars = vec![
+        "x".to_string(),
+        "y".to_string(),
+    ];
 
     let solutions = solve_linear_system(&system, &vars).unwrap();
     assert_eq!(solutions.len(), 2);

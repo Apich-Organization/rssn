@@ -230,7 +230,11 @@ mod tests {
     use ndarray::array;
     #[test]
     pub(crate) fn test_csr_from_triplets() {
-        let triplets = vec![(0, 0, 1.0), (1, 2, 2.0), (2, 1, 3.0)];
+        let triplets = vec![
+            (0, 0, 1.0),
+            (1, 2, 2.0),
+            (2, 1, 3.0),
+        ];
         let mat = csr_from_triplets(3, 3, &triplets);
         assert_eq!(mat.rows(), 3);
         assert_eq!(mat.cols(), 3);
@@ -242,7 +246,11 @@ mod tests {
     }
     #[test]
     pub(crate) fn test_sp_mat_vec_mul() {
-        let triplets = vec![(0, 0, 1.0), (0, 2, 2.0), (2, 1, 3.0)];
+        let triplets = vec![
+            (0, 0, 1.0),
+            (0, 2, 2.0),
+            (2, 1, 3.0),
+        ];
         let mat = csr_from_triplets(3, 3, &triplets);
         let vec = vec![10.0, 20.0, 30.0];
         let result = sp_mat_vec_mul(&mat, &vec);
@@ -253,7 +261,12 @@ mod tests {
     }
     #[test]
     pub(crate) fn test_to_csr() {
-        let dense_arr = array![[1.0, 0.0, 2.0], [0.0, 0.0, 0.0], [3.0, 0.0, 4.0]].into_dyn();
+        let dense_arr = array![
+            [1.0, 0.0, 2.0],
+            [0.0, 0.0, 0.0],
+            [3.0, 0.0, 4.0]
+        ]
+        .into_dyn();
         let csr_mat = to_csr(&dense_arr);
         assert_eq!(csr_mat.rows(), 3);
         assert_eq!(csr_mat.cols(), 3);

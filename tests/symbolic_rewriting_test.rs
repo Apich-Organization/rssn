@@ -35,12 +35,36 @@ fn test_apply_rules_associativity() {
     let op_name = "op".to_string();
 
     // lhs: op(op(x, y), z)
-    let inner_lhs = Expr::NaryList(op_name.clone(), vec![px.clone(), py.clone()]);
-    let lhs = Expr::NaryList(op_name.clone(), vec![inner_lhs, pz.clone()]);
+    let inner_lhs = Expr::NaryList(
+        op_name.clone(),
+        vec![
+            px.clone(),
+            py.clone(),
+        ],
+    );
+    let lhs = Expr::NaryList(
+        op_name.clone(),
+        vec![
+            inner_lhs,
+            pz.clone(),
+        ],
+    );
 
     // rhs: op(x, op(y, z))
-    let inner_rhs = Expr::NaryList(op_name.clone(), vec![py.clone(), pz.clone()]);
-    let rhs = Expr::NaryList(op_name.clone(), vec![px.clone(), inner_rhs]);
+    let inner_rhs = Expr::NaryList(
+        op_name.clone(),
+        vec![
+            py.clone(),
+            pz.clone(),
+        ],
+    );
+    let rhs = Expr::NaryList(
+        op_name.clone(),
+        vec![
+            px.clone(),
+            inner_rhs,
+        ],
+    );
 
     let rule = RewriteRule { lhs, rhs };
 
@@ -50,13 +74,25 @@ fn test_apply_rules_associativity() {
     let c = Expr::new_variable("c");
 
     let inner_expr = Expr::NaryList(op_name.clone(), vec![a.clone(), b.clone()]);
-    let expr = Expr::NaryList(op_name.clone(), vec![inner_expr, c.clone()]);
+    let expr = Expr::NaryList(
+        op_name.clone(),
+        vec![
+            inner_expr,
+            c.clone(),
+        ],
+    );
 
     let result = apply_rules_to_normal_form(&expr, &[rule]);
 
     // Should be op(a, op(b, c))
     let expected_inner = Expr::NaryList(op_name.clone(), vec![b.clone(), c.clone()]);
-    let expected = Expr::NaryList(op_name.clone(), vec![a.clone(), expected_inner]);
+    let expected = Expr::NaryList(
+        op_name.clone(),
+        vec![
+            a.clone(),
+            expected_inner,
+        ],
+    );
 
     assert_eq!(format!("{}", result), format!("{}", expected));
 }

@@ -5,7 +5,9 @@ use std::ffi::{CStr, CString};
 fn test_convergence_handle_ffi() {
     unsafe {
         // Aitken
-        let seq = vec![1.5, 1.25, 1.125, 1.0625]; // 1 + 0.5^i for i=1..4 (converges to 1)
+        let seq = vec![
+            1.5, 1.25, 1.125, 1.0625,
+        ]; // 1 + 0.5^i for i=1..4 (converges to 1)
         let ptr = handle::rssn_convergence_aitken(seq.as_ptr(), seq.len());
         assert!(!ptr.is_null());
 
@@ -28,7 +30,9 @@ fn test_convergence_handle_ffi() {
 fn test_convergence_json_ffi() {
     unsafe {
         // Wynn Epsilon
-        let seq = vec![1.0, 0.66666, 0.86666, 0.7238]; // Alternating series partial sums
+        let seq = vec![
+            1.0, 0.66666, 0.86666, 0.7238,
+        ]; // Alternating series partial sums
         let json_input = format!(r#"{{"sequence": {:?}}}"#, seq);
         let c_json = CString::new(json_input).unwrap();
 

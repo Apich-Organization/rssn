@@ -5,7 +5,9 @@ use std::ffi::{CStr, CString};
 
 #[test]
 fn test_cnm_heat_1d_handle_ffi() {
-    let initial = [1.0, 1.0, 1.0, 1.0, 1.0];
+    let initial = [
+        1.0, 1.0, 1.0, 1.0, 1.0,
+    ];
     let mut out_size = 0;
     unsafe {
         let res_ptr = rssn::ffi_apis::physics_cnm_ffi::handle::rssn_physics_cnm_solve_heat_1d(

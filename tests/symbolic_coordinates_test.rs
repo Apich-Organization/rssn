@@ -8,7 +8,11 @@ fn test_transform_point_cylindrical_to_cartesian_symbolic() {
     let theta = Expr::new_variable("theta");
     let z = Expr::new_variable("z");
 
-    let cyl_point = vec![r.clone(), theta.clone(), z.clone()];
+    let cyl_point = vec![
+        r.clone(),
+        theta.clone(),
+        z.clone(),
+    ];
     let cart_point = transform_point(
         &cyl_point,
         CoordinateSystem::Cylindrical,
@@ -30,7 +34,11 @@ fn test_transform_point_spherical_to_cartesian_symbolic() {
     let theta = Expr::new_variable("theta");
     let phi = Expr::new_variable("phi");
 
-    let sph_point = vec![rho.clone(), theta.clone(), phi.clone()];
+    let sph_point = vec![
+        rho.clone(),
+        theta.clone(),
+        phi.clone(),
+    ];
     let cart_point = transform_point(
         &sph_point,
         CoordinateSystem::Spherical,
@@ -108,7 +116,11 @@ fn test_coordinate_system_identity() {
     let y = Expr::new_variable("y");
     let z = Expr::new_variable("z");
 
-    let point = vec![x.clone(), y.clone(), z.clone()];
+    let point = vec![
+        x.clone(),
+        y.clone(),
+        z.clone(),
+    ];
     let result = transform_point(
         &point,
         CoordinateSystem::Cartesian,

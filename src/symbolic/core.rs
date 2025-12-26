@@ -1764,7 +1764,9 @@ impl DagNode {
         let mut memo: HashMap<u64, Expr> = HashMap::new();
 
         // Work stack: nodes to process
-        let mut work_stack: Vec<Arc<Self>> = vec![Arc::new(self.clone())];
+        let mut work_stack: Vec<Arc<Self>> = vec![Arc::new(
+            self.clone(),
+        )];
 
         // Track which nodes we've pushed to avoid cycles
         let mut visited: HashMap<u64, bool> = HashMap::new();
@@ -4106,7 +4108,10 @@ impl Expr {
             | Self::Max(a, b)
             | Self::MatrixMul(a, b)
             | Self::MatrixVecMul(a, b)
-            | Self::Apply(a, b) => vec![a.as_ref().clone(), b.as_ref().clone()],
+            | Self::Apply(a, b) => vec![
+                a.as_ref().clone(),
+                b.as_ref().clone(),
+            ],
             Self::AddList(v) | Self::MulList(v) => v.clone(),
             Self::Sin(a)
             | Self::Cos(a)
@@ -4182,21 +4187,47 @@ impl Expr {
             Self::VolumeIntegral {
                 scalar_field,
                 volume,
-            } => vec![scalar_field.as_ref().clone(), volume.as_ref().clone()],
+            } => vec![
+                scalar_field.as_ref().clone(),
+                volume.as_ref().clone(),
+            ],
             Self::SurfaceIntegral {
                 vector_field,
                 surface,
-            } => vec![vector_field.as_ref().clone(), surface.as_ref().clone()],
-            Self::DerivativeN(e, _, n) => vec![e.as_ref().clone(), n.as_ref().clone()],
+            } => vec![
+                vector_field.as_ref().clone(),
+                surface.as_ref().clone(),
+            ],
+            Self::DerivativeN(e, _, n) => vec![
+                e.as_ref().clone(),
+                n.as_ref().clone(),
+            ],
             Self::Series(a, _, c, d) | Self::Summation(a, _, c, d) | Self::Product(a, _, c, d) => {
-                vec![a.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()]
+                vec![
+                    a.as_ref().clone(),
+                    c.as_ref().clone(),
+                    d.as_ref().clone(),
+                ]
             }
             Self::AsymptoticExpansion(a, _, c, d) => {
-                vec![a.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()]
+                vec![
+                    a.as_ref().clone(),
+                    c.as_ref().clone(),
+                    d.as_ref().clone(),
+                ]
             }
-            Self::Interval(a, b, _, _) => vec![a.as_ref().clone(), b.as_ref().clone()],
-            Self::Substitute(a, _, c) => vec![a.as_ref().clone(), c.as_ref().clone()],
-            Self::Limit(a, _, c) => vec![a.as_ref().clone(), c.as_ref().clone()],
+            Self::Interval(a, b, _, _) => vec![
+                a.as_ref().clone(),
+                b.as_ref().clone(),
+            ],
+            Self::Substitute(a, _, c) => vec![
+                a.as_ref().clone(),
+                c.as_ref().clone(),
+            ],
+            Self::Limit(a, _, c) => vec![
+                a.as_ref().clone(),
+                c.as_ref().clone(),
+            ],
             Self::Ode { equation, .. } => vec![equation.as_ref().clone()],
             Self::Pde { equation, .. } => vec![equation.as_ref().clone()],
             Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => vec![
@@ -4205,13 +4236,23 @@ impl Expr {
                 c.as_ref().clone(),
                 d.as_ref().clone(),
             ],
-            Self::ParametricSolution { x, y } => vec![x.as_ref().clone(), y.as_ref().clone()],
+            Self::ParametricSolution { x, y } => vec![
+                x.as_ref().clone(),
+                y.as_ref().clone(),
+            ],
             Self::RootOf { poly, .. } => vec![poly.as_ref().clone()],
             Self::QuantityWithValue(v, _) => vec![v.as_ref().clone()],
             Self::CustomArcOne(a) => vec![a.as_ref().clone()],
-            Self::CustomArcTwo(a, b) => vec![a.as_ref().clone(), b.as_ref().clone()],
+            Self::CustomArcTwo(a, b) => vec![
+                a.as_ref().clone(),
+                b.as_ref().clone(),
+            ],
             Self::CustomArcThree(a, b, c) => {
-                vec![a.as_ref().clone(), b.as_ref().clone(), c.as_ref().clone()]
+                vec![
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                    c.as_ref().clone(),
+                ]
             }
             Self::CustomArcFour(a, b, c, d) => vec![
                 a.as_ref().clone(),
@@ -4250,7 +4291,10 @@ impl Expr {
                 .cloned()
                 .collect(),
             Self::UnaryList(_, a) => vec![a.as_ref().clone()],
-            Self::BinaryList(_, a, b) => vec![a.as_ref().clone(), b.as_ref().clone()],
+            Self::BinaryList(_, a, b) => vec![
+                a.as_ref().clone(),
+                b.as_ref().clone(),
+            ],
             Self::NaryList(_, v) => v.clone(),
             _ => vec![],
         }
@@ -4260,7 +4304,10 @@ impl Expr {
     pub fn normalize(&self) -> Self {
         match self {
             Self::Add(a, b) => {
-                let mut children = [a.as_ref().clone(), b.as_ref().clone()];
+                let mut children = [
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ];
                 children.sort();
                 Self::Add(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
             }
@@ -4277,7 +4324,10 @@ impl Expr {
                 Self::AddList(children)
             }
             Self::Mul(a, b) => {
-                let mut children = [a.as_ref().clone(), b.as_ref().clone()];
+                let mut children = [
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ];
                 children.sort();
                 Self::Mul(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
             }
@@ -4294,18 +4344,27 @@ impl Expr {
                 Self::MulList(children)
             }
             Self::Sub(a, b) => {
-                let mut children = [a.as_ref().clone(), b.as_ref().clone()];
+                let mut children = [
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ];
                 children.sort();
                 Self::Sub(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
             }
             Self::Div(a, b) => {
-                let mut children = [a.as_ref().clone(), b.as_ref().clone()];
+                let mut children = [
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ];
                 children.sort();
                 Self::Div(Arc::new(children[0].clone()), Arc::new(children[1].clone()))
             }
             Self::UnaryList(s, a) => Self::UnaryList(s.clone(), Arc::new(a.normalize())),
             Self::BinaryList(s, a, b) => {
-                let mut children = [a.as_ref().clone(), b.as_ref().clone()];
+                let mut children = [
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ];
                 if let Some(props) = get_dynamic_op_properties(s) {
                     if props.is_commutative {
                         children.sort();
@@ -4994,7 +5053,9 @@ impl Expr {
             .get_or_create(d.as_ref())
             .expect("Value is valid");
 
-        let children = vec![dag_a, dag_b, dag_c, dag_d];
+        let children = vec![
+            dag_a, dag_b, dag_c, dag_d,
+        ];
 
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::CustomArcFour, children)
@@ -5027,7 +5088,9 @@ impl Expr {
             .get_or_create(e.as_ref())
             .expect("Value is valid");
 
-        let children = vec![dag_a, dag_b, dag_c, dag_d, dag_e];
+        let children = vec![
+            dag_a, dag_b, dag_c, dag_d, dag_e,
+        ];
 
         let node = DAG_MANAGER
             .get_or_create_normalized(DagOp::CustomArcFive, children)

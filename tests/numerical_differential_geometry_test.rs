@@ -20,7 +20,11 @@ fn test_metric_tensor_spherical() {
     // h_phi = rho
     // g = diag(1, rho^2 sin^2(phi), rho^2)
 
-    let point = vec![2.0, 0.0, std::f64::consts::PI / 2.0]; // rho=2, theta=0, phi=pi/2
+    let point = vec![
+        2.0,
+        0.0,
+        std::f64::consts::PI / 2.0,
+    ]; // rho=2, theta=0, phi=pi/2
     let g = metric_tensor_at_point(CoordinateSystem::Spherical, &point).unwrap();
     assert_approx_eq!(g[0][0], 1.0, 1e-9);
     assert_approx_eq!(g[1][1], 4.0, 1e-9); // 2^2 * sin^2(pi/2) = 4 * 1 = 4
@@ -29,7 +33,11 @@ fn test_metric_tensor_spherical() {
 
 #[test]
 fn test_christoffel_spherical() {
-    let point = vec![1.0, 0.0, std::f64::consts::PI / 2.0];
+    let point = vec![
+        1.0,
+        0.0,
+        std::f64::consts::PI / 2.0,
+    ];
     let gamma = christoffel_symbols(CoordinateSystem::Spherical, &point).unwrap();
     // In spherical (rho, theta, phi):
     // Γ^rho_{theta theta} = -rho sin^2(phi) = -1 * 1 = -1

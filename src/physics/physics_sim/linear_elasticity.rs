@@ -45,7 +45,15 @@ pub fn element_stiffness_matrix(
         [-0.25, -0.25, -0.25, 0.25, 0.25, 0.25, 0.25, -0.25]
     ];
     let c_mat = (e / (1.0 - nu * nu))
-        * array![[1.0, nu, 0.0], [nu, 1.0, 0.0], [0.0, 0.0, (1.0 - nu) / 2.0]];
+        * array![
+            [1.0, nu, 0.0],
+            [nu, 1.0, 0.0],
+            [
+                0.0,
+                0.0,
+                (1.0 - nu) / 2.0
+            ]
+        ];
     b_mat.t().dot(&c_mat.dot(&b_mat))
 }
 /// Runs a 2D linear elasticity simulation using the Finite Element Method.
@@ -111,7 +119,12 @@ pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f6
     let fixed_dofs: std::collections::HashSet<usize> = params
         .fixed_nodes
         .iter()
-        .flat_map(|&node_idx| vec![node_idx * 2, node_idx * 2 + 1])
+        .flat_map(|&node_idx| {
+            vec![
+                node_idx * 2,
+                node_idx * 2 + 1,
+            ]
+        })
         .collect();
 
     let mut filtered_triplets: Vec<(usize, usize, f64)> = triplets

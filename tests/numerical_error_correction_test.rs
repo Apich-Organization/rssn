@@ -12,7 +12,9 @@ use rssn::numerical::error_correction::*;
 
 #[test]
 fn test_reed_solomon_encode_basic() {
-    let message = vec![0x01, 0x02, 0x03, 0x04];
+    let message = vec![
+        0x01, 0x02, 0x03, 0x04,
+    ];
     let codeword = reed_solomon_encode(&message, 4).unwrap();
     assert_eq!(codeword.len(), 8); // 4 data + 4 parity
                                    // First 4 bytes should be the original message
@@ -43,14 +45,18 @@ fn test_reed_solomon_encode_too_long() {
 
 #[test]
 fn test_reed_solomon_check_valid() {
-    let message = vec![0x01, 0x02, 0x03, 0x04];
+    let message = vec![
+        0x01, 0x02, 0x03, 0x04,
+    ];
     let codeword = reed_solomon_encode(&message, 4).unwrap();
     assert!(reed_solomon_check(&codeword, 4));
 }
 
 #[test]
 fn test_reed_solomon_check_corrupted() {
-    let message = vec![0x01, 0x02, 0x03, 0x04];
+    let message = vec![
+        0x01, 0x02, 0x03, 0x04,
+    ];
     let mut codeword = reed_solomon_encode(&message, 4).unwrap();
     codeword[0] ^= 0xFF; // Corrupt first byte
     assert!(!reed_solomon_check(&codeword, 4));
@@ -58,7 +64,9 @@ fn test_reed_solomon_check_corrupted() {
 
 #[test]
 fn test_reed_solomon_decode_no_errors() {
-    let message = vec![0x01, 0x02, 0x03, 0x04];
+    let message = vec![
+        0x01, 0x02, 0x03, 0x04,
+    ];
     let mut codeword = reed_solomon_encode(&message, 4).unwrap();
     reed_solomon_decode(&mut codeword, 4).unwrap();
     assert_eq!(&codeword[..4], &message);
@@ -322,7 +330,9 @@ fn test_interleave_basic() {
 
 #[test]
 fn test_interleave_deinterleave_roundtrip() {
-    let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    let data = vec![
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    ];
     let depth = 4;
     let interleaved = interleave(&data, depth);
     let deinterleaved = deinterleave(&interleaved, depth);
@@ -410,7 +420,10 @@ fn test_error_detection_capability() {
 
 #[test]
 fn test_minimum_distance() {
-    let codewords = vec![vec![0, 0, 0, 0], vec![1, 1, 1, 1]];
+    let codewords = vec![
+        vec![0, 0, 0, 0],
+        vec![1, 1, 1, 1],
+    ];
     assert_eq!(minimum_distance(&codewords), Some(4));
 }
 

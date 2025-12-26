@@ -179,7 +179,11 @@ impl Vector {
     /// An `Expr` that contains the vector's components.
     #[must_use]
     pub fn to_expr(&self) -> Expr {
-        Expr::Vector(vec![self.x.clone(), self.y.clone(), self.z.clone()])
+        Expr::Vector(vec![
+            self.x.clone(),
+            self.y.clone(),
+            self.z.clone(),
+        ])
     }
 }
 /// Overloads the '+' operator for Vector addition.

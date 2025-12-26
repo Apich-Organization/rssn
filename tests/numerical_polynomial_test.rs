@@ -38,7 +38,15 @@ fn test_poly_calculus() {
     assert_eq!(dp.coeffs, vec![2.0, 0.0]); // 2x
 
     let ip = p.integral();
-    assert_eq!(ip.coeffs, vec![1.0 / 3.0, 0.0, 0.0, 0.0]); // (1/3)x^3
+    assert_eq!(
+        ip.coeffs,
+        vec![
+            1.0 / 3.0,
+            0.0,
+            0.0,
+            0.0
+        ]
+    ); // (1/3)x^3
 }
 
 #[test]

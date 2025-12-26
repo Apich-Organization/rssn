@@ -35,7 +35,13 @@ fn test_matrix_arithmetic() {
 
 #[test]
 fn test_matrix_transpose() {
-    let m = numerical_Matrix::new(2, 3, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+    let m = numerical_Matrix::new(
+        2,
+        3,
+        vec![
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
+        ],
+    );
     let mt = m.transpose();
     assert_eq!(mt.rows(), 3);
     assert_eq!(mt.cols(), 2);
@@ -47,7 +53,13 @@ fn test_matrix_determinant() {
     let m = numerical_Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
     assert_approx_eq!(m.determinant().unwrap(), -2.0);
 
-    let m3 = numerical_Matrix::new(3, 3, vec![1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0]);
+    let m3 = numerical_Matrix::new(
+        3,
+        3,
+        vec![
+            1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0,
+        ],
+    );
     // det = 1*(1*0-4*6) - 2*(0*0-4*5) + 3*(0*6-1*5)
     // det = -24 + 40 - 15 = 1
     assert_approx_eq!(m3.determinant().unwrap(), 1.0);
@@ -80,13 +92,25 @@ fn test_matrix_norms() {
 
 #[test]
 fn test_matrix_trace() {
-    let m = numerical_Matrix::new(3, 3, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
+    let m = numerical_Matrix::new(
+        3,
+        3,
+        vec![
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
+        ],
+    );
     assert_eq!(m.trace().unwrap(), 15.0);
 }
 
 #[test]
 fn test_matrix_rank() {
-    let m = numerical_Matrix::new(3, 3, vec![1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 0.0, 1.0, 1.0]);
+    let m = numerical_Matrix::new(
+        3,
+        3,
+        vec![
+            1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 0.0, 1.0, 1.0,
+        ],
+    );
     assert_eq!(m.rank().unwrap(), 2);
 }
 

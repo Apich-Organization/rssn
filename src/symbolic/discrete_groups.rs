@@ -198,7 +198,12 @@ pub fn klein_four_group() -> Group {
     let b = GroupElement(Expr::Variable("b".to_string()));
     let c = GroupElement(Expr::Variable("c".to_string()));
 
-    let elements = vec![e.clone(), a.clone(), b.clone(), c.clone()];
+    let elements = vec![
+        e.clone(),
+        a.clone(),
+        b.clone(),
+        c.clone(),
+    ];
     let mut table = HashMap::new();
 
     // Identity

@@ -343,7 +343,9 @@ fn test_binomial_factorial_relationship() {
 #[test]
 fn test_erf_erfc_relationship() {
     // erf(x) + erfc(x) = 1 for various x
-    for x in [0.0, 0.5, 1.0, 1.5, 2.0, -0.5, -1.0] {
+    for x in [
+        0.0, 0.5, 1.0, 1.5, 2.0, -0.5, -1.0,
+    ] {
         assert_approx_eq(erf_numerical(x) + erfc_numerical(x), 1.0);
     }
 }

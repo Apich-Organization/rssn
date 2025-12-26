@@ -132,7 +132,11 @@ where
     p_minus_h[1] -= h;
     let dvx_dy = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
 
-    Ok(vec![dvz_dy - dvy_dz, dvx_dz - dvz_dx, dvy_dx - dvx_dy])
+    Ok(vec![
+        dvz_dy - dvy_dz,
+        dvx_dz - dvz_dx,
+        dvy_dx - dvx_dy,
+    ])
 }
 
 /// Computes the numerical curl of a 3D vector field represented by symbolic expressions.

@@ -40,7 +40,10 @@ mod tests {
     use std::sync::Arc;
     #[test]
     pub(crate) fn test_write_read_npy() -> Result<(), Arc<dyn std::error::Error>> {
-        let arr = array![[1.0, 2.0], [3.0, 4.0]];
+        let arr = array![
+            [1.0, 2.0],
+            [3.0, 4.0]
+        ];
         let filename = "test_array.npy";
         let _ = write_npy_file(filename, &arr);
         let read_arr = read_npy_file(filename);

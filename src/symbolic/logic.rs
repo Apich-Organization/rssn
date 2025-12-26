@@ -165,7 +165,10 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
             Expr::Implies(b.clone(), a.clone()),
         ])),
         Expr::Xor(a, b) => simplify_logic(&Expr::And(vec![
-            Expr::Or(vec![a.as_ref().clone(), b.as_ref().clone()]),
+            Expr::Or(vec![
+                a.as_ref().clone(),
+                b.as_ref().clone(),
+            ]),
             Expr::Not(Arc::new(Expr::And(vec![
                 a.as_ref().clone(),
                 b.as_ref().clone(),
@@ -253,7 +256,10 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
             ]),
         ]),
         Expr::Xor(a, b) => Expr::And(vec![
-            Expr::Or(vec![to_basic_logic_ops(a), to_basic_logic_ops(b)]),
+            Expr::Or(vec![
+                to_basic_logic_ops(a),
+                to_basic_logic_ops(b),
+            ]),
             Expr::Not(Arc::new(Expr::And(vec![
                 to_basic_logic_ops(a),
                 to_basic_logic_ops(b),

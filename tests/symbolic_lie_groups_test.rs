@@ -165,8 +165,14 @@ fn test_su2_structure() {
 fn test_exponential_map_identity() {
     // exp(0) should be the identity matrix
     let zero_matrix = Expr::Matrix(vec![
-        vec![Expr::Constant(0.0), Expr::Constant(0.0)],
-        vec![Expr::Constant(0.0), Expr::Constant(0.0)],
+        vec![
+            Expr::Constant(0.0),
+            Expr::Constant(0.0),
+        ],
+        vec![
+            Expr::Constant(0.0),
+            Expr::Constant(0.0),
+        ],
     ]);
 
     let exp_zero = exponential_map(&zero_matrix, 5).unwrap();
@@ -183,13 +189,25 @@ fn test_exponential_map_identity() {
 fn test_adjoint_representation_group() {
     // Create a simple 2x2 group element (rotation matrix)
     let g = Expr::Matrix(vec![
-        vec![Expr::Constant(0.0), Expr::Constant(-1.0)],
-        vec![Expr::Constant(1.0), Expr::Constant(0.0)],
+        vec![
+            Expr::Constant(0.0),
+            Expr::Constant(-1.0),
+        ],
+        vec![
+            Expr::Constant(1.0),
+            Expr::Constant(0.0),
+        ],
     ]);
 
     let x = Expr::Matrix(vec![
-        vec![Expr::Constant(1.0), Expr::Constant(0.0)],
-        vec![Expr::Constant(0.0), Expr::Constant(-1.0)],
+        vec![
+            Expr::Constant(1.0),
+            Expr::Constant(0.0),
+        ],
+        vec![
+            Expr::Constant(0.0),
+            Expr::Constant(-1.0),
+        ],
     ]);
 
     let result = adjoint_representation_group(&g, &x);

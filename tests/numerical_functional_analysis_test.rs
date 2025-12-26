@@ -2,30 +2,50 @@ use rssn::numerical::functional_analysis::*;
 
 #[test]
 fn test_l1_norm() {
-    let points = vec![(0.0, 1.0), (1.0, 1.0), (2.0, 1.0)];
+    let points = vec![
+        (0.0, 1.0),
+        (1.0, 1.0),
+        (2.0, 1.0),
+    ];
     let res = l1_norm(&points);
     assert!((res - 2.0).abs() < 1e-9);
 }
 
 #[test]
 fn test_l2_norm() {
-    let points = vec![(0.0, 1.0), (1.0, 1.0), (2.0, 1.0)];
+    let points = vec![
+        (0.0, 1.0),
+        (1.0, 1.0),
+        (2.0, 1.0),
+    ];
     let res = l2_norm(&points);
     assert!((res - 2.0f64.sqrt()).abs() < 1e-9);
 }
 
 #[test]
 fn test_inner_product() {
-    let f = vec![(0.0, 1.0), (1.0, 1.0)];
-    let g = vec![(0.0, 2.0), (1.0, 2.0)];
+    let f = vec![
+        (0.0, 1.0),
+        (1.0, 1.0),
+    ];
+    let g = vec![
+        (0.0, 2.0),
+        (1.0, 2.0),
+    ];
     let res = inner_product(&f, &g).unwrap();
     assert!((res - 2.0).abs() < 1e-9);
 }
 
 #[test]
 fn test_project() {
-    let f = vec![(0.0, 1.0), (1.0, 1.0)];
-    let g = vec![(0.0, 2.0), (1.0, 2.0)];
+    let f = vec![
+        (0.0, 1.0),
+        (1.0, 1.0),
+    ];
+    let g = vec![
+        (0.0, 2.0),
+        (1.0, 2.0),
+    ];
     let res = project(&f, &g).unwrap();
     // proj_g(f) = (<f, g> / <g, g>) * g
     // <f, g> = 1*2 * 1 = 2
@@ -39,8 +59,14 @@ fn test_project() {
 
 #[test]
 fn test_gram_schmidt() {
-    let u1 = vec![(0.0, 1.0), (1.0, 1.0)];
-    let u2 = vec![(0.0, 0.0), (1.0, 1.0)];
+    let u1 = vec![
+        (0.0, 1.0),
+        (1.0, 1.0),
+    ];
+    let u2 = vec![
+        (0.0, 0.0),
+        (1.0, 1.0),
+    ];
     let basis = vec![u1, u2];
     let orth = gram_schmidt(&basis).unwrap();
     assert_eq!(orth.len(), 2);
@@ -51,8 +77,14 @@ fn test_gram_schmidt() {
 
 #[test]
 fn test_gram_schmidt_orthonormal() {
-    let u1 = vec![(0.0, 1.0), (1.0, 1.0)];
-    let u2 = vec![(0.0, 0.0), (1.0, 1.0)];
+    let u1 = vec![
+        (0.0, 1.0),
+        (1.0, 1.0),
+    ];
+    let u2 = vec![
+        (0.0, 0.0),
+        (1.0, 1.0),
+    ];
     let basis = vec![u1, u2];
     let orthonorm = gram_schmidt_orthonormal(&basis).unwrap();
     assert_eq!(orthonorm.len(), 2);

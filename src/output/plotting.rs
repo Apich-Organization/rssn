@@ -148,7 +148,13 @@ pub fn plot_vector_field_2d(
                 let magnitude = (vx * vx + vy * vy).sqrt();
                 let end_x = x + vx / magnitude * (x_range.1 - x_range.0) * 0.05;
                 let end_y = y + vy / magnitude * (y_range.1 - y_range.0) * 0.05;
-                arrows.push(PathElement::new(vec![(x, y), (end_x, end_y)], BLUE));
+                arrows.push(PathElement::new(
+                    vec![
+                        (x, y),
+                        (end_x, end_y),
+                    ],
+                    BLUE,
+                ));
             }
         }
     }
@@ -267,7 +273,10 @@ pub fn plot_vector_field_3d(
                         let end_y = y + vy / magnitude * scale;
                         let end_z = z + vz / magnitude * scale;
                         arrows.push(PathElement::new(
-                            vec![(x, y, z), (end_x, end_y, end_z)],
+                            vec![
+                                (x, y, z),
+                                (end_x, end_y, end_z),
+                            ],
                             BLUE,
                         ));
                     }

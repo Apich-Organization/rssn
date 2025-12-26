@@ -256,7 +256,9 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(input: *const c_char
             )
         }
     };
-    let vm = physics_fea::TriangleElement2D::von_mises_stress(&[input.sx, input.sy, input.txy]);
+    let vm = physics_fea::TriangleElement2D::von_mises_stress(&[
+        input.sx, input.sy, input.txy,
+    ]);
     to_c_string(
         serde_json::to_string(&FfiResult {
             ok: Some(vm),
@@ -280,7 +282,9 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(input: *const c_ch
             )
         }
     };
-    let (sigma1, sigma2, angle) = physics_fea::principal_stresses(&[input.sx, input.sy, input.txy]);
+    let (sigma1, sigma2, angle) = physics_fea::principal_stresses(&[
+        input.sx, input.sy, input.txy,
+    ]);
     let output = PrincipalStressOutput {
         sigma1,
         sigma2,
@@ -310,7 +314,9 @@ pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(input: *const c_char) -
         }
     };
     let sf = physics_fea::safety_factor_von_mises(
-        &[input.sx, input.sy, input.txy],
+        &[
+            input.sx, input.sy, input.txy,
+        ],
         input.yield_strength,
     );
     to_c_string(

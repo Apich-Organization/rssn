@@ -26,7 +26,9 @@ fn test_hamming_encode_invalid_length() {
 
 #[test]
 fn test_hamming_decode_no_error() {
-    let codeword = vec![0u8, 1, 1, 0, 0, 1, 1];
+    let codeword = vec![
+        0u8, 1, 1, 0, 0, 1, 1,
+    ];
     let (data, error_pos) = hamming_decode(&codeword).expect("Should decode");
     assert_eq!(data, vec![1, 0, 1, 1]);
     assert_eq!(error_pos, None);
@@ -35,7 +37,9 @@ fn test_hamming_decode_no_error() {
 #[test]
 fn test_hamming_decode_single_error() {
     // Introduce error at position 5 (d5 flipped from 0 to 1)
-    let codeword = vec![0u8, 1, 1, 0, 1, 1, 1]; // Error at index 4 (position 5)
+    let codeword = vec![
+        0u8, 1, 1, 0, 1, 1, 1,
+    ]; // Error at index 4 (position 5)
     let (data, error_pos) = hamming_decode(&codeword).expect("Should decode and correct");
     assert_eq!(data, vec![1, 0, 1, 1]); // Should be corrected
     assert_eq!(error_pos, Some(5)); // 1-based position
@@ -44,7 +48,9 @@ fn test_hamming_decode_single_error() {
 #[test]
 fn test_hamming_decode_parity_error() {
     // Introduce error at parity bit p1 (position 1)
-    let codeword = vec![1u8, 1, 1, 0, 0, 1, 1]; // Error at index 0 (position 1)
+    let codeword = vec![
+        1u8, 1, 1, 0, 0, 1, 1,
+    ]; // Error at index 0 (position 1)
     let (data, error_pos) = hamming_decode(&codeword).expect("Should decode and correct");
     assert_eq!(data, vec![1, 0, 1, 1]); // Data should be unchanged
     assert_eq!(error_pos, Some(1));
@@ -52,7 +58,9 @@ fn test_hamming_decode_parity_error() {
 
 #[test]
 fn test_rs_encode() {
-    let data = vec![0x12, 0x34, 0x56, 0x78];
+    let data = vec![
+        0x12, 0x34, 0x56, 0x78,
+    ];
     let n_sym = 4; // 4 error correction symbols (t=2 errors)
     let codeword = rs_encode(&data, n_sym).expect("Should encode");
 
@@ -65,7 +73,9 @@ fn test_rs_encode() {
 
 #[test]
 fn test_rs_encode_decode_no_error() {
-    let data = vec![0x12, 0x34, 0x56, 0x78, 0x9A];
+    let data = vec![
+        0x12, 0x34, 0x56, 0x78, 0x9A,
+    ];
     let n_sym = 4;
     let codeword = rs_encode(&data, n_sym).expect("Should encode");
     let decoded = rs_decode(&codeword, n_sym).expect("Should decode");
@@ -101,15 +111,23 @@ fn test_rs_encode_max_length() {
 
 #[test]
 fn test_hamming_distance_equal() {
-    let a = vec![0u8, 1, 0, 1, 1, 0, 1];
-    let b = vec![0u8, 1, 0, 1, 1, 0, 1];
+    let a = vec![
+        0u8, 1, 0, 1, 1, 0, 1,
+    ];
+    let b = vec![
+        0u8, 1, 0, 1, 1, 0, 1,
+    ];
     assert_eq!(hamming_distance(&a, &b), Some(0));
 }
 
 #[test]
 fn test_hamming_distance_different() {
-    let a = vec![0u8, 1, 0, 1, 1, 0, 1];
-    let b = vec![1u8, 0, 0, 1, 0, 0, 1]; // 3 positions differ
+    let a = vec![
+        0u8, 1, 0, 1, 1, 0, 1,
+    ];
+    let b = vec![
+        1u8, 0, 0, 1, 0, 0, 1,
+    ]; // 3 positions differ
     assert_eq!(hamming_distance(&a, &b), Some(3));
 }
 
@@ -141,7 +159,9 @@ fn test_hamming_weight_all_ones() {
 
 #[test]
 fn test_hamming_weight_mixed() {
-    let data = vec![1u8, 0, 1, 0, 1, 0, 1];
+    let data = vec![
+        1u8, 0, 1, 0, 1, 0, 1,
+    ];
     assert_eq!(hamming_weight(&data), 4);
 }
 
@@ -154,14 +174,18 @@ fn test_hamming_weight_empty() {
 #[test]
 fn test_hamming_check_valid_codeword() {
     // Create a valid codeword for data [1, 0, 1, 1]
-    let codeword = vec![0u8, 1, 1, 0, 0, 1, 1];
+    let codeword = vec![
+        0u8, 1, 1, 0, 0, 1, 1,
+    ];
     assert!(hamming_check(&codeword));
 }
 
 #[test]
 fn test_hamming_check_invalid_codeword() {
     // Flip one bit to create an invalid codeword
-    let codeword = vec![1u8, 1, 1, 0, 0, 1, 1]; // p1 flipped
+    let codeword = vec![
+        1u8, 1, 1, 0, 0, 1, 1,
+    ]; // p1 flipped
     assert!(!hamming_check(&codeword));
 }
 
@@ -185,7 +209,9 @@ fn test_hamming_check_another_valid() {
 
 #[test]
 fn test_rs_check_valid_codeword() {
-    let data = vec![0x12, 0x34, 0x56, 0x78];
+    let data = vec![
+        0x12, 0x34, 0x56, 0x78,
+    ];
     let n_sym = 4;
     let codeword = rs_encode(&data, n_sym).unwrap();
     assert!(rs_check(&codeword, n_sym));
@@ -193,7 +219,9 @@ fn test_rs_check_valid_codeword() {
 
 #[test]
 fn test_rs_check_invalid_codeword() {
-    let data = vec![0x12, 0x34, 0x56, 0x78];
+    let data = vec![
+        0x12, 0x34, 0x56, 0x78,
+    ];
     let n_sym = 4;
     let mut codeword = rs_encode(&data, n_sym).unwrap();
     codeword[0] ^= 0xFF; // Corrupt first byte
@@ -211,7 +239,9 @@ fn test_rs_check_after_decode() {
 
 #[test]
 fn test_rs_error_count_no_errors() {
-    let data = vec![0x12, 0x34, 0x56, 0x78];
+    let data = vec![
+        0x12, 0x34, 0x56, 0x78,
+    ];
     let n_sym = 4;
     let codeword = rs_encode(&data, n_sym).unwrap();
     assert_eq!(rs_error_count(&codeword, n_sym), 0);
@@ -219,7 +249,9 @@ fn test_rs_error_count_no_errors() {
 
 #[test]
 fn test_rs_error_count_with_errors() {
-    let data = vec![0x12, 0x34, 0x56, 0x78];
+    let data = vec![
+        0x12, 0x34, 0x56, 0x78,
+    ];
     let n_sym = 4;
     let mut codeword = rs_encode(&data, n_sym).unwrap();
     codeword[0] ^= 0xFF; // Introduce 1 error

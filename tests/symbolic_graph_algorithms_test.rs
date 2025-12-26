@@ -304,22 +304,34 @@ fn test_min_cost_max_flow() {
     g.add_edge(
         &0,
         &1,
-        Expr::Tuple(vec![Expr::Constant(10.0), Expr::Constant(2.0)]),
+        Expr::Tuple(vec![
+            Expr::Constant(10.0),
+            Expr::Constant(2.0),
+        ]),
     );
     g.add_edge(
         &0,
         &2,
-        Expr::Tuple(vec![Expr::Constant(10.0), Expr::Constant(4.0)]),
+        Expr::Tuple(vec![
+            Expr::Constant(10.0),
+            Expr::Constant(4.0),
+        ]),
     );
     g.add_edge(
         &1,
         &3,
-        Expr::Tuple(vec![Expr::Constant(5.0), Expr::Constant(1.0)]),
+        Expr::Tuple(vec![
+            Expr::Constant(5.0),
+            Expr::Constant(1.0),
+        ]),
     );
     g.add_edge(
         &2,
         &3,
-        Expr::Tuple(vec![Expr::Constant(5.0), Expr::Constant(3.0)]),
+        Expr::Tuple(vec![
+            Expr::Constant(5.0),
+            Expr::Constant(3.0),
+        ]),
     );
 
     let (flow, cost) = min_cost_max_flow(&g, 0, 3);

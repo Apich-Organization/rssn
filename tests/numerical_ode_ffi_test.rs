@@ -76,7 +76,9 @@ fn test_numerical_ode_bincode_ffi() {
         }
 
         let input = OdeInput {
-            funcs: vec![Expr::new_variable("y0")],
+            funcs: vec![Expr::new_variable(
+                "y0",
+            )],
             y0: vec![1.0],
             x_range: (0.0, 1.0),
             num_steps: 100,

@@ -147,7 +147,10 @@ pub(crate) fn lifting_phase(
             // Interval (root, next_root) or (root, inf)
             if i + 1 < all_roots.len() {
                 current_cells.push(CadCell {
-                    sample_point: vec![f64::midpoint(*root, all_roots[i + 1])],
+                    sample_point: vec![f64::midpoint(
+                        *root,
+                        all_roots[i + 1],
+                    )],
                     dim: 1,
                     index: vec![2 * i + 2],
                 });
@@ -265,7 +268,9 @@ pub(crate) fn sylvester_matrix(p: &SparsePolynomial, q: &SparsePolynomial, var: 
     let n = p.degree(var) as usize;
     let m = q.degree(var) as usize;
     if n == 0 && m == 0 {
-        return Expr::Matrix(vec![vec![Expr::Constant(0.0)]]);
+        return Expr::Matrix(vec![vec![
+            Expr::Constant(0.0),
+        ]]);
     }
     let mut matrix_rows = vec![vec![Expr::Constant(0.0); n + m]; n + m];
     let p_coeffs_rev = p.get_coeffs_as_vec(var);

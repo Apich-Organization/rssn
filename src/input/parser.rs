@@ -1560,7 +1560,9 @@ mod tests {
                     "x".to_string(),
                     Arc::new(Expr::Predicate {
                         name: "P".to_string(),
-                        args: vec![Expr::Variable("x".to_string())],
+                        args: vec![Expr::Variable(
+                            "x".to_string()
+                        )],
                     })
                 )
             ))
@@ -1679,7 +1681,9 @@ mod tests {
                 Expr::DerivativeN(
                     Arc::new(Expr::Predicate {
                         name: "f".to_string(),
-                        args: vec![Expr::Variable("x".to_string())],
+                        args: vec![Expr::Variable(
+                            "x".to_string()
+                        )],
                     }),
                     "x".to_string(),
                     Arc::new(Expr::Constant(2.0))
@@ -1718,7 +1722,9 @@ mod tests {
                 Expr::Series(
                     Arc::new(Expr::Predicate {
                         name: "f".to_string(),
-                        args: vec![Expr::Variable("x".to_string())],
+                        args: vec![Expr::Variable(
+                            "x".to_string()
+                        )],
                     }),
                     "x".to_string(),
                     Arc::new(Expr::Constant(0.0)),
@@ -1815,7 +1821,9 @@ mod tests {
                     }),
                     Arc::new(Expr::Predicate {
                         name: "f".to_string(),
-                        args: vec![Expr::Variable("t".to_string())],
+                        args: vec![Expr::Variable(
+                            "t".to_string()
+                        )],
                     }),
                     Arc::new(Expr::Variable("a".to_string())),
                     Arc::new(Expr::Variable("b".to_string())),
@@ -2047,7 +2055,9 @@ mod tests {
                     }),
                     Arc::new(Expr::Predicate {
                         name: "f".to_string(),
-                        args: vec![Expr::Variable("t".to_string())],
+                        args: vec![Expr::Variable(
+                            "t".to_string()
+                        )],
                     }),
                     Arc::new(Expr::Variable("a".to_string())),
                     Arc::new(Expr::Variable("x".to_string())),
@@ -2077,7 +2087,10 @@ mod tests {
                         Arc::new(Expr::Constant(0.0)),
                     )),
                     func: "u".to_string(),
-                    vars: vec!["x".to_string(), "y".to_string()],
+                    vars: vec![
+                        "x".to_string(),
+                        "y".to_string()
+                    ],
                 }
             ))
         );
@@ -2116,7 +2129,9 @@ mod tests {
                 Expr::AsymptoticExpansion(
                     Arc::new(Expr::Predicate {
                         name: "f".to_string(),
-                        args: vec![Expr::Variable("x".to_string())],
+                        args: vec![Expr::Variable(
+                            "x".to_string()
+                        )],
                     }),
                     "x".to_string(),
                     Arc::new(Expr::Constant(0.0)),
@@ -2210,7 +2225,9 @@ mod tests {
                 Expr::Limit(
                     Arc::new(Expr::Predicate {
                         name: "f".to_string(),
-                        args: vec![Expr::Variable("x".to_string())],
+                        args: vec![Expr::Variable(
+                            "x".to_string()
+                        )],
                     }),
                     "x".to_string(),
                     Arc::new(Expr::Constant(0.0))
@@ -2243,8 +2260,14 @@ mod tests {
             Ok((
                 "",
                 Expr::Matrix(vec![
-                    vec![Expr::Constant(1.0), Expr::Constant(2.0)],
-                    vec![Expr::Constant(3.0), Expr::Constant(4.0)],
+                    vec![
+                        Expr::Constant(1.0),
+                        Expr::Constant(2.0)
+                    ],
+                    vec![
+                        Expr::Constant(3.0),
+                        Expr::Constant(4.0)
+                    ],
                 ])
             ))
         );
@@ -2389,7 +2412,9 @@ mod tests {
                     "y".to_string(),
                     Arc::new(Expr::Predicate {
                         name: "Q".to_string(),
-                        args: vec![Expr::Variable("y".to_string())],
+                        args: vec![Expr::Variable(
+                            "y".to_string()
+                        )],
                     })
                 )
             ))
@@ -2404,7 +2429,9 @@ mod tests {
                 "",
                 Expr::Predicate {
                     name: "is_prime".to_string(),
-                    args: vec![Expr::Variable("x".to_string())],
+                    args: vec![Expr::Variable(
+                        "x".to_string()
+                    )],
                 }
             ))
         );

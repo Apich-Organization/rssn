@@ -289,8 +289,14 @@ pub fn su2_generators() -> Vec<LieAlgebraElement> {
     let sx = matrix::scalar_mul_matrix(
         &i_half,
         &Expr::Matrix(vec![
-            vec![Expr::Constant(0.0), Expr::Constant(1.0)],
-            vec![Expr::Constant(1.0), Expr::Constant(0.0)],
+            vec![
+                Expr::Constant(0.0),
+                Expr::Constant(1.0),
+            ],
+            vec![
+                Expr::Constant(1.0),
+                Expr::Constant(0.0),
+            ],
         ]),
     );
     let sy = matrix::scalar_mul_matrix(
@@ -300,14 +306,23 @@ pub fn su2_generators() -> Vec<LieAlgebraElement> {
                 Expr::Constant(0.0),
                 Expr::Mul(Arc::new(Expr::Constant(-1.0)), Arc::new(i.clone())),
             ],
-            vec![i, Expr::Constant(0.0)],
+            vec![
+                i,
+                Expr::Constant(0.0),
+            ],
         ]),
     );
     let sz = matrix::scalar_mul_matrix(
         &i_half,
         &Expr::Matrix(vec![
-            vec![Expr::Constant(1.0), Expr::Constant(0.0)],
-            vec![Expr::Constant(0.0), Expr::Constant(-1.0)],
+            vec![
+                Expr::Constant(1.0),
+                Expr::Constant(0.0),
+            ],
+            vec![
+                Expr::Constant(0.0),
+                Expr::Constant(-1.0),
+            ],
         ]),
     );
     vec![

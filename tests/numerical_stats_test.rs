@@ -2,7 +2,9 @@ use rssn::numerical::stats::*;
 
 #[test]
 fn test_mean() {
-    let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let data = vec![
+        1.0, 2.0, 3.0, 4.0, 5.0,
+    ];
     assert!((mean(&data) - 3.0).abs() < 1e-10);
 
     let empty: Vec<f64> = vec![];
@@ -11,7 +13,9 @@ fn test_mean() {
 
 #[test]
 fn test_variance() {
-    let data = vec![2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
+    let data = vec![
+        2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0,
+    ];
     let var = variance(&data);
     assert!((var - 4.0).abs() < 1e-10);
 }
@@ -34,13 +38,17 @@ fn test_harmonic_mean() {
 
 #[test]
 fn test_range() {
-    let data = vec![1.0, 5.0, 3.0, 9.0, 2.0];
+    let data = vec![
+        1.0, 5.0, 3.0, 9.0, 2.0,
+    ];
     assert!((range(&data) - 8.0).abs() < 1e-10);
 }
 
 #[test]
 fn test_z_scores() {
-    let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let data = vec![
+        1.0, 2.0, 3.0, 4.0, 5.0,
+    ];
     let z = z_scores(&data);
     assert_eq!(z.len(), 5);
     // Mean is 3, so z[2] (the value 3) should be 0
@@ -51,7 +59,9 @@ fn test_z_scores() {
 
 #[test]
 fn test_mode() {
-    let data = vec![1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0];
+    let data = vec![
+        1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0,
+    ];
     let m = mode(&data, 0);
     assert_eq!(m, Some(3.0));
 
@@ -62,8 +72,12 @@ fn test_mode() {
 
 #[test]
 fn test_covariance() {
-    let x = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    let y = vec![2.0, 4.0, 6.0, 8.0, 10.0];
+    let x = vec![
+        1.0, 2.0, 3.0, 4.0, 5.0,
+    ];
+    let y = vec![
+        2.0, 4.0, 6.0, 8.0, 10.0,
+    ];
     let cov = covariance(&x, &y);
     // Perfect positive correlation, cov = 2.5 * 2 = 5 (sample covariance)
     assert!(cov > 0.0);
@@ -71,12 +85,18 @@ fn test_covariance() {
 
 #[test]
 fn test_correlation() {
-    let x = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    let y = vec![2.0, 4.0, 6.0, 8.0, 10.0];
+    let x = vec![
+        1.0, 2.0, 3.0, 4.0, 5.0,
+    ];
+    let y = vec![
+        2.0, 4.0, 6.0, 8.0, 10.0,
+    ];
     let corr = correlation(&x, &y);
     assert!((corr - 1.0).abs() < 1e-10); // Perfect positive correlation
 
-    let y_neg = vec![10.0, 8.0, 6.0, 4.0, 2.0];
+    let y_neg = vec![
+        10.0, 8.0, 6.0, 4.0, 2.0,
+    ];
     let corr_neg = correlation(&x, &y_neg);
     assert!((corr_neg + 1.0).abs() < 1e-10); // Perfect negative correlation
 }
@@ -84,7 +104,12 @@ fn test_correlation() {
 #[test]
 fn test_simple_linear_regression() {
     // y = 2x + 1
-    let data = vec![(1.0, 3.0), (2.0, 5.0), (3.0, 7.0), (4.0, 9.0)];
+    let data = vec![
+        (1.0, 3.0),
+        (2.0, 5.0),
+        (3.0, 7.0),
+        (4.0, 9.0),
+    ];
     let (slope, intercept) = simple_linear_regression(&data);
     assert!((slope - 2.0).abs() < 1e-10, "slope was {}", slope);
     assert!(
@@ -97,7 +122,9 @@ fn test_simple_linear_regression() {
 #[test]
 fn test_shannon_entropy() {
     // Uniform distribution: H = log2(n)
-    let uniform = vec![0.25, 0.25, 0.25, 0.25];
+    let uniform = vec![
+        0.25, 0.25, 0.25, 0.25,
+    ];
     let h = shannon_entropy(&uniform);
     assert!((h - 2.0).abs() < 1e-10); // log2(4) = 2
 
@@ -108,8 +135,12 @@ fn test_shannon_entropy() {
 
 #[test]
 fn test_welch_t_test() {
-    let s1 = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    let s2 = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let s1 = vec![
+        1.0, 2.0, 3.0, 4.0, 5.0,
+    ];
+    let s2 = vec![
+        1.0, 2.0, 3.0, 4.0, 5.0,
+    ];
     let (t, p) = welch_t_test(&s1, &s2);
     // Same samples should have t ≈ 0 and p ≈ 1
     assert!(t.abs() < 1e-10);
@@ -127,14 +158,18 @@ fn test_chi_squared() {
 
 #[test]
 fn test_coefficient_of_variation() {
-    let data = vec![10.0, 20.0, 30.0, 40.0, 50.0];
+    let data = vec![
+        10.0, 20.0, 30.0, 40.0, 50.0,
+    ];
     let cv = coefficient_of_variation(&data);
     assert!(cv > 0.0);
 }
 
 #[test]
 fn test_standard_error() {
-    let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let data = vec![
+        1.0, 2.0, 3.0, 4.0, 5.0,
+    ];
     let se = standard_error(&data);
     // SE = std_dev / sqrt(n)
     let expected = std_dev(&data) / (5.0_f64).sqrt();

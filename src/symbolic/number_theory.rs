@@ -167,7 +167,9 @@ pub(crate) fn solve_linear_diophantine(
         Expr::BigInt(y0_sol),
         Expr::new_mul(Expr::BigInt(a_div_g), t),
     );
-    Ok(vec![x_sol_expr, y_sol_expr])
+    Ok(vec![
+        x_sol_expr, y_sol_expr,
+    ])
 }
 /// Solves Pell's equation x^2 - n*y^2 = 1.
 pub(crate) fn solve_pell(n: &Expr) -> Result<(Expr, Expr), String> {

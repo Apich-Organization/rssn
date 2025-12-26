@@ -193,7 +193,10 @@ pub fn cartesian_product<V: Eq + Hash + Clone + Debug + ToExpr>(
     // Create nodes
     for (u_id, u_label) in g1.nodes.iter().enumerate() {
         for (v_id, v_label) in g2.nodes.iter().enumerate() {
-            let new_label = Expr::Tuple(vec![u_label.to_expr(), v_label.to_expr()]);
+            let new_label = Expr::Tuple(vec![
+                u_label.to_expr(),
+                v_label.to_expr(),
+            ]);
             node_map.insert((u_id, v_id), new_label.clone());
             new_graph.add_node(new_label);
         }
@@ -247,7 +250,10 @@ pub fn tensor_product<V: Eq + Hash + Clone + Debug + ToExpr>(
 
     for (u_id, u_label) in g1.nodes.iter().enumerate() {
         for (v_id, v_label) in g2.nodes.iter().enumerate() {
-            let new_label = Expr::Tuple(vec![u_label.to_expr(), v_label.to_expr()]);
+            let new_label = Expr::Tuple(vec![
+                u_label.to_expr(),
+                v_label.to_expr(),
+            ]);
             node_map.insert((u_id, v_id), new_label.clone());
             new_graph.add_node(new_label);
         }
@@ -351,24 +357,42 @@ pub fn disjoint_union<V: Eq + Hash + Clone + Debug + ToExpr>(
     let mut new_graph = Graph::new(g1.is_directed && g2.is_directed);
 
     for label in &g1.nodes {
-        let new_label = Expr::Tuple(vec![Expr::Constant(0.0), label.to_expr()]);
+        let new_label = Expr::Tuple(vec![
+            Expr::Constant(0.0),
+            label.to_expr(),
+        ]);
         new_graph.add_node(new_label);
     }
 
     for label in &g2.nodes {
-        let new_label = Expr::Tuple(vec![Expr::Constant(1.0), label.to_expr()]);
+        let new_label = Expr::Tuple(vec![
+            Expr::Constant(1.0),
+            label.to_expr(),
+        ]);
         new_graph.add_node(new_label);
     }
 
     for (u, v, weight) in g1.get_edges() {
-        let u_label = Expr::Tuple(vec![Expr::Constant(0.0), g1.nodes[u].to_expr()]);
-        let v_label = Expr::Tuple(vec![Expr::Constant(0.0), g1.nodes[v].to_expr()]);
+        let u_label = Expr::Tuple(vec![
+            Expr::Constant(0.0),
+            g1.nodes[u].to_expr(),
+        ]);
+        let v_label = Expr::Tuple(vec![
+            Expr::Constant(0.0),
+            g1.nodes[v].to_expr(),
+        ]);
         new_graph.add_edge(&u_label, &v_label, weight);
     }
 
     for (u, v, weight) in g2.get_edges() {
-        let u_label = Expr::Tuple(vec![Expr::Constant(1.0), g2.nodes[u].to_expr()]);
-        let v_label = Expr::Tuple(vec![Expr::Constant(1.0), g2.nodes[v].to_expr()]);
+        let u_label = Expr::Tuple(vec![
+            Expr::Constant(1.0),
+            g2.nodes[u].to_expr(),
+        ]);
+        let v_label = Expr::Tuple(vec![
+            Expr::Constant(1.0),
+            g2.nodes[v].to_expr(),
+        ]);
         new_graph.add_edge(&u_label, &v_label, weight);
     }
 
@@ -399,12 +423,22 @@ pub fn join<V: Eq + Hash + Clone + Debug + ToExpr>(g1: &Graph<V>, g2: &Graph<V>)
     let g1_labels: Vec<Expr> = g1
         .nodes
         .iter()
-        .map(|l| Expr::Tuple(vec![Expr::Constant(0.0), l.to_expr()]))
+        .map(|l| {
+            Expr::Tuple(vec![
+                Expr::Constant(0.0),
+                l.to_expr(),
+            ])
+        })
         .collect();
     let g2_labels: Vec<Expr> = g2
         .nodes
         .iter()
-        .map(|l| Expr::Tuple(vec![Expr::Constant(1.0), l.to_expr()]))
+        .map(|l| {
+            Expr::Tuple(vec![
+                Expr::Constant(1.0),
+                l.to_expr(),
+            ])
+        })
         .collect();
 
     for u_label in &g1_labels {

@@ -63,7 +63,10 @@ fn test_gradient_sin_x_plus_cos_y() {
     let f = Expr::Add(Arc::new(sin_x), Arc::new(cos_y));
 
     let vars = ["x", "y"];
-    let point = [0.0, std::f64::consts::PI / 2.0];
+    let point = [
+        0.0,
+        std::f64::consts::PI / 2.0,
+    ];
 
     let grad = match gradient(&f, &vars, &point) {
         Ok(g) => g,

@@ -101,7 +101,9 @@ pub fn is_prime_miller_rabin(n: u64) -> bool {
         d /= 2;
         s += 1;
     }
-    let bases = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
+    let bases = [
+        2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37,
+    ];
     for &a in &bases {
         if n == a {
             return true;

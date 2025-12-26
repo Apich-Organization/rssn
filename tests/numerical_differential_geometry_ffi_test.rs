@@ -30,7 +30,11 @@ fn test_dg_handle_ffi() {
 #[test]
 fn test_dg_json_ffi() {
     unsafe {
-        let _point = vec![2.0, 0.0, std::f64::consts::PI / 2.0];
+        let _point = vec![
+            2.0,
+            0.0,
+            std::f64::consts::PI / 2.0,
+        ];
         let json_input = format!(
             r#"{{"system": "Spherical", "point": [2.0, 0.0, {}]}}"#,
             std::f64::consts::PI / 2.0
@@ -63,7 +67,11 @@ fn test_dg_bincode_ffi() {
 
         let input = DgInput {
             system: CoordinateSystem::Spherical,
-            point: vec![1.0, 0.0, std::f64::consts::PI / 2.0],
+            point: vec![
+                1.0,
+                0.0,
+                std::f64::consts::PI / 2.0,
+            ],
         };
 
         let buffer = to_bincode_buffer(&input);

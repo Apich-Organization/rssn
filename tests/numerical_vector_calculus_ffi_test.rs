@@ -15,7 +15,10 @@ fn test_numerical_vector_calculus_handle_ffi() {
         ];
         let var_x = CString::new("x").unwrap();
         let var_y = CString::new("y").unwrap();
-        let vars = vec![var_x.as_ptr(), var_y.as_ptr()];
+        let vars = vec![
+            var_x.as_ptr(),
+            var_y.as_ptr(),
+        ];
         let point = vec![1.0, 2.0];
         let mut result = 0.0;
 

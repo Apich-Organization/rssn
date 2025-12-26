@@ -28,10 +28,18 @@ fn test_simulate_cantilever_beam_scenario() {
 
 #[test]
 fn test_run_elasticity_simulation_basic() {
-    let nodes = vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
+    let nodes = vec![
+        (0.0, 0.0),
+        (1.0, 0.0),
+        (1.0, 1.0),
+        (0.0, 1.0),
+    ];
     let elements = vec![[0, 1, 2, 3]];
     let fixed_nodes = vec![0, 3];
-    let loads = vec![(1, 1000.0, 0.0), (2, 1000.0, 0.0)];
+    let loads = vec![
+        (1, 1000.0, 0.0),
+        (2, 1000.0, 0.0),
+    ];
 
     let params = ElasticityParameters {
         nodes,

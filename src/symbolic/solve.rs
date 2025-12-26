@@ -85,7 +85,10 @@ pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
     if let Some(solutions) = solve_transcendental(&equation, var) {
         return solutions;
     }
-    vec![Expr::Solve(Arc::new(equation), var.to_string())]
+    vec![Expr::Solve(
+        Arc::new(equation),
+        var.to_string(),
+    )]
 }
 /// Solves a system of multivariate equations.
 ///
@@ -526,10 +529,12 @@ pub(crate) fn solve_polynomial(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
 pub(crate) fn solve_linear(coeffs: &[Expr]) -> Vec<Expr> {
     let a = &coeffs[0];
     let b = &coeffs[1];
-    vec![simplify(&Expr::Neg(Arc::new(Expr::Div(
-        Arc::new(b.clone()),
-        Arc::new(a.clone()),
-    ))))]
+    vec![simplify(
+        &Expr::Neg(Arc::new(Expr::Div(
+            Arc::new(b.clone()),
+            Arc::new(a.clone()),
+        ))),
+    )]
 }
 pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
     let a = &coeffs[0];

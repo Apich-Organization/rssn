@@ -664,7 +664,9 @@ pub fn hamming_encode_numerical(data: &[u8]) -> Option<Vec<u8>> {
     let p1 = d3 ^ d5 ^ d7;
     let p2 = d3 ^ d6 ^ d7;
     let p4 = d5 ^ d6 ^ d7;
-    Some(vec![p1, p2, d3, p4, d5, d6, d7])
+    Some(vec![
+        p1, p2, d3, p4, d5, d6, d7,
+    ])
 }
 
 /// Decodes a 7-bit Hamming(7,4) codeword, correcting a single-bit error if found.

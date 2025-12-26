@@ -103,7 +103,10 @@ fn test_graph_json_ffi() {
     unsafe {
         let graph = GraphDef {
             num_nodes: 3,
-            edges: vec![Edge { u: 0, v: 1, w: 1.0 }, Edge { u: 1, v: 2, w: 2.0 }],
+            edges: vec![
+                Edge { u: 0, v: 1, w: 1.0 },
+                Edge { u: 1, v: 2, w: 2.0 },
+            ],
         };
         let input = DijkstraInput {
             graph,
@@ -132,7 +135,10 @@ fn test_graph_json_ffi() {
         // Connected Components - needs GraphDef input, not DijkstraInput
         let graph_only = GraphDef {
             num_nodes: 3,
-            edges: vec![Edge { u: 0, v: 1, w: 1.0 }, Edge { u: 1, v: 2, w: 2.0 }],
+            edges: vec![
+                Edge { u: 0, v: 1, w: 1.0 },
+                Edge { u: 1, v: 2, w: 2.0 },
+            ],
         };
         let graph_json_str = serde_json::to_string(&graph_only).unwrap();
         let c_graph_json = CString::new(graph_json_str).unwrap();
@@ -162,7 +168,10 @@ fn test_graph_bincode_ffi() {
     unsafe {
         let graph = GraphDef {
             num_nodes: 3,
-            edges: vec![Edge { u: 0, v: 1, w: 1.0 }, Edge { u: 1, v: 2, w: 2.0 }],
+            edges: vec![
+                Edge { u: 0, v: 1, w: 1.0 },
+                Edge { u: 1, v: 2, w: 2.0 },
+            ],
         };
         let input = DijkstraInput {
             graph,
@@ -194,7 +203,10 @@ fn test_graph_bincode_ffi() {
         }
         let input_graph = GraphDefIn {
             num_nodes: 3,
-            edges: vec![Edge { u: 0, v: 1, w: 1.0 }, Edge { u: 1, v: 2, w: 2.0 }],
+            edges: vec![
+                Edge { u: 0, v: 1, w: 1.0 },
+                Edge { u: 1, v: 2, w: 2.0 },
+            ],
         };
         let buffer_graph = to_bincode_buffer(&input_graph);
         let res_buffer = bincode_api::rssn_num_graph_connected_components_bincode(buffer_graph);

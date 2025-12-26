@@ -42,7 +42,11 @@ proptest! {
 
 #[test]
 fn test_sparse_basic() {
-    let triplets = vec![(0, 0, 1.0), (1, 1, 2.0), (2, 2, 3.0)];
+    let triplets = vec![
+        (0, 0, 1.0),
+        (1, 1, 2.0),
+        (2, 2, 3.0),
+    ];
     let mat = numerical_csr_from_triplets(3, 3, &triplets);
     assert_eq!(mat.rows(), 3);
     assert_eq!(mat.cols(), 3);
@@ -51,7 +55,11 @@ fn test_sparse_basic() {
 
 #[test]
 fn test_sparse_spmv() {
-    let triplets = vec![(0, 0, 1.0), (0, 2, 2.0), (1, 1, 3.0)];
+    let triplets = vec![
+        (0, 0, 1.0),
+        (0, 2, 2.0),
+        (1, 1, 3.0),
+    ];
     let mat = numerical_csr_from_triplets(3, 3, &triplets);
     let v = vec![1.0, 2.0, 3.0];
     let res = numerical_sp_mat_vec_mul(&mat, &v).unwrap();
@@ -60,7 +68,12 @@ fn test_sparse_spmv() {
 
 #[test]
 fn test_sparse_solve_cg() {
-    let triplets = vec![(0, 0, 4.0), (0, 1, 1.0), (1, 0, 1.0), (1, 1, 3.0)];
+    let triplets = vec![
+        (0, 0, 4.0),
+        (0, 1, 1.0),
+        (1, 0, 1.0),
+        (1, 1, 3.0),
+    ];
     let a = numerical_csr_from_triplets(2, 2, &triplets);
     let b = Array1::from_vec(vec![1.0, 2.0]);
 
@@ -71,7 +84,11 @@ fn test_sparse_solve_cg() {
 
 #[test]
 fn test_sparse_trace_norm() {
-    let triplets = vec![(0, 0, 1.0), (1, 1, -2.0), (2, 2, 3.0)];
+    let triplets = vec![
+        (0, 0, 1.0),
+        (1, 1, -2.0),
+        (2, 2, 3.0),
+    ];
     let mat = numerical_csr_from_triplets(3, 3, &triplets);
 
     assert_eq!(numerical_trace(&mat).unwrap(), 2.0);
@@ -82,7 +99,10 @@ fn test_sparse_trace_norm() {
 
 #[test]
 fn test_sparse_predicates() {
-    let triplets = vec![(0, 0, 1.0), (1, 1, 2.0)];
+    let triplets = vec![
+        (0, 0, 1.0),
+        (1, 1, 2.0),
+    ];
     let mat = numerical_csr_from_triplets(2, 2, &triplets);
     assert!(numerical_is_symmetric(&mat, 1e-9));
     assert!(numerical_is_diagonal(&mat));
@@ -95,7 +115,10 @@ fn test_sparse_predicates() {
 
 #[test]
 fn test_sparse_data_serde() {
-    let triplets = vec![(0, 0, 1.0), (1, 2, 2.0)];
+    let triplets = vec![
+        (0, 0, 1.0),
+        (1, 2, 2.0),
+    ];
     let mat = numerical_csr_from_triplets(3, 3, &triplets);
     let data = numerical_SparseMatrixData::from(&mat);
 

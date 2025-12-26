@@ -8,12 +8,24 @@ fn matrix_benchmarks(c: &mut Criterion) {
     // Benchmark matrix multiplication
     group.bench_function("mul_matrices_2x2", |b| {
         let m1 = Expr::Matrix(vec![
-            vec![Expr::new_constant(1.0), Expr::new_constant(2.0)],
-            vec![Expr::new_constant(3.0), Expr::new_constant(4.0)],
+            vec![
+                Expr::new_constant(1.0),
+                Expr::new_constant(2.0),
+            ],
+            vec![
+                Expr::new_constant(3.0),
+                Expr::new_constant(4.0),
+            ],
         ]);
         let m2 = Expr::Matrix(vec![
-            vec![Expr::new_constant(2.0), Expr::new_constant(0.0)],
-            vec![Expr::new_constant(1.0), Expr::new_constant(2.0)],
+            vec![
+                Expr::new_constant(2.0),
+                Expr::new_constant(0.0),
+            ],
+            vec![
+                Expr::new_constant(1.0),
+                Expr::new_constant(2.0),
+            ],
         ]);
         b.iter(|| mul_matrices(&m1, &m2))
     });
@@ -43,8 +55,14 @@ fn matrix_benchmarks(c: &mut Criterion) {
     // Benchmark inverse
     group.bench_function("inverse_2x2", |b| {
         let m = Expr::Matrix(vec![
-            vec![Expr::new_constant(4.0), Expr::new_constant(7.0)],
-            vec![Expr::new_constant(2.0), Expr::new_constant(6.0)],
+            vec![
+                Expr::new_constant(4.0),
+                Expr::new_constant(7.0),
+            ],
+            vec![
+                Expr::new_constant(2.0),
+                Expr::new_constant(6.0),
+            ],
         ]);
         b.iter(|| inverse_matrix(&m))
     });

@@ -269,9 +269,13 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                 }
                 if a.hash == b.hash {
                     // x*a + y*a -> (x+y)*a
-                    match DAG_MANAGER
-                        .get_or_create_normalized(DagOp::Add, vec![x1.clone(), x2.clone()])
-                    {
+                    match DAG_MANAGER.get_or_create_normalized(
+                        DagOp::Add,
+                        vec![
+                            x1.clone(),
+                            x2.clone(),
+                        ],
+                    ) {
                         Ok(x_plus_y) => {
                             match DAG_MANAGER
                                 .get_or_create_normalized(DagOp::Mul, vec![x_plus_y, a.clone()])
@@ -336,9 +340,13 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             // a - (-b) -> a + b
             if matches!(&rhs.op, DagOp::Neg) && !rhs.children.is_empty() {
                 let b = &rhs.children[0];
-                return match DAG_MANAGER
-                    .get_or_create_normalized(DagOp::Add, vec![lhs.clone(), b.clone()])
-                {
+                return match DAG_MANAGER.get_or_create_normalized(
+                    DagOp::Add,
+                    vec![
+                        lhs.clone(),
+                        b.clone(),
+                    ],
+                ) {
                     Ok(result) => result,
                     Err(_) => node.clone(),
                 };
@@ -524,7 +532,10 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
                         Ok(rhs_pow_neg_one) => {
                             match DAG_MANAGER.get_or_create_normalized(
                                 DagOp::Mul,
-                                vec![lhs.clone(), rhs_pow_neg_one],
+                                vec![
+                                    lhs.clone(),
+                                    rhs_pow_neg_one,
+                                ],
                             ) {
                                 Ok(result) => return result,
                                 Err(_) => return node.clone(), // Return original if multiplication fails
@@ -622,12 +633,18 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             if matches!(&base.op, DagOp::Power) && base.children.len() >= 2 {
                 match DAG_MANAGER.get_or_create_normalized(
                     DagOp::Mul,
-                    vec![base.children[1].clone(), exp.clone()],
+                    vec![
+                        base.children[1].clone(),
+                        exp.clone(),
+                    ],
                 ) {
                     Ok(new_exp) => {
                         match DAG_MANAGER.get_or_create_normalized(
                             DagOp::Power,
-                            vec![base.children[0].clone(), new_exp],
+                            vec![
+                                base.children[0].clone(),
+                                new_exp,
+                            ],
                         ) {
                             Ok(result) => return result,
                             Err(_) => return node.clone(), // Return original if power operation fails
@@ -1431,9 +1448,13 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
         } else {
             match DAG_MANAGER.get_or_create(&exponent) {
                 Ok(exp_node) => {
-                    match DAG_MANAGER
-                        .get_or_create_normalized(DagOp::Power, vec![base.clone(), exp_node])
-                    {
+                    match DAG_MANAGER.get_or_create_normalized(
+                        DagOp::Power,
+                        vec![
+                            base.clone(),
+                            exp_node,
+                        ],
+                    ) {
                         Ok(power_node) => new_factors.push(power_node),
                         Err(_) => {
                             // If creating the power fails, just add the base without exponent
@@ -1469,9 +1490,13 @@ pub(crate) fn simplify_mul(node: &Arc<DagNode>) -> Arc<DagNode> {
     new_factors.sort_by_key(|n| n.hash);
     let mut result = new_factors[0].clone();
     for i in 1..new_factors.len() {
-        result = match DAG_MANAGER
-            .get_or_create_normalized(DagOp::Mul, vec![result.clone(), new_factors[i].clone()])
-        {
+        result = match DAG_MANAGER.get_or_create_normalized(
+            DagOp::Mul,
+            vec![
+                result.clone(),
+                new_factors[i].clone(),
+            ],
+        ) {
             Ok(node) => node,
             Err(_) => {
                 // If creating the multiplication fails, return the left operand
@@ -1605,9 +1630,13 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
         } else {
             match DAG_MANAGER.get_or_create(&coeff) {
                 Ok(coeff_node) => {
-                    match DAG_MANAGER
-                        .get_or_create_normalized(DagOp::Mul, vec![base.clone(), coeff_node])
-                    {
+                    match DAG_MANAGER.get_or_create_normalized(
+                        DagOp::Mul,
+                        vec![
+                            base.clone(),
+                            coeff_node,
+                        ],
+                    ) {
                         Ok(mul_node) => new_terms.push(mul_node),
                         Err(_) => {
                             // If creating the multiplication fails, just add the base
@@ -1639,9 +1668,13 @@ pub(crate) fn simplify_add(node: &Arc<DagNode>) -> Arc<DagNode> {
     new_terms.sort_by_key(|n| n.hash);
     let mut result = new_terms[0].clone();
     for i in 1..new_terms.len() {
-        result = match DAG_MANAGER
-            .get_or_create_normalized(DagOp::Add, vec![result.clone(), new_terms[i].clone()])
-        {
+        result = match DAG_MANAGER.get_or_create_normalized(
+            DagOp::Add,
+            vec![
+                result.clone(),
+                new_terms[i].clone(),
+            ],
+        ) {
             Ok(node) => node,
             Err(_) => {
                 // If creating the addition fails, return the left operand

@@ -16,7 +16,9 @@ pub extern "C" fn rssn_physics_sim_geodesic_run(
 ) -> *mut Matrix<f64> {
     let params = GeodesicParameters {
         black_hole_mass,
-        initial_state: [r0, rdot0, phi0, phidot0],
+        initial_state: [
+            r0, rdot0, phi0, phidot0,
+        ],
         proper_time_end,
         initial_dt,
     };

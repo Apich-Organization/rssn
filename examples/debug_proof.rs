@@ -6,12 +6,24 @@ use std::collections::HashMap;
 
 fn main() {
     let a = Expr::Matrix(vec![
-        vec![Expr::Constant(2.0), Expr::Constant(0.0)],
-        vec![Expr::Constant(0.0), Expr::Constant(2.0)],
+        vec![
+            Expr::Constant(2.0),
+            Expr::Constant(0.0),
+        ],
+        vec![
+            Expr::Constant(0.0),
+            Expr::Constant(2.0),
+        ],
     ]);
     let inv = Expr::Matrix(vec![
-        vec![Expr::Constant(0.5), Expr::Constant(0.0)],
-        vec![Expr::Constant(0.0), Expr::Constant(0.5)],
+        vec![
+            Expr::Constant(0.5),
+            Expr::Constant(0.0),
+        ],
+        vec![
+            Expr::Constant(0.0),
+            Expr::Constant(0.5),
+        ],
     ]);
 
     let product = matrix::mul_matrices(&a, &inv);

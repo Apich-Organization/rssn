@@ -100,7 +100,11 @@ pub fn rotation_2d(angle: Expr) -> Expr {
             Expr::Neg(Arc::new(s.clone())),
             Expr::BigInt(BigInt::zero()),
         ],
-        vec![s, c, Expr::BigInt(BigInt::zero())],
+        vec![
+            s,
+            c,
+            Expr::BigInt(BigInt::zero()),
+        ],
         vec![
             Expr::BigInt(BigInt::zero()),
             Expr::BigInt(BigInt::zero()),
@@ -851,8 +855,16 @@ pub fn reflection_2d(angle: Expr) -> Expr {
     let c = cos(two_angle.clone());
     let s = sin(two_angle);
     Expr::Matrix(vec![
-        vec![c.clone(), s.clone(), Expr::BigInt(BigInt::zero())],
-        vec![s, Expr::Neg(Arc::new(c)), Expr::BigInt(BigInt::zero())],
+        vec![
+            c.clone(),
+            s.clone(),
+            Expr::BigInt(BigInt::zero()),
+        ],
+        vec![
+            s,
+            Expr::Neg(Arc::new(c)),
+            Expr::BigInt(BigInt::zero()),
+        ],
         vec![
             Expr::BigInt(BigInt::zero()),
             Expr::BigInt(BigInt::zero()),

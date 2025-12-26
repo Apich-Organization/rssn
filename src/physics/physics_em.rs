@@ -290,7 +290,13 @@ impl LinearOdeSystem for StiffDecaySystem {
         2
     }
     fn get_matrix(&self) -> Matrix<f64> {
-        Matrix::new(2, 2, vec![-20.0, 0.0, 0.0, -0.5])
+        Matrix::new(
+            2,
+            2,
+            vec![
+                -20.0, 0.0, 0.0, -0.5,
+            ],
+        )
     }
 }
 /// Solves a stiff ODE system, demonstrating the stability of the backward Euler method.

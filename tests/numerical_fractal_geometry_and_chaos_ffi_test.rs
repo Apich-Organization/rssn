@@ -259,7 +259,14 @@ fn test_logistic_map_handle() {
 
 #[test]
 fn test_box_counting_dim_handle() {
-    let points: Vec<f64> = (0..100).flat_map(|i| vec![i as f64 / 100.0, 0.0]).collect();
+    let points: Vec<f64> = (0..100)
+        .flat_map(|i| {
+            vec![
+                i as f64 / 100.0,
+                0.0,
+            ]
+        })
+        .collect();
 
     unsafe {
         let dim = rssn::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_box_counting_dim(
@@ -273,7 +280,14 @@ fn test_box_counting_dim_handle() {
 
 #[test]
 fn test_correlation_dim_handle() {
-    let points: Vec<f64> = (0..100).flat_map(|i| vec![i as f64 / 100.0, 0.0]).collect();
+    let points: Vec<f64> = (0..100)
+        .flat_map(|i| {
+            vec![
+                i as f64 / 100.0,
+                0.0,
+            ]
+        })
+        .collect();
 
     unsafe {
         let dim = rssn::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_correlation_dim(

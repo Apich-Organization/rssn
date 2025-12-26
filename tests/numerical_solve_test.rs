@@ -23,7 +23,13 @@ fn test_solve_linear_parametric() {
     // x + y + z = 3
     // 2x + 2y + 2z = 6
     // Rank = 1. Solution is a plane.
-    let a = numerical_Matrix::new(2, 3, vec![1.0, 1.0, 1.0, 2.0, 2.0, 2.0]);
+    let a = numerical_Matrix::new(
+        2,
+        3,
+        vec![
+            1.0, 1.0, 1.0, 2.0, 2.0, 2.0,
+        ],
+    );
     let b = vec![3.0, 6.0];
     match numerical_solve_linear_system(&a, &b).unwrap() {
         numerical_LinearSolution::Parametric {
