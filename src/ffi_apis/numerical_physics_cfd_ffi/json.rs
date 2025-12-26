@@ -11,6 +11,7 @@ use std::os::raw::c_char;
 // ============================================================================
 
 #[derive(Deserialize)]
+
 struct FluidPropertiesInput {
     density: f64,
     dynamic_viscosity: f64,
@@ -19,6 +20,7 @@ struct FluidPropertiesInput {
 }
 
 #[derive(Serialize)]
+
 struct FluidPropertiesOutput {
     kinematic_viscosity: f64,
     thermal_diffusivity: f64,
@@ -26,6 +28,7 @@ struct FluidPropertiesOutput {
 }
 
 #[derive(Deserialize)]
+
 struct ReynoldsInput {
     velocity: f64,
     length: f64,
@@ -33,6 +36,7 @@ struct ReynoldsInput {
 }
 
 #[derive(Deserialize)]
+
 struct CflInput {
     velocity: f64,
     dt: f64,
@@ -40,6 +44,7 @@ struct CflInput {
 }
 
 #[derive(Deserialize)]
+
 struct Advection1DInput {
     u0: Vec<f64>,
     c: f64,
@@ -49,6 +54,7 @@ struct Advection1DInput {
 }
 
 #[derive(Deserialize)]
+
 struct Diffusion1DInput {
     u0: Vec<f64>,
     alpha: f64,
@@ -58,6 +64,7 @@ struct Diffusion1DInput {
 }
 
 #[derive(Deserialize)]
+
 struct AdvectionDiffusion1DInput {
     u0: Vec<f64>,
     c: f64,
@@ -68,6 +75,7 @@ struct AdvectionDiffusion1DInput {
 }
 
 #[derive(Deserialize)]
+
 struct Burgers1DInput {
     u0: Vec<f64>,
     nu: f64,
@@ -81,7 +89,9 @@ struct Burgers1DInput {
 // ============================================================================
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(input: *const c_char) -> *mut c_char {
+
     let input: FluidPropertiesInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -94,17 +104,20 @@ pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(input: *const c_char
             )
         }
     };
+
     let fluid = physics_cfd::FluidProperties::new(
         input.density,
         input.dynamic_viscosity,
         input.thermal_conductivity,
         input.specific_heat,
     );
+
     let output = FluidPropertiesOutput {
         kinematic_viscosity: fluid.kinematic_viscosity(),
         thermal_diffusivity: fluid.thermal_diffusivity(),
         prandtl_number: fluid.prandtl_number(),
     };
+
     to_c_string(
         serde_json::to_string(&FfiResult {
             ok: Some(output),
@@ -115,13 +128,17 @@ pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(input: *const c_char
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(_input: *const c_char) -> *mut c_char {
+
     let fluid = physics_cfd::FluidProperties::air();
+
     let output = FluidPropertiesOutput {
         kinematic_viscosity: fluid.kinematic_viscosity(),
         thermal_diffusivity: fluid.thermal_diffusivity(),
         prandtl_number: fluid.prandtl_number(),
     };
+
     to_c_string(
         serde_json::to_string(&FfiResult {
             ok: Some(output),
@@ -132,13 +149,17 @@ pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(_input: *const c_char)
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(_input: *const c_char) -> *mut c_char {
+
     let fluid = physics_cfd::FluidProperties::water();
+
     let output = FluidPropertiesOutput {
         kinematic_viscosity: fluid.kinematic_viscosity(),
         thermal_diffusivity: fluid.thermal_diffusivity(),
         prandtl_number: fluid.prandtl_number(),
     };
+
     to_c_string(
         serde_json::to_string(&FfiResult {
             ok: Some(output),
@@ -153,7 +174,9 @@ pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(_input: *const c_cha
 // ============================================================================
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(input: *const c_char) -> *mut c_char {
+
     let input: ReynoldsInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -166,7 +189,9 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(input: *const c_char)
             )
         }
     };
+
     let re = physics_cfd::reynolds_number(input.velocity, input.length, input.kinematic_viscosity);
+
     to_c_string(
         serde_json::to_string(&FfiResult {
             ok: Some(re),
@@ -177,7 +202,9 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(input: *const c_char)
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(input: *const c_char) -> *mut c_char {
+
     let input: CflInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -190,7 +217,9 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(input: *const c_char) -> *
             )
         }
     };
+
     let cfl = physics_cfd::cfl_number(input.velocity, input.dt, input.dx);
+
     to_c_string(
         serde_json::to_string(&FfiResult {
             ok: Some(cfl),
@@ -205,7 +234,9 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(input: *const c_char) -> *
 // ============================================================================
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(input: *const c_char) -> *mut c_char {
+
     let input: Advection1DInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -218,8 +249,10 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(input: *const c_ch
             )
         }
     };
+
     let results =
         physics_cfd::solve_advection_1d(&input.u0, input.c, input.dx, input.dt, input.num_steps);
+
     to_c_string(
         serde_json::to_string(&FfiResult {
             ok: Some(results),
@@ -230,7 +263,9 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(input: *const c_ch
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(input: *const c_char) -> *mut c_char {
+
     let input: Diffusion1DInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -243,6 +278,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(input: *const c_ch
             )
         }
     };
+
     let results = physics_cfd::solve_diffusion_1d(
         &input.u0,
         input.alpha,
@@ -250,6 +286,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(input: *const c_ch
         input.dt,
         input.num_steps,
     );
+
     to_c_string(
         serde_json::to_string(&FfiResult {
             ok: Some(results),
@@ -260,9 +297,11 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(input: *const c_ch
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
     input: *const c_char,
 ) -> *mut c_char {
+
     let input: AdvectionDiffusion1DInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -275,6 +314,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
             )
         }
     };
+
     let results = physics_cfd::solve_advection_diffusion_1d(
         &input.u0,
         input.c,
@@ -283,6 +323,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
         input.dt,
         input.num_steps,
     );
+
     to_c_string(
         serde_json::to_string(&FfiResult {
             ok: Some(results),
@@ -293,7 +334,9 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_solve_burgers_1d_json(input: *const c_char) -> *mut c_char {
+
     let input: Burgers1DInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -306,8 +349,10 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_burgers_1d_json(input: *const c_char
             )
         }
     };
+
     let results =
         physics_cfd::solve_burgers_1d(&input.u0, input.nu, input.dx, input.dt, input.num_steps);
+
     to_c_string(
         serde_json::to_string(&FfiResult {
             ok: Some(results),

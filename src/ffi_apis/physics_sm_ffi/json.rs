@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct AdvectionDiffusion1DInput {
     initial_condition: Vec<f64>,
     dx: f64,
@@ -17,15 +18,18 @@ struct AdvectionDiffusion1DInput {
 }
 
 #[derive(Deserialize)]
+
 struct AdvectionDiffusion2DInput {
     initial_condition: Vec<f64>,
     config: AdvectionDiffusionConfig,
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
     input: *const c_char,
 ) -> *mut c_char {
+
     let input: AdvectionDiffusion1DInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -46,13 +50,16 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
         input.dt,
         input.steps,
     );
+
     to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
     input: *const c_char,
 ) -> *mut c_char {
+
     let input: AdvectionDiffusion2DInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -66,5 +73,6 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
     };
 
     let res = physics_sm::solve_advection_diffusion_2d(&input.initial_condition, &input.config);
+
     to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
 }

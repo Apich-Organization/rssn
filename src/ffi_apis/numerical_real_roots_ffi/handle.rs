@@ -15,15 +15,20 @@ use std::slice;
 /// # Returns
 /// A pointer to a `Vec<f64>` containing the sorted real roots, or null on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_real_roots_find_roots(
     coeffs_ptr: *const f64,
     len: usize,
     tolerance: f64,
 ) -> *mut Vec<f64> {
+
     if coeffs_ptr.is_null() || len == 0 {
+
         return ptr::null_mut();
     }
+
     let coeffs = slice::from_raw_parts(coeffs_ptr, len).to_vec();
+
     let poly = Polynomial::new(coeffs);
 
     match real_roots::find_roots(&poly, tolerance) {
@@ -34,27 +39,39 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots(
 
 /// Frees a roots vector.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_real_roots_free_vec(ptr: *mut Vec<f64>) {
+
     if !ptr.is_null() {
+
         let _ = Box::from_raw(ptr);
     }
 }
 
 /// Gets the length of the roots vector.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_real_roots_get_vec_len(ptr: *const Vec<f64>) -> usize {
+
     if ptr.is_null() {
+
         return 0;
     }
+
     (*ptr).len()
 }
 
 /// Gets the data of the roots vector.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_real_roots_get_vec_data(ptr: *const Vec<f64>, buffer: *mut f64) {
+
     if ptr.is_null() || buffer.is_null() {
+
         return;
     }
+
     let vec = &*ptr;
+
     ptr::copy_nonoverlapping(vec.as_ptr(), buffer, vec.len());
 }

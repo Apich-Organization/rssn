@@ -14,6 +14,7 @@
 //!   (Note: This might interface with external plotting libraries).
 //! - `io`: Handles saving and loading of expressions and results to/from files.
 //! - `typst`: Converts expressions into Typst code, a modern typesetting system.
+
 pub mod io;
 pub mod latex;
 pub mod plotting;

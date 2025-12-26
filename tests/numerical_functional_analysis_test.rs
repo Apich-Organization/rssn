@@ -1,115 +1,155 @@
 use rssn::numerical::functional_analysis::*;
 
 #[test]
+
 fn test_l1_norm() {
+
     let points = vec![
         (0.0, 1.0),
         (1.0, 1.0),
         (2.0, 1.0),
     ];
+
     let res = l1_norm(&points);
+
     assert!((res - 2.0).abs() < 1e-9);
 }
 
 #[test]
+
 fn test_l2_norm() {
+
     let points = vec![
         (0.0, 1.0),
         (1.0, 1.0),
         (2.0, 1.0),
     ];
+
     let res = l2_norm(&points);
+
     assert!((res - 2.0f64.sqrt()).abs() < 1e-9);
 }
 
 #[test]
+
 fn test_inner_product() {
+
     let f = vec![
         (0.0, 1.0),
         (1.0, 1.0),
     ];
+
     let g = vec![
         (0.0, 2.0),
         (1.0, 2.0),
     ];
+
     let res = inner_product(&f, &g).unwrap();
+
     assert!((res - 2.0).abs() < 1e-9);
 }
 
 #[test]
+
 fn test_project() {
+
     let f = vec![
         (0.0, 1.0),
         (1.0, 1.0),
     ];
+
     let g = vec![
         (0.0, 2.0),
         (1.0, 2.0),
     ];
+
     let res = project(&f, &g).unwrap();
+
     // proj_g(f) = (<f, g> / <g, g>) * g
     // <f, g> = 1*2 * 1 = 2
     // <g, g> = 2*2 * 1 = 4
     // coeff = 2/4 = 0.5
     // proj = 0.5 * [(0, 2), (1, 2)] = [(0, 1), (1, 1)]
     assert_eq!(res.len(), 2);
+
     assert!((res[0].1 - 1.0).abs() < 1e-9);
+
     assert!((res[1].1 - 1.0).abs() < 1e-9);
 }
 
 #[test]
+
 fn test_gram_schmidt() {
+
     let u1 = vec![
         (0.0, 1.0),
         (1.0, 1.0),
     ];
+
     let u2 = vec![
         (0.0, 0.0),
         (1.0, 1.0),
     ];
+
     let basis = vec![u1, u2];
+
     let orth = gram_schmidt(&basis).unwrap();
+
     assert_eq!(orth.len(), 2);
+
     // <v1, v2> should be 0
     let ip = inner_product(&orth[0], &orth[1]).unwrap();
+
     assert!(ip.abs() < 1e-15);
 }
 
 #[test]
+
 fn test_gram_schmidt_orthonormal() {
+
     let u1 = vec![
         (0.0, 1.0),
         (1.0, 1.0),
     ];
+
     let u2 = vec![
         (0.0, 0.0),
         (1.0, 1.0),
     ];
+
     let basis = vec![u1, u2];
+
     let orthonorm = gram_schmidt_orthonormal(&basis).unwrap();
+
     assert_eq!(orthonorm.len(), 2);
 
     // Norms should be 1
     assert!((l2_norm(&orthonorm[0]) - 1.0).abs() < 1e-9);
+
     assert!((l2_norm(&orthonorm[1]) - 1.0).abs() < 1e-9);
 
     // Inner product should be 0
     let ip = inner_product(&orthonorm[0], &orthonorm[1]).unwrap();
+
     assert!(ip.abs() < 1e-15);
 }
 
 #[cfg(test)]
+
 mod proptests {
+
     use super::*;
     use proptest::prelude::*;
 
     // Strategy to generate a vector of Y values.
     // We will map these to X values 0.0, 1.0, 2.0, ...
     fn fun_strategy() -> impl Strategy<Value = Vec<f64>> {
+
         proptest::collection::vec(-100.0..100.0f64, 2..20)
     }
 
     fn make_points(ys: &[f64]) -> Vec<(f64, f64)> {
+
         ys.iter().enumerate().map(|(i, &y)| (i as f64, y)).collect()
     }
 

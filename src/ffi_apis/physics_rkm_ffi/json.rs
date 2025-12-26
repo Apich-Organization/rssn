@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct LorenzInput {
     sigma: f64,
     rho: f64,
@@ -20,6 +21,7 @@ struct LorenzInput {
 }
 
 #[derive(Deserialize)]
+
 struct DampedOscillatorInput {
     omega: f64,
     zeta: f64,
@@ -29,6 +31,7 @@ struct DampedOscillatorInput {
 }
 
 #[derive(Deserialize)]
+
 struct VanDerPolInput {
     mu: f64,
     y0: Vec<f64>,
@@ -38,6 +41,7 @@ struct VanDerPolInput {
 }
 
 #[derive(Deserialize)]
+
 struct LotkaVolterraInput {
     alpha: f64,
     beta: f64,
@@ -50,13 +54,16 @@ struct LotkaVolterraInput {
 }
 
 #[derive(Serialize)]
+
 struct OdeResult {
     time: Vec<f64>,
     states: Vec<Vec<f64>>,
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *mut c_char {
+
     let input: LorenzInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -76,6 +83,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *
     };
 
     let solver = DormandPrince54::new();
+
     let results = solver.solve(
         &system,
         &input.y0,
@@ -85,9 +93,13 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *
     );
 
     let mut time = Vec::with_capacity(results.len());
+
     let mut states = Vec::with_capacity(results.len());
+
     for (t, y) in results {
+
         time.push(t);
+
         states.push(y);
     }
 
@@ -101,9 +113,11 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input: *const c_char) -> *
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
     input: *const c_char,
 ) -> *mut c_char {
+
     let input: DampedOscillatorInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -124,9 +138,13 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
     let results = physics_rkm::solve_rk4(&system, &input.y0, input.t_span, input.dt);
 
     let mut time = Vec::with_capacity(results.len());
+
     let mut states = Vec::with_capacity(results.len());
+
     for (t, y) in results {
+
         time.push(t);
+
         states.push(y);
     }
 
@@ -140,7 +158,9 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -> *mut c_char {
+
     let input: VanDerPolInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -156,6 +176,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -
     let system = physics_rkm::VanDerPolSystem { mu: input.mu };
 
     let solver = CashKarp45::default();
+
     let results = solver.solve(
         &system,
         &input.y0,
@@ -165,9 +186,13 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -
     );
 
     let mut time = Vec::with_capacity(results.len());
+
     let mut states = Vec::with_capacity(results.len());
+
     for (t, y) in results {
+
         time.push(t);
+
         states.push(y);
     }
 
@@ -181,7 +206,9 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input: *const c_char) -
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(input: *const c_char) -> *mut c_char {
+
     let input: LotkaVolterraInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -202,6 +229,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(input: *const c_ch
     };
 
     let solver = BogackiShampine23::default();
+
     let results = solver.solve(
         &system,
         &input.y0,
@@ -211,9 +239,13 @@ pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(input: *const c_ch
     );
 
     let mut time = Vec::with_capacity(results.len());
+
     let mut states = Vec::with_capacity(results.len());
+
     for (t, y) in results {
+
         time.push(t);
+
         states.push(y);
     }
 

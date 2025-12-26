@@ -4,14 +4,20 @@ use proptest::prelude::*;
 use rssn::physics::physics_sim::gpe_superfluidity::*;
 
 #[test]
+
 fn test_simulate_bose_einstein_vortex_scenario() {
+
     simulate_bose_einstein_vortex_scenario();
 }
 
 #[test]
+
 fn test_gpe_ground_state_smoke() {
+
     let nx = 32;
+
     let ny = 32;
+
     let params = GpeParameters {
         nx,
         ny,
@@ -24,22 +30,30 @@ fn test_gpe_ground_state_smoke() {
     };
 
     let res = run_gpe_ground_state_finder(&params).unwrap();
+
     assert_eq!(res.nrows(), ny);
+
     assert_eq!(res.ncols(), nx);
 
     // Check if the density is normalized
     let sum_density: f64 = res.iter().sum();
+
     let dx = params.lx / nx as f64;
+
     let dy = params.ly / ny as f64;
+
     // The normalization in the code is: norm_factor = (n_total / (norm * dx * dy)).sqrt();
     // And n_total is nx * ny.
     // So sum(density) * dx * dy should be n_total.
     let total_prob = sum_density * dx * dy;
+
     assert!((total_prob - (nx * ny) as f64).abs() < 1e-5);
 }
 
 #[test]
+
 fn test_bec_vortex_scenario_run() {
+
     // Reduced iterations for faster test
     let params = GpeParameters {
         nx: 64,
@@ -51,7 +65,9 @@ fn test_bec_vortex_scenario_run() {
         g: 100.0,
         trap_strength: 1.0,
     };
+
     let res = run_gpe_ground_state_finder(&params);
+
     assert!(res.is_ok());
 }
 

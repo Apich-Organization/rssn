@@ -9,13 +9,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Deserialize)]
+
 struct EvalInput {
     expr: Expr,
     vars: HashMap<String, Complex<f64>>,
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_complex_eval_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let input: EvalInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -39,6 +42,7 @@ pub unsafe extern "C" fn rssn_num_complex_eval_bincode(buffer: BincodeBuffer) ->
 }
 
 #[derive(Deserialize)]
+
 struct ContourInput {
     expr: Expr,
     var: String,
@@ -46,9 +50,11 @@ struct ContourInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_complex_contour_integral_bincode(
     buffer: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let input: ContourInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {

@@ -9,42 +9,60 @@ unsafe fn collect_pairs(
     y_data: *const *const Expr,
     len: usize,
 ) -> Vec<(Expr, Expr)> {
+
     let mut data = Vec::with_capacity(len);
+
     for i in 0..len {
+
         let x_ptr = *x_data.add(i);
+
         let y_ptr = *y_data.add(i);
+
         if !x_ptr.is_null() && !y_ptr.is_null() {
+
             data.push(((*x_ptr).clone(), (*y_ptr).clone()));
         }
     }
+
     data
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_simple_linear_regression(
     x_data: *const *const Expr,
     y_data: *const *const Expr,
     len: usize,
 ) -> *mut Expr {
+
     if x_data.is_null() || y_data.is_null() {
+
         return std::ptr::null_mut();
     }
+
     let data = collect_pairs(x_data, y_data, len);
+
     let (b0, b1) = stats_regression::simple_linear_regression_symbolic(&data);
+
     Box::into_raw(Box::new(Expr::Vector(vec![b0, b1])))
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_polynomial_regression(
     x_data: *const *const Expr,
     y_data: *const *const Expr,
     len: usize,
     degree: usize,
 ) -> *mut Expr {
+
     if x_data.is_null() || y_data.is_null() {
+
         return std::ptr::null_mut();
     }
+
     let data = collect_pairs(x_data, y_data, len);
+
     match stats_regression::polynomial_regression_symbolic(&data, degree) {
         Ok(coeffs) => Box::into_raw(Box::new(Expr::Vector(coeffs))),
         Err(_) => std::ptr::null_mut(),
@@ -52,6 +70,7 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_nonlinear_regression(
     x_data: *const *const Expr,
     y_data: *const *const Expr,
@@ -62,22 +81,33 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
     params: *const *const c_char,
     params_len: usize,
 ) -> *mut Expr {
+
     if x_data.is_null() || y_data.is_null() || model.is_null() {
+
         return std::ptr::null_mut();
     }
+
     let data = collect_pairs(x_data, y_data, len);
+
     let model_expr = &*model;
 
     // Collect strings
     let mut vars_vec = Vec::with_capacity(vars_len);
+
     for i in 0..vars_len {
+
         if let Some(s) = c_str_to_str(*vars.add(i)) {
+
             vars_vec.push(s);
         }
     }
+
     let mut params_vec = Vec::with_capacity(params_len);
+
     for i in 0..params_len {
+
         if let Some(s) = c_str_to_str(*params.add(i)) {
+
             params_vec.push(s);
         }
     }
@@ -85,10 +115,12 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
     match stats_regression::nonlinear_regression_symbolic(&data, model_expr, &vars_vec, &params_vec)
     {
         Some(solutions) => {
+
             let eqs = solutions
                 .into_iter()
                 .map(|(p, v)| Expr::Eq(Arc::new(p), Arc::new(v)))
                 .collect();
+
             Box::into_raw(Box::new(Expr::Solutions(eqs)))
         }
         None => std::ptr::null_mut(),

@@ -7,6 +7,7 @@ use crate::symbolic::core::Expr;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+
 struct ActionInput {
     lagrangian: Expr,
     path: Expr,
@@ -17,9 +18,11 @@ struct ActionInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cov_evaluate_action_bincode(
     buffer: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let input: ActionInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -39,17 +42,21 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_bincode(
         input.t_range,
     ) {
         Ok(val) => {
+
             let ffi_res = FfiResult {
                 ok: Some(val),
                 err: None::<String>,
             };
+
             to_bincode_buffer(&ffi_res)
         }
         Err(e) => {
+
             let ffi_res = FfiResult {
                 ok: None::<f64>,
                 err: Some(e),
             };
+
             to_bincode_buffer(&ffi_res)
         }
     }

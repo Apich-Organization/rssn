@@ -4,39 +4,54 @@ use crate::symbolic::logic::{is_satisfiable, simplify_logic, to_cnf, to_dnf};
 
 /// Simplifies a logical expression using bincode-based FFI.
 #[no_mangle]
+
 pub extern "C" fn rssn_bincode_simplify_logic(expr_buf: BincodeBuffer) -> BincodeBuffer {
+
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {
+
         let result = simplify_logic(&e);
+
         to_bincode_buffer(&result)
     } else {
+
         BincodeBuffer::empty()
     }
 }
 
 /// Converts a logical expression to Conjunctive Normal Form (CNF) using bincode-based FFI.
 #[no_mangle]
+
 pub extern "C" fn rssn_bincode_to_cnf(expr_buf: BincodeBuffer) -> BincodeBuffer {
+
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {
+
         let result = to_cnf(&e);
+
         to_bincode_buffer(&result)
     } else {
+
         BincodeBuffer::empty()
     }
 }
 
 /// Converts a logical expression to Disjunctive Normal Form (DNF) using bincode-based FFI.
 #[no_mangle]
+
 pub extern "C" fn rssn_bincode_to_dnf(expr_buf: BincodeBuffer) -> BincodeBuffer {
+
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {
+
         let result = to_dnf(&e);
+
         to_bincode_buffer(&result)
     } else {
+
         BincodeBuffer::empty()
     }
 }
@@ -48,13 +63,18 @@ pub extern "C" fn rssn_bincode_to_dnf(expr_buf: BincodeBuffer) -> BincodeBuffer 
 /// - `Some(false)` if unsatisfiable
 /// - `None` if the expression contains quantifiers (undecidable)
 #[no_mangle]
+
 pub extern "C" fn rssn_bincode_is_satisfiable(expr_buf: BincodeBuffer) -> BincodeBuffer {
+
     let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {
+
         let result = is_satisfiable(&e);
+
         to_bincode_buffer(&result)
     } else {
+
         BincodeBuffer::empty()
     }
 }

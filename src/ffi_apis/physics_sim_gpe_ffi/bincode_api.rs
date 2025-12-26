@@ -5,7 +5,9 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_sim::gpe_superfluidity::{self, GpeParameters};
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_sim_gpe_run_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let params: GpeParameters = match from_bincode_buffer(&buffer) {
         Some(p) => p,
         None => {

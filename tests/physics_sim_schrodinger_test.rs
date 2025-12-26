@@ -5,9 +5,13 @@ use proptest::prelude::*;
 use rssn::physics::physics_sim::schrodinger_quantum::*;
 
 #[test]
+
 fn test_schrodinger_simulation_box_smoke() {
+
     let nx = 32;
+
     let ny = 32;
+
     let params = SchrodingerParameters {
         nx,
         ny,
@@ -21,21 +25,29 @@ fn test_schrodinger_simulation_box_smoke() {
     };
 
     let mut initial_psi = vec![Complex::new(1.0, 0.0); nx * ny];
+
     let res = run_schrodinger_simulation(&params, &mut initial_psi).unwrap();
 
     // Check if the wave function evolves (not just zeros)
     assert!(res.len() > 0);
+
     let final_density = res.last().unwrap();
+
     assert_eq!(final_density.nrows(), ny);
+
     assert_eq!(final_density.ncols(), nx);
 
     let sum_density: f64 = final_density.iter().sum();
+
     assert!(sum_density > 0.0);
 }
 
 #[test]
+
 fn test_double_slit_scenario_run() {
+
     let res = simulate_double_slit_scenario();
+
     // This scenario might fail if "schrodinger_double_slit.npy" cannot be written,
     // but the logic should hold.
     assert!(res.is_ok());

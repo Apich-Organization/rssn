@@ -8,12 +8,15 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct TransformInput {
     data: Vec<Complex<f64>>,
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fft_json(input_json: *const c_char) -> *mut c_char {
+
     let mut input: TransformInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -33,11 +36,14 @@ pub unsafe extern "C" fn rssn_num_fft_json(input_json: *const c_char) -> *mut c_
         ok: Some(input.data),
         err: None::<String>,
     };
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_ifft_json(input_json: *const c_char) -> *mut c_char {
+
     let mut input: TransformInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -57,5 +63,6 @@ pub unsafe extern "C" fn rssn_num_ifft_json(input_json: *const c_char) -> *mut c
         ok: Some(input.data),
         err: None::<String>,
     };
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

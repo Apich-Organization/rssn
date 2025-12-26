@@ -7,6 +7,7 @@ use crate::symbolic::coordinates::CoordinateSystem;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+
 struct CoordinateTransformRequest {
     point: Vec<f64>,
     from: CoordinateSystem,
@@ -14,16 +15,24 @@ struct CoordinateTransformRequest {
 }
 
 fn decode<T: for<'de> Deserialize<'de>>(data: *const u8, len: usize) -> Option<T> {
+
     if data.is_null() {
+
         return None;
     }
-    let slice = unsafe { std::slice::from_raw_parts(data, len) };
+
+    let slice = unsafe {
+
+        std::slice::from_raw_parts(data, len)
+    };
+
     bincode_next::serde::decode_from_slice(slice, bincode_next::config::standard())
         .ok()
         .map(|(v, _)| v)
 }
 
 fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
+
     match bincode_next::serde::encode_to_vec(val, bincode_next::config::standard()) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
@@ -32,10 +41,12 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
 
 /// Transforms a point via Bincode.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
     data: *const u8,
     len: usize,
 ) -> BincodeBuffer {
+
     let req: CoordinateTransformRequest = match decode(data, len) {
         Some(r) => r,
         None => {
@@ -60,10 +71,12 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
 
 /// Transforms a point (pure numerical) via Bincode.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_coord_transform_pure_bincode(
     data: *const u8,
     len: usize,
 ) -> BincodeBuffer {
+
     let req: CoordinateTransformRequest = match decode(data, len) {
         Some(r) => r,
         None => {

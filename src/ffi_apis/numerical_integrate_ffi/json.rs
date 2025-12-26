@@ -8,6 +8,7 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct QuadratureInput {
     expr: Expr,
     var: String,
@@ -29,8 +30,11 @@ struct QuadratureInput {
 ///   "method": "Simpson"
 /// }
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_numerical_quadrature_json(json_ptr: *const c_char) -> *mut c_char {
+
     if json_ptr.is_null() {
+
         return std::ptr::null_mut();
     }
 
@@ -42,10 +46,12 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(json_ptr: *const c_char)
     let input: QuadratureInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {
+
             let res: FfiResult<f64, String> = FfiResult {
                 ok: None,
                 err: Some(format!("JSON deserialization error: {}", e)),
             };
+
             return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();

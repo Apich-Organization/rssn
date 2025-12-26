@@ -6,6 +6,7 @@ use crate::numerical::physics_cfd;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+
 struct ReynoldsInput {
     velocity: f64,
     length: f64,
@@ -13,6 +14,7 @@ struct ReynoldsInput {
 }
 
 #[derive(Deserialize)]
+
 struct CflInput {
     velocity: f64,
     dt: f64,
@@ -20,6 +22,7 @@ struct CflInput {
 }
 
 #[derive(Deserialize)]
+
 struct Advection1DInput {
     u0: Vec<f64>,
     c: f64,
@@ -29,9 +32,11 @@ struct Advection1DInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
     buffer: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let input: ReynoldsInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -41,7 +46,9 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
             })
         }
     };
+
     let re = physics_cfd::reynolds_number(input.velocity, input.length, input.kinematic_viscosity);
+
     to_bincode_buffer(&FfiResult {
         ok: Some(re),
         err: None::<String>,
@@ -49,7 +56,9 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let input: CflInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -59,7 +68,9 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(buffer: BincodeBuffer) 
             })
         }
     };
+
     let cfl = physics_cfd::cfl_number(input.velocity, input.dt, input.dx);
+
     to_bincode_buffer(&FfiResult {
         ok: Some(cfl),
         err: None::<String>,
@@ -67,9 +78,11 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(buffer: BincodeBuffer) 
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_bincode(
     buffer: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let input: Advection1DInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -79,8 +92,10 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_bincode(
             })
         }
     };
+
     let results =
         physics_cfd::solve_advection_1d(&input.u0, input.c, input.dx, input.dt, input.num_steps);
+
     to_bincode_buffer(&FfiResult {
         ok: Some(results),
         err: None::<String>,

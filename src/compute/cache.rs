@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 ///
 /// This cache stores the mapping from input strings to parsed `Expr` objects.
 /// It avoids re-parsing the same string multiple times.
+
 pub struct ParsingCache {
     cache: Mutex<HashMap<String, Arc<Expr>>>,
 }
@@ -14,7 +15,9 @@ pub struct ParsingCache {
 impl ParsingCache {
     /// Creates a new, empty `ParsingCache`.
     #[must_use]
+
     pub fn new() -> Self {
+
         Self {
             cache: Mutex::new(HashMap::new()),
         }
@@ -27,8 +30,11 @@ impl ParsingCache {
     ///
     /// # Returns
     /// * `Option<Arc<Expr>>` - The cached expression, or `None` if not found.
+
     pub fn get(&self, input: &str) -> Option<Arc<Expr>> {
+
         let cache = self.cache.lock().expect("ParsingCache lock poisoned");
+
         cache.get(input).cloned()
     }
 
@@ -37,20 +43,27 @@ impl ParsingCache {
     /// # Arguments
     /// * `input` - The input string.
     /// * `expr` - The parsed expression.
+
     pub fn set(&self, input: String, expr: Arc<Expr>) {
+
         let mut cache = self.cache.lock().expect("ParsingCache lock poisoned");
+
         cache.insert(input, expr);
     }
 
     /// Clears the cache.
+
     pub fn clear(&self) {
+
         let mut cache = self.cache.lock().expect("ParsingCache lock poisoned");
+
         cache.clear();
     }
 }
 
 impl Default for ParsingCache {
     fn default() -> Self {
+
         Self::new()
     }
 }
@@ -59,6 +72,7 @@ impl Default for ParsingCache {
 ///
 /// This cache stores the mapping from expressions to their computed values.
 /// It avoids re-computing the value of the same expression multiple times.
+
 pub struct ComputationResultCache {
     cache: Mutex<HashMap<Arc<Expr>, Value>>,
 }
@@ -66,7 +80,9 @@ pub struct ComputationResultCache {
 impl ComputationResultCache {
     /// Creates a new, empty `ComputationResultCache`.
     #[must_use]
+
     pub fn new() -> Self {
+
         Self {
             cache: Mutex::new(HashMap::new()),
         }
@@ -79,11 +95,14 @@ impl ComputationResultCache {
     ///
     /// # Returns
     /// * `Option<Value>` - The cached value, or `None` if not found.
+
     pub fn get(&self, expr: &Arc<Expr>) -> Option<Value> {
+
         let cache = self
             .cache
             .lock()
             .expect("ComputationResultCache lock poisoned");
+
         cache.get(expr).cloned()
     }
 
@@ -92,26 +111,33 @@ impl ComputationResultCache {
     /// # Arguments
     /// * `expr` - The expression.
     /// * `value` - The computed value.
+
     pub fn set(&self, expr: Arc<Expr>, value: Value) {
+
         let mut cache = self
             .cache
             .lock()
             .expect("ComputationResultCache lock poisoned");
+
         cache.insert(expr, value);
     }
 
     /// Clears the cache.
+
     pub fn clear(&self) {
+
         let mut cache = self
             .cache
             .lock()
             .expect("ComputationResultCache lock poisoned");
+
         cache.clear();
     }
 }
 
 impl Default for ComputationResultCache {
     fn default() -> Self {
+
         Self::new()
     }
 }

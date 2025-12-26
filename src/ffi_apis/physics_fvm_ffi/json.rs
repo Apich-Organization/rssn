@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct AdvectionInput {
     num_cells: usize,
     domain_size: f64,
@@ -17,6 +18,7 @@ struct AdvectionInput {
 }
 
 #[derive(Deserialize)]
+
 struct SweInput {
     h: Vec<f64>,
     hu: Vec<f64>,
@@ -27,7 +29,9 @@ struct SweInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_fvm_advection_json(input: *const c_char) -> *mut c_char {
+
     let input: AdvectionInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -41,21 +45,28 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(input: *const c_char) -
     };
 
     let mut mesh = Mesh::new(input.num_cells, input.domain_size, |_| 0.0);
+
     for (i, &val) in input.initial_values.iter().enumerate() {
+
         if i < mesh.cells.len() {
+
             mesh.cells[i].value = val;
         }
     }
 
     let result =
         physics_fvm::solve_advection_1d(&mut mesh, input.velocity, input.dt, input.steps, || {
+
             (0.0, 0.0)
         });
+
     to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(result)).unwrap())
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_fvm_swe_json(input: *const c_char) -> *mut c_char {
+
     let input: SweInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -76,5 +87,6 @@ pub unsafe extern "C" fn rssn_physics_fvm_swe_json(input: *const c_char) -> *mut
         input.steps,
         input.g,
     );
+
     to_c_string(serde_json::to_string(&FfiResult::<Vec<SweState>, String>::ok(result)).unwrap())
 }

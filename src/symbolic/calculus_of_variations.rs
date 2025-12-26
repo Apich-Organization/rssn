@@ -6,11 +6,13 @@
 //!
 //! The core functionality of this module is the derivation and solving of the Euler-Lagrange equation,
 //! which is a fundamental equation in this field.
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode::solve_ode;
 use crate::symbolic::simplify_dag::simplify;
 use std::sync::Arc;
+
 /// # Euler-Lagrange Equation
 ///
 /// Computes the Euler-Lagrange equation for a given Lagrangian functional.
@@ -56,18 +58,24 @@ use std::sync::Arc;
 /// // Result should be simplified to: m * d^2x/dt^2
 /// ```
 #[must_use]
+
 pub fn euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
+
     let q = Expr::Variable(func.to_string());
+
     let q_prime_str = format!("{func}__prime");
+
     let q_prime_var = Expr::Variable(q_prime_str.clone());
 
     // We need to substitute q' (which appears as Derivative(q, var) in the expression)
     // with a temporary variable q_prime_var to perform partial differentiation.
     let q_prime_expr = Expr::Derivative(Arc::new(q), var.to_string());
+
     let lagrangian_sub =
         crate::symbolic::calculus::substitute_expr(lagrangian, &q_prime_expr, &q_prime_var);
 
     let dl_dq = differentiate(&lagrangian_sub, func);
+
     let dl_dq_prime = differentiate(&lagrangian_sub, &q_prime_str);
 
     // Substitute q' back into the partial derivative result
@@ -95,9 +103,13 @@ pub fn euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
 /// ## Returns
 /// An [`Expr`] representing the general or particular solution to the system's motion.
 #[must_use]
+
 pub fn solve_euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
+
     let el_equation = euler_lagrange(lagrangian, func, var);
+
     let ode_to_solve = Expr::Eq(Arc::new(el_equation), Arc::new(Expr::Constant(0.0)));
+
     solve_ode(&ode_to_solve, func, var, None)
 }
 
@@ -115,6 +127,8 @@ pub fn solve_euler_lagrange(lagrangian: &Expr, func: &str, var: &str) -> Expr {
 /// * `func` - The generalized coordinate $q$.
 /// * `var` - The time variable $t$.
 #[must_use]
+
 pub fn hamiltons_principle(lagrangian: &Expr, func: &str, var: &str) -> Expr {
+
     euler_lagrange(lagrangian, func, var)
 }

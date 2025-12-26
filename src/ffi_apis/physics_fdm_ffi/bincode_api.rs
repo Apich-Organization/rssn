@@ -6,6 +6,7 @@ use crate::physics::physics_fdm::{self, Dimensions, FdmGrid};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+
 struct WaveEquationInput {
     width: usize,
     height: usize,
@@ -17,7 +18,9 @@ struct WaveEquationInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let input: WaveEquationInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -36,9 +39,13 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(buffer: BincodeBuffer) ->
         input.dt,
         input.steps,
         |x, y| {
+
             let dx_cen = x as f64 - (input.width / 2) as f64;
+
             let dy_cen = y as f64 - (input.height / 2) as f64;
+
             let dist2 = dx_cen.powi(2) + dy_cen.powi(2);
+
             (-dist2 / 20.0).exp()
         },
     );

@@ -7,6 +7,7 @@ use crate::symbolic::core::Expr;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+
 struct OdeInput {
     funcs: Vec<Expr>,
     y0: Vec<f64>,
@@ -16,7 +17,9 @@ struct OdeInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_ode_solve_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let input: OdeInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {

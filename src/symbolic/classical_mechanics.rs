@@ -23,6 +23,7 @@ use std::sync::Arc;
 /// Represents the kinematic state of a particle, including its position,
 /// velocity, and acceleration vectors.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
 pub struct Kinematics {
     /// The position vector of the particle (e.g., `r(t)`).
     pub position: Expr,
@@ -38,9 +39,13 @@ impl Kinematics {
     /// Velocity and acceleration are automatically derived by taking the first and
     /// second time derivatives of the position with respect to time `t`.
     #[must_use]
+
     pub fn new(position: Expr, t_var: &str) -> Self {
+
         let velocity = differentiate(&position, t_var);
+
         let acceleration = differentiate(&velocity, t_var);
+
         Self {
             position,
             velocity,
@@ -61,19 +66,25 @@ impl Kinematics {
 /// let f = newtons_second_law(&m, &a); // Result: m * a
 /// ```
 #[must_use]
+
 pub fn newtons_second_law(mass: &Expr, acceleration: &Expr) -> Expr {
+
     simplify(&Expr::new_mul(mass.clone(), acceleration.clone()))
 }
 
 /// Calculates the momentum `p` of an object, `p = m * v`.
 #[must_use]
+
 pub fn momentum(mass: &Expr, velocity: &Expr) -> Expr {
+
     simplify(&Expr::new_mul(mass.clone(), velocity.clone()))
 }
 
 /// Calculates the kinetic energy `T` of an object, `T = 1/2 * m * v^2`.
 #[must_use]
+
 pub fn kinetic_energy(mass: &Expr, velocity: &Expr) -> Expr {
+
     simplify(&Expr::new_mul(
         Expr::Constant(0.5),
         Expr::new_mul(
@@ -85,7 +96,9 @@ pub fn kinetic_energy(mass: &Expr, velocity: &Expr) -> Expr {
 
 /// Calculates the gravitational potential energy near Earth's surface, `V = m * g * h`.
 #[must_use]
+
 pub fn potential_energy_gravity_uniform(mass: &Expr, height: &Expr, g: &Expr) -> Expr {
+
     simplify(&Expr::new_mul(
         mass.clone(),
         Expr::new_mul(g.clone(), height.clone()),
@@ -94,12 +107,14 @@ pub fn potential_energy_gravity_uniform(mass: &Expr, height: &Expr, g: &Expr) ->
 
 /// Calculates the universal gravitational potential energy, `V = -G * m1 * m2 / r`.
 #[must_use]
+
 pub fn potential_energy_gravity_universal(
     m1: &Expr,
     m2: &Expr,
     r: &Expr,
     g_constant: &Expr,
 ) -> Expr {
+
     simplify(&Expr::new_neg(Arc::new(Expr::new_div(
         Expr::new_mul(g_constant.clone(), Expr::new_mul(m1.clone(), m2.clone())),
         r.clone(),
@@ -108,7 +123,9 @@ pub fn potential_energy_gravity_universal(
 
 /// Calculates the potential energy of a spring, `V = 1/2 * k * x^2`.
 #[must_use]
+
 pub fn potential_energy_spring(k: &Expr, x: &Expr) -> Expr {
+
     simplify(&Expr::new_mul(
         Expr::Constant(0.5),
         Expr::new_mul(k.clone(), Expr::new_pow(x.clone(), Expr::Constant(2.0))),
@@ -117,37 +134,49 @@ pub fn potential_energy_spring(k: &Expr, x: &Expr) -> Expr {
 
 /// Calculates the mechanical work done by a constant force, `W = F · d`.
 #[must_use]
+
 pub fn work_constant_force(force: &Vector, displacement: &Vector) -> Expr {
+
     force.dot(displacement)
 }
 
 /// Calculates the work done by a variable force field along a path.
 #[must_use]
+
 pub fn work_line_integral(force_field: &Vector, path: &ParametricCurve) -> Expr {
+
     line_integral_vector(force_field, path)
 }
 
 /// Calculates the power delivered by a force, `P = F · v`.
 #[must_use]
+
 pub fn power(force: &Vector, velocity: &Vector) -> Expr {
+
     force.dot(velocity)
 }
 
 /// Calculates the torque, `τ = r × F`.
 #[must_use]
+
 pub fn torque(r: &Vector, force: &Vector) -> Vector {
+
     r.cross(force)
 }
 
 /// Calculates the angular momentum, `L = r × p`.
 #[must_use]
+
 pub fn angular_momentum(r: &Vector, p: &Vector) -> Vector {
+
     r.cross(p)
 }
 
 /// Calculates the centripetal acceleration, `a_c = v^2 / r`.
 #[must_use]
+
 pub fn centripetal_acceleration(velocity: &Expr, radius: &Expr) -> Expr {
+
     simplify(&Expr::new_div(
         Expr::new_pow(velocity.clone(), Expr::Constant(2.0)),
         radius.clone(),
@@ -156,7 +185,9 @@ pub fn centripetal_acceleration(velocity: &Expr, radius: &Expr) -> Expr {
 
 /// Calculates the moment of inertia for a point mass, `I = m * r^2`.
 #[must_use]
+
 pub fn moment_of_inertia_point_mass(mass: &Expr, radius: &Expr) -> Expr {
+
     simplify(&Expr::new_mul(
         mass.clone(),
         Expr::new_pow(radius.clone(), Expr::Constant(2.0)),
@@ -165,7 +196,9 @@ pub fn moment_of_inertia_point_mass(mass: &Expr, radius: &Expr) -> Expr {
 
 /// Calculates the rotational kinetic energy, `T_rot = 1/2 * I * ω^2`.
 #[must_use]
+
 pub fn rotational_kinetic_energy(moment_of_inertia: &Expr, angular_velocity: &Expr) -> Expr {
+
     simplify(&Expr::new_mul(
         Expr::Constant(0.5),
         Expr::new_mul(
@@ -177,7 +210,9 @@ pub fn rotational_kinetic_energy(moment_of_inertia: &Expr, angular_velocity: &Ex
 
 /// Calculates the Lagrangian `L = T - V`.
 #[must_use]
+
 pub fn lagrangian(kinetic_energy: &Expr, potential_energy: &Expr) -> Expr {
+
     simplify(&Expr::new_sub(
         kinetic_energy.clone(),
         potential_energy.clone(),
@@ -186,7 +221,9 @@ pub fn lagrangian(kinetic_energy: &Expr, potential_energy: &Expr) -> Expr {
 
 /// Calculates the Hamiltonian `H = T + V`.
 #[must_use]
+
 pub fn hamiltonian(kinetic_energy: &Expr, potential_energy: &Expr) -> Expr {
+
     simplify(&Expr::new_add(
         kinetic_energy.clone(),
         potential_energy.clone(),
@@ -196,7 +233,9 @@ pub fn hamiltonian(kinetic_energy: &Expr, potential_energy: &Expr) -> Expr {
 /// Computes the left-hand side of the Euler-Lagrange equation.
 /// Formula: `d/dt (∂L/∂(q_dot)) - dL/dq = 0`.
 #[must_use]
+
 pub fn euler_lagrange_equation(lagrangian: &Expr, q: &str, q_dot: &str, t_var: &str) -> Expr {
+
     // 1. Partial derivative wrt q
     let dl_dq = differentiate(lagrangian, q);
 
@@ -221,11 +260,17 @@ pub fn euler_lagrange_equation(lagrangian: &Expr, q: &str, q_dot: &str, t_var: &
 
 /// Calculates the Poisson bracket `{f, g} = (∂f/∂q)(∂g/∂p) - (∂f/∂p)(∂g/∂q)`.
 #[must_use]
+
 pub fn poisson_bracket(f: &Expr, g: &Expr, q: &str, p: &str) -> Expr {
+
     let df_dq = differentiate(f, q);
+
     let dg_dp = differentiate(g, p);
+
     let df_dp = differentiate(f, p);
+
     let dg_dq = differentiate(g, q);
+
     simplify(&Expr::new_sub(
         Expr::new_mul(df_dq, dg_dp),
         Expr::new_mul(df_dp, dg_dq),

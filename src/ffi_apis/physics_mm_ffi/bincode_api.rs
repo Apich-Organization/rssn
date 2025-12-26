@@ -6,15 +6,18 @@ use crate::physics::physics_mm::SPHSystem;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+
 struct SphInput {
     system: SPHSystem,
     dt: f64,
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_mm_sph_update_bincode(
     buffer: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let mut input: SphInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -25,5 +28,6 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_bincode(
     };
 
     input.system.update(input.dt);
+
     to_bincode_buffer(&FfiResult::<SPHSystem, String>::ok(input.system))
 }

@@ -7,6 +7,7 @@ use crate::symbolic::core::Expr;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+
 struct TaylorInput {
     expr: Expr,
     var: String,
@@ -15,6 +16,7 @@ struct TaylorInput {
 }
 
 #[derive(Deserialize)]
+
 struct SumInput {
     expr: Expr,
     var: String,
@@ -23,9 +25,11 @@ struct SumInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
     buffer: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let input: TaylorInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -53,7 +57,9 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_numerical_sum_series_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let input: SumInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {

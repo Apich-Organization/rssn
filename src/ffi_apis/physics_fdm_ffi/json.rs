@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct HeatEquationInput {
     width: usize,
     height: usize,
@@ -19,6 +20,7 @@ struct HeatEquationInput {
 }
 
 #[derive(Deserialize)]
+
 struct WaveEquationInput {
     width: usize,
     height: usize,
@@ -30,6 +32,7 @@ struct WaveEquationInput {
 }
 
 #[derive(Deserialize)]
+
 struct PoissonInput {
     width: usize,
     height: usize,
@@ -42,6 +45,7 @@ struct PoissonInput {
 }
 
 #[derive(Deserialize)]
+
 struct BurgersInput {
     initial_u: Vec<f64>,
     dx: f64,
@@ -51,7 +55,9 @@ struct BurgersInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_fdm_heat_json(input: *const c_char) -> *mut c_char {
+
     let input: HeatEquationInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -78,8 +84,10 @@ pub unsafe extern "C" fn rssn_physics_fdm_heat_json(input: *const c_char) -> *mu
                 && y > input.height / 3
                 && y < 2 * input.height / 3
             {
+
                 input.initial_temp
             } else {
+
                 0.0
             }
         },
@@ -89,7 +97,9 @@ pub unsafe extern "C" fn rssn_physics_fdm_heat_json(input: *const c_char) -> *mu
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_fdm_wave_json(input: *const c_char) -> *mut c_char {
+
     let input: WaveEquationInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -111,9 +121,13 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_json(input: *const c_char) -> *mu
         input.dt,
         input.steps,
         |x, y| {
+
             let dx_cen = x as f64 - (input.width / 2) as f64;
+
             let dy_cen = y as f64 - (input.height / 2) as f64;
+
             let dist2 = dx_cen.powi(2) + dy_cen.powi(2);
+
             (-dist2 / 20.0).exp()
         },
     );
@@ -122,7 +136,9 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_json(input: *const c_char) -> *mu
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(input: *const c_char) -> *mut c_char {
+
     let input: PoissonInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -152,7 +168,9 @@ pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(input: *const c_char) -> 
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_fdm_burgers_json(input: *const c_char) -> *mut c_char {
+
     let input: BurgersInput = match from_json_string(input) {
         Some(i) => i,
         None => {

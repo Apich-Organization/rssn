@@ -6,6 +6,7 @@ use num_complex::Complex;
 
 /// Runs a Schrodinger simulation and returns the final probability density as a Matrix handle (NxxNy).
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
     nx: usize,
     ny: usize,
@@ -19,13 +20,18 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
     initial_psi_re_ptr: *const f64,
     initial_psi_im_ptr: *const f64,
 ) -> *mut Matrix<f64> {
+
     if potential_ptr.is_null() || initial_psi_re_ptr.is_null() || initial_psi_im_ptr.is_null() {
+
         return std::ptr::null_mut();
     }
 
     let n = nx * ny;
+
     let potential = std::slice::from_raw_parts(potential_ptr, n).to_vec();
+
     let re = std::slice::from_raw_parts(initial_psi_re_ptr, n);
+
     let im = std::slice::from_raw_parts(initial_psi_im_ptr, n);
 
     let mut initial_psi: Vec<Complex<f64>> = re
@@ -49,11 +55,16 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
     match schrodinger_quantum::run_schrodinger_simulation(&params, &mut initial_psi) {
         Ok(snapshots) => {
             if let Some(final_state) = snapshots.last() {
+
                 let rows = final_state.nrows();
+
                 let cols = final_state.ncols();
+
                 let data = final_state.clone().into_raw_vec();
+
                 Box::into_raw(Box::new(Matrix::new(rows, cols, data)))
             } else {
+
                 std::ptr::null_mut()
             }
         }

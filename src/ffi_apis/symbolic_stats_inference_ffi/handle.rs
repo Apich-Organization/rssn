@@ -4,13 +4,19 @@ use crate::symbolic::stats_inference::{self, HypothesisTest};
 use std::os::raw::c_char;
 
 unsafe fn collect_exprs(data: *const *const Expr, len: usize) -> Vec<Expr> {
+
     let mut exprs = Vec::with_capacity(len);
+
     for i in 0..len {
+
         let ptr = *data.add(i);
+
         if !ptr.is_null() {
+
             exprs.push((*ptr).clone());
         }
     }
+
     exprs
 }
 
@@ -41,18 +47,25 @@ unsafe fn collect_exprs(data: *const *const Expr, len: usize) -> Vec<Expr> {
 // Tuple(stat, p_value, df) seems reasonable?
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_one_sample_t_test(
     data: *const *const Expr,
     len: usize,
     target_mean: *const Expr,
 ) -> *mut Expr {
+
     if data.is_null() {
+
         return std::ptr::null_mut();
     }
+
     let sample = collect_exprs(data, len);
+
     let target = if target_mean.is_null() {
+
         Expr::Constant(0.0)
     } else {
+
         (*target_mean).clone()
     };
 
@@ -68,6 +81,7 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_two_sample_t_test(
     data1: *const *const Expr,
     len1: usize,
@@ -75,20 +89,28 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
     len2: usize,
     mu_diff: *const Expr,
 ) -> *mut Expr {
+
     if data1.is_null() || data2.is_null() {
+
         return std::ptr::null_mut();
     }
+
     let sample1 = collect_exprs(data1, len1);
+
     let sample2 = collect_exprs(data2, len2);
+
     let diff = if mu_diff.is_null() {
+
         Expr::Constant(0.0)
     } else {
+
         (*mu_diff).clone()
     };
 
     let result = stats_inference::two_sample_t_test_symbolic(&sample1, &sample2, &diff);
 
     let df = result.degrees_of_freedom.unwrap_or(Expr::Constant(0.0));
+
     Box::into_raw(Box::new(Expr::Tuple(vec![
         result.test_statistic,
         result.p_value_formula,
@@ -97,21 +119,29 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_z_test(
     data: *const *const Expr,
     len: usize,
     target_mean: *const Expr,
     pop_std_dev: *const Expr,
 ) -> *mut Expr {
+
     if data.is_null() || pop_std_dev.is_null() {
+
         return std::ptr::null_mut();
     }
+
     let sample = collect_exprs(data, len);
+
     let target = if target_mean.is_null() {
+
         Expr::Constant(0.0)
     } else {
+
         (*target_mean).clone()
     };
+
     let sigma = (*pop_std_dev).clone();
 
     let result = stats_inference::z_test_symbolic(&sample, &target, &sigma);

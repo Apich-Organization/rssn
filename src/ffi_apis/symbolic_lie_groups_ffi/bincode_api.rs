@@ -5,28 +5,37 @@ use crate::symbolic::lie_groups_and_algebras::*;
 // --- LieAlgebra Creation ---
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3() -> BincodeBuffer {
+
     let algebra = so3();
+
     to_bincode_buffer(&algebra)
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2() -> BincodeBuffer {
+
     let algebra = su2();
+
     to_bincode_buffer(&algebra)
 }
 
 // --- Lie Bracket ---
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_lie_bracket(
     x_buf: BincodeBuffer,
     y_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let x: Expr = match from_bincode_buffer(&x_buf) {
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
+
     let y: Expr = match from_bincode_buffer(&y_buf) {
         Some(e) => e,
         None => return BincodeBuffer::empty(),
@@ -41,10 +50,12 @@ pub unsafe extern "C" fn rssn_bincode_lie_bracket(
 // --- Exponential Map ---
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_exponential_map(
     x_buf: BincodeBuffer,
     order: usize,
 ) -> BincodeBuffer {
+
     let x: Expr = match from_bincode_buffer(&x_buf) {
         Some(e) => e,
         None => return BincodeBuffer::empty(),
@@ -59,14 +70,17 @@ pub unsafe extern "C" fn rssn_bincode_exponential_map(
 // --- Adjoint Representations ---
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
     g_buf: BincodeBuffer,
     x_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let g: Expr = match from_bincode_buffer(&g_buf) {
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
+
     let x: Expr = match from_bincode_buffer(&x_buf) {
         Some(e) => e,
         None => return BincodeBuffer::empty(),
@@ -79,14 +93,17 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
     x_buf: BincodeBuffer,
     y_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let x: Expr = match from_bincode_buffer(&x_buf) {
         Some(e) => e,
         None => return BincodeBuffer::empty(),
     };
+
     let y: Expr = match from_bincode_buffer(&y_buf) {
         Some(e) => e,
         None => return BincodeBuffer::empty(),
@@ -101,9 +118,11 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
 // --- Commutator Table ---
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_commutator_table(
     algebra_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let algebra: LieAlgebra = match from_bincode_buffer(&algebra_buf) {
         Some(a) => a,
         None => return BincodeBuffer::empty(),
@@ -118,7 +137,9 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
 // --- Jacobi Identity Check ---
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(algebra_buf: BincodeBuffer) -> bool {
+
     let algebra: LieAlgebra = match from_bincode_buffer(&algebra_buf) {
         Some(a) => a,
         None => return false,
@@ -133,15 +154,23 @@ pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(algebra_buf: Bincode
 // --- Generators ---
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_so3_generators() -> BincodeBuffer {
+
     let generators = so3_generators();
+
     let exprs: Vec<Expr> = generators.into_iter().map(|g| g.0).collect();
+
     to_bincode_buffer(&exprs)
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_su2_generators() -> BincodeBuffer {
+
     let generators = su2_generators();
+
     let exprs: Vec<Expr> = generators.into_iter().map(|g| g.0).collect();
+
     to_bincode_buffer(&exprs)
 }

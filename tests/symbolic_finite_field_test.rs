@@ -3,76 +3,110 @@ use rssn::symbolic::finite_field::*;
 use std::sync::Arc;
 
 #[test]
+
 fn test_prime_field_element_creation() {
+
     let field = PrimeField::new(BigInt::from(7));
+
     let elem = PrimeFieldElement::new(BigInt::from(5), field.clone());
+
     assert_eq!(elem.value, BigInt::from(5));
 
     // Test automatic reduction
     let elem2 = PrimeFieldElement::new(BigInt::from(10), field.clone());
+
     assert_eq!(elem2.value, BigInt::from(3)); // 10 mod 7 = 3
 
     // Test negative values
     let elem3 = PrimeFieldElement::new(BigInt::from(-2), field.clone());
+
     assert_eq!(elem3.value, BigInt::from(5)); // -2 mod 7 = 5
 }
 
 #[test]
+
 fn test_prime_field_element_addition() {
+
     let field = PrimeField::new(BigInt::from(7));
+
     let a = PrimeFieldElement::new(BigInt::from(5), field.clone());
+
     let b = PrimeFieldElement::new(BigInt::from(4), field.clone());
 
     let result = a + b;
+
     assert_eq!(result.value, BigInt::from(2)); // (5 + 4) mod 7 = 2
 }
 
 #[test]
+
 fn test_prime_field_element_subtraction() {
+
     let field = PrimeField::new(BigInt::from(7));
+
     let a = PrimeFieldElement::new(BigInt::from(3), field.clone());
+
     let b = PrimeFieldElement::new(BigInt::from(5), field.clone());
 
     let result = a - b;
+
     assert_eq!(result.value, BigInt::from(5)); // (3 - 5) mod 7 = -2 mod 7 = 5
 }
 
 #[test]
+
 fn test_prime_field_element_multiplication() {
+
     let field = PrimeField::new(BigInt::from(7));
+
     let a = PrimeFieldElement::new(BigInt::from(3), field.clone());
+
     let b = PrimeFieldElement::new(BigInt::from(5), field.clone());
 
     let result = a * b;
+
     assert_eq!(result.value, BigInt::from(1)); // (3 * 5) mod 7 = 15 mod 7 = 1
 }
 
 #[test]
+
 fn test_prime_field_element_division() {
+
     let field = PrimeField::new(BigInt::from(7));
+
     let a = PrimeFieldElement::new(BigInt::from(6), field.clone());
+
     let b = PrimeFieldElement::new(BigInt::from(3), field.clone());
 
     let result = a / b;
+
     assert_eq!(result.value, BigInt::from(2)); // 6 / 3 = 2 in GF(7)
 }
 
 #[test]
+
 fn test_prime_field_element_inverse() {
+
     let field = PrimeField::new(BigInt::from(7));
+
     let elem = PrimeFieldElement::new(BigInt::from(3), field.clone());
 
     let inv = elem.inverse().expect("Inverse should exist");
+
     assert_eq!(inv.value, BigInt::from(5)); // 3 * 5 = 15 = 1 mod 7
 
     // Verify: elem * inv = 1
     let one = elem.clone() * inv;
+
     assert_eq!(one.value, BigInt::from(1));
 }
 
 #[test]
+
 fn test_finite_field_polynomial_creation() {
+
     let field = PrimeField::new(BigInt::from(5));
+
     let coeffs = vec![
         PrimeFieldElement::new(BigInt::from(1), field.clone()),
         PrimeFieldElement::new(BigInt::from(2), field.clone()),
@@ -80,16 +114,21 @@ fn test_finite_field_polynomial_creation() {
     ];
 
     let poly = FiniteFieldPolynomial::new(coeffs, field.clone());
+
     assert_eq!(poly.degree(), 2);
+
     assert_eq!(poly.coeffs.len(), 3);
 }
 
 #[test]
+
 fn test_finite_field_polynomial_degree() {
+
     let field = PrimeField::new(BigInt::from(5));
 
     // Zero polynomial
     let zero_poly = FiniteFieldPolynomial::new(vec![], field.clone());
+
     assert_eq!(zero_poly.degree(), -1);
 
     // Constant polynomial
@@ -97,6 +136,7 @@ fn test_finite_field_polynomial_degree() {
         vec![PrimeFieldElement::new(BigInt::from(3), field.clone())],
         field.clone(),
     );
+
     assert_eq!(const_poly.degree(), 0);
 
     // Degree 2 polynomial
@@ -108,11 +148,14 @@ fn test_finite_field_polynomial_degree() {
         ],
         field.clone(),
     );
+
     assert_eq!(poly.degree(), 2);
 }
 
 #[test]
+
 fn test_finite_field_polynomial_addition() {
+
     let field = PrimeField::new(BigInt::from(5));
 
     // p1 = x + 2
@@ -135,13 +178,17 @@ fn test_finite_field_polynomial_addition() {
 
     // p1 + p2 = 3x + 5 = 3x + 0 (since 5 mod 5 = 0)
     let result = p1 + p2;
+
     assert_eq!(result.coeffs.len(), 2);
+
     assert_eq!(result.coeffs[0].value, BigInt::from(3)); // x coefficient
     assert_eq!(result.coeffs[1].value, BigInt::from(0)); // constant (5 mod 5 = 0)
 }
 
 #[test]
+
 fn test_finite_field_polynomial_multiplication() {
+
     let field = PrimeField::new(BigInt::from(5));
 
     // p1 = x + 1
@@ -164,14 +211,18 @@ fn test_finite_field_polynomial_multiplication() {
 
     // p1 * p2 = x^2 + 3x + 2
     let result = p1 * p2;
+
     assert_eq!(result.degree(), 2);
+
     assert_eq!(result.coeffs[0].value, BigInt::from(1)); // x^2 coefficient
     assert_eq!(result.coeffs[1].value, BigInt::from(3)); // x coefficient
     assert_eq!(result.coeffs[2].value, BigInt::from(2)); // constant
 }
 
 #[test]
+
 fn test_finite_field_polynomial_long_division() {
+
     let field = PrimeField::new(BigInt::from(5));
 
     // dividend = x^2 + 2x + 3
@@ -203,7 +254,9 @@ fn test_finite_field_polynomial_long_division() {
 }
 
 #[test]
+
 fn test_extension_field_element_creation() {
+
     let prime_field = PrimeField::new(BigInt::from(5));
 
     // Create irreducible polynomial x^2 + 2 over GF(5)
@@ -231,11 +284,14 @@ fn test_extension_field_element_creation() {
     );
 
     let elem = ExtensionFieldElement::new(poly, ext_field);
+
     assert!(elem.poly.degree() <= 1); // Should be reduced modulo irreducible poly
 }
 
 #[test]
+
 fn test_extension_field_element_arithmetic() {
+
     let prime_field = PrimeField::new(BigInt::from(5));
 
     // Create irreducible polynomial x^2 + 2 over GF(5)
@@ -271,6 +327,7 @@ fn test_extension_field_element_arithmetic() {
     );
 
     let elem1 = ExtensionFieldElement::new(poly1, ext_field.clone());
+
     let elem2 = ExtensionFieldElement::new(poly2, ext_field.clone());
 
     // Test addition
@@ -278,9 +335,11 @@ fn test_extension_field_element_arithmetic() {
         .clone()
         .add(elem2.clone())
         .expect("Addition should succeed");
+
     assert!(sum.poly.degree() <= 1);
 
     // Test multiplication
     let product = elem1.mul(elem2).expect("Multiplication should succeed");
+
     assert!(product.poly.degree() <= 1); // Should be reduced modulo irreducible poly
 }

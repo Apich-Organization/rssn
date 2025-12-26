@@ -4,17 +4,26 @@ use proptest::prelude::*;
 use rssn::physics::physics_fem::*;
 
 #[test]
+
 fn test_poisson_1d_basic() {
+
     let result = solve_poisson_1d(10, 1.0, |_| 2.0).unwrap();
+
     assert_eq!(result.len(), 11);
+
     assert_eq!(result[0], 0.0);
+
     assert_eq!(result[10], 0.0);
+
     assert!(result[5] > 0.0); // Maximum at center for -u'' = 2
 }
 
 #[test]
+
 fn test_poisson_2d_basic() {
+
     let result = solve_poisson_2d(5, 5, |_, _| 2.0).unwrap();
+
     assert_eq!(result.len(), 36);
 }
 

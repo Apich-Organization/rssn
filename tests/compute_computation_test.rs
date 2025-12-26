@@ -5,8 +5,11 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Condvar, Mutex};
 
 #[test]
+
 fn test_computation_creation() {
+
     let expr = Arc::new(Expr::Constant(1.0));
+
     let computation = Computation {
         id: "test_id".to_string(),
         expr: expr.clone(),
@@ -22,13 +25,18 @@ fn test_computation_creation() {
     };
 
     assert_eq!(computation.id, "test_id");
+
     assert_eq!(computation.status, ComputationStatus::Pending);
+
     assert_eq!(computation.progress.percentage, 0.0);
 }
 
 #[test]
+
 fn test_computation_serialization() {
+
     let expr = Arc::new(Expr::Constant(1.0));
+
     let computation = Computation {
         id: "test_id".to_string(),
         expr: expr.clone(),
@@ -44,10 +52,13 @@ fn test_computation_serialization() {
     };
 
     let serialized = serde_json::to_string(&computation).unwrap();
+
     let deserialized: Computation = serde_json::from_str(&serialized).unwrap();
 
     assert_eq!(deserialized.id, computation.id);
+
     assert_eq!(deserialized.status, computation.status);
+
     assert_eq!(deserialized.result, computation.result);
     // Note: pause and cancel_signal are skipped in serialization, so they will be default/missing?
     // Wait, Computation doesn't implement Default.

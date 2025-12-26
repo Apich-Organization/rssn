@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct EulerInput {
     system_type: String, // "lorenz", "oscillator", "orbital"
     params: serde_json::Value,
@@ -18,7 +19,9 @@ struct EulerInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mut c_char {
+
     let input: EulerInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -33,6 +36,7 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
 
     let res = match input.system_type.as_str() {
         "lorenz" => {
+
             let sys: LorenzSystem = match serde_json::from_value(input.params) {
                 Ok(s) => s,
                 Err(e) => {
@@ -44,9 +48,11 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
                     )
                 }
             };
+
             solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
         }
         "oscillator" => {
+
             let sys: DampedOscillatorSystem = match serde_json::from_value(input.params) {
                 Ok(s) => s,
                 Err(e) => {
@@ -58,6 +64,7 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mu
                     )
                 }
             };
+
             solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
         }
         _ => {
@@ -80,6 +87,7 @@ fn solve_with_method<S: crate::physics::physics_rkm::OdeSystem>(
     dt: f64,
     method: &str,
 ) -> Vec<(f64, Vec<f64>)> {
+
     match method {
         "midpoint" => physics_em::solve_midpoint_euler(sys, y0, t_span, dt),
         "heun" => physics_em::solve_heun_euler(sys, y0, t_span, dt),

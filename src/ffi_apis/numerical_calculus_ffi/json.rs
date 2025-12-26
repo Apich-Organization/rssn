@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct GradientInput {
     expr: Expr,
     vars: Vec<String>,
@@ -15,6 +16,7 @@ struct GradientInput {
 }
 
 #[derive(Deserialize)]
+
 struct JacobianInput {
     funcs: Vec<Expr>,
     vars: Vec<String>,
@@ -22,6 +24,7 @@ struct JacobianInput {
 }
 
 #[derive(Deserialize)]
+
 struct HessianInput {
     expr: Expr,
     vars: Vec<String>,
@@ -29,7 +32,9 @@ struct HessianInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_numerical_gradient_json(input_json: *const c_char) -> *mut c_char {
+
     let input: GradientInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -44,6 +49,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(input_json: *const c_char)
     };
 
     let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+
     let res = calculus::gradient(&input.expr, &vars_refs, &input.point);
 
     let ffi_res = match res {
@@ -61,7 +67,9 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(input_json: *const c_char)
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_numerical_jacobian_json(input_json: *const c_char) -> *mut c_char {
+
     let input: JacobianInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -76,6 +84,7 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(input_json: *const c_char)
     };
 
     let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+
     let res = calculus::jacobian(&input.funcs, &vars_refs, &input.point);
 
     let ffi_res = match res {
@@ -93,7 +102,9 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(input_json: *const c_char)
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_numerical_hessian_json(input_json: *const c_char) -> *mut c_char {
+
     let input: HessianInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -108,6 +119,7 @@ pub unsafe extern "C" fn rssn_numerical_hessian_json(input_json: *const c_char) 
     };
 
     let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+
     let res = calculus::hessian(&input.expr, &vars_refs, &input.point);
 
     let ffi_res = match res {

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct OdeInput {
     funcs: Vec<Expr>,
     y0: Vec<f64>,
@@ -17,7 +18,9 @@ struct OdeInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_ode_solve_json(input_json: *const c_char) -> *mut c_char {
+
     let input: OdeInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {

@@ -13,14 +13,19 @@ use std::os::raw::c_char;
 
 /// Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via JSON interface.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_hamming_encode(data_json: *const c_char) -> *mut c_char {
+
     let data: Option<Vec<u8>> = from_json_string(data_json);
+
     if let Some(d) = data {
+
         match hamming_encode(&d) {
             Some(codeword) => to_json_string(&codeword),
             None => std::ptr::null_mut(),
         }
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -28,20 +33,27 @@ pub unsafe extern "C" fn rssn_json_hamming_encode(data_json: *const c_char) -> *
 /// Decodes a 7-bit Hamming(7,4) codeword via JSON interface.
 /// Returns JSON object with "data" and "error_pos" fields.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_hamming_decode(codeword_json: *const c_char) -> *mut c_char {
+
     let codeword: Option<Vec<u8>> = from_json_string(codeword_json);
+
     if let Some(c) = codeword {
+
         match hamming_decode(&c) {
             Ok((data, error_pos)) => {
+
                 let result = serde_json::json!({
                     "data": data,
                     "error_pos": error_pos
                 });
+
                 to_json_string(&result)
             }
             Err(_) => std::ptr::null_mut(),
         }
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -49,36 +61,48 @@ pub unsafe extern "C" fn rssn_json_hamming_decode(codeword_json: *const c_char) 
 /// Encodes data using Reed-Solomon code via JSON interface.
 /// Input: {"data": [bytes], "n_sym": number}
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_rs_encode(
     data_json: *const c_char,
     n_sym_json: *const c_char,
 ) -> *mut c_char {
+
     let data: Option<Vec<u8>> = from_json_string(data_json);
+
     let n_sym: Option<usize> = from_json_string(n_sym_json);
+
     if let (Some(d), Some(n)) = (data, n_sym) {
+
         match rs_encode(&d, n) {
             Ok(codeword) => to_json_string(&codeword),
             Err(_) => std::ptr::null_mut(),
         }
     } else {
+
         std::ptr::null_mut()
     }
 }
 
 /// Decodes a Reed-Solomon codeword via JSON interface.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_rs_decode(
     codeword_json: *const c_char,
     n_sym_json: *const c_char,
 ) -> *mut c_char {
+
     let codeword: Option<Vec<u8>> = from_json_string(codeword_json);
+
     let n_sym: Option<usize> = from_json_string(n_sym_json);
+
     if let (Some(c), Some(n)) = (codeword, n_sym) {
+
         match rs_decode(&c, n) {
             Ok(data) => to_json_string(&data),
             Err(_) => std::ptr::null_mut(),
         }
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -91,18 +115,24 @@ pub unsafe extern "C" fn rssn_json_rs_decode(
 /// Input: {"a": [bytes], "b": [bytes]}
 /// Returns: distance as integer, or null on error
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_hamming_distance(
     a_json: *const c_char,
     b_json: *const c_char,
 ) -> *mut c_char {
+
     let a: Option<Vec<u8>> = from_json_string(a_json);
+
     let b: Option<Vec<u8>> = from_json_string(b_json);
+
     if let (Some(av), Some(bv)) = (a, b) {
+
         match hamming_distance(&av, &bv) {
             Some(dist) => to_json_string(&dist),
             None => std::ptr::null_mut(),
         }
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -111,12 +141,18 @@ pub unsafe extern "C" fn rssn_json_hamming_distance(
 /// Input: [bytes]
 /// Returns: weight as integer
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_hamming_weight(data_json: *const c_char) -> *mut c_char {
+
     let data: Option<Vec<u8>> = from_json_string(data_json);
+
     if let Some(d) = data {
+
         let weight = hamming_weight(&d);
+
         to_json_string(&weight)
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -125,12 +161,18 @@ pub unsafe extern "C" fn rssn_json_hamming_weight(data_json: *const c_char) -> *
 /// Input: [7 bytes]
 /// Returns: boolean
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_hamming_check(codeword_json: *const c_char) -> *mut c_char {
+
     let codeword: Option<Vec<u8>> = from_json_string(codeword_json);
+
     if let Some(c) = codeword {
+
         let valid = hamming_check(&c);
+
         to_json_string(&valid)
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -142,16 +184,23 @@ pub unsafe extern "C" fn rssn_json_hamming_check(codeword_json: *const c_char) -
 /// Checks if a Reed-Solomon codeword is valid via JSON interface.
 /// Returns: boolean
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_rs_check(
     codeword_json: *const c_char,
     n_sym_json: *const c_char,
 ) -> *mut c_char {
+
     let codeword: Option<Vec<u8>> = from_json_string(codeword_json);
+
     let n_sym: Option<usize> = from_json_string(n_sym_json);
+
     if let (Some(c), Some(n)) = (codeword, n_sym) {
+
         let valid = rs_check(&c, n);
+
         to_json_string(&valid)
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -159,16 +208,23 @@ pub unsafe extern "C" fn rssn_json_rs_check(
 /// Estimates error count in a Reed-Solomon codeword via JSON interface.
 /// Returns: error count as integer
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_rs_error_count(
     codeword_json: *const c_char,
     n_sym_json: *const c_char,
 ) -> *mut c_char {
+
     let codeword: Option<Vec<u8>> = from_json_string(codeword_json);
+
     let n_sym: Option<usize> = from_json_string(n_sym_json);
+
     if let (Some(c), Some(n)) = (codeword, n_sym) {
+
         let count = rs_error_count(&c, n);
+
         to_json_string(&count)
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -181,12 +237,18 @@ pub unsafe extern "C" fn rssn_json_rs_error_count(
 /// Input: [bytes]
 /// Returns: u32 checksum
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_crc32_compute(data_json: *const c_char) -> *mut c_char {
+
     let data: Option<Vec<u8>> = from_json_string(data_json);
+
     if let Some(d) = data {
+
         let crc = crc32_compute(&d);
+
         to_json_string(&crc)
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -195,16 +257,23 @@ pub unsafe extern "C" fn rssn_json_crc32_compute(data_json: *const c_char) -> *m
 /// Input: data as [bytes], expected_crc as u32
 /// Returns: boolean
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_crc32_verify(
     data_json: *const c_char,
     expected_crc_json: *const c_char,
 ) -> *mut c_char {
+
     let data: Option<Vec<u8>> = from_json_string(data_json);
+
     let expected_crc: Option<u32> = from_json_string(expected_crc_json);
+
     if let (Some(d), Some(crc)) = (data, expected_crc) {
+
         let valid = crc32_verify(&d, crc);
+
         to_json_string(&valid)
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -213,16 +282,23 @@ pub unsafe extern "C" fn rssn_json_crc32_verify(
 /// Input: current crc as u32, data as [bytes]
 /// Returns: updated crc as u32
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_crc32_update(
     crc_json: *const c_char,
     data_json: *const c_char,
 ) -> *mut c_char {
+
     let crc: Option<u32> = from_json_string(crc_json);
+
     let data: Option<Vec<u8>> = from_json_string(data_json);
+
     if let (Some(c), Some(d)) = (crc, data) {
+
         let updated = crc32_update(c, &d);
+
         to_json_string(&updated)
     } else {
+
         std::ptr::null_mut()
     }
 }
@@ -231,12 +307,18 @@ pub unsafe extern "C" fn rssn_json_crc32_update(
 /// Input: running crc as u32
 /// Returns: final crc as u32
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_crc32_finalize(crc_json: *const c_char) -> *mut c_char {
+
     let crc: Option<u32> = from_json_string(crc_json);
+
     if let Some(c) = crc {
+
         let final_crc = crc32_finalize(c);
+
         to_json_string(&final_crc)
     } else {
+
         std::ptr::null_mut()
     }
 }

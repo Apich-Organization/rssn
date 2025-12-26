@@ -5,8 +5,11 @@ use proptest::prelude::*;
 use rssn::physics::physics_mm::*;
 
 #[test]
+
 fn test_sph_density_pressure_basic() {
+
     let h = 0.5;
+
     let mut system = SPHSystem {
         particles: Vec::new(),
         poly6: Poly6Kernel::new(h),
@@ -27,6 +30,7 @@ fn test_sph_density_pressure_basic() {
         pressure: 0.0,
         mass: 1.0,
     });
+
     system.particles.push(Particle {
         pos: Vector2D::new(0.05, 0.0),
         vel: Vector2D::default(),
@@ -39,12 +43,16 @@ fn test_sph_density_pressure_basic() {
     system.compute_density_pressure();
 
     assert!(system.particles[0].density > 0.0);
+
     assert_eq!(system.particles[0].density, system.particles[1].density);
 }
 
 #[test]
+
 fn test_simulate_dam_break_smoke() {
+
     let results = simulate_dam_break_2d_scenario();
+
     // 20*10 = 200 particles
     assert_eq!(results.len(), 200);
 }

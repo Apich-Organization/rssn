@@ -10,13 +10,16 @@ use std::collections::HashMap;
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct EvalInput {
     expr: Expr,
     vars: HashMap<String, Complex<f64>>,
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json: *const c_char) -> *mut c_char {
+
     let input: EvalInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -49,6 +52,7 @@ pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json: *const c_char) -
 }
 
 #[derive(Deserialize)]
+
 struct ContourInput {
     expr: Expr,
     var: String,
@@ -56,9 +60,11 @@ struct ContourInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
     input_json: *const c_char,
 ) -> *mut c_char {
+
     let input: ContourInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {

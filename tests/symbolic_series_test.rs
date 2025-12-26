@@ -8,8 +8,10 @@ use rssn::symbolic::series::{
 use std::sync::Arc;
 
 fn assert_is_value(expr: &Expr, expected: f64) {
+
     let val = evaluate_numerical(expr)
         .unwrap_or_else(|| panic!("Failed to evaluate expression: {:?}", expr));
+
     assert!(
         (val - expected).abs() < 1e-5,
         "Expected {}, got {}",
@@ -19,11 +21,16 @@ fn assert_is_value(expr: &Expr, expected: f64) {
 }
 
 #[test]
+
 fn test_taylor_series_exp() {
+
     // Taylor series of e^x around 0 at order 3: 1 + x + x^2/2 + x^3/6
     let x = Expr::new_variable("x");
+
     let expr = Expr::new_exp(x.clone());
+
     let center = Expr::new_constant(0.0);
+
     let series = taylor_series(&expr, "x", &center, 3);
 
     // Evaluate at x = 0.5
@@ -36,11 +43,16 @@ fn test_taylor_series_exp() {
 }
 
 #[test]
+
 fn test_taylor_series_sin() {
+
     // Taylor series of sin(x) around 0 at order 3: x - x^3/6
     let x = Expr::new_variable("x");
+
     let expr = Expr::new_sin(x.clone());
+
     let center = Expr::new_constant(0.0);
+
     let series = taylor_series(&expr, "x", &center, 3);
 
     // Evaluate at x = 0.1
@@ -53,30 +65,39 @@ fn test_taylor_series_sin() {
 }
 
 #[test]
+
 fn test_summation_finite() {
+
     // Sum of i from 1 to 5: 1+2+3+4+5 = 15
     let i = Expr::new_variable("i");
+
     let sum = summation(&i, "i", &Expr::new_constant(1.0), &Expr::new_constant(5.0));
 
     assert_is_value(&sum, 15.0);
 }
 
 #[test]
+
 fn test_product_finite() {
+
     // Product of i from 1 to 4: 1*2*3*4 = 24
     let i = Expr::new_variable("i");
+
     let prod = product(&i, "i", &Expr::new_constant(1.0), &Expr::new_constant(4.0));
 
     assert_is_value(&prod, 24.0);
 }
 
 #[test]
+
 fn test_asymptotic_expansion() {
+
     // Expansion of (x + 1) / (x - 1) at infinity
     // = (1 + 1/x) / (1 - 1/x) = (1 + 1/x)(1 + 1/x + 1/x^2 + ...)
     // = 1 + 2/x + 2/x^2 + ...
 
     let x = Expr::new_variable("x");
+
     let expr = Expr::new_div(
         Expr::new_add(x.clone(), Expr::new_constant(1.0)),
         Expr::new_sub(x.clone(), Expr::new_constant(1.0)),

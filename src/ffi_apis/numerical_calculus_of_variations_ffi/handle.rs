@@ -9,6 +9,7 @@ use std::ptr;
 
 /// Evaluates the action for a given path.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
     lagrangian: *const Expr,
     path: *const Expr,
@@ -19,6 +20,7 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
     t_end: f64,
     result: *mut f64,
 ) -> i32 {
+
     if lagrangian.is_null()
         || path.is_null()
         || t_var.is_null()
@@ -26,27 +28,36 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
         || path_dot_var.is_null()
         || result.is_null()
     {
+
         return -1;
     }
 
     let t_var_str = match CStr::from_ptr(t_var).to_str() {
         Ok(s) => s,
         Err(_) => {
+
             update_last_error("Invalid UTF-8 for t_var".to_string());
+
             return -1;
         }
     };
+
     let path_var_str = match CStr::from_ptr(path_var).to_str() {
         Ok(s) => s,
         Err(_) => {
+
             update_last_error("Invalid UTF-8 for path_var".to_string());
+
             return -1;
         }
     };
+
     let path_dot_var_str = match CStr::from_ptr(path_dot_var).to_str() {
         Ok(s) => s,
         Err(_) => {
+
             update_last_error("Invalid UTF-8 for path_dot_var".to_string());
+
             return -1;
         }
     };
@@ -60,11 +71,15 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
         (t_start, t_end),
     ) {
         Ok(val) => {
+
             *result = val;
+
             0
         }
         Err(e) => {
+
             update_last_error(e);
+
             -1
         }
     }
@@ -73,34 +88,45 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
 /// Computes the Euler-Lagrange expression.
 /// Returns a pointer to a new Expr.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cov_euler_lagrange(
     lagrangian: *const Expr,
     t_var: *const c_char,
     path_var: *const c_char,
     path_dot_var: *const c_char,
 ) -> *mut Expr {
+
     if lagrangian.is_null() || t_var.is_null() || path_var.is_null() || path_dot_var.is_null() {
+
         return ptr::null_mut();
     }
 
     let t_var_str = match CStr::from_ptr(t_var).to_str() {
         Ok(s) => s,
         Err(_) => {
+
             update_last_error("Invalid UTF-8 for t_var".to_string());
+
             return ptr::null_mut();
         }
     };
+
     let path_var_str = match CStr::from_ptr(path_var).to_str() {
         Ok(s) => s,
         Err(_) => {
+
             update_last_error("Invalid UTF-8 for path_var".to_string());
+
             return ptr::null_mut();
         }
     };
+
     let path_dot_var_str = match CStr::from_ptr(path_dot_var).to_str() {
         Ok(s) => s,
         Err(_) => {
+
             update_last_error("Invalid UTF-8 for path_dot_var".to_string());
+
             return ptr::null_mut();
         }
     };
@@ -111,5 +137,6 @@ pub unsafe extern "C" fn rssn_num_cov_euler_lagrange(
         path_var_str,
         path_dot_var_str,
     );
+
     Box::into_raw(Box::new(res))
 }

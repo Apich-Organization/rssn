@@ -289,6 +289,7 @@ pub mod physics;
 pub mod plugins;
 pub mod prelude;
 pub mod symbolic;
+
 use std::sync::Arc;
 
 /// Checks if an `Arc` has exclusive ownership (strong count is 1).
@@ -305,6 +306,8 @@ use std::sync::Arc;
 ///
 #[allow(clippy::inline_always)]
 #[inline(always)]
+
 pub fn is_exclusive<T>(arc: &Arc<T>) -> bool {
+
     Arc::strong_count(arc) == 1
 }

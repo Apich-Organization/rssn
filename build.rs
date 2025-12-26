@@ -3,12 +3,17 @@ use vergen_gitcl::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+
     let mut emitter = Emitter::default();
 
     emitter.add_instructions(&BuildBuilder::all_build()?)?;
+
     emitter.add_instructions(&CargoBuilder::all_cargo()?)?;
+
     emitter.add_instructions(&GitclBuilder::all_git()?)?;
+
     emitter.add_instructions(&RustcBuilder::all_rustc()?)?;
+
     emitter.add_instructions(&SysinfoBuilder::all_sysinfo()?)?;
 
     emitter.emit()?;
@@ -20,16 +25,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
+
     let crate_dir = std::env::var("CARGO_MANIFEST_DIR")?;
 
     // Generate C header using cbindgen.toml
     match cbindgen::generate(&crate_dir) {
         Ok(bindings) => {
+
             bindings.write_to_file("rssn.h");
+
             println!("cargo:warning=Generated rssn.h");
         }
         Err(e) => {
+
             println!("cargo:warning=Failed to generate C bindings: {:?}", e);
+
             println!("cargo:warning=Continuing build without C header generation");
         }
     }
@@ -47,16 +57,21 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
         .generate()
     {
         Ok(bindings) => {
+
             bindings.write_to_file("rssn.hpp");
+
             println!("cargo:warning=Generated rssn.hpp");
         }
         Err(e) => {
+
             println!("cargo:warning=Failed to generate C++ bindings: {:?}", e);
+
             println!("cargo:warning=Continuing build without C++ header generation");
         }
     }
 
     println!("cargo:rerun-if-changed=src/");
+
     println!("cargo:rerun-if-changed=cbindgen.toml");
 
     Ok(())

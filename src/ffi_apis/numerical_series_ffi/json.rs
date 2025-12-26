@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct TaylorInput {
     expr: Expr,
     var: String,
@@ -16,6 +17,7 @@ struct TaylorInput {
 }
 
 #[derive(Deserialize)]
+
 struct SumInput {
     expr: Expr,
     var: String,
@@ -24,9 +26,11 @@ struct SumInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
     input_json: *const c_char,
 ) -> *mut c_char {
+
     let input: TaylorInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -57,7 +61,9 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_numerical_sum_series_json(input_json: *const c_char) -> *mut c_char {
+
     let input: SumInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {

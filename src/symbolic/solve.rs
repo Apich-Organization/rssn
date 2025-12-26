@@ -56,6 +56,7 @@ use crate::symbolic::simplify_dag::simplify;
 use num_traits::ToPrimitive;
 use std::collections::HashMap;
 use std::sync::Arc;
+
 /// Solves a single equation for a given variable.
 ///
 /// This function acts as a dispatcher, attempting to solve the equation by first
@@ -73,23 +74,33 @@ use std::sync::Arc;
 /// A `Vec<Expr>` containing the symbolic solutions. If no explicit solution is found,
 /// it may return an unevaluated `Expr::Solve` expression.
 #[must_use]
+
 pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
+
     let equation = if let Expr::Eq(left, right) = expr {
+
         simplify(&Expr::new_sub(left.clone(), right.clone()))
     } else {
+
         expr.clone()
     };
+
     if let Some(solutions) = solve_polynomial(&equation, var) {
+
         return solutions;
     }
+
     if let Some(solutions) = solve_transcendental(&equation, var) {
+
         return solutions;
     }
+
     vec![Expr::Solve(
         Arc::new(equation),
         var.to_string(),
     )]
 }
+
 /// Solves a system of multivariate equations.
 ///
 /// This function acts as a dispatcher, attempting to solve the system using different strategies:
@@ -104,15 +115,22 @@ pub fn solve(expr: &Expr, var: &str) -> Vec<Expr> {
 /// An `Option<Vec<(String, Expr)>>` containing a vector of `(variable_name, solution_expression)`
 /// pairs if a solution is found, or `None` if the system cannot be solved by the implemented methods.
 #[must_use]
+
 pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Expr, Expr)>> {
+
     if let Some(solutions) = solve_system_by_substitution(equations, vars) {
+
         return Some(solutions);
     }
+
     if let Some(solutions) = solve_system_with_grobner(equations, vars) {
+
         return Some(solutions);
     }
+
     None
 }
+
 /// Solves a system of multivariate equations using iterative substitution and elimination.
 ///
 /// This function attempts to solve for one variable at a time and substitute its solution
@@ -127,62 +145,101 @@ pub fn solve_system(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Expr, Expr
 /// An `Option<Vec<(Expr, Expr)>>` containing a vector of `(variable_expression, solution_expression)`
 /// pairs if a partial or complete solution is found, or `None` if the system cannot be solved.
 #[must_use]
+
 pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Expr, Expr)>> {
+
     let mut remaining_eqs: Vec<Expr> = equations.to_vec();
+
     let mut solutions: HashMap<String, Expr> = HashMap::new();
+
     let mut progress = true;
+
     while progress && !remaining_eqs.is_empty() {
+
         progress = false;
+
         let mut solved_eq_index: Option<usize> = None;
+
         for (i, eq) in remaining_eqs.iter().enumerate() {
+
             let mut current_eq = eq.clone();
+
             for (solved_var, solution_expr) in &solutions {
+
                 current_eq = substitute(&current_eq, solved_var, solution_expr);
             }
+
             let remaining_vars: Vec<&str> = vars
                 .iter()
                 .filter(|v| !solutions.contains_key(**v))
                 .copied()
                 .collect();
+
             if remaining_vars.len() == 1 {
+
                 let var_to_solve = remaining_vars[0];
+
                 let mut new_solutions = solve(&current_eq, var_to_solve);
+
                 if !new_solutions.is_empty() {
+
                     let solution = new_solutions.remove(0);
+
                     solutions.insert(var_to_solve.to_string(), solution);
+
                     solved_eq_index = Some(i);
+
                     progress = true;
+
                     break;
                 }
             }
         }
+
         if let Some(index) = solved_eq_index {
+
             remaining_eqs.remove(index);
         }
     }
+
     let mut final_solutions = HashMap::new();
+
     for var_name in vars.iter().map(|s| (*s).to_string()) {
+
         if let Some(mut solution) = solutions.get(&var_name).cloned() {
+
             let mut changed = true;
+
             while changed {
+
                 changed = false;
+
                 for (solved_var, sol_expr) in &solutions {
+
                     if solved_var != &var_name {
+
                         let new_solution = substitute(&solution, solved_var, sol_expr);
+
                         if new_solution != solution {
+
                             solution = new_solution;
+
                             changed = true;
                         }
                     }
                 }
             }
+
             final_solutions.insert(var_name, simplify(&solution));
         }
     }
+
     if final_solutions.len() == vars.len() {
+
         Some(
             vars.iter()
                 .map(|&v| {
+
                     (
                         Expr::Variable(v.to_string()),
                         match final_solutions.get(v) {
@@ -194,9 +251,11 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
                 .collect(),
         )
     } else {
+
         None
     }
 }
+
 /// Solves a system of linear equations `Ax = b` for any `M x N` matrix `A`.
 ///
 /// This function constructs an augmented matrix `[A | b]`, computes its Reduced Row Echelon Form (RREF),
@@ -212,74 +271,120 @@ pub fn solve_system_parcial(equations: &[Expr], vars: &[&str]) -> Option<Vec<(Ex
 /// # Returns
 /// A `Result` containing an `Expr` representing the solution (matrix, system, or no solution),
 /// or an error string if inputs are invalid or dimensions are incompatible.
+
 pub fn solve_linear_system_mat(a: &Expr, b: &Expr) -> Result<Expr, String> {
+
     let (a_rows, a_cols) =
         get_matrix_dims(a).ok_or_else(|| "A is not a valid matrix".to_string())?;
+
     let (b_rows, b_cols) =
         get_matrix_dims(b).ok_or_else(|| "b is not a valid matrix".to_string())?;
+
     if a_rows != b_rows {
+
         return Err("Matrix A and vector b have incompatible row dimensions".to_string());
     }
+
     if b_cols != 1 {
+
         return Err("b must be a column vector".to_string());
     }
+
     let Expr::Matrix(a_mat) = a else {
+
         unreachable!()
     };
+
     let Expr::Matrix(b_mat) = b else {
+
         unreachable!()
     };
+
     let mut augmented_mat = a_mat.clone();
+
     for i in 0..a_rows {
+
         augmented_mat[i].push(b_mat[i][0].clone());
     }
+
     let rref_expr = rref(&Expr::Matrix(augmented_mat))?;
+
     let Expr::Matrix(rref_mat) = rref_expr else {
+
         unreachable!()
     };
+
     for (i, _row) in rref_mat.iter().take(a_rows).enumerate() {
+
         let is_lhs_zero = rref_mat[i][0..a_cols].iter().all(is_zero);
+
         if is_lhs_zero && !is_zero(&rref_mat[i][a_cols]) {
+
             return Ok(Expr::NoSolution);
         }
     }
+
     let mut pivot_cols = Vec::new();
+
     let mut lead = 0;
+
     for r in 0..a_rows {
+
         if lead >= a_cols {
+
             break;
         }
+
         let mut i = lead;
+
         while i < a_cols && is_zero(&rref_mat[r][i]) {
+
             i += 1;
         }
+
         if i < a_cols {
+
             pivot_cols.push(i);
+
             lead = i + 1;
         }
     }
+
     let free_cols: Vec<usize> = (0..a_cols).filter(|c| !pivot_cols.contains(c)).collect();
+
     if free_cols.is_empty() {
+
         let mut solution = create_empty_matrix(a_cols, 1);
+
         for (i, &p_col) in pivot_cols.iter().enumerate() {
+
             solution[p_col][0] = rref_mat[i][a_cols].clone();
         }
+
         Ok(Expr::Matrix(solution))
     } else {
+
         let particular_solution = {
+
             let mut sol = create_empty_matrix(a_cols, 1);
+
             for (i, &p_col) in pivot_cols.iter().enumerate() {
+
                 sol[p_col][0] = rref_mat[i][a_cols].clone();
             }
+
             sol
         };
+
         let null_space_basis = null_space(a)?;
+
         Ok(Expr::System(vec![
             Expr::Matrix(particular_solution),
             null_space_basis,
         ]))
     }
 }
+
 /// Solves a system of linear equations symbolically using Gaussian elimination.
 ///
 /// This function takes a system of equations and a list of variables, and attempts
@@ -293,28 +398,38 @@ pub fn solve_linear_system_mat(a: &Expr, b: &Expr) -> Result<Expr, String> {
 /// # Returns
 /// A `Result` containing a vector of `Expr` representing the solutions for `vars`,
 /// or an error string if the system cannot be solved.
+
 pub fn solve_linear_system(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, String> {
+
     if let Expr::System(eqs) = system {
+
         let vars_str: Vec<&str> = vars.iter().map(std::string::String::as_str).collect();
+
         match solve_system(eqs, &vars_str) {
             Some(solutions) => {
+
                 let mut sol_map: HashMap<Expr, Expr> = solutions.into_iter().collect();
+
                 let ordered_solutions: Vec<Expr> = vars
                     .iter()
                     .map(|var| {
+
                         sol_map
                             .remove(&Expr::Variable(var.clone()))
                             .unwrap_or(Expr::Variable("NotFound".to_string()))
                     })
                     .collect();
+
                 Ok(ordered_solutions)
             }
             _none => Err("System could not be solved.".to_string()),
         }
     } else {
+
         Err("Input must be a system of equations.".to_string())
     }
 }
+
 /// Solves a system of linear equations symbolically using Gaussian elimination.
 ///
 /// This function constructs an augmented matrix from the system of equations and
@@ -328,185 +443,287 @@ pub fn solve_linear_system(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, 
 /// # Returns
 /// A `Result` containing a vector of `Expr` representing the solutions for `vars`,
 /// or an error string if the system is inconsistent, singular, or inputs are invalid.
+
 pub fn solve_linear_system_gauss(system: &Expr, vars: &[String]) -> Result<Vec<Expr>, String> {
+
     if let Expr::System(eqs) = system {
+
         let n = vars.len();
+
         if eqs.len() != n {
+
             return Err(format!(
                 "Number of equations ({}) does not match number of variables ({})",
                 eqs.len(),
                 n
             ));
         }
+
         let mut matrix_a = vec![vec![Expr::Constant(0.0); n]; n];
+
         let mut vector_b = vec![Expr::Constant(0.0); n];
+
         for (i, eq) in eqs.iter().enumerate() {
+
             let (lhs, rhs) = match eq {
                 Expr::Eq(l, r) => (l, r),
                 _ => return Err(format!("Item {i} is not a valid equation")),
             };
+
             vector_b[i] = rhs.as_ref().clone();
+
             if let Some(coeffs) = extract_polynomial_coeffs(lhs, "") {
+
                 for (_term_str, _coeff) in coeffs.iter().zip(vars.iter()) {}
             }
+
             let (_, terms) = collect_and_order_terms(lhs);
+
             for (term, coeff) in terms {
+
                 if let Some(j) = vars.iter().position(|v| v == &term.to_string()) {
+
                     matrix_a[i][j] = coeff;
                 } else if !is_zero(&coeff) && term.to_string() != "1" {
+
                     vector_b[i] = simplify(&Expr::new_sub(
                         vector_b[i].clone(),
                         Expr::new_mul(coeff, term),
                     ));
                 } else if term.to_string() == "1" {
+
                     vector_b[i] = simplify(&Expr::new_sub(vector_b[i].clone(), coeff));
                 }
             }
         }
+
         for i in 0..n {
+
             let mut max_row = i;
+
             for (k, _item) in matrix_a.iter().enumerate().take(n).skip(i + 1) {
+
                 if !is_zero(&matrix_a[k][i]) {
+
                     max_row = k;
+
                     break;
                 }
             }
+
             matrix_a.swap(i, max_row);
+
             vector_b.swap(i, max_row);
+
             let pivot = matrix_a[i][i].clone();
+
             if is_zero(&pivot) {
+
                 return Err("Matrix is singular or underdetermined".to_string());
             }
+
             for j in i..n {
+
                 matrix_a[i][j] = simplify(&Expr::new_div(matrix_a[i][j].clone(), pivot.clone()));
             }
+
             vector_b[i] = simplify(&Expr::new_div(vector_b[i].clone(), pivot.clone()));
+
             for k in 0..n {
+
                 if i != k {
+
                     let factor = matrix_a[k][i].clone();
+
                     for j in i..n {
+
                         let term = simplify(&Expr::new_mul(factor.clone(), matrix_a[i][j].clone()));
+
                         matrix_a[k][j] = simplify(&Expr::new_sub(matrix_a[k][j].clone(), term));
                     }
+
                     let term_b = simplify(&Expr::new_mul(factor.clone(), vector_b[i].clone()));
+
                     vector_b[k] = simplify(&Expr::new_sub(vector_b[k].clone(), term_b));
                 }
             }
         }
+
         Ok(vector_b)
     } else {
+
         Err("Input expression is not a system of equations".to_string())
     }
 }
+
 pub(crate) fn solve_system_by_substitution(
     equations: &[Expr],
     vars: &[&str],
 ) -> Option<Vec<(Expr, Expr)>> {
+
     let mut remaining_eqs: Vec<Expr> = equations.to_vec();
+
     let mut solutions: HashMap<Expr, Expr> = HashMap::new();
+
     let mut progress = true;
+
     while progress && !remaining_eqs.is_empty() {
+
         progress = false;
+
         let mut solved_eq_index: Option<usize> = None;
+
         for (i, eq) in remaining_eqs.iter().enumerate() {
+
             let mut current_eq = eq.clone();
+
             for (solved_var, solution_expr) in &solutions {
+
                 current_eq = substitute(&current_eq, &solved_var.to_string(), solution_expr);
             }
+
             let remaining_vars: Vec<&str> = vars
                 .iter()
                 .filter(|v| !solutions.contains_key(&Expr::Variable((**v).to_string())))
                 .copied()
                 .collect();
+
             if remaining_vars.len() == 1 {
+
                 let var_to_solve = remaining_vars[0];
+
                 let mut new_solutions = solve(&current_eq, var_to_solve);
+
                 if !new_solutions.is_empty() {
+
                     let solution = new_solutions.remove(0);
+
                     solutions.insert(Expr::Variable(var_to_solve.to_string()), solution);
+
                     solved_eq_index = Some(i);
+
                     progress = true;
+
                     break;
                 }
             }
         }
+
         if let Some(index) = solved_eq_index {
+
             remaining_eqs.remove(index);
         }
     }
+
     if solutions.len() != vars.len() {
+
         return None;
     }
+
     let mut final_solutions = HashMap::new();
+
     for &var_name_str in vars {
+
         let var_expr = Expr::Variable(var_name_str.to_string());
+
         if let Some(mut solution) = solutions.get(&var_expr).cloned() {
+
             for (solved_var, sol_expr) in &solutions {
+
                 if solved_var != &var_expr {
+
                     solution = substitute(&solution, &solved_var.to_string(), sol_expr);
                 }
             }
+
             final_solutions.insert(var_expr, simplify(&solution));
         }
     }
+
     Some(final_solutions.into_iter().collect())
 }
+
 pub(crate) fn solve_system_with_grobner(
     equations: &[Expr],
     vars: &[&str],
 ) -> Option<Vec<(Expr, Expr)>> {
+
     let basis: Vec<SparsePolynomial> = equations
         .iter()
         .map(|eq| expr_to_sparse_poly(eq, vars))
         .collect();
+
     let grobner_basis = match buchberger(&basis, MonomialOrder::Lexicographical) {
         Ok(basis) => basis,
         Err(_) => return None,
     };
+
     let mut solutions: HashMap<Expr, Expr> = HashMap::new();
+
     for poly in grobner_basis.iter().rev() {
+
         let mut current_eq = sparse_poly_to_expr(poly);
+
         for (var, val) in &solutions {
+
             current_eq = substitute(&current_eq, &var.to_string(), val);
         }
+
         let remaining_vars: Vec<&str> = vars
             .iter()
             .filter(|v| contains_var(&current_eq, v))
             .copied()
             .collect();
+
         if remaining_vars.len() == 1 {
+
             let roots = solve(&current_eq, remaining_vars[0]);
+
             if roots.is_empty() {
+
                 return None;
             }
+
             solutions.insert(
                 Expr::Variable(remaining_vars[0].to_string()),
                 roots[0].clone(),
             );
         } else if !remaining_vars.is_empty() && !is_zero(&current_eq) {
+
             return None;
         }
     }
+
     if solutions.len() == vars.len() {
+
         Some(solutions.into_iter().collect())
     } else {
+
         None
     }
 }
+
 pub(crate) fn solve_polynomial(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
+
     // Handle Expr::Eq by converting to lhs - rhs
     let normalized_expr = if let Expr::Eq(left, right) = expr {
+
         Expr::new_sub(left.clone(), right.clone())
     } else {
+
         expr.clone()
     };
 
     let poly = expr_to_sparse_poly(&normalized_expr, &[var]);
+
     let expanded_expr = sparse_poly_to_expr(&poly);
+
     // eprintln!("solve_polynomial: expr={:?}, var={}, expanded={:?}", expr, var, expanded_expr);
     let coeffs = extract_polynomial_coeffs(&expanded_expr, var)?;
+
     // eprintln!("solve_polynomial: coeffs={:?}", coeffs);
     let degree = coeffs.len() - 1;
+
     match degree {
         0 => Some(vec![]),
         1 => Some(solve_linear(&coeffs)),
@@ -514,21 +731,30 @@ pub(crate) fn solve_polynomial(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
         3 => Some(solve_cubic(&coeffs)),
         4 => Some(solve_quartic(&coeffs)),
         _ => {
+
             let poly_expr = expr.clone();
+
             let mut roots = Vec::new();
+
             for i in 0..degree {
+
                 roots.push(Expr::RootOf {
                     poly: Arc::new(poly_expr.clone()),
                     index: i as u32,
                 });
             }
+
             Some(roots)
         }
     }
 }
+
 pub(crate) fn solve_linear(coeffs: &[Expr]) -> Vec<Expr> {
+
     let a = &coeffs[0];
+
     let b = &coeffs[1];
+
     vec![simplify(
         &Expr::Neg(Arc::new(Expr::Div(
             Arc::new(b.clone()),
@@ -536,16 +762,24 @@ pub(crate) fn solve_linear(coeffs: &[Expr]) -> Vec<Expr> {
         ))),
     )]
 }
+
 pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
+
     let a = &coeffs[0];
+
     let b = &coeffs[1];
+
     let c = &coeffs[2];
+
     let discriminant = simplify(&Expr::new_sub(
         Expr::new_pow(b.clone(), Expr::Constant(2.0)),
         Expr::new_mul(Expr::Constant(4.0), Expr::new_mul(a.clone(), c.clone())),
     ));
+
     let sqrt_d = simplify(&Expr::new_sqrt(discriminant));
+
     let two_a = simplify(&Expr::new_mul(Expr::Constant(2.0), a.clone()));
+
     vec![
         simplify(&Expr::Div(
             Arc::new(Expr::Add(
@@ -563,11 +797,17 @@ pub(crate) fn solve_quadratic(coeffs: &[Expr]) -> Vec<Expr> {
         )),
     ]
 }
+
 pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
+
     let a = &coeffs[0];
+
     let b = &simplify(&Expr::new_div(coeffs[1].clone(), a.clone()));
+
     let c = &simplify(&Expr::new_div(coeffs[2].clone(), a.clone()));
+
     let d = &simplify(&Expr::new_div(coeffs[3].clone(), a.clone()));
+
     let p = simplify(&Expr::new_sub(
         c.clone(),
         Expr::new_div(
@@ -575,6 +815,7 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
             Expr::Constant(3.0),
         ),
     ));
+
     let q = simplify(&Expr::new_add(
         Expr::new_mul(
             Expr::Constant(2.0 / 27.0),
@@ -582,6 +823,7 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
         ),
         Expr::new_sub(Expr::new_mul(b.clone(), c.clone()), d.clone()),
     ));
+
     let inner_sqrt = simplify(&Expr::new_add(
         Expr::new_pow(
             Expr::new_div(q.clone(), Expr::Constant(2.0)),
@@ -589,6 +831,7 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
         ),
         Expr::new_pow(Expr::new_div(p, Expr::Constant(3.0)), Expr::Constant(3.0)),
     ));
+
     let u = simplify(&Expr::new_pow(
         Expr::new_add(
             Expr::new_neg(Expr::new_div(q.clone(), Expr::Constant(2.0))),
@@ -596,6 +839,7 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
         ),
         Expr::Constant(1.0 / 3.0),
     ));
+
     let v = simplify(&Expr::new_pow(
         Expr::new_sub(
             Expr::new_neg(Expr::new_div(q, Expr::Constant(2.0))),
@@ -603,12 +847,18 @@ pub(crate) fn solve_cubic(coeffs: &[Expr]) -> Vec<Expr> {
         ),
         Expr::Constant(1.0 / 3.0),
     ));
+
     let sub_term = simplify(&Expr::new_div(b.clone(), Expr::Constant(3.0)));
+
     let root1 = simplify(&Expr::new_sub(Expr::new_add(u, v), sub_term));
+
     vec![root1]
 }
+
 pub(crate) fn solve_quartic(_coeffs: &[Expr]) -> Vec<Expr> {
+
     let poly_expr = Expr::Variable("QuarticPoly".to_string());
+
     vec![
         Expr::RootOf {
             poly: Arc::new(poly_expr.clone()),
@@ -628,27 +878,42 @@ pub(crate) fn solve_quartic(_coeffs: &[Expr]) -> Vec<Expr> {
         },
     ]
 }
+
 pub(crate) fn solve_transcendental(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
+
     if let Expr::Sub(lhs, rhs) = expr {
+
         return solve_transcendental_pattern(lhs, rhs, var);
     }
+
     if let Expr::Add(lhs, rhs) = expr {
+
         return solve_transcendental_pattern(lhs, &Expr::new_neg(rhs.clone()), var);
     }
+
     None
 }
+
 pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) -> Option<Vec<Expr>> {
+
     let n = Expr::Variable("k".to_string());
+
     let pi = Expr::Pi;
+
     let (func_part, const_part) = if contains_var(lhs, var) && !contains_var(rhs, var) {
+
         (lhs, rhs)
     } else if !contains_var(lhs, var) && contains_var(rhs, var) {
+
         (rhs, lhs)
     } else {
+
         return None;
     };
+
     match func_part {
         Expr::Sin(arg) => {
+
             let inner_solutions = solve(
                 &Expr::Eq(
                     arg.clone(),
@@ -662,9 +927,11 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
                 ),
                 var,
             );
+
             Some(inner_solutions)
         }
         Expr::Cos(arg) => {
+
             let sol1 = solve(
                 &Expr::Eq(
                     arg.clone(),
@@ -675,6 +942,7 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
                 ),
                 var,
             );
+
             let sol2 = solve(
                 &Expr::Eq(
                     arg.clone(),
@@ -685,9 +953,11 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
                 ),
                 var,
             );
+
             Some([sol1, sol2].concat())
         }
         Expr::Tan(arg) => {
+
             let inner_solutions = solve(
                 &Expr::Eq(
                     arg.clone(),
@@ -698,92 +968,137 @@ pub(crate) fn solve_transcendental_pattern(lhs: &Expr, rhs: &Expr, var: &str) ->
                 ),
                 var,
             );
+
             Some(inner_solutions)
         }
         Expr::Exp(arg) => {
+
             let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
+
             let log_sol = Expr::new_add(
                 Expr::new_log(const_part.clone()),
                 Expr::new_mul(Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(pi, i)), n),
             );
+
             Some(solve(&Expr::Eq(arg.clone(), Arc::new(log_sol)), var))
         }
         _ => None,
     }
 }
+
 pub(crate) fn contains_var(expr: &Expr, var: &str) -> bool {
+
     let mut found = false;
+
     expr.pre_order_walk(&mut |e| {
         if let Expr::Variable(v) = e {
+
             if v == var {
+
                 found = true;
             }
         }
     });
+
     found
 }
+
 #[must_use]
+
 pub fn extract_polynomial_coeffs(expr: &Expr, var: &str) -> Option<Vec<Expr>> {
+
     let mut coeffs_map = HashMap::new();
+
     collect_coeffs(expr, var, &mut coeffs_map, &Expr::Constant(1.0))?;
+
     if coeffs_map.is_empty() {
+
         if contains_var(expr, var) {
+
             return None;
         } else {
+
             let mut map = HashMap::new();
+
             map.insert(0, expr.clone());
+
             coeffs_map = map;
         }
     }
+
     let max_degree = *coeffs_map.keys().max().unwrap_or(&0);
+
     let mut coeffs = vec![Expr::Constant(0.0); max_degree as usize + 1];
+
     for (degree, coeff) in coeffs_map {
+
         coeffs[degree as usize] = simplify(&coeff);
     }
+
     coeffs.reverse();
+
     Some(coeffs)
 }
+
 pub(crate) fn collect_coeffs(
     expr: &Expr,
     var: &str,
     coeffs: &mut HashMap<u32, Expr>,
     factor: &Expr,
 ) -> Option<()> {
+
     match expr {
         Expr::Dag(node) => {
             collect_coeffs(&node.to_expr().expect("Dag Coeffs"), var, coeffs, factor)
         }
         Expr::Variable(v) if v == var => {
+
             let entry = coeffs.entry(1).or_insert_with(|| Expr::Constant(0.0));
+
             *entry = simplify(&Expr::new_add(entry.clone(), factor.clone()));
+
             Some(())
         }
         Expr::Power(b, e) => {
+
             if let (Expr::Variable(v), Expr::Constant(p)) = (&**b, &**e) {
+
                 if v == var {
+
                     let degree = p.to_u32()?;
+
                     let entry = coeffs.entry(degree).or_insert_with(|| Expr::Constant(0.0));
+
                     *entry = simplify(&Expr::new_add(entry.clone(), factor.clone()));
+
                     return Some(());
                 }
             }
+
             let entry = coeffs.entry(0).or_insert_with(|| Expr::Constant(0.0));
+
             *entry = simplify(&Expr::new_add(
                 entry.clone(),
                 Expr::new_mul(expr.clone(), factor.clone()),
             ));
+
             Some(())
         }
         Expr::Add(a, b) => {
+
             collect_coeffs(a, var, coeffs, factor)?;
+
             collect_coeffs(b, var, coeffs, factor)
         }
         Expr::Sub(a, b) => {
+
             collect_coeffs(a, var, coeffs, factor)?;
+
             collect_coeffs(b, var, coeffs, &simplify(&Expr::new_neg(factor.clone())))
         }
         Expr::Mul(a, b) => {
             if !contains_var(a, var) {
+
                 collect_coeffs(
                     b,
                     var,
@@ -791,6 +1106,7 @@ pub(crate) fn collect_coeffs(
                     &simplify(&Expr::new_mul(factor.clone(), a.clone())),
                 )
             } else if !contains_var(b, var) {
+
                 collect_coeffs(
                     a,
                     var,
@@ -798,16 +1114,20 @@ pub(crate) fn collect_coeffs(
                     &simplify(&Expr::new_mul(factor.clone(), b.clone())),
                 )
             } else {
+
                 None
             }
         }
         Expr::Neg(e) => collect_coeffs(e, var, coeffs, &simplify(&Expr::new_neg(factor.clone()))),
         _ if !contains_var(expr, var) => {
+
             let entry = coeffs.entry(0).or_insert_with(|| Expr::Constant(0.0));
+
             *entry = simplify(&Expr::new_add(
                 entry.clone(),
                 Expr::new_mul(expr.clone(), factor.clone()),
             ));
+
             Some(())
         }
         _ => None,

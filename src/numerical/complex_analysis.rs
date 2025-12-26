@@ -3,11 +3,13 @@
 //! This module provides numerical tools for complex analysis.
 //! It includes functions for evaluating symbolic expressions to complex numbers,
 //! which is fundamental for numerical computations involving complex functions.
+
 use crate::symbolic::core::Expr;
 use num_complex::Complex;
 use num_traits::{ToPrimitive, Zero};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
 /// # Numerical Contour Integration (Simpson's Rule)
 ///
 /// This function computes the contour integral of a complex function `f` along a given path.
@@ -19,20 +21,30 @@ use std::collections::HashMap;
 ///
 /// ## Returns
 /// The numerical result of the contour integral.
+
 pub fn contour_integral<F>(f: F, path: &[Complex<f64>]) -> Complex<f64>
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
+
     let mut integral = Complex::zero();
+
     for i in 0..path.len() - 1 {
+
         let z1 = path[i];
+
         let z2 = path[i + 1];
+
         let mid = (z1 + z2) / 2.0;
+
         let dz = z2 - z1;
+
         integral += (f(z1) + 4.0 * f(mid) + f(z2)) / 6.0 * dz;
     }
+
     integral
 }
+
 /// # Residue Calculation
 ///
 /// This function calculates the residue of a complex function `f` at a point `z0`.
@@ -46,19 +58,28 @@ where
 ///
 /// ## Returns
 /// The residue of the function at `z0`.
+
 pub fn residue<F>(f: F, z0: Complex<f64>, radius: f64, n_points: usize) -> Complex<f64>
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
+
     let mut path = Vec::with_capacity(n_points + 1);
+
     for i in 0..=n_points {
+
         let angle = 2.0 * std::f64::consts::PI * (i as f64) / (n_points as f64);
+
         let point = z0 + radius * Complex::new(angle.cos(), angle.sin());
+
         path.push(point);
     }
+
     let integral = contour_integral(f, &path);
+
     integral / (2.0 * std::f64::consts::PI * Complex::new(0.0, 1.0))
 }
+
 /// # Cauchy's Argument Principle
 ///
 /// Calculates the number of zeros minus the number of poles (N - P) of a function `f`
@@ -70,13 +91,17 @@ where
 ///
 /// ## Returns
 /// The difference between the number of zeros and poles, which should be an integer.
+
 pub fn count_zeros_poles<F>(f: F, contour: &[Complex<f64>]) -> Complex<f64>
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
+
     let integral = contour_integral(|z| complex_derivative(&f, z) / f(z), contour);
+
     integral / (2.0 * std::f64::consts::PI * Complex::new(0.0, 1.0))
 }
+
 /// # Numerical Differentiation
 ///
 /// Computes the derivative of a complex function `f` at a point `z` using the central difference formula.
@@ -87,16 +112,22 @@ where
 ///
 /// ## Returns
 /// The numerical derivative of `f` at `z`.
+
 pub fn complex_derivative<F>(f: &F, z: Complex<f64>) -> Complex<f64>
 where
     F: Fn(Complex<f64>) -> Complex<f64>,
 {
+
     let h = 1e-6;
+
     let h_complex = Complex::new(h, h);
+
     (f(z + h_complex) - f(z - h_complex)) / (2.0 * h_complex)
 }
+
 /// Represents a numerical Möbius transformation: f(z) = (az + b) / (cz + d)
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+
 pub struct MobiusTransformation {
     pub a: Complex<f64>,
     pub b: Complex<f64>,
@@ -106,17 +137,23 @@ pub struct MobiusTransformation {
 
 impl MobiusTransformation {
     /// Creates a new Möbius transformation.
+
     pub fn new(a: Complex<f64>, b: Complex<f64>, c: Complex<f64>, d: Complex<f64>) -> Self {
+
         Self { a, b, c, d }
     }
 
     /// Applies the transformation to a point z.
+
     pub fn apply(&self, z: Complex<f64>) -> Complex<f64> {
+
         (self.a * z + self.b) / (self.c * z + self.d)
     }
 
     /// Composes two Möbius transformations.
+
     pub fn compose(&self, other: &Self) -> Self {
+
         Self {
             a: self.a * other.a + self.b * other.c,
             b: self.a * other.b + self.b * other.d,
@@ -126,7 +163,9 @@ impl MobiusTransformation {
     }
 
     /// Computes the inverse transformation.
+
     pub fn inverse(&self) -> Self {
+
         Self {
             a: self.d,
             b: -self.b,
@@ -142,16 +181,22 @@ impl MobiusTransformation {
 /// * `expr` - The symbolic expression to integrate.
 /// * `var` - The variable of integration.
 /// * `path` - A slice of complex points defining the contour.
+
 pub fn contour_integral_expr(
     expr: &Expr,
     var: &str,
     path: &[Complex<f64>],
 ) -> Result<Complex<f64>, String> {
+
     let f = |z: Complex<f64>| {
+
         let mut vars = HashMap::new();
+
         vars.insert(var.to_string(), z);
+
         eval_complex_expr(expr, &vars).unwrap_or(Complex::zero())
     };
+
     Ok(contour_integral(f, path))
 }
 
@@ -163,6 +208,7 @@ pub fn contour_integral_expr(
 /// * `z0` - The point at which to calculate the residue.
 /// * `radius` - Radius of the circular contour.
 /// * `n_points` - Number of points for integration.
+
 pub fn residue_expr(
     expr: &Expr,
     var: &str,
@@ -170,11 +216,16 @@ pub fn residue_expr(
     radius: f64,
     n_points: usize,
 ) -> Result<Complex<f64>, String> {
+
     let f = |z: Complex<f64>| {
+
         let mut vars = HashMap::new();
+
         vars.insert(var.to_string(), z);
+
         eval_complex_expr(expr, &vars).unwrap_or(Complex::zero())
     };
+
     Ok(residue(f, z0, radius, n_points))
 }
 
@@ -189,13 +240,17 @@ pub fn residue_expr(
 ///
 /// # Returns
 /// A `Result` containing the complex numerical value if the evaluation is successful, otherwise an error string.
+
 pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
     expr: &Expr,
     vars: &HashMap<String, Complex<f64>, S>,
 ) -> Result<Complex<f64>, String> {
+
     match expr {
         Expr::Dag(node) => {
+
             let inner = node.to_expr().map_err(|e| e.to_string())?;
+
             eval_complex_expr(&inner, vars)
         }
         Expr::Constant(c) => Ok(Complex::new(*c, 0.0)),
@@ -208,8 +263,11 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
             .copied()
             .ok_or_else(|| format!("Variable '{v}' not found")),
         Expr::Complex(re, im) => {
+
             let re_val = eval_complex_expr(re, vars)?.re;
+
             let im_val = eval_complex_expr(im, vars)?.re;
+
             Ok(Complex::new(re_val, im_val))
         }
         Expr::Add(a, b) => Ok(eval_complex_expr(a, vars)? + eval_complex_expr(b, vars)?),
@@ -228,8 +286,11 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
         Expr::Pi => Ok(Complex::new(std::f64::consts::PI, 0.0)),
         Expr::E => Ok(Complex::new(std::f64::consts::E, 0.0)),
         Expr::Atan2(y, x) => {
+
             let y_val = eval_complex_expr(y, vars)?.re;
+
             let x_val = eval_complex_expr(x, vars)?.re;
+
             Ok(Complex::new(y_val.atan2(x_val), 0.0))
         }
         _ => Err(format!(

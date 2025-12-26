@@ -8,18 +8,22 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct FftInput {
     data: Vec<Complex<f64>>,
 }
 
 #[derive(Deserialize)]
+
 struct ConvolveInput {
     a: Vec<f64>,
     v: Vec<f64>,
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_signal_fft_json(input_json: *const c_char) -> *mut c_char {
+
     let mut input: FftInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -34,15 +38,19 @@ pub unsafe extern "C" fn rssn_num_signal_fft_json(input_json: *const c_char) -> 
     };
 
     let result = signal::fft(&mut input.data);
+
     let ffi_res = FfiResult {
         ok: Some(result),
         err: None::<String>,
     };
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_signal_convolve_json(input_json: *const c_char) -> *mut c_char {
+
     let input: ConvolveInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -57,17 +65,21 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_json(input_json: *const c_char
     };
 
     let result = signal::convolve(&input.a, &input.v);
+
     let ffi_res = FfiResult {
         ok: Some(result),
         err: None::<String>,
     };
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_signal_cross_correlation_json(
     input_json: *const c_char,
 ) -> *mut c_char {
+
     let input: ConvolveInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -82,9 +94,11 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation_json(
     };
 
     let result = signal::cross_correlation(&input.a, &input.v);
+
     let ffi_res = FfiResult {
         ok: Some(result),
         err: None::<String>,
     };
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

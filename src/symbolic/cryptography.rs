@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 /// Represents an elliptic curve over a prime field: y^2 = x^3 + ax + b.
 #[derive(Clone, Serialize, Deserialize)]
+
 pub struct EllipticCurve {
     /// Coefficient 'a' in the curve equation
     pub a: PrimeFieldElement,
@@ -30,6 +31,7 @@ pub struct EllipticCurve {
 
 /// Represents a point on an elliptic curve, including the point at infinity.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+
 pub enum CurvePoint {
     /// The point at infinity (identity element)
     Infinity,
@@ -42,6 +44,7 @@ pub enum CurvePoint {
 
 /// ECDH key pair containing private and public keys.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
 pub struct EcdhKeyPair {
     /// The private key (a scalar)
     pub private_key: BigInt,
@@ -51,6 +54,7 @@ pub struct EcdhKeyPair {
 
 /// ECDSA signature containing r and s components.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+
 pub struct EcdsaSignature {
     /// The r component of the signature
     pub r: BigInt,
@@ -61,13 +65,17 @@ pub struct EcdsaSignature {
 impl CurvePoint {
     /// Returns true if this point is the point at infinity.
     #[must_use]
+
     pub const fn is_infinity(&self) -> bool {
+
         matches!(self, Self::Infinity)
     }
 
     /// Returns the x-coordinate if this is an affine point, None if infinity.
     #[must_use]
+
     pub const fn x(&self) -> Option<&PrimeFieldElement> {
+
         match self {
             Self::Affine { x, .. } => Some(x),
             Self::Infinity => None,
@@ -76,7 +84,9 @@ impl CurvePoint {
 
     /// Returns the y-coordinate if this is an affine point, None if infinity.
     #[must_use]
+
     pub const fn y(&self) -> Option<&PrimeFieldElement> {
+
         match self {
             Self::Affine { y, .. } => Some(y),
             Self::Infinity => None,
@@ -95,8 +105,11 @@ impl EllipticCurve {
     /// # Returns
     /// A new `EllipticCurve` instance
     #[must_use]
+
     pub fn new(a: BigInt, b: BigInt, modulus: BigInt) -> Self {
+
         let field = PrimeField::new(modulus);
+
         Self {
             a: PrimeFieldElement::new(a, field.clone()),
             b: PrimeFieldElement::new(b, field.clone()),
@@ -114,13 +127,18 @@ impl EllipticCurve {
     /// # Returns
     /// `true` if the point is on the curve, `false` otherwise
     #[must_use]
+
     pub fn is_on_curve(&self, point: &CurvePoint) -> bool {
+
         match point {
             CurvePoint::Infinity => true,
             CurvePoint::Affine { x, y } => {
+
                 let lhs = y.clone() * y.clone();
+
                 let rhs =
                     x.clone() * x.clone() * x.clone() + self.a.clone() * x.clone() + self.b.clone();
+
                 lhs == rhs
             }
         }
@@ -136,7 +154,9 @@ impl EllipticCurve {
     /// # Returns
     /// The negated point
     #[must_use]
+
     pub fn negate(&self, point: &CurvePoint) -> CurvePoint {
+
         match point {
             CurvePoint::Infinity => CurvePoint::Infinity,
             CurvePoint::Affine { x, y } => CurvePoint::Affine {
@@ -156,18 +176,28 @@ impl EllipticCurve {
     /// # Returns
     /// The doubled point
     #[must_use]
+
     pub fn double(&self, point: &CurvePoint) -> CurvePoint {
+
         match point {
             CurvePoint::Infinity => CurvePoint::Infinity,
             CurvePoint::Affine { x, y } => {
+
                 if y.value.is_zero() {
+
                     return CurvePoint::Infinity;
                 }
+
                 let three = PrimeFieldElement::new(BigInt::from(3), self.field.clone());
+
                 let two = PrimeFieldElement::new(BigInt::from(2), self.field.clone());
+
                 let m = (three * x.clone() * x.clone() + self.a.clone()) / (two * y.clone());
+
                 let x3 = m.clone() * m.clone() - x.clone() - x.clone();
+
                 let y3 = m * (x.clone() - x3.clone()) - y.clone();
+
                 CurvePoint::Affine { x: x3, y: y3 }
             }
         }
@@ -186,20 +216,30 @@ impl EllipticCurve {
     /// # Returns
     /// A new `CurvePoint` representing the sum of `p1` and `p2`.
     #[must_use]
+
     pub fn add(&self, p1: &CurvePoint, p2: &CurvePoint) -> CurvePoint {
+
         match (p1, p2) {
             (CurvePoint::Infinity, p) => p.clone(),
             (p, CurvePoint::Infinity) => p.clone(),
             (CurvePoint::Affine { x: x1, y: y1 }, CurvePoint::Affine { x: x2, y: y2 }) => {
+
                 if x1 == x2 && *y1 != *y2 {
+
                     return CurvePoint::Infinity;
                 }
+
                 if x1 == x2 && y1 == y2 {
+
                     return self.double(p1);
                 }
+
                 let m = (y2.clone() - y1.clone()) / (x2.clone() - x1.clone());
+
                 let x3 = m.clone() * m.clone() - x1.clone() - x2.clone();
+
                 let y3 = m * (x1.clone() - x3.clone()) - y1.clone();
+
                 CurvePoint::Affine { x: x3, y: y3 }
             }
         }
@@ -217,17 +257,27 @@ impl EllipticCurve {
     /// # Returns
     /// A new `CurvePoint` representing `k * P`.
     #[must_use]
+
     pub fn scalar_mult(&self, k: &BigInt, p: &CurvePoint) -> CurvePoint {
+
         let mut res = CurvePoint::Infinity;
+
         let mut app = p.clone();
+
         let mut k_clone = k.clone();
+
         while k_clone > Zero::zero() {
+
             if &k_clone % 2 != Zero::zero() {
+
                 res = self.add(&res, &app);
             }
+
             app = self.double(&app);
+
             k_clone >>= 1;
         }
+
         res
     }
 }
@@ -245,10 +295,15 @@ impl EllipticCurve {
 /// # Returns
 /// An `EcdhKeyPair` containing the generated private and public keys.
 #[must_use]
+
 pub fn generate_keypair(curve: &EllipticCurve, generator: &CurvePoint) -> EcdhKeyPair {
+
     let mut rng = rand::thread_rng();
+
     let private_key = rng.gen_bigint_range(&BigInt::one(), &curve.field.modulus);
+
     let public_key = curve.scalar_mult(&private_key, generator);
+
     EcdhKeyPair {
         private_key,
         public_key,
@@ -269,11 +324,13 @@ pub fn generate_keypair(curve: &EllipticCurve, generator: &CurvePoint) -> EcdhKe
 /// # Returns
 /// A `CurvePoint` representing the shared secret.
 #[must_use]
+
 pub fn generate_shared_secret(
     curve: &EllipticCurve,
     own_private_key: &BigInt,
     other_public_key: &CurvePoint,
 ) -> CurvePoint {
+
     curve.scalar_mult(own_private_key, other_public_key)
 }
 
@@ -288,11 +345,15 @@ pub fn generate_shared_secret(
 /// # Returns
 /// `Some((x, is_y_odd))` for affine points, `None` for infinity
 #[must_use]
+
 pub fn point_compress(point: &CurvePoint) -> Option<(BigInt, bool)> {
+
     match point {
         CurvePoint::Infinity => None,
         CurvePoint::Affine { x, y } => {
+
             let is_y_odd = &y.value % 2 != BigInt::zero();
+
             Some((x.value.clone(), is_y_odd))
         }
     }
@@ -311,7 +372,9 @@ pub fn point_compress(point: &CurvePoint) -> Option<(BigInt, bool)> {
 /// # Returns
 /// `Some(CurvePoint)` if successful, `None` if x is not on the curve
 #[must_use]
+
 pub fn point_decompress(x: BigInt, is_y_odd: bool, curve: &EllipticCurve) -> Option<CurvePoint> {
+
     let x_elem = PrimeFieldElement::new(x, curve.field.clone());
 
     // Compute y^2 = x^3 + ax + b
@@ -323,21 +386,27 @@ pub fn point_decompress(x: BigInt, is_y_odd: bool, curve: &EllipticCurve) -> Opt
     // but for simplicity we use a brute-force approach for small fields
     // In production, use proper modular sqrt
     let modulus = &curve.field.modulus;
+
     let y_squared_val = &y_squared.value;
 
     // For p ≡ 3 (mod 4), y = y_squared^((p+1)/4)
     let exp = (modulus + 1) / 4;
+
     let y_val = y_squared_val.modpow(&exp, modulus);
 
     // Verify
     if (&y_val * &y_val) % modulus != y_squared_val % modulus {
+
         return None; // Not a quadratic residue
     }
 
     let y_is_odd = &y_val % 2 != BigInt::zero();
+
     let y_final = if y_is_odd == is_y_odd {
+
         y_val
     } else {
+
         modulus - &y_val
     };
 
@@ -359,6 +428,7 @@ pub fn point_decompress(x: BigInt, is_y_odd: bool, curve: &EllipticCurve) -> Opt
 /// # Returns
 /// An `EcdsaSignature` containing (r, s) components
 #[must_use]
+
 pub fn ecdsa_sign(
     message_hash: &BigInt,
     private_key: &BigInt,
@@ -366,6 +436,7 @@ pub fn ecdsa_sign(
     generator: &CurvePoint,
     order: &BigInt,
 ) -> Option<EcdsaSignature> {
+
     let mut rng = rand::thread_rng();
 
     // Generate random k
@@ -373,20 +444,24 @@ pub fn ecdsa_sign(
 
     // R = k * G
     let r_point = curve.scalar_mult(&k, generator);
+
     let r = match &r_point {
         CurvePoint::Affine { x, .. } => x.value.clone() % order,
         CurvePoint::Infinity => return None,
     };
 
     if r.is_zero() {
+
         return None;
     }
 
     // s = k^(-1) * (hash + r * private_key) mod order
     let k_inv = mod_inverse(&k, order)?;
+
     let s = (&k_inv * (message_hash + &r * private_key)) % order;
 
     if s.is_zero() {
+
         return None;
     }
 
@@ -406,6 +481,7 @@ pub fn ecdsa_sign(
 /// # Returns
 /// `true` if the signature is valid, `false` otherwise
 #[must_use]
+
 pub fn ecdsa_verify(
     message_hash: &BigInt,
     signature: &EcdsaSignature,
@@ -414,11 +490,15 @@ pub fn ecdsa_verify(
     generator: &CurvePoint,
     order: &BigInt,
 ) -> bool {
+
     // Check r and s are in valid range
     if signature.r <= BigInt::zero() || signature.r >= *order {
+
         return false;
     }
+
     if signature.s <= BigInt::zero() || signature.s >= *order {
+
         return false;
     }
 
@@ -436,33 +516,47 @@ pub fn ecdsa_verify(
 
     // R' = u1*G + u2*Q
     let point1 = curve.scalar_mult(&u1, generator);
+
     let point2 = curve.scalar_mult(&u2, public_key);
+
     let r_prime = curve.add(&point1, &point2);
 
     match r_prime {
         CurvePoint::Infinity => false,
         CurvePoint::Affine { x, .. } => {
+
             let v = x.value % order;
+
             v == signature.r
         }
     }
 }
 
 /// Computes modular inverse using extended Euclidean algorithm.
+
 fn mod_inverse(a: &BigInt, m: &BigInt) -> Option<BigInt> {
+
     let (g, x, _) = extended_gcd(a.clone(), m.clone());
+
     if g != BigInt::one() {
+
         return None;
     }
+
     Some(((x % m) + m) % m)
 }
 
 /// Extended Euclidean algorithm.
+
 fn extended_gcd(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
+
     if b.is_zero() {
+
         (a, BigInt::one(), BigInt::zero())
     } else {
+
         let (g, x, y) = extended_gcd(b.clone(), &a % &b);
+
         (g, y.clone(), x - (&a / &b) * y)
     }
 }

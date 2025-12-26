@@ -6,13 +6,20 @@ use rssn::symbolic::core::Expr;
 use std::ffi::{CStr, CString};
 
 #[test]
+
 fn test_numerical_quadrature_handle_ffi() {
+
     unsafe {
+
         // Integrate x^2 from 0 to 1
         let x = Expr::new_variable("x");
+
         let two = Expr::new_constant(2.0);
+
         let expr = Expr::new_pow(x, two);
+
         let var = CString::new("x").unwrap();
+
         let mut result: f64 = 0.0;
 
         // Method 1: Simpson (method=1)
@@ -27,6 +34,7 @@ fn test_numerical_quadrature_handle_ffi() {
         );
 
         assert_eq!(status, 0);
+
         assert_approx_eq!(result, 1.0 / 3.0, 1e-10f64);
 
         // Method 2: Gauss-Legendre (method=4)
@@ -39,40 +47,54 @@ fn test_numerical_quadrature_handle_ffi() {
             4, // GaussLegendre
             &mut result,
         );
+
         assert_eq!(status_gl, 0);
+
         assert_approx_eq!(result, 1.0 / 3.0, 1e-10f64);
     }
 }
 
 #[test]
+
 fn test_numerical_quadrature_json_ffi() {
+
     unsafe {
+
         // Integrate x^2 from 0 to 1 using JSON
         let x = Expr::new_variable("x");
+
         let two = Expr::new_constant(2.0);
+
         let expr = Expr::new_pow(x, two);
+
         let expr_json = serde_json::to_string(&expr).unwrap();
 
         let json_input = format!(
             r#"{{"expr": {}, "var": "x", "a": 0.0, "b": 1.0, "n_steps": 100, "method": "Simpson"}}"#,
             expr_json
         );
+
         let c_json = CString::new(json_input).unwrap();
 
         let res_ptr = json::rssn_numerical_quadrature_json(c_json.as_ptr());
+
         assert!(!res_ptr.is_null());
 
         let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
+
         let v: serde_json::Value =
             serde_json::from_str(res_str).expect("Failed to parse result JSON");
 
         if let Some(err) = v.get("err") {
+
             if !err.is_null() {
+
                 panic!("FFI error: {}", err);
             }
         }
 
         let ok = v["ok"].as_f64().expect("Result 'ok' should be f64");
+
         assert_approx_eq!(ok, 1.0 / 3.0, 1e-10f64);
 
         rssn_free_string(res_ptr);
@@ -80,12 +102,16 @@ fn test_numerical_quadrature_json_ffi() {
 }
 
 #[test]
+
 fn test_numerical_quadrature_bincode_ffi() {
+
     unsafe {
+
         use rssn::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer};
         use serde::{Deserialize, Serialize};
 
         #[derive(Serialize)]
+
         struct QuadratureInput {
             expr: Expr,
             var: String,
@@ -96,7 +122,9 @@ fn test_numerical_quadrature_bincode_ffi() {
         }
 
         let x = Expr::new_variable("x");
+
         let two = Expr::new_constant(2.0);
+
         let expr = Expr::new_pow(x, two);
 
         let input = QuadratureInput {
@@ -109,11 +137,13 @@ fn test_numerical_quadrature_bincode_ffi() {
         };
 
         let buffer = to_bincode_buffer(&input);
+
         let res_buffer = bincode_api::rssn_numerical_quadrature_bincode(buffer);
 
         assert!(!res_buffer.is_null());
 
         #[derive(Deserialize)]
+
         struct FfiResult<T, E> {
             #[allow(dead_code)]
             ok: Option<T>,
@@ -125,10 +155,12 @@ fn test_numerical_quadrature_bincode_ffi() {
             from_bincode_buffer(&res_buffer).expect("Failed to decode bincode result");
 
         assert!(res.err.is_none());
+
         // Integral of x^2 from 0 to 2 is 8/3
         assert_approx_eq!(res.ok.unwrap(), 8.0 / 3.0, 1e-8f64);
 
         rssn_free_bincode_buffer(res_buffer);
+
         rssn_free_bincode_buffer(buffer);
     }
 }

@@ -4,6 +4,7 @@
 //! for vector algebra and vector calculus. It includes basic vector arithmetic,
 //! dot and cross products, as well as differential operators like gradient,
 //! divergence, and curl.
+
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
@@ -15,11 +16,13 @@ use std::ops::{Add, Sub};
 
 /// Represents a symbolic vector in 3D space.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+
 pub struct Vector {
     pub x: Expr,
     pub y: Expr,
     pub z: Expr,
 }
+
 impl Vector {
     /// Creates a new symbolic vector with the given components.
     ///
@@ -28,9 +31,12 @@ impl Vector {
     /// * `y` - The expression for the y-component.
     /// * `z` - The expression for the z-component.
     #[must_use]
+
     pub const fn new(x: Expr, y: Expr, z: Expr) -> Self {
+
         Self { x, y, z }
     }
+
     /// Computes the magnitude (Euclidean norm) of the vector.
     ///
     /// The magnitude is defined as `||V|| = sqrt(x^2 + y^2 + z^2)`.
@@ -38,7 +44,9 @@ impl Vector {
     /// # Returns
     /// An `Expr` representing the symbolic magnitude.
     #[must_use]
+
     pub fn magnitude(&self) -> Expr {
+
         simplify(&Expr::new_sqrt(Expr::new_add(
             Expr::new_add(
                 Expr::new_pow(self.x.clone(), Expr::BigInt(BigInt::from(2))),
@@ -47,6 +55,7 @@ impl Vector {
             Expr::new_pow(self.z.clone(), Expr::BigInt(BigInt::from(2))),
         )))
     }
+
     /// Computes the dot product of this vector with another vector.
     ///
     /// The dot product is defined as `V1 . V2 = x1*x2 + y1*y2 + z1*z2`.
@@ -57,7 +66,9 @@ impl Vector {
     /// # Returns
     /// An `Expr` representing the symbolic dot product.
     #[must_use]
+
     pub fn dot(&self, other: &Self) -> Expr {
+
         simplify(&Expr::new_add(
             Expr::new_add(
                 Expr::new_mul(self.x.clone(), other.x.clone()),
@@ -66,6 +77,7 @@ impl Vector {
             Expr::new_mul(self.z.clone(), other.z.clone()),
         ))
     }
+
     /// Computes the cross product of this vector with another vector.
     ///
     /// The cross product `V1 x V2` results in a new vector that is perpendicular
@@ -80,21 +92,27 @@ impl Vector {
     /// # Returns
     /// A new `Vector` representing the symbolic cross product.
     #[must_use]
+
     pub fn cross(&self, other: &Self) -> Self {
+
         let x_comp = simplify(&Expr::new_sub(
             Expr::new_mul(self.y.clone(), other.z.clone()),
             Expr::new_mul(self.z.clone(), other.y.clone()),
         ));
+
         let y_comp = simplify(&Expr::new_sub(
             Expr::new_mul(self.z.clone(), other.x.clone()),
             Expr::new_mul(self.x.clone(), other.z.clone()),
         ));
+
         let z_comp = simplify(&Expr::new_sub(
             Expr::new_mul(self.x.clone(), other.y.clone()),
             Expr::new_mul(self.y.clone(), other.x.clone()),
         ));
+
         Self::new(x_comp, y_comp, z_comp)
     }
+
     /// Normalizes the vector to have a magnitude of 1.
     ///
     /// This is achieved by dividing each component of the vector by its magnitude.
@@ -103,13 +121,19 @@ impl Vector {
     /// # Returns
     /// A new `Vector` representing the normalized vector.
     #[must_use]
+
     pub fn normalize(&self) -> Self {
+
         let mag = self.magnitude();
+
         if is_zero(&mag) {
+
             return self.clone();
         }
+
         self.scalar_mul(&Expr::new_div(Expr::BigInt(BigInt::one()), mag))
     }
+
     /// Multiplies the vector by a scalar expression.
     ///
     /// Each component of the vector is multiplied by the given scalar.
@@ -120,13 +144,16 @@ impl Vector {
     /// # Returns
     /// A new `Vector` representing the result of the scalar multiplication.
     #[must_use]
+
     pub fn scalar_mul(&self, scalar: &Expr) -> Self {
+
         Self::new(
             simplify(&Expr::new_mul(scalar.clone(), self.x.clone())),
             simplify(&Expr::new_mul(scalar.clone(), self.y.clone())),
             simplify(&Expr::new_mul(scalar.clone(), self.z.clone())),
         )
     }
+
     /// Computes the angle between this vector and another vector.
     ///
     /// The angle is calculated using the dot product formula: `cos(theta) = (A . B) / (|A| |B|)`.
@@ -138,11 +165,17 @@ impl Vector {
     /// # Returns
     /// An `Expr` representing the symbolic angle in radians.
     #[must_use]
+
     pub fn angle(&self, other: &Self) -> Expr {
+
         let dot_prod = self.dot(other);
+
         let mag_self = self.magnitude();
+
         let mag_other = other.magnitude();
+
         let cos_theta = simplify(&Expr::new_div(dot_prod, Expr::new_mul(mag_self, mag_other)));
+
         simplify(&Expr::new_arccos(cos_theta))
     }
 
@@ -156,11 +189,15 @@ impl Vector {
     /// # Returns
     /// A new `Vector` representing the projection of self onto other.
     #[must_use]
+
     pub fn project_onto(&self, other: &Self) -> Self {
+
         let dot_prod = self.dot(other);
+
         let mag_other_sq = other.dot(other); // |B|^2 = B . B
 
         if is_zero(&mag_other_sq) {
+
             // Projection onto zero vector is zero vector
             return Self::new(
                 Expr::Constant(0.0),
@@ -170,6 +207,7 @@ impl Vector {
         }
 
         let scalar = simplify(&Expr::new_div(dot_prod, mag_other_sq));
+
         other.scalar_mul(&scalar)
     }
 
@@ -178,7 +216,9 @@ impl Vector {
     /// # Returns
     /// An `Expr` that contains the vector's components.
     #[must_use]
+
     pub fn to_expr(&self) -> Expr {
+
         Expr::Vector(vec![
             self.x.clone(),
             self.y.clone(),
@@ -186,10 +226,14 @@ impl Vector {
         ])
     }
 }
+
 /// Overloads the '+' operator for Vector addition.
+
 impl Add for Vector {
     type Output = Self;
+
     fn add(self, other: Self) -> Self {
+
         Self::new(
             simplify(&Expr::new_add(self.x, other.x)),
             simplify(&Expr::new_add(self.y, other.y)),
@@ -197,10 +241,14 @@ impl Add for Vector {
         )
     }
 }
+
 /// Overloads the '-' operator for Vector subtraction.
+
 impl Sub for Vector {
     type Output = Self;
+
     fn sub(self, other: Self) -> Self {
+
         Self::new(
             simplify(&Expr::new_sub(self.x, other.x)),
             simplify(&Expr::new_sub(self.y, other.y)),
@@ -208,6 +256,7 @@ impl Sub for Vector {
         )
     }
 }
+
 /// Computes the gradient of a scalar field `f(x, y, z)`.
 ///
 /// The gradient is a vector field that points in the direction of the greatest rate of
@@ -221,12 +270,18 @@ impl Sub for Vector {
 /// # Returns
 /// A `Vector` representing the symbolic gradient of the scalar field.
 #[must_use]
+
 pub fn gradient(scalar_field: &Expr, vars: (&str, &str, &str)) -> Vector {
+
     let df_dx = differentiate(scalar_field, vars.0);
+
     let df_dy = differentiate(scalar_field, vars.1);
+
     let df_dz = differentiate(scalar_field, vars.2);
+
     Vector::new(df_dx, df_dy, df_dz)
 }
+
 /// Computes the divergence of a vector field `F = (Fx, Fy, Fz)`.
 ///
 /// The divergence measures the magnitude of a vector field's source or sink at a given point.
@@ -239,12 +294,18 @@ pub fn gradient(scalar_field: &Expr, vars: (&str, &str, &str)) -> Vector {
 /// # Returns
 /// An `Expr` representing the symbolic divergence of the vector field.
 #[must_use]
+
 pub fn divergence(vector_field: &Vector, vars: (&str, &str, &str)) -> Expr {
+
     let d_fx_dx = differentiate(&vector_field.x, vars.0);
+
     let d_fy_dy = differentiate(&vector_field.y, vars.1);
+
     let d_fz_dz = differentiate(&vector_field.z, vars.2);
+
     simplify(&Expr::new_add(Expr::new_add(d_fx_dx, d_fy_dy), d_fz_dz))
 }
+
 /// Computes the curl of a vector field `F = (Fx, Fy, Fz)`.
 ///
 /// The curl measures the infinitesimal rotation of a 3D vector field.
@@ -258,18 +319,30 @@ pub fn divergence(vector_field: &Vector, vars: (&str, &str, &str)) -> Expr {
 /// # Returns
 /// A `Vector` representing the symbolic curl of the vector field.
 #[must_use]
+
 pub fn curl(vector_field: &Vector, vars: (&str, &str, &str)) -> Vector {
+
     let d_fz_dy = differentiate(&vector_field.z, vars.1);
+
     let d_fy_dz = differentiate(&vector_field.y, vars.2);
+
     let d_fx_dz = differentiate(&vector_field.x, vars.2);
+
     let d_fz_dx = differentiate(&vector_field.z, vars.0);
+
     let d_fy_dx = differentiate(&vector_field.y, vars.0);
+
     let d_fx_dy = differentiate(&vector_field.x, vars.1);
+
     let x_comp = simplify(&Expr::new_sub(d_fz_dy, d_fy_dz));
+
     let y_comp = simplify(&Expr::new_sub(d_fx_dz, d_fz_dx));
+
     let z_comp = simplify(&Expr::new_sub(d_fy_dx, d_fx_dy));
+
     Vector::new(x_comp, y_comp, z_comp)
 }
+
 /// Computes the directional derivative of a scalar field `f` in the direction of a vector `v`.
 ///
 /// The directional derivative represents the rate of change of the function `f`
@@ -284,14 +357,18 @@ pub fn curl(vector_field: &Vector, vars: (&str, &str, &str)) -> Vector {
 /// # Returns
 /// An `Expr` representing the symbolic directional derivative.
 #[must_use]
+
 pub fn directional_derivative(
     scalar_field: &Expr,
     direction: &Vector,
     vars: (&str, &str, &str),
 ) -> Expr {
+
     let grad_f = gradient(scalar_field, vars);
+
     grad_f.dot(direction)
 }
+
 /// Computes the partial derivative of a vector field with respect to a single variable.
 ///
 /// This is done by taking the partial derivative of each component of the vector field
@@ -304,7 +381,9 @@ pub fn directional_derivative(
 /// # Returns
 /// A new `Vector` where each component is the partial derivative of the original component.
 #[must_use]
+
 pub fn partial_derivative_vector(vector_field: &Vector, var: &str) -> Vector {
+
     Vector::new(
         differentiate(&vector_field.x, var),
         differentiate(&vector_field.y, var),

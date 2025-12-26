@@ -1,6 +1,7 @@
 //! # Geometric Algebra
 //!
 //! This module provides tools for computations in Clifford and Geometric Algebra.
+
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
@@ -16,6 +17,7 @@ use std::ops::{Add, Mul, Sub};
 /// 011 (3) -> e12, 101 (5) -> e13, 110 (6) -> e23
 /// 111 (7) -> e123 (pseudoscalar)
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+
 pub struct Multivector {
     /// A map from the basis blade bitmask to its coefficient.
     pub terms: BTreeMap<u32, Expr>,
@@ -32,7 +34,9 @@ impl Multivector {
     ///   - `q` is the number of basis vectors that square to -1.
     ///   - `r` is the number of basis vectors that square to 0.
     #[must_use]
+
     pub const fn new(signature: (u32, u32, u32)) -> Self {
+
         Self {
             terms: BTreeMap::new(),
             signature,
@@ -50,9 +54,13 @@ impl Multivector {
     /// # Returns
     /// A `Multivector` with a single term for the scalar part (grade 0).
     #[must_use]
+
     pub fn scalar(signature: (u32, u32, u32), value: Expr) -> Self {
+
         let mut terms = BTreeMap::new();
+
         terms.insert(0, value);
+
         Self { terms, signature }
     }
 
@@ -65,11 +73,16 @@ impl Multivector {
     /// # Returns
     /// A `Multivector` representing the vector.
     #[must_use]
+
     pub fn vector(signature: (u32, u32, u32), components: Vec<Expr>) -> Self {
+
         let mut terms = BTreeMap::new();
+
         for (i, coeff) in components.into_iter().enumerate() {
+
             terms.insert(1 << i, coeff);
         }
+
         Self { terms, signature }
     }
 
@@ -88,35 +101,51 @@ impl Multivector {
     /// # Returns
     /// A new `Multivector` representing the geometric product.
     #[must_use]
+
     pub fn geometric_product(&self, other: &Self) -> Self {
+
         let mut result = Self::new(self.signature);
+
         for (blade1, coeff1) in &self.terms {
+
             for (blade2, coeff2) in &other.terms {
+
                 let (sign, metric_scalar, result_blade) = self.blade_product(*blade1, *blade2);
+
                 let new_coeff = simplify(&Expr::new_mul(coeff1.clone(), coeff2.clone()));
+
                 let signed_coeff = simplify(&Expr::new_mul(Expr::Constant(sign), new_coeff));
+
                 let final_coeff = simplify(&Expr::new_mul(signed_coeff, metric_scalar));
 
                 if let Some(existing_coeff) = result.terms.get_mut(&result_blade) {
+
                     *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), final_coeff));
                 } else {
+
                     result.terms.insert(result_blade, final_coeff);
                 }
             }
         }
+
         result.prune_zeros();
+
         result
     }
 
     /// Helper to prune terms with zero coefficients.
+
     fn prune_zeros(&mut self) {
+
         self.terms.retain(|_, coeff| {
+
             match coeff {
                 Expr::Constant(c) => c.abs() > f64::EPSILON,
                 Expr::BigInt(b) => !b.is_zero(),
                 Expr::Rational(r) => !r.is_zero(),
                 Expr::Dag(node) => {
                     if let Ok(expr) = node.to_expr() {
+
                         match expr {
                             Expr::Constant(c) => c.abs() > f64::EPSILON,
                             Expr::BigInt(b) => !b.is_zero(),
@@ -124,6 +153,7 @@ impl Multivector {
                             _ => true,
                         }
                     } else {
+
                         true
                     }
                 }
@@ -134,35 +164,54 @@ impl Multivector {
 
     /// Helper to compute the product of two basis blades.
     /// Returns (sign, `metric_scalar`, `resulting_blade`)
+
     pub(crate) fn blade_product(&self, b1: u32, b2: u32) -> (f64, Expr, u32) {
+
         let b1_mut = b1;
+
         let mut sign = 1.0;
+
         for i in 0..32 {
+
             if (b2 >> i) & 1 == 1 {
+
                 let swaps = (b1_mut >> (i + 1)).count_ones();
+
                 if !swaps.is_multiple_of(2) {
+
                     sign *= -1.0;
                 }
             }
         }
+
         let common_blades = b1 & b2;
+
         let mut metric_scalar = Expr::BigInt(BigInt::one());
+
         for i in 0..32 {
+
             if (common_blades >> i) & 1 == 1 {
+
                 let (p, q, _r) = self.signature;
+
                 let metric = if i < p {
+
                     1i64
                 } else if i < p + q {
+
                     -1i64
                 } else {
+
                     0i64
                 };
+
                 metric_scalar = simplify(&Expr::new_mul(
                     metric_scalar,
                     Expr::BigInt(BigInt::from(metric)),
                 ));
             }
         }
+
         (sign, metric_scalar, b1 ^ b2)
     }
 
@@ -178,13 +227,19 @@ impl Multivector {
     /// # Returns
     /// A new `Multivector` containing only the terms of the specified grade.
     #[must_use]
+
     pub fn grade_projection(&self, grade: u32) -> Self {
+
         let mut result = Self::new(self.signature);
+
         for (blade, coeff) in &self.terms {
+
             if blade.count_ones() == grade {
+
                 result.terms.insert(*blade, coeff.clone());
             }
         }
+
         result
     }
 
@@ -201,20 +256,30 @@ impl Multivector {
     /// # Returns
     /// A new `Multivector` representing the outer product.
     #[must_use]
+
     pub fn outer_product(&self, other: &Self) -> Self {
+
         let mut result = Self::new(self.signature);
+
         for r in 0..=self.signature.0 + self.signature.1 {
+
             for s in 0..=other.signature.0 + other.signature.1 {
+
                 if r + s > self.signature.0 + self.signature.1 {
+
                     continue;
                 }
+
                 let term = self
                     .grade_projection(r)
                     .geometric_product(&other.grade_projection(s));
+
                 result = result + term.grade_projection(r + s);
             }
         }
+
         result.prune_zeros();
+
         result
     }
 
@@ -230,20 +295,30 @@ impl Multivector {
     /// # Returns
     /// A new `Multivector` representing the inner product.
     #[must_use]
+
     pub fn inner_product(&self, other: &Self) -> Self {
+
         let mut result = Self::new(self.signature);
+
         for r in 0..=self.signature.0 + self.signature.1 {
+
             for s in 0..=other.signature.0 + other.signature.1 {
+
                 if s < r {
+
                     continue;
                 }
+
                 let term = self
                     .grade_projection(r)
                     .geometric_product(&other.grade_projection(s));
+
                 result = result + term.grade_projection(s - r);
             }
         }
+
         result.prune_zeros();
+
         result
     }
 
@@ -256,15 +331,23 @@ impl Multivector {
     /// # Returns
     /// A new `Multivector` representing the reversed multivector.
     #[must_use]
+
     pub fn reverse(&self) -> Self {
+
         let mut result = Self::new(self.signature);
+
         for (blade, coeff) in &self.terms {
+
             let grade = i64::from(blade.count_ones());
+
             let sign = if (grade * (grade - 1) / 2) % 2 == 0 {
+
                 1i64
             } else {
+
                 -1i64
             };
+
             result.terms.insert(
                 *blade,
                 simplify(&Expr::new_mul(
@@ -273,6 +356,7 @@ impl Multivector {
                 )),
             );
         }
+
         result
     }
 
@@ -284,12 +368,18 @@ impl Multivector {
     /// # Returns
     /// An `Expr` representing the magnitude.
     #[must_use]
+
     pub fn magnitude(&self) -> Expr {
+
         let product = self.geometric_product(&self.reverse());
+
         let scalar_part = product.grade_projection(0);
+
         if let Some(scalar_coeff) = scalar_part.terms.get(&0) {
+
             simplify(&Expr::new_sqrt(scalar_coeff.clone()))
         } else {
+
             Expr::Constant(0.0)
         }
     }
@@ -301,12 +391,16 @@ impl Multivector {
     /// # Returns
     /// A new `Multivector` representing the dual.
     #[must_use]
+
     pub fn dual(&self) -> Self {
+
         let dimension = self.signature.0 + self.signature.1 + self.signature.2;
+
         let pseudoscalar_blade = (1 << dimension) - 1;
 
         // Create pseudoscalar multivector
         let mut pseudoscalar = Self::new(self.signature);
+
         pseudoscalar
             .terms
             .insert(pseudoscalar_blade, Expr::Constant(1.0));
@@ -321,53 +415,79 @@ impl Multivector {
     /// # Returns
     /// A new `Multivector` with unit magnitude.
     #[must_use]
+
     pub fn normalize(&self) -> Self {
+
         let mag = self.magnitude();
+
         let inv_mag = Expr::new_div(Expr::Constant(1.0), mag);
+
         self.clone() * inv_mag
     }
 }
 
 impl Add for Multivector {
     type Output = Self;
+
     fn add(self, rhs: Self) -> Self {
+
         let mut result = self;
+
         for (blade, coeff) in rhs.terms {
+
             if let Some(existing_coeff) = result.terms.get_mut(&blade) {
+
                 *existing_coeff = simplify(&Expr::new_add(existing_coeff.clone(), coeff));
             } else {
+
                 result.terms.insert(blade, coeff);
             }
         }
+
         result.prune_zeros();
+
         result
     }
 }
 
 impl Sub for Multivector {
     type Output = Self;
+
     fn sub(self, rhs: Self) -> Self {
+
         let mut result = self;
+
         for (blade, coeff) in rhs.terms {
+
             if let Some(existing_coeff) = result.terms.get_mut(&blade) {
+
                 *existing_coeff = simplify(&Expr::new_sub(existing_coeff.clone(), coeff));
             } else {
+
                 result.terms.insert(blade, simplify(&Expr::new_neg(coeff)));
             }
         }
+
         result.prune_zeros();
+
         result
     }
 }
 
 impl Mul<Expr> for Multivector {
     type Output = Self;
+
     fn mul(self, scalar: Expr) -> Self {
+
         let mut result = self;
+
         for coeff in result.terms.values_mut() {
+
             *coeff = simplify(&Expr::new_mul(coeff.clone(), scalar.clone()));
         }
+
         result.prune_zeros();
+
         result
     }
 }

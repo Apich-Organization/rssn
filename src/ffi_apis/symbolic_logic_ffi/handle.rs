@@ -6,15 +6,21 @@ use crate::symbolic::logic::{is_satisfiable, simplify_logic, to_cnf, to_dnf};
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
 #[no_mangle]
+
 pub extern "C" fn rssn_simplify_logic_handle(expr: *const Expr) -> *mut Expr {
+
     let expr_ref = unsafe {
+
         if expr.is_null() {
+
             return std::ptr::null_mut();
         }
+
         &*expr
     };
 
     let result = simplify_logic(expr_ref);
+
     Box::into_raw(Box::new(result))
 }
 
@@ -23,15 +29,21 @@ pub extern "C" fn rssn_simplify_logic_handle(expr: *const Expr) -> *mut Expr {
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
 #[no_mangle]
+
 pub extern "C" fn rssn_to_cnf_handle(expr: *const Expr) -> *mut Expr {
+
     let expr_ref = unsafe {
+
         if expr.is_null() {
+
             return std::ptr::null_mut();
         }
+
         &*expr
     };
 
     let result = to_cnf(expr_ref);
+
     Box::into_raw(Box::new(result))
 }
 
@@ -40,15 +52,21 @@ pub extern "C" fn rssn_to_cnf_handle(expr: *const Expr) -> *mut Expr {
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
 #[no_mangle]
+
 pub extern "C" fn rssn_to_dnf_handle(expr: *const Expr) -> *mut Expr {
+
     let expr_ref = unsafe {
+
         if expr.is_null() {
+
             return std::ptr::null_mut();
         }
+
         &*expr
     };
 
     let result = to_dnf(expr_ref);
+
     Box::into_raw(Box::new(result))
 }
 
@@ -62,11 +80,16 @@ pub extern "C" fn rssn_to_dnf_handle(expr: *const Expr) -> *mut Expr {
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
 #[no_mangle]
+
 pub extern "C" fn rssn_is_satisfiable_handle(expr: *const Expr) -> i32 {
+
     let expr_ref = unsafe {
+
         if expr.is_null() {
+
             return -1;
         }
+
         &*expr
     };
 

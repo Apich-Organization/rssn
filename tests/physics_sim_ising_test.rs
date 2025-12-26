@@ -4,7 +4,9 @@ use proptest::prelude::*;
 use rssn::physics::physics_sim::ising_statistical::*;
 
 #[test]
+
 fn test_ising_simulation_low_temp_smoke() {
+
     let params = IsingParameters {
         width: 10,
         height: 10,
@@ -13,16 +15,23 @@ fn test_ising_simulation_low_temp_smoke() {
     };
 
     let (grid, mag) = run_ising_simulation(&params);
+
     println!("Grid: {:?}", grid);
+
     println!("Magnetization: {}", mag);
+
     println!("grid Len: {}", grid.len());
+
     assert_eq!(grid.len(), 100);
+
     // At very low temp, magnetization should be high (close to 1.0)
     assert!(mag > 0.5);
 }
 
 #[test]
+
 fn test_ising_simulation_high_temp_smoke() {
+
     let params = IsingParameters {
         width: 10,
         height: 10,
@@ -31,14 +40,18 @@ fn test_ising_simulation_high_temp_smoke() {
     };
 
     let (_grid, mag) = run_ising_simulation(&params);
+
     // At high temp, magnetization should be low (close to 0.0)
     assert!(mag < 0.5);
 }
 
 #[test]
+
 fn test_ising_phase_transition_scenario_run() {
+
     // This is a slow scenario, but we can run a reduced version or just smoke test it
     let res = simulate_ising_phase_transition_scenario();
+
     assert!(res.is_ok());
 }
 

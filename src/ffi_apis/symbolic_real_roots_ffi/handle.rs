@@ -6,16 +6,23 @@ use std::os::raw::{c_char, c_double};
 
 /// Generates the Sturm sequence for a given polynomial (Handle)
 #[no_mangle]
+
 pub extern "C" fn rssn_sturm_sequence_handle(
     expr_ptr: *const Expr,
     var_ptr: *const c_char,
 ) -> *mut Vec<Expr> {
+
     if expr_ptr.is_null() || var_ptr.is_null() {
+
         return std::ptr::null_mut();
     }
+
     unsafe {
+
         let expr = &*expr_ptr;
+
         let var_cstr = CStr::from_ptr(var_ptr);
+
         let var_str = match var_cstr.to_str() {
             Ok(s) => s,
             Err(_) => return std::ptr::null_mut(),
@@ -38,18 +45,25 @@ pub extern "C" fn rssn_sturm_sequence_handle(
 
 /// Counts the number of distinct real roots in an interval (Handle)
 #[no_mangle]
+
 pub extern "C" fn rssn_count_real_roots_in_interval_handle(
     expr_ptr: *const Expr,
     var_ptr: *const c_char,
     a: c_double,
     b: c_double,
 ) -> i64 {
+
     if expr_ptr.is_null() || var_ptr.is_null() {
+
         return -1;
     }
+
     unsafe {
+
         let expr = &*expr_ptr;
+
         let var_cstr = CStr::from_ptr(var_ptr);
+
         let var_str = match var_cstr.to_str() {
             Ok(s) => s,
             Err(_) => return -1,
@@ -67,17 +81,24 @@ pub extern "C" fn rssn_count_real_roots_in_interval_handle(
 /// Isolates real roots in an interval (Handle)
 /// Returns a pointer to a Vec<(f64, f64)>
 #[no_mangle]
+
 pub extern "C" fn rssn_isolate_real_roots_handle(
     expr_ptr: *const Expr,
     var_ptr: *const c_char,
     precision: c_double,
 ) -> *mut Vec<(f64, f64)> {
+
     if expr_ptr.is_null() || var_ptr.is_null() {
+
         return std::ptr::null_mut();
     }
+
     unsafe {
+
         let expr = &*expr_ptr;
+
         let var_cstr = CStr::from_ptr(var_ptr);
+
         let var_str = match var_cstr.to_str() {
             Ok(s) => s,
             Err(_) => return std::ptr::null_mut(),
@@ -94,9 +115,13 @@ pub extern "C" fn rssn_isolate_real_roots_handle(
 
 /// Frees a Vec<Expr> handle
 #[no_mangle]
+
 pub extern "C" fn rssn_free_expr_vec_handle(ptr: *mut Vec<Expr>) {
+
     if !ptr.is_null() {
+
         unsafe {
+
             let _ = Box::from_raw(ptr);
         }
     }
@@ -104,9 +129,13 @@ pub extern "C" fn rssn_free_expr_vec_handle(ptr: *mut Vec<Expr>) {
 
 /// Frees a Vec<(f64, f64)> handle
 #[no_mangle]
+
 pub extern "C" fn rssn_free_interval_vec_handle(ptr: *mut Vec<(f64, f64)>) {
+
     if !ptr.is_null() {
+
         unsafe {
+
             let _ = Box::from_raw(ptr);
         }
     }

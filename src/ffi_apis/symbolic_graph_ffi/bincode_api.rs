@@ -5,8 +5,11 @@ use crate::symbolic::graph_algorithms::*;
 
 /// Creates a new graph from bincode specification.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_new(spec_buf: BincodeBuffer) -> BincodeBuffer {
+
     #[derive(serde::Deserialize)]
+
     struct GraphSpec {
         is_directed: bool,
     }
@@ -17,13 +20,17 @@ pub unsafe extern "C" fn rssn_bincode_graph_new(spec_buf: BincodeBuffer) -> Binc
     };
 
     let graph: Graph<String> = Graph::new(spec.is_directed);
+
     to_bincode_buffer(&graph)
 }
 
 /// Adds a node to the graph.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_add_node(input_buf: BincodeBuffer) -> BincodeBuffer {
+
     #[derive(serde::Deserialize)]
+
     struct Input {
         graph: Graph<String>,
         label: String,
@@ -35,13 +42,17 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_node(input_buf: BincodeBuffer) -
     };
 
     input.graph.add_node(input.label);
+
     to_bincode_buffer(&input.graph)
 }
 
 /// Adds an edge to the graph.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_add_edge(input_buf: BincodeBuffer) -> BincodeBuffer {
+
     #[derive(serde::Deserialize)]
+
     struct Input {
         graph: Graph<String>,
         from: String,
@@ -55,41 +66,51 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_edge(input_buf: BincodeBuffer) -
     };
 
     input.graph.add_edge(&input.from, &input.to, input.weight);
+
     to_bincode_buffer(&input.graph)
 }
 
 /// Gets the adjacency matrix.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_adjacency_matrix(
     graph_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         Some(g) => g,
         None => return BincodeBuffer::empty(),
     };
 
     let matrix = graph.to_adjacency_matrix();
+
     to_bincode_buffer(&matrix)
 }
 
 /// Gets the Laplacian matrix.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_laplacian_matrix(
     graph_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         Some(g) => g,
         None => return BincodeBuffer::empty(),
     };
 
     let matrix = graph.to_laplacian_matrix();
+
     to_bincode_buffer(&matrix)
 }
 
 /// Performs BFS traversal.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_bfs(input_buf: BincodeBuffer) -> BincodeBuffer {
+
     #[derive(serde::Deserialize)]
+
     struct Input {
         graph: Graph<String>,
         start_node: usize,
@@ -101,13 +122,17 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs(input_buf: BincodeBuffer) -> Bin
     };
 
     let result = bfs(&input.graph, input.start_node);
+
     to_bincode_buffer(&result)
 }
 
 /// Performs DFS traversal.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_dfs(input_buf: BincodeBuffer) -> BincodeBuffer {
+
     #[derive(serde::Deserialize)]
+
     struct Input {
         graph: Graph<String>,
         start_node: usize,
@@ -119,27 +144,34 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs(input_buf: BincodeBuffer) -> Bin
     };
 
     let result = dfs(&input.graph, input.start_node);
+
     to_bincode_buffer(&result)
 }
 
 /// Finds connected components.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_connected_components(
     graph_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         Some(g) => g,
         None => return BincodeBuffer::empty(),
     };
 
     let result = connected_components(&graph);
+
     to_bincode_buffer(&result)
 }
 
 /// Computes maximum flow.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_max_flow(input_buf: BincodeBuffer) -> BincodeBuffer {
+
     #[derive(serde::Deserialize)]
+
     struct Input {
         graph: Graph<String>,
         source: usize,
@@ -152,24 +184,30 @@ pub unsafe extern "C" fn rssn_bincode_graph_max_flow(input_buf: BincodeBuffer) -
     };
 
     let flow = edmonds_karp_max_flow(&input.graph, input.source, input.sink);
+
     to_bincode_buffer(&flow)
 }
 
 /// Computes MST using Kruskal's algorithm.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst(graph_buf: BincodeBuffer) -> BincodeBuffer {
+
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         Some(g) => g,
         None => return BincodeBuffer::empty(),
     };
 
     let mst = kruskal_mst(&graph);
+
     to_bincode_buffer(&mst)
 }
 
 /// Checks if graph has a cycle.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_has_cycle(graph_buf: BincodeBuffer) -> bool {
+
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         Some(g) => g,
         None => return false,
@@ -180,7 +218,9 @@ pub unsafe extern "C" fn rssn_bincode_graph_has_cycle(graph_buf: BincodeBuffer) 
 
 /// Checks if graph is bipartite.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite(graph_buf: BincodeBuffer) -> bool {
+
     let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         Some(g) => g,
         None => return false,

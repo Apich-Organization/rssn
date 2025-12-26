@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct Multigrid1DInput {
     n_interior: usize,
     f: Vec<f64>,
@@ -14,6 +15,7 @@ struct Multigrid1DInput {
 }
 
 #[derive(Deserialize)]
+
 struct Multigrid2DInput {
     n: usize,
     f: Vec<f64>,
@@ -21,9 +23,11 @@ struct Multigrid2DInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
     input: *const c_char,
 ) -> *mut c_char {
+
     let input: Multigrid1DInput = match from_json_string(input) {
         Some(i) => i,
         None => {
@@ -47,9 +51,11 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
     input: *const c_char,
 ) -> *mut c_char {
+
     let input: Multigrid2DInput = match from_json_string(input) {
         Some(i) => i,
         None => {

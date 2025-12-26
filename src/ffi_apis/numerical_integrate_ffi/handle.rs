@@ -25,6 +25,7 @@ use std::os::raw::c_char;
 /// # Returns
 /// 0 on success, -1 on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_numerical_quadrature(
     expr_ptr: *const Expr,
     var_ptr: *const c_char,
@@ -34,16 +35,22 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
     method: i32,
     result: *mut f64,
 ) -> i32 {
+
     if expr_ptr.is_null() || var_ptr.is_null() || result.is_null() {
+
         update_last_error("Null pointer passed to rssn_numerical_quadrature".to_string());
+
         return -1;
     }
 
     let expr = &*expr_ptr;
+
     let var_str = match CStr::from_ptr(var_ptr).to_str() {
         Ok(s) => s,
         Err(e) => {
+
             update_last_error(format!("Invalid UTF-8 in variable name: {}", e));
+
             return -1;
         }
     };
@@ -55,18 +62,24 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
         3 => QuadratureMethod::Romberg,
         4 => QuadratureMethod::GaussLegendre,
         _ => {
+
             update_last_error(format!("Invalid quadrature method: {}", method));
+
             return -1;
         }
     };
 
     match integrate::quadrature(expr, var_str, (a, b), n_steps, &q_method) {
         Ok(val) => {
+
             *result = val;
+
             0
         }
         Err(e) => {
+
             update_last_error(e);
+
             -1
         }
     }

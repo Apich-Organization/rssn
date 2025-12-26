@@ -18,9 +18,11 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rssn::prelude;
+
 // use nalgebra::DVector; // Example dependency for numerical benchmarks
 
 pub fn criterion_benchmark(c: &mut Criterion) {
+
     // --- BENCHMARK GROUP: PRELUDE ---
     let mut group = c.benchmark_group("prelude");
 
@@ -28,6 +30,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     // let input_vector = DVector::<f64>::new_random(100);
 
     group.bench_function("function_name_small_input", |b| {
+
         b.iter(|| {
             // Use black_box() to prevent the compiler from optimizing away the input/output
             // black_box(prelude::some_function(black_box(10)));
@@ -40,4 +43,5 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 }
 
 criterion_group!(benches, criterion_benchmark);
+
 criterion_main!(benches);

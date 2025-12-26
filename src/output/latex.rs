@@ -2,13 +2,16 @@ use crate::symbolic::core::{DagOp, Expr};
 use std::collections::HashMap;
 
 /// Converts an expression to a LaTeX string.
+
 pub fn to_latex(expr: &Expr) -> String {
+
     to_latex_prec(expr, 0)
 }
 
 /// This is a placeholder struct to hold the result of a sub-expression,
 /// including its precedence.
 #[derive(Clone)]
+
 struct LatexResult {
     precedence: u8,
     content: String,
@@ -16,35 +19,50 @@ struct LatexResult {
 
 /// Converts an expression to a LaTeX string with precedence handling.
 /// This function is iterative to avoid stack overflows with deep expression trees.
+
 pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
+
     let mut results: HashMap<*const Expr, LatexResult> = HashMap::new();
+
     let mut stack: Vec<Expr> = vec![root_expr.clone()];
 
     while let Some(expr) = stack.pop() {
+
         let expr_ptr = &expr as *const Expr;
 
         if results.contains_key(&expr_ptr) {
+
             stack.pop();
+
             continue;
         }
 
         let children = expr.children();
+
         let all_children_processed = children
             .iter()
             .all(|c| results.contains_key(&(c as *const Expr)));
 
         if all_children_processed {
+
             let current_expr = stack.pop().expect("Value is valid");
+
             let current_expr_ptr = &current_expr as *const Expr;
 
-            let get_child_res =
-                |i: usize| -> &LatexResult { &results[&(&children[i] as *const Expr)] };
+            let get_child_res = |i: usize| -> &LatexResult {
+
+                &results[&(&children[i] as *const Expr)]
+            };
 
             let get_child_str_with_parens = |i: usize, prec: u8| -> String {
+
                 let child_res = get_child_res(i);
+
                 if child_res.precedence < prec {
+
                     format!(r"\left( {} \right)", child_res.content)
                 } else {
+
                     child_res.content.clone()
                 }
             };
@@ -181,9 +199,11 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
                     ),
                 ),
                 DagOp::Matrix { rows: _, cols } => {
+
                     let body = children
                         .chunks(cols)
                         .map(|row| {
+
                             row.iter()
                                 .map(|elem| results[&(elem as *const Expr)].content.clone())
                                 .collect::<Vec<_>>()
@@ -191,6 +211,7 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
                         })
                         .collect::<Vec<_>>()
                         .join(r" \\ ");
+
                     (10, format!(r"\begin{{pmatrix}}{}\end{{pmatrix}}", body))
                 }
                 _ => (10, current_expr.to_string()),
@@ -204,25 +225,34 @@ pub(crate) fn to_latex_prec(root_expr: &Expr, root_precedence: u8) -> String {
                 },
             );
         } else {
+
             for child in children.iter().rev() {
+
                 let cloned_child = child.clone();
+
                 stack.push(cloned_child);
             }
         }
     }
 
     let final_result = &results[&(root_expr as *const Expr)];
+
     if final_result.precedence < root_precedence {
+
         format!(r"\left( {} \right)", final_result.content)
     } else {
+
         final_result.content.clone()
     }
 }
 
 /// Helper to add parentheses if needed. This function is now simplified as the main
 /// iterative function handles most of the logic.
+
 pub fn to_latex_prec_with_parens(expr: &Expr, precedence: u8) -> String {
+
     let op = expr.op();
+
     let op_prec = match op {
         DagOp::Add | DagOp::Sub => 1,
         _ => 10,
@@ -231,14 +261,18 @@ pub fn to_latex_prec_with_parens(expr: &Expr, precedence: u8) -> String {
     let s = to_latex_prec(expr, precedence);
 
     if op_prec < precedence {
+
         format!(r"\left( {} \right)", s)
     } else {
+
         s
     }
 }
 
 /// Converts common Greek letter names to LaTeX.
+
 pub fn to_greek(s: &str) -> String {
+
     match s {
         "alpha" => r"\alpha".to_string(),
         "beta" => r"\beta".to_string(),

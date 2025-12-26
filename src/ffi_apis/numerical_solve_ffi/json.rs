@@ -8,6 +8,7 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct SolveLinearInput {
     matrix: Matrix<f64>,
     vector: Vec<f64>,
@@ -15,11 +16,14 @@ struct SolveLinearInput {
 
 /// JSON FFI for solving linear systems.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_solve_linear_system_json(json_ptr: *const c_char) -> *mut c_char {
+
     let json_str = match CStr::from_ptr(json_ptr).to_str() {
         Ok(s) => s,
         Err(_) => return std::ptr::null_mut(),
     };
+
     let input: SolveLinearInput = match serde_json::from_str(json_str) {
         Ok(v) => v,
         Err(e) => {

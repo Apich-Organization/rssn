@@ -7,6 +7,7 @@ use crate::physics::physics_rkm::{DampedOscillatorSystem, LorenzSystem};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+
 struct EulerInput {
     system_type: String,
     params_bincode: Vec<u8>,
@@ -17,7 +18,9 @@ struct EulerInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let input: EulerInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -29,6 +32,7 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) ->
 
     let res = match input.system_type.as_str() {
         "lorenz" => {
+
             let (sys, _): (LorenzSystem, usize) = match bincode_next::serde::decode_from_slice(
                 &input.params_bincode,
                 bincode_next::config::standard(),
@@ -40,9 +44,11 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) ->
                     ))
                 }
             };
+
             solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
         }
         "oscillator" => {
+
             let (sys, _): (DampedOscillatorSystem, usize) =
                 match bincode_next::serde::decode_from_slice(
                     &input.params_bincode,
@@ -55,6 +61,7 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) ->
                         ))
                     }
                 };
+
             solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
         }
         _ => {
@@ -74,6 +81,7 @@ fn solve_with_method<S: crate::physics::physics_rkm::OdeSystem>(
     dt: f64,
     method: &str,
 ) -> Vec<(f64, Vec<f64>)> {
+
     match method {
         "midpoint" => physics_em::solve_midpoint_euler(sys, y0, t_span, dt),
         "heun" => physics_em::solve_heun_euler(sys, y0, t_span, dt),

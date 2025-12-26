@@ -5,6 +5,7 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
+
 struct OptimizeRequest {
     problem_type: String,
     init_param: Vec<f64>,
@@ -15,6 +16,7 @@ struct OptimizeRequest {
 }
 
 #[derive(Serialize, Deserialize)]
+
 struct OptimizeResponse {
     success: bool,
     best_param: Option<Vec<f64>>,
@@ -24,10 +26,13 @@ struct OptimizeResponse {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let request: OptimizeRequest = match from_bincode_buffer(&buffer) {
         Some(req) => req,
         None => {
+
             let response = OptimizeResponse {
                 success: false,
                 best_param: None,
@@ -35,11 +40,13 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
                 iterations: None,
                 error: Some("Invalid Bincode Input".to_string()),
             };
+
             return to_bincode_buffer(&response);
         }
     };
 
     let init_param = Array1::from(request.init_param.clone());
+
     let config = OptimizationConfig {
         max_iters: request.max_iters,
         tolerance: request.tolerance,
@@ -49,9 +56,13 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
 
     let response = match request.problem_type.as_str() {
         "Rosenbrock" => {
+
             let a = request.rosenbrock_a.unwrap_or(1.0);
+
             let b = request.rosenbrock_b.unwrap_or(100.0);
+
             let problem = Rosenbrock { a, b };
+
             match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
                 Ok(res) => OptimizeResponse {
                     success: true,
@@ -70,7 +81,9 @@ pub unsafe extern "C" fn numerical_optimize_solve_bincode(buffer: BincodeBuffer)
             }
         }
         "Sphere" => {
+
             let problem = Sphere;
+
             match EquationOptimizer::solve_with_gradient_descent(problem, init_param, &config) {
                 Ok(res) => OptimizeResponse {
                     success: true,

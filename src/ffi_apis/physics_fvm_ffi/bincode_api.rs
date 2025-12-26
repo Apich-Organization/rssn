@@ -6,6 +6,7 @@ use crate::physics::physics_fvm::{self, SweState};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+
 struct SweInput {
     h: Vec<f64>,
     hu: Vec<f64>,
@@ -16,7 +17,9 @@ struct SweInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_fvm_swe_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let input: SweInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -34,5 +37,6 @@ pub unsafe extern "C" fn rssn_physics_fvm_swe_bincode(buffer: BincodeBuffer) -> 
         input.steps,
         input.g,
     );
+
     to_bincode_buffer(&FfiResult::<Vec<SweState>, String>::ok(result))
 }

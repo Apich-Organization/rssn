@@ -2,11 +2,14 @@ use crate::symbolic::core::{DagOp, Expr};
 use std::collections::HashMap;
 
 /// Converts an expression to a Typst string.
+
 pub fn to_typst(expr: &Expr) -> String {
+
     format!("${}$", to_typst_prec(expr, 0))
 }
 
 #[derive(Clone)]
+
 struct TypstResult {
     precedence: u8,
     content: String,
@@ -14,35 +17,50 @@ struct TypstResult {
 
 /// Converts an expression to a Typst string with precedence handling.
 /// This function is iterative to avoid stack overflows.
+
 pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
+
     let mut results: HashMap<*const Expr, TypstResult> = HashMap::new();
+
     let mut stack: Vec<Expr> = vec![root_expr.clone()];
 
     while let Some(expr) = stack.last() {
+
         let expr_ptr = &*expr as *const Expr;
 
         if results.contains_key(&expr_ptr) {
+
             stack.pop();
+
             continue;
         }
 
         let children = expr.children();
+
         let all_children_processed = children
             .iter()
             .all(|c| results.contains_key(&(c as *const Expr)));
 
         if all_children_processed {
+
             let current_expr = stack.pop().expect("Value is valid");
+
             let current_expr_ptr = &current_expr as *const Expr;
 
-            let get_child_res =
-                |i: usize| -> &TypstResult { &results[&(&children[i] as *const Expr)] };
+            let get_child_res = |i: usize| -> &TypstResult {
+
+                &results[&(&children[i] as *const Expr)]
+            };
 
             let get_child_str = |i: usize, prec: u8| -> String {
+
                 let child_res = get_child_res(i);
+
                 if child_res.precedence < prec {
+
                     format!("({})", child_res.content)
                 } else {
+
                     child_res.content.clone()
                 }
             };
@@ -100,9 +118,11 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
                     ),
                 ),
                 DagOp::Matrix { rows: _, cols } => {
+
                     let body = children
                         .chunks(cols)
                         .map(|row| {
+
                             row.iter()
                                 .map(|elem| results[&(elem as *const Expr)].content.clone())
                                 .collect::<Vec<_>>()
@@ -110,6 +130,7 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
                         })
                         .collect::<Vec<_>>()
                         .join("; ");
+
                     (10, format!("mat({})", body))
                 }
                 DagOp::Pi => (10, "pi".to_string()),
@@ -128,9 +149,13 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
                 },
             );
         } else {
+
             for child in children.iter().rev() {
+
                 if !results.contains_key(&(child as *const Expr)) {
+
                     let child_clone = child.clone();
+
                     stack.push(child_clone);
                 }
             }
@@ -138,9 +163,12 @@ pub(crate) fn to_typst_prec(root_expr: &Expr, root_precedence: u8) -> String {
     }
 
     let final_result = &results[&(root_expr as *const Expr)];
+
     if final_result.precedence < root_precedence {
+
         format!("({})", final_result.content)
     } else {
+
         final_result.content.clone()
     }
 }

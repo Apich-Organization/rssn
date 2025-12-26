@@ -3,6 +3,7 @@ use rssn::symbolic::finite_field::*;
 use std::sync::Arc;
 
 fn main() {
+
     let field = PrimeField::new(BigInt::from(5));
 
     // p1 = x + 2
@@ -25,6 +26,7 @@ fn main() {
 
     // p1 + p2 = 3x + 5 = 3x (since 5 mod 5 = 0)
     let result = p1 + p2;
+
     println!(
         "Addition result: degree={}, coeffs={:?}",
         result.degree(),
@@ -56,15 +58,18 @@ fn main() {
     let (quotient, remainder) = dividend
         .long_division(&divisor)
         .expect("Division should succeed");
+
     println!(
         "Division: quotient degree={}, remainder degree={}",
         quotient.degree(),
         remainder.degree()
     );
+
     println!(
         "Quotient coeffs: {:?}",
         quotient.coeffs.iter().map(|c| &c.value).collect::<Vec<_>>()
     );
+
     println!(
         "Remainder coeffs: {:?}",
         remainder

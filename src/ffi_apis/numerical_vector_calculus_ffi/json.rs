@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct DivergenceInput {
     funcs: Vec<Expr>,
     vars: Vec<String>,
@@ -15,6 +16,7 @@ struct DivergenceInput {
 }
 
 #[derive(Deserialize)]
+
 struct CurlInput {
     funcs: Vec<Expr>,
     vars: Vec<String>,
@@ -22,6 +24,7 @@ struct CurlInput {
 }
 
 #[derive(Deserialize)]
+
 struct LaplacianInput {
     f: Expr,
     vars: Vec<String>,
@@ -29,9 +32,11 @@ struct LaplacianInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
     input_json: *const c_char,
 ) -> *mut c_char {
+
     let input: DivergenceInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -44,8 +49,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
             )
         }
     };
+
     let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+
     let res = vector_calculus::divergence_expr(&input.funcs, &vars_refs, &input.point);
+
     let ffi_res = match res {
         Ok(v) => FfiResult {
             ok: Some(v),
@@ -56,13 +64,16 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
             err: Some(e),
         },
     };
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
     input_json: *const c_char,
 ) -> *mut c_char {
+
     let input: CurlInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -75,8 +86,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
             )
         }
     };
+
     let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+
     let res = vector_calculus::curl_expr(&input.funcs, &vars_refs, &input.point);
+
     let ffi_res = match res {
         Ok(v) => FfiResult {
             ok: Some(v),
@@ -87,13 +101,16 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
             err: Some(e),
         },
     };
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
     input_json: *const c_char,
 ) -> *mut c_char {
+
     let input: LaplacianInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -106,8 +123,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
             )
         }
     };
+
     let vars_refs: Vec<&str> = input.vars.iter().map(|s| s.as_str()).collect();
+
     let res = vector_calculus::laplacian(&input.f, &vars_refs, &input.point);
+
     let ffi_res = match res {
         Ok(v) => FfiResult {
             ok: Some(v),
@@ -118,5 +138,6 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
             err: Some(e),
         },
     };
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

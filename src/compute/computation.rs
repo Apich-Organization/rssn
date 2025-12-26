@@ -6,10 +6,12 @@ use std::sync::{Arc, Condvar, Mutex};
 
 // Using String for now, but could be a more complex type
 /// The type of the result of a computation. Currently a String.
+
 pub type Value = String;
 
 /// The status of a computation.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+
 pub enum ComputationStatus {
     /// The computation is pending execution.
     Pending,
@@ -25,6 +27,7 @@ pub enum ComputationStatus {
 
 /// Represents the progress of a computation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
 pub struct ComputationProgress {
     /// The percentage of completion (0.0 to 100.0).
     pub percentage: f32,
@@ -34,6 +37,7 @@ pub struct ComputationProgress {
 
 /// Represents a computation task.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
 pub struct Computation {
     /// A unique identifier for the computation.
     pub id: String,
@@ -48,17 +52,25 @@ pub struct Computation {
     /// The state associated with the computation.
     pub state: State,
     /// Synchronization primitives for pausing/resuming.
-    #[serde(skip, default = "default_pause")]
+    #[serde(
+        skip,
+        default = "default_pause"
+    )]
     pub pause: Arc<(Mutex<bool>, Condvar)>,
     /// A signal to cancel the computation.
-    #[serde(skip, default = "default_cancel_signal")]
+    #[serde(
+        skip,
+        default = "default_cancel_signal"
+    )]
     pub cancel_signal: Arc<AtomicBool>,
 }
 
 fn default_pause() -> Arc<(Mutex<bool>, Condvar)> {
+
     Arc::new((Mutex::new(false), Condvar::new()))
 }
 
 fn default_cancel_signal() -> Arc<AtomicBool> {
+
     Arc::new(AtomicBool::new(false))
 }

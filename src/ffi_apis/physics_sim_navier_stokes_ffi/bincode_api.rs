@@ -7,6 +7,7 @@ use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
+
 struct NavierStokesOutputData {
     pub u: Array2<f64>,
     pub v: Array2<f64>,
@@ -14,9 +15,11 @@ struct NavierStokesOutputData {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_bincode(
     buffer: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let params: NavierStokesParameters = match from_bincode_buffer(&buffer) {
         Some(p) => p,
         None => {
@@ -28,7 +31,9 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_bincode(
 
     match navier_stokes_fluid::run_lid_driven_cavity(&params) {
         Ok((u, v, p)) => {
+
             let out = NavierStokesOutputData { u, v, p };
+
             to_bincode_buffer(&FfiResult::<NavierStokesOutputData, String>::ok(out))
         }
         Err(e) => to_bincode_buffer(&FfiResult::<NavierStokesOutputData, String>::err(e)),

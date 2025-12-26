@@ -6,9 +6,13 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Condvar, Mutex};
 
 fn bench_computation_creation(c: &mut Criterion) {
+
     c.bench_function("computation_creation", |b| {
+
         b.iter(|| {
+
             let expr = Arc::new(Expr::Constant(black_box(1.0)));
+
             Computation {
                 id: "test_id".to_string(),
                 expr: expr.clone(),
@@ -27,7 +31,9 @@ fn bench_computation_creation(c: &mut Criterion) {
 }
 
 fn bench_computation_status_check(c: &mut Criterion) {
+
     let expr = Arc::new(Expr::Constant(1.0));
+
     let computation = Computation {
         id: "test_id".to_string(),
         expr: expr.clone(),
@@ -43,6 +49,7 @@ fn bench_computation_status_check(c: &mut Criterion) {
     };
 
     c.bench_function("computation_status_check", |b| {
+
         b.iter(|| black_box(&computation.status) == &ComputationStatus::Pending)
     });
 }

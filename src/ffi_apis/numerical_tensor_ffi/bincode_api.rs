@@ -6,6 +6,7 @@ use crate::numerical::tensor::{self, TensorData};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+
 struct TensordotRequest {
     a: TensorData,
     b: TensorData,
@@ -14,16 +15,24 @@ struct TensordotRequest {
 }
 
 fn decode<T: for<'de> Deserialize<'de>>(data: *const u8, len: usize) -> Option<T> {
+
     if data.is_null() {
+
         return None;
     }
-    let slice = unsafe { std::slice::from_raw_parts(data, len) };
+
+    let slice = unsafe {
+
+        std::slice::from_raw_parts(data, len)
+    };
+
     bincode_next::serde::decode_from_slice(slice, bincode_next::config::standard())
         .ok()
         .map(|(v, _)| v)
 }
 
 fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
+
     match bincode_next::serde::encode_to_vec(val, bincode_next::config::standard()) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
@@ -32,10 +41,12 @@ fn encode<T: Serialize>(val: &T) -> BincodeBuffer {
 
 /// Tensor contraction via Bincode.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
     data: *const u8,
     len: usize,
 ) -> BincodeBuffer {
+
     let req: TensordotRequest = match decode(data, len) {
         Some(r) => r,
         None => {
@@ -55,6 +66,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
             })
         }
     };
+
     let b = match req.b.to_arrayd() {
         Ok(arr) => arr,
         Err(e) => {

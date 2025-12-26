@@ -20,11 +20,17 @@ use std::f64::consts::PI;
 /// let output = fft(&mut input);
 /// assert!((output[0].re - 4.0).abs() < 1e-9);
 /// ```
+
 pub fn fft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
+
     let mut planner = FftPlanner::new();
+
     let fft = planner.plan_fft_forward(input.len());
+
     let mut buffer = input.to_vec();
+
     fft.process(&mut buffer);
+
     buffer
 }
 
@@ -50,18 +56,28 @@ pub fn fft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
 /// assert_eq!(res, vec![0.0, 1.0, 2.5, 4.0, 1.5]);
 /// ```
 #[must_use]
+
 pub fn convolve(a: &[f64], v: &[f64]) -> Vec<f64> {
+
     let n = a.len();
+
     let m = v.len();
+
     if n == 0 || m == 0 {
+
         return vec![];
     }
+
     let mut out = vec![0.0; n + m - 1];
+
     for i in 0..n {
+
         for j in 0..m {
+
             out[i + j] += a[i] * v[j];
         }
     }
+
     out
 }
 
@@ -85,9 +101,13 @@ pub fn convolve(a: &[f64], v: &[f64]) -> Vec<f64> {
 /// // correlation(a, v)[k] = sum_i a[i] * v[i-k]
 /// ```
 #[must_use]
+
 pub fn cross_correlation(a: &[f64], v: &[f64]) -> Vec<f64> {
+
     let mut v_rev = v.to_vec();
+
     v_rev.reverse();
+
     convolve(a, &v_rev)
 }
 
@@ -96,13 +116,19 @@ pub fn cross_correlation(a: &[f64], v: &[f64]) -> Vec<f64> {
 /// # Arguments
 /// * `n` - The number of points in the output window.
 #[must_use]
+
 pub fn hann_window(n: usize) -> Vec<f64> {
+
     if n == 0 {
+
         return vec![];
     }
+
     if n == 1 {
+
         return vec![1.0];
     }
+
     (0..n)
         .map(|i| 0.5 * (1.0 - (2.0 * PI * i as f64 / (n - 1) as f64).cos()))
         .collect()
@@ -113,13 +139,19 @@ pub fn hann_window(n: usize) -> Vec<f64> {
 /// # Arguments
 /// * `n` - The number of points in the output window.
 #[must_use]
+
 pub fn hamming_window(n: usize) -> Vec<f64> {
+
     if n == 0 {
+
         return vec![];
     }
+
     if n == 1 {
+
         return vec![1.0];
     }
+
     (0..n)
         .map(|i| 0.54 - 0.46 * (2.0 * PI * i as f64 / (n - 1) as f64).cos())
         .collect()

@@ -66,6 +66,7 @@ use serde::{Deserialize, Serialize};
 /// The polynomial is stored in descending order of powers, i.e., the first
 /// element is the coefficient of the highest power term.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+
 pub struct PolyGF256(pub Vec<u8>);
 
 impl PolyGF256 {
@@ -74,16 +75,22 @@ impl PolyGF256 {
     /// # Arguments
     /// * `coeffs` - Coefficients in descending order of powers.
     #[must_use]
+
     pub fn new(coeffs: Vec<u8>) -> Self {
+
         Self(coeffs)
     }
 
     /// Returns the degree of the polynomial.
     #[must_use]
+
     pub const fn degree(&self) -> usize {
+
         if self.0.is_empty() {
+
             0
         } else {
+
             self.0.len() - 1
         }
     }
@@ -96,7 +103,9 @@ impl PolyGF256 {
     /// # Returns
     /// The value p(x) in GF(2^8).
     #[must_use]
+
     pub fn eval(&self, x: u8) -> u8 {
+
         self.0
             .iter()
             .rfold(0, |acc, &coeff| gf256_add(gf256_mul(acc, x), coeff))
@@ -106,15 +115,23 @@ impl PolyGF256 {
     ///
     /// In GF(2^8), addition is XOR.
     #[must_use]
+
     pub fn poly_add(&self, other: &Self) -> Self {
+
         let mut result = vec![0; self.0.len().max(other.0.len())];
+
         let result_len = result.len();
+
         for i in 0..self.0.len() {
+
             result[i + result_len - self.0.len()] = self.0[i];
         }
+
         for i in 0..other.0.len() {
+
             result[i + result_len - other.0.len()] ^= other.0[i];
         }
+
         Self(result)
     }
 
@@ -122,19 +139,27 @@ impl PolyGF256 {
     ///
     /// In GF(2^8), subtraction is the same as addition (XOR).
     #[must_use]
+
     pub fn poly_sub(&self, other: &Self) -> Self {
+
         self.poly_add(other)
     }
 
     /// Multiplies two polynomials over GF(2^8).
     #[must_use]
+
     pub fn poly_mul(&self, other: &Self) -> Self {
+
         let mut result = vec![0; self.degree() + other.degree() + 1];
+
         for i in 0..=self.degree() {
+
             for j in 0..=other.degree() {
+
                 result[i + j] ^= gf256_mul(self.0[i], other.0[j]);
             }
         }
+
         Self(result)
     }
 
@@ -145,23 +170,38 @@ impl PolyGF256 {
     ///
     /// # Returns
     /// A tuple (quotient, remainder), or an error if divisor is zero.
+
     pub fn poly_div(&self, divisor: &Self) -> Result<(Self, Self), String> {
+
         if divisor.0.is_empty() {
+
             return Err("Division by zero polynomial".to_string());
         }
+
         let mut rem = self.0.clone();
+
         let mut quot = vec![0; self.degree() + 1];
+
         let divisor_lead_inv = gf256_inv(divisor.0[0])?;
+
         while rem.len() >= divisor.0.len() {
+
             let lead_coeff = rem[0];
+
             let q_coeff = gf256_mul(lead_coeff, divisor_lead_inv);
+
             let deg_diff = rem.len() - divisor.0.len();
+
             quot[deg_diff] = q_coeff;
+
             for (i, var) in rem.iter_mut().enumerate().take(divisor.0.len()) {
+
                 *var ^= gf256_mul(divisor.0[i], q_coeff);
             }
+
             rem.remove(0);
         }
+
         Ok((Self(quot), Self(rem)))
     }
 
@@ -171,26 +211,37 @@ impl PolyGF256 {
     /// d/dx(x^n) = n * x^(n-1), where n is reduced mod 2.
     /// Thus, only odd-power terms contribute to the derivative.
     #[must_use]
+
     pub fn derivative(&self) -> Self {
+
         let mut deriv = vec![0; self.degree()];
+
         for i in 1..=self.degree() {
+
             if i % 2 != 0 {
+
                 deriv[i - 1] = self.0[i];
             }
         }
+
         Self(deriv)
     }
 
     /// Scales the polynomial by a constant in GF(2^8).
     #[must_use]
+
     pub fn scale(&self, c: u8) -> Self {
+
         Self(self.0.iter().map(|&coeff| gf256_mul(coeff, c)).collect())
     }
 
     /// Normalizes the polynomial by removing leading zeros.
     #[must_use]
+
     pub fn normalize(&self) -> Self {
+
         let start = self.0.iter().position(|&x| x != 0).unwrap_or(self.0.len());
+
         Self(self.0[start..].to_vec())
     }
 }
@@ -203,69 +254,110 @@ impl PolyGF256 {
 ///
 /// The generator polynomial is the product of (x - α^i) for i = 0 to n_parity-1,
 /// where α is the primitive element (2) of GF(2^8).
+
 fn rs_generator_poly(n_parity: usize) -> Result<Vec<u8>, String> {
+
     if n_parity == 0 {
+
         return Err("Number of parity symbols must be positive".to_string());
     }
+
     let mut g = vec![1u8];
+
     for i in 0..n_parity {
+
         // Multiply by (x - α^i), which in GF(2^8) is (x + α^i) since subtraction = addition
         let root = gf256_pow(2, i as u64);
+
         let factor = vec![1u8, root];
+
         g = poly_mul_gf256(&g, &factor);
     }
+
     Ok(g)
 }
 
 /// Multiplies two polynomials over GF(2^8).
+
 fn poly_mul_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
+
     if p1.is_empty() || p2.is_empty() {
+
         return vec![];
     }
+
     let mut result = vec![0; p1.len() + p2.len() - 1];
+
     for i in 0..p1.len() {
+
         for j in 0..p2.len() {
+
             result[i + j] ^= gf256_mul(p1[i], p2[j]);
         }
     }
+
     result
 }
 
 /// Performs polynomial long division over GF(2^8).
 /// Returns the remainder after dividing dividend by divisor.
+
 fn poly_div_gf256(mut dividend: Vec<u8>, divisor: &[u8]) -> Result<Vec<u8>, String> {
+
     if divisor.is_empty() {
+
         return Err("Divisor cannot be empty".to_string());
     }
+
     let divisor_len = divisor.len();
+
     let lead_divisor = divisor[0];
+
     let lead_divisor_inv = gf256_inv(lead_divisor)?;
+
     while dividend.len() >= divisor_len {
+
         let lead_dividend = dividend[0];
+
         if lead_dividend == 0 {
+
             dividend.remove(0);
+
             continue;
         }
+
         let coeff = gf256_mul(lead_dividend, lead_divisor_inv);
+
         for i in 0..divisor_len {
+
             let term = gf256_mul(coeff, divisor[i]);
+
             dividend[i] ^= term;
         }
+
         dividend.remove(0);
     }
+
     // Pad remainder to have n_parity bytes
     while dividend.len() < divisor_len - 1 {
+
         dividend.insert(0, 0);
     }
+
     Ok(dividend)
 }
 
 /// Evaluates a polynomial over GF(2^8) at a given point.
+
 fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
+
     let mut y = 0u8;
+
     for &coeff in poly {
+
         y = gf256_mul(y, x) ^ coeff;
     }
+
     y
 }
 
@@ -292,11 +384,16 @@ fn poly_eval_gf256(poly: &[u8], x: u8) -> u8 {
 /// let codeword = reed_solomon_encode(&message, 4).unwrap();
 /// assert_eq!(codeword.len(), 7); // 3 data + 4 parity
 /// ```
+
 pub fn reed_solomon_encode(message: &[u8], n_parity: usize) -> Result<Vec<u8>, String> {
+
     if message.len() + n_parity > 255 {
+
         return Err("Message + parity length cannot exceed 255".to_string());
     }
+
     if n_parity == 0 {
+
         return Ok(message.to_vec());
     }
 
@@ -305,6 +402,7 @@ pub fn reed_solomon_encode(message: &[u8], n_parity: usize) -> Result<Vec<u8>, S
 
     // Shift message polynomial by n_parity positions (multiply by x^n_parity)
     let mut message_poly = message.to_vec();
+
     message_poly.extend(vec![0; n_parity]);
 
     // Compute remainder = message_poly mod gen_poly
@@ -312,6 +410,7 @@ pub fn reed_solomon_encode(message: &[u8], n_parity: usize) -> Result<Vec<u8>, S
 
     // Codeword = message + remainder (systematic encoding)
     let mut codeword = message.to_vec();
+
     codeword.extend(&remainder);
 
     Ok(codeword)
@@ -340,9 +439,13 @@ pub fn reed_solomon_encode(message: &[u8], n_parity: usize) -> Result<Vec<u8>, S
 /// reed_solomon_decode(&mut codeword, 4).unwrap();
 /// assert_eq!(&codeword[..3], &message);
 /// ```
+
 pub fn reed_solomon_decode(codeword: &mut [u8], n_parity: usize) -> Result<(), String> {
+
     let syndromes = calculate_syndromes(codeword, n_parity);
+
     if syndromes.iter().all(|&s| s == 0) {
+
         return Ok(());
     }
 
@@ -353,12 +456,15 @@ pub fn reed_solomon_decode(codeword: &mut [u8], n_parity: usize) -> Result<(), S
     let error_locations = chien_search_extended(&sigma, codeword.len())?;
 
     if error_locations.is_empty() {
+
         return Err("Failed to find error locations.".to_string());
     }
 
     // Compute error evaluator polynomial omega = S(x) * sigma(x) mod x^n_parity
     let mut omega = poly_mul_gf256(&syndromes, &sigma);
+
     if omega.len() > n_parity {
+
         omega = omega[omega.len() - n_parity..].to_vec();
     }
 
@@ -368,6 +474,7 @@ pub fn reed_solomon_decode(codeword: &mut [u8], n_parity: usize) -> Result<(), S
 
     // Correct errors
     for (i, &loc) in error_locations.iter().enumerate() {
+
         codeword[loc] ^= error_magnitudes[i];
     }
 
@@ -375,16 +482,22 @@ pub fn reed_solomon_decode(codeword: &mut [u8], n_parity: usize) -> Result<(), S
 }
 
 /// Berlekamp-Massey algorithm to find the error locator polynomial.
+
 fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
+
     let n = syndromes.len();
+
     let mut sigma = vec![1u8]; // Error locator polynomial
     let mut b = vec![1u8]; // Previous error locator polynomial
     let mut l = 0usize; // Number of errors found
 
     for i in 0..n {
+
         // Compute discrepancy
         let mut delta = syndromes[i];
+
         for j in 1..=l.min(sigma.len() - 1) {
+
             delta ^= gf256_mul(sigma[j], syndromes[i - j]);
         }
 
@@ -392,17 +505,22 @@ fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
         b.push(0);
 
         if delta != 0 {
+
             let t = sigma.clone();
 
             // sigma = sigma - delta * x^(i-m) * b
             // where x^(i-m) * b is already stored in b
             let scaled_b: Vec<u8> = b.iter().map(|&c| gf256_mul(c, delta)).collect();
+
             sigma = poly_add_gf256(&sigma, &scaled_b);
 
             if 2 * l <= i {
+
                 l = i + 1 - l;
+
                 // b = t / delta
                 let delta_inv = gf256_inv(delta).unwrap_or(0);
+
                 b = t.iter().map(|&c| gf256_mul(c, delta_inv)).collect();
             }
         }
@@ -412,33 +530,49 @@ fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
 }
 
 /// Add two polynomials over GF(2^8).
+
 fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
+
     let max_len = p1.len().max(p2.len());
+
     let mut result = vec![0u8; max_len];
+
     for (i, &c) in p1.iter().enumerate() {
+
         result[max_len - p1.len() + i] ^= c;
     }
+
     for (i, &c) in p2.iter().enumerate() {
+
         result[max_len - p2.len() + i] ^= c;
     }
+
     result
 }
 
 /// Extended Chien search to find error locations.
+
 fn chien_search_extended(sigma: &[u8], codeword_len: usize) -> Result<Vec<usize>, String> {
+
     let mut error_locs = Vec::new();
+
     let num_errors = sigma.len() - 1;
 
     for i in 0..codeword_len {
+
         // Evaluate sigma at alpha^(-i) = alpha^(255-i)
         let x = gf256_pow(2, ((255 - i) % 255) as u64);
+
         let eval = poly_eval_gf256(sigma, x);
+
         if eval == 0 {
+
             error_locs.push(i);
         }
     }
 
     if error_locs.len() != num_errors && num_errors > 0 {
+
         return Err(format!(
             "Found {} error locations, expected {}",
             error_locs.len(),
@@ -450,28 +584,35 @@ fn chien_search_extended(sigma: &[u8], codeword_len: usize) -> Result<Vec<usize>
 }
 
 /// Extended Forney's algorithm to compute error magnitudes.
+
 fn forney_algorithm_extended(
     omega: &[u8],
     sigma: &[u8],
     error_locs: &[usize],
     codeword_len: usize,
 ) -> Result<Vec<u8>, String> {
+
     // Compute formal derivative of sigma
     let sigma_prime = poly_derivative_gf256(sigma);
+
     let mut magnitudes = Vec::new();
 
     for &loc in error_locs {
+
         // X_i = alpha^loc, X_i^(-1) = alpha^(-loc) = alpha^(255-loc)
         let x_inv = gf256_pow(2, ((255 - loc) % 255) as u64);
 
         let omega_val = poly_eval_gf256(omega, x_inv);
+
         let sigma_prime_val = poly_eval_gf256(&sigma_prime, x_inv);
 
         if sigma_prime_val == 0 {
+
             return Err("Division by zero in Forney algorithm".to_string());
         }
 
         let magnitude = gf256_div(omega_val, sigma_prime_val)?;
+
         magnitudes.push(magnitude);
     }
 
@@ -479,33 +620,43 @@ fn forney_algorithm_extended(
 }
 
 /// Compute formal derivative of polynomial in GF(2^8).
+
 fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
+
     if poly.len() <= 1 {
+
         return vec![0];
     }
 
     // In GF(2), derivative of x^n is n*x^(n-1), and n mod 2 matters
     // Only odd-indexed coefficients survive
     let n = poly.len() - 1;
+
     let mut result = Vec::new();
 
     // poly = a_n*x^n + a_(n-1)*x^(n-1) + ... + a_1*x + a_0
     // derivative = n*a_n*x^(n-1) + ... + a_1
     for (i, &coeff) in poly.iter().enumerate() {
+
         let power = n - i;
+
         if power > 0 && power % 2 == 1 {
+
             result.push(coeff);
         } else if power > 0 {
+
             result.push(0);
         }
     }
 
     // Remove leading zeros
     while result.len() > 1 && result[0] == 0 {
+
         result.remove(0);
     }
 
     if result.is_empty() {
+
         result.push(0);
     }
 
@@ -521,8 +672,11 @@ fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
 /// # Returns
 /// `true` if the codeword is valid (all syndromes are zero).
 #[must_use]
+
 pub fn reed_solomon_check(codeword: &[u8], n_parity: usize) -> bool {
+
     let syndromes = calculate_syndromes(codeword, n_parity);
+
     syndromes.iter().all(|&s| s == 0)
 }
 
@@ -530,26 +684,39 @@ pub fn reed_solomon_check(codeword: &[u8], n_parity: usize) -> bool {
 ///
 /// The syndrome S_i is computed as the codeword polynomial evaluated at α^i.
 #[must_use]
+
 pub fn calculate_syndromes(codeword: &[u8], n_parity: usize) -> Vec<u8> {
+
     let mut syndromes = Vec::with_capacity(n_parity);
+
     for i in 0..n_parity {
+
         let alpha_i = gf256_pow(2, i as u64);
+
         syndromes.push(poly_eval_gf256(codeword, alpha_i));
     }
+
     syndromes
 }
 
 /// Finds the roots of the error locator polynomial to determine error locations.
 ///
 /// Uses Chien search to efficiently evaluate the polynomial at all field elements.
+
 pub fn chien_search(sigma: &PolyGF256) -> Result<Vec<u8>, String> {
+
     let mut error_locs = Vec::new();
+
     for i in 0..255u8 {
+
         let alpha_inv = gf256_inv(gf256_pow(2, u64::from(i)))?;
+
         if sigma.eval(alpha_inv) == 0 {
+
             error_locs.push(i);
         }
     }
+
     Ok(error_locs)
 }
 
@@ -562,20 +729,30 @@ pub fn chien_search(sigma: &PolyGF256) -> Result<Vec<u8>, String> {
 ///
 /// # Returns
 /// A vector of error magnitudes for each error location.
+
 pub fn forney_algorithm(
     omega: &PolyGF256,
     sigma: &PolyGF256,
     error_locs: &[u8],
 ) -> Result<Vec<u8>, String> {
+
     let sigma_prime = sigma.derivative();
+
     let mut magnitudes = Vec::new();
+
     for &loc in error_locs {
+
         let x_inv = gf256_inv(gf256_pow(2, u64::from(loc)))?;
+
         let omega_val = omega.eval(x_inv);
+
         let sigma_prime_val = sigma_prime.eval(x_inv);
+
         let magnitude = gf256_div(gf256_mul(omega_val, x_inv), sigma_prime_val)?;
+
         magnitudes.push(magnitude);
     }
+
     Ok(magnitudes)
 }
 
@@ -604,10 +781,14 @@ pub fn forney_algorithm(
 /// assert_eq!(hamming_distance_numerical(&a, &b), Some(2));
 /// ```
 #[must_use]
+
 pub fn hamming_distance_numerical(a: &[u8], b: &[u8]) -> Option<usize> {
+
     if a.len() != b.len() {
+
         return None;
     }
+
     Some(a.iter().zip(b.iter()).filter(|(&x, &y)| x != y).count())
 }
 
@@ -629,7 +810,9 @@ pub fn hamming_distance_numerical(a: &[u8], b: &[u8]) -> Option<usize> {
 /// assert_eq!(hamming_weight_numerical(&data), 4);
 /// ```
 #[must_use]
+
 pub fn hamming_weight_numerical(data: &[u8]) -> usize {
+
     data.iter().filter(|&&x| x != 0).count()
 }
 
@@ -653,17 +836,28 @@ pub fn hamming_weight_numerical(data: &[u8]) -> usize {
 /// assert_eq!(codeword.len(), 7);
 /// ```
 #[must_use]
+
 pub fn hamming_encode_numerical(data: &[u8]) -> Option<Vec<u8>> {
+
     if data.len() != 4 {
+
         return None;
     }
+
     let d3 = data[0];
+
     let d5 = data[1];
+
     let d6 = data[2];
+
     let d7 = data[3];
+
     let p1 = d3 ^ d5 ^ d7;
+
     let p2 = d3 ^ d6 ^ d7;
+
     let p4 = d5 ^ d6 ^ d7;
+
     Some(vec![
         p1, p2, d3, p4, d5, d6, d7,
     ])
@@ -691,40 +885,66 @@ pub fn hamming_encode_numerical(data: &[u8]) -> Option<Vec<u8>> {
 /// assert_eq!(decoded, data);
 /// assert_eq!(error_pos, Some(3));
 /// ```
+
 pub fn hamming_decode_numerical(codeword: &[u8]) -> Result<(Vec<u8>, Option<usize>), String> {
+
     if codeword.len() != 7 {
+
         return Err("Codeword length must be 7".to_string());
     }
+
     let p1_in = codeword[0];
+
     let p2_in = codeword[1];
+
     let d3_in = codeword[2];
+
     let p4_in = codeword[3];
+
     let d5_in = codeword[4];
+
     let d6_in = codeword[5];
+
     let d7_in = codeword[6];
+
     let p1_calc = d3_in ^ d5_in ^ d7_in;
+
     let p2_calc = d3_in ^ d6_in ^ d7_in;
+
     let p4_calc = d5_in ^ d6_in ^ d7_in;
+
     let c1 = p1_in ^ p1_calc;
+
     let c2 = p2_in ^ p2_calc;
+
     let c4 = p4_in ^ p4_calc;
+
     let error_pos = (c4 << 2) | (c2 << 1) | c1;
+
     let mut corrected_codeword = codeword.to_vec();
+
     let error_index = if error_pos != 0 {
+
         let index = error_pos as usize - 1;
+
         if index < corrected_codeword.len() {
+
             corrected_codeword[index] ^= 1;
         }
+
         Some(error_pos as usize)
     } else {
+
         None
     };
+
     let corrected_data = vec![
         corrected_codeword[2],
         corrected_codeword[4],
         corrected_codeword[5],
         corrected_codeword[6],
     ];
+
     Ok((corrected_data, error_index))
 }
 
@@ -736,20 +956,32 @@ pub fn hamming_decode_numerical(codeword: &[u8]) -> Result<(Vec<u8>, Option<usiz
 /// # Returns
 /// `true` if the codeword is valid (no errors), `false` otherwise.
 #[must_use]
+
 pub fn hamming_check_numerical(codeword: &[u8]) -> bool {
+
     if codeword.len() != 7 {
+
         return false;
     }
+
     let p1_in = codeword[0];
+
     let p2_in = codeword[1];
+
     let d3_in = codeword[2];
+
     let p4_in = codeword[3];
+
     let d5_in = codeword[4];
+
     let d6_in = codeword[5];
+
     let d7_in = codeword[6];
 
     let p1_calc = d3_in ^ d5_in ^ d7_in;
+
     let p2_calc = d3_in ^ d6_in ^ d7_in;
+
     let p4_calc = d5_in ^ d6_in ^ d7_in;
 
     p1_in == p1_calc && p2_in == p2_calc && p4_in == p4_calc
@@ -771,19 +1003,27 @@ pub fn hamming_check_numerical(codeword: &[u8]) -> bool {
 /// # Returns
 /// The encoded codeword.
 #[must_use]
+
 pub fn bch_encode(data: &[u8], t: usize) -> Vec<u8> {
+
     // Simplified BCH encoding: append parity bits
     let n_parity = 2 * t;
+
     let mut codeword = data.to_vec();
 
     // Calculate parity bits using XOR of subsets
     for i in 0..n_parity {
+
         let mut parity = 0u8;
+
         for (j, &bit) in data.iter().enumerate() {
+
             if ((j + 1) >> i) & 1 == 1 {
+
                 parity ^= bit;
             }
         }
+
         codeword.push(parity);
     }
 
@@ -798,39 +1038,56 @@ pub fn bch_encode(data: &[u8], t: usize) -> Vec<u8> {
 ///
 /// # Returns
 /// The decoded data, or an error if too many errors are present.
+
 pub fn bch_decode(codeword: &[u8], t: usize) -> Result<Vec<u8>, String> {
+
     let n_parity = 2 * t;
+
     if codeword.len() < n_parity {
+
         return Err("Codeword too short".to_string());
     }
 
     let data_len = codeword.len() - n_parity;
+
     let data = &codeword[..data_len];
+
     let parity_bits = &codeword[data_len..];
 
     // Check parity and find error syndrome
     let mut syndrome = 0usize;
+
     for i in 0..n_parity {
+
         let mut expected_parity = 0u8;
+
         for (j, &bit) in data.iter().enumerate() {
+
             if ((j + 1) >> i) & 1 == 1 {
+
                 expected_parity ^= bit;
             }
         }
+
         if expected_parity != parity_bits[i] {
+
             syndrome |= 1 << i;
         }
     }
 
     if syndrome == 0 {
+
         // No errors
         return Ok(data.to_vec());
     }
 
     // Attempt single error correction
     if syndrome > 0 && syndrome <= data_len {
+
         let mut corrected = data.to_vec();
+
         corrected[syndrome - 1] ^= 1;
+
         return Ok(corrected);
     }
 
@@ -842,12 +1099,15 @@ pub fn bch_decode(codeword: &[u8], t: usize) -> Result<Vec<u8>, String> {
 // ============================================================================
 
 /// CRC-32 polynomial (IEEE 802.3 / ISO 3309 / PKZIP)
+
 const CRC32_POLYNOMIAL: u32 = 0xEDB88320;
 
 /// CRC-16 polynomial (IBM / ANSI)
+
 const CRC16_POLYNOMIAL: u16 = 0xA001;
 
 /// CRC-8 polynomial (ITU)
+
 const CRC8_POLYNOMIAL: u8 = 0x07;
 
 /// Computes the CRC-32 checksum of the given data.
@@ -869,18 +1129,27 @@ const CRC8_POLYNOMIAL: u8 = 0x07;
 /// assert_eq!(checksum, 0xEC4AC3D0);
 /// ```
 #[must_use]
+
 pub fn crc32_compute_numerical(data: &[u8]) -> u32 {
+
     let mut crc: u32 = 0xFFFFFFFF;
+
     for byte in data {
+
         crc ^= u32::from(*byte);
+
         for _ in 0..8 {
+
             if crc & 1 != 0 {
+
                 crc = (crc >> 1) ^ CRC32_POLYNOMIAL;
             } else {
+
                 crc >>= 1;
             }
         }
     }
+
     !crc
 }
 
@@ -893,7 +1162,9 @@ pub fn crc32_compute_numerical(data: &[u8]) -> u32 {
 /// # Returns
 /// `true` if the computed CRC matches the expected value.
 #[must_use]
+
 pub fn crc32_verify_numerical(data: &[u8], expected_crc: u32) -> bool {
+
     crc32_compute_numerical(data) == expected_crc
 }
 
@@ -906,18 +1177,27 @@ pub fn crc32_verify_numerical(data: &[u8], expected_crc: u32) -> bool {
 /// # Returns
 /// Updated CRC value (call `crc32_finalize_numerical` to get final CRC).
 #[must_use]
+
 pub fn crc32_update_numerical(crc: u32, data: &[u8]) -> u32 {
+
     let mut crc = crc;
+
     for byte in data {
+
         crc ^= u32::from(*byte);
+
         for _ in 0..8 {
+
             if crc & 1 != 0 {
+
                 crc = (crc >> 1) ^ CRC32_POLYNOMIAL;
             } else {
+
                 crc >>= 1;
             }
         }
     }
+
     crc
 }
 
@@ -929,7 +1209,9 @@ pub fn crc32_update_numerical(crc: u32, data: &[u8]) -> u32 {
 /// # Returns
 /// The final CRC-32 checksum.
 #[must_use]
+
 pub const fn crc32_finalize_numerical(crc: u32) -> u32 {
+
     !crc
 }
 
@@ -952,18 +1234,27 @@ pub const fn crc32_finalize_numerical(crc: u32) -> u32 {
 /// assert_eq!(checksum, 0xBB3D);
 /// ```
 #[must_use]
+
 pub fn crc16_compute(data: &[u8]) -> u16 {
+
     let mut crc: u16 = 0xFFFF;
+
     for byte in data {
+
         crc ^= u16::from(*byte);
+
         for _ in 0..8 {
+
             if crc & 1 != 0 {
+
                 crc = (crc >> 1) ^ CRC16_POLYNOMIAL;
             } else {
+
                 crc >>= 1;
             }
         }
     }
+
     crc
 }
 
@@ -977,18 +1268,27 @@ pub fn crc16_compute(data: &[u8]) -> u16 {
 /// # Returns
 /// The 8-bit CRC checksum.
 #[must_use]
+
 pub fn crc8_compute(data: &[u8]) -> u8 {
+
     let mut crc: u8 = 0;
+
     for byte in data {
+
         crc ^= *byte;
+
         for _ in 0..8 {
+
             if crc & 0x80 != 0 {
+
                 crc = (crc << 1) ^ CRC8_POLYNOMIAL;
             } else {
+
                 crc <<= 1;
             }
         }
     }
+
     crc
 }
 
@@ -1008,19 +1308,28 @@ pub fn crc8_compute(data: &[u8]) -> u8 {
 /// # Returns
 /// The interleaved data.
 #[must_use]
+
 pub fn interleave(data: &[u8], depth: usize) -> Vec<u8> {
+
     if depth == 0 || data.is_empty() {
+
         return data.to_vec();
     }
 
     let n = data.len();
+
     let rows = (n + depth - 1) / depth;
+
     let mut result = Vec::with_capacity(n);
 
     for col in 0..depth {
+
         for row in 0..rows {
+
             let idx = row * depth + col;
+
             if idx < n {
+
                 result.push(data[idx]);
             }
         }
@@ -1038,25 +1347,38 @@ pub fn interleave(data: &[u8], depth: usize) -> Vec<u8> {
 /// # Returns
 /// The de-interleaved data.
 #[must_use]
+
 pub fn deinterleave(data: &[u8], depth: usize) -> Vec<u8> {
+
     if depth == 0 || data.is_empty() {
+
         return data.to_vec();
     }
 
     let n = data.len();
+
     let rows = (n + depth - 1) / depth;
+
     let full_cols = n % depth;
+
     let full_cols = if full_cols == 0 { depth } else { full_cols };
 
     let mut result = vec![0u8; n];
+
     let mut idx = 0;
 
     for col in 0..depth {
+
         let col_len = if col < full_cols { rows } else { rows - 1 };
+
         for row in 0..col_len {
+
             let orig_idx = row * depth + col;
+
             if orig_idx < n {
+
                 result[orig_idx] = data[idx];
+
                 idx += 1;
             }
         }
@@ -1079,26 +1401,39 @@ pub fn deinterleave(data: &[u8], depth: usize) -> Vec<u8> {
 /// # Returns
 /// The encoded data (twice the length of input).
 #[must_use]
+
 pub fn convolutional_encode(data: &[u8]) -> Vec<u8> {
+
     let mut state: u8 = 0;
+
     let mut output = Vec::with_capacity(data.len() * 2);
 
     for &bit in data {
+
         state = (state >> 1) | ((bit & 1) << 2);
+
         // G1 = 0b101: bits 0 and 2
         let g1 = ((state >> 0) & 1) ^ ((state >> 2) & 1);
+
         // G2 = 0b111: bits 0, 1, and 2
         let g2 = ((state >> 0) & 1) ^ ((state >> 1) & 1) ^ ((state >> 2) & 1);
+
         output.push(g1);
+
         output.push(g2);
     }
 
     // Flush encoder state
     for _ in 0..2 {
+
         state = state >> 1;
+
         let g1 = ((state >> 0) & 1) ^ ((state >> 2) & 1);
+
         let g2 = ((state >> 0) & 1) ^ ((state >> 1) & 1) ^ ((state >> 2) & 1);
+
         output.push(g1);
+
         output.push(g2);
     }
 
@@ -1113,15 +1448,22 @@ pub fn convolutional_encode(data: &[u8]) -> Vec<u8> {
 /// # Returns
 /// The minimum Hamming distance between any two distinct codewords.
 #[must_use]
+
 pub fn minimum_distance(codewords: &[Vec<u8>]) -> Option<usize> {
+
     if codewords.len() < 2 {
+
         return None;
     }
 
     let mut min_dist: Option<usize> = None;
+
     for i in 0..codewords.len() {
+
         for j in (i + 1)..codewords.len() {
+
             if let Some(dist) = hamming_distance_numerical(&codewords[i], &codewords[j]) {
+
                 min_dist = Some(min_dist.map_or(dist, |m| m.min(dist)));
             }
         }
@@ -1139,10 +1481,14 @@ pub fn minimum_distance(codewords: &[Vec<u8>]) -> Option<usize> {
 /// # Returns
 /// The code rate as a floating-point number.
 #[must_use]
+
 pub fn code_rate(k: usize, n: usize) -> f64 {
+
     if n == 0 {
+
         0.0
     } else {
+
         k as f64 / n as f64
     }
 }
@@ -1157,10 +1503,14 @@ pub fn code_rate(k: usize, n: usize) -> f64 {
 /// # Returns
 /// The number of errors that can be corrected.
 #[must_use]
+
 pub const fn error_correction_capability(min_distance: usize) -> usize {
+
     if min_distance == 0 {
+
         0
     } else {
+
         (min_distance - 1) / 2
     }
 }
@@ -1175,10 +1525,14 @@ pub const fn error_correction_capability(min_distance: usize) -> usize {
 /// # Returns
 /// The number of errors that can be detected.
 #[must_use]
+
 pub const fn error_detection_capability(min_distance: usize) -> usize {
+
     if min_distance == 0 {
+
         0
     } else {
+
         min_distance - 1
     }
 }

@@ -7,6 +7,7 @@ use crate::symbolic::core::Expr;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+
 struct QuadratureInput {
     expr: Expr,
     var: String,
@@ -18,14 +19,18 @@ struct QuadratureInput {
 
 /// Performs numerical integration via Bincode.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let input: QuadratureInput = match from_bincode_buffer(&buffer) {
         Some(v) => v,
         None => {
+
             let res: FfiResult<f64, String> = FfiResult {
                 ok: None,
                 err: Some("Bincode decoding error".to_string()),
             };
+
             return to_bincode_buffer(&res);
         }
     };

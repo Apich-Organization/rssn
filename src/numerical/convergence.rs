@@ -3,9 +3,11 @@
 //! This module provides numerical methods for analyzing and accelerating the convergence
 //! of series and sequences. It includes functions for summing series up to a given tolerance
 //! and for accelerating sequence convergence using techniques like Aitken's delta-squared process.
+
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
+
 /// Numerically sums a series until the term is smaller than a tolerance or `max_terms` is reached.
 ///
 /// # Arguments
@@ -17,6 +19,7 @@ use std::collections::HashMap;
 ///
 /// # Returns
 /// A `Result` containing the numerical sum, or an error string if evaluation fails.
+
 pub fn sum_series_numerical(
     term_expr: &Expr,
     var: &str,
@@ -24,18 +27,28 @@ pub fn sum_series_numerical(
     max_terms: usize,
     tolerance: f64,
 ) -> Result<f64, String> {
+
     let mut sum = 0.0;
+
     let mut vars = HashMap::new();
+
     for i in start_n..(start_n + max_terms) {
+
         vars.insert(var.to_string(), i as f64);
+
         let term_val = eval_expr(term_expr, &vars)?;
+
         if term_val.abs() < tolerance {
+
             break;
         }
+
         sum += term_val;
     }
+
     Ok(sum)
 }
+
 /// Accelerates the convergence of a sequence using Aitken's delta-squared process.
 ///
 /// Aitken's method is a sequence acceleration technique that can improve the rate
@@ -48,23 +61,37 @@ pub fn sum_series_numerical(
 /// # Returns
 /// A `Vec<f64>` representing the accelerated sequence.
 #[must_use]
+
 pub fn aitken_acceleration(sequence: &[f64]) -> Vec<f64> {
+
     if sequence.len() < 3 {
+
         return vec![];
     }
+
     let mut accelerated_seq = Vec::new();
+
     for i in 0..(sequence.len() - 2) {
+
         let s_n = sequence[i];
+
         let s_n1 = sequence[i + 1];
+
         let s_n2 = sequence[i + 2];
+
         let denominator = 2.0f64.mul_add(-s_n1, s_n2) + s_n;
+
         if denominator.abs() > 1e-9 {
+
             let aitken_s = s_n - (s_n1 - s_n).powi(2) / denominator;
+
             accelerated_seq.push(aitken_s);
         }
     }
+
     accelerated_seq
 }
+
 /// Numerically finds the limit of a sequence by generating terms and applying acceleration.
 ///
 /// This function generates terms of a sequence defined by `term_expr` and then repeatedly
@@ -79,32 +106,47 @@ pub fn aitken_acceleration(sequence: &[f64]) -> Vec<f64> {
 ///
 /// # Returns
 /// A `Result` containing the numerical limit, or an error string if convergence is not found.
+
 pub fn find_sequence_limit(
     term_expr: &Expr,
     var: &str,
     max_terms: usize,
     tolerance: f64,
 ) -> Result<f64, String> {
+
     let mut sequence = Vec::new();
+
     let mut vars = HashMap::new();
+
     for i in 0..max_terms {
+
         vars.insert(var.to_string(), i as f64);
+
         sequence.push(eval_expr(term_expr, &vars)?);
     }
+
     let mut accelerated = aitken_acceleration(&sequence);
+
     while accelerated.len() > 1 {
+
         let last = match accelerated.last() {
             Some(l) => l,
             None => {
+
                 return Err("Unexpected empty sequence in convergence loop.".to_string());
             }
         };
+
         let second_last = accelerated[accelerated.len() - 2];
+
         if (last - second_last).abs() < tolerance {
+
             return Ok(*last);
         }
+
         accelerated = aitken_acceleration(&accelerated);
     }
+
     accelerated
         .last()
         .copied()
@@ -123,22 +165,31 @@ pub fn find_sequence_limit(
 /// # Returns
 /// A `Vec<f64>` containing the extrapolated values. The last element is the highest order extrapolation.
 #[must_use]
+
 pub fn richardson_extrapolation(sequence: &[f64]) -> Vec<f64> {
+
     if sequence.is_empty() {
+
         return vec![];
     }
+
     let n = sequence.len();
+
     let mut table = vec![vec![0.0; n]; n];
 
     // Initialize the first column with the input sequence
     for (i, &val) in sequence.iter().enumerate() {
+
         table[i][0] = val;
     }
 
     // Compute the extrapolation table
     for j in 1..n {
+
         for i in j..n {
+
             let power_of_4 = 4.0f64.powi(j as i32);
+
             table[i][j] = (power_of_4 * table[i][j - 1] - table[i - 1][j - 1]) / (power_of_4 - 1.0);
         }
     }
@@ -158,9 +209,13 @@ pub fn richardson_extrapolation(sequence: &[f64]) -> Vec<f64> {
 /// # Returns
 /// A `Vec<f64>` of accelerated terms.
 #[must_use]
+
 pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
+
     let n = sequence.len();
+
     if n < 3 {
+
         return Vec::from(sequence);
     }
 
@@ -186,6 +241,7 @@ pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
     let mut eps = vec![vec![0.0; n]; n + 1];
 
     for i in 0..n {
+
         eps[0][i] = sequence[i]; // k=0
                                  // epsilon_{-1} is virtually 0.0, but handled by logic below?
                                  // Actually the formula relates eps(k+1) to eps(k-1) and eps(k).
@@ -193,18 +249,24 @@ pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
     }
 
     for k in 0..n - 1 {
+
         for i in 0..n - k - 1 {
+
             let numerator = 1.0;
+
             let denominator = eps[k][i + 1] - eps[k][i];
 
             if denominator.abs() < 1e-12 {
+
                 // If denominator is too small, we might have convergence or numerical instability.
                 // We propagate the previous value or stop.
                 // For this implementation, let's just use a very large number relative to the prev to avoid NaN,
                 // or break.
                 eps[k + 1][i] = 1e12; // Placeholder for infinity
             } else {
+
                 let prev_term = if k == 0 { 0.0 } else { eps[k - 1][i + 1] };
+
                 eps[k + 1][i] = prev_term + numerator / denominator;
             }
         }
@@ -217,9 +279,12 @@ pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
 
     // Let's collect the values from the highest available even k for each index.
     let mut result = Vec::new();
+
     for i in 0..n {
+
         // Let's return the sequence eps[2][i] (First order Shanks).
         if i < n - 2 {
+
             result.push(eps[2][i]);
         }
     }
@@ -228,18 +293,26 @@ pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
     // To give more power, we should perhaps return the "diagonal": eps[2k][0].
 
     let mut diag = Vec::new();
+
     let mut k = 0;
+
     loop {
+
         if k >= n {
+
             break;
         }
+
         diag.push(eps[k][0]);
+
         k += 2;
     }
 
     if diag.is_empty() {
+
         Vec::from(sequence)
     } else {
+
         diag
     }
 }

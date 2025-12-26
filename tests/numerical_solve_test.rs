@@ -3,15 +3,21 @@ use proptest::prelude::*;
 use rssn::prelude::numerical::*;
 
 #[test]
+
 fn test_solve_linear_unique() {
+
     // 2x + y = 5
     // x - y = 1
     // Solution: x = 2, y = 1
     let a = numerical_Matrix::new(2, 2, vec![2.0, 1.0, 1.0, -1.0]);
+
     let b = vec![5.0, 1.0];
+
     match numerical_solve_linear_system(&a, &b).unwrap() {
         numerical_LinearSolution::Unique(x) => {
+
             assert_approx_eq!(x[0], 2.0);
+
             assert_approx_eq!(x[1], 1.0);
         }
         _ => panic!("Expected unique solution"),
@@ -19,7 +25,9 @@ fn test_solve_linear_unique() {
 }
 
 #[test]
+
 fn test_solve_linear_parametric() {
+
     // x + y + z = 3
     // 2x + 2y + 2z = 6
     // Rank = 1. Solution is a plane.
@@ -30,22 +38,28 @@ fn test_solve_linear_parametric() {
             1.0, 1.0, 1.0, 2.0, 2.0, 2.0,
         ],
     );
+
     let b = vec![3.0, 6.0];
+
     match numerical_solve_linear_system(&a, &b).unwrap() {
         numerical_LinearSolution::Parametric {
             particular,
             null_space_basis,
         } => {
+
             // Check particular solution
             // A * particular should be b
             // We can check just the first row: 1*p0 + 1*p1 + 1*p2 = 3
             let p_sum: f64 = particular.iter().sum();
+
             assert_approx_eq!(p_sum, 3.0);
 
             // Check null space
             assert!(null_space_basis.cols() > 0);
+
             // Verify basis vector v satisfies Av = 0
             for col in null_space_basis.get_cols() {
+
                 let s: f64 = col.iter().sum(); // Since row is 1,1,1, dot(row, col) = sum(col)
                 assert_approx_eq!(s, 0.0);
             }
@@ -55,11 +69,15 @@ fn test_solve_linear_parametric() {
 }
 
 #[test]
+
 fn test_solve_linear_no_solution() {
+
     // x + y = 2
     // x + y = 3
     let a = numerical_Matrix::new(2, 2, vec![1.0, 1.0, 1.0, 1.0]);
+
     let b = vec![2.0, 3.0];
+
     match numerical_solve_linear_system(&a, &b).unwrap() {
         numerical_LinearSolution::NoSolution => {}
         _ => panic!("Expected no solution"),

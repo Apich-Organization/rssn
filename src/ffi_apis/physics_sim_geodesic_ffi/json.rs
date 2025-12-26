@@ -6,7 +6,9 @@ use crate::physics::physics_sim::geodesic_relativity::{self, GeodesicParameters}
 use std::os::raw::c_char;
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_sim_geodesic_run_json(input: *const c_char) -> *mut c_char {
+
     let params: GeodesicParameters = match from_json_string(input) {
         Some(p) => p,
         None => {
@@ -20,5 +22,6 @@ pub unsafe extern "C" fn rssn_physics_sim_geodesic_run_json(input: *const c_char
     };
 
     let path = geodesic_relativity::run_geodesic_simulation(&params);
+
     to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, f64)>, String>::ok(path)).unwrap())
 }

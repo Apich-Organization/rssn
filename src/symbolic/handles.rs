@@ -43,6 +43,7 @@ use std::sync::Arc;
 ///
 /// Handles start at 1 (0 is reserved for null/invalid handles in FFI contexts).
 #[derive(Debug)]
+
 pub struct HandleManager {
     expressions: DashMap<usize, Arc<Expr>>,
     next_handle: AtomicUsize,
@@ -52,7 +53,9 @@ impl HandleManager {
     /// Creates a new, empty `HandleManager`.
     ///
     /// This is typically not called directly; use the global `HANDLE_MANAGER` instead.
+
     pub(crate) fn new() -> Self {
+
         Self {
             expressions: DashMap::new(),
             next_handle: AtomicUsize::new(1), // Start at 1, reserve 0 for null
@@ -79,9 +82,13 @@ impl HandleManager {
     /// let handle = HANDLE_MANAGER.insert(expr);
     /// assert!(handle > 0);
     /// ```
+
     pub fn insert(&self, expr: Expr) -> usize {
+
         let handle = self.next_handle.fetch_add(1, Ordering::SeqCst);
+
         self.expressions.insert(handle, Arc::new(expr));
+
         handle
     }
 
@@ -111,7 +118,9 @@ impl HandleManager {
     ///     println!("Found: {}", retrieved);
     /// }
     /// ```
+
     pub fn get(&self, handle: usize) -> Option<Arc<Expr>> {
+
         self.expressions
             .get(&handle)
             .map(|arc_expr| arc_expr.clone())
@@ -129,7 +138,9 @@ impl HandleManager {
     /// # Returns
     ///
     /// `Some(Expr)` if the handle exists, `None` otherwise.
+
     pub fn clone_expr(&self, handle: usize) -> Option<Expr> {
+
         self.expressions
             .get(&handle)
             .map(|arc_expr| (**arc_expr).clone())
@@ -163,7 +174,9 @@ impl HandleManager {
     /// // Trying to get it again returns None
     /// assert!(HANDLE_MANAGER.get(handle).is_none());
     /// ```
+
     pub fn free(&self, handle: usize) -> Option<Arc<Expr>> {
+
         self.expressions
             .remove(&handle)
             .map(|(_, arc_expr)| arc_expr)
@@ -178,7 +191,9 @@ impl HandleManager {
     /// # Returns
     ///
     /// `true` if the handle exists, `false` otherwise.
+
     pub fn exists(&self, handle: usize) -> bool {
+
         self.expressions.contains_key(&handle)
     }
 
@@ -200,7 +215,9 @@ impl HandleManager {
     /// HANDLE_MANAGER.free(handle);
     /// assert_eq!(HANDLE_MANAGER.count(), initial_count);
     /// ```
+
     pub fn count(&self) -> usize {
+
         self.expressions.len()
     }
 
@@ -222,7 +239,9 @@ impl HandleManager {
     /// assert!(HANDLE_MANAGER.get(h1).is_none());
     /// assert!(HANDLE_MANAGER.get(h2).is_none());
     /// ```
+
     pub fn clear(&self) {
+
         self.expressions.clear();
     }
 
@@ -249,13 +268,16 @@ impl HandleManager {
     /// assert!(handles.contains(&h1));
     /// assert!(handles.contains(&h2));
     /// ```
+
     pub fn get_all_handles(&self) -> Vec<usize> {
+
         self.expressions.iter().map(|entry| *entry.key()).collect()
     }
 }
 
 impl Default for HandleManager {
     fn default() -> Self {
+
         Self::new()
     }
 }
@@ -276,5 +298,6 @@ impl Default for HandleManager {
 /// let expr = HANDLE_MANAGER.get(handle);
 /// HANDLE_MANAGER.free(handle);
 /// ```
+
 pub static HANDLE_MANAGER: std::sync::LazyLock<HandleManager> =
     std::sync::LazyLock::new(HandleManager::new);

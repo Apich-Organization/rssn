@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct ActionInput {
     lagrangian: Expr,
     path: Expr,
@@ -18,9 +19,11 @@ struct ActionInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
     input_json: *const c_char,
 ) -> *mut c_char {
+
     let input: ActionInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -43,17 +46,21 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
         input.t_range,
     ) {
         Ok(val) => {
+
             let ffi_res = FfiResult {
                 ok: Some(val),
                 err: None::<String>,
             };
+
             to_c_string(serde_json::to_string(&ffi_res).unwrap())
         }
         Err(e) => {
+
             let ffi_res = FfiResult {
                 ok: None::<f64>,
                 err: Some(e),
             };
+
             to_c_string(serde_json::to_string(&ffi_res).unwrap())
         }
     }

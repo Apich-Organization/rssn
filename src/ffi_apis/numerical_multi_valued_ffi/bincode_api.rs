@@ -8,6 +8,7 @@ use num_complex::Complex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+
 struct NewtonInput {
     f: Expr,
     f_prime: Expr,
@@ -18,15 +19,18 @@ struct NewtonInput {
 }
 
 #[derive(Serialize)]
+
 struct ComplexResult {
     re: f64,
     im: f64,
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
     buffer: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let input: NewtonInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -38,6 +42,7 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
     };
 
     let start_point = Complex::new(input.start_re, input.start_im);
+
     match multi_valued::newton_method_complex(
         &input.f,
         &input.f_prime,
@@ -46,10 +51,12 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
         input.max_iter,
     ) {
         Some(root) => {
+
             let res = ComplexResult {
                 re: root.re,
                 im: root.im,
             };
+
             to_bincode_buffer(&FfiResult {
                 ok: Some(res),
                 err: None::<String>,
@@ -63,6 +70,7 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
 }
 
 #[derive(Deserialize)]
+
 struct LogSqrtInput {
     re: f64,
     im: f64,
@@ -70,7 +78,9 @@ struct LogSqrtInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let input: LogSqrtInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -80,12 +90,16 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(buffer: BincodeBuffer
             })
         }
     };
+
     let z = Complex::new(input.re, input.im);
+
     let res = multi_valued::complex_log_k(z, input.k);
+
     let out = ComplexResult {
         re: res.re,
         im: res.im,
     };
+
     to_bincode_buffer(&FfiResult {
         ok: Some(out),
         err: None::<String>,
@@ -93,9 +107,11 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(buffer: BincodeBuffer
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
     buffer: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let input: LogSqrtInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -105,12 +121,16 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
             })
         }
     };
+
     let z = Complex::new(input.re, input.im);
+
     let res = multi_valued::complex_sqrt_k(z, input.k);
+
     let out = ComplexResult {
         re: res.re,
         im: res.im,
     };
+
     to_bincode_buffer(&FfiResult {
         ok: Some(out),
         err: None::<String>,
@@ -118,6 +138,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
 }
 
 #[derive(Deserialize)]
+
 struct PowInput {
     z_re: f64,
     z_im: f64,
@@ -127,7 +148,9 @@ struct PowInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+
     let input: PowInput = match from_bincode_buffer(&buffer) {
         Some(i) => i,
         None => {
@@ -137,13 +160,18 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_bincode(buffer: BincodeBuffer
             })
         }
     };
+
     let z = Complex::new(input.z_re, input.z_im);
+
     let w = Complex::new(input.w_re, input.w_im);
+
     let res = multi_valued::complex_pow_k(z, w, input.k);
+
     let out = ComplexResult {
         re: res.re,
         im: res.im,
     };
+
     to_bincode_buffer(&FfiResult {
         ok: Some(out),
         err: None::<String>,

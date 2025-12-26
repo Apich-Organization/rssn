@@ -6,7 +6,9 @@ use crate::physics::physics_sim::gpe_superfluidity::{self, GpeParameters};
 use std::os::raw::c_char;
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_sim_gpe_run_json(input: *const c_char) -> *mut c_char {
+
     let params: GpeParameters = match from_json_string(input) {
         Some(p) => p,
         None => {

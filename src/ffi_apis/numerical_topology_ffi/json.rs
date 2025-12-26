@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]
+
 struct BettiInput {
     points: Vec<Vec<f64>>,
     epsilon: f64,
@@ -14,9 +15,11 @@ struct BettiInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
     input_json: *const c_char,
 ) -> *mut c_char {
+
     let input: BettiInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -31,15 +34,19 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
     };
 
     let pt_slices: Vec<&[f64]> = input.points.iter().map(|v| v.as_slice()).collect();
+
     let res = topology::betti_numbers_at_radius(&pt_slices, input.epsilon, input.max_dim);
+
     let ffi_res = FfiResult {
         ok: Some(res),
         err: None::<String>,
     };
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 #[derive(Deserialize)]
+
 struct PersistenceInput {
     points: Vec<Vec<f64>>,
     max_epsilon: f64,
@@ -48,9 +55,11 @@ struct PersistenceInput {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_topology_persistence_json(
     input_json: *const c_char,
 ) -> *mut c_char {
+
     let input: PersistenceInput = match from_json_string(input_json) {
         Some(i) => i,
         None => {
@@ -66,9 +75,11 @@ pub unsafe extern "C" fn rssn_num_topology_persistence_json(
 
     let res =
         topology::compute_persistence(&input.points, input.max_epsilon, input.steps, input.max_dim);
+
     let ffi_res = FfiResult {
         ok: Some(res),
         err: None::<String>,
     };
+
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

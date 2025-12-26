@@ -1,24 +1,40 @@
 use rssn::prelude::numerical::numerical_Multivector3D as Multivector3D;
 
 #[test]
+
 fn test_multivector_addition() {
+
     let a = Multivector3D::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+
     let b = Multivector3D::new(8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0);
+
     let c = a + b;
+
     assert_eq!(c.s, 9.0);
+
     assert_eq!(c.v1, 9.0);
+
     assert_eq!(c.v2, 9.0);
+
     assert_eq!(c.v3, 9.0);
+
     assert_eq!(c.b12, 9.0);
+
     assert_eq!(c.b23, 9.0);
+
     assert_eq!(c.b31, 9.0);
+
     assert_eq!(c.pss, 9.0);
 }
 
 #[test]
+
 fn test_geometric_product_basis() {
+
     let e1 = Multivector3D::new(0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+
     let e2 = Multivector3D::new(0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+
     let e3 = Multivector3D::new(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0);
 
     // e1 * e1 = 1
@@ -26,15 +42,19 @@ fn test_geometric_product_basis() {
 
     // e1 * e2 = e12
     let e12 = e1 * e2;
+
     assert_eq!(e12.b12, 1.0);
+
     assert_eq!(e12.s, 0.0);
 
     // e2 * e1 = -e12
     let e21 = e2 * e1;
+
     assert_eq!(e21.b12, -1.0);
 
     // e1 * e2 * e3 = pss
     let pss = e1 * e2 * e3;
+
     assert_eq!(pss.pss, 1.0);
 
     // pss * pss = (e1 e2 e3)(e1 e2 e3) = -1
@@ -43,8 +63,11 @@ fn test_geometric_product_basis() {
 }
 
 #[test]
+
 fn test_inner_outer_product() {
+
     let e1 = Multivector3D::new(0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+
     let e2 = Multivector3D::new(0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
     // e1 . e2 = 0
@@ -55,36 +78,56 @@ fn test_inner_outer_product() {
 
     // v . v = |v|^2
     let v = Multivector3D::new(0.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+
     assert_eq!(v.dot(v).s, 25.0);
 }
 
 #[test]
+
 fn test_reverse_conjugate() {
+
     let a = Multivector3D::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+
     let rev = a.reverse();
+
     assert_eq!(rev.s, 1.0);
+
     assert_eq!(rev.v1, 2.0);
+
     assert_eq!(rev.b12, -5.0);
+
     assert_eq!(rev.pss, -8.0);
 
     let conj = a.conjugate();
+
     assert_eq!(conj.s, 1.0);
+
     assert_eq!(conj.v1, -2.0);
+
     assert_eq!(conj.b12, -5.0);
+
     assert_eq!(conj.pss, 8.0);
 }
 
 #[test]
+
 fn test_inverse() {
+
     let v = Multivector3D::new(0.0, 1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0);
+
     let v_inv = v.inv().unwrap();
+
     let res = v * v_inv;
+
     assert!((res.s - 1.0).abs() < 1e-12);
+
     assert!(res.v1.abs() < 1e-12);
 }
 
 #[cfg(test)]
+
 mod proptests {
+
     use super::*;
     use assert_approx_eq::assert_approx_eq;
     use proptest::prelude::*;

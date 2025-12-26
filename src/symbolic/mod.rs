@@ -17,6 +17,7 @@
 //! The module is organized into various sub-modules, each dedicated to a specific area of mathematics,
 //! such as `complex_analysis`, `number_theory`, `geometry`, and more. This modular structure allows
 //! for clear separation of concerns and facilitates future expansion.
+
 pub mod cad;
 pub mod calculus;
 pub mod calculus_of_variations;

@@ -17,8 +17,11 @@
 #![allow(deprecated)]
 #![allow(unused_imports)]
 #![allow(ambiguous_glob_reexports)]
+
 #[cfg(feature = "ffi_api")]
+
 pub mod ffi_apis {
+
     pub use crate::ffi_apis::common::*;
     pub use crate::ffi_apis::compute_cache_ffi::*;
     pub use crate::ffi_apis::compute_state_ffi::*;
@@ -210,8 +213,11 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::symbolic_vector_calculus_ffi::*;
     pub use crate::ffi_apis::symbolic_vector_ffi::*;
 }
+
 pub use crate::is_exclusive;
+
 pub mod numerical {
+
     pub use crate::numerical::calculus::*;
     pub use crate::numerical::calculus_of_variations::evaluate_action as numerical_evaluate_action;
     pub use crate::numerical::calculus_of_variations::*;
@@ -432,8 +438,11 @@ pub mod numerical {
     pub use crate::numerical::vector_calculus::gradient as vector_calculus_numerical_gradient;
     pub use crate::numerical::vector_calculus::*;
 }
+
 #[cfg(feature = "output")]
+
 pub mod output {
+
     pub use crate::output::io::load_npy_as_expr;
     pub use crate::output::io::read_npy_file;
     pub use crate::output::io::save_expr_as_npy;
@@ -448,8 +457,11 @@ pub mod output {
     pub use crate::output::pretty_print::PrintBox;
     pub use crate::output::typst::to_typst;
 }
+
 #[cfg(feature = "physics")]
+
 pub mod physics {
+
     pub use crate::physics::physics_bem::simulate_2d_cylinder_scenario;
     pub use crate::physics::physics_bem::solve_laplace_bem_2d;
     pub use crate::physics::physics_bem::solve_laplace_bem_3d;
@@ -550,8 +562,11 @@ pub mod physics {
     pub use crate::physics::physics_sm::AdvectionDiffusionConfig;
     pub use crate::physics::physics_sm::AdvectionDiffusionConfig3d;
 }
+
 #[cfg(feature = "plugins")]
+
 pub mod plugins {
+
     pub use crate::plugins::manager::ManagedPlugin;
     pub use crate::plugins::manager::ManagedStablePlugin;
     pub use crate::plugins::manager::PluginManager;
@@ -561,6 +576,7 @@ pub mod plugins {
     pub use crate::plugins::stable_abi::StablePlugin;
     pub use crate::plugins::stable_abi::StablePluginModule;
 }
+
 pub use crate::compute::cache::ComputationResultCache;
 pub use crate::compute::cache::ParsingCache;
 pub use crate::compute::computable::Computable;
@@ -1223,54 +1239,90 @@ pub use uom::si::{
     f64::{Length, Mass, Time},
     length, mass, time,
 };
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod rand {
+
     pub use rand::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod argmin {
+
     pub use argmin::*;
     pub use argmin_math::*;
     pub use rand_v09::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod nalgebra {
+
     pub use nalgebra::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod statrs {
+
     pub use statrs::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod ndarray {
+
     pub use ndarray::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod quadrature {
+
     pub use quadrature::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod rustfft {
+
     pub use rustfft::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod sprs {
+
     pub use sprs_rssn::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod special {
+
     pub use special::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod errorfunctions {
+
     pub use errorfunctions::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod bincode {
+
     pub use bincode_next::*;
 }
+
 /// Unified layer under development, for now rssn only provide campatible version choises.
+
 pub mod num {
+
     pub use num_bigint::*;
     pub use num_complex::*;
     pub use num_rational::*;

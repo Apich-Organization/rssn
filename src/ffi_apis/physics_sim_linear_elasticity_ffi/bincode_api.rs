@@ -5,9 +5,11 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_sim::linear_elasticity::{self, ElasticityParameters};
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_bincode(
     buffer: BincodeBuffer,
 ) -> BincodeBuffer {
+
     let params: ElasticityParameters = match from_bincode_buffer(&buffer) {
         Some(p) => p,
         None => {

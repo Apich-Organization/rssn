@@ -3,10 +3,14 @@ use rssn::symbolic::vector::Vector;
 use rssn::symbolic::vector_calculus::*;
 
 #[test]
+
 fn test_line_integral_scalar() {
+
     // Line integral of f(x,y,z) = x^2 + y^2 along the curve r(t) = [t, t^2, 0] from t=0 to t=1
     let t = Expr::new_variable("t");
+
     let zero = Expr::Constant(0.0);
+
     let one = Expr::Constant(1.0);
 
     let curve = ParametricCurve {
@@ -20,13 +24,16 @@ fn test_line_integral_scalar() {
     };
 
     let x = Expr::new_variable("x");
+
     let y = Expr::new_variable("y");
+
     let scalar_field = Expr::new_add(
         Expr::new_pow(x, Expr::Constant(2.0)),
         Expr::new_pow(y, Expr::Constant(2.0)),
     );
 
     let result = line_integral_scalar(&scalar_field, &curve);
+
     println!("Line integral (scalar): {}", result);
 
     // The result should be a valid expression
@@ -37,10 +44,14 @@ fn test_line_integral_scalar() {
 }
 
 #[test]
+
 fn test_line_integral_vector() {
+
     // Line integral of F = [y, -x, 0] along the unit circle r(t) = [cos(t), sin(t), 0] from t=0 to t=2π
     let t = Expr::new_variable("t");
+
     let zero = Expr::Constant(0.0);
+
     let two_pi = Expr::new_mul(Expr::Constant(2.0), Expr::Pi);
 
     let curve = ParametricCurve {
@@ -54,10 +65,13 @@ fn test_line_integral_vector() {
     };
 
     let x = Expr::new_variable("x");
+
     let y = Expr::new_variable("y");
+
     let vector_field = Vector::new(y.clone(), Expr::new_neg(x.clone()), zero.clone());
 
     let result = line_integral_vector(&vector_field, &curve);
+
     println!("Line integral (vector): {}", result);
 
     // The result should be a valid expression
@@ -68,13 +82,19 @@ fn test_line_integral_vector() {
 }
 
 #[test]
+
 fn test_surface_integral() {
+
     // Surface integral of F = [0, 0, z] over the surface r(u,v) = [u*cos(v), u*sin(v), u]
     // with u in [0,1] and v in [0, 2π]
     let u = Expr::new_variable("u");
+
     let v = Expr::new_variable("v");
+
     let zero = Expr::Constant(0.0);
+
     let one = Expr::Constant(1.0);
+
     let two_pi = Expr::new_mul(Expr::Constant(2.0), Expr::Pi);
 
     let surface = ParametricSurface {
@@ -90,9 +110,11 @@ fn test_surface_integral() {
     };
 
     let z = Expr::new_variable("z");
+
     let vector_field = Vector::new(zero.clone(), zero.clone(), z.clone());
 
     let result = surface_integral(&vector_field, &surface);
+
     println!("Surface integral: {}", result);
 
     // The result should be a valid expression
@@ -103,9 +125,12 @@ fn test_surface_integral() {
 }
 
 #[test]
+
 fn test_volume_integral() {
+
     // Volume integral of f(x,y,z) = x*y*z over the unit cube [0,1]×[0,1]×[0,1]
     let zero = Expr::Constant(0.0);
+
     let one = Expr::Constant(1.0);
 
     let volume = Volume {
@@ -116,30 +141,42 @@ fn test_volume_integral() {
     };
 
     let x = Expr::new_variable("x");
+
     let y = Expr::new_variable("y");
+
     let z = Expr::new_variable("z");
+
     let scalar_field = Expr::new_mul(Expr::new_mul(x, y), z);
 
     let result = volume_integral(&scalar_field, &volume);
+
     println!("Volume integral: {}", result);
 
     // The result should be 1/8 = 0.125
     if let Expr::Constant(val) = result {
+
         assert!((val - 0.125).abs() < 1e-9);
     } else if let Expr::Rational(r) = result {
+
         use num_traits::ToPrimitive;
+
         assert_eq!(r.to_f64().unwrap(), 0.125);
     } else {
+
         // It might return a DAG that evaluates to 0.125
         println!("Result is a complex expression: {}", result);
     }
 }
 
 #[test]
+
 fn test_parametric_curve_serialization() {
+
     // Test that ParametricCurve can be serialized/deserialized
     let t = Expr::new_variable("t");
+
     let zero = Expr::Constant(0.0);
+
     let one = Expr::Constant(1.0);
 
     let curve = ParametricCurve {
@@ -149,17 +186,23 @@ fn test_parametric_curve_serialization() {
     };
 
     let json = serde_json::to_string(&curve).unwrap();
+
     let deserialized: ParametricCurve = serde_json::from_str(&json).unwrap();
 
     assert_eq!(curve.t_var, deserialized.t_var);
 }
 
 #[test]
+
 fn test_parametric_surface_serialization() {
+
     // Test that ParametricSurface can be serialized/deserialized
     let u = Expr::new_variable("u");
+
     let v = Expr::new_variable("v");
+
     let zero = Expr::Constant(0.0);
+
     let one = Expr::Constant(1.0);
 
     let surface = ParametricSurface {
@@ -171,16 +214,21 @@ fn test_parametric_surface_serialization() {
     };
 
     let json = serde_json::to_string(&surface).unwrap();
+
     let deserialized: ParametricSurface = serde_json::from_str(&json).unwrap();
 
     assert_eq!(surface.u_var, deserialized.u_var);
+
     assert_eq!(surface.v_var, deserialized.v_var);
 }
 
 #[test]
+
 fn test_volume_serialization() {
+
     // Test that Volume can be serialized/deserialized
     let zero = Expr::Constant(0.0);
+
     let one = Expr::Constant(1.0);
 
     let volume = Volume {
@@ -191,6 +239,7 @@ fn test_volume_serialization() {
     };
 
     let json = serde_json::to_string(&volume).unwrap();
+
     let deserialized: Volume = serde_json::from_str(&json).unwrap();
 
     assert_eq!(volume.vars, deserialized.vars);

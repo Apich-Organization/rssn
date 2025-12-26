@@ -24,6 +24,7 @@
 //!
 //! For convience, some Example scenario writen by AI should but haven't been removed from the main library.
 //! We will remove it before the v0.2.0 release.
+
 /// The Boundary Element Method (BEM) for solving potential problems.
 pub mod physics_bem;
 /// The Crank-Nicolson method for solving time-dependent partial differential equations.

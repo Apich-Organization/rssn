@@ -8,6 +8,7 @@ use std::os::raw::c_char;
 
 /// Build information structure for JSON serialization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
 pub struct BuildInfo {
     pub build_date: String,
     pub commit_sha: String,
@@ -19,7 +20,9 @@ pub struct BuildInfo {
 /// Returns all build information as a JSON string.
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
+
 pub extern "C" fn rssn_get_build_info_json() -> *mut c_char {
+
     let info = BuildInfo {
         build_date: crate::constant::get_build_date().to_string(),
         commit_sha: crate::constant::get_commit_sha().to_string(),
@@ -37,8 +40,11 @@ pub extern "C" fn rssn_get_build_info_json() -> *mut c_char {
 /// Returns the build date as a JSON string.
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
+
 pub extern "C" fn rssn_get_build_date_json() -> *mut c_char {
+
     let date = crate::constant::get_build_date();
+
     match serde_json::to_string(&date) {
         Ok(json) => to_c_string(json),
         Err(_) => std::ptr::null_mut(),
@@ -48,8 +54,11 @@ pub extern "C" fn rssn_get_build_date_json() -> *mut c_char {
 /// Returns the commit SHA as a JSON string.
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
+
 pub extern "C" fn rssn_get_commit_sha_json() -> *mut c_char {
+
     let sha = crate::constant::get_commit_sha();
+
     match serde_json::to_string(&sha) {
         Ok(json) => to_c_string(json),
         Err(_) => std::ptr::null_mut(),

@@ -4,11 +4,16 @@ use rssn::symbolic::matrix::*;
 use rssn::symbolic::simplify_dag::simplify;
 
 #[test]
+
 fn test_symbolic_determinant() {
+
     // [[a, b], [c, d]]
     let a = Expr::new_variable("a");
+
     let b = Expr::new_variable("b");
+
     let c = Expr::new_variable("c");
+
     let d = Expr::new_variable("d");
 
     let matrix = Expr::Matrix(vec![
@@ -17,6 +22,7 @@ fn test_symbolic_determinant() {
     ]);
 
     let det = determinant(&matrix);
+
     // Expected: a*d - b*c
     // We might get (a*d) - (b*c) or similar structure.
     // Let's verify by substituting values.
@@ -35,13 +41,17 @@ fn test_symbolic_determinant() {
 }
 
 #[test]
+
 fn test_symbolic_rref() {
+
     // [[1, a], [0, 1]] -> RREF should be [[1, 0], [0, 1]]
     // Row 1 = Row 1 - a * Row 2
     // [1, a] - a * [0, 1] = [1, 0]
 
     let a = Expr::new_variable("a");
+
     let one = Expr::new_constant(1.0);
+
     let zero = Expr::new_constant(0.0);
 
     let matrix = Expr::Matrix(vec![
@@ -58,6 +68,7 @@ fn test_symbolic_rref() {
     let rref_res = rref(&matrix).unwrap();
 
     if let Expr::Matrix(rows) = rref_res {
+
         println!("RREF Result: {:?}", rows);
 
         println!("rows[0][0]: {:?}", rows[0][0]);
@@ -75,6 +86,7 @@ fn test_symbolic_rref() {
         // Check [0][1] == 0 (This is the crucial symbolic elimination)
         // It should be simplify(a - a*1) -> 0
         let val_0_1 = &rows[0][1];
+
         println!("Top right element: {:?}", val_0_1);
 
         // We expect the simplifier to have reduced "a - a" to 0.
@@ -83,6 +95,7 @@ fn test_symbolic_rref() {
             || matches!(val_0_1, Expr::BigInt(ref v) if v.is_zero());
 
         if !is_zero {
+
             // If it's not structurally zero, maybe it's "a - a"
             // Let's see what it is.
             println!(
@@ -91,30 +104,39 @@ fn test_symbolic_rref() {
             );
         }
     } else {
+
         panic!("Expected matrix");
     }
 }
 
 #[test]
+
 fn test_symbolic_linear_system() {
+
     // ax = b  => x = b/a
     let a_var = Expr::new_variable("a");
+
     let b_var = Expr::new_variable("b");
 
     let A = Expr::Matrix(vec![vec![a_var.clone()]]);
+
     let B = Expr::Matrix(vec![vec![b_var.clone()]]);
 
     let sol = solve_linear_system(&A, &B).unwrap();
 
     if let Expr::Matrix(rows) = sol {
+
         let x = &rows[0][0];
+
         println!("Solution x: {:?}", x);
+
         // Expected: b/a
 
         // Construct b/a
         let expected = Expr::new_div(b_var, a_var);
         // Again, exact match might be tricky depending on simplification
     } else {
+
         panic!("Expected matrix solution");
     }
 }

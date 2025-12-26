@@ -5,6 +5,7 @@ use crate::compute::state::State;
 ///
 /// Implementors of this trait represent a unit of work that can be executed
 /// by the compute engine.
+
 pub trait Computable {
     /// Performs the computation.
     ///
@@ -14,5 +15,6 @@ pub trait Computable {
     ///
     /// # Returns
     /// * `Result<(), String>` - `Ok(())` if successful, or `Err(String)` with an error message.
+
     fn compute(&self, state: &mut State, progress: &mut ComputationProgress) -> Result<(), String>;
 }

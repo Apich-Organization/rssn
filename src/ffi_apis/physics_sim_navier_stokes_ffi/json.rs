@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::os::raw::c_char;
 
 #[derive(Serialize)]
+
 struct NavierStokesOutputData {
     pub u: Array2<f64>,
     pub v: Array2<f64>,
@@ -15,9 +16,11 @@ struct NavierStokesOutputData {
 }
 
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
     input: *const c_char,
 ) -> *mut c_char {
+
     let params: NavierStokesParameters = match from_json_string(input) {
         Some(p) => p,
         None => {
@@ -32,7 +35,9 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
 
     match navier_stokes_fluid::run_lid_driven_cavity(&params) {
         Ok((u, v, p)) => {
+
             let out = NavierStokesOutputData { u, v, p };
+
             to_c_string(
                 serde_json::to_string(&FfiResult::<NavierStokesOutputData, String>::ok(out))
                     .unwrap(),
