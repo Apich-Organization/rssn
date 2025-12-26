@@ -24,7 +24,10 @@
 //! ### Testing a p-Series
 //! ```
 //! 
-//! use rssn::symbolic::convergence::{analyze_convergence, ConvergenceResult};
+//! use rssn::symbolic::convergence::{
+//!     analyze_convergence,
+//!     ConvergenceResult,
+//! };
 //! use rssn::symbolic::core::Expr;
 //!
 //! // Test the series Σ(1/n^2), which converges
@@ -47,7 +50,10 @@
 //! ### Testing a Divergent Series
 //! ```
 //! 
-//! use rssn::symbolic::convergence::{analyze_convergence, ConvergenceResult};
+//! use rssn::symbolic::convergence::{
+//!     analyze_convergence,
+//!     ConvergenceResult,
+//! };
 //! use rssn::symbolic::core::Expr;
 //!
 //! // Test the harmonic series Σ(1/n), which diverges
@@ -64,7 +70,12 @@
 //! );
 //! ```
 
-use crate::symbolic::calculus::{differentiate, improper_integral, limit, substitute};
+use crate::symbolic::calculus::{
+    differentiate,
+    improper_integral,
+    limit,
+    substitute,
+};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::infinity;
 use crate::symbolic::simplify::is_zero;

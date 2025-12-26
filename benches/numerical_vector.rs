@@ -1,4 +1,8 @@
-use criterion::{black_box, criterion_group, Criterion};
+use criterion::{
+    black_box,
+    criterion_group,
+    Criterion,
+};
 use rssn::prelude::numerical::*;
 
 pub fn benchmark_vector_ops(c: &mut Criterion) {

@@ -1,7 +1,13 @@
 use crate::output::io::write_npy_file;
-use ndarray::{Array1, Array2};
+use ndarray::{
+    Array1,
+    Array2,
+};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Parameters for the FDTD simulation.
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -1,4 +1,7 @@
-use crate::symbolic::convergence::{analyze_convergence, ConvergenceResult};
+use crate::symbolic::convergence::{
+    analyze_convergence,
+    ConvergenceResult,
+};
 use crate::symbolic::core::Expr;
 
 #[no_mangle]

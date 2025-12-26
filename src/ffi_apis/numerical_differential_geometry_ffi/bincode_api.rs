@@ -1,10 +1,17 @@
 //! Bincode-based FFI API for numerical differential geometry.
 
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::differential_geometry;
 use crate::symbolic::coordinates::CoordinateSystem;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Deserialize)]
 

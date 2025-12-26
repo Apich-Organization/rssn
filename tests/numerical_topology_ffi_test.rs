@@ -1,7 +1,17 @@
-use rssn::ffi_apis::common::{rssn_free_bincode_buffer, rssn_free_string};
-use rssn::ffi_apis::numerical_topology_ffi::{bincode_api, handle, json};
+use rssn::ffi_apis::common::{
+    rssn_free_bincode_buffer,
+    rssn_free_string,
+};
+use rssn::ffi_apis::numerical_topology_ffi::{
+    bincode_api,
+    handle,
+    json,
+};
 use rssn::numerical::graph::Graph;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 
@@ -90,8 +100,14 @@ fn test_topology_bincode_ffi() {
 
     unsafe {
 
-        use rssn::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer};
-        use serde::{Deserialize, Serialize};
+        use rssn::ffi_apis::common::{
+            from_bincode_buffer,
+            to_bincode_buffer,
+        };
+        use serde::{
+            Deserialize,
+            Serialize,
+        };
 
         #[derive(Serialize)]
 

@@ -6,8 +6,15 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::error_correction_helper::{
-    gf256_add, gf256_inv, gf256_mul, poly_add_gf, poly_add_gf256, poly_eval_gf256, poly_mul_gf,
-    poly_mul_gf256, FiniteField,
+    gf256_add,
+    gf256_inv,
+    gf256_mul,
+    poly_add_gf,
+    poly_add_gf256,
+    poly_eval_gf256,
+    poly_mul_gf,
+    poly_mul_gf256,
+    FiniteField,
 };
 
 /// Performs addition in GF(2^8) via Bincode interface.

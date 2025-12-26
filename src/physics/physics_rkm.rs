@@ -1,5 +1,8 @@
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Defines the interface for a system of first-order ODEs: dy/dt = f(t, y).
 

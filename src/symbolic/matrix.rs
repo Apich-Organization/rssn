@@ -11,7 +11,10 @@ use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
+use num_traits::{
+    One,
+    Zero,
+};
 
 /// Helper to get dimensions of a matrix `Expr`.
 ///

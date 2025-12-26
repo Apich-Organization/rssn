@@ -2,7 +2,9 @@
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::integral_equations::{
-    solve_airfoil_equation, FredholmEquation, VolterraEquation,
+    solve_airfoil_equation,
+    FredholmEquation,
+    VolterraEquation,
 };
 use std::ffi::CStr;
 use std::os::raw::c_char;

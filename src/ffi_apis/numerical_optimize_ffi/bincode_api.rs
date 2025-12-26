@@ -1,8 +1,15 @@
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::numerical::optimize::*;
 use argmin::core::State;
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Serialize, Deserialize)]
 

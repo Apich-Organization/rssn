@@ -15,6 +15,7 @@ pub fn pde_solver() {
     println!("PDE solver is a complex topic.");
 
     println!(
-        "For real-world solutions, please refer to specialized numerical libraries or our physics module."
+        "For real-world solutions, please refer to specialized numerical libraries or our physics \
+         module."
     );
 }

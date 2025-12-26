@@ -30,7 +30,11 @@
 //! ### Hamming Code
 //! ```
 //! 
-//! use rssn::symbolic::error_correction::{hamming_check, hamming_decode, hamming_encode};
+//! use rssn::symbolic::error_correction::{
+//!     hamming_check,
+//!     hamming_decode,
+//!     hamming_encode,
+//! };
 //!
 //! // Encode 4 bits of data
 //! let data = vec![1, 0, 1, 1];
@@ -43,7 +47,8 @@
 //! ));
 //!
 //! // Decode (with optional error correction)
-//! let (decoded, error_pos) = hamming_decode(&codeword).unwrap();
+//! let (decoded, error_pos) =
+//!     hamming_decode(&codeword).unwrap();
 //!
 //! assert_eq!(decoded, data);
 //! ```
@@ -69,7 +74,10 @@
 //! ### CRC-32
 //! ```
 //! 
-//! use rssn::symbolic::error_correction::{crc32_compute, crc32_verify};
+//! use rssn::symbolic::error_correction::{
+//!     crc32_compute,
+//!     crc32_verify,
+//! };
 //!
 //! let data = b"Important data";
 //!
@@ -81,8 +89,15 @@
 //! ```
 
 use crate::symbolic::error_correction_helper::{
-    gf256_add, gf256_div, gf256_exp, gf256_inv, gf256_mul, poly_add_gf256, poly_div_gf256,
-    poly_eval_gf256, poly_mul_gf256,
+    gf256_add,
+    gf256_div,
+    gf256_exp,
+    gf256_inv,
+    gf256_mul,
+    poly_add_gf256,
+    poly_div_gf256,
+    poly_eval_gf256,
+    poly_mul_gf256,
 };
 
 // ============================================================================

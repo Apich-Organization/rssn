@@ -1,7 +1,13 @@
-use crate::numerical::sparse::{csr_from_triplets, solve_conjugate_gradient};
+use crate::numerical::sparse::{
+    csr_from_triplets,
+    solve_conjugate_gradient,
+};
 use ndarray::Array1;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]

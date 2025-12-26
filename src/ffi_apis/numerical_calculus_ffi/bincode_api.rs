@@ -1,10 +1,17 @@
 //! Bincode-based FFI API for numerical calculus.
 
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::calculus;
 use crate::symbolic::core::Expr;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Deserialize)]
 

@@ -2,8 +2,17 @@
 //! using multiple optimization algorithms from the argmin 0.11 library.
 
 use argmin::core::{
-    ArgminFloat, CostFunction, Error, Executor, Gradient, IterState, Operator, OptimizationResult,
-    PopulationState, Solver, State,
+    ArgminFloat,
+    CostFunction,
+    Error,
+    Executor,
+    Gradient,
+    IterState,
+    Operator,
+    OptimizationResult,
+    PopulationState,
+    Solver,
+    State,
 };
 use argmin::solver::gradientdescent::SteepestDescent;
 use argmin::solver::linesearch::condition::ArmijoCondition;
@@ -16,7 +25,10 @@ use argmin_math::ArgminL2Norm;
 use argmin_math::ArgminMul;
 use argmin_math::ArgminScaledAdd;
 use argmin_math::ArgminSub;
-use ndarray::{Array1, Array2};
+use ndarray::{
+    Array1,
+    Array2,
+};
 use rand_v09::rngs::StdRng as ParticleSwarmRng;
 use std::f64::consts::PI;
 

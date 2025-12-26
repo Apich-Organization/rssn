@@ -1,5 +1,10 @@
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::logic::{is_satisfiable, simplify_logic, to_cnf, to_dnf};
+use rssn::symbolic::logic::{
+    is_satisfiable,
+    simplify_logic,
+    to_cnf,
+    to_dnf,
+};
 use std::sync::Arc;
 
 #[test]

@@ -1,4 +1,7 @@
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 

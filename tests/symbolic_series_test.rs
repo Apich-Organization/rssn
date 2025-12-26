@@ -2,8 +2,14 @@ use num_traits::ToPrimitive;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::numeric::evaluate_numerical;
 use rssn::symbolic::series::{
-    analytic_continuation, analyze_convergence, asymptotic_expansion, fourier_series,
-    laurent_series, product, summation, taylor_series,
+    analytic_continuation,
+    analyze_convergence,
+    asymptotic_expansion,
+    fourier_series,
+    laurent_series,
+    product,
+    summation,
+    taylor_series,
 };
 use std::sync::Arc;
 

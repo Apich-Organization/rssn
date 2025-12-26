@@ -7,11 +7,18 @@
 //! Principle of Inclusion-Exclusion.
 
 use crate::symbolic::calculus;
-use crate::symbolic::core::{DagOp, Expr};
+use crate::symbolic::core::{
+    DagOp,
+    Expr,
+};
 use crate::symbolic::series;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
-use crate::symbolic::solve::{extract_polynomial_coeffs, solve, solve_linear_system};
+use crate::symbolic::solve::{
+    extract_polynomial_coeffs,
+    solve,
+    solve_linear_system,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 

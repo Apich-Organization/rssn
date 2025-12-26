@@ -1,7 +1,10 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::number_theory::{
-    chinese_remainder, extended_gcd, is_prime, solve_diophantine,
+    chinese_remainder,
+    extended_gcd,
+    is_prime,
+    solve_diophantine,
 };
 
 #[derive(serde::Deserialize)]

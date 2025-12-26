@@ -65,13 +65,22 @@
 //! ```
 
 use crate::symbolic::calculus::substitute;
-use crate::symbolic::core::{Expr, SparsePolynomial};
-use crate::symbolic::grobner::{buchberger, MonomialOrder};
+use crate::symbolic::core::{
+    Expr,
+    SparsePolynomial,
+};
+use crate::symbolic::grobner::{
+    buchberger,
+    MonomialOrder,
+};
 use crate::symbolic::matrix::create_empty_matrix;
 use crate::symbolic::matrix::get_matrix_dims;
 use crate::symbolic::matrix::null_space;
 use crate::symbolic::matrix::rref;
-use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
+use crate::symbolic::polynomial::{
+    expr_to_sparse_poly,
+    sparse_poly_to_expr,
+};
 use crate::symbolic::simplify::collect_and_order_terms;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;

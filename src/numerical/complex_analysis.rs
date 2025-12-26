@@ -6,8 +6,14 @@
 
 use crate::symbolic::core::Expr;
 use num_complex::Complex;
-use num_traits::{ToPrimitive, Zero};
-use serde::{Deserialize, Serialize};
+use num_traits::{
+    ToPrimitive,
+    Zero,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
 
 /// # Numerical Contour Integration (Simpson's Rule)

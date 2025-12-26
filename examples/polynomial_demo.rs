@@ -7,7 +7,11 @@
 //! - GCD computation
 //! - Representation conversions
 
-use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
+use rssn::symbolic::core::{
+    Expr,
+    Monomial,
+    SparsePolynomial,
+};
 use rssn::symbolic::polynomial::*;
 use std::collections::BTreeMap;
 

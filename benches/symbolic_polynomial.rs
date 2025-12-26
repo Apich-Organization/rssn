@@ -1,5 +1,14 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
+use criterion::{
+    black_box,
+    criterion_group,
+    criterion_main,
+    Criterion,
+};
+use rssn::symbolic::core::{
+    Expr,
+    Monomial,
+    SparsePolynomial,
+};
 use rssn::symbolic::polynomial::*;
 use std::collections::BTreeMap;
 

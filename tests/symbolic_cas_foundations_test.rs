@@ -1,4 +1,9 @@
-use rssn::symbolic::cas_foundations::{expand, factorize, normalize, simplify_with_relations};
+use rssn::symbolic::cas_foundations::{
+    expand,
+    factorize,
+    normalize,
+    simplify_with_relations,
+};
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::grobner::MonomialOrder;
 use rssn::symbolic::simplify_dag::simplify;

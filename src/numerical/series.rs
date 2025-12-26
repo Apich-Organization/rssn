@@ -1,6 +1,9 @@
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
 
 /// Computes the numerical Taylor series coefficients of a function around a point.
@@ -17,7 +20,8 @@ use std::collections::HashMap;
 ///     x,
 ///     Expr::new_constant(2.0),
 /// ); // f(x) = x^2
-/// let coeffs = taylor_coefficients(&f, "x", 0.0, 2).unwrap();
+/// let coeffs =
+///     taylor_coefficients(&f, "x", 0.0, 2).unwrap();
 ///
 /// // coeffs = [f(0), f'(0), f''(0)/2] = [0, 0, 1]
 /// assert!((coeffs[2] - 1.0).abs() < 1e-5);

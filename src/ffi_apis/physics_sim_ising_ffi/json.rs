@@ -1,9 +1,18 @@
 //! JSON-based FFI API for physics sim Ising statistical functions.
 
-use crate::ffi_apis::common::{from_json_string, to_c_string};
+use crate::ffi_apis::common::{
+    from_json_string,
+    to_c_string,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::physics::physics_sim::ising_statistical::{self, IsingParameters};
-use serde::{Deserialize, Serialize};
+use crate::physics::physics_sim::ising_statistical::{
+    self,
+    IsingParameters,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::os::raw::c_char;
 
 #[derive(Serialize)]

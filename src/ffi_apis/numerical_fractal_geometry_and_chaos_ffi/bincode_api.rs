@@ -1,6 +1,10 @@
 //! Bincode-based FFI API for numerical fractal geometry and chaos functions.
 
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::fractal_geometry_and_chaos;
 use serde::Deserialize;

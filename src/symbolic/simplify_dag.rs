@@ -30,10 +30,19 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 #[allow(unused_imports)]
-use super::core::{DagManager, DagNode, DagOp, Expr, DAG_MANAGER};
+use super::core::{
+    DagManager,
+    DagNode,
+    DagOp,
+    Expr,
+    DAG_MANAGER,
+};
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use num_traits::{One, Zero};
+use num_traits::{
+    One,
+    Zero,
+};
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 

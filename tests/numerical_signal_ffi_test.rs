@@ -1,9 +1,19 @@
 use assert_approx_eq::assert_approx_eq;
-use rssn::ffi_apis::common::{rssn_free_bincode_buffer, rssn_free_string};
-use rssn::ffi_apis::numerical_signal_ffi::{bincode_api, handle, json};
+use rssn::ffi_apis::common::{
+    rssn_free_bincode_buffer,
+    rssn_free_string,
+};
+use rssn::ffi_apis::numerical_signal_ffi::{
+    bincode_api,
+    handle,
+    json,
+};
 use rssn::numerical::matrix::Matrix;
 use rustfft::num_complex::Complex;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 
@@ -121,8 +131,14 @@ fn test_numerical_signal_bincode_ffi() {
 
     unsafe {
 
-        use rssn::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer};
-        use serde::{Deserialize, Serialize};
+        use rssn::ffi_apis::common::{
+            from_bincode_buffer,
+            to_bincode_buffer,
+        };
+        use serde::{
+            Deserialize,
+            Serialize,
+        };
 
         #[derive(Serialize)]
 

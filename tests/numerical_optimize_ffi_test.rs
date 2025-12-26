@@ -2,7 +2,10 @@ use rssn::ffi_apis::common::BincodeBuffer;
 use rssn::ffi_apis::numerical_optimize_ffi::bincode_api::*;
 use rssn::ffi_apis::numerical_optimize_ffi::handle::*;
 use rssn::ffi_apis::numerical_optimize_ffi::json::*;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 

@@ -1,6 +1,9 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 use std::fmt::Debug;
 use std::hash::Hash;
 

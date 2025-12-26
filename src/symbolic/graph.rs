@@ -7,7 +7,10 @@
 //! and converting the graph to various matrix representations (adjacency, incidence, Laplacian).
 
 use crate::symbolic::core::Expr;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;

@@ -6,7 +6,10 @@
 //! sparse linear systems using iterative methods like Conjugate Gradient.
 
 use ndarray::ArrayD;
-use sprs_rssn::{CsMat, TriMat};
+use sprs_rssn::{
+    CsMat,
+    TriMat,
+};
 
 pub type Array = ArrayD<f64>;
 
@@ -336,7 +339,10 @@ pub fn linf_norm(matrix: &CsMat<f64>) -> f64 {
     max_sum
 }
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// A serializable representation of a sparse matrix in CSR format.
 #[derive(Serialize, Deserialize, Debug, Clone)]

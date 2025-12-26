@@ -1,7 +1,10 @@
 use rssn::ffi_apis::numerical_geometric_algebra_ffi::handle::*;
 use rssn::ffi_apis::numerical_geometric_algebra_ffi::json::*;
 use rssn::prelude::numerical::numerical_Multivector3D as Multivector3D;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 

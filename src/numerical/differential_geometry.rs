@@ -6,9 +6,15 @@
 
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::calculus::differentiate;
-use crate::symbolic::coordinates::{self, CoordinateSystem};
+use crate::symbolic::coordinates::{
+    self,
+    CoordinateSystem,
+};
 use crate::symbolic::core::Expr;
-use crate::symbolic::matrix::{self as symbolic_matrix, inverse_matrix};
+use crate::symbolic::matrix::{
+    self as symbolic_matrix,
+    inverse_matrix,
+};
 use num_traits::ToPrimitive;
 use std::collections::HashMap;
 

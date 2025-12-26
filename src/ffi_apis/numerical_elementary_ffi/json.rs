@@ -3,9 +3,15 @@
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::elementary;
 use crate::symbolic::core::Expr;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]

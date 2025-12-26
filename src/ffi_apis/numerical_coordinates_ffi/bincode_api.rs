@@ -4,7 +4,10 @@ use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::coordinates as nc;
 use crate::symbolic::coordinates::CoordinateSystem;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Deserialize)]
 

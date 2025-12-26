@@ -3,7 +3,11 @@
 //! This module tests polynomial operations including addition, multiplication,
 //! differentiation, division, GCD computation, and representation conversions.
 
-use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
+use rssn::symbolic::core::{
+    Expr,
+    Monomial,
+    SparsePolynomial,
+};
 use rssn::symbolic::polynomial::*;
 use std::collections::BTreeMap;
 

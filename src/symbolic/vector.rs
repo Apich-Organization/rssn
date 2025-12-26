@@ -11,8 +11,14 @@ use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_traits::One;
-use serde::{Deserialize, Serialize};
-use std::ops::{Add, Sub};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ops::{
+    Add,
+    Sub,
+};
 
 /// Represents a symbolic vector in 3D space.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

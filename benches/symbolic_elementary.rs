@@ -1,4 +1,7 @@
-use criterion::{criterion_group, Criterion};
+use criterion::{
+    criterion_group,
+    Criterion,
+};
 use num_bigint::BigInt;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::elementary::*;

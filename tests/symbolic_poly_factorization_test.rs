@@ -1,6 +1,13 @@
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
-use rssn::symbolic::finite_field::{FiniteFieldPolynomial, PrimeField, PrimeFieldElement};
+use num_traits::{
+    One,
+    Zero,
+};
+use rssn::symbolic::finite_field::{
+    FiniteFieldPolynomial,
+    PrimeField,
+    PrimeFieldElement,
+};
 use rssn::symbolic::poly_factorization::*;
 use std::sync::Arc;
 

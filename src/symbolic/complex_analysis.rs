@@ -8,13 +8,26 @@
 //! - Cauchy integral formulas
 //! - Complex function evaluation
 
-use crate::symbolic::calculus::{differentiate, substitute};
+use crate::symbolic::calculus::{
+    differentiate,
+    substitute,
+};
 use crate::symbolic::core::Expr;
-use crate::symbolic::series::{self, calculate_taylor_coefficients, taylor_series};
+use crate::symbolic::series::{
+    self,
+    calculate_taylor_coefficients,
+    taylor_series,
+};
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
-use serde::{Deserialize, Serialize};
+use num_traits::{
+    One,
+    Zero,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::sync::Arc;
 
 // ============================================================================
@@ -94,7 +107,8 @@ impl PathContinuation {
             if distance >= radius {
 
                 return Err(format!(
-                    "Analytic continuation failed: point {next_point} is outside radius {radius} of series at {last_center}."
+                    "Analytic continuation failed: point {next_point} is outside radius {radius} \
+                     of series at {last_center}."
                 ));
             }
 

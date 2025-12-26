@@ -4,7 +4,10 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 use crate::symbolic::vector_calculus::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Serialize, Deserialize)]
 

@@ -5,9 +5,24 @@
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::error_correction_helper::{
-    gf256_add, gf256_div, gf256_exp, gf256_inv, gf256_log, gf256_mul, gf256_pow, poly_add_gf,
-    poly_add_gf256, poly_derivative_gf256, poly_div_gf, poly_div_gf256, poly_eval_gf256,
-    poly_gcd_gf256, poly_mul_gf, poly_mul_gf256, poly_scale_gf256, FiniteField,
+    gf256_add,
+    gf256_div,
+    gf256_exp,
+    gf256_inv,
+    gf256_log,
+    gf256_mul,
+    gf256_pow,
+    poly_add_gf,
+    poly_add_gf256,
+    poly_derivative_gf256,
+    poly_div_gf,
+    poly_div_gf256,
+    poly_eval_gf256,
+    poly_gcd_gf256,
+    poly_mul_gf,
+    poly_mul_gf256,
+    poly_scale_gf256,
+    FiniteField,
 };
 use std::sync::Arc;
 

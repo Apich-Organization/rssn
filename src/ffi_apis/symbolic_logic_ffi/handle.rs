@@ -1,5 +1,10 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::logic::{is_satisfiable, simplify_logic, to_cnf, to_dnf};
+use crate::symbolic::logic::{
+    is_satisfiable,
+    simplify_logic,
+    to_cnf,
+    to_dnf,
+};
 
 /// Simplifies a logical expression using handle-based FFI.
 ///

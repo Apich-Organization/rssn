@@ -6,7 +6,11 @@
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{
+    BTreeSet,
+    HashMap,
+    HashSet,
+};
 use std::sync::Arc;
 
 /// Checks if a variable occurs freely in an expression.

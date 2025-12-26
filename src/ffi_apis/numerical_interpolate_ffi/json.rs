@@ -1,10 +1,16 @@
 //! JSON-based FFI API for numerical interpolation.
 
-use crate::ffi_apis::common::{from_json_string, to_c_string};
+use crate::ffi_apis::common::{
+    from_json_string,
+    to_c_string,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::interpolate;
 use crate::numerical::polynomial::Polynomial;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]

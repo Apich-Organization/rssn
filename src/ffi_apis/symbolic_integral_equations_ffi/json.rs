@@ -3,9 +3,14 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::integral_equations::{
-    solve_airfoil_equation, FredholmEquation, VolterraEquation,
+    solve_airfoil_equation,
+    FredholmEquation,
+    VolterraEquation,
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::os::raw::c_char;
 
 #[derive(Serialize, Deserialize)]

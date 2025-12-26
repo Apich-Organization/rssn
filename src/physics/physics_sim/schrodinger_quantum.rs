@@ -1,9 +1,16 @@
 use crate::output::io::write_npy_file;
-use crate::physics::physics_sm::{create_k_grid, fft2d, ifft2d};
+use crate::physics::physics_sm::{
+    create_k_grid,
+    fft2d,
+    ifft2d,
+};
 use ndarray::Array2;
 use num_complex::Complex;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Parameters for the Schrodinger simulation.
 #[derive(Clone, Debug, Serialize, Deserialize)]

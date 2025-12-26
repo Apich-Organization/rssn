@@ -1,11 +1,33 @@
-use crate::symbolic::core::{Expr, PathType};
+use crate::symbolic::core::{
+    Expr,
+    PathType,
+};
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alpha1, char, digit1, i64 as nom_i64, multispace0, multispace1},
-    combinator::{map, map_res, opt, recognize},
-    multi::{fold_many0, separated_list1},
-    sequence::{delimited, pair, preceded},
+    character::complete::{
+        alpha1,
+        char,
+        digit1,
+        i64 as nom_i64,
+        multispace0,
+        multispace1,
+    },
+    combinator::{
+        map,
+        map_res,
+        opt,
+        recognize,
+    },
+    multi::{
+        fold_many0,
+        separated_list1,
+    },
+    sequence::{
+        delimited,
+        pair,
+        preceded,
+    },
     IResult,
 };
 use num_bigint::BigInt;

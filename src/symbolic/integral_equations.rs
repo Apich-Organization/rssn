@@ -6,7 +6,11 @@
 //! using methods like successive approximations (Neumann Series) and conversion to ODEs.
 //! Singular integral equations are also supported.
 
-use crate::symbolic::calculus::{differentiate, integrate, substitute};
+use crate::symbolic::calculus::{
+    differentiate,
+    integrate,
+    substitute,
+};
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve_linear_system;

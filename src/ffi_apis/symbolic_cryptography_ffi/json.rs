@@ -4,10 +4,21 @@
 
 use crate::ffi_apis::common::*;
 use crate::symbolic::cryptography::{
-    ecdsa_sign, ecdsa_verify, generate_keypair, generate_shared_secret, point_compress,
-    point_decompress, CurvePoint, EcdhKeyPair, EcdsaSignature, EllipticCurve,
+    ecdsa_sign,
+    ecdsa_verify,
+    generate_keypair,
+    generate_shared_secret,
+    point_compress,
+    point_decompress,
+    CurvePoint,
+    EcdhKeyPair,
+    EcdsaSignature,
+    EllipticCurve,
 };
-use crate::symbolic::finite_field::{PrimeField, PrimeFieldElement};
+use crate::symbolic::finite_field::{
+    PrimeField,
+    PrimeFieldElement,
+};
 use num_bigint::BigInt;
 use std::os::raw::c_char;
 use std::str::FromStr;

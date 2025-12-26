@@ -1,7 +1,11 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::topology::*;
 use std::ffi::CStr;
-use std::os::raw::{c_char, c_double, c_int};
+use std::os::raw::{
+    c_char,
+    c_double,
+    c_int,
+};
 
 // --- Simplex ---
 

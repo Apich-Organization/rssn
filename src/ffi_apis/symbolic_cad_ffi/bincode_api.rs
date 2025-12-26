@@ -1,5 +1,8 @@
 use crate::ffi_apis::common::*;
-use crate::symbolic::cad::{cad, Cad};
+use crate::symbolic::cad::{
+    cad,
+    Cad,
+};
 use crate::symbolic::core::Expr;
 use serde::Deserialize;
 

@@ -1,4 +1,7 @@
-use crate::symbolic::core::{DagOp, Expr};
+use crate::symbolic::core::{
+    DagOp,
+    Expr,
+};
 use num_traits::ToPrimitive;
 use plotters::prelude::*;
 use std::collections::HashMap;

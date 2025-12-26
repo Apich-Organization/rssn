@@ -2,8 +2,14 @@
 
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::vector;
-use serde::{Deserialize, Serialize};
-use std::ffi::{CStr, CString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]

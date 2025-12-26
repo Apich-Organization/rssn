@@ -8,7 +8,10 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::Vector;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Represents a crystal lattice with basis vectors.
 #[derive(Clone, Debug, Serialize, Deserialize)]

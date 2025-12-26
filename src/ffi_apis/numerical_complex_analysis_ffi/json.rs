@@ -1,11 +1,17 @@
 //! JSON-based FFI API for numerical complex analysis.
 
-use crate::ffi_apis::common::{from_json_string, to_c_string};
+use crate::ffi_apis::common::{
+    from_json_string,
+    to_c_string,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::complex_analysis;
 use crate::symbolic::core::Expr;
 use num_complex::Complex;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
 use std::os::raw::c_char;
 

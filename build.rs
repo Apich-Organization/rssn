@@ -1,5 +1,10 @@
 use vergen_gitcl::{
-    BuildBuilder, CargoBuilder, Emitter, GitclBuilder, RustcBuilder, SysinfoBuilder,
+    BuildBuilder,
+    CargoBuilder,
+    Emitter,
+    GitclBuilder,
+    RustcBuilder,
+    SysinfoBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

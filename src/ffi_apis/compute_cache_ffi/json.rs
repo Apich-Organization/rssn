@@ -1,7 +1,13 @@
 //! JSON-based FFI API for compute cache module.
 
-use crate::compute::cache::{ComputationResultCache, ParsingCache};
-use crate::ffi_apis::common::{from_json_string, to_c_string};
+use crate::compute::cache::{
+    ComputationResultCache,
+    ParsingCache,
+};
+use crate::ffi_apis::common::{
+    from_json_string,
+    to_c_string,
+};
 use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;

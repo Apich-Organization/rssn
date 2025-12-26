@@ -1,6 +1,10 @@
 use num_traits::ToPrimitive;
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::solve::{solve, solve_linear_system, solve_system};
+use rssn::symbolic::solve::{
+    solve,
+    solve_linear_system,
+    solve_system,
+};
 use std::sync::Arc;
 
 use rssn::symbolic::numeric::evaluate_numerical;

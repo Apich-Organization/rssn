@@ -1,10 +1,17 @@
 //! Bincode-based FFI API for numerical transforms.
 
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::transforms;
 use num_complex::Complex;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Deserialize)]
 

@@ -2,7 +2,10 @@ use crate::output::io::write_npy_file;
 use crate::physics::physics_mtm::solve_poisson_2d_multigrid;
 use ndarray::Array2;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Parameters for the Navier-Stokes simulation.
 #[derive(Clone, Debug, Serialize, Deserialize)]

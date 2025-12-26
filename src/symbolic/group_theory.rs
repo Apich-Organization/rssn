@@ -6,7 +6,10 @@
 //! as matrices and character computations.
 
 use crate::symbolic::core::Expr;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
 
 /// Represents a group element.

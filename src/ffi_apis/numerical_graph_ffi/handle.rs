@@ -1,7 +1,13 @@
 //! Handle-based FFI API for numerical graph algorithms.
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::graph::{bfs, dijkstra, floyd_warshall, page_rank, Graph};
+use crate::numerical::graph::{
+    bfs,
+    dijkstra,
+    floyd_warshall,
+    page_rank,
+    Graph,
+};
 use std::slice;
 
 /// Creates a new graph.

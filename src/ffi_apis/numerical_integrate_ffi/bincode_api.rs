@@ -1,8 +1,15 @@
 //! Bincode-based FFI API for numerical integration.
 
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::numerical::integrate::{self, QuadratureMethod};
+use crate::numerical::integrate::{
+    self,
+    QuadratureMethod,
+};
 use crate::symbolic::core::Expr;
 use serde::Deserialize;
 

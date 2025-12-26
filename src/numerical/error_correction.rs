@@ -34,13 +34,17 @@
 //! ### Reed-Solomon Encoding/Decoding
 //! ```
 //! 
-//! use rssn::numerical::error_correction::{reed_solomon_decode, reed_solomon_encode};
+//! use rssn::numerical::error_correction::{
+//!     reed_solomon_decode,
+//!     reed_solomon_encode,
+//! };
 //!
 //! let message = vec![
 //!     0x01, 0x02, 0x03, 0x04,
 //! ];
 //!
-//! let codeword = reed_solomon_encode(&message, 4).unwrap();
+//! let codeword =
+//!     reed_solomon_encode(&message, 4).unwrap();
 //!
 //! // Introduce an error
 //! let mut corrupted = codeword.clone();
@@ -59,7 +63,10 @@
 //! ### CRC-32 Checksum
 //! ```
 //! 
-//! use rssn::numerical::error_correction::{crc32_compute_numerical, crc32_verify_numerical};
+//! use rssn::numerical::error_correction::{
+//!     crc32_compute_numerical,
+//!     crc32_verify_numerical,
+//! };
 //!
 //! let data = b"Hello, World!";
 //!
@@ -68,8 +75,17 @@
 //! assert!(crc32_verify_numerical(data, checksum));
 //! ```
 
-use crate::numerical::finite_field::{gf256_add, gf256_div, gf256_inv, gf256_mul, gf256_pow};
-use serde::{Deserialize, Serialize};
+use crate::numerical::finite_field::{
+    gf256_add,
+    gf256_div,
+    gf256_inv,
+    gf256_mul,
+    gf256_pow,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 // ============================================================================
 // Polynomial over GF(2^8)
@@ -520,11 +536,15 @@ pub fn reed_solomon_encode(
 /// # Example
 /// ```
 /// 
-/// use rssn::numerical::error_correction::{reed_solomon_decode, reed_solomon_encode};
+/// use rssn::numerical::error_correction::{
+///     reed_solomon_decode,
+///     reed_solomon_encode,
+/// };
 ///
 /// let message = vec![0x01, 0x02, 0x03];
 ///
-/// let mut codeword = reed_solomon_encode(&message, 4).unwrap();
+/// let mut codeword =
+///     reed_solomon_encode(&message, 4).unwrap();
 ///
 /// codeword[0] ^= 0xFF; // Introduce error
 /// reed_solomon_decode(&mut codeword, 4).unwrap();

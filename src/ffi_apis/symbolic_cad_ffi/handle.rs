@@ -1,6 +1,15 @@
-use crate::symbolic::cad::{cad, Cad};
-use crate::symbolic::core::{Expr, SparsePolynomial};
-use std::ffi::{CStr, CString};
+use crate::symbolic::cad::{
+    cad,
+    Cad,
+};
+use crate::symbolic::core::{
+    Expr,
+    SparsePolynomial,
+};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 
 /// Computes CAD for a set of polynomials (Handle).

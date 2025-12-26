@@ -4,7 +4,10 @@ use crate::input::parser::parse_expr;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 use crate::symbolic::vector_calculus::*;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 
 // Helper function to parse expression from C string

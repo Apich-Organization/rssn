@@ -1,9 +1,18 @@
 //! JSON-based FFI API for physics BEM functions.
 
-use crate::ffi_apis::common::{from_json_string, to_c_string};
+use crate::ffi_apis::common::{
+    from_json_string,
+    to_c_string,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::physics::physics_bem::{self, BoundaryCondition};
-use serde::{Deserialize, Serialize};
+use crate::physics::physics_bem::{
+    self,
+    BoundaryCondition,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]

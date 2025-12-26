@@ -1,8 +1,14 @@
 //! Handle-based FFI API for compute cache module.
 
-use crate::compute::cache::{ComputationResultCache, ParsingCache};
+use crate::compute::cache::{
+    ComputationResultCache,
+    ParsingCache,
+};
 use crate::symbolic::core::Expr;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 use std::sync::Arc;
 

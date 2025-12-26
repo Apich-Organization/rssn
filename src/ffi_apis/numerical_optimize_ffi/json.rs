@@ -1,8 +1,14 @@
 use crate::numerical::optimize::*;
 use argmin::core::State;
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
-use std::ffi::{CStr, CString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 
 #[derive(Serialize, Deserialize)]

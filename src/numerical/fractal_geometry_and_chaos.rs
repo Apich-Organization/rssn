@@ -69,7 +69,10 @@
 //! ```
 
 use num_complex::Complex;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 // ============================================================================
 // Common Types

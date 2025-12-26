@@ -3,8 +3,13 @@
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
 use rssn::numerical::integrate::{
-    self, adaptive_quadrature, gauss_legendre_quadrature, romberg_integration, simpson_rule,
-    trapezoidal_rule, QuadratureMethod,
+    self,
+    adaptive_quadrature,
+    gauss_legendre_quadrature,
+    romberg_integration,
+    simpson_rule,
+    trapezoidal_rule,
+    QuadratureMethod,
 };
 
 // --- Helper Functions ---

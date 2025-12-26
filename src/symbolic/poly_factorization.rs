@@ -6,10 +6,18 @@
 //! It also contains a simplified approach to Berlekamp-Zassenhaus for integer polynomials.
 
 use crate::numerical::matrix::Matrix;
-use crate::symbolic::finite_field::{FiniteFieldPolynomial, PrimeField, PrimeFieldElement};
+use crate::symbolic::finite_field::{
+    FiniteFieldPolynomial,
+    PrimeField,
+    PrimeFieldElement,
+};
 use itertools::Itertools;
 use num_bigint::BigInt;
-use num_traits::{One, ToPrimitive, Zero};
+use num_traits::{
+    One,
+    ToPrimitive,
+    Zero,
+};
 use rand;
 use std::sync::Arc;
 

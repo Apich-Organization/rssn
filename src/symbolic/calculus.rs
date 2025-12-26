@@ -7,13 +7,23 @@
 //! u-substitution, integration by parts, and more.
 
 use crate::symbolic::core::DagOp;
-use crate::symbolic::core::{Expr, PathType};
-use crate::symbolic::polynomial::{is_polynomial, leading_coefficient, polynomial_degree};
+use crate::symbolic::core::{
+    Expr,
+    PathType,
+};
+use crate::symbolic::polynomial::{
+    is_polynomial,
+    leading_coefficient,
+    polynomial_degree,
+};
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
+use num_traits::{
+    One,
+    Zero,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -3429,7 +3439,10 @@ pub(crate) fn integrate_by_partial_fractions(
 
     if let Expr::Div(num, den) = expr {
 
-        use crate::symbolic::polynomial::{polynomial_degree, polynomial_long_division_coeffs};
+        use crate::symbolic::polynomial::{
+            polynomial_degree,
+            polynomial_long_division_coeffs,
+        };
 
         let num_deg = polynomial_degree(num, var);
 
@@ -3536,7 +3549,8 @@ pub(crate) fn integrate_by_partial_fractions(
                         Err(_) => {
 
                             eprintln!(
-                                "Warning: usize value {j} is too large to fit in i64 during partial fraction integration. Returning None."
+                                "Warning: usize value {j} is too large to fit in i64 during \
+                                 partial fraction integration. Returning None."
                             );
 
                             return None;

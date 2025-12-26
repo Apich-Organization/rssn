@@ -6,15 +6,26 @@
 //! and applying initial conditions. Techniques like series solutions and Fourier transforms
 //! are also supported for specific cases.
 
-use crate::symbolic::calculus::{differentiate, integrate, substitute, substitute_expr};
+use crate::symbolic::calculus::{
+    differentiate,
+    integrate,
+    substitute,
+    substitute_expr,
+};
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::contains_var;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify::pattern_match;
 use crate::symbolic::simplify_dag::simplify;
-use crate::symbolic::solve::{solve, solve_linear_system};
+use crate::symbolic::solve::{
+    solve,
+    solve_linear_system,
+};
 use crate::symbolic::transforms;
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 use std::sync::Arc;
 
 /// A structured representation of a parsed ODE.

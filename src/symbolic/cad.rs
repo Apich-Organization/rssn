@@ -10,12 +10,22 @@
 //! 2. **Lifting Phase**: Constructs cells in R^n by recursively lifting cells from R^(n-1)
 //!    using sample points and root isolation.
 
-use crate::symbolic::core::{Expr, SparsePolynomial};
+use crate::symbolic::core::{
+    Expr,
+    SparsePolynomial,
+};
 use crate::symbolic::matrix;
-use crate::symbolic::polynomial::{differentiate_poly, expr_to_sparse_poly, sparse_poly_to_expr};
+use crate::symbolic::polynomial::{
+    differentiate_poly,
+    expr_to_sparse_poly,
+    sparse_poly_to_expr,
+};
 use crate::symbolic::real_roots::isolate_real_roots;
 use crate::symbolic::simplify::is_zero;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
 use std::collections::HashSet;
 

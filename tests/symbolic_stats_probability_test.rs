@@ -1,4 +1,8 @@
-use rssn::symbolic::core::{DagOp, Distribution, Expr};
+use rssn::symbolic::core::{
+    DagOp,
+    Distribution,
+    Expr,
+};
 use rssn::symbolic::stats_probability::*;
 
 use num_traits::ToPrimitive;

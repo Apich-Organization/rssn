@@ -1,6 +1,9 @@
 //! FFI tests for the physics sim GPE superfluidity module.
 
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 

@@ -1,10 +1,19 @@
 //! JSON-based FFI API for physics sim Schrodinger quantum functions.
 
-use crate::ffi_apis::common::{from_json_string, to_c_string};
+use crate::ffi_apis::common::{
+    from_json_string,
+    to_c_string,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::physics::physics_sim::schrodinger_quantum::{self, SchrodingerParameters};
+use crate::physics::physics_sim::schrodinger_quantum::{
+    self,
+    SchrodingerParameters,
+};
 use num_complex::Complex;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]

@@ -90,7 +90,10 @@
 //!
 //! ```
 //! 
-//! use rssn::compute::cache::{ComputationResultCache, ParsingCache};
+//! use rssn::compute::cache::{
+//!     ComputationResultCache,
+//!     ParsingCache,
+//! };
 //! use rssn::symbolic::core::Expr;
 //! use std::sync::Arc;
 //!
@@ -105,7 +108,8 @@
 //! );
 //!
 //! // Later...
-//! if let Some(cached_expr) = parsing_cache.get("my_expr") {
+//! if let Some(cached_expr) = parsing_cache.get("my_expr")
+//! {
 //!
 //!     println!("Found cached expression");
 //! }

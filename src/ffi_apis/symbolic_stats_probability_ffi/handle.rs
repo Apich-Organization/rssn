@@ -1,9 +1,23 @@
 use crate::ffi_apis::common::*;
-use crate::symbolic::core::{Distribution, Expr};
-use crate::symbolic::stats_probability::{
-    Bernoulli, Beta, Binomial, Exponential, Gamma, Normal, Poisson, StudentT, Uniform,
+use crate::symbolic::core::{
+    Distribution,
+    Expr,
 };
-use std::ffi::{CStr, CString};
+use crate::symbolic::stats_probability::{
+    Bernoulli,
+    Beta,
+    Binomial,
+    Exponential,
+    Gamma,
+    Normal,
+    Poisson,
+    StudentT,
+    Uniform,
+};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 use std::sync::Arc;
 

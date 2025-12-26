@@ -2,7 +2,10 @@
 
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::matrix::Matrix;
-use crate::numerical::ode::{self, OdeSolverMethod};
+use crate::numerical::ode::{
+    self,
+    OdeSolverMethod,
+};
 use crate::symbolic::core::Expr;
 use std::ptr;
 

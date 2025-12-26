@@ -1,7 +1,10 @@
 //! Handle-based FFI API for compute state module.
 
 use crate::compute::state::State;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 
 /// Creates a new State.

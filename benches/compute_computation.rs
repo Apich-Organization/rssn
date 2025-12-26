@@ -1,9 +1,21 @@
-use criterion::{black_box, criterion_group, Criterion};
-use rssn::compute::computation::{Computation, ComputationProgress, ComputationStatus};
+use criterion::{
+    black_box,
+    criterion_group,
+    Criterion,
+};
+use rssn::compute::computation::{
+    Computation,
+    ComputationProgress,
+    ComputationStatus,
+};
 use rssn::compute::state::State;
 use rssn::symbolic::core::Expr;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{
+    Arc,
+    Condvar,
+    Mutex,
+};
 
 fn bench_computation_creation(c: &mut Criterion) {
 

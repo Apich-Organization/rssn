@@ -9,7 +9,10 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use num_bigint::BigInt;
 use num_traits::One;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::sync::Arc;
 
 /// Represents an element of a Lie algebra, which is typically a matrix.

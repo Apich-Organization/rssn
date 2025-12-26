@@ -1,5 +1,8 @@
 use num_traits::ToPrimitive;
-use rssn::symbolic::core::{DagOp, Expr};
+use rssn::symbolic::core::{
+    DagOp,
+    Expr,
+};
 use rssn::symbolic::simplify_dag::simplify;
 use rssn::symbolic::stats_information_theory::*;
 use std::sync::Arc;

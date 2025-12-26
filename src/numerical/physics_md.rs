@@ -46,11 +46,21 @@
 //!     vec![0.0, 0.0, 0.0],
 //! );
 //!
-//! let (potential, force) = lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap();
+//! let (potential, force) =
+//!     lennard_jones_interaction(&p1, &p2, 1.0, 1.0)
+//!         .unwrap();
 //! ```
 
-use crate::numerical::vector::{norm, scalar_mul, vec_add, vec_sub};
-use serde::{Deserialize, Serialize};
+use crate::numerical::vector::{
+    norm,
+    scalar_mul,
+    vec_add,
+    vec_sub,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 // ============================================================================
 // Physical Constants (Reduced Units)

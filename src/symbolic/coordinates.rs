@@ -21,7 +21,10 @@ pub type TransformationRules = (
     Vec<Expr>,
 );
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(C)]

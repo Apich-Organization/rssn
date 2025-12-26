@@ -1,6 +1,9 @@
 use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
 
 /// Methods for solving ordinary differential equations.
@@ -26,7 +29,10 @@ pub enum OdeSolverMethod {
 /// # Example
 /// ```rust
 /// 
-/// use rssn::numerical::ode::{solve_ode_system, OdeSolverMethod};
+/// use rssn::numerical::ode::{
+///     solve_ode_system,
+///     OdeSolverMethod,
+/// };
 /// use rssn::symbolic::core::Expr;
 ///
 /// let y0 = Expr::new_variable("y0"); // dy/dx = y

@@ -7,9 +7,20 @@
 
 use statrs::distribution::ContinuousCDF;
 use statrs::distribution::DiscreteCDF;
-use statrs::distribution::{Binomial, Continuous, Discrete, Normal, Uniform};
+use statrs::distribution::{
+    Binomial,
+    Continuous,
+    Discrete,
+    Normal,
+    Uniform,
+};
 use statrs::statistics::Distribution;
-use statrs::statistics::{Data, Max, Min, OrderStatistics};
+use statrs::statistics::{
+    Data,
+    Max,
+    Min,
+    OrderStatistics,
+};
 
 /// Computes the mean of a slice of data.
 ///

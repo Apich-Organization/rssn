@@ -6,7 +6,10 @@
 
 use crate::numerical::calculus::gradient;
 use crate::numerical::matrix::Matrix;
-use crate::symbolic::coordinates::{self, CoordinateSystem};
+use crate::symbolic::coordinates::{
+    self,
+    CoordinateSystem,
+};
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 

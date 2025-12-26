@@ -1,8 +1,15 @@
 use crate::output::io::write_npy_file;
 use ndarray::Array2;
-use rand::{thread_rng, Rng, SeedableRng};
+use rand::{
+    thread_rng,
+    Rng,
+    SeedableRng,
+};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::fmt::Write as OtherWrite;
 use std::fs::File;
 use std::io::Write;

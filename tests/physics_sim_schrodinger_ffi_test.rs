@@ -1,7 +1,10 @@
 //! FFI tests for the physics sim Schrodinger quantum module.
 
 use num_complex::Complex;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 

@@ -6,7 +6,10 @@
 //! along with methods to generate their symbolic PDF/PMF, CDF, expectation, and variance.
 
 use crate::symbolic::combinatorics::combinations;
-use crate::symbolic::core::{Distribution, Expr};
+use crate::symbolic::core::{
+    Distribution,
+    Expr,
+};
 use crate::symbolic::simplify_dag::simplify;
 use std::f64::consts::PI;
 use std::fmt::Debug;

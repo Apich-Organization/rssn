@@ -11,8 +11,14 @@ use crate::symbolic::matrix::inverse_matrix;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use num_traits::{One, Zero};
-use serde::{Deserialize, Serialize};
+use num_traits::{
+    One,
+    Zero,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 

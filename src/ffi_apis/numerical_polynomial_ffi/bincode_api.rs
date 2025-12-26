@@ -3,7 +3,10 @@
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::polynomial::Polynomial;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Deserialize)]
 

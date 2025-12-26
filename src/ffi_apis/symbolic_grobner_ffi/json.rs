@@ -1,6 +1,10 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::SparsePolynomial;
-use crate::symbolic::grobner::{buchberger, poly_division_multivariate, MonomialOrder};
+use crate::symbolic::grobner::{
+    buchberger,
+    poly_division_multivariate,
+    MonomialOrder,
+};
 use std::ffi::c_char;
 
 #[no_mangle]

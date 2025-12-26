@@ -63,8 +63,17 @@
 //! ```
 
 use crate::numerical::matrix::Matrix;
-use serde::{Deserialize, Serialize};
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ops::{
+    Add,
+    Div,
+    Mul,
+    Neg,
+    Sub,
+};
 
 // ============================================================================
 // Basic Types: Points and Vectors

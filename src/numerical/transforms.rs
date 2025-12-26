@@ -239,7 +239,10 @@ pub fn fft_slice(data: &mut [Complex<f64>]) {
 /// ```rust
 /// 
 /// use num_complex::Complex;
-/// use rssn::numerical::transforms::{fft_slice, ifft_slice};
+/// use rssn::numerical::transforms::{
+///     fft_slice,
+///     ifft_slice,
+/// };
 ///
 /// let mut data = vec![
 ///     Complex::new(1.0, 0.0),

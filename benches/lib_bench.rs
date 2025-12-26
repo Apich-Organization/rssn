@@ -1,4 +1,7 @@
-use criterion::{criterion_group, Criterion};
+use criterion::{
+    criterion_group,
+    Criterion,
+};
 use rssn::is_exclusive;
 use std::hint::black_box;
 use std::sync::Arc;

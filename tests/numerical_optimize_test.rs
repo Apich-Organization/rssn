@@ -1,7 +1,14 @@
-use argmin::core::{Executor, IterState, State};
+use argmin::core::{
+    Executor,
+    IterState,
+    State,
+};
 use argmin::solver::linesearch::MoreThuenteLineSearch;
 use argmin::solver::quasinewton::BFGS;
-use ndarray::{Array1, Array2};
+use ndarray::{
+    Array1,
+    Array2,
+};
 use proptest::prelude::*;
 use rssn::numerical::optimize::*;
 

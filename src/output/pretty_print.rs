@@ -1,4 +1,7 @@
-use crate::symbolic::core::{DagOp, Expr};
+use crate::symbolic::core::{
+    DagOp,
+    Expr,
+};
 use std::collections::HashMap;
 
 /// Represents a 2D box of characters for pretty-printing.

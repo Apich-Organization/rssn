@@ -1,12 +1,25 @@
 use rssn::ffi_apis::common::{
-    from_bincode_buffer, rssn_free_bincode_buffer, rssn_free_string, to_bincode_buffer,
+    from_bincode_buffer,
+    rssn_free_bincode_buffer,
+    rssn_free_string,
+    to_bincode_buffer,
     BincodeBuffer,
 };
 use rssn::ffi_apis::ffi_api::FfiResult;
-use rssn::ffi_apis::numerical_multi_valued_ffi::{bincode_api, handle, json};
+use rssn::ffi_apis::numerical_multi_valued_ffi::{
+    bincode_api,
+    handle,
+    json,
+};
 use rssn::symbolic::core::Expr;
-use serde::{Deserialize, Serialize};
-use std::ffi::{CStr, CString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 

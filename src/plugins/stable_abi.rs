@@ -5,7 +5,12 @@
 
 use crate::plugins::plugin_c::PluginHealth;
 use abi_stable::sabi_trait;
-use abi_stable::std_types::{RBox, RResult, RString, RVec};
+use abi_stable::std_types::{
+    RBox,
+    RResult,
+    RString,
+    RVec,
+};
 use abi_stable::StableAbi;
 
 #[allow(non_local_definitions)]

@@ -1,7 +1,10 @@
 //! Handle-based FFI API for physics sim Ising statistical functions.
 
 use crate::numerical::matrix::Matrix;
-use crate::physics::physics_sim::ising_statistical::{self, IsingParameters};
+use crate::physics::physics_sim::ising_statistical::{
+    self,
+    IsingParameters,
+};
 
 #[repr(C)]
 

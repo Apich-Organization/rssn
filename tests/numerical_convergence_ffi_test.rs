@@ -1,5 +1,8 @@
 use rssn::ffi_apis::numerical_convergence_ffi::*;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 

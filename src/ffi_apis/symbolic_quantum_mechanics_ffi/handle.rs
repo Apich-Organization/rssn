@@ -1,5 +1,10 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::quantum_mechanics::{self, Bra, Ket, Operator};
+use crate::symbolic::quantum_mechanics::{
+    self,
+    Bra,
+    Ket,
+    Operator,
+};
 use std::os::raw::c_char;
 
 /// Creates a new Ket from a state expression.

@@ -1,6 +1,9 @@
 use num_complex::Complex;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Solves a system of linear equations Ax = d where A is a tridiagonal matrix.
 /// `a`: sub-diagonal (n-1 elements), `b`: main diagonal (n elements), `c`: super-diagonal (n-1 elements).

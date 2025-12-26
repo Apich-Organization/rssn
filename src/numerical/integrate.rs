@@ -17,7 +17,10 @@ use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Enum to select the numerical integration method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -316,7 +319,9 @@ where
 ///
 /// let res = romberg_integration(f, (0.0, 1.0), 6);
 ///
-/// assert!((res - (std::f64::consts::E - 1.0)).abs() < 1e-10);
+/// assert!(
+///     (res - (std::f64::consts::E - 1.0)).abs() < 1e-10
+/// );
 /// ```
 
 pub fn romberg_integration<F>(

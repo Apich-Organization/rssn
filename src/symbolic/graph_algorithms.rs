@@ -17,7 +17,11 @@ use crate::symbolic::graph::Graph;
 use crate::symbolic::simplify_dag::simplify;
 use num_traits::ToPrimitive;
 use ordered_float::OrderedFloat;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{
+    HashMap,
+    HashSet,
+    VecDeque,
+};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;

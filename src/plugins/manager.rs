@@ -4,15 +4,28 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::no_mangle_with_rust_abi)]
 
-use crate::plugins::plugin_c::{Plugin, PluginError, PluginHealth};
+use crate::plugins::plugin_c::{
+    Plugin,
+    PluginError,
+    PluginHealth,
+};
 use crate::symbolic::core::Expr;
 use bincode_next::config;
 use bincode_next::serde;
-use libloading::{Library, Symbol};
+use libloading::{
+    Library,
+    Symbol,
+};
 use std::collections::HashMap;
 use std::error::Error;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::atomic::{
+    AtomicBool,
+    Ordering,
+};
+use std::sync::{
+    Arc,
+    RwLock,
+};
 use std::thread;
 use std::time::Duration;
 
@@ -24,7 +37,10 @@ use std::time::Duration;
 type PluginCreate = unsafe extern "C" fn() -> *mut Box<dyn Plugin>;
 
 /// Holds the plugin instance and its current health state.
-use crate::plugins::stable_abi::{StablePluginModule, StablePlugin_TO};
+use crate::plugins::stable_abi::{
+    StablePluginModule,
+    StablePlugin_TO,
+};
 use abi_stable::std_types::RBox;
 
 pub struct ManagedPlugin {
@@ -212,13 +228,12 @@ impl PluginManager {
 
         if p_major != c_major || p_minor != c_minor {
 
-            return Err(
-                format!(
-                    "Plugin '{}' has incompatible API version {}. Expected a version compatible with {}.",
-                    plugin_name, plugin_api_version, crate_version
-                )
-                    .into(),
-            );
+            return Err(format!(
+                "Plugin '{}' has incompatible API version {}. Expected a version compatible with \
+                 {}.",
+                plugin_name, plugin_api_version, crate_version
+            )
+            .into());
         }
 
         println!(
@@ -282,13 +297,14 @@ impl PluginManager {
 
         if p_major != c_major || p_minor != c_minor {
 
-            return Err(
-                format!(
-                    "Plugin '{}' has incompatible API version {}. Expected a version compatible with {}.",
-                    plugin.name(), plugin_api_version, crate_version
-                )
-                    .into(),
-            );
+            return Err(format!(
+                "Plugin '{}' has incompatible API version {}. Expected a version compatible with \
+                 {}.",
+                plugin.name(),
+                plugin_api_version,
+                crate_version
+            )
+            .into());
         }
 
         println!(

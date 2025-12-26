@@ -1,8 +1,14 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
+use crate::symbolic::polynomial::{
+    expr_to_sparse_poly,
+    sparse_poly_to_expr,
+};
 use crate::symbolic::real_roots::*;
 use std::ffi::CStr;
-use std::os::raw::{c_char, c_double};
+use std::os::raw::{
+    c_char,
+    c_double,
+};
 
 /// Generates the Sturm sequence for a given polynomial (Handle)
 #[no_mangle]

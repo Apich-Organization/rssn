@@ -4,7 +4,10 @@
 //! for efficient multi-dimensional array manipulation. It includes functions
 //! for tensor contraction (tensordot), outer product, and Einstein summation (`einsum`).
 
-use ndarray::{ArrayD, IxDyn};
+use ndarray::{
+    ArrayD,
+    IxDyn,
+};
 
 /// Performs tensor contraction between two N-dimensional arrays (tensordot).
 ///
@@ -303,7 +306,10 @@ pub fn norm(a: &ArrayD<f64>) -> f64 {
         .sqrt()
 }
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// A serializable representation of an N-dimensional tensor.
 #[derive(Serialize, Deserialize, Debug, Clone)]

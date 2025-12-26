@@ -12,7 +12,11 @@ use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_complex::Complex;
-use num_traits::{One, ToPrimitive, Zero};
+use num_traits::{
+    One,
+    ToPrimitive,
+    Zero,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 

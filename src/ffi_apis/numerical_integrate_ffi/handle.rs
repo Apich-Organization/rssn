@@ -1,7 +1,10 @@
 //! Handle-based FFI API for numerical integration.
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::integrate::{self, QuadratureMethod};
+use crate::numerical::integrate::{
+    self,
+    QuadratureMethod,
+};
 use crate::symbolic::core::Expr;
 use std::ffi::CStr;
 use std::os::raw::c_char;

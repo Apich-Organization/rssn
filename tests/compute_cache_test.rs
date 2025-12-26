@@ -1,4 +1,7 @@
-use rssn::compute::cache::{ComputationResultCache, ParsingCache};
+use rssn::compute::cache::{
+    ComputationResultCache,
+    ParsingCache,
+};
 use rssn::symbolic::core::Expr;
 use std::sync::Arc;
 

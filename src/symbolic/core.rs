@@ -146,7 +146,11 @@
 //!
 //! ```rust
 //! 
-//! use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties, Expr};
+//! use rssn::symbolic::core::{
+//!     register_dynamic_op,
+//!     DynamicOpProperties,
+//!     Expr,
+//! };
 //! use std::sync::Arc;
 //!
 //! // Register a custom operation
@@ -200,10 +204,24 @@ use num_traits::ToPrimitive;
 use ordered_float::OrderedFloat;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
-use std::collections::{BTreeMap, HashMap};
-use std::fmt::{self, Debug, Write};
-use std::hash::{Hash, Hasher};
-use std::sync::{Arc, Mutex, RwLock};
+use std::collections::{
+    BTreeMap,
+    HashMap,
+};
+use std::fmt::{
+    self,
+    Debug,
+    Write,
+};
+use std::hash::{
+    Hash,
+    Hasher,
+};
+use std::sync::{
+    Arc,
+    Mutex,
+    RwLock,
+};
 
 use lazy_static::lazy_static;
 
@@ -815,7 +833,11 @@ pub enum Expr {
     /// # Examples
     /// ```
     /// 
-    /// use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties, Expr};
+    /// use rssn::symbolic::core::{
+    ///     register_dynamic_op,
+    ///     DynamicOpProperties,
+    ///     Expr,
+    /// };
     /// use std::sync::Arc;
     ///
     /// // Register a custom operation
@@ -846,7 +868,11 @@ pub enum Expr {
     /// # Examples
     /// ```
     /// 
-    /// use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties, Expr};
+    /// use rssn::symbolic::core::{
+    ///     register_dynamic_op,
+    ///     DynamicOpProperties,
+    ///     Expr,
+    /// };
     /// use std::sync::Arc;
     ///
     /// // Register a custom binary operation
@@ -854,7 +880,8 @@ pub enum Expr {
     ///     "my_binop",
     ///     DynamicOpProperties {
     ///         name: "my_binop".to_string(),
-    ///         description: "My custom binary operation".to_string(),
+    ///         description: "My custom binary operation"
+    ///             .to_string(),
     ///         is_associative: true,
     ///         is_commutative: true,
     ///     },
@@ -885,14 +912,19 @@ pub enum Expr {
     /// # Examples
     /// ```
     /// 
-    /// use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties, Expr};
+    /// use rssn::symbolic::core::{
+    ///     register_dynamic_op,
+    ///     DynamicOpProperties,
+    ///     Expr,
+    /// };
     ///
     /// // Register a custom n-ary operation
     /// register_dynamic_op(
     ///     "my_nary",
     ///     DynamicOpProperties {
     ///         name: "my_nary".to_string(),
-    ///         description: "My custom n-ary operation".to_string(),
+    ///         description: "My custom n-ary operation"
+    ///             .to_string(),
     ///         is_associative: true,
     ///         is_commutative: false,
     ///     },
@@ -2018,11 +2050,13 @@ impl Expr {
 
         match self {
             Self::Dag(node) => node.op.clone(),
-            _ => self
-                .to_dag_op_internal()
-                .expect(
-                    "Failed to convert Expr to DagOp; this should be impossible for any valid Expr",
-                ),
+            _ => {
+                self.to_dag_op_internal()
+                    .expect(
+                        "Failed to convert Expr to DagOp; this should be impossible for any valid \
+                         Expr",
+                    )
+            }
         }
     }
 
@@ -7580,13 +7614,17 @@ lazy_static! {
 /// # Examples
 /// ```
 /// 
-/// use rssn::symbolic::core::{register_dynamic_op, DynamicOpProperties};
+/// use rssn::symbolic::core::{
+///     register_dynamic_op,
+///     DynamicOpProperties,
+/// };
 ///
 /// register_dynamic_op(
 ///     "my_custom_op",
 ///     DynamicOpProperties {
 ///         name: "my_custom_op".to_string(),
-///         description: "A custom commutative operation".to_string(),
+///         description: "A custom commutative operation"
+///             .to_string(),
 ///         is_associative: true,
 ///         is_commutative: true,
 ///     },
@@ -7624,7 +7662,9 @@ pub fn register_dynamic_op(
 /// ```
 /// 
 /// use rssn::symbolic::core::{
-///     get_dynamic_op_properties, register_dynamic_op, DynamicOpProperties,
+///     get_dynamic_op_properties,
+///     register_dynamic_op,
+///     DynamicOpProperties,
 /// };
 ///
 /// register_dynamic_op(

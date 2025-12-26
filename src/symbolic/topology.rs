@@ -8,10 +8,24 @@ use crate::numerical::sparse::rank;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
-use serde::{Deserialize, Serialize};
-use sprs_rssn::{CsMat, TriMat};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use num_traits::{
+    One,
+    Zero,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use sprs_rssn::{
+    CsMat,
+    TriMat,
+};
+use std::collections::{
+    BTreeMap,
+    BTreeSet,
+    HashMap,
+    HashSet,
+};
 
 /// Represents a k-simplex as a set of its vertex indices.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

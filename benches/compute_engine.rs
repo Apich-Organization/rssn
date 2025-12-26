@@ -1,4 +1,7 @@
-use criterion::{criterion_group, Criterion};
+use criterion::{
+    criterion_group,
+    Criterion,
+};
 use rssn::compute::engine::ComputeEngine;
 use rssn::symbolic::core::Expr;
 use std::hint::black_box;

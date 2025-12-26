@@ -1,6 +1,9 @@
 //! FFI tests for the physics sim linear elasticity module.
 
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 

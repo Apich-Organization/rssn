@@ -1,8 +1,14 @@
 //! Handle-based FFI API for numerical tensor operations.
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::tensor::{self, TensorData};
-use ndarray::{ArrayD, IxDyn};
+use crate::numerical::tensor::{
+    self,
+    TensorData,
+};
+use ndarray::{
+    ArrayD,
+    IxDyn,
+};
 use std::ptr;
 
 /// Creates a new tensor from shape and data.

@@ -3,8 +3,20 @@
 //! This module provides numerical implementations for arithmetic in finite fields.
 //! It includes support for prime fields GF(p) and optimized arithmetic for GF(2^8).
 
-use serde::{Deserialize, Serialize};
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ops::{
+    Add,
+    AddAssign,
+    Div,
+    DivAssign,
+    Mul,
+    MulAssign,
+    Sub,
+    SubAssign,
+};
 
 /// Represents an element in a prime field GF(p), where p is the modulus.
 ///
@@ -106,7 +118,10 @@ impl PrimeFieldElement {
     }
 }
 
-use num_traits::{One, Zero};
+use num_traits::{
+    One,
+    Zero,
+};
 use std::ops::Neg;
 
 impl Zero for PrimeFieldElement {

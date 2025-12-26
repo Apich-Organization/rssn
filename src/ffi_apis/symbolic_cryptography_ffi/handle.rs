@@ -3,12 +3,26 @@
 //! This module provides C-compatible FFI functions for elliptic curve cryptography (ECC).
 //! Large integers are passed as strings (decimal).
 
-use crate::ffi_apis::common::{c_str_to_str, to_c_string};
-use crate::symbolic::cryptography::{
-    ecdsa_sign, ecdsa_verify, generate_keypair, generate_shared_secret, point_compress,
-    point_decompress, CurvePoint, EcdhKeyPair, EcdsaSignature, EllipticCurve,
+use crate::ffi_apis::common::{
+    c_str_to_str,
+    to_c_string,
 };
-use crate::symbolic::finite_field::{PrimeField, PrimeFieldElement};
+use crate::symbolic::cryptography::{
+    ecdsa_sign,
+    ecdsa_verify,
+    generate_keypair,
+    generate_shared_secret,
+    point_compress,
+    point_decompress,
+    CurvePoint,
+    EcdhKeyPair,
+    EcdsaSignature,
+    EllipticCurve,
+};
+use crate::symbolic::finite_field::{
+    PrimeField,
+    PrimeFieldElement,
+};
 use num_bigint::BigInt;
 use std::os::raw::c_char;
 use std::str::FromStr;

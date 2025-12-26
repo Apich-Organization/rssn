@@ -1,10 +1,20 @@
 //! Bincode-based FFI API for physics sim Navier-Stokes functions.
 
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::physics::physics_sim::navier_stokes_fluid::{self, NavierStokesParameters};
+use crate::physics::physics_sim::navier_stokes_fluid::{
+    self,
+    NavierStokesParameters,
+};
 use ndarray::Array2;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Serialize)]
 

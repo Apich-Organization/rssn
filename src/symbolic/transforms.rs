@@ -5,13 +5,20 @@
 //! It also includes implementations of key transform properties and theorems,
 //! such as the convolution theorem.
 
-use crate::symbolic::calculus::{definite_integrate, differentiate, path_integrate};
+use crate::symbolic::calculus::{
+    definite_integrate,
+    differentiate,
+    path_integrate,
+};
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
+use num_traits::{
+    One,
+    Zero,
+};
 use std::sync::Arc;
 
 pub(crate) fn i_complex() -> Expr {

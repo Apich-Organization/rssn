@@ -4,12 +4,26 @@
 //! It includes solvers for various types of Diophantine equations (linear, Pell's, Pythagorean),
 //! functions for primality testing, continued fraction expansion, and the Chinese Remainder Theorem.
 
-use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
+use crate::symbolic::core::{
+    Expr,
+    Monomial,
+    SparsePolynomial,
+};
 use crate::symbolic::simplify::is_one;
 use crate::symbolic::simplify_dag::simplify;
-use num_bigint::{BigInt, ToBigInt as OtherToBigInt};
-use num_traits::{One, ToPrimitive, Zero};
-use std::collections::{BTreeMap, HashMap};
+use num_bigint::{
+    BigInt,
+    ToBigInt as OtherToBigInt,
+};
+use num_traits::{
+    One,
+    ToPrimitive,
+    Zero,
+};
+use std::collections::{
+    BTreeMap,
+    HashMap,
+};
 use std::sync::Arc;
 
 trait ToBigInt {

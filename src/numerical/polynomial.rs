@@ -8,7 +8,12 @@
 use crate::numerical::real_roots;
 use serde::Deserialize;
 use serde::Serialize;
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{
+    Add,
+    Div,
+    Mul,
+    Sub,
+};
 
 /// Represents a polynomial with f64 coefficients for numerical operations.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

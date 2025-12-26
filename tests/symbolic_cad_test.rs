@@ -1,5 +1,9 @@
 use rssn::symbolic::cad::*;
-use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
+use rssn::symbolic::core::{
+    Expr,
+    Monomial,
+    SparsePolynomial,
+};
 use std::collections::BTreeMap;
 
 #[test]
@@ -195,7 +199,10 @@ fn test_cad_ffi_json() {
 
     use rssn::ffi_apis::common::rssn_free_string;
     use rssn::ffi_apis::symbolic_cad_ffi::json::*;
-    use std::ffi::{CStr, CString};
+    use std::ffi::{
+        CStr,
+        CString,
+    };
 
     #[derive(serde::Serialize)]
 
@@ -249,7 +256,10 @@ fn test_cad_ffi_json() {
 fn test_cad_ffi_bincode() {
 
     use rssn::ffi_apis::common::{
-        from_bincode_buffer, rssn_free_bincode_buffer, to_bincode_buffer, BincodeBuffer,
+        from_bincode_buffer,
+        rssn_free_bincode_buffer,
+        to_bincode_buffer,
+        BincodeBuffer,
     };
     use rssn::ffi_apis::symbolic_cad_ffi::bincode_api::*;
     use serde::Serialize;

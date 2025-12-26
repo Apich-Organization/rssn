@@ -1,9 +1,18 @@
 //! JSON-based FFI API for numerical finite field arithmetic.
 
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::numerical::finite_field::{self, PrimeFieldElement};
-use serde::{Deserialize, Serialize};
-use std::ffi::{CStr, CString};
+use crate::numerical::finite_field::{
+    self,
+    PrimeFieldElement,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]

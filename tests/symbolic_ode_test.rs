@@ -2,7 +2,10 @@
 
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::ode::{
-    solve_first_order_linear_ode, solve_ode, solve_ode_system, solve_riccati_ode,
+    solve_first_order_linear_ode,
+    solve_ode,
+    solve_ode_system,
+    solve_riccati_ode,
     solve_separable_ode,
 };
 use rssn::symbolic::simplify_dag::simplify;

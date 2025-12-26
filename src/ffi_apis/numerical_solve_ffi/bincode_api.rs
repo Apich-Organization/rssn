@@ -2,8 +2,14 @@
 
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::numerical::matrix::Matrix;
-use crate::numerical::solve::{self, LinearSolution};
-use serde::{Deserialize, Serialize};
+use crate::numerical::solve::{
+    self,
+    LinearSolution,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Deserialize)]
 

@@ -41,8 +41,16 @@
 
 #![allow(unused_imports)]
 
-use crate::compute::cache::{ComputationResultCache, ParsingCache};
-use crate::compute::computation::{Computation, ComputationProgress, ComputationStatus, Value};
+use crate::compute::cache::{
+    ComputationResultCache,
+    ParsingCache,
+};
+use crate::compute::computation::{
+    Computation,
+    ComputationProgress,
+    ComputationStatus,
+    Value,
+};
 use crate::compute::state::State;
 use crate::symbolic::core::Expr;
 /// Development in place.
@@ -51,7 +59,11 @@ use std::collections::HashMap;
 use std::io::prelude::*;
 use std::sync::atomic::AtomicBool;
 use std::sync::Condvar;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{
+    Arc,
+    Mutex,
+    RwLock,
+};
 use uuid::Uuid;
 
 /// A computation engine for managing asynchronous computations.
@@ -131,6 +143,7 @@ impl ComputeEngine {
     ///
     /// match engine.parse_and_submit("x + 1") {
     ///     Ok(id) => {
+    ///
     ///         println!(
     ///             "Computation ID: {}",
     ///             id

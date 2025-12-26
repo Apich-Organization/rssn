@@ -4,8 +4,15 @@
 //! in 3D Geometric Algebra (`G_3`). It implements the geometric product and
 //! standard arithmetic operations for multivectors with `f64` components.
 
-use serde::{Deserialize, Serialize};
-use std::ops::{Add, Neg, Sub};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ops::{
+    Add,
+    Neg,
+    Sub,
+};
 
 /// Represents a multivector in 3D Geometric Algebra (`G_3`).
 /// Components are: 1 (scalar), e1, e2, e3 (vectors), e12, e23, e31 (bivectors), e123 (pseudoscalar)

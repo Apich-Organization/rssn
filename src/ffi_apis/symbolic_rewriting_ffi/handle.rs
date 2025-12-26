@@ -2,7 +2,11 @@
 
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::rewriting::{apply_rules_to_normal_form, knuth_bendix, RewriteRule};
+use crate::symbolic::rewriting::{
+    apply_rules_to_normal_form,
+    knuth_bendix,
+    RewriteRule,
+};
 use std::os::raw::c_char;
 
 /// Creates a new rewrite rule from lhs and rhs expressions.

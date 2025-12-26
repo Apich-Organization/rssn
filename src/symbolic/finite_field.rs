@@ -7,14 +7,32 @@
 
 use crate::symbolic::number_theory::extended_gcd_inner;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use num_traits::{
+    One,
+    Zero,
+};
+use std::ops::{
+    Add,
+    AddAssign,
+    Div,
+    DivAssign,
+    Mul,
+    MulAssign,
+    Neg,
+    Sub,
+    SubAssign,
+};
 use std::sync::Arc;
 
 // Helper module for serializing Arc<T>
 mod arc_serde {
 
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{
+        Deserialize,
+        Deserializer,
+        Serialize,
+        Serializer,
+    };
     use std::sync::Arc;
 
     pub fn serialize<S, T>(

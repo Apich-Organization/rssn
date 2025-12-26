@@ -9,7 +9,11 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve_system;
-use crate::symbolic::stats::{covariance, mean, variance};
+use crate::symbolic::stats::{
+    covariance,
+    mean,
+    variance,
+};
 use std::sync::Arc;
 
 /// Computes the symbolic coefficients (`b0`, `b1`) for a simple linear regression `y = b0 + b1*x`.

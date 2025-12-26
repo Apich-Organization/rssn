@@ -1,6 +1,9 @@
 use rssn::ffi_apis::numerical_real_roots_ffi::*;
 use rssn::prelude::numerical::*;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 

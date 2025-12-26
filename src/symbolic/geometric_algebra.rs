@@ -5,10 +5,20 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
-use serde::{Deserialize, Serialize};
+use num_traits::{
+    One,
+    Zero,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::BTreeMap;
-use std::ops::{Add, Mul, Sub};
+use std::ops::{
+    Add,
+    Mul,
+    Sub,
+};
 
 /// Represents a multivector in a Clifford algebra.
 ///

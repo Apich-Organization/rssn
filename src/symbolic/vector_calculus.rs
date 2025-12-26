@@ -5,7 +5,10 @@
 //! and volume integrals. It defines structures for `ParametricCurve`, `ParametricSurface`,
 //! and `Volume` to represent the domains of integration.
 
-use crate::symbolic::calculus::{definite_integrate, substitute};
+use crate::symbolic::calculus::{
+    definite_integrate,
+    substitute,
+};
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::partial_derivative_vector;

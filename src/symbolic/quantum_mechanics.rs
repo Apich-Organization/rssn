@@ -13,8 +13,14 @@
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use crate::symbolic::{calculus::differentiate, solve::solve};
-use serde::{Deserialize, Serialize};
+use crate::symbolic::{
+    calculus::differentiate,
+    solve::solve,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::sync::Arc;
 
 /// Represents a quantum state using Dirac notation (Ket).

@@ -8,7 +8,10 @@ use crate::numerical::calculus::gradient;
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::matrix::Matrix;
 use crate::symbolic::core::Expr;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
 
 /// Represents the solution to a system of linear equations.

@@ -4,8 +4,14 @@
 //! It includes an implementation of Sturm's theorem to count the number of distinct
 //! real roots in an interval and to generate isolating intervals for these roots.
 
-use crate::symbolic::core::{Expr, SparsePolynomial};
-use crate::symbolic::polynomial::{differentiate_poly, gcd};
+use crate::symbolic::core::{
+    Expr,
+    SparsePolynomial,
+};
+use crate::symbolic::polynomial::{
+    differentiate_poly,
+    gcd,
+};
 use crate::symbolic::simplify::as_f64;
 use num_traits::ToPrimitive;
 use std::collections::HashMap;

@@ -81,10 +81,21 @@
 #![allow(deprecated)]
 
 use crate::symbolic::calculus::substitute;
-use crate::symbolic::core::{DagNode, DagOp, Expr};
+use crate::symbolic::core::{
+    DagNode,
+    DagOp,
+    Expr,
+};
 use num_bigint::BigInt;
-use num_traits::{One, ToPrimitive, Zero};
-use std::collections::{BTreeMap, HashMap};
+use num_traits::{
+    One,
+    ToPrimitive,
+    Zero,
+};
+use std::collections::{
+    BTreeMap,
+    HashMap,
+};
 use std::sync::Arc;
 
 pub(crate) fn simplify_dag_node(

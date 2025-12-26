@@ -1,8 +1,14 @@
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::pde::{
-    classify_pde_heuristic, solve_heat_equation_1d, solve_helmholtz_equation,
-    solve_klein_gordon_equation, solve_laplace_equation_2d, solve_pde_by_characteristics,
-    solve_poisson_equation_2d, solve_schrodinger_equation, solve_wave_equation_1d_dalembert,
+    classify_pde_heuristic,
+    solve_heat_equation_1d,
+    solve_helmholtz_equation,
+    solve_klein_gordon_equation,
+    solve_laplace_equation_2d,
+    solve_pde_by_characteristics,
+    solve_poisson_equation_2d,
+    solve_schrodinger_equation,
+    solve_wave_equation_1d_dalembert,
     PDEType,
 };
 use std::sync::Arc;

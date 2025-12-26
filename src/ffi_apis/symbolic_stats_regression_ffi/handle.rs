@@ -1,7 +1,10 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
-use std::os::raw::{c_char, c_int};
+use std::os::raw::{
+    c_char,
+    c_int,
+};
 use std::sync::Arc;
 
 unsafe fn collect_pairs(

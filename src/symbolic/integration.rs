@@ -5,18 +5,33 @@
 //! implementations for integrating rational functions (Hermite-Ostrogradsky method)
 //! and handling transcendental extensions (logarithmic and exponential cases).
 
-use crate::symbolic::calculus::{differentiate, integrate, substitute};
-use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
+use crate::symbolic::calculus::{
+    differentiate,
+    integrate,
+    substitute,
+};
+use crate::symbolic::core::{
+    Expr,
+    Monomial,
+    SparsePolynomial,
+};
 use crate::symbolic::matrix::determinant;
 use crate::symbolic::number_theory::expr_to_sparse_poly;
 use crate::symbolic::polynomial::gcd;
 use crate::symbolic::polynomial::poly_mul_scalar_expr;
-use crate::symbolic::polynomial::{contains_var, differentiate_poly, sparse_poly_to_expr};
+use crate::symbolic::polynomial::{
+    contains_var,
+    differentiate_poly,
+    sparse_poly_to_expr,
+};
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_system;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{
+    BTreeMap,
+    HashMap,
+};
 use std::sync::Arc;
 
 /// Integrates a rational function `P(x)/Q(x)` using the Hermite-Ostrogradsky method.

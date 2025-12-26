@@ -787,8 +787,11 @@ pub use crate::symbolic::finite_field::FiniteFieldPolynomial as symbolic_FiniteF
 pub use crate::symbolic::finite_field::PrimeField as symbolic_PrimeField;
 pub use crate::symbolic::finite_field::PrimeFieldElement as symbolic_PrimeFieldElement;
 pub use crate::symbolic::fractal_geometry_and_chaos::{
-    analyze_stability, find_fixed_points, lorenz_system,
-    lyapunov_exponent as symbolic_lyapunov_exponent, ComplexDynamicalSystem,
+    analyze_stability,
+    find_fixed_points,
+    lorenz_system,
+    lyapunov_exponent as symbolic_lyapunov_exponent,
+    ComplexDynamicalSystem,
     IteratedFunctionSystem,
 };
 
@@ -1211,33 +1214,74 @@ pub use crate::symbolic::vector_calculus::ParametricCurve as symbolic_Parametric
 pub use crate::symbolic::vector_calculus::ParametricSurface as symbolic_ParametricSurface;
 pub use crate::symbolic::vector_calculus::Volume as symbolic_Volume;
 pub use argmin::core::{
-    CostFunction as _, Gradient as _, Hessian as _, Jacobian as _, Operator as _, Solver as _,
+    CostFunction as _,
+    Gradient as _,
+    Hessian as _,
+    Jacobian as _,
+    Operator as _,
+    Solver as _,
 };
 pub use bigdecimal::BigDecimal;
 pub use dashmap::DashMap;
 pub use itertools::Itertools as _;
 pub use lazy_static::lazy_static;
-pub use nalgebra::{DMatrix, DVector, Matrix3, Vector3};
+pub use nalgebra::{
+    DMatrix,
+    DVector,
+    Matrix3,
+    Vector3,
+};
 pub use ndarray::prelude as ndarray_prelude;
-pub use ndarray::{s, Array1, Array2, ArrayView, Axis, IntoDimension};
+pub use ndarray::{
+    s,
+    Array1,
+    Array2,
+    ArrayView,
+    Axis,
+    IntoDimension,
+};
 pub use num_complex::Complex;
 pub use num_rational::Ratio;
-pub use num_traits::{Num, One, ToPrimitive as _, Zero};
-pub use once_cell::sync::{Lazy, OnceCell};
+pub use num_traits::{
+    Num,
+    One,
+    ToPrimitive as _,
+    Zero,
+};
+pub use once_cell::sync::{
+    Lazy,
+    OnceCell,
+};
 pub use ordered_float::OrderedFloat;
 pub use rand::prelude as rand_prelude;
 pub use rand::Rng as _;
 pub use rayon::prelude::*;
-pub use serde::{Deserialize as _, Serialize as _};
-pub use sprs_rssn::{CsMat, CsVec};
-pub use std::collections::{BTreeMap, HashMap, HashSet};
+pub use serde::{
+    Deserialize as _,
+    Serialize as _,
+};
+pub use sprs_rssn::{
+    CsMat,
+    CsVec,
+};
+pub use std::collections::{
+    BTreeMap,
+    HashMap,
+    HashSet,
+};
 pub use std::io::prelude as std_io_prelude;
 pub use std::io::Read as IoRead;
 pub use std::io::Write as IoWrite;
 pub use std::prelude as std_prelude;
 pub use uom::si::{
-    f64::{Length, Mass, Time},
-    length, mass, time,
+    f64::{
+        Length,
+        Mass,
+        Time,
+    },
+    length,
+    mass,
+    time,
 };
 
 /// Unified layer under development, for now rssn only provide campatible version choises.

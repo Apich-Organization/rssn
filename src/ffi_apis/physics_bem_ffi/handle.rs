@@ -1,6 +1,9 @@
 //! Handle-based FFI API for physics BEM functions.
 
-use crate::physics::physics_bem::{self, BoundaryCondition};
+use crate::physics::physics_bem::{
+    self,
+    BoundaryCondition,
+};
 use std::ptr;
 
 /// Solves a 2D Laplace problem using BEM and returns the results as a flat array.

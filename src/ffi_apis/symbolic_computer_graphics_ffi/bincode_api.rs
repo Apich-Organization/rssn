@@ -5,8 +5,18 @@
 
 use crate::ffi_apis::common::*;
 use crate::symbolic::computer_graphics::{
-    reflection_2d, reflection_3d, rotation_2d, rotation_3d_x, rotation_3d_y, rotation_3d_z,
-    rotation_axis_angle, scaling_2d, scaling_3d, shear_2d, translation_2d, translation_3d,
+    reflection_2d,
+    reflection_3d,
+    rotation_2d,
+    rotation_3d_x,
+    rotation_3d_y,
+    rotation_3d_z,
+    rotation_axis_angle,
+    scaling_2d,
+    scaling_3d,
+    shear_2d,
+    translation_2d,
+    translation_3d,
 };
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;

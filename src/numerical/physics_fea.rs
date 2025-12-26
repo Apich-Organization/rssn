@@ -43,7 +43,10 @@
 //! ```
 
 use crate::numerical::matrix::Matrix;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 // ============================================================================
 // Material Properties

@@ -1,7 +1,10 @@
 //! Handle-based FFI API for numerical finite field arithmetic.
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::finite_field::{self, PrimeFieldElement};
+use crate::numerical::finite_field::{
+    self,
+    PrimeFieldElement,
+};
 use std::ptr;
 
 /// Creates a new PrimeFieldElement.

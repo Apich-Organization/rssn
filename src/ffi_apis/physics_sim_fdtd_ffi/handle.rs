@@ -1,7 +1,10 @@
 //! Handle-based FFI API for physics sim FDTD electrodynamics functions.
 
 use crate::numerical::matrix::Matrix;
-use crate::physics::physics_sim::fdtd_electrodynamics::{self, FdtdParameters};
+use crate::physics::physics_sim::fdtd_electrodynamics::{
+    self,
+    FdtdParameters,
+};
 
 /// Runs a 2D FDTD simulation and returns the final Ez field as a Matrix handle (WxH).
 #[no_mangle]

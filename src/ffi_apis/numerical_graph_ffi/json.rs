@@ -1,9 +1,21 @@
 //! JSON-based FFI API for numerical graph algorithms.
 
-use crate::ffi_apis::common::{from_json_string, to_c_string};
+use crate::ffi_apis::common::{
+    from_json_string,
+    to_c_string,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::numerical::graph::{bfs, dijkstra, floyd_warshall, page_rank, Graph};
-use serde::{Deserialize, Serialize};
+use crate::numerical::graph::{
+    bfs,
+    dijkstra,
+    floyd_warshall,
+    page_rank,
+    Graph,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]

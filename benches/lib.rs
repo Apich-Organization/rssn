@@ -16,7 +16,12 @@
 // 6. Benchmark Date:  [e.g., 2025-10-01]
 */
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{
+    black_box,
+    criterion_group,
+    criterion_main,
+    Criterion,
+};
 
 // use rssn::r#mod;
 // use nalgebra::DVector; // Example dependency for numerical benchmarks

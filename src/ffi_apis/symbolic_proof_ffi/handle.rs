@@ -2,7 +2,10 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::proof;
 use std::collections::HashMap;
 use std::ffi::CStr;
-use std::os::raw::{c_char, c_int};
+use std::os::raw::{
+    c_char,
+    c_int,
+};
 
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,

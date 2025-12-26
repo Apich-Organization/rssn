@@ -1,5 +1,8 @@
 use num_bigint::BigInt;
-use rssn::symbolic::core::{Expr, DAG_MANAGER};
+use rssn::symbolic::core::{
+    Expr,
+    DAG_MANAGER,
+};
 use rssn::symbolic::simplify_dag::simplify;
 
 #[test]

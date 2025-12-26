@@ -12,7 +12,10 @@
 use crate::plugins::manager::PluginManager;
 use once_cell::sync::Lazy;
 use std::cell::RefCell;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 use std::ptr;
 use std::sync::Mutex;
@@ -55,7 +58,10 @@ pub unsafe extern "C" fn rssn_get_last_error() -> *const c_char {
 }
 
 use crate::symbolic::core::Expr;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::sync::Arc;
 
 /// A macro to generate the boilerplate for a handle-based FFI API.
@@ -620,7 +626,10 @@ pub unsafe extern "C" fn interpolate_bezier_curve(json_ptr: *const c_char) -> *m
     }
 }
 
-use crate::numerical::{combinatorics, vector};
+use crate::numerical::{
+    combinatorics,
+    vector,
+};
 
 #[derive(Deserialize)]
 
@@ -1508,7 +1517,9 @@ pub unsafe extern "C" fn nt_mod_inverse(json_ptr: *const c_char) -> *mut c_char 
     }
 }
 
-use crate::numerical::special::{self as special_module};
+use crate::numerical::special::{
+    self as special_module,
+};
 
 #[derive(Deserialize)]
 
@@ -1789,7 +1800,10 @@ impl_rssn_special_fn_two_args!(
     ln_beta_numerical
 );
 
-use crate::numerical::transforms::{fft, ifft};
+use crate::numerical::transforms::{
+    fft,
+    ifft,
+};
 use num_complex::Complex;
 
 #[derive(Serialize, Deserialize)]
@@ -2939,17 +2953,45 @@ pub unsafe extern "C" fn rssn_stats_covariance(
 }
 
 use crate::numerical::calculus::gradient;
-use crate::numerical::integrate::{quadrature, QuadratureMethod};
-use crate::numerical::interpolate::{self as interp_module};
-use crate::numerical::stats::{self as stats_module, simple_linear_regression};
-use crate::physics::physics_sm::solve_advection_diffusion_1d;
-use crate::symbolic::calculus::{definite_integrate, differentiate, integrate, limit, substitute};
-use crate::symbolic::matrix::{
-    add_matrices, characteristic_polynomial, determinant, eigen_decomposition, identity_matrix,
-    inverse_matrix, lu_decomposition, mul_matrices, null_space, rref, scalar_mul_matrix,
-    sub_matrices, trace, transpose_matrix,
+use crate::numerical::integrate::{
+    quadrature,
+    QuadratureMethod,
 };
-use crate::symbolic::polynomial::{self as poly_module, from_coeffs_to_expr};
+use crate::numerical::interpolate::{
+    self as interp_module,
+};
+use crate::numerical::stats::{
+    self as stats_module,
+    simple_linear_regression,
+};
+use crate::physics::physics_sm::solve_advection_diffusion_1d;
+use crate::symbolic::calculus::{
+    definite_integrate,
+    differentiate,
+    integrate,
+    limit,
+    substitute,
+};
+use crate::symbolic::matrix::{
+    add_matrices,
+    characteristic_polynomial,
+    determinant,
+    eigen_decomposition,
+    identity_matrix,
+    inverse_matrix,
+    lu_decomposition,
+    mul_matrices,
+    null_space,
+    rref,
+    scalar_mul_matrix,
+    sub_matrices,
+    trace,
+    transpose_matrix,
+};
+use crate::symbolic::polynomial::{
+    self as poly_module,
+    from_coeffs_to_expr,
+};
 use crate::symbolic::solve::solve;
 
 /// Differentiates an `Expr` and returns a handle to the new, derivative expression.

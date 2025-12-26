@@ -38,7 +38,10 @@
 
 use crate::symbolic::core::Expr;
 use dashmap::DashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{
+    AtomicUsize,
+    Ordering,
+};
 use std::sync::Arc;
 
 /// A thread-safe, global manager for expression handles.

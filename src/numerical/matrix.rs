@@ -6,10 +6,27 @@
 //! and eigenvalue decomposition for symmetric matrices.
 
 use crate::symbolic::finite_field::PrimeFieldElement;
-use num_traits::{One, ToPrimitive, Zero};
-use serde::{Deserialize, Serialize};
+use num_traits::{
+    One,
+    ToPrimitive,
+    Zero,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::fmt::Debug;
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{
+    Add,
+    AddAssign,
+    Div,
+    DivAssign,
+    Mul,
+    MulAssign,
+    Neg,
+    Sub,
+    SubAssign,
+};
 
 /// A trait defining the requirements for a field in linear algebra.
 

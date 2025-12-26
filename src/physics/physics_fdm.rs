@@ -5,8 +5,14 @@
 //! and a solver for the 2D heat equation as an example.
 
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::ops::{Index, IndexMut};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ops::{
+    Index,
+    IndexMut,
+};
 
 /// Represents the dimensions of the simulation grid.
 /// cbindgen:ignore

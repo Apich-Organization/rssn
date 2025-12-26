@@ -1,8 +1,14 @@
 //! JSON-based FFI API for physics sim GPE superfluidity functions.
 
-use crate::ffi_apis::common::{from_json_string, to_c_string};
+use crate::ffi_apis::common::{
+    from_json_string,
+    to_c_string,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::physics::physics_sim::gpe_superfluidity::{self, GpeParameters};
+use crate::physics::physics_sim::gpe_superfluidity::{
+    self,
+    GpeParameters,
+};
 use std::os::raw::c_char;
 
 #[no_mangle]

@@ -2,7 +2,10 @@
 
 use num_bigint::BigInt;
 use rssn::symbolic::cryptography::*;
-use rssn::symbolic::finite_field::{PrimeField, PrimeFieldElement};
+use rssn::symbolic::finite_field::{
+    PrimeField,
+    PrimeFieldElement,
+};
 use std::sync::Arc;
 
 // Use a small prime field for testing: p = 23

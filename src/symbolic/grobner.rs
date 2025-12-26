@@ -18,8 +18,15 @@
 //! ### Computing a Gröbner Basis
 //! ```
 //! 
-//! use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
-//! use rssn::symbolic::grobner::{buchberger, MonomialOrder};
+//! use rssn::symbolic::core::{
+//!     Expr,
+//!     Monomial,
+//!     SparsePolynomial,
+//! };
+//! use rssn::symbolic::grobner::{
+//!     buchberger,
+//!     MonomialOrder,
+//! };
 //! use std::collections::BTreeMap;
 //!
 //! // Create polynomials: x^2 - y and xy - 1
@@ -55,8 +62,15 @@
 //! .unwrap();
 //! ```
 
-use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
-use crate::symbolic::polynomial::{add_poly, mul_poly};
+use crate::symbolic::core::{
+    Expr,
+    Monomial,
+    SparsePolynomial,
+};
+use crate::symbolic::polynomial::{
+    add_poly,
+    mul_poly,
+};
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use std::cmp::Ordering;

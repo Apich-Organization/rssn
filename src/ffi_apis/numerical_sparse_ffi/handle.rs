@@ -1,7 +1,10 @@
 //! Handle-based FFI API for numerical sparse matrix operations.
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::sparse::{self, SparseMatrixData};
+use crate::numerical::sparse::{
+    self,
+    SparseMatrixData,
+};
 use sprs_rssn::CsMat;
 use std::ptr;
 

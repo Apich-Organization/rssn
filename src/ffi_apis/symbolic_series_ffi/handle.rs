@@ -1,8 +1,13 @@
 use crate::symbolic::convergence::ConvergenceResult;
 use crate::symbolic::core::Expr;
 use crate::symbolic::series::{
-    analytic_continuation, asymptotic_expansion, fourier_series, laurent_series, product,
-    summation, taylor_series,
+    analytic_continuation,
+    asymptotic_expansion,
+    fourier_series,
+    laurent_series,
+    product,
+    summation,
+    taylor_series,
 };
 
 #[no_mangle]

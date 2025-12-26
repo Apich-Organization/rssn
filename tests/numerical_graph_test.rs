@@ -1,4 +1,10 @@
-use rssn::numerical::graph::{bfs, dijkstra, floyd_warshall, page_rank, Graph};
+use rssn::numerical::graph::{
+    bfs,
+    dijkstra,
+    floyd_warshall,
+    page_rank,
+    Graph,
+};
 use std::f64::INFINITY;
 
 #[test]

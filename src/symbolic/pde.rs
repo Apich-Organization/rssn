@@ -5,10 +5,18 @@
 //! (separation of variables, D'Alembert's formula for wave equation), and techniques like
 //! Green's functions and Fourier transforms for specific PDE types.
 
-use crate::symbolic::calculus::{differentiate, integrate, substitute};
+use crate::symbolic::calculus::{
+    differentiate,
+    integrate,
+    substitute,
+};
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode::solve_ode;
-use crate::symbolic::simplify::{collect_and_order_terms, is_zero, pattern_match};
+use crate::symbolic::simplify::{
+    collect_and_order_terms,
+    is_zero,
+    pattern_match,
+};
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::transforms;
 use std::collections::HashMap;

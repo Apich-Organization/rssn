@@ -1,8 +1,18 @@
 use crate::numerical::matrix::Matrix;
-use crate::numerical::solve::{solve_linear_system, LinearSolution};
+use crate::numerical::solve::{
+    solve_linear_system,
+    LinearSolution,
+};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::ops::{Add, Mul, Sub};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ops::{
+    Add,
+    Mul,
+    Sub,
+};
 
 #[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 

@@ -1,5 +1,8 @@
 use num_bigint::BigInt;
-use rssn::symbolic::convergence::{analyze_convergence, ConvergenceResult};
+use rssn::symbolic::convergence::{
+    analyze_convergence,
+    ConvergenceResult,
+};
 use rssn::symbolic::core::Expr;
 use std::sync::Arc;
 

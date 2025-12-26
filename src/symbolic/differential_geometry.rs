@@ -5,13 +5,19 @@
 //! It includes implementations for exterior derivatives, wedge products, and symbolic
 //! representations of generalized Stokes' theorem, Gauss's theorem, and Green's theorem.
 
-use crate::symbolic::calculus::{definite_integrate, differentiate};
+use crate::symbolic::calculus::{
+    definite_integrate,
+    differentiate,
+};
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::Vector;
 use num_bigint::BigInt;
 use num_traits::Zero;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::sync::Arc;
 
 /// Represents a differential k-form.

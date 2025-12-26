@@ -10,7 +10,10 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::eigen_decomposition;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve_system;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 

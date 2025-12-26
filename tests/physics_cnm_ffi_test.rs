@@ -1,7 +1,10 @@
 //! FFI tests for the physics CNM module.
 
 use rssn::ffi_apis::ffi_api::FfiResult;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 

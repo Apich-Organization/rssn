@@ -1,5 +1,9 @@
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::rewriting::{apply_rules_to_normal_form, knuth_bendix, RewriteRule};
+use rssn::symbolic::rewriting::{
+    apply_rules_to_normal_form,
+    knuth_bendix,
+    RewriteRule,
+};
 use std::sync::Arc;
 
 #[test]

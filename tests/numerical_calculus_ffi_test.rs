@@ -1,8 +1,14 @@
 use assert_approx_eq::assert_approx_eq;
-use rssn::ffi_apis::common::{rssn_free_bincode_buffer, rssn_free_string};
+use rssn::ffi_apis::common::{
+    rssn_free_bincode_buffer,
+    rssn_free_string,
+};
 use rssn::ffi_apis::numerical_calculus_ffi::*;
 use rssn::symbolic::core::Expr;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 
 #[test]
 
@@ -101,8 +107,14 @@ fn test_numerical_hessian_bincode_ffi() {
 
     unsafe {
 
-        use rssn::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer};
-        use serde::{Deserialize, Serialize};
+        use rssn::ffi_apis::common::{
+            from_bincode_buffer,
+            to_bincode_buffer,
+        };
+        use serde::{
+            Deserialize,
+            Serialize,
+        };
 
         #[derive(Serialize)]
 

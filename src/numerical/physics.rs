@@ -37,8 +37,14 @@ use crate::numerical::elementary::eval_expr;
 use crate::numerical::matrix::Matrix;
 use crate::numerical::ode::solve_ode_system_rk4;
 use crate::symbolic::core::Expr;
-use rand::{thread_rng, Rng};
-use serde::{Deserialize, Serialize};
+use rand::{
+    thread_rng,
+    Rng,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -571,11 +577,10 @@ pub fn solve_3d_schrodinger(
 
     if n > 25000 {
 
-        return Err(
-            format!(
-                "Grid too large (nx*ny*nz = {n}). Dense 3D solver will be extremely slow and memory-heavy. Consider smaller grid or sparse/iterative methods."
-            ),
-        );
+        return Err(format!(
+            "Grid too large (nx*ny*nz = {n}). Dense 3D solver will be extremely slow and \
+             memory-heavy. Consider smaller grid or sparse/iterative methods."
+        ));
     }
 
     let mut potential = vec![0.0_f64; n];

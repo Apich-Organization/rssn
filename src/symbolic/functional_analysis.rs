@@ -6,14 +6,23 @@
 //! functions that act upon these spaces. It includes implementations for Hilbert and Banach
 //! spaces, linear operators, inner products, and various norms.
 
-use crate::symbolic::calculus::{definite_integrate, differentiate};
+use crate::symbolic::calculus::{
+    definite_integrate,
+    differentiate,
+};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::sqrt;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
-use serde::{Deserialize, Serialize};
+use num_traits::{
+    One,
+    Zero,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Represents a Hilbert space, a complete inner product space.
 /// This implementation specifically models L^2([a, b]), the space of square-integrable

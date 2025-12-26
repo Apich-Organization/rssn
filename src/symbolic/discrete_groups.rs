@@ -5,7 +5,10 @@
 //! It includes functions to construct these groups and define their multiplication tables.
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::group_theory::{Group, GroupElement};
+use crate::symbolic::group_theory::{
+    Group,
+    GroupElement,
+};
 use std::collections::HashMap;
 
 /// Creates a cyclic group `C_n` of order `n`.

@@ -1,7 +1,11 @@
 //! Bincode-based FFI API for compute state module.
 
 use crate::compute::state::State;
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 
 /// Creates a new State and returns it as a bincode buffer.
 /// The caller must free the returned buffer using rssn_free_bincode_buffer.

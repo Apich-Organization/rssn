@@ -1,7 +1,17 @@
-use crate::numerical::sparse::{csr_from_triplets, solve_conjugate_gradient};
-use ndarray::{array, Array1, Array2};
+use crate::numerical::sparse::{
+    csr_from_triplets,
+    solve_conjugate_gradient,
+};
+use ndarray::{
+    array,
+    Array1,
+    Array2,
+};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use sprs_rssn::CsMat;
 use std::fs::File;
 use std::io::Write;

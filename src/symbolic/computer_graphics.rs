@@ -6,11 +6,18 @@
 //! and mesh manipulation.
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::elementary::{cos, sin, tan};
+use crate::symbolic::elementary::{
+    cos,
+    sin,
+    tan,
+};
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::Vector;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
+use num_traits::{
+    One,
+    Zero,
+};
 use std::sync::Arc;
 
 /// Generates a 3x3 2D translation matrix.

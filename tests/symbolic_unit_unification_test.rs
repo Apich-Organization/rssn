@@ -1,5 +1,9 @@
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::unit_unification::{unify_expression, SupportedQuantity, UnitQuantity};
+use rssn::symbolic::unit_unification::{
+    unify_expression,
+    SupportedQuantity,
+    UnitQuantity,
+};
 use std::sync::Arc;
 
 #[test]

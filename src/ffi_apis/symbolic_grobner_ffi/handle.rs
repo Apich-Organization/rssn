@@ -1,5 +1,9 @@
 use crate::symbolic::core::SparsePolynomial;
-use crate::symbolic::grobner::{buchberger, poly_division_multivariate, MonomialOrder};
+use crate::symbolic::grobner::{
+    buchberger,
+    poly_division_multivariate,
+    MonomialOrder,
+};
 
 #[no_mangle]
 

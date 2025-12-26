@@ -1,7 +1,10 @@
 //! Handle-based FFI API for numerical equation solvers.
 
 use crate::numerical::matrix::Matrix;
-use crate::numerical::solve::{self, LinearSolution};
+use crate::numerical::solve::{
+    self,
+    LinearSolution,
+};
 use std::ptr;
 use std::slice;
 

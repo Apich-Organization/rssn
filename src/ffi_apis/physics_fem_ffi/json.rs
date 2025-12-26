@@ -1,6 +1,9 @@
 //! JSON-based FFI API for physics FEM functions.
 
-use crate::ffi_apis::common::{from_json_string, to_c_string};
+use crate::ffi_apis::common::{
+    from_json_string,
+    to_c_string,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_fem;
 use serde::Deserialize;

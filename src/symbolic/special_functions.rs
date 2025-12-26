@@ -69,7 +69,10 @@
 //! ```
 //! 
 //! use rssn::symbolic::core::Expr;
-//! use rssn::symbolic::special_functions::{hermite_h, legendre_p};
+//! use rssn::symbolic::special_functions::{
+//!     hermite_h,
+//!     legendre_p,
+//! };
 //!
 //! // P₀(x) = 1
 //! let p0 = legendre_p(

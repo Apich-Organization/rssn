@@ -5,8 +5,18 @@
 //! detection and correction capabilities.
 
 use crate::symbolic::error_correction::{
-    crc32_compute, crc32_finalize, crc32_update, crc32_verify, hamming_check, hamming_decode,
-    hamming_distance, hamming_encode, hamming_weight, rs_check, rs_decode, rs_encode,
+    crc32_compute,
+    crc32_finalize,
+    crc32_update,
+    crc32_verify,
+    hamming_check,
+    hamming_decode,
+    hamming_distance,
+    hamming_encode,
+    hamming_weight,
+    rs_check,
+    rs_decode,
+    rs_encode,
     rs_error_count,
 };
 

@@ -14,8 +14,15 @@ use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::Vector;
-use crate::symbolic::vector::{curl, divergence, gradient};
-use serde::{Deserialize, Serialize};
+use crate::symbolic::vector::{
+    curl,
+    divergence,
+    gradient,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Represents Maxwell's equations in their differential form.
 ///

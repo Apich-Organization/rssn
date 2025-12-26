@@ -1,6 +1,9 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::stats_inference::{self, HypothesisTest};
+use crate::symbolic::stats_inference::{
+    self,
+    HypothesisTest,
+};
 use std::os::raw::c_char;
 
 unsafe fn collect_exprs(

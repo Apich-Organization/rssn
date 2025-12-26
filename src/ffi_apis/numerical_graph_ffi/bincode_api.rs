@@ -1,9 +1,22 @@
 //! Bincode-based FFI API for numerical graph algorithms.
 
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::numerical::graph::{bfs, dijkstra, floyd_warshall, page_rank, Graph};
-use serde::{Deserialize, Serialize};
+use crate::numerical::graph::{
+    bfs,
+    dijkstra,
+    floyd_warshall,
+    page_rank,
+    Graph,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Deserialize)]
 

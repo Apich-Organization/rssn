@@ -1,8 +1,14 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
+use crate::symbolic::polynomial::{
+    expr_to_sparse_poly,
+    sparse_poly_to_expr,
+};
 use crate::symbolic::real_roots::*;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 
 /// Generates the Sturm sequence for a given polynomial (JSON)

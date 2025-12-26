@@ -45,11 +45,32 @@
 use crate::symbolic::core::Expr;
 use ordered_float;
 use std::fmt::Debug;
-use std::hash::{Hash, Hasher};
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::hash::{
+    Hash,
+    Hasher,
+};
+use std::ops::{
+    Add,
+    Div,
+    Mul,
+    Neg,
+    Sub,
+};
 use std::sync::Arc;
-use uom::si::f64::{Area, Length, Mass, Time, Velocity};
-use uom::si::{area, length, mass, time, velocity};
+use uom::si::f64::{
+    Area,
+    Length,
+    Mass,
+    Time,
+    Velocity,
+};
+use uom::si::{
+    area,
+    length,
+    mass,
+    time,
+    velocity,
+};
 
 /// Represents a physical quantity with a specific dimension.
 ///
@@ -542,24 +563,35 @@ pub fn unify_expression(expr: &Expr) -> Result<Expr, String> {
 
             match (unified_a, unified_b) {
                 (Expr::Quantity(qa), Expr::Quantity(qb)) => {
+
                     let result = (qa.0.clone() / qb.0.clone())?;
-                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
+
+                    Ok(Expr::Quantity(
+                        Arc::new(UnitQuantity(result)),
+                    ))
                 }
                 #[allow(clippy::arithmetic_side_effects)]
                 (Expr::Quantity(qa), Expr::Constant(scalar_f64)) => {
+
                     if !scalar_f64.is_normal() {
-                        return Err(
-                            format!(
-                                "Error: Division scalar must be a non-zero, finite number. Received: {scalar_f64}"
-                            ),
-                        );
+
+                        return Err(format!(
+                            "Error: Division scalar must be a non-zero, finite number. Received: \
+                             {scalar_f64}"
+                        ));
                     }
+
                     let result = qa.0.clone() / scalar_f64;
-                    Ok(Expr::Quantity(Arc::new(UnitQuantity(result))))
+
+                    Ok(Expr::Quantity(
+                        Arc::new(UnitQuantity(result)),
+                    ))
                 }
                 (Expr::Constant(_), Expr::Quantity(_)) => {
                     Err(
-                        "Error: Scalar divided by Quantity (S / Q) is not yet supported as it requires new reciprocal dimension types (like Frequency or Reciprocal Length)."
+                        "Error: Scalar divided by Quantity (S / Q) is not yet supported as it \
+                         requires new reciprocal dimension types (like Frequency or Reciprocal \
+                         Length)."
                             .to_string(),
                     )
                 }

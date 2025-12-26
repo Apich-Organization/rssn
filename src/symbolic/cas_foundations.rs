@@ -1,6 +1,15 @@
-use crate::symbolic::core::{Expr, SparsePolynomial};
-use crate::symbolic::grobner::{self, MonomialOrder};
-use crate::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
+use crate::symbolic::core::{
+    Expr,
+    SparsePolynomial,
+};
+use crate::symbolic::grobner::{
+    self,
+    MonomialOrder,
+};
+use crate::symbolic::polynomial::{
+    expr_to_sparse_poly,
+    sparse_poly_to_expr,
+};
 use std::collections::HashMap;
 
 const ERROR_MARGIN: f64 = 1e-9;

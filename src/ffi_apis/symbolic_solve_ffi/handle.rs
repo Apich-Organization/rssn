@@ -1,5 +1,9 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::solve::{solve, solve_linear_system, solve_system};
+use crate::symbolic::solve::{
+    solve,
+    solve_linear_system,
+    solve_system,
+};
 
 #[no_mangle]
 

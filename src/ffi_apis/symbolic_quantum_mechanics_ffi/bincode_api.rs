@@ -1,5 +1,10 @@
 use crate::ffi_apis::common::*;
-use crate::symbolic::quantum_mechanics::{self, Bra, Ket, Operator};
+use crate::symbolic::quantum_mechanics::{
+    self,
+    Bra,
+    Ket,
+    Operator,
+};
 
 /// Computes the expectation value using Bincode.
 #[no_mangle]

@@ -1,7 +1,10 @@
 //! Handle-based FFI API for physics sim Schrodinger quantum functions.
 
 use crate::numerical::matrix::Matrix;
-use crate::physics::physics_sim::schrodinger_quantum::{self, SchrodingerParameters};
+use crate::physics::physics_sim::schrodinger_quantum::{
+    self,
+    SchrodingerParameters,
+};
 use num_complex::Complex;
 
 /// Runs a Schrodinger simulation and returns the final probability density as a Matrix handle (NxxNy).

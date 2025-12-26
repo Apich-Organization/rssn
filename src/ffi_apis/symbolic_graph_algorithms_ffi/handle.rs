@@ -2,7 +2,10 @@ use crate::ffi_apis::symbolic_graph_ffi::handle::RssnGraph;
 use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_algorithms::*;
 use std::ffi::CStr;
-use std::os::raw::{c_char, c_int};
+use std::os::raw::{
+    c_char,
+    c_int,
+};
 
 /// Performs DFS traversal starting from a given node.
 /// Returns a JSON array of node indices in visit order.

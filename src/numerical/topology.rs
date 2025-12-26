@@ -5,8 +5,14 @@
 //! constructing Vietoris-Rips simplicial complexes, and computing persistent homology.
 
 use crate::numerical::graph::Graph;
-use crate::symbolic::topology::{ChainComplex, SimplicialComplex};
-use serde::{Deserialize, Serialize};
+use crate::symbolic::topology::{
+    ChainComplex,
+    SimplicialComplex,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::VecDeque;
 
 /// Finds the connected components of a graph using Breadth-First Search (BFS).

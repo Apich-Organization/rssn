@@ -1,5 +1,13 @@
-use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
-use rssn::symbolic::grobner::{buchberger, poly_division_multivariate, MonomialOrder};
+use rssn::symbolic::core::{
+    Expr,
+    Monomial,
+    SparsePolynomial,
+};
+use rssn::symbolic::grobner::{
+    buchberger,
+    poly_division_multivariate,
+    MonomialOrder,
+};
 use std::collections::BTreeMap;
 
 fn create_monomial(vars: &[(&str, u32)]) -> Monomial {

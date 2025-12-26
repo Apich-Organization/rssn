@@ -1,6 +1,10 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::solve::{solve, solve_linear_system, solve_system};
+use crate::symbolic::solve::{
+    solve,
+    solve_linear_system,
+    solve_system,
+};
 use std::ffi::c_char;
 
 #[no_mangle]

@@ -1,6 +1,11 @@
 use num_bigint::BigInt;
 use rssn::symbolic::core::Expr;
-use rssn::symbolic::number_theory::{chinese_remainder, extended_gcd, is_prime, solve_diophantine};
+use rssn::symbolic::number_theory::{
+    chinese_remainder,
+    extended_gcd,
+    is_prime,
+    solve_diophantine,
+};
 use std::sync::Arc;
 
 #[test]

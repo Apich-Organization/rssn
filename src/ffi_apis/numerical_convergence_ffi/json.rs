@@ -3,7 +3,10 @@
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::convergence;
 use serde::Deserialize;
-use std::ffi::{CStr, CString};
+use std::ffi::{
+    CStr,
+    CString,
+};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]

@@ -1,8 +1,15 @@
 //! Bincode-based FFI API for physics sim FDTD electrodynamics functions.
 
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
-use crate::physics::physics_sim::fdtd_electrodynamics::{self, FdtdParameters};
+use crate::physics::physics_sim::fdtd_electrodynamics::{
+    self,
+    FdtdParameters,
+};
 use ndarray::Array2;
 
 #[no_mangle]

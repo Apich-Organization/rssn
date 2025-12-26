@@ -45,12 +45,19 @@
 //! ```
 
 use crate::symbolic::calculus::{
-    definite_integrate, differentiate, evaluate_at_point, factorial, substitute,
+    definite_integrate,
+    differentiate,
+    evaluate_at_point,
+    factorial,
+    substitute,
 };
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
+use num_traits::{
+    One,
+    Zero,
+};
 use std::sync::Arc;
 
 /// Computes the Taylor series expansion of an expression around a given center.

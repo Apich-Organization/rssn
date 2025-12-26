@@ -5,8 +5,18 @@
 
 use crate::ffi_apis::common::*;
 use crate::symbolic::error_correction::{
-    crc32_compute, crc32_finalize, crc32_update, crc32_verify, hamming_check, hamming_decode,
-    hamming_distance, hamming_encode, hamming_weight, rs_check, rs_decode, rs_encode,
+    crc32_compute,
+    crc32_finalize,
+    crc32_update,
+    crc32_verify,
+    hamming_check,
+    hamming_decode,
+    hamming_distance,
+    hamming_encode,
+    hamming_weight,
+    rs_check,
+    rs_decode,
+    rs_encode,
     rs_error_count,
 };
 use std::os::raw::c_char;

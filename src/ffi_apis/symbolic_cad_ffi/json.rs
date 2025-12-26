@@ -1,7 +1,13 @@
 use crate::ffi_apis::common::*;
-use crate::symbolic::cad::{cad, Cad};
+use crate::symbolic::cad::{
+    cad,
+    Cad,
+};
 use crate::symbolic::core::Expr;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::os::raw::c_char;
 
 #[derive(Deserialize)]

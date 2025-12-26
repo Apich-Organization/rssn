@@ -7,7 +7,11 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
-use num_traits::{One, ToPrimitive, Zero};
+use num_traits::{
+    One,
+    ToPrimitive,
+    Zero,
+};
 use std::sync::Arc;
 
 /// Creates a sine expression: `sin(expr)`.

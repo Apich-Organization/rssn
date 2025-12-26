@@ -1,6 +1,10 @@
 //! Bincode-based FFI API for physics FEM functions.
 
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_fem;
 use serde::Deserialize;

@@ -5,11 +5,17 @@
 //! complex dynamical systems (Mandelbrot/Julia sets), and tools for analyzing chaotic
 //! behavior such as fixed points, stability, and Lyapunov exponents.
 
-use crate::symbolic::calculus::{differentiate, substitute};
+use crate::symbolic::calculus::{
+    differentiate,
+    substitute,
+};
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::sync::Arc;
 
 // ============================================================================

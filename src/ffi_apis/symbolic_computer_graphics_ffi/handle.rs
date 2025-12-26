@@ -4,9 +4,24 @@
 //! projections, Bezier curves, B-splines, and polygon mesh manipulation.
 
 use crate::symbolic::computer_graphics::{
-    look_at, orthographic_projection, perspective_projection, reflection_2d, reflection_3d,
-    rotation_2d, rotation_3d_x, rotation_3d_y, rotation_3d_z, rotation_axis_angle, scaling_2d,
-    scaling_3d, shear_2d, translation_2d, translation_3d, BSplineCurve, BezierCurve, Polygon,
+    look_at,
+    orthographic_projection,
+    perspective_projection,
+    reflection_2d,
+    reflection_3d,
+    rotation_2d,
+    rotation_3d_x,
+    rotation_3d_y,
+    rotation_3d_z,
+    rotation_axis_angle,
+    scaling_2d,
+    scaling_3d,
+    shear_2d,
+    translation_2d,
+    translation_3d,
+    BSplineCurve,
+    BezierCurve,
+    Polygon,
     PolygonMesh,
 };
 use crate::symbolic::core::Expr;

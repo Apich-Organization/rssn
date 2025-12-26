@@ -1,7 +1,10 @@
 //! Test suite for computer_graphics module.
 
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
+use num_traits::{
+    One,
+    Zero,
+};
 use rssn::symbolic::computer_graphics::*;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::vector::Vector;

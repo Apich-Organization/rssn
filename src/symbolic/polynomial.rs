@@ -66,7 +66,11 @@
 //!
 //! ```rust
 //! 
-//! use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
+//! use rssn::symbolic::core::{
+//!     Expr,
+//!     Monomial,
+//!     SparsePolynomial,
+//! };
 //! use rssn::symbolic::polynomial::expr_to_sparse_poly;
 //!
 //! let expr = Expr::new_add(
@@ -120,9 +124,14 @@
 //!
 //! ```rust
 //! 
-//! use rssn::symbolic::core::{Expr, SparsePolynomial};
+//! use rssn::symbolic::core::{
+//!     Expr,
+//!     SparsePolynomial,
+//! };
 //! use rssn::symbolic::polynomial::{
-//!     differentiate_poly, expr_to_sparse_poly, sparse_poly_to_expr,
+//!     differentiate_poly,
+//!     expr_to_sparse_poly,
+//!     sparse_poly_to_expr,
 //! };
 //!
 //! let expr = Expr::new_pow(
@@ -160,7 +169,11 @@
 //! - [`real_roots`](crate::symbolic::real_roots) - Finding real roots of polynomials
 //! - [`core`](crate::symbolic::core) - Core expression types
 
-use crate::symbolic::core::{Expr, Monomial, SparsePolynomial};
+use crate::symbolic::core::{
+    Expr,
+    Monomial,
+    SparsePolynomial,
+};
 use crate::symbolic::grobner::subtract_poly;
 use crate::symbolic::real_roots::eval_expr;
 use crate::symbolic::simplify::as_f64;
@@ -168,7 +181,11 @@ use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use num_traits::{One, ToPrimitive, Zero};
+use num_traits::{
+    One,
+    ToPrimitive,
+    Zero,
+};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::ops::Add;

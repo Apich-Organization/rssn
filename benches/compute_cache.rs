@@ -1,5 +1,12 @@
-use criterion::{black_box, criterion_group, Criterion};
-use rssn::compute::cache::{ComputationResultCache, ParsingCache};
+use criterion::{
+    black_box,
+    criterion_group,
+    Criterion,
+};
+use rssn::compute::cache::{
+    ComputationResultCache,
+    ParsingCache,
+};
 use rssn::compute::computation::Value;
 use rssn::symbolic::core::Expr;
 use std::sync::Arc;

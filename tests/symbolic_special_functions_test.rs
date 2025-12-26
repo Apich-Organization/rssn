@@ -4,7 +4,10 @@
 //! orthogonal polynomials, and differential equations.
 
 use num_traits::ToPrimitive;
-use rssn::symbolic::core::{DagOp, Expr};
+use rssn::symbolic::core::{
+    DagOp,
+    Expr,
+};
 use rssn::symbolic::special_functions::*;
 
 // --- Helper Functions ---

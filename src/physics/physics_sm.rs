@@ -1,7 +1,15 @@
-use crate::numerical::transforms::{fft, fft_slice, ifft, ifft_slice};
+use crate::numerical::transforms::{
+    fft,
+    fft_slice,
+    ifft,
+    ifft_slice,
+};
 use num_complex::Complex;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Transposes a 2D matrix represented as a flat Vec.
 

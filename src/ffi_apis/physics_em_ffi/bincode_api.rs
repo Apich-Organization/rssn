@@ -1,10 +1,20 @@
 //! Bincode-based FFI API for physics EM functions.
 
-use crate::ffi_apis::common::{from_bincode_buffer, to_bincode_buffer, BincodeBuffer};
+use crate::ffi_apis::common::{
+    from_bincode_buffer,
+    to_bincode_buffer,
+    BincodeBuffer,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_em;
-use crate::physics::physics_rkm::{DampedOscillatorSystem, LorenzSystem};
-use serde::{Deserialize, Serialize};
+use crate::physics::physics_rkm::{
+    DampedOscillatorSystem,
+    LorenzSystem,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Deserialize)]
 

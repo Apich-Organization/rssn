@@ -1,7 +1,7 @@
 #[macro_export]
 
 macro_rules! json_ffi_unary {
-    ($name:ident, $input_type:ty, |$arg:ident| $body:expr) => {
+    ($name:ident, $input_type:ty, | $arg:ident | $body:expr) => {
         #[no_mangle]
 
         pub extern "C" fn $name(input_json: *const std::ffi::c_char) -> *mut std::ffi::c_char {
@@ -24,7 +24,7 @@ macro_rules! json_ffi_unary {
 #[macro_export]
 
 macro_rules! json_ffi_binary {
-    ($name:ident, $input1_type:ty, $input2_type:ty, |$arg1:ident, $arg2:ident| $body:expr) => {
+    ($name:ident, $input1_type:ty, $input2_type:ty, | $arg1:ident, $arg2:ident | $body:expr) => {
         #[no_mangle]
 
         pub extern "C" fn $name(
@@ -54,7 +54,7 @@ macro_rules! json_ffi_binary {
 #[macro_export]
 
 macro_rules! handle_ffi_unary {
-    ($name:ident, $input_type:ty, |$arg:ident| $body:expr) => {
+    ($name:ident, $input_type:ty, | $arg:ident | $body:expr) => {
         #[no_mangle]
 
         pub extern "C" fn $name(input: *const $input_type) -> *mut $crate::symbolic::core::Expr {
@@ -70,7 +70,7 @@ macro_rules! handle_ffi_unary {
         }
     };
     // Generic return type version
-    ($name:ident, $input_type:ty, $ret_type:ty, |$arg:ident| $body:expr) => {
+    ($name:ident, $input_type:ty, $ret_type:ty, | $arg:ident | $body:expr) => {
         #[no_mangle]
 
         pub extern "C" fn $name(input: *const $input_type) -> *mut $ret_type {
@@ -90,7 +90,15 @@ macro_rules! handle_ffi_unary {
 #[macro_export]
 
 macro_rules! handle_ffi_binary {
-    ($name:ident, $input1_type:ty, $input2_type:ty, $ret_type:ty, |$arg1:ident, $arg2:ident| $body:expr) => {
+    (
+        $name:ident,
+        $input1_type:ty,
+        $input2_type:ty,
+        $ret_type:ty, |
+        $arg1:ident,
+        $arg2:ident |
+        $body:expr
+    ) => {
         #[no_mangle]
 
         pub extern "C" fn $name(
@@ -118,7 +126,7 @@ macro_rules! handle_ffi_binary {
 #[macro_export]
 
 macro_rules! bincode_ffi_unary {
-    ($name:ident, $input_type:ty, |$arg:ident| $body:expr) => {
+    ($name:ident, $input_type:ty, | $arg:ident | $body:expr) => {
         #[no_mangle]
 
         pub extern "C" fn $name(
@@ -144,7 +152,7 @@ macro_rules! bincode_ffi_unary {
 #[macro_export]
 
 macro_rules! bincode_ffi_binary {
-    ($name:ident, $input1_type:ty, $input2_type:ty, |$arg1:ident, $arg2:ident| $body:expr) => {
+    ($name:ident, $input1_type:ty, $input2_type:ty, | $arg1:ident, $arg2:ident | $body:expr) => {
         #[no_mangle]
 
         pub extern "C" fn $name(

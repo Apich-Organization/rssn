@@ -1,6 +1,14 @@
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::ops::{Add, Div, Mul, Sub};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use std::ops::{
+    Add,
+    Div,
+    Mul,
+    Sub,
+};
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 

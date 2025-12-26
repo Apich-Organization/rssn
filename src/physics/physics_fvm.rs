@@ -6,7 +6,10 @@
 //! quantities like mass, momentum, and energy is crucial.
 
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Represents a single cell or control volume in the mesh.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]

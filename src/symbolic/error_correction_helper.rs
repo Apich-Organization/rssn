@@ -14,8 +14,17 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::number_theory::extended_gcd;
 use num_bigint::BigInt;
-use num_traits::{One, Zero};
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use num_traits::{
+    One,
+    Zero,
+};
+use std::ops::{
+    Add,
+    Div,
+    Mul,
+    Neg,
+    Sub,
+};
 use std::sync::Arc;
 
 /// Represents a finite field GF(p) where p is the modulus.

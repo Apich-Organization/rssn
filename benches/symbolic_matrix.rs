@@ -1,4 +1,8 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{
+    criterion_group,
+    criterion_main,
+    Criterion,
+};
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::matrix::*;
 

@@ -1,7 +1,10 @@
 use crate::ffi_apis::symbolic_graph_ffi::handle::RssnGraph;
 use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_isomorphism_and_coloring::*;
-use std::os::raw::{c_char, c_int};
+use std::os::raw::{
+    c_char,
+    c_int,
+};
 
 /// Checks if two graphs are potentially isomorphic using WL test.
 #[no_mangle]

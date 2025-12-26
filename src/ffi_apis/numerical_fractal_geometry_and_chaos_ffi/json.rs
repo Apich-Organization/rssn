@@ -1,6 +1,9 @@
 //! JSON-based FFI API for numerical fractal geometry and chaos functions.
 
-use crate::ffi_apis::common::{from_json_string, to_c_string};
+use crate::ffi_apis::common::{
+    from_json_string,
+    to_c_string,
+};
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::fractal_geometry_and_chaos;
 use serde::Deserialize;

@@ -1,6 +1,12 @@
-use crate::physics::physics_rkm::{DormandPrince54, OdeSystem};
+use crate::physics::physics_rkm::{
+    DormandPrince54,
+    OdeSystem,
+};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::fs::File;
 use std::io::Write;
 

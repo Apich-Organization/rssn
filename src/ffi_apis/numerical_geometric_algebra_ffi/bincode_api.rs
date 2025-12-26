@@ -2,7 +2,10 @@
 
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::numerical::geometric_algebra::Multivector3D;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Deserialize)]
 

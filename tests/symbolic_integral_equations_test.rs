@@ -1,6 +1,8 @@
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::integral_equations::{
-    solve_airfoil_equation, FredholmEquation, VolterraEquation,
+    solve_airfoil_equation,
+    FredholmEquation,
+    VolterraEquation,
 };
 use rssn::symbolic::simplify_dag::simplify;
 
