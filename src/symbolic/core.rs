@@ -2725,7 +2725,7 @@ impl DagNode {
         // Iterative implementation using explicit stack to prevent stack overflow
         // This uses a post-order (bottom-up) traversal strategy
 
-        const MAX_NODES: usize = 100000;
+        const MAX_NODES: usize = 100_000;
 
         const MAX_CHILDREN: usize =
             10000;

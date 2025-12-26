@@ -1107,10 +1107,10 @@ pub fn initialize_velocities_maxwell_boltzmann(
 
         rng_state = rng_state
             .wrapping_mul(
-                6364136223846793005,
+                6_364_136_223_846_793_005,
             )
             .wrapping_add(
-                1442695040888963407,
+                1_442_695_040_888_963_407,
             );
 
         (rng_state >> 33) as f64
@@ -1142,8 +1142,8 @@ pub fn initialize_velocities_maxwell_boltzmann(
             let mut rng_fn = || {
 
                 rng_state = rng_state
-                    .wrapping_mul(6364136223846793005)
-                    .wrapping_add(1442695040888963407);
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
 
                 (rng_state >> 33) as f64
                     / (1u64 << 31)

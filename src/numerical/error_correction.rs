@@ -1500,7 +1500,7 @@ pub fn bch_decode(
 /// CRC-32 polynomial (IEEE 802.3 / ISO 3309 / PKZIP)
 
 const CRC32_POLYNOMIAL: u32 =
-    0xEDB88320;
+    0xEDB8_8320;
 
 /// CRC-16 polynomial (IBM / ANSI)
 
@@ -1537,7 +1537,7 @@ pub fn crc32_compute_numerical(
     data: &[u8]
 ) -> u32 {
 
-    let mut crc: u32 = 0xFFFFFFFF;
+    let mut crc: u32 = 0xFFFF_FFFF;
 
     for byte in data {
 

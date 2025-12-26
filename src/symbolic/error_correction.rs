@@ -719,7 +719,7 @@ pub fn rs_decode(
 /// CRC-32 polynomial (IEEE 802.3)
 
 const CRC32_POLYNOMIAL: u32 =
-    0xEDB88320;
+    0xEDB8_8320;
 
 /// Computes CRC-32 checksum of data.
 ///
@@ -736,7 +736,7 @@ pub fn crc32_compute(
     data: &[u8]
 ) -> u32 {
 
-    let mut crc: u32 = 0xFFFFFFFF;
+    let mut crc: u32 = 0xFFFF_FFFF;
 
     for byte in data {
 

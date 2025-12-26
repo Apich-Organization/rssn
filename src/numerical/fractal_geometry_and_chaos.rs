@@ -1802,7 +1802,7 @@ pub fn generate_ifs_fractal(
 
             *state = state
                 .wrapping_mul(
-                    6364136223846793005,
+                    6_364_136_223_846_793_005,
                 )
                 .wrapping_add(1);
 

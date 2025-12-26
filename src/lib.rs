@@ -291,7 +291,8 @@
     clippy::similar_names,
     clippy::redundant_else,
     clippy::needless_continue,
-    clippy::empty_line_after_doc_comments
+    clippy::empty_line_after_doc_comments,
+    clippy::empty_line_after_outer_attr
 )]
 
 pub mod compute;
