@@ -33,16 +33,17 @@ fn test_richardson_extrapolation() {
     // Derivative of e^x at x=0 is 1.
     // Central difference: (e^h - e^-h)/(2h). Error O(h^2).
     // Steps: 0.8, 0.4, 0.2, 0.1
-    let f = |x : f64| x.exp();
+    let f = |x: f64| x.exp();
 
-    let derivative = |h : f64| {
+    let derivative = |h: f64| {
+
         (f(h) - f(-h)) / (2.0 * h)
     };
 
     let steps =
         vec![0.4, 0.2, 0.1, 0.05];
 
-    let approximations : Vec<f64> =
+    let approximations: Vec<f64> =
         steps
             .iter()
             .map(|&h| derivative(h))

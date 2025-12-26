@@ -16,15 +16,14 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct EvalInput {
-    expr : Expr,
-    vars :
-        HashMap<String, Complex<f64>>,
+    expr: Expr,
+    vars: HashMap<String, Complex<f64>>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_eval_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : EvalInput = match from_bincode_buffer(&buffer) {
@@ -63,15 +62,15 @@ pub unsafe extern "C" fn rssn_num_complex_eval_bincode(
 #[derive(Deserialize)]
 
 struct ContourInput {
-    expr : Expr,
-    var : String,
-    path : Vec<Complex<f64>>,
+    expr: Expr,
+    var: String,
+    path: Vec<Complex<f64>>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_contour_integral_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : ContourInput = match from_bincode_buffer(&buffer) {

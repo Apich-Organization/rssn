@@ -13,14 +13,14 @@ use crate::numerical::number_theory as nt;
 #[derive(Deserialize)]
 
 struct FactorizeRequest {
-    n : u64,
+    n: u64,
 }
 
 /// Factorizes a number from JSON.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_nt_factorize_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -39,19 +39,19 @@ pub unsafe extern "C" fn rssn_num_nt_factorize_json(
         },
     };
 
-    let req : FactorizeRequest =
+    let req: FactorizeRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res : FfiResult<
+                let res: FfiResult<
                     Vec<u64>,
                     String,
                 > = FfiResult {
-                    ok : None,
-                    err : Some(
+                    ok: None,
+                    err: Some(
                         e.to_string(),
                     ),
                 };
@@ -64,12 +64,12 @@ pub unsafe extern "C" fn rssn_num_nt_factorize_json(
 
     let factors = nt::factorize(req.n);
 
-    let ffi_res : FfiResult<
+    let ffi_res: FfiResult<
         Vec<u64>,
         String,
     > = FfiResult {
-        ok : Some(factors),
-        err : None,
+        ok: Some(factors),
+        err: None,
     };
 
     CString::new(
@@ -83,15 +83,15 @@ pub unsafe extern "C" fn rssn_num_nt_factorize_json(
 #[derive(Deserialize)]
 
 struct ModInverseRequest {
-    a : i64,
-    m : i64,
+    a: i64,
+    m: i64,
 }
 
 /// Modular inverse from JSON.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -110,19 +110,19 @@ pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(
         },
     };
 
-    let req : ModInverseRequest =
+    let req: ModInverseRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res : FfiResult<
+                let res: FfiResult<
                     i64,
                     String,
                 > = FfiResult {
-                    ok : None,
-                    err : Some(
+                    ok: None,
+                    err: Some(
                         e.to_string(),
                     ),
                 };
@@ -137,12 +137,12 @@ pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(
     {
         | Some(inv) => {
 
-            let ffi_res : FfiResult<
+            let ffi_res: FfiResult<
                 i64,
                 String,
             > = FfiResult {
-                ok : Some(inv),
-                err : None,
+                ok: Some(inv),
+                err: None,
             };
 
             CString::new(
@@ -156,12 +156,12 @@ pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(
         },
         | None => {
 
-            let ffi_res : FfiResult<
+            let ffi_res: FfiResult<
                 i64,
                 String,
             > = FfiResult {
-                ok : None,
-                err : Some(
+                ok: None,
+                err: Some(
                     "No modular \
                      inverse exists"
                         .to_string(),

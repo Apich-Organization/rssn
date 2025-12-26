@@ -28,11 +28,11 @@ use crate::symbolic::core::Expr;
 #[must_use]
 
 pub fn newton_method_complex(
-    f : &Expr,
-    f_prime : &Expr,
-    start_point : Complex<f64>,
-    tolerance : f64,
-    max_iter : usize,
+    f: &Expr,
+    f_prime: &Expr,
+    start_point: Complex<f64>,
+    tolerance: f64,
+    max_iter: usize,
 ) -> Option<Complex<f64>> {
 
     let mut z = start_point;
@@ -89,8 +89,8 @@ pub fn newton_method_complex(
 #[must_use]
 
 pub fn complex_log_k(
-    z : Complex<f64>,
-    k : i32,
+    z: Complex<f64>,
+    k: i32,
 ) -> Complex<f64> {
 
     let ln_r = z.norm().ln();
@@ -108,8 +108,8 @@ pub fn complex_log_k(
 #[must_use]
 
 pub fn complex_sqrt_k(
-    z : Complex<f64>,
-    k : i32,
+    z: Complex<f64>,
+    k: i32,
 ) -> Complex<f64> {
 
     let r_sqrt = z.norm().sqrt();
@@ -131,9 +131,9 @@ pub fn complex_sqrt_k(
 #[must_use]
 
 pub fn complex_pow_k(
-    z : Complex<f64>,
-    w : Complex<f64>,
-    k : i32,
+    z: Complex<f64>,
+    w: Complex<f64>,
+    k: i32,
 ) -> Complex<f64> {
 
     let log_z_k = complex_log_k(z, k);
@@ -146,9 +146,9 @@ pub fn complex_pow_k(
 #[must_use]
 
 pub fn complex_nth_root_k(
-    z : Complex<f64>,
-    n : u32,
-    k : i32,
+    z: Complex<f64>,
+    n: u32,
+    k: i32,
 ) -> Complex<f64> {
 
     let r_root = z
@@ -172,8 +172,8 @@ pub fn complex_nth_root_k(
 #[must_use]
 
 pub fn complex_arcsin_k(
-    z : Complex<f64>,
-    k : i32,
+    z: Complex<f64>,
+    k: i32,
 ) -> Complex<f64> {
 
     let pi = std::f64::consts::PI;
@@ -200,9 +200,9 @@ pub fn complex_arcsin_k(
 #[must_use]
 
 pub fn complex_arccos_k(
-    z : Complex<f64>,
-    k : i32,
-    s : i32,
+    z: Complex<f64>,
+    k: i32,
+    s: i32,
 ) -> Complex<f64> {
 
     let pi = std::f64::consts::PI;
@@ -228,8 +228,8 @@ pub fn complex_arccos_k(
 #[must_use]
 
 pub fn complex_arctan_k(
-    z : Complex<f64>,
-    k : i32,
+    z: Complex<f64>,
+    k: i32,
 ) -> Complex<f64> {
 
     let pi = std::f64::consts::PI;

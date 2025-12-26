@@ -54,9 +54,9 @@ use crate::symbolic::core::Expr;
 #[derive(Debug)]
 
 pub struct HandleManager {
-    expressions :
+    expressions:
         DashMap<usize, Arc<Expr>>,
-    next_handle : AtomicUsize,
+    next_handle: AtomicUsize,
 }
 
 impl HandleManager {
@@ -67,8 +67,7 @@ impl HandleManager {
     pub(crate) fn new() -> Self {
 
         Self {
-            expressions : DashMap::new(
-            ),
+            expressions: DashMap::new(),
             next_handle:
                 AtomicUsize::new(1), /* Start at 1, reserve 0 for null */
         }
@@ -100,7 +99,7 @@ impl HandleManager {
 
     pub fn insert(
         &self,
-        expr : Expr,
+        expr: Expr,
     ) -> usize {
 
         let handle = self
@@ -154,12 +153,13 @@ impl HandleManager {
 
     pub fn get(
         &self,
-        handle : usize,
+        handle: usize,
     ) -> Option<Arc<Expr>> {
 
         self.expressions
             .get(&handle)
             .map(|arc_expr| {
+
                 arc_expr.clone()
             })
     }
@@ -179,12 +179,13 @@ impl HandleManager {
 
     pub fn clone_expr(
         &self,
-        handle : usize,
+        handle: usize,
     ) -> Option<Expr> {
 
         self.expressions
             .get(&handle)
             .map(|arc_expr| {
+
                 (**arc_expr).clone()
             })
     }
@@ -225,12 +226,13 @@ impl HandleManager {
 
     pub fn free(
         &self,
-        handle : usize,
+        handle: usize,
     ) -> Option<Arc<Expr>> {
 
         self.expressions
             .remove(&handle)
             .map(|(_, arc_expr)| {
+
                 arc_expr
             })
     }
@@ -247,7 +249,7 @@ impl HandleManager {
 
     pub fn exists(
         &self,
-        handle : usize,
+        handle: usize,
     ) -> bool {
 
         self.expressions
@@ -406,7 +408,7 @@ impl Default for HandleManager {
 /// HANDLE_MANAGER.free(handle);
 /// ```
 
-pub static HANDLE_MANAGER :
+pub static HANDLE_MANAGER:
     std::sync::LazyLock<HandleManager> =
     std::sync::LazyLock::new(
         HandleManager::new,

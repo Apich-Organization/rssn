@@ -10,10 +10,10 @@ use crate::symbolic::stats;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_mean(
-    data_json : *const c_char
+    data_json: *const c_char
 ) -> *mut c_char {
 
-    let data : Option<Vec<Expr>> =
+    let data: Option<Vec<Expr>> =
         from_json_string(data_json);
 
     if let Some(d) = data {
@@ -31,10 +31,10 @@ pub extern "C" fn rssn_json_mean(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_variance(
-    data_json : *const c_char
+    data_json: *const c_char
 ) -> *mut c_char {
 
-    let data : Option<Vec<Expr>> =
+    let data: Option<Vec<Expr>> =
         from_json_string(data_json);
 
     if let Some(d) = data {
@@ -53,10 +53,10 @@ pub extern "C" fn rssn_json_variance(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_std_dev(
-    data_json : *const c_char
+    data_json: *const c_char
 ) -> *mut c_char {
 
-    let data : Option<Vec<Expr>> =
+    let data: Option<Vec<Expr>> =
         from_json_string(data_json);
 
     if let Some(d) = data {
@@ -74,14 +74,14 @@ pub extern "C" fn rssn_json_std_dev(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_covariance(
-    data1_json : *const c_char,
-    data2_json : *const c_char,
+    data1_json: *const c_char,
+    data2_json: *const c_char,
 ) -> *mut c_char {
 
-    let data1 : Option<Vec<Expr>> =
+    let data1: Option<Vec<Expr>> =
         from_json_string(data1_json);
 
-    let data2 : Option<Vec<Expr>> =
+    let data2: Option<Vec<Expr>> =
         from_json_string(data2_json);
 
     if let (Some(d1), Some(d2)) =
@@ -102,14 +102,14 @@ pub extern "C" fn rssn_json_covariance(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_correlation(
-    data1_json : *const c_char,
-    data2_json : *const c_char,
+    data1_json: *const c_char,
+    data2_json: *const c_char,
 ) -> *mut c_char {
 
-    let data1 : Option<Vec<Expr>> =
+    let data1: Option<Vec<Expr>> =
         from_json_string(data1_json);
 
-    let data2 : Option<Vec<Expr>> =
+    let data2: Option<Vec<Expr>> =
         from_json_string(data2_json);
 
     if let (Some(d1), Some(d2)) =

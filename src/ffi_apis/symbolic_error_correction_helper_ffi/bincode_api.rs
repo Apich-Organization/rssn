@@ -19,14 +19,14 @@ use crate::symbolic::error_correction_helper::FiniteField;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_gf256_add(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<u8> =
+    let a: Option<u8> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<u8> =
+    let b: Option<u8> =
         from_bincode_buffer(&b_buf);
 
     if let (Some(va), Some(vb)) = (a, b)
@@ -45,14 +45,14 @@ pub extern "C" fn rssn_bincode_gf256_add(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_gf256_mul(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<u8> =
+    let a: Option<u8> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<u8> =
+    let b: Option<u8> =
         from_bincode_buffer(&b_buf);
 
     if let (Some(va), Some(vb)) = (a, b)
@@ -71,10 +71,10 @@ pub extern "C" fn rssn_bincode_gf256_mul(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_gf256_inv(
-    a_buf : BincodeBuffer
+    a_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let a : Option<u8> =
+    let a: Option<u8> =
         from_bincode_buffer(&a_buf);
 
     if let Some(va) = a {
@@ -99,14 +99,14 @@ pub extern "C" fn rssn_bincode_gf256_inv(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_poly_eval_gf256(
-    poly_buf : BincodeBuffer,
-    x_buf : BincodeBuffer,
+    poly_buf: BincodeBuffer,
+    x_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let poly : Option<Vec<u8>> =
+    let poly: Option<Vec<u8>> =
         from_bincode_buffer(&poly_buf);
 
-    let x : Option<u8> =
+    let x: Option<u8> =
         from_bincode_buffer(&x_buf);
 
     if let (Some(p), Some(vx)) =
@@ -126,14 +126,14 @@ pub extern "C" fn rssn_bincode_poly_eval_gf256(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_poly_add_gf256(
-    p1_buf : BincodeBuffer,
-    p2_buf : BincodeBuffer,
+    p1_buf: BincodeBuffer,
+    p2_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let p1 : Option<Vec<u8>> =
+    let p1: Option<Vec<u8>> =
         from_bincode_buffer(&p1_buf);
 
-    let p2 : Option<Vec<u8>> =
+    let p2: Option<Vec<u8>> =
         from_bincode_buffer(&p2_buf);
 
     if let (Some(v1), Some(v2)) =
@@ -153,14 +153,14 @@ pub extern "C" fn rssn_bincode_poly_add_gf256(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_poly_mul_gf256(
-    p1_buf : BincodeBuffer,
-    p2_buf : BincodeBuffer,
+    p1_buf: BincodeBuffer,
+    p2_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let p1 : Option<Vec<u8>> =
+    let p1: Option<Vec<u8>> =
         from_bincode_buffer(&p1_buf);
 
-    let p2 : Option<Vec<u8>> =
+    let p2: Option<Vec<u8>> =
         from_bincode_buffer(&p2_buf);
 
     if let (Some(v1), Some(v2)) =
@@ -180,18 +180,18 @@ pub extern "C" fn rssn_bincode_poly_mul_gf256(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_poly_add_gf(
-    p1_buf : BincodeBuffer,
-    p2_buf : BincodeBuffer,
-    modulus_buf : BincodeBuffer,
+    p1_buf: BincodeBuffer,
+    p2_buf: BincodeBuffer,
+    modulus_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let p1 : Option<Expr> =
+    let p1: Option<Expr> =
         from_bincode_buffer(&p1_buf);
 
-    let p2 : Option<Expr> =
+    let p2: Option<Expr> =
         from_bincode_buffer(&p2_buf);
 
-    let modulus : Option<i64> =
+    let modulus: Option<i64> =
         from_bincode_buffer(
             &modulus_buf,
         );
@@ -229,18 +229,18 @@ pub extern "C" fn rssn_bincode_poly_add_gf(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_poly_mul_gf(
-    p1_buf : BincodeBuffer,
-    p2_buf : BincodeBuffer,
-    modulus_buf : BincodeBuffer,
+    p1_buf: BincodeBuffer,
+    p2_buf: BincodeBuffer,
+    modulus_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let p1 : Option<Expr> =
+    let p1: Option<Expr> =
         from_bincode_buffer(&p1_buf);
 
-    let p2 : Option<Expr> =
+    let p2: Option<Expr> =
         from_bincode_buffer(&p2_buf);
 
-    let modulus : Option<i64> =
+    let modulus: Option<i64> =
         from_bincode_buffer(
             &modulus_buf,
         );

@@ -13,12 +13,12 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
-    funcs : *const *const Expr,
-    n_funcs : usize,
-    vars : *const *const c_char,
-    point : *const f64,
-    n_vars : usize,
-    result : *mut f64,
+    funcs: *const *const Expr,
+    n_funcs: usize,
+    vars: *const *const c_char,
+    point: *const f64,
+    n_vars: usize,
+    result: *mut f64,
 ) -> i32 {
 
     if funcs.is_null()
@@ -95,9 +95,9 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
-    funcs : *const *const Expr,
-    vars : *const *const c_char,
-    point : *const f64,
+    funcs: *const *const Expr,
+    vars: *const *const c_char,
+    point: *const f64,
 ) -> *mut Vec<f64> {
 
     if funcs.is_null()
@@ -169,11 +169,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
-    f : *const Expr,
-    vars : *const *const c_char,
-    point : *const f64,
-    n_vars : usize,
-    result : *mut f64,
+    f: *const Expr,
+    vars: *const *const c_char,
+    point: *const f64,
+    n_vars: usize,
+    result: *mut f64,
 ) -> i32 {
 
     if f.is_null()
@@ -240,12 +240,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
-    f : *const Expr,
-    vars : *const *const c_char,
-    point : *const f64,
-    direction : *const f64,
-    n_vars : usize,
-    result : *mut f64,
+    f: *const Expr,
+    vars: *const *const c_char,
+    point: *const f64,
+    direction: *const f64,
+    n_vars: usize,
+    result: *mut f64,
 ) -> i32 {
 
     if f.is_null()

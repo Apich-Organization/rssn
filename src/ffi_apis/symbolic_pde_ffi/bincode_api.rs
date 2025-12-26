@@ -10,15 +10,15 @@ use crate::symbolic::pde;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_pde(
-    pde_buf : BincodeBuffer,
-    func : *const c_char,
-    vars_buf : BincodeBuffer,
+    pde_buf: BincodeBuffer,
+    func: *const c_char,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let pde_expr : Option<Expr> =
+    let pde_expr: Option<Expr> =
         from_bincode_buffer(&pde_buf);
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
@@ -46,7 +46,7 @@ pub extern "C" fn rssn_bincode_solve_pde(
         vars,
     ) {
 
-        let vars_refs : Vec<&str> = v
+        let vars_refs: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -69,17 +69,17 @@ pub extern "C" fn rssn_bincode_solve_pde(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    vars_buf : BincodeBuffer,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
@@ -107,7 +107,7 @@ pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
         vars,
     ) {
 
-        let vars_refs : Vec<&str> = v
+        let vars_refs: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -126,17 +126,17 @@ pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    vars_buf : BincodeBuffer,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
@@ -164,7 +164,7 @@ pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
         vars,
     ) {
 
-        let vars_refs : Vec<&str> = v
+        let vars_refs: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -183,17 +183,17 @@ pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    vars_buf : BincodeBuffer,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
@@ -221,7 +221,7 @@ pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
         vars,
     ) {
 
-        let vars_refs : Vec<&str> = v
+        let vars_refs: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -240,17 +240,17 @@ pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    vars_buf : BincodeBuffer,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
@@ -278,7 +278,7 @@ pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
         vars,
     ) {
 
-        let vars_refs : Vec<&str> = v
+        let vars_refs: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -297,17 +297,17 @@ pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_classify_pde(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    vars_buf : BincodeBuffer,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     let func_str = unsafe {
@@ -335,7 +335,7 @@ pub extern "C" fn rssn_bincode_classify_pde(
         vars,
     ) {
 
-        let vars_refs : Vec<&str> = v
+        let vars_refs: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();

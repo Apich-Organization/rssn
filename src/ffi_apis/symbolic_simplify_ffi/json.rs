@@ -10,10 +10,10 @@ use crate::symbolic::simplify;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_heuristic_simplify(
-    expr_json : *const c_char
+    expr_json: *const c_char
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     if let Some(e) = expr {
@@ -32,10 +32,10 @@ pub extern "C" fn rssn_json_heuristic_simplify(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_simplify(
-    expr_json : *const c_char
+    expr_json: *const c_char
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     if let Some(e) = expr {

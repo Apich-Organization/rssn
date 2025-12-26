@@ -13,7 +13,7 @@ use crate::symbolic::elementary;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_sin(
-    expr : *const Expr
+    expr: *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -34,7 +34,7 @@ pub unsafe extern "C" fn rssn_sin(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_cos(
-    expr : *const Expr
+    expr: *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -55,7 +55,7 @@ pub unsafe extern "C" fn rssn_cos(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_tan(
-    expr : *const Expr
+    expr: *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -76,7 +76,7 @@ pub unsafe extern "C" fn rssn_tan(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_exp(
-    expr : *const Expr
+    expr: *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -97,7 +97,7 @@ pub unsafe extern "C" fn rssn_exp(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_ln(
-    expr : *const Expr
+    expr: *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn rssn_ln(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_sqrt(
-    expr : *const Expr
+    expr: *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -139,8 +139,8 @@ pub unsafe extern "C" fn rssn_sqrt(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_pow(
-    base : *const Expr,
-    exp : *const Expr,
+    base: *const Expr,
+    exp: *const Expr,
 ) -> *mut Expr {
 
     if base.is_null() || exp.is_null() {
@@ -189,7 +189,7 @@ pub extern "C" fn rssn_e() -> *mut Expr
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_expand(
-    expr : *const Expr
+    expr: *const Expr
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -210,8 +210,8 @@ pub unsafe extern "C" fn rssn_expand(
 #[no_mangle]
 
 pub extern "C" fn rssn_binomial_coefficient(
-    n : usize,
-    k : usize,
+    n: usize,
+    k: usize,
 ) -> *mut c_char {
 
     let result = elementary::binomial_coefficient(n, k);
@@ -226,7 +226,7 @@ pub extern "C" fn rssn_binomial_coefficient(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_free_expr(
-    expr : *mut Expr
+    expr: *mut Expr
 ) {
 
     if !expr.is_null() {

@@ -6,15 +6,15 @@ use crate::symbolic::quantum_field_theory;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_qft_propagator(
-    p_buf : BincodeBuffer,
-    m_buf : BincodeBuffer,
-    is_fermion : bool,
+    p_buf: BincodeBuffer,
+    m_buf: BincodeBuffer,
+    is_fermion: bool,
 ) -> BincodeBuffer {
 
-    let p : Option<Expr> =
+    let p: Option<Expr> =
         from_bincode_buffer(&p_buf);
 
-    let m : Option<Expr> =
+    let m: Option<Expr> =
         from_bincode_buffer(&m_buf);
 
     if let (Some(p), Some(m)) = (p, m) {
@@ -30,14 +30,14 @@ pub unsafe extern "C" fn rssn_bincode_qft_propagator(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_scalar_field_lagrangian(
-    phi_buf : BincodeBuffer,
-    m_buf : BincodeBuffer,
+    phi_buf: BincodeBuffer,
+    m_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let phi : Option<Expr> =
+    let phi: Option<Expr> =
         from_bincode_buffer(&phi_buf);
 
-    let m : Option<Expr> =
+    let m: Option<Expr> =
         from_bincode_buffer(&m_buf);
 
     if let (Some(phi), Some(m)) =

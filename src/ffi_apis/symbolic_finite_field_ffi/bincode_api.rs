@@ -7,14 +7,14 @@ use crate::symbolic::finite_field::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_prime_field_element_new(
-    value_buf : BincodeBuffer,
-    modulus_buf : BincodeBuffer,
+    value_buf: BincodeBuffer,
+    modulus_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let value : Option<BigInt> =
+    let value: Option<BigInt> =
         from_bincode_buffer(&value_buf);
 
-    let modulus : Option<BigInt> =
+    let modulus: Option<BigInt> =
         from_bincode_buffer(
             &modulus_buf,
         );
@@ -41,14 +41,14 @@ pub extern "C" fn rssn_bincode_prime_field_element_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_prime_field_element_add(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<PrimeFieldElement> =
+    let a: Option<PrimeFieldElement> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<PrimeFieldElement> =
+    let b: Option<PrimeFieldElement> =
         from_bincode_buffer(&b_buf);
 
     if let (
@@ -70,14 +70,14 @@ pub extern "C" fn rssn_bincode_prime_field_element_add(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_prime_field_element_sub(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<PrimeFieldElement> =
+    let a: Option<PrimeFieldElement> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<PrimeFieldElement> =
+    let b: Option<PrimeFieldElement> =
         from_bincode_buffer(&b_buf);
 
     if let (
@@ -99,14 +99,14 @@ pub extern "C" fn rssn_bincode_prime_field_element_sub(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_prime_field_element_mul(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<PrimeFieldElement> =
+    let a: Option<PrimeFieldElement> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<PrimeFieldElement> =
+    let b: Option<PrimeFieldElement> =
         from_bincode_buffer(&b_buf);
 
     if let (
@@ -128,14 +128,14 @@ pub extern "C" fn rssn_bincode_prime_field_element_mul(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_prime_field_element_div(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<PrimeFieldElement> =
+    let a: Option<PrimeFieldElement> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<PrimeFieldElement> =
+    let b: Option<PrimeFieldElement> =
         from_bincode_buffer(&b_buf);
 
     if let (
@@ -157,10 +157,10 @@ pub extern "C" fn rssn_bincode_prime_field_element_div(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_prime_field_element_inverse(
-    elem_buf : BincodeBuffer
+    elem_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let elem : Option<
+    let elem: Option<
         PrimeFieldElement,
     > = from_bincode_buffer(&elem_buf);
 
@@ -184,17 +184,17 @@ pub extern "C" fn rssn_bincode_prime_field_element_inverse(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_finite_field_polynomial_new(
-    coeffs_buf : BincodeBuffer,
-    modulus_buf : BincodeBuffer,
+    coeffs_buf: BincodeBuffer,
+    modulus_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let coeffs : Option<
+    let coeffs: Option<
         Vec<PrimeFieldElement>,
     > = from_bincode_buffer(
         &coeffs_buf,
     );
 
-    let modulus : Option<BigInt> =
+    let modulus: Option<BigInt> =
         from_bincode_buffer(
             &modulus_buf,
         );
@@ -221,10 +221,10 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_finite_field_polynomial_degree(
-    poly_buf : BincodeBuffer
+    poly_buf: BincodeBuffer
 ) -> i64 {
 
-    let poly : Option<
+    let poly: Option<
         FiniteFieldPolynomial,
     > = from_bincode_buffer(&poly_buf);
 
@@ -241,17 +241,17 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_degree(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_finite_field_polynomial_long_division(
-    dividend_buf : BincodeBuffer,
-    divisor_buf : BincodeBuffer,
+    dividend_buf: BincodeBuffer,
+    divisor_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let dividend : Option<
+    let dividend: Option<
         FiniteFieldPolynomial,
     > = from_bincode_buffer(
         &dividend_buf,
     );
 
-    let divisor : Option<
+    let divisor: Option<
         FiniteFieldPolynomial,
     > = from_bincode_buffer(
         &divisor_buf,

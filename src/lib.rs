@@ -328,7 +328,7 @@ use std::sync::Arc;
 #[inline(always)]
 
 pub fn is_exclusive<T>(
-    arc : &Arc<T>
+    arc: &Arc<T>
 ) -> bool {
 
     Arc::strong_count(arc) == 1

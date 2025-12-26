@@ -22,8 +22,8 @@ use crate::symbolic::core::Expr;
 pub enum LinearSolution {
     Unique(Vec<f64>),
     Parametric {
-        particular : Vec<f64>,
-        null_space_basis : Matrix<f64>,
+        particular: Vec<f64>,
+        null_space_basis: Matrix<f64>,
     },
     NoSolution,
 }
@@ -44,8 +44,8 @@ pub enum LinearSolution {
 /// A `Result` containing a `LinearSolution` enum, or an error string.
 
 pub fn solve_linear_system(
-    a : &Matrix<f64>,
-    b : &[f64],
+    a: &Matrix<f64>,
+    b: &[f64],
 ) -> Result<LinearSolution, String> {
 
     let (rows, cols) =
@@ -189,11 +189,11 @@ pub fn solve_linear_system(
 /// A `Result` containing the solution vector, or an error string.
 
 pub fn solve_nonlinear_system(
-    funcs : &[Expr],
-    vars : &[&str],
-    start_point : &[f64],
-    tolerance : f64,
-    max_iter : usize,
+    funcs: &[Expr],
+    vars: &[&str],
+    start_point: &[f64],
+    tolerance: f64,
+    max_iter: usize,
 ) -> Result<Vec<f64>, String> {
 
     let mut x_n = start_point.to_vec();
@@ -242,7 +242,7 @@ pub fn solve_nonlinear_system(
             jacobian_rows.concat(),
         );
 
-        let neg_f : Vec<f64> = f_at_x
+        let neg_f: Vec<f64> = f_at_x
             .iter()
             .map(|v| -v)
             .collect();

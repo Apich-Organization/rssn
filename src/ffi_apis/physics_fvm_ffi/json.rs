@@ -17,29 +17,29 @@ use crate::physics::physics_fvm::{
 #[derive(Deserialize)]
 
 struct AdvectionInput {
-    num_cells : usize,
-    domain_size : f64,
-    velocity : f64,
-    dt : f64,
-    steps : usize,
-    initial_values : Vec<f64>,
+    num_cells: usize,
+    domain_size: f64,
+    velocity: f64,
+    dt: f64,
+    steps: usize,
+    initial_values: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct SweInput {
-    h : Vec<f64>,
-    hu : Vec<f64>,
-    dx : f64,
-    dt : f64,
-    steps : usize,
-    g : f64,
+    h: Vec<f64>,
+    hu: Vec<f64>,
+    dx: f64,
+    dt: f64,
+    steps: usize,
+    g: f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fvm_advection_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : AdvectionInput = match from_json_string(input) {
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fvm_swe_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : SweInput = match from_json_string(input) {

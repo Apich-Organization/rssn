@@ -11,20 +11,20 @@ use std::collections::BinaryHeap;
 /// The graph is represented by an adjacency list.
 
 pub struct Graph {
-    adj : Vec<Vec<(usize, f64)>>,
+    adj: Vec<Vec<(usize, f64)>>,
 }
 
 #[derive(Copy, Clone, PartialEq)]
 
 pub struct State {
-    cost : f64,
-    position : usize,
+    cost: f64,
+    position: usize,
 }
 
 impl Ord for State {
     fn cmp(
         &self,
-        other : &Self,
+        other: &Self,
     ) -> Ordering {
 
         other
@@ -37,7 +37,7 @@ impl Ord for State {
 impl PartialOrd for State {
     fn partial_cmp(
         &self,
-        other : &Self,
+        other: &Self,
     ) -> Option<Ordering> {
 
         Some(self.cmp(other))
@@ -60,11 +60,11 @@ impl Graph {
     #[must_use]
 
     pub fn new(
-        num_nodes : usize
+        num_nodes: usize
     ) -> Self {
 
         Self {
-            adj : vec![
+            adj: vec![
                 vec![];
                 num_nodes
             ],
@@ -80,9 +80,9 @@ impl Graph {
 
     pub fn add_edge(
         &mut self,
-        u : usize,
-        v : usize,
-        weight : f64,
+        u: usize,
+        v: usize,
+        weight: f64,
     ) {
 
         self.adj[u].push((v, weight));
@@ -109,7 +109,7 @@ impl Graph {
 
     pub fn adj(
         &self,
-        u : usize,
+        u: usize,
     ) -> &[(usize, f64)] {
 
         &self.adj[u]
@@ -133,8 +133,8 @@ impl Graph {
 #[must_use]
 
 pub fn dijkstra(
-    graph : &Graph,
-    start_node : usize,
+    graph: &Graph,
+    start_node: usize,
 ) -> (
     Vec<f64>,
     Vec<Option<usize>>,
@@ -142,10 +142,10 @@ pub fn dijkstra(
 
     let num_nodes = graph.adj.len();
 
-    let mut dist : Vec<f64> =
+    let mut dist: Vec<f64> =
         vec![f64::INFINITY; num_nodes];
 
-    let mut prev : Vec<Option<usize>> =
+    let mut prev: Vec<Option<usize>> =
         vec![None; num_nodes];
 
     let mut heap = BinaryHeap::new();
@@ -153,8 +153,8 @@ pub fn dijkstra(
     dist[start_node] = 0.0;
 
     heap.push(State {
-        cost : 0.0,
-        position : start_node,
+        cost: 0.0,
+        position: start_node,
     });
 
     while let Some(State {
@@ -184,9 +184,9 @@ pub fn dijkstra(
                     Some(position);
 
                 heap.push(State {
-                    cost : dist
+                    cost: dist
                         [neighbor],
-                    position : neighbor,
+                    position: neighbor,
                 });
             }
         }
@@ -202,8 +202,8 @@ pub fn dijkstra(
 #[must_use]
 
 pub fn bfs(
-    graph : &Graph,
-    start_node : usize,
+    graph: &Graph,
+    start_node: usize,
 ) -> Vec<usize> {
 
     let num_nodes = graph.num_nodes();
@@ -251,10 +251,10 @@ pub fn bfs(
 #[must_use]
 
 pub fn page_rank(
-    graph : &Graph,
-    damping_factor : f64,
-    tolerance : f64,
-    max_iter : usize,
+    graph: &Graph,
+    damping_factor: f64,
+    tolerance: f64,
+    max_iter: usize,
 ) -> Vec<f64> {
 
     let num_nodes = graph.num_nodes();
@@ -362,7 +362,7 @@ pub fn page_rank(
 #[must_use]
 
 pub fn floyd_warshall(
-    graph : &Graph
+    graph: &Graph
 ) -> Vec<f64> {
 
     let n = graph.num_nodes();
@@ -414,7 +414,7 @@ pub fn floyd_warshall(
 #[must_use]
 
 pub fn connected_components(
-    graph : &Graph
+    graph: &Graph
 ) -> Vec<usize> {
 
     let num_nodes = graph.num_nodes();
@@ -471,7 +471,7 @@ pub fn connected_components(
 #[must_use]
 
 pub fn minimum_spanning_tree(
-    graph : &Graph
+    graph: &Graph
 ) -> Graph {
 
     let num_nodes = graph.num_nodes();
@@ -505,8 +505,8 @@ pub fn minimum_spanning_tree(
         min_edge[start_node] = 0.0;
 
         heap.push(State {
-            cost : 0.0,
-            position : start_node,
+            cost: 0.0,
+            position: start_node,
         });
 
         while let Some(State {
@@ -553,8 +553,8 @@ pub fn minimum_spanning_tree(
                     parent[v] = Some(u);
 
                     heap.push(State {
-                        cost : weight,
-                        position : v,
+                        cost: weight,
+                        position: v,
                     });
                 }
             }

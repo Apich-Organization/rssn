@@ -364,10 +364,10 @@ fn test_bezier_curve_new() {
     );
 
     let curve = BezierCurve {
-        control_points : vec![
+        control_points: vec![
             p0, p1, p2,
         ],
-        degree : 2,
+        degree: 2,
     };
 
     assert_eq!(curve.degree, 2);
@@ -398,11 +398,11 @@ fn test_bezier_curve_evaluate_endpoints(
     );
 
     let curve = BezierCurve {
-        control_points : vec![
+        control_points: vec![
             p0.clone(),
             p1.clone(),
         ],
-        degree : 1,
+        degree: 1,
     };
 
     // At t=0, should be at p0
@@ -449,8 +449,8 @@ fn test_bezier_curve_derivative() {
     );
 
     let curve = BezierCurve {
-        control_points : vec![p0, p1],
-        degree : 1,
+        control_points: vec![p0, p1],
+        degree: 1,
     };
 
     let tangent = curve.derivative(
@@ -488,10 +488,10 @@ fn test_bezier_curve_split() {
     );
 
     let curve = BezierCurve {
-        control_points : vec![
+        control_points: vec![
             p0, p1, p2,
         ],
-        degree : 2,
+        degree: 2,
     };
 
     let (left, right) = curve

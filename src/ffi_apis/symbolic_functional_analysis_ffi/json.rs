@@ -7,7 +7,7 @@ use crate::symbolic::functional_analysis::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hilbert_space_create(
-    json_str : *const c_char
+    json_str: *const c_char
 ) -> *mut c_char {
 
     let space : HilbertSpace = match from_json_string(json_str) {
@@ -21,9 +21,9 @@ pub unsafe extern "C" fn rssn_json_hilbert_space_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_inner_product(
-    space_json : *const c_char,
-    f_json : *const c_char,
-    g_json : *const c_char,
+    space_json: *const c_char,
+    f_json: *const c_char,
+    g_json: *const c_char,
 ) -> *mut c_char {
 
     let space : HilbertSpace = match from_json_string(space_json) {
@@ -31,14 +31,22 @@ pub unsafe extern "C" fn rssn_json_inner_product(
         | None => return std::ptr::null_mut(),
     };
 
-    let f : Expr = match from_json_string(f_json) {
+    let f: Expr = match from_json_string(
+        f_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let g : Expr = match from_json_string(g_json) {
+    let g: Expr = match from_json_string(
+        g_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     let result =
@@ -50,8 +58,8 @@ pub unsafe extern "C" fn rssn_json_inner_product(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_norm(
-    space_json : *const c_char,
-    f_json : *const c_char,
+    space_json: *const c_char,
+    f_json: *const c_char,
 ) -> *mut c_char {
 
     let space : HilbertSpace = match from_json_string(space_json) {
@@ -59,9 +67,13 @@ pub unsafe extern "C" fn rssn_json_norm(
         | None => return std::ptr::null_mut(),
     };
 
-    let f : Expr = match from_json_string(f_json) {
+    let f: Expr = match from_json_string(
+        f_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     let result = norm(&space, &f);
@@ -72,8 +84,8 @@ pub unsafe extern "C" fn rssn_json_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_gram_schmidt(
-    space_json : *const c_char,
-    basis_json : *const c_char,
+    space_json: *const c_char,
+    basis_json: *const c_char,
 ) -> *mut c_char {
 
     let space : HilbertSpace = match from_json_string(space_json) {

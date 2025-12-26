@@ -23,7 +23,7 @@ use crate::symbolic::topology::SimplicialComplex;
 #[must_use]
 
 pub fn find_connected_components(
-    graph : &Graph
+    graph: &Graph
 ) -> Vec<Vec<usize>> {
 
     let num_nodes = graph.num_nodes();
@@ -92,8 +92,8 @@ pub type Simplex = Vec<usize>;
 )]
 
 pub struct PersistenceInterval {
-    pub birth : f64,
-    pub death : f64,
+    pub birth: f64,
+    pub death: f64,
 }
 
 /// Represents a persistence diagram for a specific dimension.
@@ -106,8 +106,8 @@ pub struct PersistenceInterval {
 )]
 
 pub struct PersistenceDiagram {
-    pub dimension : usize,
-    pub intervals :
+    pub dimension: usize,
+    pub intervals:
         Vec<PersistenceInterval>,
 }
 
@@ -120,9 +120,9 @@ pub struct PersistenceDiagram {
 #[must_use]
 
 pub fn vietoris_rips_complex(
-    points : &[&[f64]],
-    epsilon : f64,
-    max_dim : usize,
+    points: &[&[f64]],
+    epsilon: f64,
+    max_dim: usize,
 ) -> Vec<Simplex> {
 
     let n_points = points.len();
@@ -231,9 +231,9 @@ pub fn vietoris_rips_complex(
 #[must_use]
 
 pub fn betti_numbers_at_radius(
-    points : &[&[f64]],
-    epsilon : f64,
-    max_dim : usize,
+    points: &[&[f64]],
+    epsilon: f64,
+    max_dim: usize,
 ) -> Vec<usize> {
 
     let simplices =
@@ -274,10 +274,10 @@ pub fn betti_numbers_at_radius(
 #[must_use]
 
 pub fn compute_persistence(
-    points : &[Vec<f64>],
-    max_epsilon : f64,
-    steps : usize,
-    max_dim : usize,
+    points: &[Vec<f64>],
+    max_epsilon: f64,
+    steps: usize,
+    max_dim: usize,
 ) -> Vec<PersistenceDiagram> {
 
     let mut diagrams = vec![
@@ -300,7 +300,7 @@ pub fn compute_persistence(
     let mut prev_betti =
         vec![0; max_dim + 1];
 
-    let mut open_intervals : Vec<
+    let mut open_intervals: Vec<
         Vec<f64>,
     > = vec![Vec::new(); max_dim + 1];
 
@@ -388,8 +388,8 @@ pub fn compute_persistence(
 #[must_use]
 
 pub fn euclidean_distance(
-    p1 : &[f64],
-    p2 : &[f64],
+    p1: &[f64],
+    p2: &[f64],
 ) -> f64 {
 
     p1.iter()

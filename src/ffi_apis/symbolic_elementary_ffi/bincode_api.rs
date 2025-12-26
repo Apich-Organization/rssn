@@ -14,7 +14,7 @@ use crate::symbolic::elementary;
 #[no_mangle]
 
 pub extern "C" fn rssn_sin_bincode(
-    expr_buffer : BincodeBuffer
+    expr_buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let expr : Expr = match from_bincode_buffer(&expr_buffer) {
@@ -31,7 +31,7 @@ pub extern "C" fn rssn_sin_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_cos_bincode(
-    expr_buffer : BincodeBuffer
+    expr_buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let expr : Expr = match from_bincode_buffer(&expr_buffer) {
@@ -48,7 +48,7 @@ pub extern "C" fn rssn_cos_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_tan_bincode(
-    expr_buffer : BincodeBuffer
+    expr_buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let expr : Expr = match from_bincode_buffer(&expr_buffer) {
@@ -65,7 +65,7 @@ pub extern "C" fn rssn_tan_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_exp_bincode(
-    expr_buffer : BincodeBuffer
+    expr_buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let expr : Expr = match from_bincode_buffer(&expr_buffer) {
@@ -82,7 +82,7 @@ pub extern "C" fn rssn_exp_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_ln_bincode(
-    expr_buffer : BincodeBuffer
+    expr_buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let expr : Expr = match from_bincode_buffer(&expr_buffer) {
@@ -99,7 +99,7 @@ pub extern "C" fn rssn_ln_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_sqrt_bincode(
-    expr_buffer : BincodeBuffer
+    expr_buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let expr : Expr = match from_bincode_buffer(&expr_buffer) {
@@ -120,8 +120,8 @@ pub extern "C" fn rssn_sqrt_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_pow_bincode(
-    base_buffer : BincodeBuffer,
-    exp_buffer : BincodeBuffer,
+    base_buffer: BincodeBuffer,
+    exp_buffer: BincodeBuffer,
 ) -> BincodeBuffer {
 
     let base : Expr = match from_bincode_buffer(&base_buffer) {
@@ -161,7 +161,7 @@ pub extern "C" fn rssn_e_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_expand_bincode(
-    expr_buffer : BincodeBuffer
+    expr_buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let expr : Expr = match from_bincode_buffer(&expr_buffer) {

@@ -9,14 +9,14 @@ use crate::symbolic::solve::solve_system;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve(
-    expr_json : *const c_char,
-    var_json : *const c_char,
+    expr_json: *const c_char,
+    var_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_json_string(var_json);
 
     if let (Some(e), Some(v)) =
@@ -35,21 +35,23 @@ pub extern "C" fn rssn_json_solve(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_system(
-    equations_json : *const c_char,
-    vars_json : *const c_char,
+    equations_json: *const c_char,
+    vars_json: *const c_char,
 ) -> *mut c_char {
 
-    let equations : Option<Vec<Expr>> =
-        from_json_string(equations_json);
+    let equations: Option<Vec<Expr>> =
+        from_json_string(
+            equations_json,
+        );
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
     if let (Some(eqs), Some(vs)) =
         (equations, vars)
     {
 
-        let vars_str : Vec<&str> = vs
+        let vars_str: Vec<&str> = vs
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -74,14 +76,14 @@ pub extern "C" fn rssn_json_solve_system(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_linear_system(
-    system_json : *const c_char,
-    vars_json : *const c_char,
+    system_json: *const c_char,
+    vars_json: *const c_char,
 ) -> *mut c_char {
 
-    let system : Option<Expr> =
+    let system: Option<Expr> =
         from_json_string(system_json);
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
     if let (Some(sys), Some(vs)) =

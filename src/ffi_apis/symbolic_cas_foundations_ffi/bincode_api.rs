@@ -11,20 +11,20 @@ use crate::symbolic::grobner::MonomialOrder;
 #[derive(Serialize, Deserialize)]
 
 struct SimplifyWithRelationsInput {
-    expr : Expr,
-    relations : Vec<Expr>,
-    vars : Vec<String>,
-    order : MonomialOrder,
+    expr: Expr,
+    relations: Vec<Expr>,
+    vars: Vec<String>,
+    order: MonomialOrder,
 }
 
 /// Expands an expression using algebraic rules (Bincode).
 #[no_mangle]
 
 pub extern "C" fn rssn_cas_expand_bincode(
-    input : BincodeBuffer
+    input: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&input);
 
     let expr = match expr {
@@ -45,10 +45,10 @@ pub extern "C" fn rssn_cas_expand_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_cas_factorize_bincode(
-    input : BincodeBuffer
+    input: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&input);
 
     let expr = match expr {
@@ -71,10 +71,10 @@ pub extern "C" fn rssn_cas_factorize_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_cas_normalize_bincode(
-    input : BincodeBuffer
+    input: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&input);
 
     let expr = match expr {
@@ -97,10 +97,10 @@ pub extern "C" fn rssn_cas_normalize_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_cas_simplify_with_relations_bincode(
-    input : BincodeBuffer
+    input: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input_data : Option<
+    let input_data: Option<
         SimplifyWithRelationsInput,
     > = from_bincode_buffer(&input);
 
@@ -112,7 +112,7 @@ pub extern "C" fn rssn_cas_simplify_with_relations_bincode(
         },
     };
 
-    let vars_refs : Vec<&str> =
+    let vars_refs: Vec<&str> =
         input_data
             .vars
             .iter()

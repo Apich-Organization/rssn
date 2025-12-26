@@ -17,15 +17,15 @@ use crate::physics::physics_sim::navier_stokes_fluid::{
 #[derive(Serialize)]
 
 struct NavierStokesOutputData {
-    pub u : Array2<f64>,
-    pub v : Array2<f64>,
-    pub p : Array2<f64>,
+    pub u: Array2<f64>,
+    pub v: Array2<f64>,
+    pub p: Array2<f64>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let params : NavierStokesParameters = match from_json_string(input) {

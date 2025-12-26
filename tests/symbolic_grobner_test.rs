@@ -8,7 +8,7 @@ use rssn::symbolic::grobner::poly_division_multivariate;
 use rssn::symbolic::grobner::MonomialOrder;
 
 fn create_monomial(
-    vars : &[(&str, u32)]
+    vars: &[(&str, u32)]
 ) -> Monomial {
 
     let mut map = BTreeMap::new();
@@ -25,7 +25,7 @@ fn create_monomial(
 }
 
 fn create_sparse_poly(
-    terms : &[(
+    terms: &[(
         Vec<(&str, u32)>,
         f64,
     )]
@@ -46,7 +46,7 @@ fn create_sparse_poly(
     }
 
     SparsePolynomial {
-        terms : poly_terms,
+        terms: poly_terms,
     }
 }
 
@@ -150,7 +150,7 @@ fn test_poly_division_with_remainder() {
 
 fn test_buchberger_empty() {
 
-    let basis : Vec<SparsePolynomial> =
+    let basis: Vec<SparsePolynomial> =
         vec![];
 
     let result = buchberger(

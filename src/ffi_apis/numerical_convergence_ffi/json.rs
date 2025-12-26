@@ -12,14 +12,14 @@ use crate::numerical::convergence;
 #[derive(Deserialize)]
 
 struct SeqInput {
-    sequence : Vec<f64>,
+    sequence: Vec<f64>,
 }
 
 /// JSON FFI for Aitken acceleration.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_aitken_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -33,7 +33,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken_json(
         },
     };
 
-    let input : SeqInput =
+    let input: SeqInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -68,7 +68,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_richardson_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -82,7 +82,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson_json(
         },
     };
 
-    let input : SeqInput =
+    let input: SeqInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convergence_wynn_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     let json_str = match CStr::from_ptr(
@@ -131,7 +131,7 @@ pub unsafe extern "C" fn rssn_convergence_wynn_json(
         },
     };
 
-    let input : SeqInput =
+    let input: SeqInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -150,12 +150,12 @@ pub unsafe extern "C" fn rssn_convergence_wynn_json(
         };
 
     let res = FfiResult {
-        ok : Some(
+        ok: Some(
             convergence::wynn_epsilon(
                 &input.sequence,
             ),
         ),
-        err : None::<String>,
+        err: None::<String>,
     };
 
     CString::new(

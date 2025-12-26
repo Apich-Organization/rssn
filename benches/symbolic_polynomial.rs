@@ -10,8 +10,8 @@ use rssn::symbolic::core::SparsePolynomial;
 use rssn::symbolic::polynomial::*;
 
 fn create_sparse_poly(
-    degree : u32,
-    var : &str,
+    degree: u32,
+    var: &str,
 ) -> SparsePolynomial {
 
     let mut terms = BTreeMap::new();
@@ -42,8 +42,8 @@ fn create_sparse_poly(
 }
 
 fn create_expr_poly(
-    degree : u32,
-    var : &str,
+    degree: u32,
+    var: &str,
 ) -> Expr {
 
     let mut expr = Expr::Constant(1.0);
@@ -71,7 +71,7 @@ fn create_expr_poly(
     expr
 }
 
-fn bench_add_poly(c : &mut Criterion) {
+fn bench_add_poly(c: &mut Criterion) {
 
     let p1 =
         create_sparse_poly(10, "x");
@@ -94,7 +94,7 @@ fn bench_add_poly(c : &mut Criterion) {
     );
 }
 
-fn bench_mul_poly(c : &mut Criterion) {
+fn bench_mul_poly(c: &mut Criterion) {
 
     let p1 = create_sparse_poly(5, "x");
 
@@ -116,7 +116,7 @@ fn bench_mul_poly(c : &mut Criterion) {
 }
 
 fn bench_differentiate_poly(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let poly =
@@ -138,7 +138,7 @@ fn bench_differentiate_poly(
 }
 
 fn bench_polynomial_degree(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let expr =
@@ -160,7 +160,7 @@ fn bench_polynomial_degree(
 }
 
 fn bench_polynomial_long_division(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     // Divide x^4 + 2x^3 + 3x^2 + 4x + 5 by x^2 + 1
@@ -194,7 +194,7 @@ fn bench_polynomial_long_division(
 }
 
 fn bench_to_polynomial_coeffs_vec(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let expr =
@@ -216,10 +216,10 @@ fn bench_to_polynomial_coeffs_vec(
 }
 
 fn bench_from_coeffs_to_expr(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
-    let coeffs : Vec<Expr> = (0 .. 20)
+    let coeffs: Vec<Expr> = (0 .. 20)
         .map(|i| {
 
             Expr::Constant(i as f64)
@@ -242,7 +242,7 @@ fn bench_from_coeffs_to_expr(
 }
 
 fn bench_expr_to_sparse_poly(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     // Multivariate: x^2*y + x*y^2 + x + y + 1
@@ -299,7 +299,7 @@ fn bench_expr_to_sparse_poly(
     );
 }
 
-fn bench_gcd(c : &mut Criterion) {
+fn bench_gcd(c: &mut Criterion) {
 
     // GCD of x^6 - 1 and x^4 - 1
     let expr1 = Expr::new_sub(

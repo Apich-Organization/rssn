@@ -5,8 +5,8 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_permutations(
-    n_buf : BincodeBuffer,
-    k_buf : BincodeBuffer,
+    n_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
     let n : Expr = match from_bincode_buffer(&n_buf) {
@@ -27,8 +27,8 @@ pub unsafe extern "C" fn rssn_bincode_permutations(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_combinations(
-    n_buf : BincodeBuffer,
-    k_buf : BincodeBuffer,
+    n_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
     let n : Expr = match from_bincode_buffer(&n_buf) {
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rssn_bincode_combinations(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_catalan_number(
-    n : usize
+    n: usize
 ) -> BincodeBuffer {
 
     let result = catalan_number(n);
@@ -60,8 +60,8 @@ pub unsafe extern "C" fn rssn_bincode_catalan_number(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
-    n : usize,
-    k : usize,
+    n: usize,
+    k: usize,
 ) -> BincodeBuffer {
 
     let result =
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_bell_number(
-    n : usize
+    n: usize
 ) -> BincodeBuffer {
 
     let result = bell_number(n);

@@ -9,7 +9,7 @@ use crate::physics::physics_rkm::OdeSystem;
 )]
 
 pub struct EulerSolverConfig {
-    pub dt : f64,
+    pub dt: f64,
 }
 
 /// Solves an ODE system using the forward (explicit) Euler method.
@@ -27,12 +27,12 @@ pub struct EulerSolverConfig {
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
 
 pub fn solve_forward_euler<
-    S : OdeSystem,
+    S: OdeSystem,
 >(
-    system : &S,
-    y0 : &[f64],
-    t_span : (f64, f64),
-    dt : f64,
+    system: &S,
+    y0: &[f64],
+    t_span: (f64, f64),
+    dt: f64,
 ) -> Vec<(f64, Vec<f64>)> {
 
     let (t_start, t_end) = t_span;
@@ -76,12 +76,12 @@ pub fn solve_forward_euler<
 /// Solves an ODE system using the explicit midpoint method (Modified Euler).
 
 pub fn solve_midpoint_euler<
-    S : OdeSystem,
+    S: OdeSystem,
 >(
-    system : &S,
-    y0 : &[f64],
-    t_span : (f64, f64),
-    dt : f64,
+    system: &S,
+    y0: &[f64],
+    t_span: (f64, f64),
+    dt: f64,
 ) -> Vec<(f64, Vec<f64>)> {
 
     let (t_start, t_end) = t_span;
@@ -149,12 +149,12 @@ pub fn solve_midpoint_euler<
 /// Solves an ODE system using Heun's method (Improved Euler).
 
 pub fn solve_heun_euler<
-    S : OdeSystem,
+    S: OdeSystem,
 >(
-    system : &S,
-    y0 : &[f64],
-    t_span : (f64, f64),
-    dt : f64,
+    system: &S,
+    y0: &[f64],
+    t_span: (f64, f64),
+    dt: f64,
 ) -> Vec<(f64, Vec<f64>)> {
 
     let (t_start, t_end) = t_span;
@@ -233,8 +233,8 @@ pub trait MechanicalSystem {
 
     fn eval_acceleration(
         &self,
-        x : &[f64],
-        a : &mut [f64],
+        x: &[f64],
+        a: &mut [f64],
     );
 }
 
@@ -255,12 +255,12 @@ pub trait MechanicalSystem {
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
 
 pub fn solve_semi_implicit_euler<
-    S : MechanicalSystem,
+    S: MechanicalSystem,
 >(
-    system : &S,
-    y0 : &[f64],
-    t_span : (f64, f64),
-    dt : f64,
+    system: &S,
+    y0: &[f64],
+    t_span: (f64, f64),
+    dt: f64,
 ) -> Result<Vec<(f64, Vec<f64>)>, String>
 {
 
@@ -340,9 +340,9 @@ pub fn simulate_oscillator_forward_euler_scenario(
 
     let system =
         DampedOscillatorSystem {
-            omega : 2.0
+            omega: 2.0
                 * std::f64::consts::PI,
-            zeta : 0.0,
+            zeta: 0.0,
         };
 
     let y0 = &[1.0, 0.0];
@@ -365,8 +365,8 @@ pub fn simulate_oscillator_forward_euler_scenario(
 )]
 
 pub struct OrbitalSystem {
-    pub gravitational_constant : f64,
-    pub star_mass : f64,
+    pub gravitational_constant: f64,
+    pub star_mass: f64,
 }
 
 impl MechanicalSystem
@@ -379,8 +379,8 @@ impl MechanicalSystem
 
     fn eval_acceleration(
         &self,
-        x : &[f64],
-        a : &mut [f64],
+        x: &[f64],
+        a: &mut [f64],
     ) {
 
         let (px, py) = (x[0], x[1]);
@@ -417,8 +417,8 @@ pub fn simulate_gravity_semi_implicit_euler_scenario(
 {
 
     let system = OrbitalSystem {
-        gravitational_constant : 1.0,
-        star_mass : 1000.0,
+        gravitational_constant: 1.0,
+        star_mass: 1000.0,
     };
 
     let y0 = &[10.0, 0.0, 0.0, 30.0];
@@ -471,12 +471,12 @@ pub trait LinearOdeSystem {
 /// A `Result` containing the solution path as `Vec<(f64, Vec<f64>)>`, or an error string if matrix inversion fails.
 
 pub fn solve_backward_euler_linear<
-    S : LinearOdeSystem,
+    S: LinearOdeSystem,
 >(
-    system : &S,
-    y0 : &[f64],
-    t_span : (f64, f64),
-    dt : f64,
+    system: &S,
+    y0: &[f64],
+    t_span: (f64, f64),
+    dt: f64,
 ) -> Result<Vec<(f64, Vec<f64>)>, String>
 {
 

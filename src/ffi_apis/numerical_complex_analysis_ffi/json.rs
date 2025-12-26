@@ -16,15 +16,14 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct EvalInput {
-    expr : Expr,
-    vars :
-        HashMap<String, Complex<f64>>,
+    expr: Expr,
+    vars: HashMap<String, Complex<f64>>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_eval_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : EvalInput = match from_json_string(input_json) {
@@ -72,15 +71,15 @@ pub unsafe extern "C" fn rssn_num_complex_eval_json(
 #[derive(Deserialize)]
 
 struct ContourInput {
-    expr : Expr,
-    var : String,
-    path : Vec<Complex<f64>>,
+    expr: Expr,
+    var: String,
+    path: Vec<Complex<f64>>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : ContourInput = match from_json_string(input_json) {

@@ -16,7 +16,7 @@ use crate::symbolic::elementary;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_sin_json(
-    json_expr : *const c_char
+    json_expr: *const c_char
 ) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
@@ -33,7 +33,7 @@ pub unsafe extern "C" fn rssn_sin_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_cos_json(
-    json_expr : *const c_char
+    json_expr: *const c_char
 ) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rssn_cos_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_tan_json(
-    json_expr : *const c_char
+    json_expr: *const c_char
 ) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_tan_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_exp_json(
-    json_expr : *const c_char
+    json_expr: *const c_char
 ) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rssn_exp_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_ln_json(
-    json_expr : *const c_char
+    json_expr: *const c_char
 ) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rssn_ln_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_sqrt_json(
-    json_expr : *const c_char
+    json_expr: *const c_char
 ) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
@@ -122,8 +122,8 @@ pub unsafe extern "C" fn rssn_sqrt_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_pow_json(
-    json_base : *const c_char,
-    json_exp : *const c_char,
+    json_base: *const c_char,
+    json_exp: *const c_char,
 ) -> *mut c_char {
 
     let base : Expr = match from_json_string(json_base) {
@@ -163,7 +163,7 @@ pub extern "C" fn rssn_e_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_expand_json(
-    json_expr : *const c_char
+    json_expr: *const c_char
 ) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
@@ -180,8 +180,8 @@ pub unsafe extern "C" fn rssn_expand_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_binomial_coefficient_json(
-    n : usize,
-    k : usize,
+    n: usize,
+    k: usize,
 ) -> *mut c_char {
 
     let result = elementary::binomial_coefficient(n, k);

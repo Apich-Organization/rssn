@@ -8,14 +8,14 @@ use crate::symbolic::integration::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_risch_norman_integrate(
-    expr_json : *const c_char,
-    x_json : *const c_char,
+    expr_json: *const c_char,
+    x_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let x : Option<String> =
+    let x: Option<String> =
         from_json_string(x_json);
 
     if let (Some(e), Some(var)) =
@@ -38,14 +38,14 @@ pub extern "C" fn rssn_json_risch_norman_integrate(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_integrate_rational_function(
-    expr_json : *const c_char,
-    x_json : *const c_char,
+    expr_json: *const c_char,
+    x_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let x : Option<String> =
+    let x: Option<String> =
         from_json_string(x_json);
 
     if let (Some(e), Some(var)) =

@@ -48,11 +48,11 @@ fn test_add_poly() {
     );
 
     let p1 = SparsePolynomial {
-        terms : terms1,
+        terms: terms1,
     };
 
     let p2 = SparsePolynomial {
-        terms : terms2,
+        terms: terms2,
     };
 
     let result = add_poly(&p1, &p2);
@@ -102,11 +102,11 @@ fn test_mul_poly() {
     );
 
     let p1 = SparsePolynomial {
-        terms : terms1,
+        terms: terms1,
     };
 
     let p2 = SparsePolynomial {
-        terms : terms2,
+        terms: terms2,
     };
 
     let result = mul_poly(&p1, &p2);

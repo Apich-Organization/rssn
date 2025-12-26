@@ -3,8 +3,8 @@
 use rssn::symbolic::special::*;
 
 fn assert_approx_eq(
-    a : f64,
-    b : f64,
+    a: f64,
+    b: f64,
 ) {
 
     assert!(
@@ -16,9 +16,9 @@ fn assert_approx_eq(
 }
 
 fn assert_approx_eq_rel(
-    a : f64,
-    b : f64,
-    rel_tol : f64,
+    a: f64,
+    b: f64,
+    rel_tol: f64,
 ) {
 
     let diff = (a - b).abs();

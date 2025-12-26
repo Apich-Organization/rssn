@@ -11,28 +11,28 @@ use crate::symbolic::vector::Vector;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_lorentz_force(
-    charge_buf : BincodeBuffer,
-    e_field_buf : BincodeBuffer,
-    velocity_buf : BincodeBuffer,
-    b_field_buf : BincodeBuffer,
+    charge_buf: BincodeBuffer,
+    e_field_buf: BincodeBuffer,
+    velocity_buf: BincodeBuffer,
+    b_field_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let charge : Option<Expr> =
+    let charge: Option<Expr> =
         from_bincode_buffer(
             &charge_buf,
         );
 
-    let e_field : Option<Vector> =
+    let e_field: Option<Vector> =
         from_bincode_buffer(
             &e_field_buf,
         );
 
-    let velocity : Option<Vector> =
+    let velocity: Option<Vector> =
         from_bincode_buffer(
             &velocity_buf,
         );
 
-    let b_field : Option<Vector> =
+    let b_field: Option<Vector> =
         from_bincode_buffer(
             &b_field_buf,
         );
@@ -60,16 +60,16 @@ pub extern "C" fn rssn_bincode_lorentz_force(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_electromagnetic_energy_density(
-    e_field_buf : BincodeBuffer,
-    b_field_buf : BincodeBuffer,
+    e_field_buf: BincodeBuffer,
+    b_field_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let e_field : Option<Vector> =
+    let e_field: Option<Vector> =
         from_bincode_buffer(
             &e_field_buf,
         );
 
-    let b_field : Option<Vector> =
+    let b_field: Option<Vector> =
         from_bincode_buffer(
             &b_field_buf,
         );

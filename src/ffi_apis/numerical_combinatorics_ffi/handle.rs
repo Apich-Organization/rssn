@@ -9,8 +9,8 @@ use crate::numerical::combinatorics;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_factorial(
-    n : u64,
-    result : *mut f64,
+    n: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {
@@ -34,9 +34,9 @@ pub unsafe extern "C" fn rssn_num_comb_factorial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_permutations(
-    n : u64,
-    k : u64,
-    result : *mut f64,
+    n: u64,
+    k: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {
@@ -58,9 +58,9 @@ pub unsafe extern "C" fn rssn_num_comb_permutations(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_combinations(
-    n : u64,
-    k : u64,
-    result : *mut f64,
+    n: u64,
+    k: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {
@@ -82,12 +82,12 @@ pub unsafe extern "C" fn rssn_num_comb_combinations(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
-    coeffs : *const f64,
-    coeffs_len : usize,
-    initial_conditions : *const f64,
-    initial_len : usize,
-    target_n : usize,
-    result : *mut f64,
+    coeffs: *const f64,
+    coeffs_len: usize,
+    initial_conditions: *const f64,
+    initial_len: usize,
+    target_n: usize,
+    result: *mut f64,
 ) -> i32 {
 
     if coeffs.is_null()
@@ -136,9 +136,9 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_stirling_second(
-    n : u64,
-    k : u64,
-    result : *mut f64,
+    n: u64,
+    k: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {
@@ -160,8 +160,8 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_bell(
-    n : u64,
-    result : *mut f64,
+    n: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {
@@ -184,8 +184,8 @@ pub unsafe extern "C" fn rssn_num_comb_bell(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_catalan(
-    n : u64,
-    result : *mut f64,
+    n: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {
@@ -208,9 +208,9 @@ pub unsafe extern "C" fn rssn_num_comb_catalan(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial(
-    x : f64,
-    n : u64,
-    result : *mut f64,
+    x: f64,
+    n: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {
@@ -232,9 +232,9 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial(
-    x : f64,
-    n : u64,
-    result : *mut f64,
+    x: f64,
+    n: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {

@@ -2,7 +2,7 @@ use criterion::criterion_group;
 use criterion::Criterion;
 use rssn::compute::state::State;
 
-fn bench_state_new(c : &mut Criterion) {
+fn bench_state_new(c: &mut Criterion) {
 
     c.bench_function(
         "state_new",

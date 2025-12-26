@@ -6,13 +6,13 @@ use rssn::symbolic::quantum_mechanics::*;
 fn test_bra_ket() {
 
     let psi = Ket {
-        state : Expr::new_variable(
+        state: Expr::new_variable(
             "psi",
         ),
     };
 
     let phi = Bra {
-        state : Expr::new_variable(
+        state: Expr::new_variable(
             "phi",
         ),
     };
@@ -43,7 +43,7 @@ fn test_commutator() {
     );
 
     let psi = Ket {
-        state : Expr::new_variable(
+        state: Expr::new_variable(
             "psi",
         ),
     };
@@ -85,7 +85,7 @@ fn test_expectation_value() {
     );
 
     let psi = Ket {
-        state : Expr::new_variable(
+        state: Expr::new_variable(
             "psi",
         ),
     };

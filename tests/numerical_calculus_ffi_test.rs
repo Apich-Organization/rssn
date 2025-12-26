@@ -83,7 +83,7 @@ fn test_numerical_gradient_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -134,9 +134,9 @@ fn test_numerical_hessian_bincode_ffi()
         #[derive(Serialize)]
 
         struct HessianInput {
-            expr : Expr,
-            vars : Vec<String>,
-            point : Vec<f64>,
+            expr: Expr,
+            vars: Vec<String>,
+            point: Vec<f64>,
         }
 
         let x = Expr::new_variable("x");
@@ -147,9 +147,9 @@ fn test_numerical_hessian_bincode_ffi()
         );
 
         let input = HessianInput {
-            expr : f,
-            vars : vec!["x".to_string()],
-            point : vec![2.0],
+            expr: f,
+            vars: vec!["x".to_string()],
+            point: vec![2.0],
         };
 
         let buffer =
@@ -162,12 +162,12 @@ fn test_numerical_hessian_bincode_ffi()
         #[derive(Deserialize)]
 
         struct FfiResult<T, E> {
-            ok : Option<T>,
+            ok: Option<T>,
             #[allow(dead_code)]
-            err : Option<E>,
+            err: Option<E>,
         }
 
-        let res : FfiResult<
+        let res: FfiResult<
             Vec<Vec<f64>>,
             String,
         > = from_bincode_buffer(

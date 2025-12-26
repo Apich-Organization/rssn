@@ -7,10 +7,10 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_new(
-    func : *const Expr,
-    var : *const c_char,
-    start_point : *const Expr,
-    order : usize,
+    func: *const Expr,
+    var: *const c_char,
+    start_point: *const Expr,
+    order: usize,
 ) -> *mut PathContinuation {
 
     if func.is_null()
@@ -45,9 +45,9 @@ pub unsafe extern "C" fn path_continuation_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_continue_along_path(
-    pc : *mut PathContinuation,
-    path_points : *const *const Expr,
-    path_points_len : usize,
+    pc: *mut PathContinuation,
+    path_points: *const *const Expr,
+    path_points_len: usize,
 ) -> *mut c_char {
 
     if pc.is_null()
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
             path_points_len,
         );
 
-    let path_points_vec : Vec<Expr> =
+    let path_points_vec: Vec<Expr> =
         path_points_slice
             .iter()
             .map(|&ptr| (*ptr).clone())
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_get_final_expression(
-    pc : *const PathContinuation
+    pc: *const PathContinuation
 ) -> *mut Expr {
 
     if pc.is_null() {
@@ -110,10 +110,10 @@ pub unsafe extern "C" fn path_continuation_get_final_expression(
 #[no_mangle]
 
 pub unsafe extern "C" fn estimate_radius_of_convergence(
-    series_expr : *const Expr,
-    var : *const c_char,
-    center : *const Expr,
-    order : usize,
+    series_expr: *const Expr,
+    var: *const c_char,
+    center: *const Expr,
+    order: usize,
 ) -> f64 {
 
     if series_expr.is_null()
@@ -144,8 +144,8 @@ pub unsafe extern "C" fn estimate_radius_of_convergence(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_distance(
-    p1 : *const Expr,
-    p2 : *const Expr,
+    p1: *const Expr,
+    p2: *const Expr,
 ) -> f64 {
 
     if p1.is_null() || p2.is_null() {
@@ -163,10 +163,10 @@ pub unsafe extern "C" fn complex_distance(
 #[no_mangle]
 
 pub unsafe extern "C" fn classify_singularity(
-    func : *const Expr,
-    var : *const c_char,
-    singularity : *const Expr,
-    order : usize,
+    func: *const Expr,
+    var: *const c_char,
+    singularity: *const Expr,
+    order: usize,
 ) -> *mut SingularityType {
 
     if func.is_null()
@@ -200,10 +200,10 @@ pub unsafe extern "C" fn classify_singularity(
 #[no_mangle]
 
 pub unsafe extern "C" fn laurent_series(
-    func : *const Expr,
-    var : *const c_char,
-    center : *const Expr,
-    order : usize,
+    func: *const Expr,
+    var: *const c_char,
+    center: *const Expr,
+    order: usize,
 ) -> *mut Expr {
 
     if func.is_null()
@@ -235,9 +235,9 @@ pub unsafe extern "C" fn laurent_series(
 #[no_mangle]
 
 pub unsafe extern "C" fn calculate_residue(
-    func : *const Expr,
-    var : *const c_char,
-    singularity : *const Expr,
+    func: *const Expr,
+    var: *const c_char,
+    singularity: *const Expr,
 ) -> *mut Expr {
 
     if func.is_null()
@@ -268,10 +268,10 @@ pub unsafe extern "C" fn calculate_residue(
 #[no_mangle]
 
 pub unsafe extern "C" fn contour_integral_residue_theorem(
-    func : *const Expr,
-    var : *const c_char,
-    singularities : *const *const Expr,
-    singularities_len : usize,
+    func: *const Expr,
+    var: *const c_char,
+    singularities: *const *const Expr,
+    singularities_len: usize,
 ) -> *mut Expr {
 
     if func.is_null()
@@ -294,7 +294,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem(
             singularities_len,
         );
 
-    let singularities_vec : Vec<Expr> =
+    let singularities_vec: Vec<Expr> =
         singularities_slice
             .iter()
             .map(|&ptr| (*ptr).clone())
@@ -312,10 +312,10 @@ pub unsafe extern "C" fn contour_integral_residue_theorem(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_new(
-    a : *const Expr,
-    b : *const Expr,
-    c : *const Expr,
-    d : *const Expr,
+    a: *const Expr,
+    b: *const Expr,
+    c: *const Expr,
+    d: *const Expr,
 ) -> *mut MobiusTransformation {
 
     if a.is_null()
@@ -361,8 +361,8 @@ pub extern "C" fn mobius_transformation_identity(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_apply(
-    mobius : *const MobiusTransformation,
-    z : *const Expr,
+    mobius: *const MobiusTransformation,
+    z: *const Expr,
 ) -> *mut Expr {
 
     if mobius.is_null() || z.is_null() {
@@ -407,7 +407,7 @@ pub unsafe extern "C" fn mobius_transformation_compose(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_inverse(
-    mobius : *const MobiusTransformation
+    mobius: *const MobiusTransformation
 ) -> *mut MobiusTransformation {
 
     if mobius.is_null() {
@@ -425,9 +425,9 @@ pub unsafe extern "C" fn mobius_transformation_inverse(
 #[no_mangle]
 
 pub unsafe extern "C" fn cauchy_integral_formula(
-    func : *const Expr,
-    var : *const c_char,
-    z0 : *const Expr,
+    func: *const Expr,
+    var: *const c_char,
+    z0: *const Expr,
 ) -> *mut Expr {
 
     if func.is_null() || z0.is_null() {
@@ -456,10 +456,10 @@ pub unsafe extern "C" fn cauchy_integral_formula(
 #[no_mangle]
 
 pub unsafe extern "C" fn cauchy_derivative_formula(
-    func : *const Expr,
-    var : *const c_char,
-    z0 : *const Expr,
-    n : usize,
+    func: *const Expr,
+    var: *const c_char,
+    z0: *const Expr,
+    n: usize,
 ) -> *mut Expr {
 
     if func.is_null() || z0.is_null() {
@@ -489,7 +489,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_exp(
-    z : *const Expr
+    z: *const Expr
 ) -> *mut Expr {
 
     if z.is_null() {
@@ -507,7 +507,7 @@ pub unsafe extern "C" fn complex_exp(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_log(
-    z : *const Expr
+    z: *const Expr
 ) -> *mut Expr {
 
     if z.is_null() {
@@ -525,7 +525,7 @@ pub unsafe extern "C" fn complex_log(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_arg(
-    z : *const Expr
+    z: *const Expr
 ) -> *mut Expr {
 
     if z.is_null() {
@@ -543,7 +543,7 @@ pub unsafe extern "C" fn complex_arg(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_modulus(
-    z : *const Expr
+    z: *const Expr
 ) -> *mut Expr {
 
     if z.is_null() {

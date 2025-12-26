@@ -401,7 +401,7 @@ fn test_serialization() {
     assert!(serialized.is_ok());
 
     // Test deserialization
-    let deserialized : Result<
+    let deserialized: Result<
         LieAlgebra,
         _,
     > = serde_json::from_str(

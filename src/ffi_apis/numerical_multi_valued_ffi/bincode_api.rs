@@ -14,25 +14,25 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct NewtonInput {
-    f : Expr,
-    f_prime : Expr,
-    start_re : f64,
-    start_im : f64,
-    tolerance : f64,
-    max_iter : usize,
+    f: Expr,
+    f_prime: Expr,
+    start_re: f64,
+    start_im: f64,
+    tolerance: f64,
+    max_iter: usize,
 }
 
 #[derive(Serialize)]
 
 struct ComplexResult {
-    re : f64,
-    im : f64,
+    re: f64,
+    im: f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : NewtonInput = match from_bincode_buffer(&buffer) {
@@ -85,15 +85,15 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
 #[derive(Deserialize)]
 
 struct LogSqrtInput {
-    re : f64,
-    im : f64,
-    k : i32,
+    re: f64,
+    im: f64,
+    k: i32,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : LogSqrtInput = match from_bincode_buffer(&buffer) {
@@ -120,20 +120,20 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
         );
 
     let out = ComplexResult {
-        re : res.re,
-        im : res.im,
+        re: res.re,
+        im: res.im,
     };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(out),
-        err : None::<String>,
+        ok: Some(out),
+        err: None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : LogSqrtInput = match from_bincode_buffer(&buffer) {
@@ -160,30 +160,30 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
         );
 
     let out = ComplexResult {
-        re : res.re,
-        im : res.im,
+        re: res.re,
+        im: res.im,
     };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(out),
-        err : None::<String>,
+        ok: Some(out),
+        err: None::<String>,
     })
 }
 
 #[derive(Deserialize)]
 
 struct PowInput {
-    z_re : f64,
-    z_im : f64,
-    w_re : f64,
-    w_im : f64,
-    k : i32,
+    z_re: f64,
+    z_im: f64,
+    w_re: f64,
+    w_im: f64,
+    k: i32,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : PowInput = match from_bincode_buffer(&buffer) {
@@ -216,12 +216,12 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_bincode(
         );
 
     let out = ComplexResult {
-        re : res.re,
-        im : res.im,
+        re: res.re,
+        im: res.im,
     };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(out),
-        err : None::<String>,
+        ok: Some(out),
+        err: None::<String>,
     })
 }

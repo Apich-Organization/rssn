@@ -23,16 +23,16 @@ use crate::symbolic::simplify_dag::substitute_patterns;
 )]
 
 pub struct RewriteRule {
-    pub lhs : Expr,
-    pub rhs : Expr,
+    pub lhs: Expr,
+    pub rhs: Expr,
 }
 
 /// A simple term ordering based on the complexity (number of nodes) of an expression.
 /// Returns true if e1 > e2.
 
 pub(crate) fn is_greater(
-    e1 : &Expr,
-    e2 : &Expr,
+    e1: &Expr,
+    e2: &Expr,
 ) -> bool {
 
     complexity(e1) > complexity(e2)
@@ -52,8 +52,8 @@ pub(crate) fn is_greater(
 #[must_use]
 
 pub fn apply_rules_to_normal_form(
-    expr : &Expr,
-    rules : &[RewriteRule],
+    expr: &Expr,
+    rules: &[RewriteRule],
 ) -> Expr {
 
     let mut current_expr = expr.clone();
@@ -84,8 +84,8 @@ pub fn apply_rules_to_normal_form(
 /// Applies the first applicable rule to the expression tree in a pre-order traversal.
 
 pub(crate) fn apply_rules_once(
-    expr : &Expr,
-    rules : &[RewriteRule],
+    expr: &Expr,
+    rules: &[RewriteRule],
 ) -> (Expr, bool) {
 
     for rule in rules {
@@ -209,10 +209,10 @@ pub(crate) fn apply_rules_once(
 /// or an error string if the input is invalid or the algorithm fails to complete.
 
 pub fn knuth_bendix(
-    equations : &[Expr]
+    equations: &[Expr]
 ) -> Result<Vec<RewriteRule>, String> {
 
-    let mut rules : Vec<RewriteRule> =
+    let mut rules: Vec<RewriteRule> =
         Vec::new();
 
     for eq in equations {
@@ -223,10 +223,10 @@ pub fn knuth_bendix(
 
                 rules.push(
                     RewriteRule {
-                        lhs : lhs
+                        lhs: lhs
                             .as_ref()
                             .clone(),
-                        rhs : rhs
+                        rhs: rhs
                             .as_ref()
                             .clone(),
                     },
@@ -237,10 +237,10 @@ pub fn knuth_bendix(
 
                 rules.push(
                     RewriteRule {
-                        lhs : rhs
+                        lhs: rhs
                             .as_ref()
                             .clone(),
-                        rhs : lhs
+                        rhs: lhs
                             .as_ref()
                             .clone(),
                     },
@@ -329,8 +329,8 @@ pub fn knuth_bendix(
 /// Finds critical pairs between two rewrite rules.
 
 pub(crate) fn find_critical_pairs(
-    r1 : &RewriteRule,
-    r2 : &RewriteRule,
+    r1: &RewriteRule,
+    r2: &RewriteRule,
 ) -> Vec<(Expr, Expr)> {
 
     let mut pairs = Vec::new();
@@ -389,8 +389,8 @@ pub(crate) fn find_critical_pairs(
 /// Returns a map of substitutions if successful.
 
 pub(crate) fn unify(
-    e1 : &Expr,
-    e2 : &Expr,
+    e1: &Expr,
+    e2: &Expr,
 ) -> Option<HashMap<String, Expr>> {
 
     let mut subst = HashMap::new();
@@ -409,9 +409,9 @@ pub(crate) fn unify(
 }
 
 pub(crate) fn unify_recursive(
-    e1 : &Expr,
-    e2 : &Expr,
-    subst : &mut HashMap<String, Expr>,
+    e1: &Expr,
+    e2: &Expr,
+    subst: &mut HashMap<String, Expr>,
 ) -> bool {
 
     match (e1, e2) {
@@ -540,7 +540,7 @@ pub(crate) fn unify_recursive(
 /// Calculates a simple complexity measure for an expression.
 
 pub(crate) fn complexity(
-    expr : &Expr
+    expr: &Expr
 ) -> usize {
 
     match expr {

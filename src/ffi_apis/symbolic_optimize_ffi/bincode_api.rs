@@ -10,21 +10,21 @@ use crate::symbolic::optimize::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_find_extrema(
-    expr_buf : BincodeBuffer,
-    vars_buf : BincodeBuffer,
+    expr_buf: BincodeBuffer,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     if let (Some(e), Some(v)) =
         (expr, vars)
     {
 
-        let vars_refs : Vec<&str> = v
+        let vars_refs: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -52,21 +52,21 @@ pub extern "C" fn rssn_bincode_find_extrema(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hessian_matrix(
-    expr_buf : BincodeBuffer,
-    vars_buf : BincodeBuffer,
+    expr_buf: BincodeBuffer,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     if let (Some(e), Some(v)) =
         (expr, vars)
     {
 
-        let vars_refs : Vec<&str> = v
+        let vars_refs: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -87,21 +87,20 @@ pub extern "C" fn rssn_bincode_hessian_matrix(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_find_constrained_extrema(
-    expr_buf : BincodeBuffer,
-    constraints_buf : BincodeBuffer,
-    vars_buf : BincodeBuffer,
+    expr_buf: BincodeBuffer,
+    constraints_buf: BincodeBuffer,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let constraints : Option<
-        Vec<Expr>,
-    > = from_bincode_buffer(
-        &constraints_buf,
-    );
+    let constraints: Option<Vec<Expr>> =
+        from_bincode_buffer(
+            &constraints_buf,
+        );
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     if let (Some(e), Some(c), Some(v)) = (
@@ -110,7 +109,7 @@ pub extern "C" fn rssn_bincode_find_constrained_extrema(
         vars,
     ) {
 
-        let vars_refs : Vec<&str> = v
+        let vars_refs: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();

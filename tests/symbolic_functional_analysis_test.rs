@@ -4,7 +4,7 @@ use rssn::symbolic::functional_analysis::*;
 use rssn::symbolic::simplify_dag::simplify;
 
 fn eval_expr_to_f64(
-    expr : &Expr
+    expr: &Expr
 ) -> Option<f64> {
 
     // println!("Evaluating: {:?}", expr);
@@ -126,8 +126,8 @@ fn eval_expr_to_f64(
 }
 
 fn assert_approx_eq(
-    a : &Expr,
-    b : f64,
+    a: &Expr,
+    b: f64,
 ) {
 
     let val = eval_expr_to_f64(a)

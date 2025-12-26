@@ -14,10 +14,10 @@ use crate::symbolic::stats_regression;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_simple_linear_regression(
-    data_json : *const c_char
+    data_json: *const c_char
 ) -> *mut c_char {
 
-    let data : Option<
+    let data: Option<
         Vec<(Expr, Expr)>,
     > = from_json_string(data_json);
 
@@ -35,11 +35,11 @@ pub unsafe extern "C" fn rssn_json_simple_linear_regression(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_polynomial_regression(
-    data_json : *const c_char,
-    degree : usize,
+    data_json: *const c_char,
+    degree: usize,
 ) -> *mut c_char {
 
-    let data : Option<
+    let data: Option<
         Vec<(Expr, Expr)>,
     > = from_json_string(data_json);
 
@@ -58,23 +58,23 @@ pub unsafe extern "C" fn rssn_json_polynomial_regression(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_nonlinear_regression(
-    data_json : *const c_char,
-    model_json : *const c_char,
-    vars_json : *const c_char,
-    params_json : *const c_char,
+    data_json: *const c_char,
+    model_json: *const c_char,
+    vars_json: *const c_char,
+    params_json: *const c_char,
 ) -> *mut c_char {
 
-    let data : Option<
+    let data: Option<
         Vec<(Expr, Expr)>,
     > = from_json_string(data_json);
 
-    let model : Option<Expr> =
+    let model: Option<Expr> =
         from_json_string(model_json);
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    let params : Option<Vec<String>> =
+    let params: Option<Vec<String>> =
         from_json_string(params_json);
 
     if let (
@@ -89,12 +89,12 @@ pub unsafe extern "C" fn rssn_json_nonlinear_regression(
         params,
     ) {
 
-        let vars_refs : Vec<&str> =
-            vars.iter()
-                .map(|s| s.as_str())
-                .collect();
+        let vars_refs: Vec<&str> = vars
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
-        let params_refs : Vec<&str> =
+        let params_refs: Vec<&str> =
             params
                 .iter()
                 .map(|s| s.as_str())

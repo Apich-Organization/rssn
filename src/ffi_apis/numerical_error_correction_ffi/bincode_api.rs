@@ -12,75 +12,75 @@ use crate::numerical::error_correction;
 #[derive(Deserialize)]
 
 struct RsEncodeInput {
-    message : Vec<u8>,
-    n_parity : usize,
+    message: Vec<u8>,
+    n_parity: usize,
 }
 
 #[derive(Deserialize)]
 
 struct RsDecodeInput {
-    codeword : Vec<u8>,
-    n_parity : usize,
+    codeword: Vec<u8>,
+    n_parity: usize,
 }
 
 #[derive(Deserialize)]
 
 struct HammingInput {
-    data : Vec<u8>,
+    data: Vec<u8>,
 }
 
 #[derive(Deserialize)]
 
 struct DistanceInput {
-    a : Vec<u8>,
-    b : Vec<u8>,
+    a: Vec<u8>,
+    b: Vec<u8>,
 }
 
 #[derive(Deserialize)]
 
 struct CrcInput {
-    data : Vec<u8>,
+    data: Vec<u8>,
 }
 
 #[derive(Deserialize)]
 
 struct Crc32VerifyInput {
-    data : Vec<u8>,
-    expected_crc : u32,
+    data: Vec<u8>,
+    expected_crc: u32,
 }
 
 #[derive(Deserialize)]
 
 struct InterleaveInput {
-    data : Vec<u8>,
-    depth : usize,
+    data: Vec<u8>,
+    depth: usize,
 }
 
 #[derive(Deserialize)]
 
 struct CodeRateInput {
-    k : usize,
-    n : usize,
+    k: usize,
+    n: usize,
 }
 
 #[derive(Deserialize)]
 
 struct CapabilityInput {
-    min_distance : usize,
+    min_distance: usize,
 }
 
 #[derive(Serialize)]
 
 struct HammingDecodeResult {
-    data : Vec<u8>,
-    error_pos : Option<usize>,
+    data: Vec<u8>,
+    error_pos: Option<usize>,
 }
 
 // Reed-Solomon functions
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : RsEncodeInput = match from_bincode_buffer(&buffer) {
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : RsDecodeInput = match from_bincode_buffer(&buffer) {
@@ -160,7 +160,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_check_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : RsDecodeInput = match from_bincode_buffer(&buffer) {
@@ -181,8 +181,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }
 
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : HammingInput = match from_bincode_buffer(&buffer) {
@@ -226,7 +226,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : HammingInput = match from_bincode_buffer(&buffer) {
@@ -267,7 +267,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : HammingInput = match from_bincode_buffer(&buffer) {
@@ -285,15 +285,15 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_bincode(
     let result = error_correction::hamming_check_numerical(&input.data);
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : DistanceInput = match from_bincode_buffer(&buffer) {
@@ -329,7 +329,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : HammingInput = match from_bincode_buffer(&buffer) {
@@ -347,8 +347,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_bincode(
     let result = error_correction::hamming_weight_numerical(&input.data);
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }
 
@@ -356,7 +356,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : CrcInput = match from_bincode_buffer(&buffer) {
@@ -374,15 +374,15 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_bincode(
     let result = error_correction::crc32_compute_numerical(&input.data);
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : Crc32VerifyInput = match from_bincode_buffer(&buffer) {
@@ -403,15 +403,15 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc16_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : CrcInput = match from_bincode_buffer(&buffer) {
@@ -432,15 +432,15 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc8_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : CrcInput = match from_bincode_buffer(&buffer) {
@@ -461,8 +461,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }
 
@@ -470,7 +470,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_interleave_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : InterleaveInput = match from_bincode_buffer(&buffer) {
@@ -492,15 +492,15 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : InterleaveInput = match from_bincode_buffer(&buffer) {
@@ -522,8 +522,8 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }
 
@@ -531,7 +531,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_code_rate_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : CodeRateInput = match from_bincode_buffer(&buffer) {
@@ -553,15 +553,15 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_bincode(
         );
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_error_correction_capability_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : CapabilityInput = match from_bincode_buffer(&buffer) {
@@ -579,7 +579,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_capability_bincode(
     let result = error_correction::error_correction_capability(input.min_distance);
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(result),
-        err : None::<String>,
+        ok: Some(result),
+        err: None::<String>,
     })
 }

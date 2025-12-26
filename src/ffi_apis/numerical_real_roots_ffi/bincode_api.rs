@@ -10,21 +10,21 @@ use crate::numerical::real_roots;
 #[derive(Deserialize)]
 
 struct FindRootsInput {
-    coeffs : Vec<f64>,
-    tolerance : f64,
+    coeffs: Vec<f64>,
+    tolerance: f64,
 }
 
 #[derive(Serialize)]
 
 struct FfiResult<T> {
-    ok : Option<T>,
-    err : Option<String>,
+    ok: Option<T>,
+    err: Option<String>,
 }
 
 fn decode<
-    T : for<'de> Deserialize<'de>,
+    T: for<'de> Deserialize<'de>,
 >(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> Option<T> {
 
     let slice = unsafe {
@@ -40,8 +40,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T : Serialize>(
-    val : T
+fn encode<T: Serialize>(
+    val: T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -56,7 +56,7 @@ fn encode<T : Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_real_roots_find_roots_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : FindRootsInput = match decode(buffer) {
@@ -80,16 +80,16 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_bincode(
     ) {
         | Ok(roots) => {
             encode(FfiResult {
-                ok : Some(roots),
-                err : None::<String>,
+                ok: Some(roots),
+                err: None::<String>,
             })
         },
         | Err(e) => {
             encode(FfiResult::<
                 Vec<f64>,
             > {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             })
         },
     }

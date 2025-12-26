@@ -33,9 +33,9 @@ use crate::symbolic::simplify_dag::simplify;
 
 pub struct Multivector {
     /// A map from the basis blade bitmask to its coefficient.
-    pub terms : BTreeMap<u32, Expr>,
+    pub terms: BTreeMap<u32, Expr>,
     /// The signature of the algebra, e.g., (p, q, r) for (`e_i^2` = +1, `e_j^2` = -1, `e_k^2` = 0)
-    pub signature : (u32, u32, u32),
+    pub signature: (u32, u32, u32),
 }
 
 impl Multivector {
@@ -49,11 +49,11 @@ impl Multivector {
     #[must_use]
 
     pub const fn new(
-        signature : (u32, u32, u32)
+        signature: (u32, u32, u32)
     ) -> Self {
 
         Self {
-            terms : BTreeMap::new(),
+            terms: BTreeMap::new(),
             signature,
         }
     }
@@ -71,8 +71,8 @@ impl Multivector {
     #[must_use]
 
     pub fn scalar(
-        signature : (u32, u32, u32),
-        value : Expr,
+        signature: (u32, u32, u32),
+        value: Expr,
     ) -> Self {
 
         let mut terms = BTreeMap::new();
@@ -96,8 +96,8 @@ impl Multivector {
     #[must_use]
 
     pub fn vector(
-        signature : (u32, u32, u32),
-        components : Vec<Expr>,
+        signature: (u32, u32, u32),
+        components: Vec<Expr>,
     ) -> Self {
 
         let mut terms = BTreeMap::new();
@@ -134,7 +134,7 @@ impl Multivector {
 
     pub fn geometric_product(
         &self,
-        other : &Self,
+        other: &Self,
     ) -> Self {
 
         let mut result =
@@ -244,8 +244,8 @@ impl Multivector {
 
     pub(crate) fn blade_product(
         &self,
-        b1 : u32,
-        b2 : u32,
+        b1: u32,
+        b2: u32,
     ) -> (f64, Expr, u32) {
 
         let b1_mut = b1;
@@ -323,7 +323,7 @@ impl Multivector {
 
     pub fn grade_projection(
         &self,
-        grade : u32,
+        grade: u32,
     ) -> Self {
 
         let mut result =
@@ -363,7 +363,7 @@ impl Multivector {
 
     pub fn outer_product(
         &self,
-        other : &Self,
+        other: &Self,
     ) -> Self {
 
         let mut result =
@@ -416,7 +416,7 @@ impl Multivector {
 
     pub fn inner_product(
         &self,
-        other : &Self,
+        other: &Self,
     ) -> Self {
 
         let mut result =
@@ -591,7 +591,7 @@ impl Add for Multivector {
 
     fn add(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         let mut result = self;
@@ -629,7 +629,7 @@ impl Sub for Multivector {
 
     fn sub(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         let mut result = self;
@@ -672,7 +672,7 @@ impl Mul<Expr> for Multivector {
 
     fn mul(
         self,
-        scalar : Expr,
+        scalar: Expr,
     ) -> Self {
 
         let mut result = self;

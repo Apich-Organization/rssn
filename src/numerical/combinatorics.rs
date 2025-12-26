@@ -13,7 +13,7 @@
 /// The factorial of `n` as an `f64`. Returns `f64::INFINITY` if `n` is too large to fit in `f64`.
 #[must_use]
 
-pub fn factorial(n : u64) -> f64 {
+pub fn factorial(n: u64) -> f64 {
 
     if n > 170 {
 
@@ -36,8 +36,8 @@ pub fn factorial(n : u64) -> f64 {
 #[must_use]
 
 pub fn permutations(
-    n : u64,
-    k : u64,
+    n: u64,
+    k: u64,
 ) -> f64 {
 
     if k > n {
@@ -61,8 +61,8 @@ pub fn permutations(
 #[must_use]
 
 pub fn combinations(
-    n : u64,
-    k : u64,
+    n: u64,
+    k: u64,
 ) -> f64 {
 
     if k > n {
@@ -105,9 +105,9 @@ pub fn combinations(
 /// A `Result` containing the numerical value of `a_n`, or an error string if input dimensions mismatch.
 
 pub fn solve_recurrence_numerical(
-    coeffs : &[f64],
-    initial_conditions : &[f64],
-    target_n : usize,
+    coeffs: &[f64],
+    initial_conditions: &[f64],
+    target_n: usize,
 ) -> Result<f64, String> {
 
     let order = coeffs.len();
@@ -163,8 +163,8 @@ pub fn solve_recurrence_numerical(
 #[must_use]
 
 pub fn stirling_second(
-    n : u64,
-    k : u64,
+    n: u64,
+    k: u64,
 ) -> f64 {
 
     if k > n {
@@ -220,7 +220,7 @@ pub fn stirling_second(
 /// B(n) = sum_{k=0}^n S(n, k)
 #[must_use]
 
-pub fn bell(n : u64) -> f64 {
+pub fn bell(n: u64) -> f64 {
 
     (0 ..= n)
         .map(|k| stirling_second(n, k))
@@ -231,7 +231,7 @@ pub fn bell(n : u64) -> f64 {
 /// `C_n` = (1 / (n + 1)) * C(2n, n)
 #[must_use]
 
-pub fn catalan(n : u64) -> f64 {
+pub fn catalan(n: u64) -> f64 {
 
     combinations(2 * n, n)
         / ((n + 1) as f64)
@@ -241,8 +241,8 @@ pub fn catalan(n : u64) -> f64 {
 #[must_use]
 
 pub fn rising_factorial(
-    x : f64,
-    n : u64,
+    x: f64,
+    n: u64,
 ) -> f64 {
 
     if n == 0 {
@@ -264,8 +264,8 @@ pub fn rising_factorial(
 #[must_use]
 
 pub fn falling_factorial(
-    x : f64,
-    n : u64,
+    x: f64,
+    n: u64,
 ) -> f64 {
 
     if n == 0 {

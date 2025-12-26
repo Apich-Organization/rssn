@@ -381,7 +381,7 @@ fn test_concurrent_submissions() {
         handles.push(handle);
     }
 
-    let ids : Vec<String> = handles
+    let ids: Vec<String> = handles
         .into_iter()
         .map(|h| h.join().unwrap())
         .collect();

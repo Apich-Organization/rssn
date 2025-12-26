@@ -35,10 +35,10 @@ use crate::symbolic::transforms;
 #[must_use]
 
 pub fn solve_pde(
-    pde : &Expr,
-    func : &str,
-    vars : &[&str],
-    conditions : Option<&[Expr]>,
+    pde: &Expr,
+    func: &str,
+    vars: &[&str],
+    conditions: Option<&[Expr]>,
 ) -> Expr {
 
     let equation =
@@ -88,10 +88,10 @@ pub fn solve_pde(
 /// Internal dispatcher that attempts various solving strategies.
 
 pub(crate) fn solve_pde_dispatch(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
-    conditions : Option<&[Expr]>,
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+    conditions: Option<&[Expr]>,
 ) -> Option<Expr> {
 
     if let Some(conds) = conditions {
@@ -154,11 +154,11 @@ enum BoundaryConditionType {
 #[derive(Debug, Clone)]
 
 pub struct BoundaryConditions {
-    at_zero : BoundaryConditionType,
-    at_l : BoundaryConditionType,
-    l : Expr,
-    initial_cond : Expr,
-    initial_cond_deriv : Option<Expr>,
+    at_zero: BoundaryConditionType,
+    at_l: BoundaryConditionType,
+    l: Expr,
+    initial_cond: Expr,
+    initial_cond_deriv: Option<Expr>,
 }
 
 /// Solves 1D linear, homogeneous PDEs with homogeneous boundary conditions using Separation of Variables.
@@ -179,10 +179,10 @@ pub struct BoundaryConditions {
 #[must_use]
 
 pub fn solve_pde_by_separation_of_variables(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
-    conditions : &[Expr],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+    conditions: &[Expr],
 ) -> Option<Expr> {
 
     if vars.len() != 2 {
@@ -553,12 +553,12 @@ pub enum PDEType {
 )]
 
 pub struct PDEClassification {
-    pub pde_type : PDEType,
-    pub order : usize,
-    pub dimension : usize,
-    pub is_linear : bool,
-    pub is_homogeneous : bool,
-    pub suggested_methods : Vec<String>,
+    pub pde_type: PDEType,
+    pub order: usize,
+    pub dimension: usize,
+    pub is_linear: bool,
+    pub is_homogeneous: bool,
+    pub suggested_methods: Vec<String>,
 }
 
 /// Heuristically classifies a PDE and suggests solution methods
@@ -581,9 +581,9 @@ pub struct PDEClassification {
 #[must_use]
 
 pub fn classify_pde_heuristic(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> PDEClassification {
 
     let order = get_pde_order(
@@ -648,8 +648,8 @@ pub fn classify_pde_heuristic(
 /// Check if a PDE is linear (no products of u with itself or its derivatives)
 
 fn check_linearity(
-    equation : &Expr,
-    func : &str,
+    equation: &Expr,
+    func: &str,
 ) -> bool {
 
     // For now, a simple heuristic: check if there are any Mul nodes
@@ -662,8 +662,8 @@ fn check_linearity(
 }
 
 fn contains_nonlinear_terms(
-    expr : &Expr,
-    func : &str,
+    expr: &Expr,
+    func: &str,
 ) -> bool {
 
     match expr {
@@ -697,8 +697,8 @@ fn contains_nonlinear_terms(
 }
 
 fn contains_function_or_derivative(
-    expr : &Expr,
-    func : &str,
+    expr: &Expr,
+    func: &str,
 ) -> bool {
 
     match expr {
@@ -727,8 +727,8 @@ fn contains_function_or_derivative(
 /// Check if a PDE is homogeneous (all terms contain u or its derivatives)
 
 fn check_homogeneity(
-    equation : &Expr,
-    func : &str,
+    equation: &Expr,
+    func: &str,
 ) -> bool {
 
     let terms = collect_terms(equation);
@@ -760,9 +760,9 @@ fn check_homogeneity(
 /// Classify first-order PDEs
 
 fn classify_first_order(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> PDEType {
 
     // Check for Burgers equation: u_t + u*u_x = 0
@@ -805,9 +805,9 @@ fn classify_first_order(
 /// Classify second-order PDEs
 
 fn classify_second_order(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> PDEType {
 
     if vars.len() < 2 {
@@ -984,11 +984,11 @@ fn classify_second_order(
 /// Suggest solution methods based on PDE classification
 
 fn suggest_solution_methods(
-    pde_type : &PDEType,
-    order : usize,
-    dimension : usize,
-    is_linear : bool,
-    is_homogeneous : bool,
+    pde_type: &PDEType,
+    order: usize,
+    dimension: usize,
+    is_linear: bool,
+    is_homogeneous: bool,
 ) -> Vec<String> {
 
     let mut methods = Vec::new();
@@ -1165,8 +1165,8 @@ fn suggest_solution_methods(
 /// a recognizable first-order linear/quasi-linear form.
 
 fn extract_coefficient(
-    term : &Expr,
-    var : &Expr,
+    term: &Expr,
+    var: &Expr,
 ) -> Option<Expr> {
 
     // Unwrap DAG if present
@@ -1316,7 +1316,7 @@ fn extract_coefficient(
 }
 
 fn collect_terms(
-    expr : &Expr
+    expr: &Expr
 ) -> Vec<Expr> {
 
     match expr {
@@ -1384,9 +1384,9 @@ fn collect_terms(
 #[must_use]
 
 pub fn solve_pde_by_characteristics(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() != 2 {
@@ -1530,9 +1530,9 @@ pub fn solve_pde_by_characteristics(
 #[must_use]
 
 pub fn solve_pde_by_greens_function(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     let (lhs, rhs) = if let Expr::Eq(
@@ -1758,9 +1758,9 @@ pub fn solve_pde_by_greens_function(
 #[must_use]
 
 pub fn solve_second_order_pde(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() != 2 {
@@ -1807,9 +1807,9 @@ pub fn solve_second_order_pde(
 #[must_use]
 
 pub fn solve_wave_equation_1d_dalembert(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() != 2 {
@@ -1987,9 +1987,9 @@ pub fn solve_wave_equation_1d_dalembert(
 #[must_use]
 
 pub fn solve_heat_equation_1d(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() != 2 {
@@ -2153,12 +2153,12 @@ pub fn solve_heat_equation_1d(
 
     // Σ from n=1 to ∞
     let solution = Expr::Sum {
-        body : Arc::new(term),
-        var : Arc::new(n),
-        from : Arc::new(
-            Expr::Constant(1.0),
-        ),
-        to : Arc::new(Expr::Infinity),
+        body: Arc::new(term),
+        var: Arc::new(n),
+        from: Arc::new(Expr::Constant(
+            1.0,
+        )),
+        to: Arc::new(Expr::Infinity),
     };
 
     Some(Expr::Eq(
@@ -2188,9 +2188,9 @@ pub fn solve_heat_equation_1d(
 #[must_use]
 
 pub fn solve_laplace_equation_2d(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() != 2 {
@@ -2375,12 +2375,12 @@ pub fn solve_laplace_equation_2d(
 
     // Σ from n=1 to ∞
     let solution = Expr::Sum {
-        body : Arc::new(term),
-        var : Arc::new(n),
-        from : Arc::new(
-            Expr::Constant(1.0),
-        ),
-        to : Arc::new(Expr::Infinity),
+        body: Arc::new(term),
+        var: Arc::new(n),
+        from: Arc::new(Expr::Constant(
+            1.0,
+        )),
+        to: Arc::new(Expr::Infinity),
     };
 
     Some(Expr::Eq(
@@ -2398,9 +2398,9 @@ pub fn solve_laplace_equation_2d(
 #[must_use]
 
 pub fn solve_wave_equation_3d(
-    _equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    _equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() != 4 {
@@ -2426,9 +2426,9 @@ pub fn solve_wave_equation_3d(
 #[must_use]
 
 pub fn solve_heat_equation_3d(
-    _equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    _equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() != 4 {
@@ -2454,9 +2454,9 @@ pub fn solve_heat_equation_3d(
 #[must_use]
 
 pub fn solve_laplace_equation_3d(
-    _equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    _equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() != 3 {
@@ -2494,9 +2494,9 @@ pub fn solve_laplace_equation_3d(
 #[must_use]
 
 pub fn solve_poisson_equation_2d(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() != 2 {
@@ -2649,27 +2649,27 @@ pub fn solve_poisson_equation_2d(
     // Double integral
     let inner_integral =
         Expr::Integral {
-            integrand : Arc::new(
+            integrand: Arc::new(
                 integrand,
             ),
-            var : Arc::new(eta),
-            lower_bound : Arc::new(
+            var: Arc::new(eta),
+            lower_bound: Arc::new(
                 Expr::NegativeInfinity,
             ),
-            upper_bound : Arc::new(
+            upper_bound: Arc::new(
                 Expr::Infinity,
             ),
         };
 
     let solution = Expr::Integral {
-        integrand : Arc::new(
+        integrand: Arc::new(
             inner_integral,
         ),
-        var : Arc::new(xi),
-        lower_bound : Arc::new(
+        var: Arc::new(xi),
+        lower_bound: Arc::new(
             Expr::NegativeInfinity,
         ),
-        upper_bound : Arc::new(
+        upper_bound: Arc::new(
             Expr::Infinity,
         ),
     };
@@ -2684,9 +2684,9 @@ pub fn solve_poisson_equation_2d(
 #[must_use]
 
 pub fn solve_poisson_equation_3d(
-    _equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    _equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() != 3 {
@@ -2724,9 +2724,9 @@ pub fn solve_poisson_equation_3d(
 #[must_use]
 
 pub fn solve_helmholtz_equation(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() < 2 {
@@ -2829,9 +2829,9 @@ pub fn solve_helmholtz_equation(
 #[must_use]
 
 pub fn solve_schrodinger_equation(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() < 2 {
@@ -2933,9 +2933,9 @@ pub fn solve_schrodinger_equation(
 #[must_use]
 
 pub fn solve_klein_gordon_equation(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<Expr> {
 
     if vars.len() < 2 {
@@ -3059,12 +3059,10 @@ pub fn solve_klein_gordon_equation(
 #[must_use]
 
 pub fn solve_burgers_equation(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
-    initial_conditions : Option<
-        &[Expr],
-    >,
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+    initial_conditions: Option<&[Expr]>,
 ) -> Option<Expr> {
 
     if vars.len() != 2 {
@@ -3157,12 +3155,10 @@ pub fn solve_burgers_equation(
 #[must_use]
 
 pub fn solve_with_fourier_transform(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
-    initial_conditions : Option<
-        &[Expr],
-    >,
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+    initial_conditions: Option<&[Expr]>,
 ) -> Option<Expr> {
 
     if vars.len() != 2 {
@@ -3306,9 +3302,9 @@ pub fn solve_with_fourier_transform(
 }
 
 pub(crate) fn get_pde_order(
-    expr : &Expr,
-    _func : &str,
-    vars : &[&str],
+    expr: &Expr,
+    _func: &str,
+    vars: &[&str],
 ) -> usize {
 
     let mut max_order = 0;
@@ -3347,9 +3343,9 @@ pub(crate) fn get_pde_order(
 }
 
 pub(crate) fn classify_second_order_pde(
-    equation : &Expr,
-    func : &str,
-    vars : &[&str],
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> Option<(
     Expr,
     Expr,
@@ -3424,6 +3420,7 @@ pub(crate) fn classify_second_order_pde(
         .get("A")
         .cloned()
         .unwrap_or_else(|| {
+
             Expr::Constant(0.0)
         });
 
@@ -3431,6 +3428,7 @@ pub(crate) fn classify_second_order_pde(
         .get("B")
         .cloned()
         .unwrap_or_else(|| {
+
             Expr::Constant(0.0)
         });
 
@@ -3438,6 +3436,7 @@ pub(crate) fn classify_second_order_pde(
         .get("C")
         .cloned()
         .unwrap_or_else(|| {
+
             Expr::Constant(0.0)
         });
 
@@ -3483,9 +3482,9 @@ pub(crate) fn classify_second_order_pde(
 }
 
 pub(crate) fn identify_differential_operator(
-    lhs : &Expr,
-    func : &str,
-    vars : &[&str],
+    lhs: &Expr,
+    func: &str,
+    vars: &[&str],
 ) -> String {
 
     let u = Expr::Variable(
@@ -3552,27 +3551,28 @@ pub(crate) fn identify_differential_operator(
 }
 
 pub(crate) fn parse_conditions(
-    conditions : &[Expr],
-    func : &str,
-    x_var : &str,
-    t_var : &str,
+    conditions: &[Expr],
+    func: &str,
+    x_var: &str,
+    t_var: &str,
 ) -> Option<BoundaryConditions> {
 
-    let mut at_zero : Option<
+    let mut at_zero: Option<
         BoundaryConditionType,
     > = None;
 
-    let mut at_l : Option<
+    let mut at_l: Option<
         BoundaryConditionType,
     > = None;
 
-    let mut l : Option<Expr> = None;
+    let mut l: Option<Expr> = None;
 
-    let mut initial_cond : Option<
+    let mut initial_cond: Option<Expr> =
+        None;
+
+    let mut initial_cond_deriv: Option<
         Expr,
     > = None;
-
-    let mut initial_cond_deriv : Option<Expr> = None;
 
     let u = Expr::Variable(
         func.to_string(),
@@ -3683,19 +3683,19 @@ pub(crate) fn parse_conditions(
     }
 
     Some(BoundaryConditions {
-        at_zero : at_zero?,
-        at_l : at_l?,
-        l : l?,
-        initial_cond : initial_cond?,
+        at_zero: at_zero?,
+        at_l: at_l?,
+        l: l?,
+        initial_cond: initial_cond?,
         initial_cond_deriv,
     })
 }
 
 pub(crate) fn get_value_at_point<'a>(
-    expr : &'a Expr,
-    var : &str,
-    point : &Expr,
-    vars_order : &[&str],
+    expr: &'a Expr,
+    var: &str,
+    point: &Expr,
+    vars_order: &[&str],
 ) -> Option<&'a str> {
 
     if let Expr::Variable(s) = expr {
@@ -3715,7 +3715,7 @@ pub(crate) fn get_value_at_point<'a>(
                     [open_paren + 1
                         .. close_paren];
 
-                let args : Vec<&str> =
+                let args: Vec<&str> =
                     args_str
                         .split(',')
                         .map(str::trim)
@@ -3726,6 +3726,7 @@ pub(crate) fn get_value_at_point<'a>(
                         .iter()
                         .position(
                             |&v| {
+
                                 v == var
                             },
                         )

@@ -14,8 +14,8 @@ use crate::symbolic::rewriting::RewriteRule;
 #[derive(Serialize, Deserialize)]
 
 struct ApplyRulesInput {
-    expr : Expr,
-    rules : Vec<RewriteRule>,
+    expr: Expr,
+    rules: Vec<RewriteRule>,
 }
 
 /// Applies rewrite rules to an expression (JSON).
@@ -25,12 +25,11 @@ struct ApplyRulesInput {
 #[no_mangle]
 
 pub extern "C" fn rssn_apply_rules_to_normal_form_json(
-    json_str : *const c_char
+    json_str: *const c_char
 ) -> *mut c_char {
 
-    let input : Option<
-        ApplyRulesInput,
-    > = from_json_string(json_str);
+    let input: Option<ApplyRulesInput> =
+        from_json_string(json_str);
 
     let input = match input {
         | Some(i) => i,
@@ -55,10 +54,10 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_knuth_bendix_json(
-    json_str : *const c_char
+    json_str: *const c_char
 ) -> *mut c_char {
 
-    let equations : Option<Vec<Expr>> =
+    let equations: Option<Vec<Expr>> =
         from_json_string(json_str);
 
     let equations = match equations {
@@ -90,17 +89,17 @@ pub extern "C" fn rssn_knuth_bendix_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_rewrite_rule_new_json(
-    json_str : *const c_char
+    json_str: *const c_char
 ) -> *mut c_char {
 
     #[derive(Deserialize)]
 
     struct RuleInput {
-        lhs : Expr,
-        rhs : Expr,
+        lhs: Expr,
+        rhs: Expr,
     }
 
-    let input : Option<RuleInput> =
+    let input: Option<RuleInput> =
         from_json_string(json_str);
 
     let input = match input {
@@ -111,8 +110,8 @@ pub extern "C" fn rssn_rewrite_rule_new_json(
     };
 
     let rule = RewriteRule {
-        lhs : input.lhs,
-        rhs : input.rhs,
+        lhs: input.lhs,
+        rhs: input.rhs,
     };
 
     to_json_string(&rule)
@@ -125,10 +124,10 @@ pub extern "C" fn rssn_rewrite_rule_new_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_rewrite_rule_to_string_json(
-    json_str : *const c_char
+    json_str: *const c_char
 ) -> *mut c_char {
 
-    let rule : Option<RewriteRule> =
+    let rule: Option<RewriteRule> =
         from_json_string(json_str);
 
     let rule = match rule {

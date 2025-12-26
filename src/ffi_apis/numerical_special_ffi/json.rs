@@ -12,49 +12,49 @@ use crate::numerical::special;
 #[derive(Deserialize)]
 
 struct SingleInput {
-    x : f64,
+    x: f64,
 }
 
 #[derive(Deserialize)]
 
 struct TwoInput {
-    a : f64,
-    b : f64,
+    a: f64,
+    b: f64,
 }
 
 #[derive(Deserialize)]
 
 struct ThreeInput {
-    x : f64,
-    a : f64,
-    b : f64,
+    x: f64,
+    a: f64,
+    b: f64,
 }
 
 #[derive(Deserialize)]
 
 struct PolyInput {
-    n : u32,
-    x : f64,
+    n: u32,
+    x: f64,
 }
 
 #[derive(Deserialize)]
 
 struct IntInput {
-    n : u64,
+    n: u64,
 }
 
 #[derive(Deserialize)]
 
 struct BinomialInput {
-    n : u64,
-    k : u64,
+    n: u64,
+    k: u64,
 }
 
 // Gamma functions
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_gamma_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : SingleInput = match from_json_string(input) {
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rssn_num_special_gamma_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_ln_gamma_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : SingleInput = match from_json_string(input) {
@@ -114,7 +114,7 @@ pub unsafe extern "C" fn rssn_num_special_ln_gamma_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_digamma_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : SingleInput = match from_json_string(input) {
@@ -145,7 +145,7 @@ pub unsafe extern "C" fn rssn_num_special_digamma_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_beta_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : TwoInput = match from_json_string(input) {
@@ -175,7 +175,7 @@ pub unsafe extern "C" fn rssn_num_special_beta_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_regularized_beta_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : ThreeInput = match from_json_string(input) {
@@ -212,7 +212,7 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_erf_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : SingleInput = match from_json_string(input) {
@@ -242,7 +242,7 @@ pub unsafe extern "C" fn rssn_num_special_erf_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_erfc_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : SingleInput = match from_json_string(input) {
@@ -273,7 +273,7 @@ pub unsafe extern "C" fn rssn_num_special_erfc_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_bessel_j0_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : SingleInput = match from_json_string(input) {
@@ -294,12 +294,12 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j0_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(
+                ok: Some(
                     special::bessel_j0(
                         input.x,
                     ),
                 ),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -309,7 +309,7 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j0_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_bessel_j1_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : SingleInput = match from_json_string(input) {
@@ -330,12 +330,12 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j1_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(
+                ok: Some(
                     special::bessel_j1(
                         input.x,
                     ),
                 ),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -346,7 +346,7 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j1_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_legendre_p_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : PolyInput = match from_json_string(input) {
@@ -367,13 +367,13 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(
+                ok: Some(
                     special::legendre_p(
                         input.n,
                         input.x,
                     ),
                 ),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -383,7 +383,7 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_chebyshev_t_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : PolyInput = match from_json_string(input) {
@@ -413,7 +413,7 @@ pub unsafe extern "C" fn rssn_num_special_chebyshev_t_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_hermite_h_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : PolyInput = match from_json_string(input) {
@@ -434,13 +434,13 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(
+                ok: Some(
                     special::hermite_h(
                         input.n,
                         input.x,
                     ),
                 ),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -451,7 +451,7 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_factorial_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : IntInput = match from_json_string(input) {
@@ -472,12 +472,12 @@ pub unsafe extern "C" fn rssn_num_special_factorial_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(
+                ok: Some(
                     special::factorial(
                         input.n,
                     ),
                 ),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -487,7 +487,7 @@ pub unsafe extern "C" fn rssn_num_special_factorial_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_binomial_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : BinomialInput = match from_json_string(input) {
@@ -508,13 +508,13 @@ pub unsafe extern "C" fn rssn_num_special_binomial_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(
+                ok: Some(
                     special::binomial(
                         input.n,
                         input.k,
                     ),
                 ),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -524,7 +524,7 @@ pub unsafe extern "C" fn rssn_num_special_binomial_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_sigmoid_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : SingleInput = match from_json_string(input) {
@@ -545,12 +545,12 @@ pub unsafe extern "C" fn rssn_num_special_sigmoid_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(
+                ok: Some(
                     special::sigmoid(
                         input.x,
                     ),
                 ),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -560,7 +560,7 @@ pub unsafe extern "C" fn rssn_num_special_sigmoid_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_sinc_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : SingleInput = match from_json_string(input) {
@@ -581,12 +581,12 @@ pub unsafe extern "C" fn rssn_num_special_sinc_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(
+                ok: Some(
                     special::sinc(
                         input.x,
                     ),
                 ),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),

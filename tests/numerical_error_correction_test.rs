@@ -37,7 +37,7 @@ fn test_reed_solomon_encode_basic() {
 fn test_reed_solomon_encode_empty_message(
 ) {
 
-    let message : Vec<u8> = vec![];
+    let message: Vec<u8> = vec![];
 
     let codeword = reed_solomon_encode(
         &message,
@@ -54,7 +54,7 @@ fn test_reed_solomon_encode_max_length()
 {
 
     // Maximum message length is 255 - n_parity
-    let message : Vec<u8> =
+    let message: Vec<u8> =
         (0 .. 251).collect();
 
     let codeword = reed_solomon_encode(
@@ -70,7 +70,7 @@ fn test_reed_solomon_encode_max_length()
 
 fn test_reed_solomon_encode_too_long() {
 
-    let message : Vec<u8> =
+    let message: Vec<u8> =
         (0 .. 252).collect();
 
     let result = reed_solomon_encode(
@@ -428,7 +428,7 @@ fn test_hamming_weight_mixed() {
 
 fn test_hamming_weight_empty() {
 
-    let data : Vec<u8> = vec![];
+    let data: Vec<u8> = vec![];
 
     assert_eq!(
         hamming_weight_numerical(&data),
@@ -476,7 +476,7 @@ fn test_bch_roundtrip_no_errors() {
 
 fn test_crc32_empty() {
 
-    let data : &[u8] = b"";
+    let data: &[u8] = b"";
 
     let crc =
         crc32_compute_numerical(data);
@@ -581,7 +581,7 @@ fn test_crc16_basic() {
 
 fn test_crc16_empty() {
 
-    let data : &[u8] = b"";
+    let data: &[u8] = b"";
 
     let crc = crc16_compute(data);
 
@@ -609,7 +609,7 @@ fn test_crc8_basic() {
 
 fn test_crc8_empty() {
 
-    let data : &[u8] = b"";
+    let data: &[u8] = b"";
 
     let crc = crc8_compute(data);
 
@@ -688,7 +688,7 @@ fn test_interleave_depth_0() {
 
 fn test_interleave_empty() {
 
-    let data : Vec<u8> = vec![];
+    let data: Vec<u8> = vec![];
 
     let interleaved =
         interleave(&data, 3);

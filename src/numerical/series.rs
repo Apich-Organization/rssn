@@ -25,10 +25,10 @@ use crate::symbolic::core::Expr;
 /// ```
 
 pub fn taylor_coefficients(
-    f : &Expr,
-    var : &str,
-    at_point : f64,
-    order : usize,
+    f: &Expr,
+    var: &str,
+    at_point: f64,
+    order: usize,
 ) -> Result<Vec<f64>, String> {
 
     let mut coeffs =
@@ -82,9 +82,9 @@ pub fn taylor_coefficients(
 #[must_use]
 
 pub fn evaluate_power_series(
-    coeffs : &[f64],
-    at_point : f64,
-    x : f64,
+    coeffs: &[f64],
+    at_point: f64,
+    x: f64,
 ) -> f64 {
 
     let dx = x - at_point;
@@ -120,10 +120,10 @@ pub fn evaluate_power_series(
 /// ```
 
 pub fn sum_series(
-    f : &Expr,
-    var : &str,
-    start : i64,
-    end : i64,
+    f: &Expr,
+    var: &str,
+    start: i64,
+    end: i64,
 ) -> Result<f64, String> {
 
     let mut sum = 0.0;

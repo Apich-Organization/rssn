@@ -43,22 +43,22 @@ use crate::plugins::stable_abi::StablePluginModule;
 use crate::plugins::stable_abi::StablePlugin_TO;
 
 pub struct ManagedPlugin {
-    pub plugin : Box<dyn Plugin>,
-    pub health : RwLock<PluginHealth>,
+    pub plugin: Box<dyn Plugin>,
+    pub health: RwLock<PluginHealth>,
 }
 
 pub struct ManagedStablePlugin {
-    pub plugin : StablePlugin_TO<
+    pub plugin: StablePlugin_TO<
         'static,
         RBox<()>,
     >,
-    pub health : RwLock<PluginHealth>,
+    pub health: RwLock<PluginHealth>,
 }
 
 /// Manages the lifecycle of all loaded plugins.
 
 pub struct PluginManager {
-    pub plugins : Arc<
+    pub plugins: Arc<
         RwLock<
             HashMap<
                 String,
@@ -66,7 +66,7 @@ pub struct PluginManager {
             >,
         >,
     >,
-    pub stable_plugins : Arc<
+    pub stable_plugins: Arc<
         RwLock<
             HashMap<
                 String,
@@ -74,17 +74,17 @@ pub struct PluginManager {
             >,
         >,
     >,
-    pub health_check_thread :
+    pub health_check_thread:
         Option<thread::JoinHandle<()>>,
-    pub stop_signal : Arc<AtomicBool>,
-    pub libraries : Vec<Library>,
+    pub stop_signal: Arc<AtomicBool>,
+    pub libraries: Vec<Library>,
 }
 
 impl PluginManager {
     /// Creates a new `PluginManager` and loads plugins from a specified directory.
 
     pub fn new(
-        plugin_dir : &str
+        plugin_dir: &str
     ) -> Result<Self, Box<dyn Error>>
     {
 
@@ -124,9 +124,9 @@ impl PluginManager {
 
     pub fn execute_plugin(
         &self,
-        plugin_name : &str,
-        command : &str,
-        args : &Expr,
+        plugin_name: &str,
+        command: &str,
+        args: &Expr,
     ) -> Result<Expr, PluginError> {
 
         let stable_plugins_map = self
@@ -149,6 +149,7 @@ impl PluginManager {
                     config,
                 )
                 .map_err(|e| {
+
                     PluginError::new(
                         &e.to_string(),
                     )
@@ -203,7 +204,7 @@ impl PluginManager {
 
     pub(crate) fn load_plugins(
         &mut self,
-        directory : &str,
+        directory: &str,
     ) -> Result<(), Box<dyn Error>>
     {
 
@@ -244,7 +245,7 @@ impl PluginManager {
 
     unsafe fn load_stable_plugin(
         &mut self,
-        library_path : &std::path::Path,
+        library_path: &std::path::Path,
     ) -> Result<(), Box<dyn Error>>
     {
 
@@ -259,7 +260,7 @@ impl PluginManager {
             .last()
             .expect("Library invalid");
 
-        let module : Symbol<
+        let module: Symbol<
             '_,
             *const StablePluginModule,
         > = library.get(
@@ -318,13 +319,14 @@ impl PluginManager {
             .on_load()
             .into_result()
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
         let managed_plugin =
             ManagedStablePlugin {
                 plugin,
-                health : RwLock::new(
+                health: RwLock::new(
                     PluginHealth::Ok,
                 ),
             };
@@ -344,7 +346,7 @@ impl PluginManager {
 
     unsafe fn load_plugin(
         &mut self,
-        library_path : &std::path::Path,
+        library_path: &std::path::Path,
     ) -> Result<(), Box<dyn Error>>
     {
 
@@ -359,7 +361,7 @@ impl PluginManager {
             .last()
             .expect("Library invalid");
 
-        let constructor : Symbol<
+        let constructor: Symbol<
             '_,
             PluginCreate,
         > = library
@@ -420,7 +422,7 @@ impl PluginManager {
         let managed_plugin =
             ManagedPlugin {
                 plugin,
-                health : RwLock::new(
+                health: RwLock::new(
                     PluginHealth::Ok,
                 ),
             };
@@ -443,7 +445,7 @@ impl PluginManager {
 
     pub(crate) fn start_health_checks(
         &mut self,
-        interval : Duration,
+        interval: Duration,
     ) {
 
         let plugins_clone =
@@ -565,7 +567,7 @@ impl Drop for PluginManager {
 /// A helper to parse a semantic version string into (major, minor) components.
 
 pub(crate) fn parse_version(
-    version : &str
+    version: &str
 ) -> Result<(u32, u32), Box<dyn Error>>
 {
 

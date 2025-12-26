@@ -14,25 +14,25 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct TaylorInput {
-    expr : Expr,
-    var : String,
-    at_point : f64,
-    order : usize,
+    expr: Expr,
+    var: String,
+    at_point: f64,
+    order: usize,
 }
 
 #[derive(Deserialize)]
 
 struct SumInput {
-    expr : Expr,
-    var : String,
-    start : i64,
-    end : i64,
+    expr: Expr,
+    var: String,
+    start: i64,
+    end: i64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : TaylorInput = match from_json_string(input_json) {
@@ -61,14 +61,14 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
     let ffi_res = match res {
         | Ok(v) => {
             FfiResult {
-                ok : Some(v),
-                err : None,
+                ok: Some(v),
+                err: None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             }
         },
     };
@@ -82,7 +82,7 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_sum_series_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : SumInput = match from_json_string(input_json) {
@@ -110,14 +110,14 @@ pub unsafe extern "C" fn rssn_numerical_sum_series_json(
     let ffi_res = match res {
         | Ok(v) => {
             FfiResult {
-                ok : Some(v),
-                err : None,
+                ok: Some(v),
+                err: None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             }
         },
     };

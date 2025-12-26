@@ -90,7 +90,7 @@ fn test_complex_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -143,8 +143,8 @@ fn test_complex_bincode_ffi() {
         #[derive(Serialize)]
 
         struct EvalInput {
-            expr : Expr,
-            vars : HashMap<
+            expr: Expr,
+            vars: HashMap<
                 String,
                 Complex<f64>,
             >,
@@ -158,7 +158,7 @@ fn test_complex_bincode_ffi() {
         );
 
         let input = EvalInput {
-            expr : Expr::Variable(
+            expr: Expr::Variable(
                 "z".to_string(),
             ),
             vars,
@@ -174,12 +174,12 @@ fn test_complex_bincode_ffi() {
         #[derive(Deserialize)]
 
         struct FfiResult<T, E> {
-            ok : Option<T>,
+            ok: Option<T>,
             #[allow(dead_code)]
-            err : Option<E>,
+            err: Option<E>,
         }
 
-        let res : FfiResult<
+        let res: FfiResult<
             Complex<f64>,
             String,
         > = from_bincode_buffer(

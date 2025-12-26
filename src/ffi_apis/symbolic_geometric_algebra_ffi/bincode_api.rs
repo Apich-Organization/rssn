@@ -6,13 +6,13 @@ use crate::symbolic::geometric_algebra::Multivector;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_multivector_scalar(
-    p : u32,
-    q : u32,
-    r : u32,
-    value_buf : BincodeBuffer,
+    p: u32,
+    q: u32,
+    r: u32,
+    value_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let value : Option<Expr> =
+    let value: Option<Expr> =
         from_bincode_buffer(&value_buf);
 
     if let Some(val) = value {
@@ -33,14 +33,14 @@ pub extern "C" fn rssn_bincode_multivector_scalar(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_multivector_geometric_product(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<Multivector> =
+    let a: Option<Multivector> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<Multivector> =
+    let b: Option<Multivector> =
         from_bincode_buffer(&b_buf);
 
     if let (Some(mv_a), Some(mv_b)) =
@@ -61,14 +61,14 @@ pub extern "C" fn rssn_bincode_multivector_geometric_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_multivector_outer_product(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<Multivector> =
+    let a: Option<Multivector> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<Multivector> =
+    let b: Option<Multivector> =
         from_bincode_buffer(&b_buf);
 
     if let (Some(mv_a), Some(mv_b)) =
@@ -89,14 +89,14 @@ pub extern "C" fn rssn_bincode_multivector_outer_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_multivector_inner_product(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<Multivector> =
+    let a: Option<Multivector> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<Multivector> =
+    let b: Option<Multivector> =
         from_bincode_buffer(&b_buf);
 
     if let (Some(mv_a), Some(mv_b)) =
@@ -117,10 +117,10 @@ pub extern "C" fn rssn_bincode_multivector_inner_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_multivector_reverse(
-    mv_buf : BincodeBuffer
+    mv_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let mv : Option<Multivector> =
+    let mv: Option<Multivector> =
         from_bincode_buffer(&mv_buf);
 
     if let Some(multivector) = mv {
@@ -139,11 +139,11 @@ pub extern "C" fn rssn_bincode_multivector_reverse(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_multivector_grade_projection(
-    mv_buf : BincodeBuffer,
-    grade : u32,
+    mv_buf: BincodeBuffer,
+    grade: u32,
 ) -> BincodeBuffer {
 
-    let mv : Option<Multivector> =
+    let mv: Option<Multivector> =
         from_bincode_buffer(&mv_buf);
 
     if let Some(multivector) = mv {
@@ -162,10 +162,10 @@ pub extern "C" fn rssn_bincode_multivector_grade_projection(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_multivector_magnitude(
-    mv_buf : BincodeBuffer
+    mv_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let mv : Option<Multivector> =
+    let mv: Option<Multivector> =
         from_bincode_buffer(&mv_buf);
 
     if let Some(multivector) = mv {

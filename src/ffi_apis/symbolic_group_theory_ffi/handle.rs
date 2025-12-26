@@ -8,13 +8,13 @@ use crate::symbolic::group_theory::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_group_create(
-    elements_ptr : *const *const Expr,
-    elements_len : usize,
-    keys_a_ptr : *const *const Expr,
-    keys_b_ptr : *const *const Expr,
-    values_ptr : *const *const Expr,
-    table_len : usize,
-    identity_ptr : *const Expr,
+    elements_ptr: *const *const Expr,
+    elements_len: usize,
+    keys_a_ptr: *const *const Expr,
+    keys_b_ptr: *const *const Expr,
+    values_ptr: *const *const Expr,
+    table_len: usize,
+    identity_ptr: *const Expr,
 ) -> *mut Group {
 
     let elements_slice =
@@ -23,10 +23,11 @@ pub unsafe extern "C" fn rssn_group_create(
             elements_len,
         );
 
-    let elements : Vec<GroupElement> =
+    let elements: Vec<GroupElement> =
         elements_slice
             .iter()
             .map(|&p| {
+
                 GroupElement(
                     (*p).clone(),
                 )
@@ -88,7 +89,7 @@ pub unsafe extern "C" fn rssn_group_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_group_free(
-    ptr : *mut Group
+    ptr: *mut Group
 ) {
 
     if !ptr.is_null() {
@@ -100,9 +101,9 @@ pub unsafe extern "C" fn rssn_group_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_group_multiply(
-    group : *const Group,
-    a : *const Expr,
-    b : *const Expr,
+    group: *const Group,
+    a: *const Expr,
+    b: *const Expr,
 ) -> *mut Expr {
 
     let ga = GroupElement((*a).clone());
@@ -122,8 +123,8 @@ pub unsafe extern "C" fn rssn_group_multiply(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_group_inverse(
-    group : *const Group,
-    a : *const Expr,
+    group: *const Group,
+    a: *const Expr,
 ) -> *mut Expr {
 
     let ga = GroupElement((*a).clone());
@@ -141,7 +142,7 @@ pub unsafe extern "C" fn rssn_group_inverse(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_group_is_abelian(
-    group : *const Group
+    group: *const Group
 ) -> bool {
 
     (*group).is_abelian()
@@ -150,8 +151,8 @@ pub unsafe extern "C" fn rssn_group_is_abelian(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_group_element_order(
-    group : *const Group,
-    a : *const Expr,
+    group: *const Group,
+    a: *const Expr,
 ) -> usize {
 
     let ga = GroupElement((*a).clone());
@@ -164,8 +165,8 @@ pub unsafe extern "C" fn rssn_group_element_order(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_group_center(
-    group : *const Group,
-    out_len : *mut usize,
+    group: *const Group,
+    out_len: *mut usize,
 ) -> *mut *mut Expr {
 
     let center = (*group).center();
@@ -196,11 +197,11 @@ pub unsafe extern "C" fn rssn_group_center(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_representation_create(
-    elements_ptr : *const *const Expr,
-    elements_len : usize,
-    keys_ptr : *const *const Expr,
-    values_ptr : *const *const Expr,
-    map_len : usize,
+    elements_ptr: *const *const Expr,
+    elements_len: usize,
+    keys_ptr: *const *const Expr,
+    values_ptr: *const *const Expr,
+    map_len: usize,
 ) -> *mut Representation {
 
     let elements_slice =
@@ -209,10 +210,11 @@ pub unsafe extern "C" fn rssn_representation_create(
             elements_len,
         );
 
-    let elements : Vec<GroupElement> =
+    let elements: Vec<GroupElement> =
         elements_slice
             .iter()
             .map(|&p| {
+
                 GroupElement(
                     (*p).clone(),
                 )
@@ -256,7 +258,7 @@ pub unsafe extern "C" fn rssn_representation_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_representation_free(
-    ptr : *mut Representation
+    ptr: *mut Representation
 ) {
 
     if !ptr.is_null() {
@@ -268,8 +270,8 @@ pub unsafe extern "C" fn rssn_representation_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_representation_is_valid(
-    rep : *const Representation,
-    group : *const Group,
+    rep: *const Representation,
+    group: *const Group,
 ) -> bool {
 
     (*rep).is_valid(&*group)
@@ -278,10 +280,10 @@ pub unsafe extern "C" fn rssn_representation_is_valid(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_character(
-    rep : *const Representation,
-    out_len : *mut usize,
-    out_keys : *mut *mut *mut Expr,
-    out_values : *mut *mut *mut Expr,
+    rep: *const Representation,
+    out_len: *mut usize,
+    out_keys: *mut *mut *mut Expr,
+    out_values: *mut *mut *mut Expr,
 ) {
 
     let chars = character(&*rep);

@@ -43,7 +43,7 @@ fn test_simplify_dag_consistency() {
     );
 
     let is_zero =
-        |expr : &Expr| -> bool {
+        |expr: &Expr| -> bool {
 
             match expr {
             | Expr::Constant(c) => c.abs() < 1e-9,

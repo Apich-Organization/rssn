@@ -26,7 +26,7 @@ use crate::symbolic::solve::solve;
 #[must_use]
 
 pub fn get_matrix_dims(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Option<(usize, usize)> {
 
     if let Expr::Matrix(rows) = matrix {
@@ -43,6 +43,7 @@ pub fn get_matrix_dims(
         if rows
             .iter()
             .all(|row| {
+
                 row.len() == num_cols
             })
         {
@@ -61,8 +62,8 @@ pub fn get_matrix_dims(
 #[must_use]
 
 pub fn create_empty_matrix(
-    rows : usize,
-    cols : usize,
+    rows: usize,
+    cols: usize,
 ) -> Vec<Vec<Expr>> {
 
     vec![
@@ -87,7 +88,7 @@ pub fn create_empty_matrix(
 #[must_use]
 
 pub fn identity_matrix(
-    size : usize
+    size: usize
 ) -> Expr {
 
     let mut rows =
@@ -113,8 +114,8 @@ pub fn identity_matrix(
 #[must_use]
 
 pub fn add_matrices(
-    m1 : &Expr,
-    m2 : &Expr,
+    m1: &Expr,
+    m2: &Expr,
 ) -> Expr {
 
     let dims1 = get_matrix_dims(m1);
@@ -189,8 +190,8 @@ pub fn add_matrices(
 #[must_use]
 
 pub fn sub_matrices(
-    m1 : &Expr,
-    m2 : &Expr,
+    m1: &Expr,
+    m2: &Expr,
 ) -> Expr {
 
     let dims1 = get_matrix_dims(m1);
@@ -265,8 +266,8 @@ pub fn sub_matrices(
 #[must_use]
 
 pub fn mul_matrices(
-    m1 : &Expr,
-    m2 : &Expr,
+    m1: &Expr,
+    m2: &Expr,
 ) -> Expr {
 
     let dims1 = get_matrix_dims(m1);
@@ -348,8 +349,8 @@ pub fn mul_matrices(
 #[must_use]
 
 pub fn scalar_mul_matrix(
-    scalar : &Expr,
-    matrix : &Expr,
+    scalar: &Expr,
+    matrix: &Expr,
 ) -> Expr {
 
     if let Some((r, c)) =
@@ -403,7 +404,7 @@ pub fn scalar_mul_matrix(
 #[must_use]
 
 pub fn transpose_matrix(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Expr {
 
     if let Some((r, c)) =
@@ -453,7 +454,7 @@ pub fn transpose_matrix(
 #[must_use]
 
 pub fn determinant(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Expr {
 
     if let Some((r, c)) =
@@ -574,9 +575,9 @@ pub fn determinant(
 }
 
 pub(crate) fn get_minor(
-    matrix : &Expr,
-    row_to_remove : usize,
-    col_to_remove : usize,
+    matrix: &Expr,
+    row_to_remove: usize,
+    col_to_remove: usize,
 ) -> Expr {
 
     if let Some((r, c)) =
@@ -636,7 +637,7 @@ pub(crate) fn get_minor(
 #[must_use]
 
 pub fn inverse_matrix(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Expr {
 
     let det = determinant(matrix);
@@ -752,13 +753,14 @@ pub fn inverse_matrix(
 /// or an error string if inputs are invalid or dimensions are incompatible.
 
 pub fn solve_linear_system(
-    a : &Expr,
-    b : &Expr,
+    a: &Expr,
+    b: &Expr,
 ) -> Result<Expr, String> {
 
     let (a_rows, a_cols) =
         get_matrix_dims(a).ok_or_else(
             || {
+
                 "A is not a valid \
                  matrix"
                     .to_string()
@@ -768,6 +770,7 @@ pub fn solve_linear_system(
     let (b_rows, b_cols) =
         get_matrix_dims(b).ok_or_else(
             || {
+
                 "b is not a valid \
                  matrix"
                     .to_string()
@@ -867,9 +870,10 @@ pub fn solve_linear_system(
         }
     }
 
-    let free_cols : Vec<usize> = (0
+    let free_cols: Vec<usize> = (0
         .. a_cols)
         .filter(|c| {
+
             !pivot_cols.contains(c)
         })
         .collect();
@@ -943,7 +947,7 @@ pub fn solve_linear_system(
 /// A `Result` containing an `Expr` representing the trace, or an error string if the matrix is not square.
 
 pub fn trace(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Result<Expr, String> {
 
     let (rows, cols) =
@@ -992,8 +996,8 @@ pub fn trace(
 /// or an error string if the matrix is not square.
 
 pub fn characteristic_polynomial(
-    matrix : &Expr,
-    lambda_var : &str,
+    matrix: &Expr,
+    lambda_var: &str,
 ) -> Result<Expr, String> {
 
     let (rows, cols) =
@@ -1036,7 +1040,7 @@ pub fn characteristic_polynomial(
 /// or an error string if the matrix is not square or is singular.
 
 pub fn lu_decomposition(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Result<(Expr, Expr), String> {
 
     let (rows, cols) =
@@ -1175,7 +1179,7 @@ pub fn lu_decomposition(
 /// or an error string if the matrix is invalid.
 
 pub fn qr_decomposition(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Result<(Expr, Expr), String> {
 
     let (rows, cols) =
@@ -1201,7 +1205,7 @@ pub fn qr_decomposition(
 
         for i in 0 .. j {
 
-            let q_i : &Vec<Expr> =
+            let q_i: &Vec<Expr> =
                 &q_cols[i];
 
             let mut dot_a_q =
@@ -1322,7 +1326,7 @@ pub fn qr_decomposition(
 /// or an error string if the matrix is invalid.
 
 pub fn rref(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Result<Expr, String> {
 
     let (rows, cols) = get_matrix_dims(
@@ -1434,7 +1438,7 @@ pub fn rref(
 /// or an error string if the matrix is invalid.
 
 pub fn null_space(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Result<Expr, String> {
 
     let (rows, cols) =
@@ -1480,9 +1484,10 @@ pub fn null_space(
         }
     }
 
-    let free_cols : Vec<usize> = (0
+    let free_cols: Vec<usize> = (0
         .. cols)
         .filter(|c| {
+
             !pivot_cols.contains(c)
         })
         .collect();
@@ -1570,7 +1575,7 @@ pub fn null_space(
 /// Returns an error string if the matrix is not square or eigenvalues cannot be found.
 
 pub fn eigen_decomposition(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Result<(Expr, Expr), String> {
 
     let (rows, cols) =
@@ -1709,7 +1714,7 @@ pub fn eigen_decomposition(
 /// or an error string if the decomposition fails.
 
 pub fn svd_decomposition(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Result<(Expr, Expr, Expr), String>
 {
 
@@ -1792,6 +1797,7 @@ pub fn svd_decomposition(
             let v_i = Expr::Matrix(
                 (0 .. cols)
                     .map(|r| {
+
                         vec![v_mat[r]
                             [i]
                             .clone()]
@@ -1876,7 +1882,7 @@ pub fn svd_decomposition(
 /// A `Result` containing the rank as a `usize`, or an error string if the matrix is invalid.
 
 pub fn rank(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Result<usize, String> {
 
     let rref_matrix = rref(matrix)?;
@@ -1915,7 +1921,7 @@ pub fn rank(
 /// or an error string if the matrix is invalid.
 
 pub fn gaussian_elimination(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Result<Expr, String> {
 
     let (rows, cols) =
@@ -2007,7 +2013,7 @@ pub fn gaussian_elimination(
 #[must_use]
 
 pub fn is_zero_matrix(
-    matrix : &Expr
+    matrix: &Expr
 ) -> bool {
 
     if let Some((rows, cols)) =

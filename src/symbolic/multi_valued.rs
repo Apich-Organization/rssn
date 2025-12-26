@@ -12,7 +12,7 @@ use crate::symbolic::simplify_dag::simplify;
 /// `Arg(z)` is the angle in radians in the interval (-pi, pi].
 #[must_use]
 
-pub fn arg(z : &Expr) -> Expr {
+pub fn arg(z: &Expr) -> Expr {
 
     Expr::new_apply(
         Expr::Variable(
@@ -25,7 +25,7 @@ pub fn arg(z : &Expr) -> Expr {
 /// Returns the absolute value (magnitude) of a complex expression `z`.
 #[must_use]
 
-pub fn abs(z : &Expr) -> Expr {
+pub fn abs(z: &Expr) -> Expr {
 
     Expr::new_abs(z.clone())
 }
@@ -44,8 +44,8 @@ pub fn abs(z : &Expr) -> Expr {
 #[must_use]
 
 pub fn general_log(
-    z : &Expr,
-    k : &Expr,
+    z: &Expr,
+    k: &Expr,
 ) -> Expr {
 
     let pi = Expr::Pi;
@@ -87,8 +87,8 @@ pub fn general_log(
 #[must_use]
 
 pub fn general_sqrt(
-    z : &Expr,
-    k : &Expr,
+    z: &Expr,
+    k: &Expr,
 ) -> Expr {
 
     let pi = Expr::Pi;
@@ -139,9 +139,9 @@ pub fn general_sqrt(
 #[must_use]
 
 pub fn general_power(
-    z : &Expr,
-    w : &Expr,
-    k : &Expr,
+    z: &Expr,
+    w: &Expr,
+    k: &Expr,
 ) -> Expr {
 
     let log_z = general_log(z, k);
@@ -166,9 +166,9 @@ pub fn general_power(
 #[must_use]
 
 pub fn general_nth_root(
-    z : &Expr,
-    n : &Expr,
-    k : &Expr,
+    z: &Expr,
+    n: &Expr,
+    k: &Expr,
 ) -> Expr {
 
     let pi = Expr::Pi;
@@ -224,8 +224,8 @@ pub fn general_nth_root(
 #[must_use]
 
 pub fn general_arcsin(
-    z : &Expr,
-    k : &Expr,
+    z: &Expr,
+    k: &Expr,
 ) -> Expr {
 
     let pi = Expr::Pi;
@@ -264,9 +264,9 @@ pub fn general_arcsin(
 #[must_use]
 
 pub fn general_arccos(
-    z : &Expr,
-    k : &Expr,
-    s : &Expr,
+    z: &Expr,
+    k: &Expr,
+    s: &Expr,
 ) -> Expr {
 
     let pi = Expr::Pi;
@@ -303,8 +303,8 @@ pub fn general_arccos(
 #[must_use]
 
 pub fn general_arctan(
-    z : &Expr,
-    k : &Expr,
+    z: &Expr,
+    k: &Expr,
 ) -> Expr {
 
     let pi = Expr::Pi;
@@ -335,8 +335,8 @@ pub fn general_arctan(
 #[must_use]
 
 pub fn general_arcsinh(
-    z : &Expr,
-    k : &Expr,
+    z: &Expr,
+    k: &Expr,
 ) -> Expr {
 
     let z_squared = Expr::new_pow(
@@ -375,8 +375,8 @@ pub fn general_arcsinh(
 #[must_use]
 
 pub fn general_arccosh(
-    z : &Expr,
-    k : &Expr,
+    z: &Expr,
+    k: &Expr,
 ) -> Expr {
 
     let z_squared = Expr::new_pow(
@@ -415,8 +415,8 @@ pub fn general_arccosh(
 #[must_use]
 
 pub fn general_arctanh(
-    z : &Expr,
-    k : &Expr,
+    z: &Expr,
+    k: &Expr,
 ) -> Expr {
 
     let numerator = Expr::new_add(

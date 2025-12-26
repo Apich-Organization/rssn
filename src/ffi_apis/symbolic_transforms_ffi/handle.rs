@@ -19,9 +19,9 @@ use crate::symbolic::transforms;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_fourier_transform(
-    expr : *const Expr,
-    in_var : *const c_char,
-    out_var : *const c_char,
+    expr: *const Expr,
+    in_var: *const c_char,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -47,9 +47,9 @@ pub unsafe extern "C" fn rssn_fourier_transform(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_inverse_fourier_transform(
-    expr : *const Expr,
-    in_var : *const c_char,
-    out_var : *const c_char,
+    expr: *const Expr,
+    in_var: *const c_char,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -71,9 +71,9 @@ pub unsafe extern "C" fn rssn_inverse_fourier_transform(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_laplace_transform(
-    expr : *const Expr,
-    in_var : *const c_char,
-    out_var : *const c_char,
+    expr: *const Expr,
+    in_var: *const c_char,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -99,9 +99,9 @@ pub unsafe extern "C" fn rssn_laplace_transform(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_inverse_laplace_transform(
-    expr : *const Expr,
-    in_var : *const c_char,
-    out_var : *const c_char,
+    expr: *const Expr,
+    in_var: *const c_char,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -123,9 +123,9 @@ pub unsafe extern "C" fn rssn_inverse_laplace_transform(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_z_transform(
-    expr : *const Expr,
-    in_var : *const c_char,
-    out_var : *const c_char,
+    expr: *const Expr,
+    in_var: *const c_char,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -151,9 +151,9 @@ pub unsafe extern "C" fn rssn_z_transform(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_inverse_z_transform(
-    expr : *const Expr,
-    in_var : *const c_char,
-    out_var : *const c_char,
+    expr: *const Expr,
+    in_var: *const c_char,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if expr.is_null() {
@@ -179,9 +179,9 @@ pub unsafe extern "C" fn rssn_inverse_z_transform(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_fourier_time_shift(
-    f_omega : *const Expr,
-    a : *const Expr,
-    out_var : *const c_char,
+    f_omega: *const Expr,
+    a: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_omega.is_null() || a.is_null()
@@ -205,9 +205,9 @@ pub unsafe extern "C" fn rssn_fourier_time_shift(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_fourier_frequency_shift(
-    f_omega : *const Expr,
-    a : *const Expr,
-    out_var : *const c_char,
+    f_omega: *const Expr,
+    a: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_omega.is_null() || a.is_null()
@@ -231,9 +231,9 @@ pub unsafe extern "C" fn rssn_fourier_frequency_shift(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_fourier_scaling(
-    f_omega : *const Expr,
-    a : *const Expr,
-    out_var : *const c_char,
+    f_omega: *const Expr,
+    a: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_omega.is_null() || a.is_null()
@@ -257,8 +257,8 @@ pub unsafe extern "C" fn rssn_fourier_scaling(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_fourier_differentiation(
-    f_omega : *const Expr,
-    out_var : *const c_char,
+    f_omega: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_omega.is_null() {
@@ -277,9 +277,9 @@ pub unsafe extern "C" fn rssn_fourier_differentiation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_laplace_time_shift(
-    f_s : *const Expr,
-    a : *const Expr,
-    out_var : *const c_char,
+    f_s: *const Expr,
+    a: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_s.is_null() || a.is_null() {
@@ -300,9 +300,9 @@ pub unsafe extern "C" fn rssn_laplace_time_shift(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_laplace_differentiation(
-    f_s : *const Expr,
-    out_var : *const c_char,
-    f_zero : *const Expr,
+    f_s: *const Expr,
+    out_var: *const c_char,
+    f_zero: *const Expr,
 ) -> *mut Expr {
 
     if f_s.is_null() || f_zero.is_null()
@@ -326,10 +326,10 @@ pub unsafe extern "C" fn rssn_laplace_differentiation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convolution_fourier(
-    f : *const Expr,
-    g : *const Expr,
-    in_var : *const c_char,
-    out_var : *const c_char,
+    f: *const Expr,
+    g: *const Expr,
+    in_var: *const c_char,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f.is_null() || g.is_null() {
@@ -353,10 +353,10 @@ pub unsafe extern "C" fn rssn_convolution_fourier(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_convolution_laplace(
-    f : *const Expr,
-    g : *const Expr,
-    in_var : *const c_char,
-    out_var : *const c_char,
+    f: *const Expr,
+    g: *const Expr,
+    in_var: *const c_char,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f.is_null() || g.is_null() {
@@ -380,9 +380,9 @@ pub unsafe extern "C" fn rssn_convolution_laplace(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_laplace_frequency_shift(
-    f_s : *const Expr,
-    a : *const Expr,
-    out_var : *const c_char,
+    f_s: *const Expr,
+    a: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_s.is_null() || a.is_null() {
@@ -401,9 +401,9 @@ pub unsafe extern "C" fn rssn_laplace_frequency_shift(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_laplace_scaling(
-    f_s : *const Expr,
-    a : *const Expr,
-    out_var : *const c_char,
+    f_s: *const Expr,
+    a: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_s.is_null() || a.is_null() {
@@ -424,8 +424,8 @@ pub unsafe extern "C" fn rssn_laplace_scaling(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_laplace_integration(
-    f_s : *const Expr,
-    out_var : *const c_char,
+    f_s: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_s.is_null() {
@@ -446,9 +446,9 @@ pub unsafe extern "C" fn rssn_laplace_integration(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_z_time_shift(
-    f_z : *const Expr,
-    k : *const Expr,
-    out_var : *const c_char,
+    f_z: *const Expr,
+    k: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_z.is_null() || k.is_null() {
@@ -469,9 +469,9 @@ pub unsafe extern "C" fn rssn_z_time_shift(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_z_scaling(
-    f_z : *const Expr,
-    a : *const Expr,
-    out_var : *const c_char,
+    f_z: *const Expr,
+    a: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_z.is_null() || a.is_null() {
@@ -492,8 +492,8 @@ pub unsafe extern "C" fn rssn_z_scaling(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_z_differentiation(
-    f_z : *const Expr,
-    out_var : *const c_char,
+    f_z: *const Expr,
+    out_var: *const c_char,
 ) -> *mut Expr {
 
     if f_z.is_null() {
@@ -518,8 +518,8 @@ pub struct ExprList(pub Vec<Expr>);
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_partial_fraction_decomposition(
-    expr : *const Expr,
-    var : *const c_char,
+    expr: *const Expr,
+    var: *const c_char,
 ) -> *mut ExprList {
 
     if expr.is_null() {
@@ -544,7 +544,7 @@ pub unsafe extern "C" fn rssn_partial_fraction_decomposition(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_expr_list_len(
-    list : *const ExprList
+    list: *const ExprList
 ) -> usize {
 
     if list.is_null() {
@@ -558,8 +558,8 @@ pub unsafe extern "C" fn rssn_expr_list_len(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_expr_list_get(
-    list : *const ExprList,
-    index : usize,
+    list: *const ExprList,
+    index: usize,
 ) -> *mut Expr {
 
     if list.is_null() {
@@ -583,7 +583,7 @@ pub unsafe extern "C" fn rssn_expr_list_get(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_expr_list_free(
-    list : *mut ExprList
+    list: *mut ExprList
 ) {
 
     if !list.is_null() {

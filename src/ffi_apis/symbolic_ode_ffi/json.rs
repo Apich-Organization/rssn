@@ -10,12 +10,12 @@ use crate::symbolic::ode;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_ode(
-    ode_json : *const c_char,
-    func : *const c_char,
-    var : *const c_char,
+    ode_json: *const c_char,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let ode_expr : Option<Expr> =
+    let ode_expr: Option<Expr> =
         from_json_string(ode_json);
 
     let func_str = unsafe {
@@ -73,12 +73,12 @@ pub extern "C" fn rssn_json_solve_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_separable_ode(
-    equation_json : *const c_char,
-    func : *const c_char,
-    var : *const c_char,
+    equation_json: *const c_char,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_json_string(equation_json);
 
     let func_str = unsafe {
@@ -141,12 +141,12 @@ pub extern "C" fn rssn_json_solve_separable_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_first_order_linear_ode(
-    equation_json : *const c_char,
-    func : *const c_char,
-    var : *const c_char,
+    equation_json: *const c_char,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_json_string(equation_json);
 
     let func_str = unsafe {
@@ -203,12 +203,12 @@ pub extern "C" fn rssn_json_solve_first_order_linear_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_bernoulli_ode(
-    equation_json : *const c_char,
-    func : *const c_char,
-    var : *const c_char,
+    equation_json: *const c_char,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_json_string(equation_json);
 
     let func_str = unsafe {
@@ -271,16 +271,16 @@ pub extern "C" fn rssn_json_solve_bernoulli_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_riccati_ode(
-    equation_json : *const c_char,
-    func : *const c_char,
-    var : *const c_char,
-    y1_json : *const c_char,
+    equation_json: *const c_char,
+    func: *const c_char,
+    var: *const c_char,
+    y1_json: *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_json_string(equation_json);
 
-    let y1 : Option<Expr> =
+    let y1: Option<Expr> =
         from_json_string(y1_json);
 
     let func_str = unsafe {
@@ -345,12 +345,12 @@ pub extern "C" fn rssn_json_solve_riccati_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_cauchy_euler_ode(
-    equation_json : *const c_char,
-    func : *const c_char,
-    var : *const c_char,
+    equation_json: *const c_char,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_json_string(equation_json);
 
     let func_str = unsafe {
@@ -407,12 +407,12 @@ pub extern "C" fn rssn_json_solve_cauchy_euler_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_exact_ode(
-    equation_json : *const c_char,
-    func : *const c_char,
-    var : *const c_char,
+    equation_json: *const c_char,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_json_string(equation_json);
 
     let func_str = unsafe {
@@ -475,16 +475,16 @@ pub extern "C" fn rssn_json_solve_exact_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_by_reduction_of_order(
-    equation_json : *const c_char,
-    func : *const c_char,
-    var : *const c_char,
-    y1_json : *const c_char,
+    equation_json: *const c_char,
+    func: *const c_char,
+    var: *const c_char,
+    y1_json: *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_json_string(equation_json);
 
-    let y1 : Option<Expr> =
+    let y1: Option<Expr> =
         from_json_string(y1_json);
 
     let func_str = unsafe {

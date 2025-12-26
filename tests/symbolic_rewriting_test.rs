@@ -17,11 +17,11 @@ fn test_apply_rules_simple() {
 
     // Rule: x + 0 -> x
     let rule = RewriteRule {
-        lhs : Expr::new_add(
+        lhs: Expr::new_add(
             p_x.clone(),
             zero.clone(),
         ),
-        rhs : p_x.clone(),
+        rhs: p_x.clone(),
     };
 
     // Expr: (y + 0) + 0
@@ -235,15 +235,15 @@ fn test_knuth_bendix_simple() {
 fn test_rewrite_rule_serialization() {
 
     let rule = RewriteRule {
-        lhs : Expr::new_variable("a"),
-        rhs : Expr::new_variable("b"),
+        lhs: Expr::new_variable("a"),
+        rhs: Expr::new_variable("b"),
     };
 
     let json =
         serde_json::to_string(&rule)
             .expect("Serialize");
 
-    let deserialized : RewriteRule =
+    let deserialized: RewriteRule =
         serde_json::from_str(&json)
             .expect("Deserialize");
 

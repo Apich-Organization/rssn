@@ -14,20 +14,21 @@ use rssn::numerical::integrate::{
 
 // --- Helper Functions ---
 fn poly_2(
-    c : [f64; 3],
-    x : f64,
+    c: [f64; 3],
+    x: f64,
 ) -> f64 {
 
     c[0] + c[1] * x + c[2] * x * x
 }
 
 fn integral_poly_2(
-    c : [f64; 3],
-    a : f64,
-    b : f64,
+    c: [f64; 3],
+    a: f64,
+    b: f64,
 ) -> f64 {
 
-    let antideriv = |x : f64| {
+    let antideriv = |x: f64| {
+
         c[0] * x
             + 0.5 * c[1] * x * x
             + (c[2] * x * x * x) / 3.0
@@ -42,7 +43,7 @@ fn integral_poly_2(
 
 fn test_trapezoidal_basic() {
 
-    let f = |x : f64| x * x;
+    let f = |x: f64| x * x;
 
     let res = trapezoidal_rule(
         f,
@@ -61,7 +62,7 @@ fn test_trapezoidal_basic() {
 
 fn test_simpson_basic() {
 
-    let f = |x : f64| x * x;
+    let f = |x: f64| x * x;
 
     // Simpson's rule is exact for polynomials up to degree 2 (and actually 3).
     let res =
@@ -79,7 +80,7 @@ fn test_simpson_basic() {
 
 fn test_adaptive_basic() {
 
-    let f = |x : f64| x.sin();
+    let f = |x: f64| x.sin();
 
     // Integral of sin(x) from 0 to pi is -cos(pi) - (-cos(0)) = 1 - (-1) = 2
     let res = adaptive_quadrature(
@@ -98,7 +99,7 @@ fn test_adaptive_basic() {
 
 fn test_romberg_basic() {
 
-    let f = |x : f64| x.exp();
+    let f = |x: f64| x.exp();
 
     // Integral of exp(x) from 0 to 1 is e^1 - e^0 = e - 1
     let exact =
@@ -117,7 +118,8 @@ fn test_romberg_basic() {
 
 fn test_gauss_legendre_basic() {
 
-    let f = |x : f64| {
+    let f = |x: f64| {
+
         x.powi(3) + x.powi(2) + 1.0
     };
 

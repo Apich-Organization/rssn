@@ -12,11 +12,11 @@ use crate::output::io::write_npy_file;
 )]
 
 pub struct FdtdParameters {
-    pub width : usize,
-    pub height : usize,
-    pub time_steps : usize,
-    pub source_pos : (usize, usize),
-    pub source_freq : f64,
+    pub width: usize,
+    pub height: usize,
+    pub time_steps: usize,
+    pub source_pos: (usize, usize),
+    pub source_freq: f64,
 }
 
 /// Runs a 2D FDTD simulation for the Transverse Magnetic (TM) mode.
@@ -29,7 +29,7 @@ pub struct FdtdParameters {
 /// A `Vec` containing snapshots of the Ez field at specified intervals.
 
 pub fn run_fdtd_simulation(
-    params : &FdtdParameters
+    params: &FdtdParameters
 ) -> Vec<Array2<f64>> {
 
     let (nx, ny) = (
@@ -197,9 +197,9 @@ pub fn run_fdtd_simulation(
 /// An example scenario that runs an FDTD simulation and saves the final state.
 
 pub fn simulate_and_save_final_state(
-    grid_size : usize,
-    time_steps : usize,
-    filename : &str,
+    grid_size: usize,
+    time_steps: usize,
+    filename: &str,
 ) -> Result<(), String> {
 
     let mut ez =

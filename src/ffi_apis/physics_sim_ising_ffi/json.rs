@@ -16,14 +16,14 @@ use crate::physics::physics_sim::ising_statistical::{
 #[derive(Serialize)]
 
 struct IsingOutput {
-    pub grid : Vec<i8>,
-    pub magnetization : f64,
+    pub grid: Vec<i8>,
+    pub magnetization: f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let params : IsingParameters = match from_json_string(input) {

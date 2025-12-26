@@ -6,8 +6,8 @@ use crate::symbolic::solve::solve_system;
 #[no_mangle]
 
 pub extern "C" fn rssn_solve_handle(
-    expr : *const Expr,
-    var : *const std::ffi::c_char,
+    expr: *const Expr,
+    var: *const std::ffi::c_char,
 ) -> *mut Vec<Expr> {
 
     let expr_ref = unsafe {
@@ -37,8 +37,8 @@ pub extern "C" fn rssn_solve_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_solve_system_handle(
-    equations : *const Vec<Expr>,
-    vars : *const Vec<String>,
+    equations: *const Vec<Expr>,
+    vars: *const Vec<String>,
 ) -> *mut Vec<(Expr, Expr)> {
 
     let eqs_ref = unsafe {
@@ -51,7 +51,7 @@ pub extern "C" fn rssn_solve_system_handle(
         &*vars
     };
 
-    let vars_str : Vec<&str> = vars_ref
+    let vars_str: Vec<&str> = vars_ref
         .iter()
         .map(|s| s.as_str())
         .collect();
@@ -72,8 +72,8 @@ pub extern "C" fn rssn_solve_system_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_solve_linear_system_handle(
-    system : *const Expr,
-    vars : *const Vec<String>,
+    system: *const Expr,
+    vars: *const Vec<String>,
 ) -> *mut Vec<Expr> {
 
     let sys_ref = unsafe {

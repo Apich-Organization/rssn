@@ -19,9 +19,9 @@ use crate::numerical::transforms;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fft_inplace(
-    real : *mut f64,
-    imag : *mut f64,
-    len : usize,
+    real: *mut f64,
+    imag: *mut f64,
+    len: usize,
 ) -> i32 {
 
     if real.is_null() || imag.is_null()
@@ -48,7 +48,7 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
         return -1;
     }
 
-    let mut data : Vec<Complex<f64>> =
+    let mut data: Vec<Complex<f64>> =
         (0 .. len)
             .map(|i| {
 
@@ -75,9 +75,9 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ifft_inplace(
-    real : *mut f64,
-    imag : *mut f64,
-    len : usize,
+    real: *mut f64,
+    imag: *mut f64,
+    len: usize,
 ) -> i32 {
 
     if real.is_null() || imag.is_null()
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rssn_num_ifft_inplace(
         return -1;
     }
 
-    let mut data : Vec<Complex<f64>> =
+    let mut data: Vec<Complex<f64>> =
         (0 .. len)
             .map(|i| {
 

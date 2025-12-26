@@ -16,19 +16,19 @@ use crate::physics::physics_fdm::{
 #[derive(Deserialize)]
 
 struct WaveEquationInput {
-    width : usize,
-    height : usize,
-    c : f64,
-    dx : f64,
-    dy : f64,
-    dt : f64,
-    steps : usize,
+    width: usize,
+    height: usize,
+    c: f64,
+    dx: f64,
+    dy: f64,
+    dt: f64,
+    steps: usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : WaveEquationInput = match from_bincode_buffer(&buffer) {

@@ -134,7 +134,7 @@ fn test_numerical_vector_calculus_json_ffi(
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -167,20 +167,20 @@ fn test_numerical_vector_calculus_bincode_ffi(
         #[derive(Serialize)]
 
         struct LaplacianInput {
-            f : Expr,
-            vars : Vec<String>,
-            point : Vec<f64>,
+            f: Expr,
+            vars: Vec<String>,
+            point: Vec<f64>,
         }
 
         let x = Expr::new_variable("x");
 
         let input = LaplacianInput {
-            f : Expr::new_pow(
+            f: Expr::new_pow(
                 x,
                 Expr::new_constant(2.0),
             ),
-            vars : vec!["x".to_string()],
-            point : vec![1.0],
+            vars: vec!["x".to_string()],
+            point: vec![1.0],
         };
 
         let buffer =
@@ -193,12 +193,12 @@ fn test_numerical_vector_calculus_bincode_ffi(
         #[derive(Deserialize)]
 
         struct FfiResult<T, E> {
-            ok : Option<T>,
+            ok: Option<T>,
             #[allow(dead_code)]
-            err : Option<E>,
+            err: Option<E>,
         }
 
-        let res : FfiResult<
+        let res: FfiResult<
             f64,
             String,
         > = from_bincode_buffer(

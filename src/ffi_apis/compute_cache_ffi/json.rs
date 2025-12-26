@@ -17,8 +17,8 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_get_json(
-    cache : *mut ParsingCache,
-    input : *const c_char,
+    cache: *mut ParsingCache,
+    input: *const c_char,
 ) -> *mut c_char {
 
     if cache.is_null()
@@ -51,9 +51,9 @@ pub extern "C" fn rssn_parsing_cache_get_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_set_json(
-    cache : *mut ParsingCache,
-    input : *const c_char,
-    json_expr : *const c_char,
+    cache: *mut ParsingCache,
+    input: *const c_char,
+    json_expr: *const c_char,
 ) {
 
     if cache.is_null()
@@ -76,7 +76,7 @@ pub extern "C" fn rssn_parsing_cache_set_json(
                 | Err(_) => return,
             };
 
-        let expr : Option<Expr> =
+        let expr: Option<Expr> =
             from_json_string(json_expr);
 
         if let Some(e) = expr {
@@ -96,8 +96,8 @@ pub extern "C" fn rssn_parsing_cache_set_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_get_json(
-    cache : *mut ComputationResultCache,
-    json_expr : *const c_char,
+    cache: *mut ComputationResultCache,
+    json_expr: *const c_char,
 ) -> *mut c_char {
 
     if cache.is_null()
@@ -109,7 +109,7 @@ pub extern "C" fn rssn_computation_result_cache_get_json(
 
     unsafe {
 
-        let expr : Option<Expr> =
+        let expr: Option<Expr> =
             from_json_string(json_expr);
 
         if let Some(e) = expr {
@@ -134,9 +134,9 @@ pub extern "C" fn rssn_computation_result_cache_get_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_set_json(
-    cache : *mut ComputationResultCache,
-    json_expr : *const c_char,
-    json_value : *const c_char,
+    cache: *mut ComputationResultCache,
+    json_expr: *const c_char,
+    json_value: *const c_char,
 ) {
 
     if cache.is_null()
@@ -149,10 +149,10 @@ pub extern "C" fn rssn_computation_result_cache_set_json(
 
     unsafe {
 
-        let expr : Option<Expr> =
+        let expr: Option<Expr> =
             from_json_string(json_expr);
 
-        let value : Option<String> =
+        let value: Option<String> =
             from_json_string(
                 json_value,
             );

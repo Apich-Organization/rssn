@@ -4,14 +4,14 @@ use crate::symbolic::tensor::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_tensor_add(
-    t1_buf : BincodeBuffer,
-    t2_buf : BincodeBuffer,
+    t1_buf: BincodeBuffer,
+    t2_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let t1 : Option<Tensor> =
+    let t1: Option<Tensor> =
         from_bincode_buffer(&t1_buf);
 
-    let t2 : Option<Tensor> =
+    let t2: Option<Tensor> =
         from_bincode_buffer(&t2_buf);
 
     if let (
@@ -39,14 +39,14 @@ pub extern "C" fn rssn_bincode_tensor_add(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_tensor_scalar_mul(
-    t_buf : BincodeBuffer,
-    scalar_buf : BincodeBuffer,
+    t_buf: BincodeBuffer,
+    scalar_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let t : Option<Tensor> =
+    let t: Option<Tensor> =
         from_bincode_buffer(&t_buf);
 
-    let scalar : Option<
+    let scalar: Option<
         crate::symbolic::core::Expr,
     > = from_bincode_buffer(
         &scalar_buf,
@@ -75,14 +75,14 @@ pub extern "C" fn rssn_bincode_tensor_scalar_mul(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_tensor_outer_product(
-    t1_buf : BincodeBuffer,
-    t2_buf : BincodeBuffer,
+    t1_buf: BincodeBuffer,
+    t2_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let t1 : Option<Tensor> =
+    let t1: Option<Tensor> =
         from_bincode_buffer(&t1_buf);
 
-    let t2 : Option<Tensor> =
+    let t2: Option<Tensor> =
         from_bincode_buffer(&t2_buf);
 
     if let (

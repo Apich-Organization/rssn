@@ -6,21 +6,21 @@ use crate::physics::physics_sim::navier_stokes_fluid;
 #[repr(C)]
 
 pub struct NavierStokesResultHandles {
-    pub u : *mut Matrix<f64>,
-    pub v : *mut Matrix<f64>,
-    pub p : *mut Matrix<f64>,
+    pub u: *mut Matrix<f64>,
+    pub v: *mut Matrix<f64>,
+    pub p: *mut Matrix<f64>,
 }
 
 /// Runs the lid-driven cavity simulation and returns handles to the U, V, and P matrices.
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
-    nx : usize,
-    ny : usize,
-    re : f64,
-    dt : f64,
-    n_iter : usize,
-    lid_velocity : f64,
+    nx: usize,
+    ny: usize,
+    re: f64,
+    dt: f64,
+    n_iter: usize,
+    lid_velocity: f64,
 ) -> NavierStokesResultHandles {
 
     let params = navier_stokes_fluid::NavierStokesParameters {
@@ -73,7 +73,7 @@ pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_free_results(
-    handles : NavierStokesResultHandles
+    handles: NavierStokesResultHandles
 ) {
 
     if !handles.u.is_null() {

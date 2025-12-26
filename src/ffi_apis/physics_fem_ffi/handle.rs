@@ -9,9 +9,9 @@ use crate::physics::physics_fem;
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
-    n_elements : usize,
-    domain_length : f64,
-    out_size : *mut usize,
+    n_elements: usize,
+    domain_length: f64,
+    out_size: *mut usize,
 ) -> *mut f64 {
 
     match physics_fem::solve_poisson_1d(
@@ -51,8 +51,8 @@ pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_free_f64_array(
-    ptr : *mut f64,
-    size : usize,
+    ptr: *mut f64,
+    size: usize,
 ) {
 
     if !ptr.is_null() {

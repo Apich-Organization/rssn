@@ -15,7 +15,7 @@ fn test_solve_advection_diffusion_1d_basic(
     assert_eq!(result.len(), 128);
 
     // Mass conservation (roughly)
-    let sum : f64 = result.iter().sum();
+    let sum: f64 = result.iter().sum();
 
     assert!(sum > 0.0);
 }
@@ -32,7 +32,7 @@ fn test_solve_advection_diffusion_2d_basic(
         64 * 64
     );
 
-    let sum : f64 = result.iter().sum();
+    let sum: f64 = result.iter().sum();
 
     assert!(sum > 0.0);
 }

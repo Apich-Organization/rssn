@@ -10,18 +10,18 @@ use crate::physics::physics_sim::geodesic_relativity::{
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_sim_geodesic_run(
-    black_hole_mass : f64,
-    r0 : f64,
-    rdot0 : f64,
-    phi0 : f64,
-    phidot0 : f64,
-    proper_time_end : f64,
-    initial_dt : f64,
+    black_hole_mass: f64,
+    r0: f64,
+    rdot0: f64,
+    phi0: f64,
+    phidot0: f64,
+    proper_time_end: f64,
+    initial_dt: f64,
 ) -> *mut Matrix<f64> {
 
     let params = GeodesicParameters {
         black_hole_mass,
-        initial_state : [
+        initial_state: [
             r0,
             rdot0,
             phi0,

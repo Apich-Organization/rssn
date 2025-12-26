@@ -14,41 +14,41 @@ use crate::symbolic::integral_equations::VolterraEquation;
 #[derive(Serialize, Deserialize)]
 
 struct FredholmNeumannInput {
-    equation : FredholmEquation,
-    iterations : usize,
+    equation: FredholmEquation,
+    iterations: usize,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct FredholmSeparableInput {
-    equation : FredholmEquation,
-    a_funcs : Vec<Expr>,
-    b_funcs : Vec<Expr>,
+    equation: FredholmEquation,
+    a_funcs: Vec<Expr>,
+    b_funcs: Vec<Expr>,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct VolterraSuccessiveInput {
-    equation : VolterraEquation,
-    iterations : usize,
+    equation: VolterraEquation,
+    iterations: usize,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct AirfoilInput {
-    f_x : Expr,
-    var_x : String,
-    var_t : String,
+    f_x: Expr,
+    var_x: String,
+    var_t: String,
 }
 
 /// Solves a Fredholm equation using the Neumann series method (JSON).
 #[no_mangle]
 
 pub extern "C" fn rssn_fredholm_solve_neumann_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
-    let input : Option<
+    let input: Option<
         FredholmNeumannInput,
     > = from_json_string(input_json);
 
@@ -72,10 +72,10 @@ pub extern "C" fn rssn_fredholm_solve_neumann_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_fredholm_solve_separable_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
-    let input : Option<
+    let input: Option<
         FredholmSeparableInput,
     > = from_json_string(input_json);
 
@@ -105,10 +105,10 @@ pub extern "C" fn rssn_fredholm_solve_separable_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_volterra_solve_successive_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
-    let input : Option<
+    let input: Option<
         VolterraSuccessiveInput,
     > = from_json_string(input_json);
 
@@ -130,10 +130,10 @@ pub extern "C" fn rssn_volterra_solve_successive_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_volterra_solve_by_differentiation_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
-    let equation : Option<
+    let equation: Option<
         VolterraEquation,
     > = from_json_string(input_json);
 
@@ -160,10 +160,10 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_solve_airfoil_equation_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
-    let input : Option<AirfoilInput> =
+    let input: Option<AirfoilInput> =
         from_json_string(input_json);
 
     let input = match input {

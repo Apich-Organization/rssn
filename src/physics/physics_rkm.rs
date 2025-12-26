@@ -15,9 +15,9 @@ pub trait OdeSystem:
 
     fn eval(
         &self,
-        t : f64,
-        y : &[f64],
-        dy : &mut [f64],
+        t: f64,
+        y: &[f64],
+        dy: &mut [f64],
     );
 }
 
@@ -36,12 +36,12 @@ pub trait OdeSystem:
 /// A `Vec` of tuples `(time, state_vector)` representing the solution at each time step.
 
 pub fn solve_rk4<
-    S : OdeSystem + Sync,
+    S: OdeSystem + Sync,
 >(
-    system : &S,
-    y0 : &[f64],
-    t_span : (f64, f64),
-    dt : f64,
+    system: &S,
+    y0: &[f64],
+    t_span: (f64, f64),
+    dt: f64,
 ) -> Vec<(f64, Vec<f64>)> {
 
     let (t_start, t_end) = t_span;
@@ -185,17 +185,17 @@ pub fn solve_rk4<
 #[derive(Default)]
 
 pub struct DormandPrince54 {
-    c : [f64; 7],
-    a : [[f64; 6]; 6],
-    b5 : [f64; 7],
-    b4 : [f64; 7],
+    c: [f64; 7],
+    a: [[f64; 6]; 6],
+    b5: [f64; 7],
+    b4: [f64; 7],
 }
 
 impl DormandPrince54 {
     pub fn new() -> Self {
 
         Self {
-            c : [
+            c: [
                 0.0,
                 1.0 / 5.0,
                 3.0 / 10.0,
@@ -204,7 +204,7 @@ impl DormandPrince54 {
                 1.0,
                 1.0,
             ],
-            a : [
+            a: [
                 [
                     1.0 / 5.0,
                     0.0,
@@ -254,7 +254,7 @@ impl DormandPrince54 {
                     11.0 / 84.0,
                 ],
             ],
-            b5 : [
+            b5: [
                 35.0 / 384.0,
                 0.0,
                 500.0 / 1113.0,
@@ -263,7 +263,7 @@ impl DormandPrince54 {
                 11.0 / 84.0,
                 0.0,
             ],
-            b4 : [
+            b4: [
                 5179.0 / 57600.0,
                 0.0,
                 7571.0 / 16695.0,
@@ -276,14 +276,14 @@ impl DormandPrince54 {
     }
 
     pub fn solve<
-        S : OdeSystem + Sync,
+        S: OdeSystem + Sync,
     >(
         &self,
-        system : &S,
-        y0 : &[f64],
-        t_span : (f64, f64),
-        mut dt : f64,
-        tol : (f64, f64),
+        system: &S,
+        y0: &[f64],
+        t_span: (f64, f64),
+        mut dt: f64,
+        tol: (f64, f64),
     ) -> Vec<(f64, Vec<f64>)> {
 
         let (t_start, t_end) = t_span;
@@ -421,17 +421,17 @@ impl DormandPrince54 {
 /// Adaptive Runge-Kutta solver using Cash-Karp 4(5).
 
 pub struct CashKarp45 {
-    c : [f64; 6],
-    a : [[f64; 5]; 5],
-    b5 : [f64; 6],
-    b4 : [f64; 6],
+    c: [f64; 6],
+    a: [[f64; 5]; 5],
+    b5: [f64; 6],
+    b4: [f64; 6],
 }
 
 impl Default for CashKarp45 {
     fn default() -> Self {
 
         Self {
-            c : [
+            c: [
                 0.0,
                 1.0 / 5.0,
                 3.0 / 10.0,
@@ -439,7 +439,7 @@ impl Default for CashKarp45 {
                 1.0,
                 7.0 / 8.0,
             ],
-            a : [
+            a: [
                 [
                     1.0 / 5.0,
                     0.0,
@@ -476,7 +476,7 @@ impl Default for CashKarp45 {
                     253.0 / 4096.0,
                 ],
             ],
-            b5 : [
+            b5: [
                 37.0 / 378.0,
                 0.0,
                 250.0 / 621.0,
@@ -484,7 +484,7 @@ impl Default for CashKarp45 {
                 0.0,
                 512.0 / 1771.0,
             ],
-            b4 : [
+            b4: [
                 2825.0 / 27648.0,
                 0.0,
                 18575.0 / 48384.0,
@@ -498,14 +498,14 @@ impl Default for CashKarp45 {
 
 impl CashKarp45 {
     pub fn solve<
-        S : OdeSystem + Sync,
+        S: OdeSystem + Sync,
     >(
         &self,
-        system : &S,
-        y0 : &[f64],
-        t_span : (f64, f64),
-        mut dt : f64,
-        tol : (f64, f64),
+        system: &S,
+        y0: &[f64],
+        t_span: (f64, f64),
+        mut dt: f64,
+        tol: (f64, f64),
     ) -> Vec<(f64, Vec<f64>)> {
 
         let (t_start, t_end) = t_span;
@@ -640,23 +640,23 @@ impl CashKarp45 {
 /// Efficient for low-accuracy requirements.
 
 pub struct BogackiShampine23 {
-    c : [f64; 4],
-    a : [[f64; 3]; 3],
-    b3 : [f64; 4],
-    b2 : [f64; 4],
+    c: [f64; 4],
+    a: [[f64; 3]; 3],
+    b3: [f64; 4],
+    b2: [f64; 4],
 }
 
 impl Default for BogackiShampine23 {
     fn default() -> Self {
 
         Self {
-            c : [
+            c: [
                 0.0,
                 1.0 / 2.0,
                 3.0 / 4.0,
                 1.0,
             ],
-            a : [
+            a: [
                 [1.0 / 2.0, 0.0, 0.0],
                 [0.0, 3.0 / 4.0, 0.0],
                 [
@@ -665,13 +665,13 @@ impl Default for BogackiShampine23 {
                     4.0 / 9.0,
                 ],
             ],
-            b3 : [
+            b3: [
                 2.0 / 9.0,
                 1.0 / 3.0,
                 4.0 / 9.0,
                 0.0,
             ],
-            b2 : [
+            b2: [
                 7.0 / 24.0,
                 1.0 / 4.0,
                 1.0 / 3.0,
@@ -683,14 +683,14 @@ impl Default for BogackiShampine23 {
 
 impl BogackiShampine23 {
     pub fn solve<
-        S : OdeSystem + Sync,
+        S: OdeSystem + Sync,
     >(
         &self,
-        system : &S,
-        y0 : &[f64],
-        t_span : (f64, f64),
-        mut dt : f64,
-        tol : (f64, f64),
+        system: &S,
+        y0: &[f64],
+        t_span: (f64, f64),
+        mut dt: f64,
+        tol: (f64, f64),
     ) -> Vec<(f64, Vec<f64>)> {
 
         let (t_start, t_end) = t_span;
@@ -831,9 +831,9 @@ impl BogackiShampine23 {
 )]
 
 pub struct LorenzSystem {
-    pub sigma : f64,
-    pub rho : f64,
-    pub beta : f64,
+    pub sigma: f64,
+    pub rho: f64,
+    pub beta: f64,
 }
 
 impl OdeSystem for LorenzSystem {
@@ -844,9 +844,9 @@ impl OdeSystem for LorenzSystem {
 
     fn eval(
         &self,
-        _t : f64,
-        y : &[f64],
-        dy : &mut [f64],
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
     ) {
 
         dy[0] =
@@ -867,8 +867,8 @@ impl OdeSystem for LorenzSystem {
 )]
 
 pub struct DampedOscillatorSystem {
-    pub omega : f64,
-    pub zeta : f64,
+    pub omega: f64,
+    pub zeta: f64,
 }
 
 impl OdeSystem
@@ -881,9 +881,9 @@ impl OdeSystem
 
     fn eval(
         &self,
-        _t : f64,
-        y : &[f64],
-        dy : &mut [f64],
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
     ) {
 
         dy[0] = y[1];
@@ -903,7 +903,7 @@ impl OdeSystem
 )]
 
 pub struct VanDerPolSystem {
-    pub mu : f64,
+    pub mu: f64,
 }
 
 impl OdeSystem for VanDerPolSystem {
@@ -914,9 +914,9 @@ impl OdeSystem for VanDerPolSystem {
 
     fn eval(
         &self,
-        _t : f64,
-        y : &[f64],
-        dy : &mut [f64],
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
     ) {
 
         dy[0] = y[1];
@@ -936,10 +936,10 @@ impl OdeSystem for VanDerPolSystem {
 )]
 
 pub struct LotkaVolterraSystem {
-    pub alpha : f64,
-    pub beta : f64,
-    pub delta : f64,
-    pub gamma : f64,
+    pub alpha: f64,
+    pub beta: f64,
+    pub delta: f64,
+    pub gamma: f64,
 }
 
 impl OdeSystem for LotkaVolterraSystem {
@@ -950,9 +950,9 @@ impl OdeSystem for LotkaVolterraSystem {
 
     fn eval(
         &self,
-        _t : f64,
-        y : &[f64],
-        dy : &mut [f64],
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
     ) {
 
         dy[0] = self.alpha * y[0]
@@ -971,8 +971,8 @@ impl OdeSystem for LotkaVolterraSystem {
 )]
 
 pub struct PendulumSystem {
-    pub g : f64,
-    pub l : f64,
+    pub g: f64,
+    pub l: f64,
 }
 
 impl OdeSystem for PendulumSystem {
@@ -983,9 +983,9 @@ impl OdeSystem for PendulumSystem {
 
     fn eval(
         &self,
-        _t : f64,
-        y : &[f64],
-        dy : &mut [f64],
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
     ) {
 
         dy[0] = y[1];
@@ -1003,9 +1003,9 @@ pub fn simulate_lorenz_attractor_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 
     let system = LorenzSystem {
-        sigma : 10.0,
-        rho : 28.0,
-        beta : 8.0 / 3.0,
+        sigma: 10.0,
+        rho: 28.0,
+        beta: 8.0 / 3.0,
     };
 
     let y0 = &[1.0, 1.0, 1.0];
@@ -1032,8 +1032,8 @@ pub fn simulate_damped_oscillator_scenario(
 
     let system =
         DampedOscillatorSystem {
-            omega : 1.0,
-            zeta : 0.15,
+            omega: 1.0,
+            zeta: 0.15,
         };
 
     let y0 = &[1.0, 0.0];
@@ -1054,7 +1054,7 @@ pub fn simulate_vanderpol_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 
     let system = VanDerPolSystem {
-        mu : 1.0,
+        mu: 1.0,
     };
 
     let y0 = &[2.0, 0.0];
@@ -1080,10 +1080,10 @@ pub fn simulate_lotka_volterra_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 
     let system = LotkaVolterraSystem {
-        alpha : 1.5,
-        beta : 1.0,
-        delta : 1.0,
-        gamma : 3.0,
+        alpha: 1.5,
+        beta: 1.0,
+        delta: 1.0,
+        gamma: 3.0,
     };
 
     let y0 = &[10.0, 5.0];

@@ -9,23 +9,22 @@ use crate::symbolic::proof;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_verify_equation_solution(
-    equations_json : *const c_char,
-    solution_json : *const c_char,
-    free_vars_json : *const c_char,
+    equations_json: *const c_char,
+    solution_json: *const c_char,
+    free_vars_json: *const c_char,
 ) -> bool {
 
-    let equations : Option<Vec<Expr>> =
-        from_json_string(equations_json);
+    let equations: Option<Vec<Expr>> =
+        from_json_string(
+            equations_json,
+        );
 
-    let solution : Option<
+    let solution: Option<
         HashMap<String, Expr>,
     > = from_json_string(solution_json);
 
-    let free_vars : Option<
-        Vec<String>,
-    > = from_json_string(
-        free_vars_json,
-    );
+    let free_vars: Option<Vec<String>> =
+        from_json_string(free_vars_json);
 
     if let (
         Some(eqs),
@@ -37,10 +36,10 @@ pub unsafe extern "C" fn rssn_json_verify_equation_solution(
         free_vars,
     ) {
 
-        let free_refs : Vec<&str> =
-            free.iter()
-                .map(|s| s.as_str())
-                .collect();
+        let free_refs: Vec<&str> = free
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         proof::verify_equation_solution(
             &eqs,
@@ -57,22 +56,22 @@ pub unsafe extern "C" fn rssn_json_verify_equation_solution(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_verify_indefinite_integral(
-    integrand_json : *const c_char,
-    integral_result_json : *const c_char,
-    var_json : *const c_char,
+    integrand_json: *const c_char,
+    integral_result_json: *const c_char,
+    var_json: *const c_char,
 ) -> bool {
 
-    let integrand : Option<Expr> =
+    let integrand: Option<Expr> =
         from_json_string(
             integrand_json,
         );
 
-    let integral_result : Option<Expr> =
+    let integral_result: Option<Expr> =
         from_json_string(
             integral_result_json,
         );
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_json_string(var_json);
 
     if let (
@@ -96,14 +95,14 @@ pub unsafe extern "C" fn rssn_json_verify_indefinite_integral(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_verify_matrix_inverse(
-    original_json : *const c_char,
-    inverse_json : *const c_char,
+    original_json: *const c_char,
+    inverse_json: *const c_char,
 ) -> bool {
 
-    let original : Option<Expr> =
+    let original: Option<Expr> =
         from_json_string(original_json);
 
-    let inverse : Option<Expr> =
+    let inverse: Option<Expr> =
         from_json_string(inverse_json);
 
     if let (Some(orig), Some(inv)) =

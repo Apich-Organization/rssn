@@ -31,8 +31,8 @@ use crate::symbolic::vector::Vector;
 #[must_use]
 
 pub fn translation_2d(
-    tx : Expr,
-    ty : Expr,
+    tx: Expr,
+    ty: Expr,
 ) -> Expr {
 
     Expr::Matrix(vec![
@@ -68,9 +68,9 @@ pub fn translation_2d(
 #[must_use]
 
 pub fn translation_3d(
-    tx : Expr,
-    ty : Expr,
-    tz : Expr,
+    tx: Expr,
+    ty: Expr,
+    tz: Expr,
 ) -> Expr {
 
     Expr::Matrix(vec![
@@ -113,7 +113,7 @@ pub fn translation_3d(
 #[must_use]
 
 pub fn rotation_2d(
-    angle : Expr
+    angle: Expr
 ) -> Expr {
 
     let c = cos(angle.clone());
@@ -151,7 +151,7 @@ pub fn rotation_2d(
 #[must_use]
 
 pub fn rotation_3d_x(
-    angle : Expr
+    angle: Expr
 ) -> Expr {
 
     let c = cos(angle.clone());
@@ -198,7 +198,7 @@ pub fn rotation_3d_x(
 #[must_use]
 
 pub fn rotation_3d_y(
-    angle : Expr
+    angle: Expr
 ) -> Expr {
 
     let c = cos(angle.clone());
@@ -243,7 +243,7 @@ pub fn rotation_3d_y(
 #[must_use]
 
 pub fn rotation_3d_z(
-    angle : Expr
+    angle: Expr
 ) -> Expr {
 
     let c = cos(angle.clone());
@@ -293,8 +293,8 @@ pub fn rotation_3d_z(
 #[must_use]
 
 pub fn scaling_2d(
-    sx : Expr,
-    sy : Expr,
+    sx: Expr,
+    sy: Expr,
 ) -> Expr {
 
     Expr::Matrix(vec![
@@ -330,9 +330,9 @@ pub fn scaling_2d(
 #[must_use]
 
 pub fn scaling_3d(
-    sx : Expr,
-    sy : Expr,
-    sz : Expr,
+    sx: Expr,
+    sy: Expr,
+    sz: Expr,
 ) -> Expr {
 
     Expr::Matrix(vec![
@@ -379,10 +379,10 @@ pub fn scaling_3d(
 #[must_use]
 
 pub fn perspective_projection(
-    fovy : Expr,
-    aspect : &Expr,
-    near : Expr,
-    far : Expr,
+    fovy: Expr,
+    aspect: &Expr,
+    near: Expr,
+    far: Expr,
 ) -> Expr {
 
     let f = tan(Expr::new_div(
@@ -471,12 +471,12 @@ pub fn perspective_projection(
 #[must_use]
 
 pub fn orthographic_projection(
-    left : Expr,
-    right : Expr,
-    bottom : Expr,
-    top : Expr,
-    near : Expr,
-    far : Expr,
+    left: Expr,
+    right: Expr,
+    bottom: Expr,
+    top: Expr,
+    near: Expr,
+    far: Expr,
 ) -> Expr {
 
     let r_l = Expr::new_div(
@@ -579,9 +579,9 @@ pub fn orthographic_projection(
 #[must_use]
 
 pub fn look_at(
-    eye : &Vector,
-    center : &Vector,
-    up : &Vector,
+    eye: &Vector,
+    center: &Vector,
+    up: &Vector,
 ) -> Expr {
 
     let f = (center.clone()
@@ -643,9 +643,9 @@ pub fn look_at(
 
 pub struct BezierCurve {
     /// The control points defining the curve shape.
-    pub control_points : Vec<Vector>,
+    pub control_points: Vec<Vector>,
     /// The degree of the curve (number of control points - 1).
-    pub degree : usize,
+    pub degree: usize,
 }
 
 impl BezierCurve {
@@ -665,7 +665,7 @@ impl BezierCurve {
 
     pub fn evaluate(
         &self,
-        t : &Expr,
+        t: &Expr,
     ) -> Vector {
 
         let n = self.degree as i64;
@@ -737,7 +737,7 @@ impl BezierCurve {
 
     pub fn derivative(
         &self,
-        t : &Expr,
+        t: &Expr,
     ) -> Vector {
 
         if self.degree == 0
@@ -766,7 +766,7 @@ impl BezierCurve {
                 self.degree as i64,
             ));
 
-        let derivative_points : Vec<
+        let derivative_points: Vec<
             Vector,
         > = (0 .. self
             .control_points
@@ -790,7 +790,7 @@ impl BezierCurve {
         let derivative_curve = Self {
             control_points:
                 derivative_points,
-            degree : self.degree - 1,
+            degree: self.degree - 1,
         };
 
         derivative_curve.evaluate(t)
@@ -810,14 +810,14 @@ impl BezierCurve {
 
     pub fn split(
         &self,
-        t : &Expr,
+        t: &Expr,
     ) -> (Self, Self) {
 
         let n = self
             .control_points
             .len();
 
-        let mut pyramid : Vec<
+        let mut pyramid: Vec<
             Vec<Vector>,
         > = vec![self
             .control_points
@@ -857,18 +857,20 @@ impl BezierCurve {
         }
 
         // Left curve: first element of each level
-        let left_points : Vec<Vector> =
+        let left_points: Vec<Vector> =
             (0 .. n)
                 .map(|i| {
+
                     pyramid[i][0]
                         .clone()
                 })
                 .collect();
 
         // Right curve: last element of each level (in reverse)
-        let right_points : Vec<Vector> =
+        let right_points: Vec<Vector> =
             (0 .. n)
                 .map(|i| {
+
                     pyramid[n - 1 - i]
                         [i]
                         .clone()
@@ -879,12 +881,12 @@ impl BezierCurve {
             Self {
                 control_points:
                     left_points,
-                degree : self.degree,
+                degree: self.degree,
             },
             Self {
                 control_points:
                     right_points,
-                degree : self.degree,
+                degree: self.degree,
             },
         )
     }
@@ -901,11 +903,11 @@ impl BezierCurve {
 
 pub struct BSplineCurve {
     /// The control points defining the curve shape.
-    pub control_points : Vec<Vector>,
+    pub control_points: Vec<Vector>,
     /// The knot vector defining the parameterization.
-    pub knots : Vec<Expr>,
+    pub knots: Vec<Expr>,
     /// The degree of the B-spline basis functions.
-    pub degree : usize,
+    pub degree: usize,
 }
 
 impl BSplineCurve {
@@ -923,7 +925,7 @@ impl BSplineCurve {
 
     pub fn evaluate(
         &self,
-        t : &Expr,
+        t: &Expr,
     ) -> Vector {
 
         let p = self.degree;
@@ -933,7 +935,7 @@ impl BSplineCurve {
             - p
             - 1;
 
-        let mut d : Vec<Vector> = self
+        let mut d: Vec<Vector> = self
             .control_points[..= k + p]
             .to_vec();
 
@@ -985,7 +987,7 @@ impl BSplineCurve {
 )]
 
 pub struct Polygon {
-    pub indices : Vec<usize>,
+    pub indices: Vec<usize>,
 }
 
 impl Polygon {
@@ -993,7 +995,7 @@ impl Polygon {
     #[must_use]
 
     pub const fn new(
-        indices : Vec<usize>
+        indices: Vec<usize>
     ) -> Self {
 
         Self {
@@ -1010,8 +1012,8 @@ impl Polygon {
 )]
 
 pub struct PolygonMesh {
-    pub vertices : Vec<Vector>,
-    pub polygons : Vec<Polygon>,
+    pub vertices: Vec<Vector>,
+    pub polygons: Vec<Polygon>,
 }
 
 impl PolygonMesh {
@@ -1023,8 +1025,8 @@ impl PolygonMesh {
     #[must_use]
 
     pub const fn new(
-        vertices : Vec<Vector>,
-        polygons : Vec<Polygon>,
+        vertices: Vec<Vector>,
+        polygons: Vec<Polygon>,
     ) -> Self {
 
         Self {
@@ -1049,7 +1051,7 @@ impl PolygonMesh {
 
     pub fn apply_transformation(
         &self,
-        transformation : &Expr,
+        transformation: &Expr,
     ) -> Result<Self, String> {
 
         if let Expr::Matrix(matrix) =
@@ -1108,7 +1110,7 @@ impl PolygonMesh {
             Ok(Self {
                 vertices:
                     transformed_vertices,
-                polygons : self
+                polygons: self
                     .polygons
                     .clone(),
             })
@@ -1215,10 +1217,10 @@ impl PolygonMesh {
             .collect();
 
         Self {
-            vertices : self
+            vertices: self
                 .vertices
                 .clone(),
-            polygons : triangles,
+            polygons: triangles,
         }
     }
 }
@@ -1237,8 +1239,8 @@ impl PolygonMesh {
 #[must_use]
 
 pub fn shear_2d(
-    shx : Expr,
-    shy : Expr,
+    shx: Expr,
+    shy: Expr,
 ) -> Expr {
 
     Expr::Matrix(vec![
@@ -1270,7 +1272,7 @@ pub fn shear_2d(
 #[must_use]
 
 pub fn reflection_2d(
-    angle : Expr
+    angle: Expr
 ) -> Expr {
 
     let two_angle = Expr::new_mul(
@@ -1315,9 +1317,9 @@ pub fn reflection_2d(
 #[must_use]
 
 pub fn reflection_3d(
-    nx : Expr,
-    ny : Expr,
-    nz : Expr,
+    nx: Expr,
+    ny: Expr,
+    nz: Expr,
 ) -> Expr {
 
     // Reflection matrix: I - 2 * n * n^T
@@ -1443,8 +1445,8 @@ pub fn reflection_3d(
 #[must_use]
 
 pub fn rotation_axis_angle(
-    axis : &Vector,
-    angle : Expr,
+    axis: &Vector,
+    angle: Expr,
 ) -> Expr {
 
     let c = cos(angle.clone());

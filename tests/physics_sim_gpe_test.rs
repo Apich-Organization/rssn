@@ -22,12 +22,12 @@ fn test_gpe_ground_state_smoke() {
     let params = GpeParameters {
         nx,
         ny,
-        lx : 10.0,
-        ly : 10.0,
-        d_tau : 0.1,
-        time_steps : 20,
-        g : 100.0,
-        trap_strength : 1.0,
+        lx: 10.0,
+        ly: 10.0,
+        d_tau: 0.1,
+        time_steps: 20,
+        g: 100.0,
+        trap_strength: 1.0,
     };
 
     let res =
@@ -41,7 +41,7 @@ fn test_gpe_ground_state_smoke() {
     assert_eq!(res.ncols(), nx);
 
     // Check if the density is normalized
-    let sum_density : f64 =
+    let sum_density: f64 =
         res.iter().sum();
 
     let dx = params.lx / nx as f64;
@@ -67,14 +67,14 @@ fn test_bec_vortex_scenario_run() {
 
     // Reduced iterations for faster test
     let params = GpeParameters {
-        nx : 64,
-        ny : 64,
-        lx : 10.0,
-        ly : 10.0,
-        d_tau : 0.05,
-        time_steps : 50,
-        g : 100.0,
-        trap_strength : 1.0,
+        nx: 64,
+        ny: 64,
+        lx: 10.0,
+        ly: 10.0,
+        d_tau: 0.05,
+        time_steps: 50,
+        g: 100.0,
+        trap_strength: 1.0,
     };
 
     let res =

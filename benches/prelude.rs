@@ -23,7 +23,7 @@ use rssn::prelude;
 // use nalgebra::DVector; // Example dependency for numerical benchmarks
 
 pub fn criterion_benchmark(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     // --- BENCHMARK GROUP: PRELUDE ---

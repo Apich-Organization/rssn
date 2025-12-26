@@ -49,7 +49,7 @@ impl Simplex {
     #[must_use]
 
     pub fn new(
-        vertices : &[usize]
+        vertices: &[usize]
     ) -> Self {
 
         Self(
@@ -96,7 +96,7 @@ impl Simplex {
 
         let mut coeffs = Vec::new();
 
-        let vertices : Vec<_> = self
+        let vertices: Vec<_> = self
             .0
             .iter()
             .copied()
@@ -151,7 +151,7 @@ impl Simplex {
 
         let mut coeffs = Vec::new();
 
-        let vertices : Vec<_> = self
+        let vertices: Vec<_> = self
             .0
             .iter()
             .copied()
@@ -202,8 +202,8 @@ impl Simplex {
 )]
 
 pub struct Chain {
-    pub terms : HashMap<Simplex, f64>,
-    pub dimension : usize,
+    pub terms: HashMap<Simplex, f64>,
+    pub dimension: usize,
 }
 
 /// Represents a k-chain as a formal linear combination of k-simplices (symbolic version).
@@ -212,8 +212,8 @@ pub struct Chain {
 )]
 
 pub struct SymbolicChain {
-    pub terms : HashMap<Simplex, Expr>,
-    pub dimension : usize,
+    pub terms: HashMap<Simplex, Expr>,
+    pub dimension: usize,
 }
 
 /// A k-cochain is an element of the dual space to the k-chains. It can be represented similarly.
@@ -236,11 +236,11 @@ impl Chain {
     #[must_use]
 
     pub fn new(
-        dimension : usize
+        dimension: usize
     ) -> Self {
 
         Self {
-            terms : HashMap::new(),
+            terms: HashMap::new(),
             dimension,
         }
     }
@@ -258,8 +258,8 @@ impl Chain {
 
     pub fn add_term(
         &mut self,
-        simplex : Simplex,
-        coeff : f64,
+        simplex: Simplex,
+        coeff: f64,
     ) -> Result<(), String> {
 
         if simplex.dimension()
@@ -294,11 +294,11 @@ impl SymbolicChain {
     #[must_use]
 
     pub fn new(
-        dimension : usize
+        dimension: usize
     ) -> Self {
 
         Self {
-            terms : HashMap::new(),
+            terms: HashMap::new(),
             dimension,
         }
     }
@@ -316,8 +316,8 @@ impl SymbolicChain {
 
     pub fn add_term(
         &mut self,
-        simplex : Simplex,
-        coeff : Expr,
+        simplex: Simplex,
+        coeff: Expr,
     ) -> Result<(), String> {
 
         if simplex.dimension()
@@ -358,15 +358,15 @@ impl SymbolicChain {
 )]
 
 pub struct SimplicialComplex {
-    simplices : HashSet<Simplex>,
-    simplices_by_dim :
+    simplices: HashSet<Simplex>,
+    simplices_by_dim:
         BTreeMap<usize, Vec<Simplex>>,
 }
 
 // Private helper function for recursively adding all faces of a simplex to the complex.
 pub(crate) fn add_faces(
-    complex : &mut SimplicialComplex,
-    s : Simplex,
+    complex: &mut SimplicialComplex,
+    s: Simplex,
 ) {
 
     if complex
@@ -417,7 +417,7 @@ impl SimplicialComplex {
 
     pub fn add_simplex(
         &mut self,
-        vertices : &[usize],
+        vertices: &[usize],
     ) {
 
         let simplex =
@@ -455,7 +455,7 @@ impl SimplicialComplex {
 
     pub fn get_simplices_by_dim(
         &self,
-        dim : usize,
+        dim: usize,
     ) -> Option<&Vec<Simplex>> {
 
         self.simplices_by_dim
@@ -477,7 +477,7 @@ impl SimplicialComplex {
 
     pub fn get_boundary_matrix(
         &self,
-        k : usize,
+        k: usize,
     ) -> Option<CsMat<f64>> {
 
         if k == 0 {
@@ -493,7 +493,7 @@ impl SimplicialComplex {
                 k - 1,
             )?;
 
-        let k_minus_1_map : HashMap<
+        let k_minus_1_map: HashMap<
             &Simplex,
             usize,
         > = k_minus_1_simplices
@@ -556,7 +556,7 @@ impl SimplicialComplex {
 
     pub fn get_symbolic_boundary_matrix(
         &self,
-        k : usize,
+        k: usize,
     ) -> Option<Expr> {
 
         if k == 0 {
@@ -572,7 +572,7 @@ impl SimplicialComplex {
                 k - 1,
             )?;
 
-        let k_minus_1_map : HashMap<
+        let k_minus_1_map: HashMap<
             &Simplex,
             usize,
         > = k_minus_1_simplices
@@ -586,16 +586,15 @@ impl SimplicialComplex {
 
         let cols = k_simplices.len();
 
-        let mut matrix =
+        let mut matrix = vec![
             vec![
-                vec![
                     Expr::BigInt(
                         BigInt::zero()
                     );
                     cols
                 ];
-                rows
-            ];
+            rows
+        ];
 
         for (j, simplex_k) in
             k_simplices
@@ -644,7 +643,7 @@ impl SimplicialComplex {
 
     pub fn apply_boundary_operator(
         &self,
-        chain : &Chain,
+        chain: &Chain,
     ) -> Option<Chain> {
 
         let k = chain.dimension;
@@ -665,8 +664,7 @@ impl SimplicialComplex {
                 k - 1,
             )?;
 
-        let mut input_vec =
-            vec![
+        let mut input_vec = vec![
                 0.0;
                 k_simplices.len()
             ];
@@ -727,7 +725,7 @@ impl SimplicialComplex {
 
     pub fn apply_symbolic_boundary_operator(
         &self,
-        chain : &SymbolicChain,
+        chain: &SymbolicChain,
     ) -> Option<SymbolicChain> {
 
         let k = chain.dimension;
@@ -853,10 +851,10 @@ impl SimplicialComplex {
 /// Represents the full chain complex and its dual, the cochain complex.
 
 pub struct ChainComplex {
-    pub complex : SimplicialComplex,
-    pub boundary_operators :
+    pub complex: SimplicialComplex,
+    pub boundary_operators:
         BTreeMap<usize, CsMat<f64>>,
-    pub coboundary_operators :
+    pub coboundary_operators:
         BTreeMap<usize, CsMat<f64>>,
 }
 
@@ -874,7 +872,7 @@ impl ChainComplex {
     #[must_use]
 
     pub fn new(
-        complex : SimplicialComplex
+        complex: SimplicialComplex
     ) -> Self {
 
         let mut boundary_operators =
@@ -1000,7 +998,7 @@ impl ChainComplex {
 
     pub fn compute_homology_betti_number(
         &self,
-        k : usize,
+        k: usize,
     ) -> Option<usize> {
 
         let num_k_simplices = self
@@ -1050,7 +1048,7 @@ impl ChainComplex {
 
     pub fn compute_cohomology_betti_number(
         &self,
-        k : usize,
+        k: usize,
     ) -> Option<usize> {
 
         let num_k_simplices = self
@@ -1095,7 +1093,7 @@ impl ChainComplex {
 /// Represents a filtration, a sequence of nested simplicial complexes.
 
 pub struct Filtration {
-    pub steps : Vec<(
+    pub steps: Vec<(
         f64,
         SimplicialComplex,
     )>,
@@ -1115,8 +1113,8 @@ pub struct Filtration {
 #[must_use]
 
 pub fn create_grid_complex(
-    width : usize,
-    height : usize,
+    width: usize,
+    height: usize,
 ) -> SimplicialComplex {
 
     let mut complex =
@@ -1164,8 +1162,8 @@ pub fn create_grid_complex(
 #[must_use]
 
 pub fn create_torus_complex(
-    m : usize,
-    n : usize,
+    m: usize,
+    n: usize,
 ) -> SimplicialComplex {
 
     let mut complex =
@@ -1215,13 +1213,13 @@ pub fn create_torus_complex(
 #[must_use]
 
 pub fn vietoris_rips_filtration(
-    points : &[Vec<f64>],
-    max_epsilon : f64,
-    steps : usize,
+    points: &[Vec<f64>],
+    max_epsilon: f64,
+    steps: usize,
 ) -> Filtration {
 
     let mut filtration = Filtration {
-        steps : Vec::new(),
+        steps: Vec::new(),
     };
 
     let num_points = points.len();
@@ -1250,6 +1248,7 @@ pub fn vietoris_rips_filtration(
                     .iter()
                     .zip(&points[j])
                     .map(|(a, b)| {
+
                         (a - b).powi(2)
                     })
                     .sum::<f64>();
@@ -1275,9 +1274,9 @@ pub fn vietoris_rips_filtration(
 }
 
 pub(crate) fn csr_from_triplets(
-    rows : usize,
-    cols : usize,
-    triplets : &[(usize, usize, f64)],
+    rows: usize,
+    cols: usize,
+    triplets: &[(usize, usize, f64)],
 ) -> CsMat<f64> {
 
     let mut mat =

@@ -20,14 +20,14 @@ use crate::numerical::solve::LinearSolution;
 )]
 
 pub struct Vector2D {
-    pub x : f64,
-    pub y : f64,
+    pub x: f64,
+    pub y: f64,
 }
 
 impl Vector2D {
     pub fn new(
-        x : f64,
-        y : f64,
+        x: f64,
+        y: f64,
     ) -> Self {
 
         Self {
@@ -49,12 +49,12 @@ impl Add for Vector2D {
 
     fn add(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         Self {
-            x : self.x + rhs.x,
-            y : self.y + rhs.y,
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
         }
     }
 }
@@ -64,12 +64,12 @@ impl Mul<f64> for Vector2D {
 
     fn mul(
         self,
-        rhs : f64,
+        rhs: f64,
     ) -> Self {
 
         Self {
-            x : self.x * rhs,
-            y : self.y * rhs,
+            x: self.x * rhs,
+            y: self.y * rhs,
         }
     }
 }
@@ -79,12 +79,12 @@ impl Sub for Vector2D {
 
     fn sub(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         Self {
-            x : self.x - rhs.x,
-            y : self.y - rhs.y,
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
         }
     }
 }
@@ -99,18 +99,18 @@ impl Sub for Vector2D {
 )]
 
 pub struct Vector3D {
-    pub x : f64,
-    pub y : f64,
-    pub z : f64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 
 impl Vector3D {
     #[allow(dead_code)]
 
     pub fn new(
-        x : f64,
-        y : f64,
-        z : f64,
+        x: f64,
+        y: f64,
+        z: f64,
     ) -> Self {
 
         Self {
@@ -136,13 +136,13 @@ impl Sub for Vector3D {
 
     fn sub(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         Self {
-            x : self.x - rhs.x,
-            y : self.y - rhs.y,
-            z : self.z - rhs.z,
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
         }
     }
 }
@@ -171,17 +171,17 @@ pub enum BoundaryCondition<T> {
 )]
 
 pub struct Element2D {
-    pub p1 : Vector2D,
-    pub p2 : Vector2D,
-    pub midpoint : Vector2D,
-    pub length : f64,
-    pub normal : Vector2D,
+    pub p1: Vector2D,
+    pub p2: Vector2D,
+    pub midpoint: Vector2D,
+    pub length: f64,
+    pub normal: Vector2D,
 }
 
 impl Element2D {
     pub fn new(
-        p1 : Vector2D,
-        p2 : Vector2D,
+        p1: Vector2D,
+        p2: Vector2D,
     ) -> Self {
 
         let diff = p2 - p1;
@@ -224,8 +224,8 @@ impl Element2D {
 /// if the system is ill-posed or has no unique solution.
 
 pub fn solve_laplace_bem_2d(
-    points : &[(f64, f64)],
-    bcs : &[BoundaryCondition<f64>],
+    points: &[(f64, f64)],
+    bcs: &[BoundaryCondition<f64>],
 ) -> Result<(Vec<f64>, Vec<f64>), String>
 {
 
@@ -241,7 +241,7 @@ pub fn solve_laplace_bem_2d(
         );
     }
 
-    let elements : Vec<_> = (0 .. n)
+    let elements: Vec<_> = (0 .. n)
         .map(|i| {
 
             Element2D::new(
@@ -455,10 +455,10 @@ pub fn simulate_2d_cylinder_scenario(
 /// * `q` - The solved boundary fluxes.
 
 pub fn evaluate_potential_2d(
-    point : (f64, f64),
-    elements : &[Element2D],
-    u : &[f64],
-    q : &[f64],
+    point: (f64, f64),
+    elements: &[Element2D],
+    u: &[f64],
+    q: &[f64],
 ) -> f64 {
 
     let p =

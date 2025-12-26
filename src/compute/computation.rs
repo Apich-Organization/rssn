@@ -44,9 +44,9 @@ pub enum ComputationStatus {
 
 pub struct ComputationProgress {
     /// The percentage of completion (0.0 to 100.0).
-    pub percentage : f32,
+    pub percentage: f32,
     /// A description of the current step.
-    pub description : String,
+    pub description: String,
 }
 
 /// Represents a computation task.
@@ -56,30 +56,30 @@ pub struct ComputationProgress {
 
 pub struct Computation {
     /// A unique identifier for the computation.
-    pub id : String,
+    pub id: String,
     /// The expression being computed.
-    pub expr : Arc<Expr>,
+    pub expr: Arc<Expr>,
     /// The current status of the computation.
-    pub status : ComputationStatus,
+    pub status: ComputationStatus,
     /// The current progress of the computation.
-    pub progress : ComputationProgress,
+    pub progress: ComputationProgress,
     /// The result of the computation, if available.
-    pub result : Option<Value>,
+    pub result: Option<Value>,
     /// The state associated with the computation.
-    pub state : State,
+    pub state: State,
     /// Synchronization primitives for pausing/resuming.
     #[serde(
         skip,
         default = "default_pause"
     )]
-    pub pause :
+    pub pause:
         Arc<(Mutex<bool>, Condvar)>,
     /// A signal to cancel the computation.
     #[serde(
         skip,
         default = "default_cancel_signal"
     )]
-    pub cancel_signal : Arc<AtomicBool>,
+    pub cancel_signal: Arc<AtomicBool>,
 }
 
 fn default_pause(

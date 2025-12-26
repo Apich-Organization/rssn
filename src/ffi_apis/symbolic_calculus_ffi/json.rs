@@ -10,11 +10,11 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_differentiate(
-    expr_json : *const c_char,
-    var : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     let var_str = unsafe {
@@ -52,11 +52,11 @@ pub extern "C" fn rssn_json_differentiate(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_integrate(
-    expr_json : *const c_char,
-    var : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     let var_str = unsafe {
@@ -94,19 +94,19 @@ pub extern "C" fn rssn_json_integrate(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_definite_integrate(
-    expr_json : *const c_char,
-    var : *const c_char,
-    lower_json : *const c_char,
-    upper_json : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
+    lower_json: *const c_char,
+    upper_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let lower : Option<Expr> =
+    let lower: Option<Expr> =
         from_json_string(lower_json);
 
-    let upper : Option<Expr> =
+    let upper: Option<Expr> =
         from_json_string(upper_json);
 
     let var_str = unsafe {
@@ -149,11 +149,11 @@ pub extern "C" fn rssn_json_definite_integrate(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_check_analytic(
-    expr_json : *const c_char,
-    var : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
 ) -> bool {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     let var_str = unsafe {
@@ -186,15 +186,15 @@ pub extern "C" fn rssn_json_check_analytic(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_limit(
-    expr_json : *const c_char,
-    var : *const c_char,
-    point_json : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
+    point_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let point : Option<Expr> =
+    let point: Option<Expr> =
         from_json_string(point_json);
 
     let var_str = unsafe {
@@ -230,11 +230,11 @@ pub extern "C" fn rssn_json_limit(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_find_poles(
-    expr_json : *const c_char,
-    var : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     let var_str = unsafe {
@@ -270,15 +270,15 @@ pub extern "C" fn rssn_json_find_poles(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_calculate_residue(
-    expr_json : *const c_char,
-    var : *const c_char,
-    pole_json : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
+    pole_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let pole : Option<Expr> =
+    let pole: Option<Expr> =
         from_json_string(pole_json);
 
     let var_str = unsafe {
@@ -316,15 +316,15 @@ pub extern "C" fn rssn_json_calculate_residue(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_find_pole_order(
-    expr_json : *const c_char,
-    var : *const c_char,
-    pole_json : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
+    pole_json: *const c_char,
 ) -> usize {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let pole : Option<Expr> =
+    let pole: Option<Expr> =
         from_json_string(pole_json);
 
     let var_str = unsafe {
@@ -359,15 +359,15 @@ pub extern "C" fn rssn_json_find_pole_order(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_substitute(
-    expr_json : *const c_char,
-    var : *const c_char,
-    replacement_json : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
+    replacement_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let replacement : Option<Expr> =
+    let replacement: Option<Expr> =
         from_json_string(
             replacement_json,
         );
@@ -409,10 +409,10 @@ pub extern "C" fn rssn_json_substitute(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_get_real_imag_parts(
-    expr_json : *const c_char
+    expr_json: *const c_char
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     if let Some(e) = expr {
@@ -430,15 +430,15 @@ pub extern "C" fn rssn_json_get_real_imag_parts(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_path_integrate(
-    expr_json : *const c_char,
-    var : *const c_char,
-    contour_json : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
+    contour_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let contour : Option<Expr> =
+    let contour: Option<Expr> =
         from_json_string(contour_json);
 
     let var_str = unsafe {
@@ -478,15 +478,15 @@ pub extern "C" fn rssn_json_path_integrate(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_evaluate_at_point(
-    expr_json : *const c_char,
-    var : *const c_char,
-    value_json : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
+    value_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let value : Option<Expr> =
+    let value: Option<Expr> =
         from_json_string(value_json);
 
     let var_str = unsafe {

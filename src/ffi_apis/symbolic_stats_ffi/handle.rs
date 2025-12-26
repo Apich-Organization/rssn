@@ -10,8 +10,8 @@ use crate::symbolic::stats;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_mean(
-    data : *const *const Expr,
-    len : usize,
+    data: *const *const Expr,
+    len: usize,
 ) -> *mut Expr {
 
     if data.is_null() {
@@ -44,8 +44,8 @@ pub unsafe extern "C" fn rssn_mean(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_variance(
-    data : *const *const Expr,
-    len : usize,
+    data: *const *const Expr,
+    len: usize,
 ) -> *mut Expr {
 
     if data.is_null() {
@@ -78,8 +78,8 @@ pub unsafe extern "C" fn rssn_variance(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_std_dev(
-    data : *const *const Expr,
-    len : usize,
+    data: *const *const Expr,
+    len: usize,
 ) -> *mut Expr {
 
     if data.is_null() {
@@ -112,10 +112,10 @@ pub unsafe extern "C" fn rssn_std_dev(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_covariance(
-    data1 : *const *const Expr,
-    len1 : usize,
-    data2 : *const *const Expr,
-    len2 : usize,
+    data1: *const *const Expr,
+    len1: usize,
+    data2: *const *const Expr,
+    len2: usize,
 ) -> *mut Expr {
 
     if data1.is_null()
@@ -166,10 +166,10 @@ pub unsafe extern "C" fn rssn_covariance(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_correlation(
-    data1 : *const *const Expr,
-    len1 : usize,
-    data2 : *const *const Expr,
-    len2 : usize,
+    data1: *const *const Expr,
+    len1: usize,
+    data2: *const *const Expr,
+    len2: usize,
 ) -> *mut Expr {
 
     if data1.is_null()

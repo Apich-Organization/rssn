@@ -9,13 +9,13 @@ use crate::physics::physics_cnm;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
-    initial_condition : *const f64,
-    n : usize,
-    dx : f64,
-    dt : f64,
-    d_coeff : f64,
-    steps : usize,
-    out_size : *mut usize,
+    initial_condition: *const f64,
+    n: usize,
+    dx: f64,
+    dt: f64,
+    d_coeff: f64,
+    steps: usize,
+    out_size: *mut usize,
 ) -> *mut f64 {
 
     if initial_condition.is_null() {
@@ -53,8 +53,8 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_free_f64_cnm_array(
-    ptr : *mut f64,
-    size : usize,
+    ptr: *mut f64,
+    size: usize,
 ) {
 
     if !ptr.is_null() {

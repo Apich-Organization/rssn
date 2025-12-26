@@ -12,14 +12,14 @@ use crate::physics::physics_fem;
 #[derive(Deserialize)]
 
 struct Poisson1DInput {
-    n_elements : usize,
-    domain_length : f64,
+    n_elements: usize,
+    domain_length: f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : Poisson1DInput = match from_json_string(input) {

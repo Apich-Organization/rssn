@@ -10,28 +10,28 @@ use crate::symbolic::number_theory::solve_diophantine;
 #[derive(serde::Deserialize)]
 
 struct Congruence {
-    remainder : Expr,
-    modulus : Expr,
+    remainder: Expr,
+    modulus: Expr,
 }
 
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_diophantine(
-    equation_json : *const c_char,
-    vars_json : *const c_char,
+    equation_json: *const c_char,
+    vars_json: *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_json_string(equation_json);
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
     if let (Some(eq), Some(v)) =
         (equation, vars)
     {
 
-        let v_str : Vec<&str> = v
+        let v_str: Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -58,14 +58,14 @@ pub extern "C" fn rssn_json_solve_diophantine(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_extended_gcd(
-    a_json : *const c_char,
-    b_json : *const c_char,
+    a_json: *const c_char,
+    b_json: *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<Expr> =
+    let a: Option<Expr> =
         from_json_string(a_json);
 
-    let b : Option<Expr> =
+    let b: Option<Expr> =
         from_json_string(b_json);
 
     if let (
@@ -89,10 +89,10 @@ pub extern "C" fn rssn_json_extended_gcd(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_is_prime(
-    n_json : *const c_char
+    n_json: *const c_char
 ) -> *mut c_char {
 
-    let n : Option<Expr> =
+    let n: Option<Expr> =
         from_json_string(n_json);
 
     if let Some(n_expr) = n {
@@ -109,10 +109,10 @@ pub extern "C" fn rssn_json_is_prime(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_chinese_remainder(
-    congruences_json : *const c_char
+    congruences_json: *const c_char
 ) -> *mut c_char {
 
-    let congruences_input : Option<
+    let congruences_input: Option<
         Vec<Congruence>,
     > = from_json_string(
         congruences_json,
@@ -122,7 +122,7 @@ pub extern "C" fn rssn_json_chinese_remainder(
         congruences_input
     {
 
-        let congruences : Vec<(
+        let congruences: Vec<(
             Expr,
             Expr,
         )> = input

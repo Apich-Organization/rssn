@@ -5,10 +5,10 @@ use crate::symbolic::geometric_algebra::Multivector;
 #[no_mangle]
 
 pub extern "C" fn rssn_multivector_scalar_handle(
-    p : u32,
-    q : u32,
-    r : u32,
-    value : *const Expr,
+    p: u32,
+    q: u32,
+    r: u32,
+    value: *const Expr,
 ) -> *mut Multivector {
 
     let value_ref = unsafe {
@@ -34,8 +34,8 @@ pub extern "C" fn rssn_multivector_scalar_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_multivector_geometric_product_handle(
-    a : *const Multivector,
-    b : *const Multivector,
+    a: *const Multivector,
+    b: *const Multivector,
 ) -> *mut Multivector {
 
     let a_ref = unsafe {
@@ -70,8 +70,8 @@ pub extern "C" fn rssn_multivector_geometric_product_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_multivector_outer_product_handle(
-    a : *const Multivector,
-    b : *const Multivector,
+    a: *const Multivector,
+    b: *const Multivector,
 ) -> *mut Multivector {
 
     let a_ref = unsafe {
@@ -106,8 +106,8 @@ pub extern "C" fn rssn_multivector_outer_product_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_multivector_inner_product_handle(
-    a : *const Multivector,
-    b : *const Multivector,
+    a: *const Multivector,
+    b: *const Multivector,
 ) -> *mut Multivector {
 
     let a_ref = unsafe {
@@ -142,7 +142,7 @@ pub extern "C" fn rssn_multivector_inner_product_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_multivector_reverse_handle(
-    mv : *const Multivector
+    mv: *const Multivector
 ) -> *mut Multivector {
 
     let mv_ref = unsafe {
@@ -165,8 +165,8 @@ pub extern "C" fn rssn_multivector_reverse_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_multivector_grade_projection_handle(
-    mv : *const Multivector,
-    grade : u32,
+    mv: *const Multivector,
+    grade: u32,
 ) -> *mut Multivector {
 
     let mv_ref = unsafe {
@@ -190,7 +190,7 @@ pub extern "C" fn rssn_multivector_grade_projection_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_multivector_magnitude_handle(
-    mv : *const Multivector
+    mv: *const Multivector
 ) -> *mut Expr {
 
     let mv_ref = unsafe {
@@ -213,7 +213,7 @@ pub extern "C" fn rssn_multivector_magnitude_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_free_multivector_handle(
-    ptr : *mut Multivector
+    ptr: *mut Multivector
 ) {
 
     if !ptr.is_null() {

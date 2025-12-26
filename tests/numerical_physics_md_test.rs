@@ -167,7 +167,7 @@ fn test_lennard_jones_equilibrium() {
     );
 
     // Force should be approximately zero
-    let force_mag : f64 = force
+    let force_mag: f64 = force
         .iter()
         .map(|f| f * f)
         .sum::<f64>()

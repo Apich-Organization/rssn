@@ -6,10 +6,10 @@ use crate::symbolic::poly_factorization::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_factor_gf(
-    poly_buf : BincodeBuffer
+    poly_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let poly : Option<
+    let poly: Option<
         FiniteFieldPolynomial,
     > = from_bincode_buffer(&poly_buf);
 
@@ -35,10 +35,10 @@ pub extern "C" fn rssn_bincode_factor_gf(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_square_free_factorization_gf(
-    poly_buf : BincodeBuffer
+    poly_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let poly : Option<
+    let poly: Option<
         FiniteFieldPolynomial,
     > = from_bincode_buffer(&poly_buf);
 
@@ -58,15 +58,15 @@ pub extern "C" fn rssn_bincode_square_free_factorization_gf(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_poly_gcd_gf(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<
+    let a: Option<
         FiniteFieldPolynomial,
     > = from_bincode_buffer(&a_buf);
 
-    let b : Option<
+    let b: Option<
         FiniteFieldPolynomial,
     > = from_bincode_buffer(&b_buf);
 
@@ -97,10 +97,10 @@ pub extern "C" fn rssn_bincode_poly_gcd_gf(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_poly_derivative_gf(
-    poly_buf : BincodeBuffer
+    poly_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let poly : Option<
+    let poly: Option<
         FiniteFieldPolynomial,
     > = from_bincode_buffer(&poly_buf);
 

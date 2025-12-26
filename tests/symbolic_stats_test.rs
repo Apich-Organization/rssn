@@ -8,7 +8,7 @@ use rssn::symbolic::stats::std_dev;
 use rssn::symbolic::stats::variance;
 
 fn evaluate_expr(
-    expr : &Expr
+    expr: &Expr
 ) -> Option<f64> {
 
     match expr {
@@ -161,8 +161,8 @@ fn evaluate_dag(
 }
 
 fn assert_approx_eq(
-    expr : &Expr,
-    expected : f64,
+    expr: &Expr,
+    expected: f64,
 ) {
 
     if let Some(val) =

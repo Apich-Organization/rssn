@@ -12,12 +12,12 @@ use crate::physics::physics_mtm::solve_poisson_2d_multigrid;
 )]
 
 pub struct NavierStokesParameters {
-    pub nx : usize,
-    pub ny : usize,
-    pub re : f64,
-    pub dt : f64,
-    pub n_iter : usize,
-    pub lid_velocity : f64,
+    pub nx: usize,
+    pub ny: usize,
+    pub re: f64,
+    pub dt: f64,
+    pub n_iter: usize,
+    pub lid_velocity: f64,
 }
 
 /// Type of NavierStokesOutput.
@@ -34,7 +34,7 @@ pub type NavierStokesOutput = Result<
 /// Main solver for the 2D lid-driven cavity problem.
 
 pub fn run_lid_driven_cavity(
-    params : &NavierStokesParameters
+    params: &NavierStokesParameters
 ) -> NavierStokesOutput {
 
     let (nx, ny, _re, dt) = (
@@ -83,8 +83,7 @@ pub fn run_lid_driven_cavity(
         let v_old = v.clone();
 
         // Calculate RHS in parallel
-        let mut rhs_padded =
-            vec![
+        let mut rhs_padded = vec![
                 0.0;
                 mg_size * mg_size
             ];
@@ -233,9 +232,9 @@ pub fn run_lid_driven_cavity(
 pub fn simulate_lid_driven_cavity_scenario(
 ) {
 
-    const K : usize = 6;
+    const K: usize = 6;
 
-    const N : usize =
+    const N: usize =
         2_usize.pow(K as u32) + 1;
 
     println!(
@@ -245,12 +244,12 @@ pub fn simulate_lid_driven_cavity_scenario(
 
     let params =
         NavierStokesParameters {
-            nx : N,
-            ny : N,
-            re : 100.0,
-            dt : 0.01,
-            n_iter : 200,
-            lid_velocity : 1.0,
+            nx: N,
+            ny: N,
+            re: 100.0,
+            dt: 0.01,
+            n_iter: 200,
+            lid_velocity: 1.0,
         };
 
     match run_lid_driven_cavity(&params)

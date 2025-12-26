@@ -12,9 +12,9 @@ use crate::physics::physics_fdm::{
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_fdm_grid_new(
-    d1 : usize,
-    d2 : usize,
-    d3 : usize,
+    d1: usize,
+    d2: usize,
+    d3: usize,
 ) -> *mut FdmGrid<f64> {
 
     let dims = if d3 > 0 {
@@ -37,7 +37,7 @@ pub extern "C" fn rssn_physics_fdm_grid_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_grid_free(
-    grid : *mut FdmGrid<f64>
+    grid: *mut FdmGrid<f64>
 ) {
 
     if !grid.is_null() {
@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_grid_len(
-    grid : *mut FdmGrid<f64>
+    grid: *mut FdmGrid<f64>
 ) -> usize {
 
     if grid.is_null() {
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_len(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_grid_data(
-    grid : *mut FdmGrid<f64>
+    grid: *mut FdmGrid<f64>
 ) -> *mut f64 {
 
     if grid.is_null() {

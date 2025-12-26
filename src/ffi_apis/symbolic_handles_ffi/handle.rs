@@ -15,7 +15,7 @@ use crate::symbolic::handles::HANDLE_MANAGER;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_handle_insert(
-    expr : *const Expr
+    expr: *const Expr
 ) -> usize {
 
     if expr.is_null() {
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rssn_handle_insert(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_handle_get(
-    handle : usize
+    handle: usize
 ) -> *mut Expr {
 
     match HANDLE_MANAGER.get(handle) {
@@ -58,7 +58,7 @@ pub unsafe extern "C" fn rssn_handle_get(
 #[no_mangle]
 
 pub extern "C" fn rssn_handle_exists(
-    handle : usize
+    handle: usize
 ) -> bool {
 
     HANDLE_MANAGER.exists(handle)
@@ -73,7 +73,7 @@ pub extern "C" fn rssn_handle_exists(
 #[no_mangle]
 
 pub extern "C" fn rssn_handle_free(
-    handle : usize
+    handle: usize
 ) -> bool {
 
     HANDLE_MANAGER
@@ -132,7 +132,7 @@ pub extern "C" fn rssn_handle_get_all(
 #[no_mangle]
 
 pub extern "C" fn rssn_handle_clone(
-    handle : usize
+    handle: usize
 ) -> usize {
 
     match HANDLE_MANAGER
@@ -154,7 +154,7 @@ pub extern "C" fn rssn_handle_clone(
 #[no_mangle]
 
 pub extern "C" fn rssn_handle_to_string(
-    handle : usize
+    handle: usize
 ) -> *mut c_char {
 
     match HANDLE_MANAGER.get(handle) {

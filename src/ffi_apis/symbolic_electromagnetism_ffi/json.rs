@@ -11,22 +11,22 @@ use crate::symbolic::vector::Vector;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_lorentz_force(
-    charge_json : *const c_char,
-    e_field_json : *const c_char,
-    velocity_json : *const c_char,
-    b_field_json : *const c_char,
+    charge_json: *const c_char,
+    e_field_json: *const c_char,
+    velocity_json: *const c_char,
+    b_field_json: *const c_char,
 ) -> *mut c_char {
 
-    let charge : Option<Expr> =
+    let charge: Option<Expr> =
         from_json_string(charge_json);
 
-    let e_field : Option<Vector> =
+    let e_field: Option<Vector> =
         from_json_string(e_field_json);
 
-    let velocity : Option<Vector> =
+    let velocity: Option<Vector> =
         from_json_string(velocity_json);
 
-    let b_field : Option<Vector> =
+    let b_field: Option<Vector> =
         from_json_string(b_field_json);
 
     if let (
@@ -52,14 +52,14 @@ pub extern "C" fn rssn_json_lorentz_force(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_electromagnetic_energy_density(
-    e_field_json : *const c_char,
-    b_field_json : *const c_char,
+    e_field_json: *const c_char,
+    b_field_json: *const c_char,
 ) -> *mut c_char {
 
-    let e_field : Option<Vector> =
+    let e_field: Option<Vector> =
         from_json_string(e_field_json);
 
-    let b_field : Option<Vector> =
+    let b_field: Option<Vector> =
         from_json_string(b_field_json);
 
     if let (Some(e), Some(b)) =

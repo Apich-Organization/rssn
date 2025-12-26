@@ -91,9 +91,9 @@ pub enum MonomialOrder {
 /// Compares two monomials based on a given ordering.
 
 pub(crate) fn compare_monomials(
-    m1 : &Monomial,
-    m2 : &Monomial,
-    order : MonomialOrder,
+    m1: &Monomial,
+    m2: &Monomial,
+    order: MonomialOrder,
 ) -> Ordering {
 
     match order {
@@ -124,9 +124,9 @@ pub(crate) fn compare_monomials(
 /// (one for each divisor) and `remainder` is a `SparsePolynomial`.
 
 pub fn poly_division_multivariate(
-    f : &SparsePolynomial,
-    divisors : &[SparsePolynomial],
-    order : MonomialOrder,
+    f: &SparsePolynomial,
+    divisors: &[SparsePolynomial],
+    order: MonomialOrder,
 ) -> Result<
     (
         Vec<SparsePolynomial>,
@@ -144,7 +144,7 @@ pub fn poly_division_multivariate(
 
     let mut remainder =
         SparsePolynomial {
-            terms : BTreeMap::new(),
+            terms: BTreeMap::new(),
         };
 
     let mut p = f.clone();
@@ -158,6 +158,7 @@ pub fn poly_division_multivariate(
             .terms
             .keys()
             .max_by(|a, b| {
+
                 compare_monomials(
                     a, b, order,
                 )
@@ -247,7 +248,7 @@ pub fn poly_division_multivariate(
 
                 let t =
                     SparsePolynomial {
-                        terms : t_terms,
+                        terms: t_terms,
                     };
 
                 quotients[i] = add_poly(
@@ -297,8 +298,8 @@ pub fn poly_division_multivariate(
 }
 
 pub(crate) fn is_divisible(
-    m1 : &Monomial,
-    m2 : &Monomial,
+    m1: &Monomial,
+    m2: &Monomial,
 ) -> bool {
 
     m2.0.iter()
@@ -306,14 +307,15 @@ pub(crate) fn is_divisible(
 
             m1.0.get(var)
                 .is_some_and(|exp1| {
+
                     exp1 >= exp2
                 })
         })
 }
 
 pub(crate) fn subtract_monomials(
-    m1 : &Monomial,
-    m2 : &Monomial,
+    m1: &Monomial,
+    m2: &Monomial,
 ) -> Monomial {
 
     let mut result = m1.0.clone();
@@ -338,8 +340,8 @@ pub(crate) fn subtract_monomials(
 #[must_use]
 
 pub fn subtract_poly(
-    p1 : &SparsePolynomial,
-    p2 : &SparsePolynomial,
+    p1: &SparsePolynomial,
+    p2: &SparsePolynomial,
 ) -> SparsePolynomial {
 
     let mut result_terms =
@@ -350,6 +352,7 @@ pub fn subtract_poly(
         let entry = result_terms
             .entry(mono.clone())
             .or_insert_with(|| {
+
                 Expr::Constant(0.0)
             });
 
@@ -364,25 +367,27 @@ pub fn subtract_poly(
         .retain(|_, v| !is_zero(v));
 
     SparsePolynomial {
-        terms : result_terms,
+        terms: result_terms,
     }
 }
 
 /// Computes the leading term (monomial, coefficient) of a polynomial.
 
 pub(crate) fn leading_term(
-    p : &SparsePolynomial,
-    order : MonomialOrder,
+    p: &SparsePolynomial,
+    order: MonomialOrder,
 ) -> Option<(Monomial, Expr)> {
 
     p.terms
         .iter()
         .max_by(|(m1, _), (m2, _)| {
+
             compare_monomials(
                 m1, m2, order,
             )
         })
         .map(|(m, c)| {
+
             (m.clone(), c.clone())
         })
 }
@@ -390,8 +395,8 @@ pub(crate) fn leading_term(
 /// Computes the least common multiple (LCM) of two monomials.
 
 pub(crate) fn lcm_monomial(
-    m1 : &Monomial,
-    m2 : &Monomial,
+    m1: &Monomial,
+    m2: &Monomial,
 ) -> Monomial {
 
     let mut lcm_map = m1.0.clone();
@@ -413,9 +418,9 @@ pub(crate) fn lcm_monomial(
 /// S(f, g) = (lcm(LM(f), LM(g)) / LT(f)) * f - (lcm(LM(f), LM(g)) / LT(g)) * g
 
 pub(crate) fn s_polynomial(
-    p1 : &SparsePolynomial,
-    p2 : &SparsePolynomial,
-    order : MonomialOrder,
+    p1: &SparsePolynomial,
+    p2: &SparsePolynomial,
+    order: MonomialOrder,
 ) -> Option<SparsePolynomial> {
 
     let (lm1, lc1) =
@@ -440,7 +445,7 @@ pub(crate) fn s_polynomial(
     t1_terms.insert(t1_mono, t1_coeff);
 
     let t1 = SparsePolynomial {
-        terms : t1_terms,
+        terms: t1_terms,
     };
 
     let t2_mono =
@@ -457,7 +462,7 @@ pub(crate) fn s_polynomial(
     t2_terms.insert(t2_mono, t2_coeff);
 
     let t2 = SparsePolynomial {
-        terms : t2_terms,
+        terms: t2_terms,
     };
 
     let term1 = mul_poly(&t1, p1);
@@ -485,8 +490,8 @@ pub(crate) fn s_polynomial(
 /// A `Vec<SparsePolynomial>` representing the Gröbner basis.
 
 pub fn buchberger(
-    basis : &[SparsePolynomial],
-    order : MonomialOrder,
+    basis: &[SparsePolynomial],
+    order: MonomialOrder,
 ) -> Result<Vec<SparsePolynomial>, String>
 {
 
@@ -497,15 +502,15 @@ pub fn buchberger(
 
     let mut g = basis.to_vec();
 
-    let mut pairs : Vec<(
-        usize,
-        usize,
-    )> = (0 .. g.len())
-        .flat_map(|i| {
-            (i + 1 .. g.len())
-                .map(move |j| (i, j))
-        })
-        .collect();
+    let mut pairs: Vec<(usize, usize)> =
+        (0 .. g.len())
+            .flat_map(|i| {
+
+                (i + 1 .. g.len()).map(
+                    move |j| (i, j),
+                )
+            })
+            .collect();
 
     while let Some((i, j)) = pairs.pop()
     {

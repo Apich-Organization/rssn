@@ -58,9 +58,9 @@ pub enum CoordinateSystem {
 /// if the input is invalid or transformation is not supported.
 
 pub fn transform_point(
-    point : &[Expr],
-    from : CoordinateSystem,
-    to : CoordinateSystem,
+    point: &[Expr],
+    from: CoordinateSystem,
+    to: CoordinateSystem,
 ) -> Result<Vec<Expr>, String> {
 
     if from == to {
@@ -77,8 +77,8 @@ pub fn transform_point(
 /// Converts a point from any system to Cartesian coordinates.
 
 pub(crate) fn to_cartesian(
-    point : &[Expr],
-    from : CoordinateSystem,
+    point: &[Expr],
+    from: CoordinateSystem,
 ) -> Result<Vec<Expr>, String> {
 
     match from {
@@ -154,8 +154,8 @@ pub(crate) fn to_cartesian(
 /// Converts a point from Cartesian coordinates to any other system.
 
 pub(crate) fn from_cartesian(
-    point : &[Expr],
-    to : CoordinateSystem,
+    point: &[Expr],
+    to: CoordinateSystem,
 ) -> Result<Vec<Expr>, String> {
 
     match to {
@@ -265,9 +265,9 @@ pub(crate) fn from_cartesian(
 /// is not supported or rules cannot be found.
 
 pub fn transform_expression(
-    expr : &Expr,
-    from : CoordinateSystem,
-    to : CoordinateSystem,
+    expr: &Expr,
+    from: CoordinateSystem,
+    to: CoordinateSystem,
 ) -> Result<Expr, String> {
 
     if from == to {
@@ -313,8 +313,8 @@ pub fn transform_expression(
 /// `rules` are the expressions for `from_vars` in terms of `to_vars`.
 
 pub fn get_transform_rules(
-    from : CoordinateSystem,
-    to : CoordinateSystem,
+    from: CoordinateSystem,
+    to: CoordinateSystem,
 ) -> Result<TransformationRules, String>
 {
 
@@ -377,7 +377,7 @@ pub fn get_transform_rules(
 /// `rules` are the expressions for Cartesian coordinates in terms of `from_vars`.
 
 pub fn get_to_cartesian_rules(
-    from : CoordinateSystem
+    from: CoordinateSystem
 ) -> Result<TransformationRules, String>
 {
 
@@ -499,7 +499,7 @@ pub fn get_to_cartesian_rules(
 /// `rules` are the expressions for `to_vars` in terms of Cartesian coordinates.
 
 pub(crate) fn get_from_cartesian_rules(
-    to : CoordinateSystem
+    to: CoordinateSystem
 ) -> TransformationRules {
 
     let cartesian_vars = vec![
@@ -624,9 +624,9 @@ pub(crate) fn get_from_cartesian_rules(
 /// if the transformation is not supported or computation fails.
 
 pub fn transform_contravariant_vector(
-    components : &[Expr],
-    from : CoordinateSystem,
-    to : CoordinateSystem,
+    components: &[Expr],
+    from: CoordinateSystem,
+    to: CoordinateSystem,
 ) -> Result<Vec<Expr>, String> {
 
     if from == to {
@@ -692,9 +692,9 @@ pub fn transform_contravariant_vector(
 /// if the transformation is not supported or computation fails.
 
 pub fn transform_covariant_vector(
-    components : &[Expr],
-    from : CoordinateSystem,
-    to : CoordinateSystem,
+    components: &[Expr],
+    from: CoordinateSystem,
+    to: CoordinateSystem,
 ) -> Result<Vec<Expr>, String> {
 
     if from == to {
@@ -771,8 +771,8 @@ pub fn transform_covariant_vector(
 /// Computes the Jacobian matrix for a set of transformation rules.
 
 pub(crate) fn compute_jacobian(
-    rules : &[Expr],
-    vars : &[String],
+    rules: &[Expr],
+    vars: &[String],
 ) -> Vec<Vec<Expr>> {
 
     let mut jacobian = Vec::new();
@@ -797,8 +797,8 @@ pub(crate) fn compute_jacobian(
 /// Performs symbolic matrix-vector multiplication.
 
 pub(crate) fn symbolic_mat_vec_mul(
-    matrix : &[Vec<Expr>],
-    vector : &[Expr],
+    matrix: &[Vec<Expr>],
+    vector: &[Expr],
 ) -> Result<Vec<Expr>, String> {
 
     if matrix.is_empty()
@@ -877,10 +877,10 @@ pub enum TensorType {
 /// if the transformation is not supported or computation fails.
 
 pub fn transform_tensor2(
-    tensor : &Expr,
-    from : CoordinateSystem,
-    to : CoordinateSystem,
-    tensor_type : TensorType,
+    tensor: &Expr,
+    from: CoordinateSystem,
+    to: CoordinateSystem,
+    tensor_type: TensorType,
 ) -> Result<Expr, String> {
 
     if from == to {
@@ -938,8 +938,8 @@ pub fn transform_tensor2(
 /// Performs symbolic matrix-matrix multiplication.
 
 pub fn symbolic_mat_mat_mul(
-    m1 : &[Vec<Expr>],
-    m2 : &[Vec<Expr>],
+    m1: &[Vec<Expr>],
+    m2: &[Vec<Expr>],
 ) -> Result<Vec<Vec<Expr>>, String> {
 
     let m1_rows = m1.len();
@@ -970,14 +970,13 @@ pub fn symbolic_mat_mat_mul(
         );
     }
 
-    let mut result =
+    let mut result = vec![
         vec![
-            vec![
                 Expr::Constant(0.0);
                 m2_cols
             ];
-            m1_rows
-        ];
+        m1_rows
+    ];
 
     for (i, row) in m1
         .iter()
@@ -1028,7 +1027,7 @@ pub fn symbolic_mat_mat_mul(
 /// or an error string if the system is not supported or computation fails.
 
 pub fn get_metric_tensor(
-    system : CoordinateSystem
+    system: CoordinateSystem
 ) -> Result<Expr, String> {
 
     let rules = match system {
@@ -1084,8 +1083,8 @@ pub fn get_metric_tensor(
 /// if the system is not supported or computation fails.
 
 pub fn transform_divergence(
-    vector_comps : &[Expr],
-    from : CoordinateSystem,
+    vector_comps: &[Expr],
+    from: CoordinateSystem,
 ) -> Result<Expr, String> {
 
     let g_matrix =
@@ -1147,8 +1146,8 @@ pub fn transform_divergence(
 /// if the system is not supported or computation fails.
 
 pub fn transform_curl(
-    vector_comps : &[Expr],
-    from : CoordinateSystem,
+    vector_comps: &[Expr],
+    from: CoordinateSystem,
 ) -> Result<Vec<Expr>, String> {
 
     if vector_comps.len() != 3 {
@@ -1311,10 +1310,10 @@ pub fn transform_curl(
 /// or an error string if the transformation is not supported or computation fails.
 
 pub fn transform_gradient(
-    scalar_field : &Expr,
-    from_vars : &[String],
-    from : CoordinateSystem,
-    to : CoordinateSystem,
+    scalar_field: &Expr,
+    from_vars: &[String],
+    from: CoordinateSystem,
+    to: CoordinateSystem,
 ) -> Result<Vec<Expr>, String> {
 
     if from == to {

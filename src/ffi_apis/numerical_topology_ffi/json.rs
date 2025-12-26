@@ -16,15 +16,15 @@ use crate::numerical::topology::{
 #[derive(Deserialize)]
 
 struct BettiInput {
-    points : Vec<Vec<f64>>,
-    epsilon : f64,
-    max_dim : usize,
+    points: Vec<Vec<f64>>,
+    epsilon: f64,
+    max_dim: usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : BettiInput = match from_json_string(input_json) {
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
         },
     };
 
-    let pt_slices : Vec<&[f64]> = input
+    let pt_slices: Vec<&[f64]> = input
         .points
         .iter()
         .map(|v| v.as_slice())
@@ -55,8 +55,8 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
     );
 
     let ffi_res = FfiResult {
-        ok : Some(res),
-        err : None::<String>,
+        ok: Some(res),
+        err: None::<String>,
     };
 
     to_c_string(
@@ -68,16 +68,16 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
 #[derive(Deserialize)]
 
 struct PersistenceInput {
-    points : Vec<Vec<f64>>,
-    max_epsilon : f64,
-    steps : usize,
-    max_dim : usize,
+    points: Vec<Vec<f64>>,
+    max_epsilon: f64,
+    steps: usize,
+    max_dim: usize,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_persistence_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : PersistenceInput = match from_json_string(input_json) {
@@ -104,8 +104,8 @@ pub unsafe extern "C" fn rssn_num_topology_persistence_json(
         );
 
     let ffi_res = FfiResult {
-        ok : Some(res),
-        err : None::<String>,
+        ok: Some(res),
+        err: None::<String>,
     };
 
     to_c_string(

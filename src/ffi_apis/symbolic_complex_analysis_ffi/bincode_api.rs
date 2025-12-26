@@ -7,10 +7,10 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_new_bincode(
-    func_bincode : BincodeBuffer,
-    var : *const c_char,
-    start_point_bincode : BincodeBuffer,
-    order : usize,
+    func_bincode: BincodeBuffer,
+    var: *const c_char,
+    start_point_bincode: BincodeBuffer,
+    order: usize,
 ) -> BincodeBuffer {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
@@ -44,8 +44,8 @@ pub unsafe extern "C" fn path_continuation_new_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
-    pc_bincode : BincodeBuffer,
-    path_points_bincode : BincodeBuffer,
+    pc_bincode: BincodeBuffer,
+    path_points_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
     let mut pc : PathContinuation = match from_bincode_buffer(&pc_bincode) {
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
-    pc_bincode : BincodeBuffer
+    pc_bincode: BincodeBuffer
 ) -> BincodeBuffer {
 
     let pc : PathContinuation = match from_bincode_buffer(&pc_bincode) {
@@ -91,13 +91,13 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
-    series_expr_bincode : BincodeBuffer,
-    var : *const c_char,
-    center_bincode : BincodeBuffer,
-    order : usize,
+    series_expr_bincode: BincodeBuffer,
+    var: *const c_char,
+    center_bincode: BincodeBuffer,
+    order: usize,
 ) -> f64 {
 
-    let series_expr : Expr =
+    let series_expr: Expr =
         match from_bincode_buffer(
             &series_expr_bincode,
         ) {
@@ -110,7 +110,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
             .to_str()
             .unwrap();
 
-    let center : Expr =
+    let center: Expr =
         match from_bincode_buffer(
             &center_bincode,
         ) {
@@ -130,11 +130,11 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_distance_bincode(
-    p1_bincode : BincodeBuffer,
-    p2_bincode : BincodeBuffer,
+    p1_bincode: BincodeBuffer,
+    p2_bincode: BincodeBuffer,
 ) -> f64 {
 
-    let p1 : Expr =
+    let p1: Expr =
         match from_bincode_buffer(
             &p1_bincode,
         ) {
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn complex_distance_bincode(
             | None => return 0.0,
         };
 
-    let p2 : Expr =
+    let p2: Expr =
         match from_bincode_buffer(
             &p2_bincode,
         ) {
@@ -156,10 +156,10 @@ pub unsafe extern "C" fn complex_distance_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn classify_singularity_bincode(
-    func_bincode : BincodeBuffer,
-    var : *const c_char,
-    singularity_bincode : BincodeBuffer,
-    order : usize,
+    func_bincode: BincodeBuffer,
+    var: *const c_char,
+    singularity_bincode: BincodeBuffer,
+    order: usize,
 ) -> BincodeBuffer {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
@@ -190,10 +190,10 @@ pub unsafe extern "C" fn classify_singularity_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn laurent_series_bincode(
-    func_bincode : BincodeBuffer,
-    var : *const c_char,
-    center_bincode : BincodeBuffer,
-    order : usize,
+    func_bincode: BincodeBuffer,
+    var: *const c_char,
+    center_bincode: BincodeBuffer,
+    order: usize,
 ) -> BincodeBuffer {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
@@ -224,9 +224,9 @@ pub unsafe extern "C" fn laurent_series_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn calculate_residue_bincode(
-    func_bincode : BincodeBuffer,
-    var : *const c_char,
-    singularity_bincode : BincodeBuffer,
+    func_bincode: BincodeBuffer,
+    var: *const c_char,
+    singularity_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
@@ -256,8 +256,8 @@ pub unsafe extern "C" fn calculate_residue_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
-    func_bincode : BincodeBuffer,
-    var : *const c_char,
+    func_bincode: BincodeBuffer,
+    var: *const c_char,
     singularities_bincode : BincodeBuffer,
 ) -> BincodeBuffer {
 
@@ -288,10 +288,10 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_new_bincode(
-    a_bincode : BincodeBuffer,
-    b_bincode : BincodeBuffer,
-    c_bincode : BincodeBuffer,
-    d_bincode : BincodeBuffer,
+    a_bincode: BincodeBuffer,
+    b_bincode: BincodeBuffer,
+    c_bincode: BincodeBuffer,
+    d_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
     let a : Expr = match from_bincode_buffer(&a_bincode) {
@@ -337,8 +337,8 @@ pub extern "C" fn mobius_transformation_identity_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_apply_bincode(
-    mobius_bincode : BincodeBuffer,
-    z_bincode : BincodeBuffer,
+    mobius_bincode: BincodeBuffer,
+    z_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
     let mobius : MobiusTransformation = match from_bincode_buffer(&mobius_bincode) {
@@ -359,8 +359,8 @@ pub unsafe extern "C" fn mobius_transformation_apply_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_compose_bincode(
-    mobius1_bincode : BincodeBuffer,
-    mobius2_bincode : BincodeBuffer,
+    mobius1_bincode: BincodeBuffer,
+    mobius2_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
     let mobius1 : MobiusTransformation = match from_bincode_buffer(&mobius1_bincode) {
@@ -382,7 +382,7 @@ pub unsafe extern "C" fn mobius_transformation_compose_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
-    mobius_bincode : BincodeBuffer
+    mobius_bincode: BincodeBuffer
 ) -> BincodeBuffer {
 
     let mobius : MobiusTransformation = match from_bincode_buffer(&mobius_bincode) {
@@ -398,9 +398,9 @@ pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn cauchy_integral_formula_bincode(
-    func_bincode : BincodeBuffer,
-    var : *const c_char,
-    z0_bincode : BincodeBuffer,
+    func_bincode: BincodeBuffer,
+    var: *const c_char,
+    z0_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
@@ -426,10 +426,10 @@ pub unsafe extern "C" fn cauchy_integral_formula_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
-    func_bincode : BincodeBuffer,
-    var : *const c_char,
-    z0_bincode : BincodeBuffer,
-    n : usize,
+    func_bincode: BincodeBuffer,
+    var: *const c_char,
+    z0_bincode: BincodeBuffer,
+    n: usize,
 ) -> BincodeBuffer {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
@@ -460,7 +460,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_exp_bincode(
-    z_bincode : BincodeBuffer
+    z_bincode: BincodeBuffer
 ) -> BincodeBuffer {
 
     let z : Expr = match from_bincode_buffer(&z_bincode) {
@@ -476,7 +476,7 @@ pub unsafe extern "C" fn complex_exp_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_log_bincode(
-    z_bincode : BincodeBuffer
+    z_bincode: BincodeBuffer
 ) -> BincodeBuffer {
 
     let z : Expr = match from_bincode_buffer(&z_bincode) {
@@ -492,7 +492,7 @@ pub unsafe extern "C" fn complex_log_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_arg_bincode(
-    z_bincode : BincodeBuffer
+    z_bincode: BincodeBuffer
 ) -> BincodeBuffer {
 
     let z : Expr = match from_bincode_buffer(&z_bincode) {
@@ -508,7 +508,7 @@ pub unsafe extern "C" fn complex_arg_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_modulus_bincode(
-    z_bincode : BincodeBuffer
+    z_bincode: BincodeBuffer
 ) -> BincodeBuffer {
 
     let z : Expr = match from_bincode_buffer(&z_bincode) {

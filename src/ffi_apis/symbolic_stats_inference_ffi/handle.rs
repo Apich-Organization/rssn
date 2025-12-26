@@ -8,8 +8,8 @@ use crate::symbolic::stats_inference::{
 };
 
 unsafe fn collect_exprs(
-    data : *const *const Expr,
-    len : usize,
+    data: *const *const Expr,
+    len: usize,
 ) -> Vec<Expr> {
 
     let mut exprs =
@@ -57,9 +57,9 @@ unsafe fn collect_exprs(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_one_sample_t_test(
-    data : *const *const Expr,
-    len : usize,
-    target_mean : *const Expr,
+    data: *const *const Expr,
+    len: usize,
+    target_mean: *const Expr,
 ) -> *mut Expr {
 
     if data.is_null() {
@@ -97,11 +97,11 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_two_sample_t_test(
-    data1 : *const *const Expr,
-    len1 : usize,
-    data2 : *const *const Expr,
-    len2 : usize,
-    mu_diff : *const Expr,
+    data1: *const *const Expr,
+    len1: usize,
+    data2: *const *const Expr,
+    len2: usize,
+    mu_diff: *const Expr,
 ) -> *mut Expr {
 
     if data1.is_null()
@@ -147,10 +147,10 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_z_test(
-    data : *const *const Expr,
-    len : usize,
-    target_mean : *const Expr,
-    pop_std_dev : *const Expr,
+    data: *const *const Expr,
+    len: usize,
+    target_mean: *const Expr,
+    pop_std_dev: *const Expr,
 ) -> *mut Expr {
 
     if data.is_null()

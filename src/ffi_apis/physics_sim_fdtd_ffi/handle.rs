@@ -10,19 +10,19 @@ use crate::physics::physics_sim::fdtd_electrodynamics::{
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
-    width : usize,
-    height : usize,
-    time_steps : usize,
-    source_x : usize,
-    source_y : usize,
-    source_freq : f64,
+    width: usize,
+    height: usize,
+    time_steps: usize,
+    source_x: usize,
+    source_y: usize,
+    source_freq: f64,
 ) -> *mut Matrix<f64> {
 
     let params = FdtdParameters {
         width,
         height,
         time_steps,
-        source_pos : (
+        source_pos: (
             source_x,
             source_y,
         ),

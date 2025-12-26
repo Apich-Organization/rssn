@@ -29,7 +29,7 @@ thread_local! {
 /// A private helper to update the last error message for the current thread.
 
 pub(crate) unsafe fn update_last_error(
-    err : String
+    err: String
 ) {
 
     let c_string = CString::new(err)
@@ -171,7 +171,7 @@ impl_handle_api!(
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_to_string(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut c_char {
 
     if handle.is_null() {
@@ -201,7 +201,7 @@ use crate::symbolic::unit_unification::unify_expression;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_expr_create(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> usize {
 
     if json_ptr.is_null() {
@@ -255,7 +255,7 @@ pub unsafe extern "C" fn rssn_expr_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_expr_free(
-    handle : usize
+    handle: usize
 ) {
 
     if handle != 0 {
@@ -270,7 +270,7 @@ pub unsafe extern "C" fn rssn_expr_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_expr_simplify(
-    handle : &usize
+    handle: &usize
 ) -> usize {
 
     match HANDLE_MANAGER.get(*handle) {
@@ -299,24 +299,24 @@ pub unsafe extern "C" fn rssn_expr_simplify(
 #[derive(Serialize, Deserialize)]
 
 pub struct FfiResult<T, E> {
-    pub ok : Option<T>,
-    pub err : Option<E>,
+    pub ok: Option<T>,
+    pub err: Option<E>,
 }
 
 impl<T, E> FfiResult<T, E> {
-    pub fn ok(val : T) -> Self {
+    pub fn ok(val: T) -> Self {
 
         Self {
-            ok : Some(val),
-            err : None,
+            ok: Some(val),
+            err: None,
         }
     }
 
-    pub fn err(err : E) -> Self {
+    pub fn err(err: E) -> Self {
 
         Self {
-            ok : None,
-            err : Some(err),
+            ok: None,
+            err: Some(err),
         }
     }
 }
@@ -334,7 +334,7 @@ impl<T, E> FfiResult<T, E> {
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_simplify(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut Expr {
 
     // 1. Check the pointer itself (now *mut Expr)
@@ -369,7 +369,7 @@ pub unsafe extern "C" fn expr_simplify(
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_unify_expression(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut c_char {
 
     if handle.is_null() {
@@ -402,16 +402,16 @@ pub unsafe extern "C" fn expr_unify_expression(
         match unification_result {
             | Ok(unified_expr) => {
                 FfiResult {
-                    ok : Some(
+                    ok: Some(
                         unified_expr,
                     ),
-                    err : None,
+                    err: None,
                 }
             },
             | Err(e) => {
                 FfiResult {
-                    ok : None,
-                    err : Some(e),
+                    ok: None,
+                    err: Some(e),
                 }
             },
         };
@@ -458,7 +458,7 @@ pub unsafe extern "C" fn rssn_test_string_passing(
 #[no_mangle]
 
 pub unsafe extern "C" fn free_string(
-    s : *mut c_char
+    s: *mut c_char
 ) {
 
     if !s.is_null() {
@@ -480,7 +480,7 @@ use crate::output::pretty_print::pretty_print;
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_to_latex(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut c_char {
 
     if handle.is_null() {
@@ -507,7 +507,7 @@ pub unsafe extern "C" fn expr_to_latex(
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_to_pretty_string(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut c_char {
 
     if handle.is_null() {
@@ -531,27 +531,27 @@ pub unsafe extern "C" fn expr_to_pretty_string(
 #[derive(Deserialize)]
 
 struct LagrangeInput {
-    points : Vec<(f64, f64)>,
+    points: Vec<(f64, f64)>,
 }
 
 #[derive(Serialize)]
 
 struct FfiPolynomial {
-    coeffs : Vec<f64>,
+    coeffs: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct BezierInput {
-    control_points : Vec<Vec<f64>>,
-    t : f64,
+    control_points: Vec<Vec<f64>>,
+    t: f64,
 }
 
 /// Computes a Lagrange interpolating polynomial and returns its coefficients as a JSON string.
 #[no_mangle]
 
 pub unsafe extern "C" fn interpolate_lagrange(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -583,7 +583,7 @@ pub unsafe extern "C" fn interpolate_lagrange(
         },
     };
 
-    let input : Result<
+    let input: Result<
         LagrangeInput,
         _,
     > = serde_json::from_str(json_str);
@@ -643,7 +643,7 @@ pub unsafe extern "C" fn interpolate_lagrange(
 #[no_mangle]
 
 pub unsafe extern "C" fn interpolate_bezier_curve(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -675,7 +675,7 @@ pub unsafe extern "C" fn interpolate_bezier_curve(
         },
     };
 
-    let input : Result<BezierInput, _> =
+    let input: Result<BezierInput, _> =
         serde_json::from_str(json_str);
 
     let ffi_result = match input {
@@ -687,17 +687,19 @@ pub unsafe extern "C" fn interpolate_bezier_curve(
             );
 
             FfiResult {
-                ok : Some(point),
-                err : None::<String>,
+                ok: Some(point),
+                err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok : None,
-            err : Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -725,34 +727,34 @@ use crate::numerical::vector;
 #[derive(Deserialize)]
 
 struct VecInput {
-    v : Vec<f64>,
+    v: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct TwoVecInput {
-    v1 : Vec<f64>,
-    v2 : Vec<f64>,
+    v1: Vec<f64>,
+    v2: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct VecScalarInput {
-    v : Vec<f64>,
-    s : f64,
+    v: Vec<f64>,
+    s: f64,
 }
 
 #[derive(Deserialize)]
 
 struct U64Input {
-    n : u64,
+    n: u64,
 }
 
 #[derive(Deserialize)]
 
 struct TwoU64Input {
-    n : u64,
-    k : u64,
+    n: u64,
+    k: u64,
 }
 
 macro_rules! impl_ffi_1_vec_in_f64_out {
@@ -1125,7 +1127,7 @@ impl_ffi_2_vec_in_vec_out!(
 #[no_mangle]
 
 pub unsafe extern "C" fn vector_scalar_mul(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -1150,7 +1152,7 @@ pub unsafe extern "C" fn vector_scalar_mul(
         },
     };
 
-    let input : Result<
+    let input: Result<
         VecScalarInput,
         _,
     > = serde_json::from_str(json_str);
@@ -1158,19 +1160,19 @@ pub unsafe extern "C" fn vector_scalar_mul(
     let ffi_result = match input {
         | Ok(input_data) => {
             FfiResult {
-                ok : Some(
+                ok: Some(
                     vector::scalar_mul(
                         &input_data.v,
                         input_data.s,
                     ),
                 ),
-                err : None::<String>,
+                err: None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(format!(
+                ok: None,
+                err: Some(format!(
                     "JSON error: {}",
                     e
                 )),
@@ -1221,9 +1223,9 @@ impl_ffi_2_u64_in_f64_out!(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_norm(
-    data : *const f64,
-    len : usize,
-    result : *mut f64,
+    data: *const f64,
+    len: usize,
+    result: *mut f64,
 ) -> i32 {
 
     if data.is_null()
@@ -1259,11 +1261,11 @@ pub unsafe extern "C" fn rssn_vec_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_dot_product(
-    d1 : *const f64,
-    l1 : usize,
-    d2 : *const f64,
-    l2 : usize,
-    result : *mut f64,
+    d1: *const f64,
+    l1: usize,
+    d2: *const f64,
+    l2: usize,
+    result: *mut f64,
 ) -> i32 {
 
     if d1.is_null()
@@ -1317,8 +1319,8 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_comb_factorial(
-    n : u64,
-    result : *mut f64,
+    n: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {
@@ -1345,9 +1347,9 @@ pub unsafe extern "C" fn rssn_comb_factorial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_comb_permutations(
-    n : u64,
-    k : u64,
-    result : *mut f64,
+    n: u64,
+    k: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {
@@ -1376,9 +1378,9 @@ pub unsafe extern "C" fn rssn_comb_permutations(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_comb_combinations(
-    n : u64,
-    k : u64,
-    result : *mut f64,
+    n: u64,
+    k: u64,
+    result: *mut f64,
 ) -> i32 {
 
     if result.is_null() {
@@ -1408,29 +1410,29 @@ use crate::numerical::number_theory as nt;
 #[derive(Deserialize)]
 
 struct TwoU64NtInput {
-    a : u64,
-    b : u64,
+    a: u64,
+    b: u64,
 }
 
 #[derive(Deserialize)]
 
 struct ModPowInput {
-    base : u64,
-    exp : u64,
-    modulus : u64,
+    base: u64,
+    exp: u64,
+    modulus: u64,
 }
 
 #[derive(Deserialize)]
 
 struct TwoI64NtInput {
-    a : i64,
-    b : i64,
+    a: i64,
+    b: i64,
 }
 
 #[derive(Deserialize)]
 
 struct U64NtInput {
-    n : u64,
+    n: u64,
 }
 
 macro_rules! impl_ffi_2_u64_in_u64_out {
@@ -1571,7 +1573,7 @@ impl_ffi_1_u64_in_bool_out!(
 #[no_mangle]
 
 pub unsafe extern "C" fn nt_mod_pow(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -1596,24 +1598,24 @@ pub unsafe extern "C" fn nt_mod_pow(
         },
     };
 
-    let input : Result<ModPowInput, _> =
+    let input: Result<ModPowInput, _> =
         serde_json::from_str(json_str);
 
     let ffi_result = match input {
         | Ok(d) => {
             FfiResult {
-                ok : Some(nt::mod_pow(
+                ok: Some(nt::mod_pow(
                     u128::from(d.base),
                     d.exp,
                     d.modulus,
                 )),
-                err : None::<String>,
+                err: None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(format!(
+                ok: None,
+                err: Some(format!(
                     "JSON error: {}",
                     e
                 )),
@@ -1648,7 +1650,7 @@ pub unsafe extern "C" fn nt_mod_pow(
 #[no_mangle]
 
 pub unsafe extern "C" fn nt_mod_inverse(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -1673,7 +1675,7 @@ pub unsafe extern "C" fn nt_mod_inverse(
         },
     };
 
-    let input : Result<
+    let input: Result<
         TwoI64NtInput,
         _,
     > = serde_json::from_str(json_str);
@@ -1681,16 +1683,16 @@ pub unsafe extern "C" fn nt_mod_inverse(
     let ffi_result = match input {
         | Ok(d) => {
             FfiResult {
-                ok : nt::mod_inverse(
+                ok: nt::mod_inverse(
                     d.a, d.b,
                 ),
-                err : None::<String>,
+                err: None::<String>,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(format!(
+                ok: None,
+                err: Some(format!(
                     "JSON error: {}",
                     e
                 )),
@@ -1723,14 +1725,14 @@ use crate::numerical::special::{
 #[derive(Deserialize)]
 
 struct SpecialFunc1Input {
-    x : f64,
+    x: f64,
 }
 
 #[derive(Deserialize)]
 
 struct SpecialFunc2Input {
-    a : f64,
-    b : f64,
+    a: f64,
+    b: f64,
 }
 
 macro_rules! impl_special_fn_one_arg {
@@ -2012,7 +2014,7 @@ use crate::numerical::transforms::ifft;
 #[derive(Serialize, Deserialize)]
 
 struct TransformsInput {
-    data : Vec<Complex<f64>>,
+    data: Vec<Complex<f64>>,
 }
 
 /// Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers.
@@ -2024,16 +2026,14 @@ struct TransformsInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn transforms_fft(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
 
         let result = FfiResult {
-            ok : None::<
-                Vec<Complex<f64>>,
-            >,
-            err : Some(
+            ok: None::<Vec<Complex<f64>>>,
+            err: Some(
                 "Null pointer passed \
                  to transforms_fft"
                     .to_string(),
@@ -2062,7 +2062,7 @@ pub unsafe extern "C" fn transforms_fft(
         },
     };
 
-    let input : Result<
+    let input: Result<
         TransformsInput,
         _,
     > = serde_json::from_str(json_str);
@@ -2073,19 +2073,21 @@ pub unsafe extern "C" fn transforms_fft(
             fft(&mut input_data.data);
 
             FfiResult {
-                ok : Some(
+                ok: Some(
                     input_data.data,
                 ),
-                err : None::<String>,
+                err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok : None,
-            err : Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -2116,16 +2118,14 @@ pub unsafe extern "C" fn transforms_fft(
 #[no_mangle]
 
 pub unsafe extern "C" fn transforms_ifft(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
 
         let result = FfiResult {
-            ok : None::<
-                Vec<Complex<f64>>,
-            >,
-            err : Some(
+            ok: None::<Vec<Complex<f64>>>,
+            err: Some(
                 "Null pointer passed \
                  to transforms_ifft"
                     .to_string(),
@@ -2154,7 +2154,7 @@ pub unsafe extern "C" fn transforms_ifft(
         },
     };
 
-    let input : Result<
+    let input: Result<
         TransformsInput,
         _,
     > = serde_json::from_str(json_str);
@@ -2165,19 +2165,21 @@ pub unsafe extern "C" fn transforms_ifft(
             ifft(&mut input_data.data);
 
             FfiResult {
-                ok : Some(
+                ok: Some(
                     input_data.data,
                 ),
-                err : None::<String>,
+                err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok : None,
-            err : Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -2206,8 +2208,8 @@ use crate::numerical::transforms::ifft_slice;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_fft(
-    data : *mut Complex<f64>,
-    len : usize,
+    data: *mut Complex<f64>,
+    len: usize,
 ) -> i32 {
 
     if data.is_null() {
@@ -2237,8 +2239,8 @@ pub unsafe extern "C" fn rssn_fft(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_ifft(
-    data : *mut Complex<f64>,
-    len : usize,
+    data: *mut Complex<f64>,
+    len: usize,
 ) -> i32 {
 
     if data.is_null() {
@@ -2267,23 +2269,23 @@ pub unsafe extern "C" fn rssn_ifft(
 #[derive(Deserialize)]
 
 struct PolyInput {
-    expr : Expr,
-    var : String,
+    expr: Expr,
+    var: String,
 }
 
 #[derive(Deserialize)]
 
 struct PolyDivInput {
-    n : Expr,
-    d : Expr,
-    var : String,
+    n: Expr,
+    d: Expr,
+    var: String,
 }
 
 #[derive(Deserialize)]
 
 struct PolyFromCoeffsInput {
-    coeffs : Vec<Expr>,
-    var : String,
+    coeffs: Vec<Expr>,
+    var: String,
 }
 
 #[deprecated(
@@ -2295,7 +2297,7 @@ struct PolyFromCoeffsInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn poly_is_polynomial(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> bool {
 
     if json_ptr.is_null() {
@@ -2312,7 +2314,7 @@ pub unsafe extern "C" fn poly_is_polynomial(
         | Err(_) => return false,
     };
 
-    let input : Result<PolyInput, _> =
+    let input: Result<PolyInput, _> =
         serde_json::from_str(json_str);
 
     match input {
@@ -2334,7 +2336,7 @@ pub unsafe extern "C" fn poly_is_polynomial(
 #[no_mangle]
 
 pub unsafe extern "C" fn poly_degree(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> i64 {
 
     if json_ptr.is_null() {
@@ -2351,7 +2353,7 @@ pub unsafe extern "C" fn poly_degree(
         | Err(_) => return -1,
     };
 
-    let input : Result<PolyInput, _> =
+    let input: Result<PolyInput, _> =
         serde_json::from_str(json_str);
 
     match input {
@@ -2372,8 +2374,8 @@ pub unsafe extern "C" fn poly_degree(
 #[no_mangle]
 
 pub unsafe extern "C" fn poly_leading_coefficient(
-    handle : *mut Expr,
-    var_ptr : *const c_char,
+    handle: *mut Expr,
+    var_ptr: *const c_char,
 ) -> *mut Expr {
 
     if handle.is_null()
@@ -2415,14 +2417,14 @@ pub unsafe extern "C" fn poly_leading_coefficient(
 #[no_mangle]
 
 pub unsafe extern "C" fn poly_long_division(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
 
         let result = FfiResult {
-            ok : None::<MatrixPair>,
-            err : Some(
+            ok: None::<MatrixPair>,
+            err: Some(
                 "Null pointer passed \
                  to poly_long_division"
                     .to_string(),
@@ -2451,10 +2453,8 @@ pub unsafe extern "C" fn poly_long_division(
         },
     };
 
-    let input : Result<
-        PolyDivInput,
-        _,
-    > = serde_json::from_str(json_str);
+    let input: Result<PolyDivInput, _> =
+        serde_json::from_str(json_str);
 
     let ffi_result = match input {
         | Ok(div_input) => {
@@ -2466,20 +2466,22 @@ pub unsafe extern "C" fn poly_long_division(
             );
 
             FfiResult {
-                ok : Some(MatrixPair {
-                    p1 : q,
-                    p2 : r,
+                ok: Some(MatrixPair {
+                    p1: q,
+                    p2: r,
                 }),
-                err : None::<String>,
+                err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok : None,
-            err : Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -2510,14 +2512,14 @@ pub unsafe extern "C" fn poly_long_division(
 #[no_mangle]
 
 pub unsafe extern "C" fn poly_to_coeffs_vec(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
 
         let result = FfiResult {
-            ok : None::<Vec<Expr>>,
-            err : Some(
+            ok: None::<Vec<Expr>>,
+            err: Some(
                 "Null pointer passed \
                  to poly_to_coeffs_vec"
                     .to_string(),
@@ -2546,7 +2548,7 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(
         },
     };
 
-    let input : Result<PolyInput, _> =
+    let input: Result<PolyInput, _> =
         serde_json::from_str(json_str);
 
     let ffi_result = match input {
@@ -2558,17 +2560,19 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(
             );
 
             FfiResult {
-                ok : Some(coeffs),
-                err : None::<String>,
+                ok: Some(coeffs),
+                err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok : None,
-            err : Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -2599,7 +2603,7 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(
 #[no_mangle]
 
 pub unsafe extern "C" fn poly_from_coeffs_vec(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut Expr {
 
     if json_ptr.is_null() {
@@ -2618,7 +2622,7 @@ pub unsafe extern "C" fn poly_from_coeffs_vec(
         },
     };
 
-    let input : Result<
+    let input: Result<
         PolyFromCoeffsInput,
         _,
     > = serde_json::from_str(json_str);
@@ -2644,9 +2648,9 @@ pub unsafe extern "C" fn poly_from_coeffs_vec(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_is_polynomial(
-    expr_handle : usize,
-    var_ptr : *const c_char,
-    result : *mut bool,
+    expr_handle: usize,
+    var_ptr: *const c_char,
+    result: *mut bool,
 ) -> i32 {
 
     if result.is_null()
@@ -2706,9 +2710,9 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_degree(
-    expr_handle : usize,
-    var_ptr : *const c_char,
-    result : *mut i64,
+    expr_handle: usize,
+    var_ptr: *const c_char,
+    result: *mut i64,
 ) -> i32 {
 
     if result.is_null()
@@ -2768,11 +2772,11 @@ pub unsafe extern "C" fn rssn_poly_degree(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poly_long_division(
-    n_handle : usize,
-    d_handle : usize,
-    var_ptr : *const c_char,
-    q_handle : *mut usize,
-    r_handle : *mut usize,
+    n_handle: usize,
+    d_handle: usize,
+    var_ptr: *const c_char,
+    q_handle: *mut usize,
+    r_handle: *mut usize,
 ) -> i32 {
 
     if q_handle.is_null()
@@ -2839,34 +2843,34 @@ pub unsafe extern "C" fn rssn_poly_long_division(
 #[derive(Deserialize)]
 
 struct StatsDataInput {
-    data : Vec<f64>,
+    data: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct StatsTwoDataInput {
-    data1 : Vec<f64>,
-    data2 : Vec<f64>,
+    data1: Vec<f64>,
+    data2: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct PercentileInput {
-    data : Vec<f64>,
-    p : f64,
+    data: Vec<f64>,
+    p: f64,
 }
 
 #[derive(Deserialize)]
 
 struct RegressionInput {
-    data : Vec<(f64, f64)>,
+    data: Vec<(f64, f64)>,
 }
 
 #[derive(Serialize)]
 
 struct RegressionResult {
-    slope : f64,
-    intercept : f64,
+    slope: f64,
+    intercept: f64,
 }
 
 macro_rules! impl_stats_fn_single_data {
@@ -2991,14 +2995,14 @@ impl_stats_fn_single_data!(
 #[no_mangle]
 
 pub unsafe extern "C" fn stats_percentile(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
 
         let result = FfiResult {
-            ok : None::<f64>,
-            err : Some(
+            ok: None::<f64>,
+            err: Some(
                 "Null pointer passed \
                  to stats_percentile"
                     .to_string(),
@@ -3027,7 +3031,7 @@ pub unsafe extern "C" fn stats_percentile(
         },
     };
 
-    let input : Result<
+    let input: Result<
         PercentileInput,
         _,
     > = serde_json::from_str(json_str);
@@ -3041,17 +3045,19 @@ pub unsafe extern "C" fn stats_percentile(
             );
 
             FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok : None,
-            err : Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -3161,7 +3167,7 @@ impl_stats_fn_two_data!(
 #[no_mangle]
 
 pub unsafe extern "C" fn stats_simple_linear_regression(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -3193,7 +3199,7 @@ pub unsafe extern "C" fn stats_simple_linear_regression(
         },
     };
 
-    let input : Result<
+    let input: Result<
         RegressionInput,
         _,
     > = serde_json::from_str(json_str);
@@ -3210,17 +3216,19 @@ pub unsafe extern "C" fn stats_simple_linear_regression(
                 };
 
             FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             }
         },
-        | Err(e) => FfiResult {
-            ok : None,
-            err : Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -3245,9 +3253,9 @@ pub unsafe extern "C" fn stats_simple_linear_regression(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_stats_mean(
-    data : *const f64,
-    len : usize,
-    result : *mut f64,
+    data: *const f64,
+    len: usize,
+    result: *mut f64,
 ) -> i32 {
 
     if data.is_null()
@@ -3283,9 +3291,9 @@ pub unsafe extern "C" fn rssn_stats_mean(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_stats_variance(
-    data : *const f64,
-    len : usize,
-    result : *mut f64,
+    data: *const f64,
+    len: usize,
+    result: *mut f64,
 ) -> i32 {
 
     if data.is_null()
@@ -3321,9 +3329,9 @@ pub unsafe extern "C" fn rssn_stats_variance(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_stats_std_dev(
-    data : *const f64,
-    len : usize,
-    result : *mut f64,
+    data: *const f64,
+    len: usize,
+    result: *mut f64,
 ) -> i32 {
 
     if data.is_null()
@@ -3359,10 +3367,10 @@ pub unsafe extern "C" fn rssn_stats_std_dev(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_stats_covariance(
-    d1 : *const f64,
-    d2 : *const f64,
-    len : usize,
-    result : *mut f64,
+    d1: *const f64,
+    d2: *const f64,
+    len: usize,
+    result: *mut f64,
 ) -> i32 {
 
     if d1.is_null()
@@ -3450,8 +3458,8 @@ use crate::symbolic::solve::solve;
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_differentiate(
-    handle : *mut Expr,
-    var_ptr : *const c_char,
+    handle: *mut Expr,
+    var_ptr: *const c_char,
 ) -> *mut Expr {
 
     if handle.is_null()
@@ -3495,9 +3503,9 @@ pub unsafe extern "C" fn expr_differentiate(
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_substitute(
-    handle : *mut Expr,
-    var_ptr : *const c_char,
-    replacement_handle : *mut Expr,
+    handle: *mut Expr,
+    var_ptr: *const c_char,
+    replacement_handle: *mut Expr,
 ) -> *mut Expr {
 
     if handle.is_null()
@@ -3550,8 +3558,8 @@ pub unsafe extern "C" fn expr_substitute(
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_integrate(
-    handle : *mut Expr,
-    var_ptr : *const c_char,
+    handle: *mut Expr,
+    var_ptr: *const c_char,
 ) -> *mut Expr {
 
     if handle.is_null()
@@ -3596,10 +3604,10 @@ pub unsafe extern "C" fn expr_integrate(
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_definite_integrate(
-    handle : *mut Expr,
-    var_ptr : *const c_char,
-    lower_handle : *mut Expr,
-    upper_handle : *mut Expr,
+    handle: *mut Expr,
+    var_ptr: *const c_char,
+    lower_handle: *mut Expr,
+    upper_handle: *mut Expr,
 ) -> *mut Expr {
 
     if handle.is_null()
@@ -3656,9 +3664,9 @@ pub unsafe extern "C" fn expr_definite_integrate(
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_limit(
-    handle : *mut Expr,
-    var_ptr : *const c_char,
-    to_handle : *mut Expr,
+    handle: *mut Expr,
+    var_ptr: *const c_char,
+    to_handle: *mut Expr,
 ) -> *mut Expr {
 
     if handle.is_null()
@@ -3705,8 +3713,8 @@ pub unsafe extern "C" fn expr_limit(
 #[no_mangle]
 
 pub unsafe extern "C" fn expr_solve(
-    handle : *mut Expr,
-    var_ptr : *const c_char,
+    handle: *mut Expr,
+    var_ptr: *const c_char,
 ) -> *mut c_char {
 
     if handle.is_null()
@@ -3714,8 +3722,8 @@ pub unsafe extern "C" fn expr_solve(
     {
 
         let result = FfiResult {
-            ok : None::<Vec<Expr>>,
-            err : Some(
+            ok: None::<Vec<Expr>>,
+            err: Some(
                 "Null pointer passed \
                  to expr_solve"
                     .to_string(),
@@ -3751,8 +3759,8 @@ pub unsafe extern "C" fn expr_solve(
     let solutions = solve(expr, var);
 
     let ffi_result = FfiResult {
-        ok : Some(solutions),
-        err : None::<String>,
+        ok: Some(solutions),
+        err: None::<String>,
     };
 
     match serde_json::to_string(
@@ -3782,8 +3790,8 @@ pub unsafe extern "C" fn expr_solve(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_add(
-    h1 : *mut Expr,
-    h2 : *mut Expr,
+    h1: *mut Expr,
+    h2: *mut Expr,
 ) -> *mut Expr {
 
     if h1.is_null() || h2.is_null() {
@@ -3816,8 +3824,8 @@ pub unsafe extern "C" fn matrix_add(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_sub(
-    h1 : *mut Expr,
-    h2 : *mut Expr,
+    h1: *mut Expr,
+    h2: *mut Expr,
 ) -> *mut Expr {
 
     if h1.is_null() || h2.is_null() {
@@ -3850,8 +3858,8 @@ pub unsafe extern "C" fn matrix_sub(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_mul(
-    h1 : *mut Expr,
-    h2 : *mut Expr,
+    h1: *mut Expr,
+    h2: *mut Expr,
 ) -> *mut Expr {
 
     if h1.is_null() || h2.is_null() {
@@ -3885,7 +3893,7 @@ pub unsafe extern "C" fn matrix_mul(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_transpose(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut Expr {
 
     if handle.is_null() {
@@ -3914,7 +3922,7 @@ pub unsafe extern "C" fn matrix_transpose(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_determinant(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut Expr {
 
     if handle.is_null() {
@@ -3943,7 +3951,7 @@ pub unsafe extern "C" fn matrix_determinant(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_inverse(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut Expr {
 
     if handle.is_null() {
@@ -3972,7 +3980,7 @@ pub unsafe extern "C" fn matrix_inverse(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_identity(
-    size : usize
+    size: usize
 ) -> *mut Expr {
 
     Arc::into_raw(Arc::new(
@@ -3991,8 +3999,8 @@ pub unsafe extern "C" fn matrix_identity(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_scalar_mul(
-    scalar_handle : *mut Expr,
-    matrix_handle : *mut Expr,
+    scalar_handle: *mut Expr,
+    matrix_handle: *mut Expr,
 ) -> *mut Expr {
 
     if scalar_handle.is_null()
@@ -4030,14 +4038,14 @@ pub unsafe extern "C" fn matrix_scalar_mul(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_trace(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut c_char {
 
     if handle.is_null() {
 
         let result = FfiResult {
-            ok : None::<Expr>,
-            err : Some(
+            ok: None::<Expr>,
+            err: Some(
                 "Null pointer passed \
                  to matrix_trace"
                     .to_string(),
@@ -4065,14 +4073,14 @@ pub unsafe extern "C" fn matrix_trace(
     let ffi_result = match result {
         | Ok(value) => {
             FfiResult {
-                ok : Some(value),
-                err : None,
+                ok: Some(value),
+                err: None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             }
         },
     };
@@ -4103,8 +4111,8 @@ pub unsafe extern "C" fn matrix_trace(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_characteristic_polynomial(
-    handle : *mut Expr,
-    var_ptr : *const c_char,
+    handle: *mut Expr,
+    var_ptr: *const c_char,
 ) -> *mut c_char {
 
     if handle.is_null()
@@ -4150,14 +4158,14 @@ pub unsafe extern "C" fn matrix_characteristic_polynomial(
     let ffi_result = match result {
         | Ok(value) => {
             FfiResult {
-                ok : Some(value),
-                err : None,
+                ok: Some(value),
+                err: None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             }
         },
     };
@@ -4189,14 +4197,14 @@ pub unsafe extern "C" fn matrix_characteristic_polynomial(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_rref(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut c_char {
 
     if handle.is_null() {
 
         let result = FfiResult {
-            ok : None::<Expr>,
-            err : Some(
+            ok: None::<Expr>,
+            err: Some(
                 "Null pointer passed \
                  to matrix_rref"
                     .to_string(),
@@ -4224,14 +4232,14 @@ pub unsafe extern "C" fn matrix_rref(
     let ffi_result = match result {
         | Ok(value) => {
             FfiResult {
-                ok : Some(value),
-                err : None,
+                ok: Some(value),
+                err: None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             }
         },
     };
@@ -4263,14 +4271,14 @@ pub unsafe extern "C" fn matrix_rref(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_null_space(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut c_char {
 
     if handle.is_null() {
 
         let result = FfiResult {
-            ok : None::<Expr>,
-            err : Some(
+            ok: None::<Expr>,
+            err: Some(
                 "Null pointer passed \
                  to matrix_null_space"
                     .to_string(),
@@ -4298,14 +4306,14 @@ pub unsafe extern "C" fn matrix_null_space(
     let ffi_result = match result {
         | Ok(value) => {
             FfiResult {
-                ok : Some(value),
-                err : None,
+                ok: Some(value),
+                err: None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             }
         },
     };
@@ -4331,8 +4339,8 @@ pub unsafe extern "C" fn matrix_null_space(
 #[derive(Serialize)]
 
 struct MatrixPair {
-    p1 : Expr,
-    p2 : Expr,
+    p1: Expr,
+    p2: Expr,
 }
 
 /// Computes the LU decomposition of a matrix and returns the L and U matrices as a JSON string.
@@ -4343,7 +4351,7 @@ struct MatrixPair {
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_lu_decomposition(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut c_char {
 
     if handle.is_null() {
@@ -4374,17 +4382,17 @@ pub unsafe extern "C" fn matrix_lu_decomposition(
     let ffi_result = match result {
         | Ok((l, u)) => {
             FfiResult {
-                ok : Some(MatrixPair {
-                    p1 : l,
-                    p2 : u,
+                ok: Some(MatrixPair {
+                    p1: l,
+                    p2: u,
                 }),
-                err : None,
+                err: None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             }
         },
     };
@@ -4415,7 +4423,7 @@ pub unsafe extern "C" fn matrix_lu_decomposition(
 #[no_mangle]
 
 pub unsafe extern "C" fn matrix_eigen_decomposition(
-    handle : *mut Expr
+    handle: *mut Expr
 ) -> *mut c_char {
 
     if handle.is_null() {
@@ -4449,16 +4457,16 @@ pub unsafe extern "C" fn matrix_eigen_decomposition(
                 eigenvalues,
                 eigenvectors,
             )) => FfiResult {
-                ok : Some(MatrixPair {
-                    p1 : eigenvalues,
-                    p2 : eigenvectors,
+                ok: Some(MatrixPair {
+                    p1: eigenvalues,
+                    p2: eigenvectors,
                 }),
-                err : None,
+                err: None,
             },
             | Err(e) => {
                 FfiResult {
-                    ok : None,
-                    err : Some(e),
+                    ok: None,
+                    err: Some(e),
                 }
             },
         };
@@ -4484,9 +4492,9 @@ pub unsafe extern "C" fn matrix_eigen_decomposition(
 #[derive(Serialize, Deserialize)]
 
 struct GradientInput {
-    expr : Expr,
-    vars : Vec<String>,
-    point : Vec<f64>,
+    expr: Expr,
+    vars: Vec<String>,
+    point: Vec<f64>,
 }
 
 #[deprecated(
@@ -4498,14 +4506,14 @@ struct GradientInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn numerical_gradient(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
 
         let result = FfiResult {
-            ok : None::<Vec<f64>>,
-            err : Some(
+            ok: None::<Vec<f64>>,
+            err: Some(
                 "Null pointer passed \
                  to numerical_gradient"
                     .to_string(),
@@ -4534,7 +4542,7 @@ pub unsafe extern "C" fn numerical_gradient(
         },
     };
 
-    let input : Result<
+    let input: Result<
         GradientInput,
         _,
     > = serde_json::from_str(json_str);
@@ -4542,13 +4550,12 @@ pub unsafe extern "C" fn numerical_gradient(
     let ffi_result = match input {
         | Ok(grad_input) => {
 
-            let vars_as_str : Vec<
-                &str,
-            > = grad_input
-                .vars
-                .iter()
-                .map(|s| s.as_str())
-                .collect();
+            let vars_as_str: Vec<&str> =
+                grad_input
+                    .vars
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect();
 
             let grad_result = gradient(
                 &grad_input.expr,
@@ -4559,27 +4566,29 @@ pub unsafe extern "C" fn numerical_gradient(
             match grad_result {
                 | Ok(grad_vec) => {
                     FfiResult {
-                        ok : Some(
+                        ok: Some(
                             grad_vec,
                         ),
-                        err : None,
+                        err: None,
                     }
                 },
                 | Err(e) => {
                     FfiResult {
-                        ok : None,
-                        err : Some(e),
+                        ok: None,
+                        err: Some(e),
                     }
                 },
             }
         },
-        | Err(e) => FfiResult {
-            ok : None,
-            err : Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -4611,12 +4620,12 @@ enum FfiQuadratureMethod {
 #[derive(Deserialize)]
 
 struct IntegrationInput {
-    expr : Expr,
-    var : String,
-    start : f64,
-    end : f64,
-    n_steps : usize,
-    method : FfiQuadratureMethod,
+    expr: Expr,
+    var: String,
+    start: f64,
+    end: f64,
+    n_steps: usize,
+    method: FfiQuadratureMethod,
 }
 
 #[deprecated(
@@ -4628,7 +4637,7 @@ struct IntegrationInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn numerical_integrate(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -4660,7 +4669,7 @@ pub unsafe extern "C" fn numerical_integrate(
         },
     };
 
-    let input : Result<
+    let input: Result<
         IntegrationInput,
         _,
     > = serde_json::from_str(json_str);
@@ -4687,25 +4696,27 @@ pub unsafe extern "C" fn numerical_integrate(
             match int_result {
                 | Ok(val) => {
                     FfiResult {
-                        ok : Some(val),
-                        err : None,
+                        ok: Some(val),
+                        err: None,
                     }
                 },
                 | Err(e) => {
                     FfiResult {
-                        ok : None,
-                        err : Some(e),
+                        ok: None,
+                        err: Some(e),
                     }
                 },
             }
         },
-        | Err(e) => FfiResult {
-            ok : None,
-            err : Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -4730,12 +4741,12 @@ pub unsafe extern "C" fn numerical_integrate(
 #[derive(Deserialize)]
 
 struct AdvectionDiffusion1DInput {
-    initial_condition : Vec<f64>,
-    dx : f64,
-    c : f64,
-    d : f64,
-    dt : f64,
-    steps : usize,
+    initial_condition: Vec<f64>,
+    dx: f64,
+    c: f64,
+    d: f64,
+    dt: f64,
+    steps: usize,
 }
 
 #[deprecated(
@@ -4745,7 +4756,7 @@ struct AdvectionDiffusion1DInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -4777,7 +4788,7 @@ pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
         },
     };
 
-    let input : Result<
+    let input: Result<
         AdvectionDiffusion1DInput,
         _,
     > = serde_json::from_str(json_str);
@@ -4795,17 +4806,19 @@ pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
             );
 
             FfiResult {
-                ok : Some(result_vec),
-                err : None,
+                ok: Some(result_vec),
+                err: None,
             }
         },
-        | Err(e) => FfiResult {
-            ok : None,
-            err : Some(format!(
+        | Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(format!(
                 "JSON deserialization \
                  error: {}",
                 e
             )),
+            }
         },
     };
 
@@ -4830,8 +4843,8 @@ pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
 #[repr(C)]
 
 pub struct FfiPoint {
-    x : f64,
-    y : f64,
+    x: f64,
+    y: f64,
 }
 
 /// Computes a Lagrange interpolating polynomial from a set of points.
@@ -4839,9 +4852,9 @@ pub struct FfiPoint {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_interp_lagrange(
-    points_ptr : *const FfiPoint,
-    num_points : usize,
-    result_handle : *mut usize,
+    points_ptr: *const FfiPoint,
+    num_points: usize,
+    result_handle: *mut usize,
 ) -> i32 {
 
     if points_ptr.is_null()
@@ -4865,7 +4878,7 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
         )
     };
 
-    let points_vec : Vec<(f64, f64)> =
+    let points_vec: Vec<(f64, f64)> =
         points_slice
             .iter()
             .map(|p| (p.x, p.y))
@@ -4903,10 +4916,10 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
 #[allow(clippy::indexing_slicing)]
 
 pub unsafe extern "C" fn rssn_interp_bezier_curve(
-    points_ptr : *const FfiPoint,
-    num_points : usize,
-    t : f64,
-    result_ptr : *mut FfiPoint,
+    points_ptr: *const FfiPoint,
+    num_points: usize,
+    t: f64,
+    result_ptr: *mut FfiPoint,
 ) -> i32 {
 
     if points_ptr.is_null()
@@ -4930,7 +4943,7 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
         )
     };
 
-    let control_points : Vec<Vec<f64>> =
+    let control_points: Vec<Vec<f64>> =
         points_slice
             .iter()
             .map(|p| vec![p.x, p.y])
@@ -4969,13 +4982,13 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_integrate(
-    expr_h : usize,
-    var : *const c_char,
-    start : f64,
-    end : f64,
-    n_steps : usize,
-    method : u32,
-    result : *mut f64,
+    expr_h: usize,
+    var: *const c_char,
+    start: f64,
+    end: f64,
+    n_steps: usize,
+    method: u32,
+    result: *mut f64,
 ) -> i32 {
 
     if var.is_null() || result.is_null()
@@ -5061,9 +5074,9 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_matrix_sub(
-    h1 : usize,
-    h2 : usize,
-    result_h : *mut usize,
+    h1: usize,
+    h2: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     if result_h.is_null() {
@@ -5107,9 +5120,9 @@ pub unsafe extern "C" fn rssn_matrix_sub(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_matrix_mul(
-    h1 : usize,
-    h2 : usize,
-    result_h : *mut usize,
+    h1: usize,
+    h2: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     if result_h.is_null() {
@@ -5153,8 +5166,8 @@ pub unsafe extern "C" fn rssn_matrix_mul(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_matrix_transpose(
-    h : usize,
-    result_h : *mut usize,
+    h: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     if result_h.is_null() {
@@ -5195,8 +5208,8 @@ pub unsafe extern "C" fn rssn_matrix_transpose(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_matrix_determinant(
-    h : usize,
-    result_h : *mut usize,
+    h: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     if result_h.is_null() {
@@ -5237,8 +5250,8 @@ pub unsafe extern "C" fn rssn_matrix_determinant(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_matrix_inverse(
-    h : usize,
-    result_h : *mut usize,
+    h: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     if result_h.is_null() {
@@ -5279,8 +5292,8 @@ pub unsafe extern "C" fn rssn_matrix_inverse(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_matrix_identity(
-    size : usize,
-    result_h : *mut usize,
+    size: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     if result_h.is_null() {
@@ -5308,9 +5321,9 @@ pub unsafe extern "C" fn rssn_matrix_identity(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_matrix_scalar_mul(
-    scalar_h : usize,
-    matrix_h : usize,
-    result_h : *mut usize,
+    scalar_h: usize,
+    matrix_h: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     if result_h.is_null() {
@@ -5360,9 +5373,9 @@ pub unsafe extern "C" fn rssn_matrix_scalar_mul(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_calculus_differentiate(
-    expr_h : usize,
-    var : *const c_char,
-    result_h : *mut usize,
+    expr_h: usize,
+    var: *const c_char,
+    result_h: *mut usize,
 ) -> i32 {
 
     if var.is_null()
@@ -5416,10 +5429,10 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_calculus_substitute(
-    expr_h : usize,
-    var : *const c_char,
-    replacement_h : usize,
-    result_h : *mut usize,
+    expr_h: usize,
+    var: *const c_char,
+    replacement_h: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     if var.is_null()
@@ -5476,9 +5489,9 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_calculus_integrate(
-    expr_h : usize,
-    var : *const c_char,
-    result_h : *mut usize,
+    expr_h: usize,
+    var: *const c_char,
+    result_h: *mut usize,
 ) -> i32 {
 
     if var.is_null()
@@ -5537,11 +5550,11 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_calculus_definite_integrate(
-    expr_h : usize,
-    var : *const c_char,
-    lower_h : usize,
-    upper_h : usize,
-    result_h : *mut usize,
+    expr_h: usize,
+    var: *const c_char,
+    lower_h: usize,
+    upper_h: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     if var.is_null()
@@ -5604,10 +5617,10 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_calculus_limit(
-    expr_h : usize,
-    var : *const c_char,
-    to_h : usize,
-    result_h : *mut usize,
+    expr_h: usize,
+    var: *const c_char,
+    to_h: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     if var.is_null()
@@ -5663,13 +5676,13 @@ pub unsafe extern "C" fn rssn_calculus_limit(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve(
-    expr_h : usize,
-    var : *const c_char,
-    result_h : *mut usize,
+    expr_h: usize,
+    var: *const c_char,
+    result_h: *mut usize,
 ) -> i32 {
 
     let handle_error =
-        |err_msg : String| {
+        |err_msg: String| {
 
             update_last_error(err_msg);
 
@@ -5745,13 +5758,13 @@ pub unsafe extern "C" fn rssn_solve(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_matrix_add(
-    h1 : usize,
-    h2 : usize,
-    result_h : *mut usize,
+    h1: usize,
+    h2: usize,
+    result_h: *mut usize,
 ) -> i32 {
 
     let handle_error =
-        |err_msg : String| {
+        |err_msg: String| {
 
             update_last_error(err_msg);
 
@@ -5803,16 +5816,16 @@ pub unsafe extern "C" fn rssn_matrix_add(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_gradient(
-    expr_h : usize,
-    vars : *const *const c_char,
-    num_vars : usize,
-    point : *const f64,
-    point_len : usize,
-    result_vec : *mut f64,
+    expr_h: usize,
+    vars: *const *const c_char,
+    num_vars: usize,
+    point: *const f64,
+    point_len: usize,
+    result_vec: *mut f64,
 ) -> i32 {
 
     let handle_error =
-        |err_msg : String| {
+        |err_msg: String| {
 
             update_last_error(err_msg);
 
@@ -5923,14 +5936,14 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
-    initial_cond : *const f64,
-    len : usize,
-    dx : f64,
-    c : f64,
-    d : f64,
-    dt : f64,
-    steps : usize,
-    result_ptr : *mut f64,
+    initial_cond: *const f64,
+    len: usize,
+    dx: f64,
+    c: f64,
+    d: f64,
+    dt: f64,
+    steps: usize,
+    result_ptr: *mut f64,
 ) -> i32 {
 
     if initial_cond.is_null()
@@ -5978,9 +5991,9 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_nt_gcd(
-    a : u64,
-    b : u64,
-    result : *mut u64,
+    a: u64,
+    b: u64,
+    result: *mut u64,
 ) -> i32 {
 
     if result.is_null() {
@@ -6009,8 +6022,8 @@ pub unsafe extern "C" fn rssn_nt_gcd(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_nt_is_prime(
-    n : u64,
-    result : *mut bool,
+    n: u64,
+    result: *mut bool,
 ) -> i32 {
 
     if result.is_null() {
@@ -6043,10 +6056,10 @@ pub unsafe extern "C" fn rssn_nt_is_prime(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_nt_mod_pow(
-    base : u64,
-    exp : u64,
-    modulus : u64,
-    result : *mut u64,
+    base: u64,
+    exp: u64,
+    modulus: u64,
+    result: *mut u64,
 ) -> i32 {
 
     if result.is_null() {
@@ -6080,9 +6093,9 @@ pub unsafe extern "C" fn rssn_nt_mod_pow(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_nt_mod_inverse(
-    a : i64,
-    b : i64,
-    result : *mut i64,
+    a: i64,
+    b: i64,
+    result: *mut i64,
 ) -> i32 {
 
     if result.is_null() {
@@ -6121,7 +6134,7 @@ pub unsafe extern "C" fn rssn_nt_mod_inverse(
     }
 }
 
-static PLUGIN_MANAGER : Lazy<
+static PLUGIN_MANAGER: Lazy<
     Mutex<Option<PluginManager>>,
 > = Lazy::new(|| Mutex::new(None));
 
@@ -6138,11 +6151,11 @@ static PLUGIN_MANAGER : Lazy<
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_init_plugin_manager(
-    plugin_dir_ptr : *const c_char
+    plugin_dir_ptr: *const c_char
 ) -> i32 {
 
     let handle_error =
-        |err_msg : String| {
+        |err_msg: String| {
 
             update_last_error(err_msg);
 
@@ -6201,13 +6214,13 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_plugin_execute(
-    plugin_name_ptr : *const c_char,
-    command_ptr : *const c_char,
-    args_handle : usize,
+    plugin_name_ptr: *const c_char,
+    command_ptr: *const c_char,
+    args_handle: usize,
 ) -> usize {
 
     let handle_error =
-        |err_msg : String| {
+        |err_msg: String| {
 
             update_last_error(err_msg);
 

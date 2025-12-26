@@ -8,8 +8,8 @@ use rssn::symbolic::solve::solve_linear_system;
 use rssn::symbolic::solve::solve_system;
 
 fn assert_is_value(
-    expr : &Expr,
-    expected : f64,
+    expr: &Expr,
+    expected: f64,
 ) {
 
     let val = evaluate_numerical(expr)
@@ -77,6 +77,7 @@ fn test_solve_quadratic() {
 
             evaluate_numerical(s)
                 .map(|v| {
+
                     (v - 2.0).abs()
                         < 1e-10
                 })
@@ -89,6 +90,7 @@ fn test_solve_quadratic() {
 
             evaluate_numerical(s)
                 .map(|v| {
+
                     (v - -2.0).abs()
                         < 1e-10
                 })

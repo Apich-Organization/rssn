@@ -18,7 +18,7 @@ use num_complex::Complex;
 /// * `data` - A mutable slice of `Complex<f64>` representing the input sequence.
 
 pub(crate) fn fft_cooley_tukey_in_place(
-    data : &mut [Complex<f64>]
+    data: &mut [Complex<f64>]
 ) {
 
     let n = data.len();
@@ -116,7 +116,7 @@ pub(crate) fn fft_cooley_tukey_in_place(
 /// ```
 
 pub fn fft(
-    data : &mut Vec<Complex<f64>>
+    data: &mut Vec<Complex<f64>>
 ) {
 
     let n = data.len();
@@ -172,7 +172,7 @@ pub fn fft(
 /// ```
 
 pub fn ifft(
-    data : &mut Vec<Complex<f64>>
+    data: &mut Vec<Complex<f64>>
 ) {
 
     let n = data.len();
@@ -235,7 +235,7 @@ pub fn ifft(
 /// ```
 
 pub fn fft_slice(
-    data : &mut [Complex<f64>]
+    data: &mut [Complex<f64>]
 ) {
 
     fft_cooley_tukey_in_place(data);
@@ -271,7 +271,7 @@ pub fn fft_slice(
 /// ```
 
 pub fn ifft_slice(
-    data : &mut [Complex<f64>]
+    data: &mut [Complex<f64>]
 ) {
 
     let n = data.len();

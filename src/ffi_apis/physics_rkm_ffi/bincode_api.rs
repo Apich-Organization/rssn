@@ -15,26 +15,26 @@ use crate::physics::physics_rkm::{
 #[derive(Deserialize)]
 
 struct LorenzInput {
-    sigma : f64,
-    rho : f64,
-    beta : f64,
-    y0 : Vec<f64>,
-    t_span : (f64, f64),
-    dt_initial : f64,
-    tol : (f64, f64),
+    sigma: f64,
+    rho: f64,
+    beta: f64,
+    y0: Vec<f64>,
+    t_span: (f64, f64),
+    dt_initial: f64,
+    tol: (f64, f64),
 }
 
 #[derive(Serialize)]
 
 struct OdeResult {
-    time : Vec<f64>,
-    states : Vec<Vec<f64>>,
+    time: Vec<f64>,
+    states: Vec<Vec<f64>>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : LorenzInput = match from_bincode_buffer(&buffer) {
@@ -51,9 +51,9 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(
 
     let system =
         physics_rkm::LorenzSystem {
-            sigma : input.sigma,
-            rho : input.rho,
-            beta : input.beta,
+            sigma: input.sigma,
+            rho: input.rho,
+            beta: input.beta,
         };
 
     let solver = DormandPrince54::new();

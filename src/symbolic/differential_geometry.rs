@@ -40,7 +40,7 @@ use crate::symbolic::vector::Vector;
 
 pub struct DifferentialForm {
     /// A map from the basis wedge product (represented by a bitmask) to its coefficient expression.
-    pub terms :
+    pub terms:
         std::collections::BTreeMap<
             u32,
             Expr,
@@ -62,8 +62,8 @@ pub struct DifferentialForm {
 #[must_use]
 
 pub fn exterior_derivative(
-    form : &DifferentialForm,
-    vars : &[&str],
+    form: &DifferentialForm,
+    vars: &[&str],
 ) -> DifferentialForm {
 
     let mut result_terms =
@@ -135,7 +135,7 @@ pub fn exterior_derivative(
     }
 
     DifferentialForm {
-        terms : result_terms,
+        terms: result_terms,
     }
 }
 
@@ -153,8 +153,8 @@ pub fn exterior_derivative(
 #[must_use]
 
 pub fn wedge_product(
-    form1 : &DifferentialForm,
-    form2 : &DifferentialForm,
+    form1: &DifferentialForm,
+    form2: &DifferentialForm,
 ) -> DifferentialForm {
 
     let mut result_terms =
@@ -237,7 +237,7 @@ pub fn wedge_product(
     }
 
     DifferentialForm {
-        terms : result_terms,
+        terms: result_terms,
     }
 }
 
@@ -245,9 +245,7 @@ pub fn wedge_product(
 /// This is a symbolic representation used in the integral theorems.
 #[must_use]
 
-pub fn boundary(
-    domain : &Expr
-) -> Expr {
+pub fn boundary(domain: &Expr) -> Expr {
 
     Expr::Boundary(Arc::new(
         domain.clone(),
@@ -263,9 +261,9 @@ pub fn boundary(
 #[must_use]
 
 pub fn generalized_stokes_theorem(
-    omega : &DifferentialForm,
-    manifold : &Expr,
-    vars : &[&str],
+    omega: &DifferentialForm,
+    manifold: &Expr,
+    vars: &[&str],
 ) -> Expr {
 
     let d_omega = exterior_derivative(
@@ -274,25 +272,25 @@ pub fn generalized_stokes_theorem(
 
     let integral_d_omega =
         Expr::Integral {
-            integrand : Arc::new(
+            integrand: Arc::new(
                 Expr::Variable(
                     format!(
                         "{d_omega:?}"
                     ),
                 ),
             ),
-            var : Arc::new(
+            var: Arc::new(
                 Expr::Variable(
                     manifold
                         .to_string(),
                 ),
             ),
-            lower_bound : Arc::new(
+            lower_bound: Arc::new(
                 Expr::Variable(
                     "M".to_string(),
                 ),
             ),
-            upper_bound : Arc::new(
+            upper_bound: Arc::new(
                 Expr::BigInt(
                     BigInt::zero(),
                 ),
@@ -301,23 +299,23 @@ pub fn generalized_stokes_theorem(
 
     let integral_omega =
         Expr::Integral {
-            integrand : Arc::new(
+            integrand: Arc::new(
                 Expr::Variable(
                     format!(
                         "{omega:?}"
                     ),
                 ),
             ),
-            var : Arc::new(
+            var: Arc::new(
                 Expr::Variable(
                     manifold
                         .to_string(),
                 ),
             ),
-            lower_bound : Arc::new(
+            lower_bound: Arc::new(
                 boundary(manifold),
             ),
-            upper_bound : Arc::new(
+            upper_bound: Arc::new(
                 Expr::BigInt(
                     BigInt::zero(),
                 ),
@@ -339,8 +337,8 @@ pub fn generalized_stokes_theorem(
 #[must_use]
 
 pub fn gauss_theorem(
-    vector_field : &Vector,
-    volume : &Expr,
+    vector_field: &Vector,
+    volume: &Expr,
 ) -> Expr {
 
     let div_f =
@@ -351,22 +349,22 @@ pub fn gauss_theorem(
 
     let integral_div =
         Expr::VolumeIntegral {
-            scalar_field : Arc::new(
+            scalar_field: Arc::new(
                 div_f,
             ),
-            volume : Arc::new(
+            volume: Arc::new(
                 volume.clone(),
             ),
         };
 
     let surface_integral =
         Expr::SurfaceIntegral {
-            vector_field : Arc::new(
+            vector_field: Arc::new(
                 Expr::Variable(
                     "F".to_string(),
                 ),
             ),
-            surface : Arc::new(
+            surface: Arc::new(
                 boundary(volume),
             ),
         };
@@ -386,8 +384,8 @@ pub fn gauss_theorem(
 #[must_use]
 
 pub fn stokes_theorem(
-    vector_field : &Vector,
-    surface : &Expr,
+    vector_field: &Vector,
+    surface: &Expr,
 ) -> Expr {
 
     let curl_f = super::vector::curl(
@@ -397,31 +395,31 @@ pub fn stokes_theorem(
 
     let integral_curl =
         Expr::SurfaceIntegral {
-            vector_field : Arc::new(
+            vector_field: Arc::new(
                 curl_f.to_expr(),
             ),
-            surface : Arc::new(
+            surface: Arc::new(
                 surface.clone(),
             ),
         };
 
     let line_integral =
         Expr::Integral {
-            integrand : Arc::new(
+            integrand: Arc::new(
                 Expr::Variable(
                     "F · dr"
                         .to_string(),
                 ),
             ),
-            var : Arc::new(
+            var: Arc::new(
                 Expr::Variable(
                     "t".to_string(),
                 ),
             ),
-            lower_bound : Arc::new(
+            lower_bound: Arc::new(
                 boundary(surface),
             ),
-            upper_bound : Arc::new(
+            upper_bound: Arc::new(
                 Expr::BigInt(
                     BigInt::zero(),
                 ),
@@ -443,9 +441,9 @@ pub fn stokes_theorem(
 #[must_use]
 
 pub fn greens_theorem(
-    p : &Expr,
-    q : &Expr,
-    domain : &Expr,
+    p: &Expr,
+    q: &Expr,
+    domain: &Expr,
 ) -> Expr {
 
     let dq_dx = differentiate(q, "x");
@@ -485,18 +483,18 @@ pub fn greens_theorem(
 
     let line_integral =
         Expr::Integral {
-            integrand : Arc::new(
+            integrand: Arc::new(
                 integrand_line,
             ),
-            var : Arc::new(
+            var: Arc::new(
                 Expr::Variable(
                     "t".to_string(),
                 ),
             ),
-            lower_bound : Arc::new(
+            lower_bound: Arc::new(
                 boundary(domain),
             ),
-            upper_bound : Arc::new(
+            upper_bound: Arc::new(
                 Expr::BigInt(
                     BigInt::zero(),
                 ),

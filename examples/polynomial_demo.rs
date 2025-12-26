@@ -205,11 +205,11 @@ fn main() {
     );
 
     let p1 = SparsePolynomial {
-        terms : terms1,
+        terms: terms1,
     };
 
     let p2 = SparsePolynomial {
-        terms : terms2,
+        terms: terms2,
     };
 
     println!("   p1: x + 1");

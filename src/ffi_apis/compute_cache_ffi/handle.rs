@@ -27,7 +27,7 @@ pub extern "C" fn rssn_parsing_cache_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_free(
-    cache : *mut ParsingCache
+    cache: *mut ParsingCache
 ) {
 
     if cache.is_null() {
@@ -45,7 +45,7 @@ pub extern "C" fn rssn_parsing_cache_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_clear(
-    cache : *mut ParsingCache
+    cache: *mut ParsingCache
 ) {
 
     if cache.is_null() {
@@ -65,8 +65,8 @@ pub extern "C" fn rssn_parsing_cache_clear(
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_get(
-    cache : *mut ParsingCache,
-    input : *const c_char,
+    cache: *mut ParsingCache,
+    input: *const c_char,
 ) -> *mut Expr {
 
     if cache.is_null()
@@ -114,9 +114,9 @@ pub extern "C" fn rssn_parsing_cache_get(
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_set(
-    cache : *mut ParsingCache,
-    input : *const c_char,
-    expr : *const Expr,
+    cache: *mut ParsingCache,
+    input: *const c_char,
+    expr: *const Expr,
 ) {
 
     if cache.is_null()
@@ -165,7 +165,7 @@ pub extern "C" fn rssn_computation_result_cache_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_free(
-    cache : *mut ComputationResultCache
+    cache: *mut ComputationResultCache
 ) {
 
     if cache.is_null() {
@@ -183,7 +183,7 @@ pub extern "C" fn rssn_computation_result_cache_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_clear(
-    cache : *mut ComputationResultCache
+    cache: *mut ComputationResultCache
 ) {
 
     if cache.is_null() {
@@ -203,8 +203,8 @@ pub extern "C" fn rssn_computation_result_cache_clear(
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_get(
-    cache : *mut ComputationResultCache,
-    expr : *const Expr,
+    cache: *mut ComputationResultCache,
+    expr: *const Expr,
 ) -> *mut c_char {
 
     if cache.is_null() || expr.is_null()
@@ -237,9 +237,9 @@ pub extern "C" fn rssn_computation_result_cache_get(
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_set(
-    cache : *mut ComputationResultCache,
-    expr : *const Expr,
-    value : *const c_char,
+    cache: *mut ComputationResultCache,
+    expr: *const Expr,
+    value: *const c_char,
 ) {
 
     if cache.is_null()

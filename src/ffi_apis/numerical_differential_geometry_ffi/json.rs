@@ -14,14 +14,14 @@ use crate::symbolic::coordinates::CoordinateSystem;
 #[derive(Deserialize)]
 
 struct DgPointInput {
-    system : CoordinateSystem,
-    point : Vec<f64>,
+    system: CoordinateSystem,
+    point: Vec<f64>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : DgPointInput = match from_json_string(input_json) {
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : DgPointInput = match from_json_string(input_json) {
@@ -113,7 +113,7 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : DgPointInput = match from_json_string(input_json) {
@@ -159,7 +159,7 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : DgPointInput = match from_json_string(input_json) {

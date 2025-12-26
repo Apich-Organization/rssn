@@ -12,31 +12,31 @@ use crate::numerical::physics_fea;
 #[derive(Deserialize)]
 
 struct LinearElement1DInput {
-    length : f64,
-    youngs_modulus : f64,
-    area : f64,
+    length: f64,
+    youngs_modulus: f64,
+    area: f64,
 }
 
 #[derive(Deserialize)]
 
 struct StressInput {
-    sx : f64,
-    sy : f64,
-    txy : f64,
+    sx: f64,
+    sy: f64,
+    txy: f64,
 }
 
 #[derive(Serialize)]
 
 struct PrincipalStressOutput {
-    sigma1 : f64,
-    sigma2 : f64,
-    angle : f64,
+    sigma1: f64,
+    sigma2: f64,
+    angle: f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : LinearElement1DInput = match from_bincode_buffer(&buffer) {
@@ -57,15 +57,15 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
         / input.length;
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(stiffness),
-        err : None::<String>,
+        ok: Some(stiffness),
+        err: None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : StressInput = match from_bincode_buffer(&buffer) {
@@ -87,15 +87,15 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
     ]);
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(vm),
-        err : None::<String>,
+        ok: Some(vm),
+        err: None::<String>,
     })
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : StressInput = match from_bincode_buffer(&buffer) {
@@ -127,7 +127,7 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(
         };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(output),
-        err : None::<String>,
+        ok: Some(output),
+        err: None::<String>,
     })
 }

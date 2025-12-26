@@ -7,10 +7,10 @@ use crate::symbolic::vector::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_magnitude(
-    v_json : *const c_char
+    v_json: *const c_char
 ) -> *mut c_char {
 
-    let v : Option<Vector> =
+    let v: Option<Vector> =
         from_json_string(v_json);
 
     if let Some(vector) = v {
@@ -27,14 +27,14 @@ pub extern "C" fn rssn_json_vector_magnitude(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_dot(
-    v1_json : *const c_char,
-    v2_json : *const c_char,
+    v1_json: *const c_char,
+    v2_json: *const c_char,
 ) -> *mut c_char {
 
-    let v1 : Option<Vector> =
+    let v1: Option<Vector> =
         from_json_string(v1_json);
 
-    let v2 : Option<Vector> =
+    let v2: Option<Vector> =
         from_json_string(v2_json);
 
     if let (Some(vec1), Some(vec2)) =
@@ -53,14 +53,14 @@ pub extern "C" fn rssn_json_vector_dot(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_cross(
-    v1_json : *const c_char,
-    v2_json : *const c_char,
+    v1_json: *const c_char,
+    v2_json: *const c_char,
 ) -> *mut c_char {
 
-    let v1 : Option<Vector> =
+    let v1: Option<Vector> =
         from_json_string(v1_json);
 
-    let v2 : Option<Vector> =
+    let v2: Option<Vector> =
         from_json_string(v2_json);
 
     if let (Some(vec1), Some(vec2)) =
@@ -79,10 +79,10 @@ pub extern "C" fn rssn_json_vector_cross(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_normalize(
-    v_json : *const c_char
+    v_json: *const c_char
 ) -> *mut c_char {
 
-    let v : Option<Vector> =
+    let v: Option<Vector> =
         from_json_string(v_json);
 
     if let Some(vector) = v {
@@ -99,13 +99,13 @@ pub extern "C" fn rssn_json_vector_normalize(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_gradient(
-    scalar_field_json : *const c_char,
-    x_var : *const c_char,
-    y_var : *const c_char,
-    z_var : *const c_char,
+    scalar_field_json: *const c_char,
+    x_var: *const c_char,
+    y_var: *const c_char,
+    z_var: *const c_char,
 ) -> *mut c_char {
 
-    let scalar_field : Option<Expr> =
+    let scalar_field: Option<Expr> =
         from_json_string(
             scalar_field_json,
         );
@@ -180,13 +180,13 @@ pub extern "C" fn rssn_json_vector_gradient(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_divergence(
-    v_json : *const c_char,
-    x_var : *const c_char,
-    y_var : *const c_char,
-    z_var : *const c_char,
+    v_json: *const c_char,
+    x_var: *const c_char,
+    y_var: *const c_char,
+    z_var: *const c_char,
 ) -> *mut c_char {
 
-    let v : Option<Vector> =
+    let v: Option<Vector> =
         from_json_string(v_json);
 
     let x_str = unsafe {
@@ -258,13 +258,13 @@ pub extern "C" fn rssn_json_vector_divergence(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_curl(
-    v_json : *const c_char,
-    x_var : *const c_char,
-    y_var : *const c_char,
-    z_var : *const c_char,
+    v_json: *const c_char,
+    x_var: *const c_char,
+    y_var: *const c_char,
+    z_var: *const c_char,
 ) -> *mut c_char {
 
-    let v : Option<Vector> =
+    let v: Option<Vector> =
         from_json_string(v_json);
 
     let x_str = unsafe {

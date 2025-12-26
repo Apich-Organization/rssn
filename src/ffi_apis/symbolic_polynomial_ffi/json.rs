@@ -10,11 +10,11 @@ use crate::symbolic::polynomial::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_polynomial_is_polynomial(
-    expr_json : *const c_char,
-    var : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
 ) -> bool {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     let var_str = unsafe {
@@ -47,11 +47,11 @@ pub extern "C" fn rssn_json_polynomial_is_polynomial(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_polynomial_degree(
-    expr_json : *const c_char,
-    var : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
 ) -> i64 {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     let var_str = unsafe {
@@ -84,15 +84,15 @@ pub extern "C" fn rssn_json_polynomial_degree(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_polynomial_long_division(
-    dividend_json : *const c_char,
-    divisor_json : *const c_char,
-    var : *const c_char,
+    dividend_json: *const c_char,
+    divisor_json: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let dividend : Option<Expr> =
+    let dividend: Option<Expr> =
         from_json_string(dividend_json);
 
-    let divisor : Option<Expr> =
+    let divisor: Option<Expr> =
         from_json_string(divisor_json);
 
     let var_str = unsafe {
@@ -141,11 +141,11 @@ pub extern "C" fn rssn_json_polynomial_long_division(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_polynomial_leading_coefficient(
-    expr_json : *const c_char,
-    var : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     let var_str = unsafe {
@@ -181,11 +181,11 @@ pub extern "C" fn rssn_json_polynomial_leading_coefficient(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_polynomial_to_coeffs_vec(
-    expr_json : *const c_char,
-    var : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     let var_str = unsafe {
@@ -223,11 +223,11 @@ pub extern "C" fn rssn_json_polynomial_to_coeffs_vec(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_polynomial_contains_var(
-    expr_json : *const c_char,
-    var : *const c_char,
+    expr_json: *const c_char,
+    var: *const c_char,
 ) -> bool {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
     let var_str = unsafe {

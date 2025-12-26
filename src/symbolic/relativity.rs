@@ -18,7 +18,7 @@ use crate::symbolic::core::Expr;
 #[must_use]
 
 pub fn lorentz_factor(
-    velocity : &Expr
+    velocity: &Expr
 ) -> Expr {
 
     let c = Expr::new_variable("c");
@@ -53,9 +53,9 @@ pub fn lorentz_factor(
 #[must_use]
 
 pub fn lorentz_transformation_x(
-    x : &Expr,
-    t : &Expr,
-    v : &Expr,
+    x: &Expr,
+    t: &Expr,
+    v: &Expr,
 ) -> (Expr, Expr) {
 
     let gamma = lorentz_factor(v);
@@ -101,8 +101,8 @@ pub fn lorentz_transformation_x(
 #[must_use]
 
 pub fn velocity_addition(
-    v : &Expr,
-    u_prime : &Expr,
+    v: &Expr,
+    u_prime: &Expr,
 ) -> Expr {
 
     let c = Expr::new_variable("c");
@@ -138,7 +138,7 @@ pub fn velocity_addition(
 #[must_use]
 
 pub fn mass_energy_equivalence(
-    mass : &Expr
+    mass: &Expr
 ) -> Expr {
 
     let c = Expr::new_variable("c");
@@ -155,8 +155,8 @@ pub fn mass_energy_equivalence(
 #[must_use]
 
 pub fn relativistic_momentum(
-    mass : &Expr,
-    velocity : &Expr,
+    mass: &Expr,
+    velocity: &Expr,
 ) -> Expr {
 
     let gamma =
@@ -177,8 +177,8 @@ pub fn relativistic_momentum(
 #[must_use]
 
 pub fn doppler_effect(
-    f_src : &Expr,
-    v : &Expr,
+    f_src: &Expr,
+    v: &Expr,
 ) -> Expr {
 
     let c = Expr::new_variable("c");
@@ -210,7 +210,7 @@ pub fn doppler_effect(
 #[must_use]
 
 pub fn schwarzschild_radius(
-    mass : &Expr
+    mass: &Expr
 ) -> Expr {
 
     let g = Expr::new_variable("G");
@@ -240,9 +240,9 @@ pub fn schwarzschild_radius(
 #[must_use]
 
 pub fn gravitational_time_dilation(
-    t_far : &Expr,
-    r : &Expr,
-    mass : &Expr,
+    t_far: &Expr,
+    r: &Expr,
+    mass: &Expr,
 ) -> Expr {
 
     let r_s =
@@ -269,9 +269,9 @@ pub fn gravitational_time_dilation(
 #[must_use]
 
 pub fn einstein_tensor(
-    ricci_tensor : &Expr,
-    scalar_curvature : &Expr,
-    metric : &Expr,
+    ricci_tensor: &Expr,
+    scalar_curvature: &Expr,
+    metric: &Expr,
 ) -> Expr {
 
     Expr::new_sub(
@@ -293,9 +293,9 @@ pub fn einstein_tensor(
 #[must_use]
 
 pub fn geodesic_acceleration(
-    christoffel : &Expr,
-    u_alpha : &Expr,
-    u_beta : &Expr,
+    christoffel: &Expr,
+    u_alpha: &Expr,
+    u_beta: &Expr,
 ) -> Expr {
 
     Expr::new_neg(Arc::new(
@@ -315,9 +315,9 @@ pub fn geodesic_acceleration(
 #[must_use]
 
 pub fn lorentz_transformation(
-    x : &Expr,
-    t : &Expr,
-    v : &Expr,
+    x: &Expr,
+    t: &Expr,
+    v: &Expr,
 ) -> (Expr, Expr) {
 
     lorentz_transformation_x(x, t, v)
@@ -327,10 +327,10 @@ pub fn lorentz_transformation(
 #[must_use]
 
 pub fn einstein_field_equations(
-    ricci : &Expr,
-    scalar : &Expr,
-    metric : &Expr,
-    _stress : &Expr,
+    ricci: &Expr,
+    scalar: &Expr,
+    metric: &Expr,
+    _stress: &Expr,
 ) -> Expr {
 
     einstein_tensor(
@@ -344,10 +344,10 @@ pub fn einstein_field_equations(
 #[must_use]
 
 pub fn geodesic_equation(
-    christoffel : &Expr,
-    u_alpha : &Expr,
-    u_beta : &Expr,
-    _tau : &str,
+    christoffel: &Expr,
+    u_alpha: &Expr,
+    u_beta: &Expr,
+    _tau: &str,
 ) -> Expr {
 
     geodesic_acceleration(

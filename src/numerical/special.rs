@@ -20,7 +20,7 @@ use statrs::function::gamma::ln_gamma;
 /// Γ(n) = (n-1)! for positive integers.
 #[must_use]
 
-pub fn gamma_numerical(x : f64) -> f64 {
+pub fn gamma_numerical(x: f64) -> f64 {
 
     gamma(x)
 }
@@ -29,7 +29,7 @@ pub fn gamma_numerical(x : f64) -> f64 {
 #[must_use]
 
 pub fn ln_gamma_numerical(
-    x : f64
+    x: f64
 ) -> f64 {
 
     ln_gamma(x)
@@ -39,7 +39,7 @@ pub fn ln_gamma_numerical(
 #[must_use]
 
 pub fn digamma_numerical(
-    x : f64
+    x: f64
 ) -> f64 {
 
     digamma(x)
@@ -50,8 +50,8 @@ pub fn digamma_numerical(
 #[must_use]
 
 pub fn lower_incomplete_gamma(
-    s : f64,
-    x : f64,
+    s: f64,
+    x: f64,
 ) -> f64 {
 
     if x < 0.0 || s <= 0.0 {
@@ -94,8 +94,8 @@ pub fn lower_incomplete_gamma(
 #[must_use]
 
 pub fn upper_incomplete_gamma(
-    s : f64,
-    x : f64,
+    s: f64,
+    x: f64,
 ) -> f64 {
 
     gamma(s)
@@ -106,8 +106,8 @@ pub fn upper_incomplete_gamma(
 #[must_use]
 
 pub fn regularized_lower_gamma(
-    s : f64,
-    x : f64,
+    s: f64,
+    x: f64,
 ) -> f64 {
 
     lower_incomplete_gamma(s, x)
@@ -118,8 +118,8 @@ pub fn regularized_lower_gamma(
 #[must_use]
 
 pub fn regularized_upper_gamma(
-    s : f64,
-    x : f64,
+    s: f64,
+    x: f64,
 ) -> f64 {
 
     1.0 - regularized_lower_gamma(s, x)
@@ -133,8 +133,8 @@ pub fn regularized_upper_gamma(
 #[must_use]
 
 pub fn beta_numerical(
-    a : f64,
-    b : f64,
+    a: f64,
+    b: f64,
 ) -> f64 {
 
     beta(a, b)
@@ -144,8 +144,8 @@ pub fn beta_numerical(
 #[must_use]
 
 pub fn ln_beta_numerical(
-    a : f64,
-    b : f64,
+    a: f64,
+    b: f64,
 ) -> f64 {
 
     ln_beta(a, b)
@@ -155,9 +155,9 @@ pub fn ln_beta_numerical(
 #[must_use]
 
 pub fn incomplete_beta(
-    x : f64,
-    a : f64,
-    b : f64,
+    x: f64,
+    a: f64,
+    b: f64,
 ) -> f64 {
 
     if !(0.0 ..= 1.0).contains(&x)
@@ -188,9 +188,9 @@ pub fn incomplete_beta(
 #[must_use]
 
 pub fn regularized_beta(
-    x : f64,
-    a : f64,
-    b : f64,
+    x: f64,
+    a: f64,
+    b: f64,
 ) -> f64 {
 
     if !(0.0 ..= 1.0).contains(&x)
@@ -301,7 +301,7 @@ pub fn regularized_beta(
 /// Computes the error function, erf(x) = (2/√π) ∫₀ˣ e^(-t²) dt.
 #[must_use]
 
-pub fn erf_numerical(x : f64) -> f64 {
+pub fn erf_numerical(x: f64) -> f64 {
 
     erf(x)
 }
@@ -309,7 +309,7 @@ pub fn erf_numerical(x : f64) -> f64 {
 /// Computes the complementary error function, erfc(x) = 1 - erf(x).
 #[must_use]
 
-pub fn erfc_numerical(x : f64) -> f64 {
+pub fn erfc_numerical(x: f64) -> f64 {
 
     erfc(x)
 }
@@ -319,7 +319,7 @@ pub fn erfc_numerical(x : f64) -> f64 {
 #[must_use]
 
 pub fn inverse_erf_numerical(
-    x : f64
+    x: f64
 ) -> f64 {
 
     if x <= -1.0 {
@@ -410,7 +410,7 @@ pub fn inverse_erf_numerical(
 /// Computes the Bessel function of the first kind, J₀(x).
 #[must_use]
 
-pub fn bessel_j0(x : f64) -> f64 {
+pub fn bessel_j0(x: f64) -> f64 {
 
     if x == 0.0 {
 
@@ -463,7 +463,7 @@ pub fn bessel_j0(x : f64) -> f64 {
 /// Computes the Bessel function of the first kind, J₁(x).
 #[must_use]
 
-pub fn bessel_j1(x : f64) -> f64 {
+pub fn bessel_j1(x: f64) -> f64 {
 
     if x == 0.0 {
 
@@ -527,7 +527,7 @@ pub fn bessel_j1(x : f64) -> f64 {
 /// Computes the Bessel function of the second kind, Y₀(x).
 #[must_use]
 
-pub fn bessel_y0(x : f64) -> f64 {
+pub fn bessel_y0(x: f64) -> f64 {
 
     if x < 0.0 {
 
@@ -582,7 +582,7 @@ pub fn bessel_y0(x : f64) -> f64 {
 /// Computes the Bessel function of the second kind, Y₁(x).
 #[must_use]
 
-pub fn bessel_y1(x : f64) -> f64 {
+pub fn bessel_y1(x: f64) -> f64 {
 
     if x < 0.0 {
 
@@ -637,7 +637,7 @@ pub fn bessel_y1(x : f64) -> f64 {
 /// Computes the modified Bessel function of the first kind, I₀(x).
 #[must_use]
 
-pub fn bessel_i0(x : f64) -> f64 {
+pub fn bessel_i0(x: f64) -> f64 {
 
     if x == 0.0 {
 
@@ -672,7 +672,7 @@ pub fn bessel_i0(x : f64) -> f64 {
 /// Computes the modified Bessel function of the first kind, I₁(x).
 #[must_use]
 
-pub fn bessel_i1(x : f64) -> f64 {
+pub fn bessel_i1(x: f64) -> f64 {
 
     let ax = x.abs();
 
@@ -721,8 +721,8 @@ pub fn bessel_i1(x : f64) -> f64 {
 #[must_use]
 
 pub fn legendre_p(
-    n : u32,
-    x : f64,
+    n: u32,
+    x: f64,
 ) -> f64 {
 
     if n == 0 {
@@ -761,8 +761,8 @@ pub fn legendre_p(
 #[must_use]
 
 pub fn chebyshev_t(
-    n : u32,
-    x : f64,
+    n: u32,
+    x: f64,
 ) -> f64 {
 
     if n == 0 {
@@ -796,8 +796,8 @@ pub fn chebyshev_t(
 #[must_use]
 
 pub fn chebyshev_u(
-    n : u32,
-    x : f64,
+    n: u32,
+    x: f64,
 ) -> f64 {
 
     if n == 0 {
@@ -831,8 +831,8 @@ pub fn chebyshev_u(
 #[must_use]
 
 pub fn hermite_h(
-    n : u32,
-    x : f64,
+    n: u32,
+    x: f64,
 ) -> f64 {
 
     if n == 0 {
@@ -868,8 +868,8 @@ pub fn hermite_h(
 #[must_use]
 
 pub fn laguerre_l(
-    n : u32,
-    x : f64,
+    n: u32,
+    x: f64,
 ) -> f64 {
 
     if n == 0 {
@@ -911,7 +911,7 @@ pub fn laguerre_l(
 /// Computes the factorial n!
 #[must_use]
 
-pub fn factorial(n : u64) -> f64 {
+pub fn factorial(n: u64) -> f64 {
 
     if n <= 1 {
 
@@ -925,9 +925,7 @@ pub fn factorial(n : u64) -> f64 {
 /// n!! = n * (n-2) * (n-4) * ... * (1 or 2)
 #[must_use]
 
-pub fn double_factorial(
-    n : u64
-) -> f64 {
+pub fn double_factorial(n: u64) -> f64 {
 
     if n <= 1 {
 
@@ -952,8 +950,8 @@ pub fn double_factorial(
 #[must_use]
 
 pub fn binomial(
-    n : u64,
-    k : u64,
+    n: u64,
+    k: u64,
 ) -> f64 {
 
     if k > n {
@@ -976,7 +974,7 @@ pub fn binomial(
 /// Uses the Euler product formula for computation.
 #[must_use]
 
-pub fn riemann_zeta(s : f64) -> f64 {
+pub fn riemann_zeta(s: f64) -> f64 {
 
     if s <= 1.0 {
 
@@ -1011,7 +1009,7 @@ pub fn riemann_zeta(s : f64) -> f64 {
 /// Computes the sinc function sinc(x) = sin(πx) / (πx).
 #[must_use]
 
-pub fn sinc(x : f64) -> f64 {
+pub fn sinc(x: f64) -> f64 {
 
     if x.abs() < 1e-10 {
 
@@ -1026,7 +1024,7 @@ pub fn sinc(x : f64) -> f64 {
 /// Computes the logit function logit(p) = ln(p / (1-p)).
 #[must_use]
 
-pub fn logit(p : f64) -> f64 {
+pub fn logit(p: f64) -> f64 {
 
     if p <= 0.0 || p >= 1.0 {
 
@@ -1039,7 +1037,7 @@ pub fn logit(p : f64) -> f64 {
 /// Computes the logistic (sigmoid) function σ(x) = 1 / (1 + e^(-x)).
 #[must_use]
 
-pub fn sigmoid(x : f64) -> f64 {
+pub fn sigmoid(x: f64) -> f64 {
 
     1.0 / (1.0 + (-x).exp())
 }
@@ -1047,7 +1045,7 @@ pub fn sigmoid(x : f64) -> f64 {
 /// Computes the softplus function softplus(x) = ln(1 + e^x).
 #[must_use]
 
-pub fn softplus(x : f64) -> f64 {
+pub fn softplus(x: f64) -> f64 {
 
     if x > 20.0 {
 

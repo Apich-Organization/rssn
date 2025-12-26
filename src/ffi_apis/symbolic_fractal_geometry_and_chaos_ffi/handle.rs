@@ -7,12 +7,12 @@ use crate::symbolic::fractal_geometry_and_chaos::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_ifs_create(
-    functions_ptr : *const *mut Expr,
-    functions_len : usize,
-    probabilities_ptr : *const *mut Expr,
-    probabilities_len : usize,
+    functions_ptr: *const *mut Expr,
+    functions_len: usize,
+    probabilities_ptr: *const *mut Expr,
+    probabilities_len: usize,
     variables_ptr : *const *const std::os::raw::c_char,
-    variables_len : usize,
+    variables_len: usize,
 ) -> *mut IteratedFunctionSystem {
 
     if functions_ptr.is_null()
@@ -31,7 +31,7 @@ pub extern "C" fn rssn_ifs_create(
                 functions_len,
             );
 
-        let functions : Vec<Expr> =
+        let functions: Vec<Expr> =
             functions_slice
                 .iter()
                 .map(|&p| (*p).clone())
@@ -43,7 +43,7 @@ pub extern "C" fn rssn_ifs_create(
                 probabilities_len,
             );
 
-        let probabilities : Vec<Expr> =
+        let probabilities: Vec<Expr> =
             probabilities_slice
                 .iter()
                 .map(|&p| (*p).clone())
@@ -86,7 +86,7 @@ pub extern "C" fn rssn_ifs_create(
 #[no_mangle]
 
 pub extern "C" fn rssn_ifs_free(
-    ptr : *mut IteratedFunctionSystem
+    ptr: *mut IteratedFunctionSystem
 ) {
 
     if !ptr.is_null() {
@@ -103,7 +103,7 @@ pub extern "C" fn rssn_ifs_free(
 
 pub extern "C" fn rssn_ifs_similarity_dimension(
     scaling_factors_ptr : *const *mut Expr,
-    len : usize,
+    len: usize,
 ) -> *mut Expr {
 
     if scaling_factors_ptr.is_null() {
@@ -119,7 +119,7 @@ pub extern "C" fn rssn_ifs_similarity_dimension(
                 len,
             );
 
-        let factors : Vec<Expr> = slice
+        let factors: Vec<Expr> = slice
             .iter()
             .map(|&p| (*p).clone())
             .collect();
@@ -136,7 +136,7 @@ pub extern "C" fn rssn_ifs_similarity_dimension(
 #[no_mangle]
 
 pub extern "C" fn rssn_complex_system_new_mandelbrot(
-    c_ptr : *const Expr
+    c_ptr: *const Expr
 ) -> *mut ComplexDynamicalSystem {
 
     if c_ptr.is_null() {
@@ -158,7 +158,7 @@ pub extern "C" fn rssn_complex_system_new_mandelbrot(
 #[no_mangle]
 
 pub extern "C" fn rssn_complex_system_free(
-    ptr : *mut ComplexDynamicalSystem
+    ptr: *mut ComplexDynamicalSystem
 ) {
 
     if !ptr.is_null() {
@@ -175,7 +175,7 @@ pub extern "C" fn rssn_complex_system_free(
 
 pub extern "C" fn rssn_complex_system_iterate(
     system_ptr : *const ComplexDynamicalSystem,
-    z_ptr : *const Expr,
+    z_ptr: *const Expr,
 ) -> *mut Expr {
 
     if system_ptr.is_null()
@@ -202,7 +202,7 @@ pub extern "C" fn rssn_complex_system_iterate(
 
 pub extern "C" fn rssn_complex_system_fixed_points(
     system_ptr : *const ComplexDynamicalSystem,
-    out_len : *mut usize,
+    out_len: *mut usize,
 ) -> *mut *mut Expr {
 
     if system_ptr.is_null()
@@ -221,11 +221,12 @@ pub extern "C" fn rssn_complex_system_fixed_points(
 
         *out_len = points.len();
 
-        let boxed_points : Vec<
+        let boxed_points: Vec<
             *mut Expr,
         > = points
             .into_iter()
             .map(|p| {
+
                 Box::into_raw(Box::new(
                     p,
                 ))
@@ -247,9 +248,9 @@ pub extern "C" fn rssn_complex_system_fixed_points(
 #[no_mangle]
 
 pub extern "C" fn rssn_find_fixed_points(
-    map_ptr : *const Expr,
-    var : *const std::os::raw::c_char,
-    out_len : *mut usize,
+    map_ptr: *const Expr,
+    var: *const std::os::raw::c_char,
+    out_len: *mut usize,
 ) -> *mut *mut Expr {
 
     if map_ptr.is_null()
@@ -278,11 +279,12 @@ pub extern "C" fn rssn_find_fixed_points(
 
         *out_len = points.len();
 
-        let boxed_points : Vec<
+        let boxed_points: Vec<
             *mut Expr,
         > = points
             .into_iter()
             .map(|p| {
+
                 Box::into_raw(Box::new(
                     p,
                 ))
@@ -302,9 +304,9 @@ pub extern "C" fn rssn_find_fixed_points(
 #[no_mangle]
 
 pub extern "C" fn rssn_analyze_stability(
-    map_ptr : *const Expr,
-    var : *const std::os::raw::c_char,
-    fixed_point_ptr : *const Expr,
+    map_ptr: *const Expr,
+    var: *const std::os::raw::c_char,
+    fixed_point_ptr: *const Expr,
 ) -> *mut Expr {
 
     if map_ptr.is_null()
@@ -343,10 +345,10 @@ pub extern "C" fn rssn_analyze_stability(
 #[no_mangle]
 
 pub extern "C" fn rssn_lyapunov_exponent(
-    map_ptr : *const Expr,
-    var : *const std::os::raw::c_char,
-    initial_x_ptr : *const Expr,
-    n_iterations : usize,
+    map_ptr: *const Expr,
+    var: *const std::os::raw::c_char,
+    initial_x_ptr: *const Expr,
+    n_iterations: usize,
 ) -> *mut Expr {
 
     if map_ptr.is_null()
@@ -385,9 +387,9 @@ pub extern "C" fn rssn_lyapunov_exponent(
 #[no_mangle]
 
 pub extern "C" fn rssn_lorenz_system(
-    dx_out : *mut *mut Expr,
-    dy_out : *mut *mut Expr,
-    dz_out : *mut *mut Expr,
+    dx_out: *mut *mut Expr,
+    dy_out: *mut *mut Expr,
+    dz_out: *mut *mut Expr,
 ) -> bool {
 
     if dx_out.is_null()

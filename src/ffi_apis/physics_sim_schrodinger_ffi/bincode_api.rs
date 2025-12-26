@@ -16,15 +16,15 @@ use crate::physics::physics_sim::schrodinger_quantum::{
 #[derive(Deserialize)]
 
 struct SchrodingerInput {
-    params : SchrodingerParameters,
-    initial_psi_re : Vec<f64>,
-    initial_psi_im : Vec<f64>,
+    params: SchrodingerParameters,
+    initial_psi_re: Vec<f64>,
+    initial_psi_im: Vec<f64>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : SchrodingerInput = match from_bincode_buffer(&buffer) {
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
         },
     };
 
-    let mut initial_psi : Vec<
+    let mut initial_psi: Vec<
         Complex<f64>,
     > = input
         .initial_psi_re
@@ -50,6 +50,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
                 .iter(),
         )
         .map(|(&r, &i)| {
+
             Complex::new(r, i)
         })
         .collect();

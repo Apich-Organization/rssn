@@ -15,15 +15,15 @@ use crate::physics::physics_sm::ifft2d;
 )]
 
 pub struct SchrodingerParameters {
-    pub nx : usize,
-    pub ny : usize,
-    pub lx : f64,
-    pub ly : f64,
-    pub dt : f64,
-    pub time_steps : usize,
-    pub hbar : f64,
-    pub mass : f64,
-    pub potential : Vec<f64>,
+    pub nx: usize,
+    pub ny: usize,
+    pub lx: f64,
+    pub ly: f64,
+    pub dt: f64,
+    pub time_steps: usize,
+    pub hbar: f64,
+    pub mass: f64,
+    pub potential: Vec<f64>,
 }
 
 /// Runs a 2D Schrodinger simulation using the Split-Step Fourier method.
@@ -36,8 +36,8 @@ pub struct SchrodingerParameters {
 /// A `Vec` containing snapshots of the probability density `|psi|^2`.
 
 pub fn run_schrodinger_simulation(
-    params : &SchrodingerParameters,
-    initial_psi : &mut [Complex<f64>],
+    params: &SchrodingerParameters,
+    initial_psi: &mut [Complex<f64>],
 ) -> Result<Vec<Array2<f64>>, String> {
 
     let dx =
@@ -52,8 +52,7 @@ pub fn run_schrodinger_simulation(
     let ky =
         create_k_grid(params.ny, dy);
 
-    let mut kinetic_operator =
-        vec![
+    let mut kinetic_operator = vec![
             Complex::default();
             params.nx * params.ny
         ];
@@ -94,7 +93,7 @@ pub fn run_schrodinger_simulation(
             }
         });
 
-    let potential_operator : Vec<_> =
+    let potential_operator: Vec<_> =
         params
             .potential
             .par_iter()
@@ -122,6 +121,7 @@ pub fn run_schrodinger_simulation(
         psi.par_iter_mut()
             .zip(&potential_operator)
             .for_each(|(p, v_op)| {
+
                 *p *= v_op
             });
 
@@ -134,6 +134,7 @@ pub fn run_schrodinger_simulation(
         psi.par_iter_mut()
             .zip(&kinetic_operator)
             .for_each(|(p, k_op)| {
+
                 *p *= k_op
             });
 
@@ -146,6 +147,7 @@ pub fn run_schrodinger_simulation(
         psi.par_iter_mut()
             .zip(&potential_operator)
             .for_each(|(p, v_op)| {
+
                 *p *= v_op
             });
 
@@ -165,6 +167,7 @@ pub fn run_schrodinger_simulation(
                     probability_density,
                 )
                 .map_err(|e| {
+
                     e.to_string()
                 })?,
             );
@@ -179,9 +182,9 @@ pub fn run_schrodinger_simulation(
 pub fn simulate_double_slit_scenario(
 ) -> Result<(), String> {
 
-    const NX : usize = 256;
+    const NX: usize = 256;
 
-    const NY : usize = 256;
+    const NY: usize = 256;
 
     println!(
         "Running 2D Schrodinger \
@@ -226,19 +229,18 @@ pub fn simulate_double_slit_scenario(
 
     let params =
         SchrodingerParameters {
-            nx : NX,
-            ny : NY,
-            lx : NX as f64,
-            ly : NY as f64,
-            dt : 0.1,
-            time_steps : 300,
-            hbar : 1.0,
-            mass : 1.0,
+            nx: NX,
+            ny: NY,
+            lx: NX as f64,
+            ly: NY as f64,
+            dt: 0.1,
+            time_steps: 300,
+            hbar: 1.0,
+            mass: 1.0,
             potential,
         };
 
-    let mut initial_psi =
-        vec![
+    let mut initial_psi = vec![
             Complex::default();
             NX * NY
         ];

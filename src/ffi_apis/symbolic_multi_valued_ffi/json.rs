@@ -8,14 +8,14 @@ use crate::symbolic::multi_valued::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_general_log(
-    z_json : *const c_char,
-    k_json : *const c_char,
+    z_json: *const c_char,
+    k_json: *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_json_string(z_json);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_json_string(k_json);
 
     if let (
@@ -40,14 +40,14 @@ pub extern "C" fn rssn_json_general_log(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_general_sqrt(
-    z_json : *const c_char,
-    k_json : *const c_char,
+    z_json: *const c_char,
+    k_json: *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_json_string(z_json);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_json_string(k_json);
 
     if let (
@@ -72,18 +72,18 @@ pub extern "C" fn rssn_json_general_sqrt(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_general_power(
-    z_json : *const c_char,
-    w_json : *const c_char,
-    k_json : *const c_char,
+    z_json: *const c_char,
+    w_json: *const c_char,
+    k_json: *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_json_string(z_json);
 
-    let w : Option<Expr> =
+    let w: Option<Expr> =
         from_json_string(w_json);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_json_string(k_json);
 
     if let (
@@ -110,18 +110,18 @@ pub extern "C" fn rssn_json_general_power(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_general_nth_root(
-    z_json : *const c_char,
-    n_json : *const c_char,
-    k_json : *const c_char,
+    z_json: *const c_char,
+    n_json: *const c_char,
+    k_json: *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_json_string(z_json);
 
-    let n : Option<Expr> =
+    let n: Option<Expr> =
         from_json_string(n_json);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_json_string(k_json);
 
     if let (
@@ -148,14 +148,14 @@ pub extern "C" fn rssn_json_general_nth_root(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_general_arcsin(
-    z_json : *const c_char,
-    k_json : *const c_char,
+    z_json: *const c_char,
+    k_json: *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_json_string(z_json);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_json_string(k_json);
 
     if let (
@@ -180,18 +180,18 @@ pub extern "C" fn rssn_json_general_arcsin(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_general_arccos(
-    z_json : *const c_char,
-    k_json : *const c_char,
-    s_json : *const c_char,
+    z_json: *const c_char,
+    k_json: *const c_char,
+    s_json: *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_json_string(z_json);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_json_string(k_json);
 
-    let s : Option<Expr> =
+    let s: Option<Expr> =
         from_json_string(s_json);
 
     if let (
@@ -218,14 +218,14 @@ pub extern "C" fn rssn_json_general_arccos(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_general_arctan(
-    z_json : *const c_char,
-    k_json : *const c_char,
+    z_json: *const c_char,
+    k_json: *const c_char,
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_json_string(z_json);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_json_string(k_json);
 
     if let (
@@ -250,10 +250,10 @@ pub extern "C" fn rssn_json_general_arctan(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_arg(
-    z_json : *const c_char
+    z_json: *const c_char
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_json_string(z_json);
 
     if let Some(z_expr) = z {
@@ -271,10 +271,10 @@ pub extern "C" fn rssn_json_arg(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_abs(
-    z_json : *const c_char
+    z_json: *const c_char
 ) -> *mut c_char {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_json_string(z_json);
 
     if let Some(z_expr) = z {

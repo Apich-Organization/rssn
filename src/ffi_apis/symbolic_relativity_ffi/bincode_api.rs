@@ -8,10 +8,10 @@ use crate::symbolic::relativity;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_lorentz_factor(
-    velocity_buf : BincodeBuffer
+    velocity_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let velocity : Option<Expr> =
+    let velocity: Option<Expr> =
         from_bincode_buffer(
             &velocity_buf,
         );
@@ -33,10 +33,10 @@ pub extern "C" fn rssn_bincode_lorentz_factor(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_mass_energy_equivalence(
-    mass_buf : BincodeBuffer
+    mass_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let mass : Option<Expr> =
+    let mass: Option<Expr> =
         from_bincode_buffer(&mass_buf);
 
     if let Some(m) = mass {
@@ -52,10 +52,10 @@ pub extern "C" fn rssn_bincode_mass_energy_equivalence(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_schwarzschild_radius(
-    mass_buf : BincodeBuffer
+    mass_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let mass : Option<Expr> =
+    let mass: Option<Expr> =
         from_bincode_buffer(&mass_buf);
 
     if let Some(m) = mass {

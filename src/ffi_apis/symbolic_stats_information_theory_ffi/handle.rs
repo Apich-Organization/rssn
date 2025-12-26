@@ -5,8 +5,8 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::stats_information_theory;
 
 unsafe fn collect_exprs(
-    data : *const *const Expr,
-    len : usize,
+    data: *const *const Expr,
+    len: usize,
 ) -> Vec<Expr> {
 
     let mut exprs =
@@ -28,8 +28,8 @@ unsafe fn collect_exprs(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_shannon_entropy(
-    probs : *const *const Expr,
-    len : usize,
+    probs: *const *const Expr,
+    len: usize,
 ) -> *mut Expr {
 
     if probs.is_null() {
@@ -47,10 +47,10 @@ pub unsafe extern "C" fn rssn_shannon_entropy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_kl_divergence(
-    p_probs : *const *const Expr,
-    p_len : usize,
-    q_probs : *const *const Expr,
-    q_len : usize,
+    p_probs: *const *const Expr,
+    p_len: usize,
+    q_probs: *const *const Expr,
+    q_len: usize,
 ) -> *mut Expr {
 
     if p_probs.is_null()
@@ -75,10 +75,10 @@ pub unsafe extern "C" fn rssn_kl_divergence(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_cross_entropy(
-    p_probs : *const *const Expr,
-    p_len : usize,
-    q_probs : *const *const Expr,
-    q_len : usize,
+    p_probs: *const *const Expr,
+    p_len: usize,
+    q_probs: *const *const Expr,
+    q_len: usize,
 ) -> *mut Expr {
 
     if p_probs.is_null()
@@ -103,8 +103,8 @@ pub unsafe extern "C" fn rssn_cross_entropy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_gini_impurity(
-    probs : *const *const Expr,
-    len : usize,
+    probs: *const *const Expr,
+    len: usize,
 ) -> *mut Expr {
 
     if probs.is_null() {
@@ -122,7 +122,7 @@ pub unsafe extern "C" fn rssn_gini_impurity(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_joint_entropy(
-    joint_probs : *const Expr
+    joint_probs: *const Expr
 ) -> *mut Expr {
 
     if joint_probs.is_null() {
@@ -139,7 +139,7 @@ pub unsafe extern "C" fn rssn_joint_entropy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_conditional_entropy(
-    joint_probs : *const Expr
+    joint_probs: *const Expr
 ) -> *mut Expr {
 
     if joint_probs.is_null() {
@@ -156,7 +156,7 @@ pub unsafe extern "C" fn rssn_conditional_entropy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_mutual_information(
-    joint_probs : *const Expr
+    joint_probs: *const Expr
 ) -> *mut Expr {
 
     if joint_probs.is_null() {

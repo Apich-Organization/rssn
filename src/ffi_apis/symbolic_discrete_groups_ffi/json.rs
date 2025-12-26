@@ -6,7 +6,7 @@ use crate::symbolic::discrete_groups::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_cyclic_group_create(
-    n : usize
+    n: usize
 ) -> *mut c_char {
 
     let group = cyclic_group(n);
@@ -17,7 +17,7 @@ pub unsafe extern "C" fn rssn_json_cyclic_group_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dihedral_group_create(
-    n : usize
+    n: usize
 ) -> *mut c_char {
 
     let group = dihedral_group(n);
@@ -28,7 +28,7 @@ pub unsafe extern "C" fn rssn_json_dihedral_group_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_symmetric_group_create(
-    n : usize
+    n: usize
 ) -> *mut c_char {
 
     match symmetric_group(n) {

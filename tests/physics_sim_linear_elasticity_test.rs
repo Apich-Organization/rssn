@@ -74,8 +74,8 @@ fn test_run_elasticity_simulation_basic(
     let params = ElasticityParameters {
         nodes,
         elements,
-        youngs_modulus : 1e7,
-        poissons_ratio : 0.3,
+        youngs_modulus: 1e7,
+        poissons_ratio: 0.3,
         fixed_nodes,
         loads,
     };

@@ -14,7 +14,7 @@ use crate::physics::physics_sim::fdtd_electrodynamics::{
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let params : FdtdParameters = match from_bincode_buffer(&buffer) {

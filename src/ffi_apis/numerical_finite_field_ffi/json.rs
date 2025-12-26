@@ -16,15 +16,15 @@ use crate::numerical::finite_field::{
 #[derive(Deserialize)]
 
 struct PfeBinaryOpRequest {
-    a : PrimeFieldElement,
-    b : PrimeFieldElement,
+    a: PrimeFieldElement,
+    b: PrimeFieldElement,
 }
 
 /// GF(p) addition from JSON.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -43,19 +43,19 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(
         },
     };
 
-    let req : PfeBinaryOpRequest =
+    let req: PfeBinaryOpRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res : FfiResult<
+                let res: FfiResult<
                     PrimeFieldElement,
                     String,
                 > = FfiResult {
-                    ok : None,
-                    err : Some(
+                    ok: None,
+                    err: Some(
                         e.to_string(),
                     ),
                 };
@@ -68,12 +68,12 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(
 
     let res_pfe = req.a + req.b;
 
-    let ffi_res : FfiResult<
+    let ffi_res: FfiResult<
         PrimeFieldElement,
         String,
     > = FfiResult {
-        ok : Some(res_pfe),
-        err : None,
+        ok: Some(res_pfe),
+        err: None,
     };
 
     CString::new(
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_mul_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -107,19 +107,19 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul_json(
         },
     };
 
-    let req : PfeBinaryOpRequest =
+    let req: PfeBinaryOpRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res : FfiResult<
+                let res: FfiResult<
                     PrimeFieldElement,
                     String,
                 > = FfiResult {
-                    ok : None,
-                    err : Some(
+                    ok: None,
+                    err: Some(
                         e.to_string(),
                     ),
                 };
@@ -132,12 +132,12 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul_json(
 
     let res_pfe = req.a * req.b;
 
-    let ffi_res : FfiResult<
+    let ffi_res: FfiResult<
         PrimeFieldElement,
         String,
     > = FfiResult {
-        ok : Some(res_pfe),
-        err : None,
+        ok: Some(res_pfe),
+        err: None,
     };
 
     CString::new(
@@ -151,15 +151,15 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul_json(
 #[derive(Deserialize)]
 
 struct Gf256OpRequest {
-    a : u8,
-    b : u8,
+    a: u8,
+    b: u8,
 }
 
 /// GF(2^8) multiplication from JSON.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_gf256_mul_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -178,19 +178,19 @@ pub unsafe extern "C" fn rssn_num_ff_gf256_mul_json(
         },
     };
 
-    let req : Gf256OpRequest =
+    let req: Gf256OpRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res : FfiResult<
+                let res: FfiResult<
                     u8,
                     String,
                 > = FfiResult {
-                    ok : None,
-                    err : Some(
+                    ok: None,
+                    err: Some(
                         e.to_string(),
                     ),
                 };
@@ -205,13 +205,11 @@ pub unsafe extern "C" fn rssn_num_ff_gf256_mul_json(
         req.a, req.b,
     );
 
-    let ffi_res : FfiResult<
-        u8,
-        String,
-    > = FfiResult {
-        ok : Some(res),
-        err : None,
-    };
+    let ffi_res: FfiResult<u8, String> =
+        FfiResult {
+            ok: Some(res),
+            err: None,
+        };
 
     CString::new(
         serde_json::to_string(&ffi_res)

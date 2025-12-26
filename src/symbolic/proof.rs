@@ -19,9 +19,9 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 use crate::symbolic::simplify_dag::simplify;
 
-const TOLERANCE : f64 = 1e-6;
+const TOLERANCE: f64 = 1e-6;
 
-const NUM_SAMPLES : usize = 100;
+const NUM_SAMPLES: usize = 100;
 
 /// Verifies a solution to a single equation or a system of equations using numerical sampling.
 ///
@@ -52,9 +52,9 @@ const NUM_SAMPLES : usize = 100;
 #[must_use]
 
 pub fn verify_equation_solution(
-    equations : &[Expr],
-    solution : &HashMap<String, Expr>,
-    free_vars : &[&str],
+    equations: &[Expr],
+    solution: &HashMap<String, Expr>,
+    free_vars: &[&str],
 ) -> bool {
 
     let mut rng = thread_rng();
@@ -138,7 +138,7 @@ pub fn verify_equation_solution(
     true
 }
 
-fn unwrap_dag(expr : Expr) -> Expr {
+fn unwrap_dag(expr: Expr) -> Expr {
 
     match expr {
         | Expr::Dag(node) => {
@@ -155,9 +155,9 @@ fn unwrap_dag(expr : Expr) -> Expr {
 #[must_use]
 
 pub fn verify_indefinite_integral(
-    integrand : &Expr,
-    integral_result : &Expr,
-    var : &str,
+    integrand: &Expr,
+    integral_result: &Expr,
+    var: &str,
 ) -> bool {
 
     let derivative_of_result =
@@ -215,10 +215,10 @@ pub fn verify_indefinite_integral(
 #[must_use]
 
 pub fn verify_definite_integral(
-    integrand : &Expr,
-    var : &str,
-    range : (f64, f64),
-    symbolic_result : &Expr,
+    integrand: &Expr,
+    var: &str,
+    range: (f64, f64),
+    symbolic_result: &Expr,
 ) -> bool {
 
     let symbolic_val = match eval_expr(
@@ -252,10 +252,10 @@ pub fn verify_definite_integral(
 #[must_use]
 
 pub fn verify_ode_solution(
-    ode : &Expr,
-    solution : &Expr,
-    func_name : &str,
-    var : &str,
+    ode: &Expr,
+    solution: &Expr,
+    func_name: &str,
+    var: &str,
 ) -> bool {
 
     // 1. Convert ODE to f(x, y, y', y'', ...) = 0 form
@@ -351,8 +351,8 @@ pub fn verify_ode_solution(
 #[must_use]
 
 pub fn verify_matrix_inverse(
-    original : &Expr,
-    inverse : &Expr,
+    original: &Expr,
+    inverse: &Expr,
 ) -> bool {
 
     let product = matrix::mul_matrices(
@@ -414,9 +414,9 @@ pub fn verify_matrix_inverse(
 #[must_use]
 
 pub fn verify_derivative(
-    original_func : &Expr,
-    derivative_func : &Expr,
-    var : &str,
+    original_func: &Expr,
+    derivative_func: &Expr,
+    var: &str,
 ) -> bool {
 
     let mut rng = thread_rng();
@@ -469,10 +469,10 @@ pub fn verify_derivative(
 #[must_use]
 
 pub fn verify_limit(
-    f : &Expr,
-    var : &str,
-    target : &Expr,
-    limit_val : &Expr,
+    f: &Expr,
+    var: &str,
+    target: &Expr,
+    limit_val: &Expr,
 ) -> bool {
 
     let x0 = match eval_expr(

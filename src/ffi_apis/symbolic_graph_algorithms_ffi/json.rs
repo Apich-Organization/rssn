@@ -8,14 +8,14 @@ use crate::symbolic::graph_algorithms::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_dfs_api(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph : Graph<String>,
-        start_node : usize,
+        graph: Graph<String>,
+        start_node: usize,
     }
 
     let input : Input = match from_json_string(json) {
@@ -37,14 +37,14 @@ pub unsafe extern "C" fn rssn_json_graph_dfs_api(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_bfs_api(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph : Graph<String>,
-        start_node : usize,
+        graph: Graph<String>,
+        start_node: usize,
     }
 
     let input : Input = match from_json_string(json) {
@@ -66,7 +66,7 @@ pub unsafe extern "C" fn rssn_json_graph_bfs_api(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_connected_components_api(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let graph : Graph<String> = match from_json_string(json) {
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn rssn_json_graph_connected_components_api(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_is_connected(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let graph : Graph<String> = match from_json_string(json) {
@@ -105,7 +105,7 @@ pub unsafe extern "C" fn rssn_json_graph_is_connected(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_strongly_connected_components(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let graph : Graph<String> = match from_json_string(json) {
@@ -127,7 +127,7 @@ pub unsafe extern "C" fn rssn_json_graph_strongly_connected_components(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_has_cycle_api(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let graph : Graph<String> = match from_json_string(json) {
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn rssn_json_graph_has_cycle_api(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let graph : Graph<String> = match from_json_string(json) {
@@ -159,14 +159,13 @@ pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
     #[derive(serde::Serialize)]
 
     struct Result {
-        bridges : Vec<(usize, usize)>,
-        articulation_points :
-            Vec<usize>,
+        bridges: Vec<(usize, usize)>,
+        articulation_points: Vec<usize>,
     }
 
     let result = Result {
         bridges,
-        articulation_points : aps,
+        articulation_points: aps,
     };
 
     to_json_string(&result)
@@ -178,7 +177,7 @@ pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_kruskal_mst_api(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let graph : Graph<String> = match from_json_string(json) {
@@ -215,15 +214,15 @@ pub unsafe extern "C" fn rssn_json_graph_kruskal_mst_api(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_edmonds_karp_max_flow(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph : Graph<String>,
-        source : usize,
-        sink : usize,
+        graph: Graph<String>,
+        source: usize,
+        sink: usize,
     }
 
     let input : Input = match from_json_string(json) {
@@ -246,15 +245,15 @@ pub unsafe extern "C" fn rssn_json_graph_edmonds_karp_max_flow(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_dinic_max_flow(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph : Graph<String>,
-        source : usize,
-        sink : usize,
+        graph: Graph<String>,
+        source: usize,
+        sink: usize,
     }
 
     let input : Input = match from_json_string(json) {
@@ -277,7 +276,7 @@ pub unsafe extern "C" fn rssn_json_graph_dinic_max_flow(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_is_bipartite_api(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let graph : Graph<String> = match from_json_string(json) {
@@ -296,14 +295,14 @@ pub unsafe extern "C" fn rssn_json_graph_is_bipartite_api(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_bipartite_maximum_matching(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph : Graph<String>,
-        partition : Vec<i8>,
+        graph: Graph<String>,
+        partition: Vec<i8>,
     }
 
     let input : Input = match from_json_string(json) {
@@ -326,7 +325,7 @@ pub unsafe extern "C" fn rssn_json_graph_bipartite_maximum_matching(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_topological_sort(
-    json : *const std::os::raw::c_char
+    json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
     let graph : Graph<String> = match from_json_string(json) {

@@ -17,10 +17,10 @@ use ndarray::IxDyn;
 /// The resulting contracted tensor as an `ndarray::ArrayD<f64>`.
 
 pub fn tensordot(
-    a : &ArrayD<f64>,
-    b : &ArrayD<f64>,
-    axes_a : &[usize],
-    axes_b : &[usize],
+    a: &ArrayD<f64>,
+    b: &ArrayD<f64>,
+    axes_a: &[usize],
+    axes_b: &[usize],
 ) -> Result<ArrayD<f64>, String> {
 
     if axes_a.len() != axes_b.len() {
@@ -50,23 +50,23 @@ pub fn tensordot(
         }
     }
 
-    let free_axes_a : Vec<_> = (0 .. a
+    let free_axes_a: Vec<_> = (0 .. a
         .ndim())
         .filter(|i| !axes_a.contains(i))
         .collect();
 
-    let free_axes_b : Vec<_> = (0 .. b
+    let free_axes_b: Vec<_> = (0 .. b
         .ndim())
         .filter(|i| !axes_b.contains(i))
         .collect();
 
-    let perm_a : Vec<_> = free_axes_a
+    let perm_a: Vec<_> = free_axes_a
         .iter()
         .chain(axes_a.iter())
         .copied()
         .collect();
 
-    let perm_b : Vec<_> = axes_b
+    let perm_b: Vec<_> = axes_b
         .iter()
         .chain(free_axes_b.iter())
         .copied()
@@ -150,8 +150,8 @@ pub fn tensordot(
 /// The resulting outer product tensor as an `ndarray::ArrayD<f64>`.
 
 pub fn outer_product(
-    a : &ArrayD<f64>,
-    b : &ArrayD<f64>,
+    a: &ArrayD<f64>,
+    b: &ArrayD<f64>,
 ) -> Result<ArrayD<f64>, String> {
 
     let mut new_shape =
@@ -163,6 +163,7 @@ pub fn outer_product(
     let a_flat = a
         .as_slice()
         .ok_or_else(|| {
+
             "Input tensor 'a' is not \
              contiguous"
                 .to_string()
@@ -171,6 +172,7 @@ pub fn outer_product(
     let b_flat = b
         .as_slice()
         .ok_or_else(|| {
+
             "Input tensor 'b' is not \
              contiguous"
                 .to_string()
@@ -200,8 +202,8 @@ pub fn outer_product(
 /// Performs tensor-vector multiplication.
 
 pub fn tensor_vec_mul(
-    tensor : &ArrayD<f64>,
-    vector : &[f64],
+    tensor: &ArrayD<f64>,
+    vector: &[f64],
 ) -> Result<ArrayD<f64>, String> {
 
     if tensor.ndim() < 1 {
@@ -244,8 +246,8 @@ pub fn tensor_vec_mul(
 /// Computes the inner product of two tensors of the same shape.
 
 pub fn inner_product(
-    a : &ArrayD<f64>,
-    b : &ArrayD<f64>,
+    a: &ArrayD<f64>,
+    b: &ArrayD<f64>,
 ) -> Result<f64, String> {
 
     if a.shape() != b.shape() {
@@ -275,9 +277,9 @@ pub fn inner_product(
 /// Contracts a single tensor along two specified axes.
 
 pub fn contract(
-    a : &ArrayD<f64>,
-    axis1 : usize,
-    axis2 : usize,
+    a: &ArrayD<f64>,
+    axis1: usize,
+    axis2: usize,
 ) -> Result<ArrayD<f64>, String> {
 
     if axis1 == axis2 {
@@ -354,7 +356,7 @@ pub fn contract(
 /// Computes the Frobenius norm of a tensor.
 #[must_use]
 
-pub fn norm(a : &ArrayD<f64>) -> f64 {
+pub fn norm(a: &ArrayD<f64>) -> f64 {
 
     a.iter()
         .map(|x| x * x)
@@ -371,14 +373,12 @@ use serde::Serialize;
 )]
 
 pub struct TensorData {
-    pub shape : Vec<usize>,
-    pub data : Vec<f64>,
+    pub shape: Vec<usize>,
+    pub data: Vec<f64>,
 }
 
 impl From<&ArrayD<f64>> for TensorData {
-    fn from(
-        arr : &ArrayD<f64>
-    ) -> Self {
+    fn from(arr: &ArrayD<f64>) -> Self {
 
         Self {
             shape : arr.shape().to_vec(),

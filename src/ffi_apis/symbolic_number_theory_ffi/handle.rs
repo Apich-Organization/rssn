@@ -17,9 +17,9 @@ use crate::symbolic::number_theory::solve_diophantine;
 #[no_mangle]
 
 pub extern "C" fn rssn_solve_diophantine_handle(
-    equation : *const Expr,
-    vars_ptr : *const *const c_char,
-    vars_len : c_int,
+    equation: *const Expr,
+    vars_ptr: *const *const c_char,
+    vars_len: c_int,
 ) -> *mut Expr {
 
     let equation_ref = unsafe {
@@ -33,7 +33,7 @@ pub extern "C" fn rssn_solve_diophantine_handle(
         &*equation
     };
 
-    let vars : Vec<String> = unsafe {
+    let vars: Vec<String> = unsafe {
 
         slice::from_raw_parts(
             vars_ptr,
@@ -49,7 +49,7 @@ pub extern "C" fn rssn_solve_diophantine_handle(
         .collect()
     };
 
-    let vars_str : Vec<&str> = vars
+    let vars_str: Vec<&str> = vars
         .iter()
         .map(|s| s.as_str())
         .collect();
@@ -82,8 +82,8 @@ pub extern "C" fn rssn_solve_diophantine_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_extended_gcd_handle(
-    a : *const Expr,
-    b : *const Expr,
+    a: *const Expr,
+    b: *const Expr,
 ) -> *mut Expr {
 
     let a_ref = unsafe {
@@ -124,7 +124,7 @@ pub extern "C" fn rssn_extended_gcd_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_is_prime_handle(
-    n : *const Expr
+    n: *const Expr
 ) -> *mut Expr {
 
     let n_ref = unsafe {
@@ -150,9 +150,9 @@ pub extern "C" fn rssn_is_prime_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_chinese_remainder_handle(
-    remainders : *const *const Expr,
-    moduli : *const *const Expr,
-    len : c_int,
+    remainders: *const *const Expr,
+    moduli: *const *const Expr,
+    len: c_int,
 ) -> *mut Expr {
 
     let remainders_slice = unsafe {

@@ -16,15 +16,15 @@ use crate::numerical::sparse::{
 #[derive(Deserialize)]
 
 struct SpMvRequest {
-    matrix : SparseMatrixData,
-    vector : Vec<f64>,
+    matrix: SparseMatrixData,
+    vector: Vec<f64>,
 }
 
 /// Sparse matrix-vector multiplication from JSON.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_sparse_spmv_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -43,19 +43,19 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv_json(
         },
     };
 
-    let req : SpMvRequest =
+    let req: SpMvRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res : FfiResult<
+                let res: FfiResult<
                     Vec<f64>,
                     String,
                 > = FfiResult {
-                    ok : None,
-                    err : Some(
+                    ok: None,
+                    err: Some(
                         e.to_string(),
                     ),
                 };
@@ -76,12 +76,12 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv_json(
     ) {
         | Ok(res) => {
 
-            let ffi_res : FfiResult<
+            let ffi_res: FfiResult<
                 Vec<f64>,
                 String,
             > = FfiResult {
-                ok : Some(res),
-                err : None,
+                ok: Some(res),
+                err: None,
             };
 
             CString::new(
@@ -95,12 +95,12 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv_json(
         },
         | Err(e) => {
 
-            let ffi_res : FfiResult<
+            let ffi_res: FfiResult<
                 Vec<f64>,
                 String,
             > = FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             };
 
             CString::new(
@@ -119,17 +119,17 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv_json(
 #[derive(Deserialize)]
 
 struct CgRequest {
-    a : SparseMatrixData,
-    b : Vec<f64>,
-    x0 : Option<Vec<f64>>,
-    max_iter : usize,
-    tolerance : f64,
+    a: SparseMatrixData,
+    b: Vec<f64>,
+    x0: Option<Vec<f64>>,
+    max_iter: usize,
+    tolerance: f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_sparse_solve_cg_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -148,19 +148,19 @@ pub unsafe extern "C" fn rssn_num_sparse_solve_cg_json(
         },
     };
 
-    let req : CgRequest =
+    let req: CgRequest =
         match serde_json::from_str(
             json_str,
         ) {
             | Ok(r) => r,
             | Err(e) => {
 
-                let res : FfiResult<
+                let res: FfiResult<
                     Vec<f64>,
                     String,
                 > = FfiResult {
-                    ok : None,
-                    err : Some(
+                    ok: None,
+                    err: Some(
                         e.to_string(),
                     ),
                 };

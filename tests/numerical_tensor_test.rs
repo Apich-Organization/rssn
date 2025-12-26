@@ -92,7 +92,7 @@ fn test_tensor_serde() {
         serde_json::to_string(&data)
             .unwrap();
 
-    let decoded : numerical_TensorData =
+    let decoded: numerical_TensorData =
         serde_json::from_str(&json)
             .unwrap();
 

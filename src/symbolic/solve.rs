@@ -103,8 +103,8 @@ use crate::symbolic::simplify_dag::simplify;
 #[must_use]
 
 pub fn solve(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Vec<Expr> {
 
     let equation =
@@ -160,8 +160,8 @@ pub fn solve(
 #[must_use]
 
 pub fn solve_system(
-    equations : &[Expr],
-    vars : &[&str],
+    equations: &[Expr],
+    vars: &[&str],
 ) -> Option<Vec<(Expr, Expr)>> {
 
     if let Some(solutions) =
@@ -203,14 +203,14 @@ pub fn solve_system(
 #[must_use]
 
 pub fn solve_system_parcial(
-    equations : &[Expr],
-    vars : &[&str],
+    equations: &[Expr],
+    vars: &[&str],
 ) -> Option<Vec<(Expr, Expr)>> {
 
-    let mut remaining_eqs : Vec<Expr> =
+    let mut remaining_eqs: Vec<Expr> =
         equations.to_vec();
 
-    let mut solutions : HashMap<
+    let mut solutions: HashMap<
         String,
         Expr,
     > = HashMap::new();
@@ -246,11 +246,12 @@ pub fn solve_system_parcial(
                 );
             }
 
-            let remaining_vars : Vec<
+            let remaining_vars: Vec<
                 &str,
             > = vars
                 .iter()
                 .filter(|v| {
+
                     !solutions
                         .contains_key(
                             **v,
@@ -401,13 +402,14 @@ pub fn solve_system_parcial(
 /// or an error string if inputs are invalid or dimensions are incompatible.
 
 pub fn solve_linear_system_mat(
-    a : &Expr,
-    b : &Expr,
+    a: &Expr,
+    b: &Expr,
 ) -> Result<Expr, String> {
 
     let (a_rows, a_cols) =
         get_matrix_dims(a).ok_or_else(
             || {
+
                 "A is not a valid \
                  matrix"
                     .to_string()
@@ -417,6 +419,7 @@ pub fn solve_linear_system_mat(
     let (b_rows, b_cols) =
         get_matrix_dims(b).ok_or_else(
             || {
+
                 "b is not a valid \
                  matrix"
                     .to_string()
@@ -520,9 +523,10 @@ pub fn solve_linear_system_mat(
         }
     }
 
-    let free_cols : Vec<usize> = (0
+    let free_cols: Vec<usize> = (0
         .. a_cols)
         .filter(|c| {
+
             !pivot_cols.contains(c)
         })
         .collect();
@@ -599,8 +603,8 @@ pub fn solve_linear_system_mat(
 /// or an error string if the system cannot be solved.
 
 pub fn solve_linear_system(
-    system : &Expr,
-    vars : &[String],
+    system: &Expr,
+    vars: &[String],
 ) -> Result<Vec<Expr>, String> {
 
     if let Expr::System(eqs) = system {
@@ -667,8 +671,8 @@ pub fn solve_linear_system(
 /// or an error string if the system is inconsistent, singular, or inputs are invalid.
 
 pub fn solve_linear_system_gauss(
-    system : &Expr,
-    vars : &[String],
+    system: &Expr,
+    vars: &[String],
 ) -> Result<Vec<Expr>, String> {
 
     if let Expr::System(eqs) = system {
@@ -687,17 +691,15 @@ pub fn solve_linear_system_gauss(
             ));
         }
 
-        let mut matrix_a =
+        let mut matrix_a = vec![
             vec![
-                vec![
                     Expr::Constant(0.0);
                     n
                 ];
-                n
-            ];
+            n
+        ];
 
-        let mut vector_b =
-            vec![
+        let mut vector_b = vec![
                 Expr::Constant(0.0);
                 n
             ];
@@ -711,13 +713,15 @@ pub fn solve_linear_system_gauss(
                 | Expr::Eq(l, r) => {
                     (l, r)
                 },
-                | _ => return Err(
-                    format!(
+                | _ => {
+                    return Err(
+                        format!(
                         "Item {i} is \
                          not a valid \
                          equation"
                     ),
-                ),
+                    )
+                },
             };
 
             vector_b[i] =
@@ -741,6 +745,7 @@ pub fn solve_linear_system_gauss(
                 if let Some(j) = vars
                     .iter()
                     .position(|v| {
+
                         v == &term
                             .to_string()
                     })
@@ -874,14 +879,14 @@ pub fn solve_linear_system_gauss(
 }
 
 pub(crate) fn solve_system_by_substitution(
-    equations : &[Expr],
-    vars : &[&str],
+    equations: &[Expr],
+    vars: &[&str],
 ) -> Option<Vec<(Expr, Expr)>> {
 
-    let mut remaining_eqs : Vec<Expr> =
+    let mut remaining_eqs: Vec<Expr> =
         equations.to_vec();
 
-    let mut solutions : HashMap<
+    let mut solutions: HashMap<
         Expr,
         Expr,
     > = HashMap::new();
@@ -1025,14 +1030,15 @@ pub(crate) fn solve_system_by_substitution(
 }
 
 pub(crate) fn solve_system_with_grobner(
-    equations : &[Expr],
-    vars : &[&str],
+    equations: &[Expr],
+    vars: &[&str],
 ) -> Option<Vec<(Expr, Expr)>> {
 
-    let basis : Vec<SparsePolynomial> =
+    let basis: Vec<SparsePolynomial> =
         equations
             .iter()
             .map(|eq| {
+
                 expr_to_sparse_poly(
                     eq, vars,
                 )
@@ -1047,7 +1053,7 @@ pub(crate) fn solve_system_with_grobner(
         | Err(_) => return None,
     };
 
-    let mut solutions : HashMap<
+    let mut solutions: HashMap<
         Expr,
         Expr,
     > = HashMap::new();
@@ -1069,9 +1075,10 @@ pub(crate) fn solve_system_with_grobner(
             );
         }
 
-        let remaining_vars : Vec<&str> =
+        let remaining_vars: Vec<&str> =
             vars.iter()
                 .filter(|v| {
+
                     contains_var(
                         &current_eq,
                         v,
@@ -1122,8 +1129,8 @@ pub(crate) fn solve_system_with_grobner(
 }
 
 pub(crate) fn solve_polynomial(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Vec<Expr>> {
 
     // Handle Expr::Eq by converting to lhs - rhs
@@ -1190,13 +1197,12 @@ pub(crate) fn solve_polynomial(
 
                 roots.push(
                     Expr::RootOf {
-                        poly : Arc::new(
+                        poly: Arc::new(
                             poly_expr
                                 .clone(
                                 ),
                         ),
-                        index : i
-                            as u32,
+                        index: i as u32,
                     },
                 );
             }
@@ -1207,7 +1213,7 @@ pub(crate) fn solve_polynomial(
 }
 
 pub(crate) fn solve_linear(
-    coeffs : &[Expr]
+    coeffs: &[Expr]
 ) -> Vec<Expr> {
 
     let a = &coeffs[0];
@@ -1225,7 +1231,7 @@ pub(crate) fn solve_linear(
 }
 
 pub(crate) fn solve_quadratic(
-    coeffs : &[Expr]
+    coeffs: &[Expr]
 ) -> Vec<Expr> {
 
     let a = &coeffs[0];
@@ -1284,7 +1290,7 @@ pub(crate) fn solve_quadratic(
 }
 
 pub(crate) fn solve_cubic(
-    coeffs : &[Expr]
+    coeffs: &[Expr]
 ) -> Vec<Expr> {
 
     let a = &coeffs[0];
@@ -1394,7 +1400,7 @@ pub(crate) fn solve_cubic(
 }
 
 pub(crate) fn solve_quartic(
-    _coeffs : &[Expr]
+    _coeffs: &[Expr]
 ) -> Vec<Expr> {
 
     let poly_expr = Expr::Variable(
@@ -1403,33 +1409,33 @@ pub(crate) fn solve_quartic(
 
     vec![
         Expr::RootOf {
-            poly : Arc::new(
+            poly: Arc::new(
                 poly_expr.clone(),
             ),
-            index : 0,
+            index: 0,
         },
         Expr::RootOf {
-            poly : Arc::new(
+            poly: Arc::new(
                 poly_expr.clone(),
             ),
-            index : 1,
+            index: 1,
         },
         Expr::RootOf {
-            poly : Arc::new(
+            poly: Arc::new(
                 poly_expr.clone(),
             ),
-            index : 2,
+            index: 2,
         },
         Expr::RootOf {
-            poly : Arc::new(poly_expr),
-            index : 3,
+            poly: Arc::new(poly_expr),
+            index: 3,
         },
     ]
 }
 
 pub(crate) fn solve_transcendental(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Vec<Expr>> {
 
     if let Expr::Sub(lhs, rhs) = expr {
@@ -1450,9 +1456,9 @@ pub(crate) fn solve_transcendental(
 }
 
 pub(crate) fn solve_transcendental_pattern(
-    lhs : &Expr,
-    rhs : &Expr,
-    var : &str,
+    lhs: &Expr,
+    rhs: &Expr,
+    var: &str,
 ) -> Option<Vec<Expr>> {
 
     let n =
@@ -1587,8 +1593,8 @@ pub(crate) fn solve_transcendental_pattern(
 }
 
 pub(crate) fn contains_var(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> bool {
 
     let mut found = false;
@@ -1609,8 +1615,8 @@ pub(crate) fn contains_var(
 #[must_use]
 
 pub fn extract_polynomial_coeffs(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Vec<Expr>> {
 
     let mut coeffs_map = HashMap::new();
@@ -1661,10 +1667,10 @@ pub fn extract_polynomial_coeffs(
 }
 
 pub(crate) fn collect_coeffs(
-    expr : &Expr,
-    var : &str,
-    coeffs : &mut HashMap<u32, Expr>,
-    factor : &Expr,
+    expr: &Expr,
+    var: &str,
+    coeffs: &mut HashMap<u32, Expr>,
+    factor: &Expr,
 ) -> Option<()> {
 
     match expr {
@@ -1687,6 +1693,7 @@ pub(crate) fn collect_coeffs(
             let entry = coeffs
                 .entry(1)
                 .or_insert_with(|| {
+
                     Expr::Constant(0.0)
                 });
 
@@ -1734,6 +1741,7 @@ pub(crate) fn collect_coeffs(
             let entry = coeffs
                 .entry(0)
                 .or_insert_with(|| {
+
                     Expr::Constant(0.0)
                 });
 
@@ -1843,6 +1851,7 @@ pub(crate) fn collect_coeffs(
             let entry = coeffs
                 .entry(0)
                 .or_insert_with(|| {
+
                     Expr::Constant(0.0)
                 });
 

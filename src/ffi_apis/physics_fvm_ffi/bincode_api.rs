@@ -15,18 +15,18 @@ use crate::physics::physics_fvm::{
 #[derive(Deserialize)]
 
 struct SweInput {
-    h : Vec<f64>,
-    hu : Vec<f64>,
-    dx : f64,
-    dt : f64,
-    steps : usize,
-    g : f64,
+    h: Vec<f64>,
+    hu: Vec<f64>,
+    dx: f64,
+    dt: f64,
+    steps: usize,
+    g: f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fvm_swe_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : SweInput = match from_bincode_buffer(&buffer) {

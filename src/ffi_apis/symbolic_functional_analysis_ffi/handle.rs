@@ -9,9 +9,9 @@ use crate::symbolic::functional_analysis::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hilbert_space_create(
-    var : *const c_char,
-    lower_bound : *const Expr,
-    upper_bound : *const Expr,
+    var: *const c_char,
+    lower_bound: *const Expr,
+    upper_bound: *const Expr,
 ) -> *mut HilbertSpace {
 
     let var_str = CStr::from_ptr(var)
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn rssn_hilbert_space_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hilbert_space_free(
-    ptr : *mut HilbertSpace
+    ptr: *mut HilbertSpace
 ) {
 
     if !ptr.is_null() {
@@ -44,10 +44,10 @@ pub unsafe extern "C" fn rssn_hilbert_space_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_banach_space_create(
-    var : *const c_char,
-    lower_bound : *const Expr,
-    upper_bound : *const Expr,
-    p : *const Expr,
+    var: *const c_char,
+    lower_bound: *const Expr,
+    upper_bound: *const Expr,
+    p: *const Expr,
 ) -> *mut BanachSpace {
 
     let var_str = CStr::from_ptr(var)
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_banach_space_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_banach_space_free(
-    ptr : *mut BanachSpace
+    ptr: *mut BanachSpace
 ) {
 
     if !ptr.is_null() {
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rssn_banach_space_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
-    var : *const c_char
+    var: *const c_char
 ) -> *mut LinearOperator {
 
     let var_str = CStr::from_ptr(var)
@@ -98,8 +98,8 @@ pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_linear_operator_integral_create(
-    lower_bound : *const Expr,
-    var : *const c_char,
+    lower_bound: *const Expr,
+    var: *const c_char,
 ) -> *mut LinearOperator {
 
     let var_str = CStr::from_ptr(var)
@@ -117,8 +117,8 @@ pub unsafe extern "C" fn rssn_linear_operator_integral_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_linear_operator_apply(
-    op : *const LinearOperator,
-    expr : *const Expr,
+    op: *const LinearOperator,
+    expr: *const Expr,
 ) -> *mut Expr {
 
     let result = (*op).apply(&*expr);
@@ -129,7 +129,7 @@ pub unsafe extern "C" fn rssn_linear_operator_apply(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_linear_operator_free(
-    ptr : *mut LinearOperator
+    ptr: *mut LinearOperator
 ) {
 
     if !ptr.is_null() {
@@ -143,9 +143,9 @@ pub unsafe extern "C" fn rssn_linear_operator_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_inner_product(
-    space : *const HilbertSpace,
-    f : *const Expr,
-    g : *const Expr,
+    space: *const HilbertSpace,
+    f: *const Expr,
+    g: *const Expr,
 ) -> *mut Expr {
 
     let result = inner_product(
@@ -160,8 +160,8 @@ pub unsafe extern "C" fn rssn_inner_product(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_norm(
-    space : *const HilbertSpace,
-    f : *const Expr,
+    space: *const HilbertSpace,
+    f: *const Expr,
 ) -> *mut Expr {
 
     let result = norm(&*space, &*f);
@@ -172,8 +172,8 @@ pub unsafe extern "C" fn rssn_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_banach_norm(
-    space : *const BanachSpace,
-    f : *const Expr,
+    space: *const BanachSpace,
+    f: *const Expr,
 ) -> *mut Expr {
 
     let result =
@@ -185,9 +185,9 @@ pub unsafe extern "C" fn rssn_banach_norm(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_are_orthogonal(
-    space : *const HilbertSpace,
-    f : *const Expr,
-    g : *const Expr,
+    space: *const HilbertSpace,
+    f: *const Expr,
+    g: *const Expr,
 ) -> bool {
 
     are_orthogonal(&*space, &*f, &*g)
@@ -196,9 +196,9 @@ pub unsafe extern "C" fn rssn_are_orthogonal(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_project(
-    space : *const HilbertSpace,
-    f : *const Expr,
-    g : *const Expr,
+    space: *const HilbertSpace,
+    f: *const Expr,
+    g: *const Expr,
 ) -> *mut Expr {
 
     let result =
@@ -210,10 +210,10 @@ pub unsafe extern "C" fn rssn_project(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_gram_schmidt(
-    space : *const HilbertSpace,
-    basis_ptr : *const *const Expr,
-    basis_len : usize,
-    out_len : *mut usize,
+    space: *const HilbertSpace,
+    basis_ptr: *const *const Expr,
+    basis_len: usize,
+    out_len: *mut usize,
 ) -> *mut *mut Expr {
 
     let basis_slice =
@@ -222,7 +222,7 @@ pub unsafe extern "C" fn rssn_gram_schmidt(
             basis_len,
         );
 
-    let basis : Vec<Expr> = basis_slice
+    let basis: Vec<Expr> = basis_slice
         .iter()
         .map(|&p| (*p).clone())
         .collect();

@@ -12,23 +12,23 @@ use crate::symbolic::handles::HANDLE_MANAGER;
 #[derive(Serialize, Deserialize)]
 
 struct HandleInfo {
-    handle : usize,
-    expression : String,
+    handle: usize,
+    expression: String,
 }
 
 #[derive(Serialize, Deserialize)]
 #[allow(dead_code)]
 
 struct HandleListResponse {
-    handles : Vec<usize>,
-    count : usize,
+    handles: Vec<usize>,
+    count: usize,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct HandleStatsResponse {
-    count : usize,
-    handles : Vec<HandleInfo>,
+    count: usize,
+    handles: Vec<HandleInfo>,
 }
 
 /// Inserts an expression (JSON) into the handle manager.
@@ -38,10 +38,10 @@ struct HandleStatsResponse {
 #[no_mangle]
 
 pub extern "C" fn rssn_handle_insert_json(
-    json_str : *const c_char
+    json_str: *const c_char
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(json_str);
 
     let expr = match expr {
@@ -66,16 +66,16 @@ pub extern "C" fn rssn_handle_insert_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_handle_get_json(
-    json_str : *const c_char
+    json_str: *const c_char
 ) -> *mut c_char {
 
     #[derive(Deserialize)]
 
     struct Request {
-        handle : usize,
+        handle: usize,
     }
 
-    let req : Option<Request> =
+    let req: Option<Request> =
         from_json_string(json_str);
 
     let req = match req {
@@ -101,16 +101,16 @@ pub extern "C" fn rssn_handle_get_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_handle_exists_json(
-    json_str : *const c_char
+    json_str: *const c_char
 ) -> *mut c_char {
 
     #[derive(Deserialize)]
 
     struct Request {
-        handle : usize,
+        handle: usize,
     }
 
-    let req : Option<Request> =
+    let req: Option<Request> =
         from_json_string(json_str);
 
     let req = match req {
@@ -135,16 +135,16 @@ pub extern "C" fn rssn_handle_exists_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_handle_free_json(
-    json_str : *const c_char
+    json_str: *const c_char
 ) -> *mut c_char {
 
     #[derive(Deserialize)]
 
     struct Request {
-        handle : usize,
+        handle: usize,
     }
 
-    let req : Option<Request> =
+    let req: Option<Request> =
         from_json_string(json_str);
 
     let req = match req {
@@ -182,17 +182,22 @@ pub extern "C" fn rssn_handle_stats_json(
             HANDLE_MANAGER.get(handle)
         {
 
-            handle_infos.push(HandleInfo {
-                handle,
-                expression : format!("{}", arc_expr),
-            });
+            handle_infos.push(
+                HandleInfo {
+                    handle,
+                    expression: format!(
+                        "{}",
+                        arc_expr
+                    ),
+                },
+            );
         }
     }
 
     let response =
         HandleStatsResponse {
-            count : handles.len(),
-            handles : handle_infos,
+            count: handles.len(),
+            handles: handle_infos,
         };
 
     to_json_string(&response)
@@ -220,16 +225,16 @@ pub extern "C" fn rssn_handle_clear_json(
 #[no_mangle]
 
 pub extern "C" fn rssn_handle_clone_json(
-    json_str : *const c_char
+    json_str: *const c_char
 ) -> *mut c_char {
 
     #[derive(Deserialize)]
 
     struct Request {
-        handle : usize,
+        handle: usize,
     }
 
-    let req : Option<Request> =
+    let req: Option<Request> =
         from_json_string(json_str);
 
     let req = match req {

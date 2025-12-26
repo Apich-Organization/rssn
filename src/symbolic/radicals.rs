@@ -19,7 +19,7 @@ use crate::symbolic::simplify_dag::simplify;
 #[must_use]
 
 pub fn simplify_radicals(
-    expr : &Expr
+    expr: &Expr
 ) -> Expr {
 
     match expr {
@@ -99,6 +99,7 @@ pub fn simplify_radicals(
                     .to_expr()
                     .unwrap_or_else(
                         |_| {
+
                             expr.clone()
                         },
                     ),
@@ -121,7 +122,7 @@ pub fn simplify_radicals(
 #[must_use]
 
 pub fn denest_sqrt(
-    expr : &Expr
+    expr: &Expr
 ) -> Expr {
 
     let expr_resolved =
@@ -129,6 +130,7 @@ pub fn denest_sqrt(
 
             node.to_expr()
                 .unwrap_or_else(|_| {
+
                     expr.clone()
                 })
         } else {
@@ -213,10 +215,10 @@ pub fn denest_sqrt(
 }
 
 fn apply_denesting(
-    a : Expr,
-    b : Expr,
-    c : Expr,
-    is_add : bool,
+    a: Expr,
+    b: Expr,
+    c: Expr,
+    is_add: bool,
 ) -> Option<Expr> {
 
     // We have sqrt(A ± B*sqrt(C))
@@ -294,7 +296,7 @@ fn apply_denesting(
 /// Matches an expression of the form A + B*sqrt(C).
 
 pub(crate) fn match_nested_sqrt_pattern(
-    expr : &Expr
+    expr: &Expr
 ) -> Option<(Expr, Expr, Expr)> {
 
     if let Expr::Add(a, term_b) = expr {
@@ -341,7 +343,7 @@ pub(crate) fn match_nested_sqrt_pattern(
 /// Matches an expression of the form A - B*sqrt(C).
 
 pub(crate) fn match_nested_sqrt_sub_pattern(
-    expr : &Expr
+    expr: &Expr
 ) -> Option<(Expr, Expr, Expr)> {
 
     if let Expr::Sub(a, term_b) = expr {
@@ -369,7 +371,7 @@ pub(crate) fn match_nested_sqrt_sub_pattern(
 /// Checks if an expression is a perfect square and returns its root if so.
 
 pub(crate) fn is_perfect_square(
-    expr : &Expr
+    expr: &Expr
 ) -> Option<Expr> {
 
     let expr =
@@ -377,6 +379,7 @@ pub(crate) fn is_perfect_square(
 
             node.to_expr()
                 .unwrap_or_else(|_| {
+
                     expr.clone()
                 })
         } else {

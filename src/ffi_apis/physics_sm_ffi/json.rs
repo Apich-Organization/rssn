@@ -16,25 +16,25 @@ use crate::physics::physics_sm::{
 #[derive(Deserialize)]
 
 struct AdvectionDiffusion1DInput {
-    initial_condition : Vec<f64>,
-    dx : f64,
-    c : f64,
-    d : f64,
-    dt : f64,
-    steps : usize,
+    initial_condition: Vec<f64>,
+    dx: f64,
+    c: f64,
+    d: f64,
+    dt: f64,
+    steps: usize,
 }
 
 #[derive(Deserialize)]
 
 struct AdvectionDiffusion2DInput {
-    initial_condition : Vec<f64>,
-    config : AdvectionDiffusionConfig,
+    initial_condition: Vec<f64>,
+    config: AdvectionDiffusionConfig,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : AdvectionDiffusion1DInput = match from_json_string(input) {
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : AdvectionDiffusion2DInput = match from_json_string(input) {

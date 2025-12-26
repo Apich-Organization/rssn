@@ -11,16 +11,16 @@ fn test_sph_density_pressure_basic() {
     let h = 0.5;
 
     let mut system = SPHSystem {
-        particles : Vec::new(),
-        poly6 : Poly6Kernel::new(h),
-        spiky : SpikyKernel::new(h),
-        gravity : Vector2D::new(
+        particles: Vec::new(),
+        poly6: Poly6Kernel::new(h),
+        spiky: SpikyKernel::new(h),
+        gravity: Vector2D::new(
             0.0, 0.0,
         ),
-        viscosity : 0.1,
-        gas_const : 1000.0,
-        rest_density : 1000.0,
-        bounds : Vector2D::new(
+        viscosity: 0.1,
+        gas_const: 1000.0,
+        rest_density: 1000.0,
+        bounds: Vector2D::new(
             10.0, 10.0,
         ),
     };
@@ -29,27 +29,27 @@ fn test_sph_density_pressure_basic() {
     system
         .particles
         .push(Particle {
-            pos : Vector2D::new(
+            pos: Vector2D::new(
                 0.0, 0.0,
             ),
-            vel : Vector2D::default(),
-            force : Vector2D::default(),
-            density : 0.0,
-            pressure : 0.0,
-            mass : 1.0,
+            vel: Vector2D::default(),
+            force: Vector2D::default(),
+            density: 0.0,
+            pressure: 0.0,
+            mass: 1.0,
         });
 
     system
         .particles
         .push(Particle {
-            pos : Vector2D::new(
+            pos: Vector2D::new(
                 0.05, 0.0,
             ),
-            vel : Vector2D::default(),
-            force : Vector2D::default(),
-            density : 0.0,
-            pressure : 0.0,
-            mass : 1.0,
+            vel: Vector2D::default(),
+            force: Vector2D::default(),
+            density: 0.0,
+            pressure: 0.0,
+            mass: 1.0,
         });
 
     system.compute_density_pressure();

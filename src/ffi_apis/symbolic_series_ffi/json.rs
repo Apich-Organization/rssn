@@ -14,22 +14,22 @@ use crate::symbolic::series::taylor_series;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_taylor_series(
-    expr_json : *const c_char,
-    var_json : *const c_char,
-    center_json : *const c_char,
-    order_json : *const c_char,
+    expr_json: *const c_char,
+    var_json: *const c_char,
+    center_json: *const c_char,
+    order_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_json_string(var_json);
 
-    let center : Option<Expr> =
+    let center: Option<Expr> =
         from_json_string(center_json);
 
-    let order : Option<usize> =
+    let order: Option<usize> =
         from_json_string(order_json);
 
     if let (
@@ -58,22 +58,22 @@ pub extern "C" fn rssn_json_taylor_series(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_laurent_series(
-    expr_json : *const c_char,
-    var_json : *const c_char,
-    center_json : *const c_char,
-    order_json : *const c_char,
+    expr_json: *const c_char,
+    var_json: *const c_char,
+    center_json: *const c_char,
+    order_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_json_string(var_json);
 
-    let center : Option<Expr> =
+    let center: Option<Expr> =
         from_json_string(center_json);
 
-    let order : Option<usize> =
+    let order: Option<usize> =
         from_json_string(order_json);
 
     if let (
@@ -102,22 +102,22 @@ pub extern "C" fn rssn_json_laurent_series(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_fourier_series(
-    expr_json : *const c_char,
-    var_json : *const c_char,
-    period_json : *const c_char,
-    order_json : *const c_char,
+    expr_json: *const c_char,
+    var_json: *const c_char,
+    period_json: *const c_char,
+    order_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_json_string(var_json);
 
-    let period : Option<Expr> =
+    let period: Option<Expr> =
         from_json_string(period_json);
 
-    let order : Option<usize> =
+    let order: Option<usize> =
         from_json_string(order_json);
 
     if let (
@@ -146,22 +146,22 @@ pub extern "C" fn rssn_json_fourier_series(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_summation(
-    expr_json : *const c_char,
-    var_json : *const c_char,
-    lower_json : *const c_char,
-    upper_json : *const c_char,
+    expr_json: *const c_char,
+    var_json: *const c_char,
+    lower_json: *const c_char,
+    upper_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_json_string(var_json);
 
-    let lower : Option<Expr> =
+    let lower: Option<Expr> =
         from_json_string(lower_json);
 
-    let upper : Option<Expr> =
+    let upper: Option<Expr> =
         from_json_string(upper_json);
 
     if let (
@@ -186,22 +186,22 @@ pub extern "C" fn rssn_json_summation(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_product(
-    expr_json : *const c_char,
-    var_json : *const c_char,
-    lower_json : *const c_char,
-    upper_json : *const c_char,
+    expr_json: *const c_char,
+    var_json: *const c_char,
+    lower_json: *const c_char,
+    upper_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_json_string(var_json);
 
-    let lower : Option<Expr> =
+    let lower: Option<Expr> =
         from_json_string(lower_json);
 
-    let upper : Option<Expr> =
+    let upper: Option<Expr> =
         from_json_string(upper_json);
 
     if let (
@@ -226,14 +226,14 @@ pub extern "C" fn rssn_json_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_series_json_analyze_convergence(
-    series_json : *const c_char,
-    var_json : *const c_char,
+    series_json: *const c_char,
+    var_json: *const c_char,
 ) -> *mut c_char {
 
-    let series : Option<Expr> =
+    let series: Option<Expr> =
         from_json_string(series_json);
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_json_string(var_json);
 
     if let (Some(s), Some(v)) =
@@ -253,22 +253,22 @@ pub extern "C" fn rssn_series_json_analyze_convergence(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_asymptotic_expansion(
-    expr_json : *const c_char,
-    var_json : *const c_char,
-    point_json : *const c_char,
-    order_json : *const c_char,
+    expr_json: *const c_char,
+    var_json: *const c_char,
+    point_json: *const c_char,
+    order_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_json_string(var_json);
 
-    let point : Option<Expr> =
+    let point: Option<Expr> =
         from_json_string(point_json);
 
-    let order : Option<usize> =
+    let order: Option<usize> =
         from_json_string(order_json);
 
     if let (
@@ -295,30 +295,30 @@ pub extern "C" fn rssn_json_asymptotic_expansion(
 #[no_mangle]
 
 pub extern "C" fn rssn_json_analytic_continuation(
-    expr_json : *const c_char,
-    var_json : *const c_char,
-    orig_center_json : *const c_char,
-    new_center_json : *const c_char,
-    order_json : *const c_char,
+    expr_json: *const c_char,
+    var_json: *const c_char,
+    orig_center_json: *const c_char,
+    new_center_json: *const c_char,
+    order_json: *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_json_string(expr_json);
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_json_string(var_json);
 
-    let orig_center : Option<Expr> =
+    let orig_center: Option<Expr> =
         from_json_string(
             orig_center_json,
         );
 
-    let new_center : Option<Expr> =
+    let new_center: Option<Expr> =
         from_json_string(
             new_center_json,
         );
 
-    let order : Option<usize> =
+    let order: Option<usize> =
         from_json_string(order_json);
 
     if let (

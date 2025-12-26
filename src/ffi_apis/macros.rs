@@ -103,8 +103,8 @@ macro_rules! handle_ffi_binary {
         #[no_mangle]
 
         pub extern "C" fn $name(
-            input1 : *const $input1_type,
-            input2 : *const $input2_type,
+            input1: *const $input1_type,
+            input2: *const $input2_type,
         ) -> *mut $ret_type {
 
             let $arg1 = unsafe {
@@ -119,7 +119,9 @@ macro_rules! handle_ffi_binary {
 
             let result = $body;
 
-            Box::into_raw(Box::new(result))
+            Box::into_raw(Box::new(
+                result,
+            ))
         }
     };
 }

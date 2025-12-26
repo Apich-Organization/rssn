@@ -12,37 +12,37 @@ use crate::symbolic::rewriting::RewriteRule;
 #[derive(Serialize, Deserialize)]
 
 struct ApplyRulesInput {
-    expr : Expr,
-    rules : Vec<RewriteRule>,
+    expr: Expr,
+    rules: Vec<RewriteRule>,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct RuleInput {
-    lhs : Expr,
-    rhs : Expr,
+    lhs: Expr,
+    rhs: Expr,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct StringResponse {
-    string : String,
+    string: String,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct ErrorResponse {
-    error : String,
+    error: String,
 }
 
 /// Applies rewrite rules to an expression (Bincode).
 #[no_mangle]
 
 pub extern "C" fn rssn_apply_rules_to_normal_form_bincode(
-    input : BincodeBuffer
+    input: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input_data : Option<
+    let input_data: Option<
         ApplyRulesInput,
     > = from_bincode_buffer(&input);
 
@@ -67,10 +67,10 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_knuth_bendix_bincode(
-    input : BincodeBuffer
+    input: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let equations : Option<Vec<Expr>> =
+    let equations: Option<Vec<Expr>> =
         from_bincode_buffer(&input);
 
     let equations = match equations {
@@ -89,7 +89,7 @@ pub extern "C" fn rssn_knuth_bendix_bincode(
 
             let error_response =
                 ErrorResponse {
-                    error : err,
+                    error: err,
                 };
 
             to_bincode_buffer(
@@ -103,10 +103,10 @@ pub extern "C" fn rssn_knuth_bendix_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_rewrite_rule_new_bincode(
-    input : BincodeBuffer
+    input: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input_data : Option<RuleInput> =
+    let input_data: Option<RuleInput> =
         from_bincode_buffer(&input);
 
     let input_data = match input_data {
@@ -118,8 +118,8 @@ pub extern "C" fn rssn_rewrite_rule_new_bincode(
     };
 
     let rule = RewriteRule {
-        lhs : input_data.lhs,
-        rhs : input_data.rhs,
+        lhs: input_data.lhs,
+        rhs: input_data.rhs,
     };
 
     to_bincode_buffer(&rule)
@@ -129,10 +129,10 @@ pub extern "C" fn rssn_rewrite_rule_new_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_rewrite_rule_to_string_bincode(
-    input : BincodeBuffer
+    input: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let rule : Option<RewriteRule> =
+    let rule: Option<RewriteRule> =
         from_bincode_buffer(&input);
 
     let rule = match rule {
@@ -149,7 +149,7 @@ pub extern "C" fn rssn_rewrite_rule_to_string_bincode(
     );
 
     let response = StringResponse {
-        string : rule_str,
+        string: rule_str,
     };
 
     to_bincode_buffer(&response)

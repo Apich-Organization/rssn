@@ -1,16 +1,16 @@
-pub const BUILD_DATE : &str =
+pub const BUILD_DATE: &str =
     env!("VERGEN_BUILD_DATE");
 
-pub const COMMIT_SHA : &str =
+pub const COMMIT_SHA: &str =
     env!("VERGEN_GIT_SHA");
 
-pub const RUSTC_VERSION : &str =
+pub const RUSTC_VERSION: &str =
     env!("VERGEN_RUSTC_SEMVER");
 
-pub const CARGO_TARGET_TRIPLE : &str =
+pub const CARGO_TARGET_TRIPLE: &str =
     env!("VERGEN_CARGO_TARGET_TRIPLE");
 
-pub const SYSTEM_INFO : &str =
+pub const SYSTEM_INFO: &str =
     env!("VERGEN_SYSINFO_OS_VERSION");
 
 // --- Getter functions ---

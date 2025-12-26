@@ -17,8 +17,8 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_get_bincode(
-    cache : *mut ParsingCache,
-    input : *const c_char,
+    cache: *mut ParsingCache,
+    input: *const c_char,
 ) -> BincodeBuffer {
 
     if cache.is_null()
@@ -52,9 +52,9 @@ pub extern "C" fn rssn_parsing_cache_get_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_set_bincode(
-    cache : *mut ParsingCache,
-    input : *const c_char,
-    buffer : BincodeBuffer,
+    cache: *mut ParsingCache,
+    input: *const c_char,
+    buffer: BincodeBuffer,
 ) {
 
     if cache.is_null()
@@ -76,7 +76,7 @@ pub extern "C" fn rssn_parsing_cache_set_bincode(
                 | Err(_) => return,
             };
 
-        let expr : Option<Expr> =
+        let expr: Option<Expr> =
             from_bincode_buffer(
                 &buffer,
             );
@@ -97,8 +97,8 @@ pub extern "C" fn rssn_parsing_cache_set_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_get_bincode(
-    cache : *mut ComputationResultCache,
-    expr_buffer : BincodeBuffer,
+    cache: *mut ComputationResultCache,
+    expr_buffer: BincodeBuffer,
 ) -> BincodeBuffer {
 
     if cache.is_null() {
@@ -108,7 +108,7 @@ pub extern "C" fn rssn_computation_result_cache_get_bincode(
 
     unsafe {
 
-        let expr : Option<Expr> =
+        let expr: Option<Expr> =
             from_bincode_buffer(
                 &expr_buffer,
             );
@@ -139,9 +139,9 @@ pub extern "C" fn rssn_computation_result_cache_get_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_set_bincode(
-    cache : *mut ComputationResultCache,
-    expr_buffer : BincodeBuffer,
-    value_buffer : BincodeBuffer,
+    cache: *mut ComputationResultCache,
+    expr_buffer: BincodeBuffer,
+    value_buffer: BincodeBuffer,
 ) {
 
     if cache.is_null() {
@@ -151,12 +151,12 @@ pub extern "C" fn rssn_computation_result_cache_set_bincode(
 
     unsafe {
 
-        let expr : Option<Expr> =
+        let expr: Option<Expr> =
             from_bincode_buffer(
                 &expr_buffer,
             );
 
-        let value : Option<String> =
+        let value: Option<String> =
             from_bincode_buffer(
                 &value_buffer,
             );

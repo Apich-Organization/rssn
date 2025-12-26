@@ -17,18 +17,18 @@ fn test_simulate_lid_driven_cavity_scenario(
 
 fn test_lid_driven_cavity_basic() {
 
-    const K : usize = 4;
+    const K: usize = 4;
 
-    const N : usize =
+    const N: usize =
         2_usize.pow(K as u32) + 1; // 17
     let params =
         NavierStokesParameters {
-            nx : N,
-            ny : N,
-            re : 10.0,
-            dt : 0.001,
-            n_iter : 10,
-            lid_velocity : 1.0,
+            nx: N,
+            ny: N,
+            re: 10.0,
+            dt: 0.001,
+            n_iter: 10,
+            lid_velocity: 1.0,
         };
 
     let res =

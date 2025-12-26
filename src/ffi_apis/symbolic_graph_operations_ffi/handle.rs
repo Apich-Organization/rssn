@@ -7,7 +7,7 @@ use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_operations::*;
 
 pub(crate) fn convert_expr_graph_to_string_graph(
-    g : Graph<Expr>
+    g: Graph<Expr>
 ) -> Graph<String> {
 
     let mut new_graph =
@@ -55,9 +55,9 @@ pub(crate) fn convert_expr_graph_to_string_graph(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_induced_subgraph(
-    ptr : *const RssnGraph,
-    node_labels : *const *const c_char,
-    count : usize,
+    ptr: *const RssnGraph,
+    node_labels: *const *const c_char,
+    count: usize,
 ) -> *mut RssnGraph {
 
     if ptr.is_null()
@@ -110,8 +110,8 @@ pub extern "C" fn rssn_graph_induced_subgraph(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_union(
-    ptr1 : *const RssnGraph,
-    ptr2 : *const RssnGraph,
+    ptr1: *const RssnGraph,
+    ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
     if ptr1.is_null() || ptr2.is_null()
@@ -140,8 +140,8 @@ pub extern "C" fn rssn_graph_union(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_intersection(
-    ptr1 : *const RssnGraph,
-    ptr2 : *const RssnGraph,
+    ptr1: *const RssnGraph,
+    ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
     if ptr1.is_null() || ptr2.is_null()
@@ -170,8 +170,8 @@ pub extern "C" fn rssn_graph_intersection(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_cartesian_product(
-    ptr1 : *const RssnGraph,
-    ptr2 : *const RssnGraph,
+    ptr1: *const RssnGraph,
+    ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
     if ptr1.is_null() || ptr2.is_null()
@@ -203,8 +203,8 @@ pub extern "C" fn rssn_graph_cartesian_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_tensor_product(
-    ptr1 : *const RssnGraph,
-    ptr2 : *const RssnGraph,
+    ptr1: *const RssnGraph,
+    ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
     if ptr1.is_null() || ptr2.is_null()
@@ -236,7 +236,7 @@ pub extern "C" fn rssn_graph_tensor_product(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_complement(
-    ptr : *const RssnGraph
+    ptr: *const RssnGraph
 ) -> *mut RssnGraph {
 
     if ptr.is_null() {
@@ -259,8 +259,8 @@ pub extern "C" fn rssn_graph_complement(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_disjoint_union(
-    ptr1 : *const RssnGraph,
-    ptr2 : *const RssnGraph,
+    ptr1: *const RssnGraph,
+    ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
     if ptr1.is_null() || ptr2.is_null()
@@ -292,8 +292,8 @@ pub extern "C" fn rssn_graph_disjoint_union(
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_join(
-    ptr1 : *const RssnGraph,
-    ptr2 : *const RssnGraph,
+    ptr1: *const RssnGraph,
+    ptr2: *const RssnGraph,
 ) -> *mut RssnGraph {
 
     if ptr1.is_null() || ptr2.is_null()

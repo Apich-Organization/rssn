@@ -25,7 +25,7 @@ fn test_dag_serialization_json() {
     );
 
     // Deserialize from JSON
-    let deserialized : Expr =
+    let deserialized: Expr =
         serde_json::from_str(&json)
             .unwrap();
 
@@ -98,7 +98,7 @@ fn test_nested_dag_serialization() {
         serde_json::to_string(&expr)
             .unwrap();
 
-    let deserialized : Expr =
+    let deserialized: Expr =
         serde_json::from_str(&json)
             .unwrap();
 
@@ -127,7 +127,7 @@ fn test_ast_serialization_still_works()
         serde_json::to_string(&ast)
             .unwrap();
 
-    let deserialized : Expr =
+    let deserialized: Expr =
         serde_json::from_str(&json)
             .unwrap();
 
@@ -158,7 +158,7 @@ fn test_dag_with_sharing() {
         serde_json::to_string(&expr)
             .unwrap();
 
-    let deserialized : Expr =
+    let deserialized: Expr =
         serde_json::from_str(&json)
             .unwrap();
 

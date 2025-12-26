@@ -29,9 +29,9 @@ fn test_rosenbrock_optimization() {
     let config = OptimizationConfig {
         problem_type:
             ProblemType::Rosenbrock,
-        max_iters : 1000,
-        tolerance : 1e-8,
-        dimension : 2,
+        max_iters: 1000,
+        tolerance: 1e-8,
+        dimension: 2,
     };
 
     let problem = Rosenbrock::default();
@@ -49,7 +49,7 @@ fn test_rosenbrock_optimization() {
     let initial_inverse_hessian =
         Array2::eye(dimension);
 
-    let initial_state : BFGSState =
+    let initial_state: BFGSState =
         IterState::new()
             .param(initial_guess)
             .inv_hessian(
@@ -63,7 +63,8 @@ fn test_rosenbrock_optimization() {
     let result =
         Executor::new(problem, solver)
             .configure(
-                |state : BFGSState| {
+                |state: BFGSState| {
+
                     initial_state
                 },
             )
@@ -127,9 +128,9 @@ fn test_linear_regression() {
     let config = OptimizationConfig {
         problem_type:
             ProblemType::Custom,
-        max_iters : 1000,
-        tolerance : 1e-6,
-        dimension : 2,
+        max_iters: 1000,
+        tolerance: 1e-6,
+        dimension: 2,
     };
 
     let result = match EquationOptimizer::solve_with_gradient_descent(
@@ -181,9 +182,9 @@ fn test_sphere_function() {
     let config = OptimizationConfig {
         problem_type:
             ProblemType::Sphere,
-        max_iters : 500,
-        tolerance : 1e-8,
-        dimension : 3,
+        max_iters: 500,
+        tolerance: 1e-8,
+        dimension: 3,
     };
 
     let problem = Sphere;

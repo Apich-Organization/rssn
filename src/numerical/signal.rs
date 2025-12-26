@@ -35,7 +35,7 @@ use rustfft::FftPlanner;
 /// ```
 
 pub fn fft(
-    input : &mut [Complex<f64>]
+    input: &mut [Complex<f64>]
 ) -> Vec<Complex<f64>> {
 
     let mut planner = FftPlanner::new();
@@ -82,8 +82,8 @@ pub fn fft(
 #[must_use]
 
 pub fn convolve(
-    a : &[f64],
-    v : &[f64],
+    a: &[f64],
+    v: &[f64],
 ) -> Vec<f64> {
 
     let n = a.len();
@@ -134,8 +134,8 @@ pub fn convolve(
 #[must_use]
 
 pub fn cross_correlation(
-    a : &[f64],
-    v : &[f64],
+    a: &[f64],
+    v: &[f64],
 ) -> Vec<f64> {
 
     let mut v_rev = v.to_vec();
@@ -152,7 +152,7 @@ pub fn cross_correlation(
 #[must_use]
 
 pub fn hann_window(
-    n : usize
+    n: usize
 ) -> Vec<f64> {
 
     if n == 0 {
@@ -167,6 +167,7 @@ pub fn hann_window(
 
     (0 .. n)
         .map(|i| {
+
             0.5 * (1.0
                 - (2.0 * PI * i as f64
                     / (n - 1) as f64)
@@ -182,7 +183,7 @@ pub fn hann_window(
 #[must_use]
 
 pub fn hamming_window(
-    n : usize
+    n: usize
 ) -> Vec<f64> {
 
     if n == 0 {
@@ -197,6 +198,7 @@ pub fn hamming_window(
 
     (0 .. n)
         .map(|i| {
+
             0.46f64.mul_add(
                 -(2.0 * PI * i as f64
                     / (n - 1) as f64)

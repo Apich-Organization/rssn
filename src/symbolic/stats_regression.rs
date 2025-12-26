@@ -28,10 +28,10 @@ use crate::symbolic::stats::variance;
 #[must_use]
 
 pub fn simple_linear_regression_symbolic(
-    data : &[(Expr, Expr)]
+    data: &[(Expr, Expr)]
 ) -> (Expr, Expr) {
 
-    let (xs, ys) : (Vec<_>, Vec<_>) =
+    let (xs, ys): (Vec<_>, Vec<_>) =
         data.iter()
             .cloned()
             .unzip();
@@ -79,10 +79,10 @@ pub fn simple_linear_regression_symbolic(
 #[must_use]
 
 pub fn nonlinear_regression_symbolic(
-    data : &[(Expr, Expr)],
-    model : &Expr,
-    vars : &[&str],
-    params : &[&str],
+    data: &[(Expr, Expr)],
+    model: &Expr,
+    vars: &[&str],
+    params: &[&str],
 ) -> Option<Vec<(Expr, Expr)>> {
 
     let mut s_expr =
@@ -154,11 +154,11 @@ pub fn nonlinear_regression_symbolic(
 /// or an error string if the system cannot be solved.
 
 pub fn polynomial_regression_symbolic(
-    data : &[(Expr, Expr)],
-    degree : usize,
+    data: &[(Expr, Expr)],
+    degree: usize,
 ) -> Result<Vec<Expr>, String> {
 
-    let (xs, ys) : (Vec<_>, Vec<_>) =
+    let (xs, ys): (Vec<_>, Vec<_>) =
         data.iter()
             .cloned()
             .unzip();
@@ -212,7 +212,7 @@ pub fn polynomial_regression_symbolic(
         ),
     );
 
-    let _coeff_vars : Vec<String> = (0
+    let _coeff_vars: Vec<String> = (0
         ..= degree)
         .map(|i| format!("c{i}"))
         .collect();
@@ -227,6 +227,7 @@ pub fn polynomial_regression_symbolic(
             Ok(rows
                 .into_iter()
                 .map(|row| {
+
                     row[0].clone()
                 })
                 .collect())

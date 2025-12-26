@@ -9,13 +9,13 @@ use crate::symbolic::grobner::{
 use crate::symbolic::polynomial::expr_to_sparse_poly;
 use crate::symbolic::polynomial::sparse_poly_to_expr;
 
-const ERROR_MARGIN : f64 = 1e-9;
+const ERROR_MARGIN: f64 = 1e-9;
 
 /// Breaks a single term (like `2*x^2*y`) into a map of its base factors and their counts.
 #[must_use]
 
 pub fn get_term_factors(
-    expr : &Expr
+    expr: &Expr
 ) -> HashMap<Expr, i32> {
 
     let mut factors = HashMap::new();
@@ -107,9 +107,9 @@ pub fn get_term_factors(
 /// Reconstructs an expression from a map of factors and their counts.
 
 pub fn build_expr_from_factors<
-    S : ::std::hash::BuildHasher,
+    S: ::std::hash::BuildHasher,
 >(
-    factors : HashMap<Expr, i32, S>
+    factors: HashMap<Expr, i32, S>
 ) -> Expr {
 
     if factors.is_empty() {
@@ -117,9 +117,10 @@ pub fn build_expr_from_factors<
         return Expr::Constant(1.0);
     }
 
-    let mut terms : Vec<Expr> = factors
+    let mut terms: Vec<Expr> = factors
         .into_iter()
         .filter(|(_, count)| {
+
             *count != 0
         })
         .map(|(base, count)| {
@@ -161,8 +162,8 @@ pub fn build_expr_from_factors<
 /// Flattens a nested chain of `Add` expressions into a vector of terms.
 
 pub(crate) fn flatten_sum(
-    expr : Expr,
-    terms : &mut Vec<Expr>,
+    expr: Expr,
+    terms: &mut Vec<Expr>,
 ) {
 
     match expr {
@@ -195,9 +196,9 @@ pub(crate) fn flatten_sum(
 /// Flattens a nested chain of `Mul` expressions into two vectors: numeric and other factors.
 
 pub(crate) fn flatten_product(
-    expr : Expr,
-    numeric_factors : &mut Vec<f64>,
-    other_factors : &mut Vec<Expr>,
+    expr: Expr,
+    numeric_factors: &mut Vec<f64>,
+    other_factors: &mut Vec<Expr>,
 ) {
 
     match expr {
@@ -235,7 +236,7 @@ pub(crate) fn flatten_product(
 
 /// Normalizes an expression to a canonical form.
 
-pub fn normalize(expr : Expr) -> Expr {
+pub fn normalize(expr: Expr) -> Expr {
 
     match expr {
         | Expr::Dag(node) => {
@@ -371,7 +372,7 @@ pub fn normalize(expr : Expr) -> Expr {
 
 /// Expands expressions by applying the distributive property and expanding powers.
 
-pub fn expand(expr : Expr) -> Expr {
+pub fn expand(expr: Expr) -> Expr {
 
     let expanded_expr = match expr {
         | Expr::Dag(node) => {
@@ -681,7 +682,7 @@ pub fn expand(expr : Expr) -> Expr {
 /// Factorizes an expression by extracting common factors from sums.
 #[must_use]
 
-pub fn factorize(expr : Expr) -> Expr {
+pub fn factorize(expr: Expr) -> Expr {
 
     let expanded = expand(expr);
 
@@ -691,6 +692,7 @@ pub fn factorize(expr : Expr) -> Expr {
                 node.to_expr()
                     .unwrap_or_else(
                         |_| {
+
                             expanded
                                 .clone()
                         },
@@ -738,14 +740,16 @@ pub fn factorize(expr : Expr) -> Expr {
         },
         | Expr::MulList(factors) => {
 
-            let new_factors : Vec<
-                Expr,
-            > = factors
-                .iter()
-                .map(|f| {
-                    factorize(f.clone())
-                })
-                .collect();
+            let new_factors: Vec<Expr> =
+                factors
+                    .iter()
+                    .map(|f| {
+
+                        factorize(
+                            f.clone(),
+                        )
+                    })
+                    .collect();
 
             // Reconstruct MulList or Mul
             // For simplicity, just fold
@@ -792,10 +796,10 @@ pub fn factorize(expr : Expr) -> Expr {
 }
 
 fn factorize_terms(
-    terms : Vec<Expr>
+    terms: Vec<Expr>
 ) -> Expr {
 
-    let term_factors : Vec<
+    let term_factors: Vec<
         HashMap<Expr, i32>,
     > = terms
         .iter()
@@ -897,7 +901,7 @@ fn factorize_terms(
 /// Helper to build a normalized sum from a vector of expressions.
 
 pub(crate) fn build_sum_from_vec(
-    mut terms : Vec<Expr>
+    mut terms: Vec<Expr>
 ) -> Expr {
 
     if terms.is_empty() {
@@ -929,11 +933,11 @@ pub(crate) fn build_sum_from_vec(
 /// Helper to build a normalized product from vectors of numeric and other factors.
 
 pub(crate) fn build_product_from_vecs(
-    numeric_factors : &[f64],
-    other_factors : Vec<Expr>,
+    numeric_factors: &[f64],
+    other_factors: Vec<Expr>,
 ) -> Expr {
 
-    let numeric_product : f64 =
+    let numeric_product: f64 =
         numeric_factors
             .iter()
             .product();
@@ -943,7 +947,7 @@ pub(crate) fn build_product_from_vecs(
             > ERROR_MARGIN
             || other_factors.is_empty();
 
-    let mut tree : Option<Expr> = None;
+    let mut tree: Option<Expr> = None;
 
     if has_numeric_term {
 
@@ -981,8 +985,8 @@ pub(crate) fn build_product_from_vecs(
 #[must_use]
 
 pub fn risch_integrate(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Expr {
 
     Expr::Variable(format!(
@@ -1001,8 +1005,8 @@ pub fn risch_integrate(
 #[must_use]
 
 pub fn grobner_basis(
-    _polynomials : Vec<Expr>,
-    _variables : Vec<String>,
+    _polynomials: Vec<Expr>,
+    _variables: Vec<String>,
 ) -> Vec<Expr> {
 
     vec![Expr::Variable(
@@ -1022,8 +1026,8 @@ pub fn grobner_basis(
 #[must_use]
 
 pub fn cylindrical_algebraic_decomposition(
-    _polynomials : Vec<Expr>,
-    _variables : Vec<String>,
+    _polynomials: Vec<Expr>,
+    _variables: Vec<String>,
 ) -> Expr {
 
     Expr::Variable("CylindricalAlgebraicDecomposition(system)".to_string())
@@ -1046,21 +1050,22 @@ pub fn cylindrical_algebraic_decomposition(
 #[must_use]
 
 pub fn simplify_with_relations(
-    expr : &Expr,
-    relations : &[Expr],
-    vars : &[&str],
-    order : MonomialOrder,
+    expr: &Expr,
+    relations: &[Expr],
+    vars: &[&str],
+    order: MonomialOrder,
 ) -> Expr {
 
     // 1. Convert the expression and relations to sparse polynomials.
     let p =
         expr_to_sparse_poly(expr, vars);
 
-    let relation_polys : Vec<
+    let relation_polys: Vec<
         SparsePolynomial,
     > = relations
         .iter()
         .map(|r| {
+
             expr_to_sparse_poly(r, vars)
         })
         .collect();
@@ -1095,10 +1100,10 @@ pub fn simplify_with_relations(
 #[must_use]
 
 pub fn normalize_with_relations(
-    expr : &Expr,
-    relations : &[Expr],
-    vars : &[&str],
-    order : MonomialOrder,
+    expr: &Expr,
+    relations: &[Expr],
+    vars: &[&str],
+    order: MonomialOrder,
 ) -> Expr {
 
     simplify_with_relations(

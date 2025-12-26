@@ -7,10 +7,10 @@ use serde::Serialize;
 /// `a`: sub-diagonal (n-1 elements), `b`: main diagonal (n elements), `c`: super-diagonal (n-1 elements).
 
 pub(crate) fn solve_tridiagonal_system(
-    a : &[f64],
-    b : &[f64],
-    c : &[f64],
-    d : &mut [f64],
+    a: &[f64],
+    b: &[f64],
+    c: &[f64],
+    d: &mut [f64],
 ) -> Vec<f64> {
 
     let n = b.len();
@@ -57,10 +57,10 @@ pub(crate) fn solve_tridiagonal_system(
 /// Complex version of tridiagonal solver for Schrödinger equation.
 
 pub(crate) fn solve_tridiagonal_system_complex(
-    a : &[Complex<f64>],
-    b : &[Complex<f64>],
-    c : &[Complex<f64>],
-    d : &mut [Complex<f64>],
+    a: &[Complex<f64>],
+    b: &[Complex<f64>],
+    c: &[Complex<f64>],
+    d: &mut [Complex<f64>],
 ) -> Vec<Complex<f64>> {
 
     let n = b.len();
@@ -117,11 +117,11 @@ pub(crate) fn solve_tridiagonal_system_complex(
 /// * `steps` - The number of time steps.
 
 pub fn solve_schrodinger_1d_cn(
-    psi_initial : &[Complex<f64>],
-    v : &[f64],
-    dx : f64,
-    dt : f64,
-    steps : usize,
+    psi_initial: &[Complex<f64>],
+    v: &[f64],
+    dx: f64,
+    dt: f64,
+    steps: usize,
 ) -> Vec<Complex<f64>> {
 
     let n = psi_initial.len();
@@ -198,11 +198,11 @@ pub fn solve_schrodinger_1d_cn(
 /// The final temperature distribution.
 
 pub fn solve_heat_equation_1d_cn(
-    initial_condition : &[f64],
-    dx : f64,
-    dt : f64,
-    d_coeff : f64,
-    steps : usize,
+    initial_condition: &[f64],
+    dx: f64,
+    dt: f64,
+    d_coeff: f64,
+    steps: usize,
 ) -> Vec<f64> {
 
     let n = initial_condition.len();
@@ -260,9 +260,9 @@ pub fn solve_heat_equation_1d_cn(
 pub fn simulate_1d_heat_conduction_cn_scenario(
 ) -> Vec<f64> {
 
-    const N : usize = 100;
+    const N: usize = 100;
 
-    const L : f64 = 1.0;
+    const L: f64 = 1.0;
 
     let dx = L / (N - 1) as f64;
 
@@ -298,21 +298,21 @@ pub fn simulate_1d_heat_conduction_cn_scenario(
 )]
 
 pub struct HeatEquationSolverConfig {
-    pub nx : usize,
-    pub ny : usize,
-    pub dx : f64,
-    pub dy : f64,
-    pub dt : f64,
-    pub d_coeff : f64,
-    pub steps : usize,
+    pub nx: usize,
+    pub ny: usize,
+    pub dx: f64,
+    pub dy: f64,
+    pub dt: f64,
+    pub d_coeff: f64,
+    pub steps: usize,
 }
 
 /// Solves the 2D heat equation u_t = D * (u_xx + u_yy) using the ADI method.
 /// ADI splits the problem into two half-steps, each solving one dimension implicitly.
 
 pub fn solve_heat_equation_2d_cn_adi(
-    initial_condition : &[f64],
-    config : &HeatEquationSolverConfig,
+    initial_condition: &[f64],
+    config: &HeatEquationSolverConfig,
 ) -> Vec<f64> {
 
     let mut u =
@@ -418,8 +418,7 @@ pub fn solve_heat_equation_2d_cn_adi(
 
         // Step 2: Solve implicitly in y, explicitly in x
         // Transpose u_half into a temporary buffer for efficient memory access
-        let mut u_half_t =
-            vec![
+        let mut u_half_t = vec![
                 0.0;
                 config.nx * config.ny
             ];
@@ -435,8 +434,7 @@ pub fn solve_heat_equation_2d_cn_adi(
             }
         }
 
-        let mut u_next_t =
-            vec![
+        let mut u_next_t = vec![
                 0.0;
                 config.nx * config.ny
             ];
@@ -504,9 +502,9 @@ pub fn solve_heat_equation_2d_cn_adi(
 pub fn simulate_2d_heat_conduction_cn_adi_scenario(
 ) -> Vec<f64> {
 
-    const NX : usize = 50;
+    const NX: usize = 50;
 
-    const NY : usize = 50;
+    const NY: usize = 50;
 
     let dx = 1.0 / (NX - 1) as f64;
 
@@ -518,13 +516,13 @@ pub fn simulate_2d_heat_conduction_cn_adi_scenario(
 
     let config =
         HeatEquationSolverConfig {
-            nx : NX,
-            ny : NY,
+            nx: NX,
+            ny: NY,
             dx,
             dy,
             dt,
             d_coeff,
-            steps : 50,
+            steps: 50,
         };
 
     let mut u0 = vec![0.0; NX * NY];

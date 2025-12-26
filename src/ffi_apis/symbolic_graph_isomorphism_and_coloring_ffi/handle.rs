@@ -9,8 +9,8 @@ use crate::symbolic::graph_isomorphism_and_coloring::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_are_isomorphic_heuristic(
-    g1 : *const RssnGraph,
-    g2 : *const RssnGraph,
+    g1: *const RssnGraph,
+    g2: *const RssnGraph,
 ) -> c_int {
 
     if g1.is_null() || g2.is_null() {
@@ -44,7 +44,7 @@ pub extern "C" fn rssn_are_isomorphic_heuristic(
 #[no_mangle]
 
 pub extern "C" fn rssn_greedy_coloring(
-    graph : *const RssnGraph
+    graph: *const RssnGraph
 ) -> *mut c_char {
 
     if graph.is_null() {
@@ -75,7 +75,7 @@ pub extern "C" fn rssn_greedy_coloring(
 #[no_mangle]
 
 pub extern "C" fn rssn_chromatic_number_exact(
-    graph : *const RssnGraph
+    graph: *const RssnGraph
 ) -> usize {
 
     if graph.is_null() {

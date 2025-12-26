@@ -7,7 +7,7 @@ use rssn::symbolic::core::Expr;
 use rssn::symbolic::stats_probability::*;
 
 fn evaluate_expr(
-    expr : &Expr
+    expr: &Expr
 ) -> Option<f64> {
 
     match expr {
@@ -158,8 +158,8 @@ fn evaluate_dag(
 
 // Helper to check numeric value
 fn assert_approx_eq(
-    expr : &Expr,
-    expected : f64,
+    expr: &Expr,
+    expected: f64,
 ) {
 
     if let Some(val) =
@@ -194,8 +194,8 @@ fn test_normal_distribution() {
     let sigma = Expr::Constant(1.0);
 
     let dist = Normal {
-        mean : mu.clone(),
-        std_dev : sigma.clone(),
+        mean: mu.clone(),
+        std_dev: sigma.clone(),
     };
 
     // E[X] = 0
@@ -231,7 +231,7 @@ fn test_exponential_distribution() {
     let lambda = Expr::Constant(2.0);
 
     let dist = Exponential {
-        rate : lambda.clone(),
+        rate: lambda.clone(),
     };
 
     // E[X] = 1/2
@@ -280,7 +280,7 @@ fn test_bernoulli_distribution() {
     let p = Expr::Constant(0.3);
 
     let dist = Bernoulli {
-        p : p.clone(),
+        p: p.clone(),
     };
 
     // E[X] = 0.3
@@ -303,7 +303,7 @@ fn test_poisson_distribution() {
     let lambda = Expr::Constant(3.0);
 
     let dist = Poisson {
-        rate : lambda.clone(),
+        rate: lambda.clone(),
     };
 
     assert_approx_eq(
@@ -322,8 +322,8 @@ fn test_poisson_distribution() {
 fn test_usage_in_expr() {
 
     let n = Normal {
-        mean : Expr::Constant(0.0),
-        std_dev : Expr::Constant(1.0),
+        mean: Expr::Constant(0.0),
+        std_dev: Expr::Constant(1.0),
     };
 
     let _expr =

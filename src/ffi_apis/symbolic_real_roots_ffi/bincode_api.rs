@@ -11,11 +11,11 @@ use crate::symbolic::real_roots::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_sturm_sequence(
-    expr_buf : BincodeBuffer,
-    var_ptr : *const c_char,
+    expr_buf: BincodeBuffer,
+    var_ptr: *const c_char,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {
@@ -63,13 +63,13 @@ pub extern "C" fn rssn_bincode_sturm_sequence(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_count_real_roots_in_interval(
-    expr_buf : BincodeBuffer,
-    var_ptr : *const c_char,
-    a : f64,
-    b : f64,
+    expr_buf: BincodeBuffer,
+    var_ptr: *const c_char,
+    a: f64,
+    b: f64,
 ) -> i64 {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {
@@ -112,12 +112,12 @@ pub extern "C" fn rssn_bincode_count_real_roots_in_interval(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_isolate_real_roots(
-    expr_buf : BincodeBuffer,
-    var_ptr : *const c_char,
-    precision : f64,
+    expr_buf: BincodeBuffer,
+    var_ptr: *const c_char,
+    precision: f64,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {

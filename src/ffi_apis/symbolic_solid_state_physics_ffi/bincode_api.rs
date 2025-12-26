@@ -8,20 +8,20 @@ use crate::symbolic::solid_state_physics;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_density_of_states_3d(
-    energy_buf : BincodeBuffer,
-    mass_buf : BincodeBuffer,
-    volume_buf : BincodeBuffer,
+    energy_buf: BincodeBuffer,
+    mass_buf: BincodeBuffer,
+    volume_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let energy : Option<Expr> =
+    let energy: Option<Expr> =
         from_bincode_buffer(
             &energy_buf,
         );
 
-    let mass : Option<Expr> =
+    let mass: Option<Expr> =
         from_bincode_buffer(&mass_buf);
 
-    let volume : Option<Expr> =
+    let volume: Option<Expr> =
         from_bincode_buffer(
             &volume_buf,
         );
@@ -50,16 +50,16 @@ pub extern "C" fn rssn_bincode_density_of_states_3d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_fermi_energy_3d(
-    concentration_buf : BincodeBuffer,
-    mass_buf : BincodeBuffer,
+    concentration_buf: BincodeBuffer,
+    mass_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let concentration : Option<Expr> =
+    let concentration: Option<Expr> =
         from_bincode_buffer(
             &concentration_buf,
         );
 
-    let mass : Option<Expr> =
+    let mass: Option<Expr> =
         from_bincode_buffer(&mass_buf);
 
     if let (
@@ -84,22 +84,22 @@ pub extern "C" fn rssn_bincode_fermi_energy_3d(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_drude_conductivity(
-    n_buf : BincodeBuffer,
-    e_buf : BincodeBuffer,
-    tau_buf : BincodeBuffer,
-    mass_buf : BincodeBuffer,
+    n_buf: BincodeBuffer,
+    e_buf: BincodeBuffer,
+    tau_buf: BincodeBuffer,
+    mass_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let n : Option<Expr> =
+    let n: Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    let e : Option<Expr> =
+    let e: Option<Expr> =
         from_bincode_buffer(&e_buf);
 
-    let tau : Option<Expr> =
+    let tau: Option<Expr> =
         from_bincode_buffer(&tau_buf);
 
-    let mass : Option<Expr> =
+    let mass: Option<Expr> =
         from_bincode_buffer(&mass_buf);
 
     if let (

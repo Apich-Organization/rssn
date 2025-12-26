@@ -87,7 +87,7 @@ fn test_numerical_sum_series_json_ffi()
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -122,10 +122,10 @@ fn test_numerical_taylor_bincode_ffi() {
         #[derive(Serialize)]
 
         struct TaylorInput {
-            expr : Expr,
-            var : String,
-            at_point : f64,
-            order : usize,
+            expr: Expr,
+            var: String,
+            at_point: f64,
+            order: usize,
         }
 
         let x = Expr::new_variable("x");
@@ -136,10 +136,10 @@ fn test_numerical_taylor_bincode_ffi() {
         );
 
         let input = TaylorInput {
-            expr : f,
-            var : "x".to_string(),
-            at_point : 0.0,
-            order : 2,
+            expr: f,
+            var: "x".to_string(),
+            at_point: 0.0,
+            order: 2,
         };
 
         let buffer =
@@ -152,12 +152,12 @@ fn test_numerical_taylor_bincode_ffi() {
         #[derive(Deserialize)]
 
         struct FfiResult<T, E> {
-            ok : Option<T>,
+            ok: Option<T>,
             #[allow(dead_code)]
-            err : Option<E>,
+            err: Option<E>,
         }
 
-        let res : FfiResult<
+        let res: FfiResult<
             Vec<f64>,
             String,
         > = from_bincode_buffer(

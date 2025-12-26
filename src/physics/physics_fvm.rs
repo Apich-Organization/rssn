@@ -20,7 +20,7 @@ use serde::Serialize;
 
 pub struct Cell {
     /// The average value of the conserved quantity (e.g., density, concentration) in this cell.
-    pub value : f64,
+    pub value: f64,
 }
 
 /// Represents a 1D simulation domain, composed of a series of cells.
@@ -30,9 +30,9 @@ pub struct Cell {
 
 pub struct Mesh {
     /// A vector of cells that make up the mesh.
-    pub cells : Vec<Cell>,
+    pub cells: Vec<Cell>,
     /// The size of each cell. Assumed to be uniform.
-    pub dx : f64,
+    pub dx: f64,
 }
 
 impl Mesh {
@@ -44,12 +44,12 @@ impl Mesh {
     /// * `initial_conditions` - A function to set the initial value for each cell.
 
     pub fn new<F>(
-        num_cells : usize,
-        domain_size : f64,
-        initial_conditions : F,
+        num_cells: usize,
+        domain_size: f64,
+        initial_conditions: F,
     ) -> Self
     where
-        F : Fn(f64) -> f64,
+        F: Fn(f64) -> f64,
     {
 
         let dx = domain_size
@@ -85,9 +85,9 @@ impl Mesh {
 #[inline]
 
 pub(crate) fn upwind_flux(
-    u_left : f64,
-    u_right : f64,
-    velocity : f64,
+    u_left: f64,
+    u_right: f64,
+    velocity: f64,
 ) -> f64 {
 
     if velocity > 0.0 {
@@ -103,14 +103,14 @@ pub(crate) fn upwind_flux(
 #[inline]
 
 pub fn lax_friedrichs_flux<F>(
-    u_left : f64,
-    u_right : f64,
-    dt : f64,
-    dx : f64,
-    flux_fn : F,
+    u_left: f64,
+    u_right: f64,
+    dt: f64,
+    dx: f64,
+    flux_fn: F,
 ) -> f64
 where
-    F : Fn(f64) -> f64,
+    F: Fn(f64) -> f64,
 {
 
     0.5 * (flux_fn(u_left)
@@ -124,8 +124,8 @@ where
 #[inline]
 
 pub fn minmod(
-    a : f64,
-    b : f64,
+    a: f64,
+    b: f64,
 ) -> f64 {
 
     if a * b <= 0.0 {
@@ -144,8 +144,8 @@ pub fn minmod(
 #[inline]
 
 pub fn van_leer(
-    a : f64,
-    b : f64,
+    a: f64,
+    b: f64,
 ) -> f64 {
 
     if a * b <= 0.0 {
@@ -160,21 +160,21 @@ pub fn van_leer(
 /// Solves the 1D linear advection equation (`u_t + a * u_x = 0`) using the Finite Volume Method.
 
 pub fn solve_advection_1d<F>(
-    mesh : &mut Mesh,
-    velocity : f64,
-    dt : f64,
-    steps : usize,
-    boundary_conditions : F,
+    mesh: &mut Mesh,
+    velocity: f64,
+    dt: f64,
+    steps: usize,
+    boundary_conditions: F,
 ) -> Vec<f64>
 where
-    F : Fn() -> (f64, f64) + Sync,
+    F: Fn() -> (f64, f64) + Sync,
 {
 
     let num_cells = mesh.num_cells();
 
     let dx = mesh.dx;
 
-    let mut current_values : Vec<f64> =
+    let mut current_values: Vec<f64> =
         mesh.cells
             .iter()
             .map(|c| c.value)
@@ -238,13 +238,13 @@ where
 pub fn simulate_1d_advection_scenario(
 ) -> Vec<f64> {
 
-    const NUM_CELLS : usize = 200;
+    const NUM_CELLS: usize = 200;
 
-    const DOMAIN_SIZE : f64 = 1.0;
+    const DOMAIN_SIZE: f64 = 1.0;
 
-    const VELOCITY : f64 = 1.0;
+    const VELOCITY: f64 = 1.0;
 
-    const CFL : f64 = 0.5;
+    const CFL: f64 = 0.5;
 
     let dx =
         DOMAIN_SIZE / NUM_CELLS as f64;
@@ -285,16 +285,16 @@ pub fn simulate_1d_advection_scenario(
 /// Solves the 1D Burgers' equation `u_t + (u^2/2)_x = 0` using FVM and Lax-Friedrichs flux.
 
 pub fn solve_burgers_1d(
-    mesh : &mut Mesh,
-    dt : f64,
-    steps : usize,
+    mesh: &mut Mesh,
+    dt: f64,
+    steps: usize,
 ) -> Vec<f64> {
 
     let num_cells = mesh.num_cells();
 
     let dx = mesh.dx;
 
-    let mut current_values : Vec<f64> =
+    let mut current_values: Vec<f64> =
         mesh.cells
             .iter()
             .map(|c| c.value)
@@ -303,7 +303,7 @@ pub fn solve_burgers_1d(
     let mut next_values =
         vec![0.0; num_cells];
 
-    let flux_fn = |u : f64| 0.5 * u * u;
+    let flux_fn = |u: f64| 0.5 * u * u;
 
     for _ in 0 .. steps {
 
@@ -367,24 +367,24 @@ pub fn solve_burgers_1d(
 )]
 
 pub struct SweState {
-    pub h : f64,
-    pub hu : f64,
+    pub h: f64,
+    pub hu: f64,
 }
 
 /// Solves 1D Shallow Water Equations using FVM and Lax-Friedrichs flux.
 
 pub fn solve_shallow_water_1d(
-    initial_h : Vec<f64>,
-    initial_hu : Vec<f64>,
-    dx : f64,
-    dt : f64,
-    steps : usize,
-    g : f64,
+    initial_h: Vec<f64>,
+    initial_hu: Vec<f64>,
+    dx: f64,
+    dt: f64,
+    steps: usize,
+    g: f64,
 ) -> Vec<SweState> {
 
     let n = initial_h.len();
 
-    let mut current : Vec<SweState> =
+    let mut current: Vec<SweState> =
         initial_h
             .into_iter()
             .zip(initial_hu)
@@ -399,7 +399,7 @@ pub fn solve_shallow_water_1d(
 
     let mut next = current.clone();
 
-    let flux_fn = |s : SweState| {
+    let flux_fn = |s: SweState| {
 
         let u = if s.h > 1e-6 {
 
@@ -482,28 +482,28 @@ pub fn solve_shallow_water_1d(
 
 pub struct Mesh2D {
     /// A flattened vector of cells representing the 2D grid.
-    pub cells : Vec<Cell>,
+    pub cells: Vec<Cell>,
     /// The number of cells in the x-direction.
-    pub width : usize,
+    pub width: usize,
     /// The number of cells in the y-direction.
-    pub height : usize,
+    pub height: usize,
     /// The size of each cell in the x-direction.
-    pub dx : f64,
+    pub dx: f64,
     /// The size of each cell in the y-direction.
-    pub dy : f64,
+    pub dy: f64,
 }
 
 impl Mesh2D {
     /// Creates a new 2D mesh.
 
     pub fn new<F>(
-        width : usize,
-        height : usize,
-        domain_size : (f64, f64),
-        initial_conditions : F,
+        width: usize,
+        height: usize,
+        domain_size: (f64, f64),
+        initial_conditions: F,
     ) -> Self
     where
-        F : Fn(f64, f64) -> f64,
+        F: Fn(f64, f64) -> f64,
     {
 
         let dx = domain_size.0
@@ -548,14 +548,14 @@ impl Mesh2D {
 /// Solves the 2D linear advection equation using the Finite Volume Method.
 
 pub fn solve_advection_2d<F>(
-    mesh : &mut Mesh2D,
-    velocity : (f64, f64),
-    dt : f64,
-    steps : usize,
-    boundary_conditions : F,
+    mesh: &mut Mesh2D,
+    velocity: (f64, f64),
+    dt: f64,
+    steps: usize,
+    boundary_conditions: F,
 ) -> Vec<f64>
 where
-    F : Fn(
+    F: Fn(
             usize,
             usize,
             usize,
@@ -571,7 +571,7 @@ where
 
     let (dx, dy) = (mesh.dx, mesh.dy);
 
-    let mut current_values : Vec<f64> =
+    let mut current_values: Vec<f64> =
         mesh.cells
             .iter()
             .map(|c| c.value)
@@ -650,14 +650,14 @@ where
 pub fn simulate_2d_advection_scenario(
 ) -> Vec<f64> {
 
-    const WIDTH : usize = 100;
+    const WIDTH: usize = 100;
 
-    const HEIGHT : usize = 100;
+    const HEIGHT: usize = 100;
 
-    const DOMAIN_SIZE : (f64, f64) =
+    const DOMAIN_SIZE: (f64, f64) =
         (1.0, 1.0);
 
-    const CFL : f64 = 0.4;
+    const CFL: f64 = 0.4;
 
     let velocity = (0.5, 0.3);
 
@@ -698,10 +698,10 @@ pub fn simulate_2d_advection_scenario(
     );
 
     let boundary_conditions =
-        |i : usize,
-         j : usize,
-         width : usize,
-         height : usize|
+        |i: usize,
+         j: usize,
+         width: usize,
+         height: usize|
          -> bool {
 
             i == 0
@@ -726,33 +726,33 @@ pub fn simulate_2d_advection_scenario(
 
 pub struct Mesh3D {
     /// A flattened vector of cells representing the 3D grid.
-    pub cells : Vec<Cell>,
+    pub cells: Vec<Cell>,
     /// The number of cells in the x-direction.
-    pub width : usize,
+    pub width: usize,
     /// The number of cells in the y-direction.
-    pub height : usize,
+    pub height: usize,
     /// The number of cells in the z-direction.
-    pub depth : usize,
+    pub depth: usize,
     /// The size of each cell in the x-direction.
-    pub dx : f64,
+    pub dx: f64,
     /// The size of each cell in the y-direction.
-    pub dy : f64,
+    pub dy: f64,
     /// The size of each cell in the z-direction.
-    pub dz : f64,
+    pub dz: f64,
 }
 
 impl Mesh3D {
     /// Creates a new 3D mesh.
 
     pub fn new<F>(
-        width : usize,
-        height : usize,
-        depth : usize,
-        domain_size : (f64, f64, f64),
-        initial_conditions : F,
+        width: usize,
+        height: usize,
+        depth: usize,
+        domain_size: (f64, f64, f64),
+        initial_conditions: F,
     ) -> Self
     where
-        F : Fn(f64, f64, f64) -> f64,
+        F: Fn(f64, f64, f64) -> f64,
     {
 
         let dx = domain_size.0
@@ -816,14 +816,14 @@ impl Mesh3D {
 /// Solves the 3D linear advection equation using FVM.
 
 pub fn solve_advection_3d<F>(
-    mesh : &mut Mesh3D,
-    velocity : (f64, f64, f64),
-    dt : f64,
-    steps : usize,
-    boundary_conditions : F,
+    mesh: &mut Mesh3D,
+    velocity: (f64, f64, f64),
+    dt: f64,
+    steps: usize,
+    boundary_conditions: F,
 ) -> Vec<f64>
 where
-    F : Fn(
+    F: Fn(
             usize,
             usize,
             usize,
@@ -846,14 +846,13 @@ where
         mesh.dz,
     );
 
-    let mut current_values : Vec<f64> =
+    let mut current_values: Vec<f64> =
         mesh.cells
             .iter()
             .map(|c| c.value)
             .collect();
 
-    let mut next_values =
-        vec![
+    let mut next_values = vec![
             0.0;
             width * height * depth
         ];
@@ -956,19 +955,16 @@ where
 pub fn simulate_3d_advection_scenario(
 ) -> Vec<f64> {
 
-    const WIDTH : usize = 30;
+    const WIDTH: usize = 30;
 
-    const HEIGHT : usize = 30;
+    const HEIGHT: usize = 30;
 
-    const DEPTH : usize = 30;
+    const DEPTH: usize = 30;
 
-    const DOMAIN_SIZE : (
-        f64,
-        f64,
-        f64,
-    ) = (1.0, 1.0, 1.0);
+    const DOMAIN_SIZE: (f64, f64, f64) =
+        (1.0, 1.0, 1.0);
 
-    const CFL : f64 = 0.3;
+    const CFL: f64 = 0.3;
 
     let velocity = (0.5, 0.3, 0.1);
 
@@ -1021,6 +1017,7 @@ pub fn simulate_3d_advection_scenario(
 
     let boundary_conditions =
         |i, j, k, w, h, d| {
+
             i == 0
                 || i == w - 1
                 || j == 0

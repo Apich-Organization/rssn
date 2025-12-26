@@ -14,10 +14,10 @@ use crate::symbolic::core::SparsePolynomial;
 #[no_mangle]
 
 pub extern "C" fn rssn_cad_handle(
-    polys : *const *const Expr,
-    polys_count : usize,
-    vars : *const *const c_char,
-    vars_count : usize,
+    polys: *const *const Expr,
+    polys_count: usize,
+    vars: *const *const c_char,
+    vars_count: usize,
 ) -> *mut Cad {
 
     if polys.is_null() || vars.is_null()
@@ -110,7 +110,7 @@ pub extern "C" fn rssn_cad_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_free_cad_handle(
-    ptr : *mut Cad
+    ptr: *mut Cad
 ) {
 
     if !ptr.is_null() {
@@ -126,7 +126,7 @@ pub extern "C" fn rssn_free_cad_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_cad_get_cell_count(
-    ptr : *const Cad
+    ptr: *const Cad
 ) -> usize {
 
     if ptr.is_null() {

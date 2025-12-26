@@ -31,9 +31,9 @@ use serde::Serialize;
 
 pub struct PrimeFieldElement {
     /// The value of the field element.
-    pub value : u64,
+    pub value: u64,
     /// The modulus (prime number) of the field.
-    pub modulus : u64,
+    pub modulus: u64,
 }
 
 impl PrimeFieldElement {
@@ -47,12 +47,12 @@ impl PrimeFieldElement {
     #[must_use]
 
     pub const fn new(
-        value : u64,
-        modulus : u64,
+        value: u64,
+        modulus: u64,
     ) -> Self {
 
         Self {
-            value : value % modulus,
+            value: value % modulus,
             modulus,
         }
     }
@@ -100,7 +100,7 @@ impl PrimeFieldElement {
 
     pub fn pow(
         &self,
-        mut exp : u64,
+        mut exp: u64,
     ) -> Self {
 
         let mut res = 1u128;
@@ -139,8 +139,8 @@ impl Zero for PrimeFieldElement {
     fn zero() -> Self {
 
         Self {
-            value : 0,
-            modulus : 2,
+            value: 0,
+            modulus: 2,
         } // Dummy modulus, should be careful
     }
 
@@ -154,8 +154,8 @@ impl One for PrimeFieldElement {
     fn one() -> Self {
 
         Self {
-            value : 1,
-            modulus : 2,
+            value: 1,
+            modulus: 2,
         } // Dummy modulus
     }
 }
@@ -192,8 +192,8 @@ impl Neg for PrimeFieldElement {
 /// A tuple `(g, x, y)` where `g` is the GCD, and `x`, `y` are the Bézout coefficients.
 
 pub(crate) fn extended_gcd_u64(
-    a : u64,
-    b : u64,
+    a: u64,
+    b: u64,
 ) -> (u64, i128, i128) {
 
     /// Implements the Extended Euclidean Algorithm for `i64` integers.
@@ -232,7 +232,7 @@ impl Add for PrimeFieldElement {
 
     fn add(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         let val = (self.value
@@ -250,7 +250,7 @@ impl Sub for PrimeFieldElement {
 
     fn sub(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         let val = (self.value
@@ -272,7 +272,7 @@ impl Mul for PrimeFieldElement {
 
     fn mul(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         let val =
@@ -297,7 +297,7 @@ impl Div for PrimeFieldElement {
 
     fn div(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         let inv_rhs =
@@ -316,17 +316,16 @@ impl Div for PrimeFieldElement {
     }
 }
 
-const GF256_GENERATOR_POLY : u16 =
-    0x11d;
+const GF256_GENERATOR_POLY: u16 = 0x11d;
 
-const GF256_MODULUS : usize = 256;
+const GF256_MODULUS: usize = 256;
 
 struct Gf256Tables {
-    log : [u8; GF256_MODULUS],
-    exp : [u8; GF256_MODULUS],
+    log: [u8; GF256_MODULUS],
+    exp: [u8; GF256_MODULUS],
 }
 
-static GF256_TABLES :
+static GF256_TABLES:
     std::sync::LazyLock<Gf256Tables> =
     std::sync::LazyLock::new(|| {
 
@@ -336,7 +335,7 @@ static GF256_TABLES :
         let mut exp_table =
             [0u8; GF256_MODULUS];
 
-        let mut x : u16 = 1;
+        let mut x: u16 = 1;
 
         // for i in 0..255 {
         for (i, value) in exp_table
@@ -362,8 +361,8 @@ static GF256_TABLES :
         exp_table[255] = exp_table[0];
 
         Gf256Tables {
-            log : log_table,
-            exp : exp_table,
+            log: log_table,
+            exp: exp_table,
         }
     });
 
@@ -374,8 +373,8 @@ static GF256_TABLES :
 #[must_use]
 
 pub const fn gf256_add(
-    a : u8,
-    b : u8,
+    a: u8,
+    b: u8,
 ) -> u8 {
 
     a ^ b
@@ -388,8 +387,8 @@ pub const fn gf256_add(
 #[must_use]
 
 pub fn gf256_mul(
-    a : u8,
-    b : u8,
+    a: u8,
+    b: u8,
 ) -> u8 {
 
     if a == 0 || b == 0 {
@@ -417,7 +416,7 @@ pub fn gf256_mul(
 #[inline]
 
 pub fn gf256_inv(
-    a : u8
+    a: u8
 ) -> Result<u8, String> {
 
     if a == 0 {
@@ -445,8 +444,8 @@ pub fn gf256_inv(
 #[inline]
 
 pub fn gf256_div(
-    a : u8,
-    b : u8,
+    a: u8,
+    b: u8,
 ) -> Result<u8, String> {
 
     if b == 0 {
@@ -480,8 +479,8 @@ pub fn gf256_div(
 #[must_use]
 
 pub fn gf256_pow(
-    a : u8,
-    exp : u64,
+    a: u8,
+    exp: u64,
 ) -> u8 {
 
     if exp == 0 {
@@ -508,7 +507,7 @@ pub fn gf256_pow(
 impl AddAssign for PrimeFieldElement {
     fn add_assign(
         &mut self,
-        rhs : Self,
+        rhs: Self,
     ) {
 
         *self = *self + rhs;
@@ -518,7 +517,7 @@ impl AddAssign for PrimeFieldElement {
 impl SubAssign for PrimeFieldElement {
     fn sub_assign(
         &mut self,
-        rhs : Self,
+        rhs: Self,
     ) {
 
         *self = *self - rhs;
@@ -528,7 +527,7 @@ impl SubAssign for PrimeFieldElement {
 impl MulAssign for PrimeFieldElement {
     fn mul_assign(
         &mut self,
-        rhs : Self,
+        rhs: Self,
     ) {
 
         *self = *self * rhs;
@@ -538,7 +537,7 @@ impl MulAssign for PrimeFieldElement {
 impl DivAssign for PrimeFieldElement {
     fn div_assign(
         &mut self,
-        rhs : Self,
+        rhs: Self,
     ) {
 
         *self = *self / rhs;

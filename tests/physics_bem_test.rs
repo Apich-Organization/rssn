@@ -179,7 +179,7 @@ fn test_evaluate_potential_2d() {
 
     let n = points.len();
 
-    let elements : Vec<_> = (0 .. n)
+    let elements: Vec<_> = (0 .. n)
         .map(|i| {
 
             Element2D::new(

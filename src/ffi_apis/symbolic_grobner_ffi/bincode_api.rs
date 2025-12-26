@@ -7,15 +7,15 @@ use crate::symbolic::grobner::MonomialOrder;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_buchberger(
-    basis_buf : BincodeBuffer,
-    order_buf : BincodeBuffer,
+    basis_buf: BincodeBuffer,
+    order_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let basis : Option<
+    let basis: Option<
         Vec<SparsePolynomial>,
     > = from_bincode_buffer(&basis_buf);
 
-    let order : Option<MonomialOrder> =
+    let order: Option<MonomialOrder> =
         from_bincode_buffer(&order_buf);
 
     if let (Some(b), Some(o)) =
@@ -41,24 +41,24 @@ pub extern "C" fn rssn_bincode_buchberger(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_poly_division_multivariate(
-    dividend_buf : BincodeBuffer,
-    divisors_buf : BincodeBuffer,
-    order_buf : BincodeBuffer,
+    dividend_buf: BincodeBuffer,
+    divisors_buf: BincodeBuffer,
+    order_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let dividend : Option<
+    let dividend: Option<
         SparsePolynomial,
     > = from_bincode_buffer(
         &dividend_buf,
     );
 
-    let divisors : Option<
+    let divisors: Option<
         Vec<SparsePolynomial>,
     > = from_bincode_buffer(
         &divisors_buf,
     );
 
-    let order : Option<MonomialOrder> =
+    let order: Option<MonomialOrder> =
         from_bincode_buffer(&order_buf);
 
     if let (

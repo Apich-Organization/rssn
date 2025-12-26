@@ -15,10 +15,10 @@ use crate::numerical::tensor::{
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_tensor_create(
-    shape : *const usize,
-    ndim : usize,
-    data : *const f64,
-    data_len : usize,
+    shape: *const usize,
+    ndim: usize,
+    data: *const f64,
+    data_len: usize,
 ) -> *mut ArrayD<f64> {
 
     if shape.is_null() || data.is_null()
@@ -70,7 +70,7 @@ pub unsafe extern "C" fn rssn_num_tensor_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_tensor_free(
-    tensor : *mut ArrayD<f64>
+    tensor: *mut ArrayD<f64>
 ) {
 
     if !tensor.is_null() {
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_num_tensor_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_tensor_get_ndim(
-    tensor : *const ArrayD<f64>
+    tensor: *const ArrayD<f64>
 ) -> usize {
 
     if tensor.is_null() {
@@ -105,8 +105,8 @@ pub unsafe extern "C" fn rssn_num_tensor_get_ndim(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_tensor_get_shape(
-    tensor : *const ArrayD<f64>,
-    out_shape : *mut usize,
+    tensor: *const ArrayD<f64>,
+    out_shape: *mut usize,
 ) -> i32 {
 
     if tensor.is_null()
@@ -139,12 +139,12 @@ pub unsafe extern "C" fn rssn_num_tensor_get_shape(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_tensor_tensordot(
-    a : *const ArrayD<f64>,
-    b : *const ArrayD<f64>,
-    axes_a : *const usize,
-    axes_a_len : usize,
-    axes_b : *const usize,
-    axes_b_len : usize,
+    a: *const ArrayD<f64>,
+    b: *const ArrayD<f64>,
+    axes_a: *const usize,
+    axes_a_len: usize,
+    axes_b: *const usize,
+    axes_b_len: usize,
 ) -> *mut ArrayD<f64> {
 
     if a.is_null()
@@ -201,8 +201,8 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_tensor_outer_product(
-    a : *const ArrayD<f64>,
-    b : *const ArrayD<f64>,
+    a: *const ArrayD<f64>,
+    b: *const ArrayD<f64>,
 ) -> *mut ArrayD<f64> {
 
     if a.is_null() || b.is_null() {
@@ -238,7 +238,7 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_tensor_norm(
-    tensor : *const ArrayD<f64>
+    tensor: *const ArrayD<f64>
 ) -> f64 {
 
     if tensor.is_null() {

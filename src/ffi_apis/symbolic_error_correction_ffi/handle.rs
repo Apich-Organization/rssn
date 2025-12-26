@@ -25,8 +25,8 @@ use crate::symbolic::error_correction::rs_error_count;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hamming_encode(
-    data : *const u8,
-    out : *mut u8,
+    data: *const u8,
+    out: *mut u8,
 ) -> i32 {
 
     if data.is_null() || out.is_null() {
@@ -64,9 +64,9 @@ pub unsafe extern "C" fn rssn_hamming_encode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hamming_decode(
-    codeword : *const u8,
-    data_out : *mut u8,
-    error_pos : *mut u8,
+    codeword: *const u8,
+    data_out: *mut u8,
+    error_pos: *mut u8,
 ) -> i32 {
 
     if codeword.is_null()
@@ -110,10 +110,10 @@ pub unsafe extern "C" fn rssn_hamming_decode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rs_encode(
-    data : *const u8,
-    data_len : usize,
-    n_sym : usize,
-    out_len : *mut usize,
+    data: *const u8,
+    data_len: usize,
+    n_sym: usize,
+    out_len: *mut usize,
 ) -> *mut u8 {
 
     if data.is_null()
@@ -153,10 +153,10 @@ pub unsafe extern "C" fn rssn_rs_encode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rs_decode(
-    codeword : *const u8,
-    codeword_len : usize,
-    n_sym : usize,
-    out_len : *mut usize,
+    codeword: *const u8,
+    codeword_len: usize,
+    n_sym: usize,
+    out_len: *mut usize,
 ) -> *mut u8 {
 
     if codeword.is_null()
@@ -196,8 +196,8 @@ pub unsafe extern "C" fn rssn_rs_decode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rs_free(
-    ptr : *mut u8,
-    len : usize,
+    ptr: *mut u8,
+    len: usize,
 ) {
 
     if !ptr.is_null() && len > 0 {
@@ -218,10 +218,10 @@ pub unsafe extern "C" fn rssn_rs_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hamming_distance(
-    a : *const u8,
-    a_len : usize,
-    b : *const u8,
-    b_len : usize,
+    a: *const u8,
+    a_len: usize,
+    b: *const u8,
+    b_len: usize,
 ) -> i32 {
 
     if a.is_null() || b.is_null() {
@@ -260,8 +260,8 @@ pub unsafe extern "C" fn rssn_hamming_distance(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hamming_weight(
-    data : *const u8,
-    len : usize,
+    data: *const u8,
+    len: usize,
 ) -> i32 {
 
     if data.is_null() {
@@ -285,7 +285,7 @@ pub unsafe extern "C" fn rssn_hamming_weight(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hamming_check(
-    codeword : *const u8
+    codeword: *const u8
 ) -> i32 {
 
     if codeword.is_null() {
@@ -320,9 +320,9 @@ pub unsafe extern "C" fn rssn_hamming_check(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rs_check(
-    codeword : *const u8,
-    codeword_len : usize,
-    n_sym : usize,
+    codeword: *const u8,
+    codeword_len: usize,
+    n_sym: usize,
 ) -> i32 {
 
     if codeword.is_null() {
@@ -353,9 +353,9 @@ pub unsafe extern "C" fn rssn_rs_check(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rs_error_count(
-    codeword : *const u8,
-    codeword_len : usize,
-    n_sym : usize,
+    codeword: *const u8,
+    codeword_len: usize,
+    n_sym: usize,
 ) -> i32 {
 
     if codeword.is_null() {
@@ -383,8 +383,8 @@ pub unsafe extern "C" fn rssn_rs_error_count(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_crc32_compute(
-    data : *const u8,
-    len : usize,
+    data: *const u8,
+    len: usize,
 ) -> u32 {
 
     if data.is_null() {
@@ -408,9 +408,9 @@ pub unsafe extern "C" fn rssn_crc32_compute(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_crc32_verify(
-    data : *const u8,
-    len : usize,
-    expected_crc : u32,
+    data: *const u8,
+    len: usize,
+    expected_crc: u32,
 ) -> i32 {
 
     if data.is_null() {
@@ -441,9 +441,9 @@ pub unsafe extern "C" fn rssn_crc32_verify(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_crc32_update(
-    crc : u32,
-    data : *const u8,
-    len : usize,
+    crc: u32,
+    data: *const u8,
+    len: usize,
 ) -> u32 {
 
     if data.is_null() {
@@ -463,7 +463,7 @@ pub unsafe extern "C" fn rssn_crc32_update(
 #[no_mangle]
 
 pub extern "C" fn rssn_crc32_finalize(
-    crc : u32
+    crc: u32
 ) -> u32 {
 
     crc32_finalize(crc)

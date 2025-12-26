@@ -23,10 +23,10 @@ pub extern "C" fn rssn_state_new_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_state_get_intermediate_value_bincode(
-    state_buffer : BincodeBuffer
+    state_buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let state : Option<State> =
+    let state: Option<State> =
         from_bincode_buffer(
             &state_buffer,
         );
@@ -48,16 +48,16 @@ pub extern "C" fn rssn_state_get_intermediate_value_bincode(
 #[no_mangle]
 
 pub extern "C" fn rssn_state_set_intermediate_value_bincode(
-    state_buffer : BincodeBuffer,
-    value_buffer : BincodeBuffer,
+    state_buffer: BincodeBuffer,
+    value_buffer: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let state : Option<State> =
+    let state: Option<State> =
         from_bincode_buffer(
             &state_buffer,
         );
 
-    let value : Option<String> =
+    let value: Option<String> =
         from_bincode_buffer(
             &value_buffer,
         );

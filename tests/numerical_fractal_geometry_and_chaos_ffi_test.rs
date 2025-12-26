@@ -27,7 +27,7 @@ fn test_mandelbrot_escape_time_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -58,7 +58,7 @@ fn test_julia_escape_time_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -89,7 +89,7 @@ fn test_lorenz_attractor_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -128,7 +128,7 @@ fn test_henon_map_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -167,7 +167,7 @@ fn test_logistic_map_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -206,7 +206,7 @@ fn test_lyapunov_logistic_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -242,7 +242,7 @@ fn test_mandelbrot_set_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -281,7 +281,7 @@ fn test_julia_set_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -320,7 +320,7 @@ fn test_rossler_attractor_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -359,7 +359,7 @@ fn test_tinkerbell_map_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -398,7 +398,7 @@ fn test_bifurcation_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -533,7 +533,7 @@ fn test_logistic_map_handle() {
 
 fn test_box_counting_dim_handle() {
 
-    let points : Vec<f64> = (0 .. 100)
+    let points: Vec<f64> = (0 .. 100)
         .flat_map(|i| {
 
             vec![
@@ -561,7 +561,7 @@ fn test_box_counting_dim_handle() {
 
 fn test_correlation_dim_handle() {
 
-    let points : Vec<f64> = (0 .. 100)
+    let points: Vec<f64> = (0 .. 100)
         .flat_map(|i| {
 
             vec![

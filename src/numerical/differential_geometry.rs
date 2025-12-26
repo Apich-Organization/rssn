@@ -20,8 +20,8 @@ use crate::symbolic::matrix::inverse_matrix;
 /// Evaluates the metric tensor at a given point for a coordinate system.
 
 pub fn metric_tensor_at_point(
-    system : CoordinateSystem,
-    point : &[f64],
+    system: CoordinateSystem,
+    point: &[f64],
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let g_sym =
@@ -107,8 +107,8 @@ pub fn metric_tensor_at_point(
 /// ```
 
 pub fn christoffel_symbols(
-    system : CoordinateSystem,
-    point : &[f64],
+    system: CoordinateSystem,
+    point: &[f64],
 ) -> Result<Vec<Vec<Vec<f64>>>, String>
 {
 
@@ -175,6 +175,7 @@ pub fn christoffel_symbols(
 
                 r.iter()
                     .map(|&v| {
+
                         Expr::Constant(
                             v,
                         )
@@ -269,8 +270,7 @@ pub fn christoffel_symbols(
         }
     }
 
-    let mut christoffel =
-        vec![
+    let mut christoffel = vec![
             vec![vec![0.0; dim]; dim];
             dim
         ];
@@ -312,8 +312,8 @@ pub fn christoffel_symbols(
 /// `R^ρ_{σμν} = ∂_μ Γ^ρ_{σν} - ∂_ν Γ^ρ_{σμ} + Γ^ρ_{λμ} Γ^λ_{σν} - Γ^ρ_{λν} Γ^λ_{σμ}`
 
 pub fn riemann_tensor(
-    system : CoordinateSystem,
-    point : &[f64],
+    system: CoordinateSystem,
+    point: &[f64],
 ) -> Result<
     Vec<Vec<Vec<Vec<f64>>>>,
     String,
@@ -363,17 +363,16 @@ pub fn riemann_tensor(
             vec![vec![0.0; dim]; dim];
             dim
         ]; // [k][i][j]
-    let mut ddg_num =
+    let mut ddg_num = vec![
         vec![
             vec![
-                vec![
                     vec![0.0; dim];
                     dim
                 ];
-                dim
-            ];
             dim
-        ]; // [l][k][i][j]
+        ];
+        dim
+    ]; // [l][k][i][j]
 
     for i in 0 .. dim {
 
@@ -423,8 +422,7 @@ pub fn riemann_tensor(
         invert_mat_num(&g_num)?;
 
     // Compute ∂_μ g^ρλ = -g^ρa (∂_μ g_ab) g^bλ
-    let mut d_ginv_num =
-        vec![
+    let mut d_ginv_num = vec![
             vec![vec![0.0; dim]; dim];
             dim
         ]; // [μ][ρ][λ]
@@ -479,17 +477,16 @@ pub fn riemann_tensor(
         }
     }
 
-    let mut d_gamma =
+    let mut d_gamma = vec![
         vec![
             vec![
-                vec![
                     vec![0.0; dim];
                     dim
                 ];
-                dim
-            ];
             dim
-        ]; // [μ][ρ][σ][ν]
+        ];
+        dim
+    ]; // [μ][ρ][σ][ν]
     for mu in 0 .. dim {
 
         for rho in 0 .. dim {
@@ -529,17 +526,16 @@ pub fn riemann_tensor(
         }
     }
 
-    let mut riemann =
+    let mut riemann = vec![
         vec![
             vec![
-                vec![
                     vec![0.0; dim];
                     dim
                 ];
-                dim
-            ];
             dim
         ];
+        dim
+    ];
 
     for rho in 0 .. dim {
 
@@ -577,7 +573,7 @@ pub fn riemann_tensor(
 }
 
 fn invert_mat_num(
-    mat : &[Vec<f64>]
+    mat: &[Vec<f64>]
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let dim = mat.len();
@@ -588,6 +584,7 @@ fn invert_mat_num(
 
                 r.iter()
                     .map(|&v| {
+
                         Expr::Constant(
                             v,
                         )
@@ -643,8 +640,8 @@ fn invert_mat_num(
 /// `R_{σν} = R^μ_{σμν}` (Contraction of Riemann tensor)
 
 pub fn ricci_tensor(
-    system : CoordinateSystem,
-    point : &[f64],
+    system: CoordinateSystem,
+    point: &[f64],
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let riemann =
@@ -679,8 +676,8 @@ pub fn ricci_tensor(
 /// `R = g^{μν} R_{μν}`
 
 pub fn ricci_scalar(
-    system : CoordinateSystem,
-    point : &[f64],
+    system: CoordinateSystem,
+    point: &[f64],
 ) -> Result<f64, String> {
 
     let ricci =
@@ -701,6 +698,7 @@ pub fn ricci_scalar(
 
                 r.iter()
                     .map(|&v| {
+
                         Expr::Constant(
                             v,
                         )

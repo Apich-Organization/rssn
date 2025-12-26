@@ -77,7 +77,7 @@ fn test_comb_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -110,7 +110,7 @@ fn test_comb_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -136,11 +136,11 @@ fn test_comb_bincode_ffi() {
         #[derive(Serialize)]
 
         struct NInput {
-            n : u64,
+            n: u64,
         }
 
         let input = NInput {
-            n : 5,
+            n: 5,
         };
 
         let buffer =
@@ -148,7 +148,7 @@ fn test_comb_bincode_ffi() {
 
         let res_buffer = bincode_api::rssn_num_comb_factorial_bincode(buffer);
 
-        let res : FfiResult<
+        let res: FfiResult<
             f64,
             String,
         > = from_bincode_buffer(
@@ -172,18 +172,18 @@ fn test_comb_bincode_ffi() {
         #[derive(Serialize)]
 
         struct RecurrenceInput {
-            coeffs : Vec<f64>,
-            initial_conditions :
+            coeffs: Vec<f64>,
+            initial_conditions:
                 Vec<f64>,
-            target_n : usize,
+            target_n: usize,
         }
 
         let input = RecurrenceInput {
-            coeffs : vec![1.0, 1.0],
-            initial_conditions : vec![
+            coeffs: vec![1.0, 1.0],
+            initial_conditions: vec![
                 0.0, 1.0,
             ],
-            target_n : 5,
+            target_n: 5,
         };
 
         let buffer =
@@ -191,7 +191,7 @@ fn test_comb_bincode_ffi() {
 
         let res_buffer = bincode_api::rssn_num_comb_solve_recurrence_bincode(buffer);
 
-        let res : FfiResult<
+        let res: FfiResult<
             f64,
             String,
         > = from_bincode_buffer(
@@ -264,27 +264,27 @@ fn test_comb_json_others() {
         #[derive(Serialize)]
 
         struct NInput {
-            n : u64,
+            n: u64,
         }
 
         #[derive(Serialize)]
 
         struct NKInput {
-            n : u64,
-            k : u64,
+            n: u64,
+            k: u64,
         }
 
         #[derive(Serialize)]
 
         struct XNInput {
-            x : f64,
-            n : u64,
+            x: f64,
+            n: u64,
         }
 
         // Stirling S(3, 2) = 3
         let input = NKInput {
-            n : 3,
-            k : 2,
+            n: 3,
+            k: 2,
         };
 
         let json_str =
@@ -304,7 +304,7 @@ fn test_comb_json_others() {
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -321,8 +321,8 @@ fn test_comb_json_others() {
 
         // Rising factorial 2^(3) = 24
         let input = XNInput {
-            x : 2.0,
-            n : 3,
+            x: 2.0,
+            n: 3,
         };
 
         let json_str =
@@ -342,7 +342,7 @@ fn test_comb_json_others() {
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -368,19 +368,19 @@ fn test_comb_bincode_others() {
         #[derive(Serialize)]
 
         struct NInput {
-            n : u64,
+            n: u64,
         }
 
         #[derive(Serialize)]
 
         struct NKInput {
-            n : u64,
-            k : u64,
+            n: u64,
+            k: u64,
         }
 
         // Bell B(3) = 5
         let input = NInput {
-            n : 3,
+            n: 3,
         };
 
         let buffer =
@@ -388,7 +388,7 @@ fn test_comb_bincode_others() {
 
         let res_buffer = bincode_api::rssn_num_comb_bell_bincode(buffer);
 
-        let res : FfiResult<
+        let res: FfiResult<
             f64,
             String,
         > = from_bincode_buffer(
@@ -411,7 +411,7 @@ fn test_comb_bincode_others() {
 
         // Catalan C_3 = 5
         let input = NInput {
-            n : 3,
+            n: 3,
         };
 
         let buffer =
@@ -419,7 +419,7 @@ fn test_comb_bincode_others() {
 
         let res_buffer = bincode_api::rssn_num_comb_catalan_bincode(buffer);
 
-        let res : FfiResult<
+        let res: FfiResult<
             f64,
             String,
         > = from_bincode_buffer(

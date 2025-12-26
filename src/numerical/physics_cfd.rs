@@ -68,13 +68,13 @@ use crate::numerical::matrix::Matrix;
 
 pub struct FluidProperties {
     /// Density (kg/m³)
-    pub density : f64,
+    pub density: f64,
     /// Dynamic viscosity (Pa·s)
-    pub dynamic_viscosity : f64,
+    pub dynamic_viscosity: f64,
     /// Thermal conductivity (W/(m·K))
-    pub thermal_conductivity : f64,
+    pub thermal_conductivity: f64,
     /// Specific heat capacity (J/(kg·K))
-    pub specific_heat : f64,
+    pub specific_heat: f64,
 }
 
 impl FluidProperties {
@@ -82,10 +82,10 @@ impl FluidProperties {
     #[must_use]
 
     pub const fn new(
-        density : f64,
-        dynamic_viscosity : f64,
-        thermal_conductivity : f64,
-        specific_heat : f64,
+        density: f64,
+        dynamic_viscosity: f64,
+        thermal_conductivity: f64,
+        specific_heat: f64,
     ) -> Self {
 
         Self {
@@ -102,12 +102,11 @@ impl FluidProperties {
     pub const fn air() -> Self {
 
         Self {
-            density : 1.204,
-            dynamic_viscosity:
-                1.825e-5,
+            density: 1.204,
+            dynamic_viscosity: 1.825e-5,
             thermal_conductivity:
                 0.0257,
-            specific_heat : 1005.0,
+            specific_heat: 1005.0,
         }
     }
 
@@ -117,12 +116,10 @@ impl FluidProperties {
     pub const fn water() -> Self {
 
         Self {
-            density : 998.2,
-            dynamic_viscosity:
-                1.002e-3,
-            thermal_conductivity:
-                0.598,
-            specific_heat : 4182.0,
+            density: 998.2,
+            dynamic_viscosity: 1.002e-3,
+            thermal_conductivity: 0.598,
+            specific_heat: 4182.0,
         }
     }
 
@@ -175,9 +172,9 @@ impl FluidProperties {
 #[must_use]
 
 pub fn reynolds_number(
-    velocity : f64,
-    length : f64,
-    kinematic_viscosity : f64,
+    velocity: f64,
+    length: f64,
+    kinematic_viscosity: f64,
 ) -> f64 {
 
     velocity * length
@@ -192,8 +189,8 @@ pub fn reynolds_number(
 #[must_use]
 
 pub fn mach_number(
-    velocity : f64,
-    speed_of_sound : f64,
+    velocity: f64,
+    speed_of_sound: f64,
 ) -> f64 {
 
     velocity / speed_of_sound
@@ -208,9 +205,9 @@ pub fn mach_number(
 #[must_use]
 
 pub fn froude_number(
-    velocity : f64,
-    length : f64,
-    gravity : f64,
+    velocity: f64,
+    length: f64,
+    gravity: f64,
 ) -> f64 {
 
     velocity / (gravity * length).sqrt()
@@ -227,9 +224,9 @@ pub fn froude_number(
 #[must_use]
 
 pub fn cfl_number(
-    velocity : f64,
-    dt : f64,
-    dx : f64,
+    velocity: f64,
+    dt: f64,
+    dx: f64,
 ) -> f64 {
 
     velocity.abs() * dt / dx
@@ -239,10 +236,10 @@ pub fn cfl_number(
 #[must_use]
 
 pub fn check_cfl_stability(
-    velocity : f64,
-    dt : f64,
-    dx : f64,
-    max_cfl : f64,
+    velocity: f64,
+    dt: f64,
+    dx: f64,
+    max_cfl: f64,
 ) -> bool {
 
     cfl_number(velocity, dt, dx)
@@ -254,9 +251,9 @@ pub fn check_cfl_stability(
 #[must_use]
 
 pub fn diffusion_number(
-    alpha : f64,
-    dt : f64,
-    dx : f64,
+    alpha: f64,
+    dt: f64,
+    dx: f64,
 ) -> f64 {
 
     alpha * dt / (dx * dx)
@@ -282,11 +279,11 @@ pub fn diffusion_number(
 #[must_use]
 
 pub fn solve_advection_1d(
-    u0 : &[f64],
-    c : f64,
-    dx : f64,
-    dt : f64,
-    num_steps : usize,
+    u0: &[f64],
+    c: f64,
+    dx: f64,
+    dt: f64,
+    num_steps: usize,
 ) -> Vec<Vec<f64>> {
 
     let n = u0.len();
@@ -349,11 +346,11 @@ pub fn solve_advection_1d(
 #[must_use]
 
 pub fn solve_diffusion_1d(
-    u0 : &[f64],
-    alpha : f64,
-    dx : f64,
-    dt : f64,
-    num_steps : usize,
+    u0: &[f64],
+    alpha: f64,
+    dx: f64,
+    dt: f64,
+    num_steps: usize,
 ) -> Vec<Vec<f64>> {
 
     let n = u0.len();
@@ -414,12 +411,12 @@ pub fn solve_diffusion_1d(
 #[must_use]
 
 pub fn solve_poisson_2d_jacobi(
-    f : &Matrix<f64>,
-    u0 : &Matrix<f64>,
-    dx : f64,
-    dy : f64,
-    max_iter : usize,
-    tolerance : f64,
+    f: &Matrix<f64>,
+    u0: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
+    max_iter: usize,
+    tolerance: f64,
 ) -> Matrix<f64> {
 
     let nx = u0.rows();
@@ -492,12 +489,12 @@ pub fn solve_poisson_2d_jacobi(
 #[must_use]
 
 pub fn solve_poisson_2d_gauss_seidel(
-    f : &Matrix<f64>,
-    u0 : &Matrix<f64>,
-    dx : f64,
-    dy : f64,
-    max_iter : usize,
-    tolerance : f64,
+    f: &Matrix<f64>,
+    u0: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
+    max_iter: usize,
+    tolerance: f64,
 ) -> Matrix<f64> {
 
     let nx = u0.rows();
@@ -575,13 +572,13 @@ pub fn solve_poisson_2d_gauss_seidel(
 #[must_use]
 
 pub fn solve_poisson_2d_sor(
-    f : &Matrix<f64>,
-    u0 : &Matrix<f64>,
-    dx : f64,
-    dy : f64,
-    omega : f64,
-    max_iter : usize,
-    tolerance : f64,
+    f: &Matrix<f64>,
+    u0: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
+    omega: f64,
+    max_iter: usize,
+    tolerance: f64,
 ) -> Matrix<f64> {
 
     let nx = u0.rows();
@@ -667,12 +664,12 @@ pub fn solve_poisson_2d_sor(
 #[must_use]
 
 pub fn solve_advection_diffusion_1d(
-    u0 : &[f64],
-    c : f64,
-    alpha : f64,
-    dx : f64,
-    dt : f64,
-    num_steps : usize,
+    u0: &[f64],
+    c: f64,
+    alpha: f64,
+    dx: f64,
+    dt: f64,
+    num_steps: usize,
 ) -> Vec<Vec<f64>> {
 
     let n = u0.len();
@@ -738,11 +735,11 @@ pub fn solve_advection_diffusion_1d(
 #[must_use]
 
 pub fn solve_burgers_1d(
-    u0 : &[f64],
-    nu : f64,
-    dx : f64,
-    dt : f64,
-    num_steps : usize,
+    u0: &[f64],
+    nu: f64,
+    dx: f64,
+    dt: f64,
+    num_steps: usize,
 ) -> Vec<Vec<f64>> {
 
     let n = u0.len();
@@ -815,10 +812,10 @@ pub fn solve_burgers_1d(
 #[must_use]
 
 pub fn compute_vorticity(
-    u : &Matrix<f64>,
-    v : &Matrix<f64>,
-    dx : f64,
-    dy : f64,
+    u: &Matrix<f64>,
+    v: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
 ) -> Matrix<f64> {
 
     let nx = u.rows();
@@ -856,11 +853,11 @@ pub fn compute_vorticity(
 #[must_use]
 
 pub fn compute_stream_function(
-    omega : &Matrix<f64>,
-    dx : f64,
-    dy : f64,
-    max_iter : usize,
-    tolerance : f64,
+    omega: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
+    max_iter: usize,
+    tolerance: f64,
 ) -> Matrix<f64> {
 
     let nx = omega.rows();
@@ -898,9 +895,9 @@ pub fn compute_stream_function(
 #[must_use]
 
 pub fn velocity_from_stream_function(
-    psi : &Matrix<f64>,
-    dx : f64,
-    dy : f64,
+    psi: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
 ) -> (
     Matrix<f64>,
     Matrix<f64>,
@@ -943,10 +940,10 @@ pub fn velocity_from_stream_function(
 #[must_use]
 
 pub fn compute_divergence(
-    u : &Matrix<f64>,
-    v : &Matrix<f64>,
-    dx : f64,
-    dy : f64,
+    u: &Matrix<f64>,
+    v: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
 ) -> Matrix<f64> {
 
     let nx = u.rows();
@@ -983,9 +980,9 @@ pub fn compute_divergence(
 #[must_use]
 
 pub fn compute_gradient(
-    p : &Matrix<f64>,
-    dx : f64,
-    dy : f64,
+    p: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
 ) -> (
     Matrix<f64>,
     Matrix<f64>,
@@ -1026,9 +1023,9 @@ pub fn compute_gradient(
 #[must_use]
 
 pub fn compute_laplacian(
-    f : &Matrix<f64>,
-    dx : f64,
-    dy : f64,
+    f: &Matrix<f64>,
+    dx: f64,
+    dy: f64,
 ) -> Matrix<f64> {
 
     let nx = f.rows();
@@ -1085,12 +1082,12 @@ pub fn compute_laplacian(
 #[must_use]
 
 pub fn lid_driven_cavity_simple(
-    nx : usize,
-    ny : usize,
-    re : f64,
-    lid_velocity : f64,
-    num_steps : usize,
-    dt : f64,
+    nx: usize,
+    ny: usize,
+    re: f64,
+    lid_velocity: f64,
+    num_steps: usize,
+    dt: f64,
 ) -> (
     Matrix<f64>,
     Matrix<f64>,
@@ -1230,8 +1227,8 @@ pub fn lid_driven_cavity_simple(
 /// Applies Dirichlet boundary conditions to a 2D field.
 
 pub fn apply_dirichlet_bc(
-    field : &mut Matrix<f64>,
-    boundary_value : f64,
+    field: &mut Matrix<f64>,
+    boundary_value: f64,
 ) {
 
     let nx = field.rows();
@@ -1262,7 +1259,7 @@ pub fn apply_dirichlet_bc(
 /// Applies Neumann boundary conditions (zero gradient) to a 2D field.
 
 pub fn apply_neumann_bc(
-    field : &mut Matrix<f64>
+    field: &mut Matrix<f64>
 ) {
 
     let nx = field.rows();
@@ -1293,8 +1290,8 @@ pub fn apply_neumann_bc(
 #[must_use]
 
 pub fn max_velocity_magnitude(
-    u : &Matrix<f64>,
-    v : &Matrix<f64>,
+    u: &Matrix<f64>,
+    v: &Matrix<f64>,
 ) -> f64 {
 
     let nx = u.rows();
@@ -1329,7 +1326,7 @@ pub fn max_velocity_magnitude(
 #[must_use]
 
 pub fn l2_norm(
-    field : &Matrix<f64>
+    field: &Matrix<f64>
 ) -> f64 {
 
     let nx = field.rows();
@@ -1354,7 +1351,7 @@ pub fn l2_norm(
 #[must_use]
 
 pub fn max_abs(
-    field : &Matrix<f64>
+    field: &Matrix<f64>
 ) -> f64 {
 
     let nx = field.rows();

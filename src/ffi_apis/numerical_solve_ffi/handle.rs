@@ -21,9 +21,9 @@ use crate::numerical::solve::{
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_solve_linear_system_handle(
-    matrix_ptr : *const Matrix<f64>,
-    vector_data : *const f64,
-    vector_len : usize,
+    matrix_ptr: *const Matrix<f64>,
+    vector_data: *const f64,
+    vector_len: usize,
 ) -> *mut LinearSolution {
 
     if matrix_ptr.is_null()
@@ -57,7 +57,7 @@ pub unsafe extern "C" fn rssn_num_solve_linear_system_handle(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_solve_free_solution(
-    ptr : *mut LinearSolution
+    ptr: *mut LinearSolution
 ) {
 
     if !ptr.is_null() {
@@ -70,7 +70,7 @@ pub unsafe extern "C" fn rssn_num_solve_free_solution(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_solve_is_unique(
-    ptr : *const LinearSolution
+    ptr: *const LinearSolution
 ) -> bool {
 
     if ptr.is_null() {
@@ -87,8 +87,8 @@ pub unsafe extern "C" fn rssn_num_solve_is_unique(
 /// Helper to copy vector data.
 
 unsafe fn copy_vec_to_buffer(
-    vec : &[f64],
-    buffer : *mut f64,
+    vec: &[f64],
+    buffer: *mut f64,
 ) {
 
     ptr::copy_nonoverlapping(
@@ -106,8 +106,8 @@ unsafe fn copy_vec_to_buffer(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_solve_get_unique_solution(
-    ptr : *const LinearSolution,
-    buffer : *mut f64,
+    ptr: *const LinearSolution,
+    buffer: *mut f64,
 ) {
 
     if ptr.is_null() || buffer.is_null()
@@ -129,7 +129,7 @@ pub unsafe extern "C" fn rssn_num_solve_get_unique_solution(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
-    ptr : *const LinearSolution
+    ptr: *const LinearSolution
 ) -> usize {
 
     if ptr.is_null() {
@@ -156,7 +156,7 @@ pub unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_solve_is_no_solution(
-    ptr : *const LinearSolution
+    ptr: *const LinearSolution
 ) -> bool {
 
     if ptr.is_null() {

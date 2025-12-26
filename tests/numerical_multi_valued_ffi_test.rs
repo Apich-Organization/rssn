@@ -89,21 +89,21 @@ fn test_mv_json_ffi() {
         #[derive(Serialize)]
 
         struct NewtonInput {
-            f : Expr,
-            f_prime : Expr,
-            start_re : f64,
-            start_im : f64,
-            tolerance : f64,
-            max_iter : usize,
+            f: Expr,
+            f_prime: Expr,
+            start_re: f64,
+            start_im: f64,
+            tolerance: f64,
+            max_iter: usize,
         }
 
         let input = NewtonInput {
             f,
             f_prime,
-            start_re : 2.0,
-            start_im : 0.0,
-            tolerance : 1e-6,
-            max_iter : 100,
+            start_re: 2.0,
+            start_im: 0.0,
+            tolerance: 1e-6,
+            max_iter: 100,
         };
 
         let json_str =
@@ -125,7 +125,7 @@ fn test_mv_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -174,28 +174,28 @@ fn test_mv_bincode_ffi() {
         #[derive(Serialize)]
 
         struct NewtonInput {
-            f : Expr,
-            f_prime : Expr,
-            start_re : f64,
-            start_im : f64,
-            tolerance : f64,
-            max_iter : usize,
+            f: Expr,
+            f_prime: Expr,
+            start_re: f64,
+            start_im: f64,
+            tolerance: f64,
+            max_iter: usize,
         }
 
         #[derive(Deserialize)]
 
         struct ComplexResult {
-            re : f64,
-            im : f64,
+            re: f64,
+            im: f64,
         }
 
         let input = NewtonInput {
             f,
             f_prime,
-            start_re : 2.0,
-            start_im : 0.0,
-            tolerance : 1e-6,
-            max_iter : 100,
+            start_re: 2.0,
+            start_im: 0.0,
+            tolerance: 1e-6,
+            max_iter: 100,
         };
 
         let buffer =
@@ -205,7 +205,7 @@ fn test_mv_bincode_ffi() {
 
         assert!(!res_buffer.is_null());
 
-        let res : FfiResult<
+        let res: FfiResult<
             ComplexResult,
             String,
         > = from_bincode_buffer(
@@ -279,16 +279,16 @@ fn test_mv_json_others() {
         #[derive(Serialize)]
 
         struct LogSqrtInput {
-            re : f64,
-            im : f64,
-            k : i32,
+            re: f64,
+            im: f64,
+            k: i32,
         }
 
         // log(1, 0) = 0
         let input = LogSqrtInput {
-            re : 1.0,
-            im : 0.0,
-            k : 0,
+            re: 1.0,
+            im: 0.0,
+            k: 0,
         };
 
         let json_str =
@@ -310,7 +310,7 @@ fn test_mv_json_others() {
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -345,23 +345,23 @@ fn test_mv_bincode_others() {
         #[derive(Serialize)]
 
         struct LogSqrtInput {
-            re : f64,
-            im : f64,
-            k : i32,
+            re: f64,
+            im: f64,
+            k: i32,
         }
 
         #[derive(Deserialize)]
 
         struct ComplexResult {
-            re : f64,
-            im : f64,
+            re: f64,
+            im: f64,
         }
 
         // sqrt(1, 0) = 1
         let input = LogSqrtInput {
-            re : 1.0,
-            im : 0.0,
-            k : 0,
+            re: 1.0,
+            im: 0.0,
+            k: 0,
         };
 
         let buffer =
@@ -371,7 +371,7 @@ fn test_mv_bincode_others() {
 
         assert!(!res_buffer.is_null());
 
-        let res : FfiResult<
+        let res: FfiResult<
             ComplexResult,
             String,
         > = from_bincode_buffer(

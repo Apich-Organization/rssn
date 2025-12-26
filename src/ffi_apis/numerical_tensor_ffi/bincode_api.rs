@@ -13,17 +13,17 @@ use crate::numerical::tensor::{
 #[derive(Deserialize)]
 
 struct TensordotRequest {
-    a : TensorData,
-    b : TensorData,
-    axes_a : Vec<usize>,
-    axes_b : Vec<usize>,
+    a: TensorData,
+    b: TensorData,
+    axes_a: Vec<usize>,
+    axes_b: Vec<usize>,
 }
 
 fn decode<
-    T : for<'de> Deserialize<'de>,
+    T: for<'de> Deserialize<'de>,
 >(
-    data : *const u8,
-    len : usize,
+    data: *const u8,
+    len: usize,
 ) -> Option<T> {
 
     if data.is_null() {
@@ -46,8 +46,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T : Serialize>(
-    val : &T
+fn encode<T: Serialize>(
+    val: &T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -63,8 +63,8 @@ fn encode<T : Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
-    data : *const u8,
-    len : usize,
+    data: *const u8,
+    len: usize,
 ) -> BincodeBuffer {
 
     let req : TensordotRequest = match decode(data, len) {
@@ -87,8 +87,8 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
                     TensorData,
                     String,
                 > {
-                    ok : None,
-                    err : Some(e),
+                    ok: None,
+                    err: Some(e),
                 },
             )
         },
@@ -102,8 +102,8 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
                     TensorData,
                     String,
                 > {
-                    ok : None,
-                    err : Some(e),
+                    ok: None,
+                    err: Some(e),
                 },
             )
         },
@@ -120,12 +120,12 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
                 TensorData,
                 String,
             > {
-                ok : Some(
+                ok: Some(
                     TensorData::from(
                         &res,
                     ),
                 ),
-                err : None,
+                err: None,
             })
         },
         | Err(e) => {
@@ -133,8 +133,8 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
                 TensorData,
                 String,
             > {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             })
         },
     }

@@ -31,7 +31,7 @@ use crate::symbolic::simplify_dag::simplify;
 /// Returns None if the expression cannot be evaluated to a number.
 
 fn try_numeric_value(
-    expr : &Expr
+    expr: &Expr
 ) -> Option<f64> {
 
     match expr {
@@ -165,8 +165,8 @@ fn try_numeric_value(
 /// Symbolically adds two expressions.
 
 fn symbolic_add(
-    a : &Expr,
-    b : &Expr,
+    a: &Expr,
+    b: &Expr,
 ) -> Expr {
 
     Expr::Add(
@@ -180,8 +180,8 @@ fn symbolic_add(
 #[allow(dead_code)]
 
 fn symbolic_compare(
-    a : &Expr,
-    b : &Expr,
+    a: &Expr,
+    b: &Expr,
 ) -> Option<std::cmp::Ordering> {
 
     let a_val = try_numeric_value(a)?;
@@ -204,11 +204,11 @@ fn symbolic_compare(
 #[must_use]
 
 pub fn dfs<V>(
-    graph : &Graph<V>,
-    start_node : usize,
+    graph: &Graph<V>,
+    start_node: usize,
 ) -> Vec<usize>
 where
-    V : Eq
+    V: Eq
         + Hash
         + Clone
         + std::fmt::Debug,
@@ -229,12 +229,12 @@ where
 }
 
 pub(crate) fn dfs_recursive<V>(
-    graph : &Graph<V>,
-    u : usize,
-    visited : &mut HashSet<usize>,
-    result : &mut Vec<usize>,
+    graph: &Graph<V>,
+    u: usize,
+    visited: &mut HashSet<usize>,
+    result: &mut Vec<usize>,
 ) where
-    V : Eq
+    V: Eq
         + Hash
         + Clone
         + std::fmt::Debug,
@@ -276,11 +276,11 @@ pub(crate) fn dfs_recursive<V>(
 #[must_use]
 
 pub fn bfs<V>(
-    graph : &Graph<V>,
-    start_node : usize,
+    graph: &Graph<V>,
+    start_node: usize,
 ) -> Vec<usize>
 where
-    V : Eq
+    V: Eq
         + Hash
         + Clone
         + std::fmt::Debug,
@@ -335,12 +335,12 @@ where
 #[must_use]
 
 pub fn connected_components<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> Vec<Vec<usize>> {
 
     let mut visited = HashSet::new();
@@ -385,12 +385,12 @@ pub fn connected_components<
 #[must_use]
 
 pub fn is_connected<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> bool {
 
     connected_components(graph).len()
@@ -410,12 +410,12 @@ pub fn is_connected<
 #[must_use]
 
 pub fn strongly_connected_components<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> Vec<Vec<usize>> {
 
     let mut scc = Vec::new();
@@ -451,19 +451,19 @@ pub fn strongly_connected_components<
 }
 
 pub(crate) fn tarjan_scc_util<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    u : usize,
-    time : &mut usize,
-    disc : &mut HashMap<usize, usize>,
-    low : &mut HashMap<usize, usize>,
-    stack : &mut Vec<usize>,
-    on_stack : &mut HashSet<usize>,
-    scc : &mut Vec<Vec<usize>>,
+    graph: &Graph<V>,
+    u: usize,
+    time: &mut usize,
+    disc: &mut HashMap<usize, usize>,
+    low: &mut HashMap<usize, usize>,
+    stack: &mut Vec<usize>,
+    on_stack: &mut HashSet<usize>,
+    scc: &mut Vec<Vec<usize>>,
 ) {
 
     disc.insert(u, *time);
@@ -567,12 +567,12 @@ pub(crate) fn tarjan_scc_util<
 #[must_use]
 
 pub fn has_cycle<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> bool {
 
     let mut visited = HashSet::new();
@@ -622,15 +622,15 @@ pub fn has_cycle<
 }
 
 pub(crate) fn has_cycle_directed_util<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    u : usize,
-    visited : &mut HashSet<usize>,
-    rec_stack : &mut HashSet<usize>,
+    graph: &Graph<V>,
+    u: usize,
+    visited: &mut HashSet<usize>,
+    rec_stack: &mut HashSet<usize>,
 ) -> bool {
 
     visited.insert(u);
@@ -669,15 +669,15 @@ pub(crate) fn has_cycle_directed_util<
 }
 
 pub(crate) fn has_cycle_undirected_util<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    u : usize,
-    visited : &mut HashSet<usize>,
-    parent : Option<usize>,
+    graph: &Graph<V>,
+    u: usize,
+    visited: &mut HashSet<usize>,
+    parent: Option<usize>,
 ) -> bool {
 
     visited.insert(u);
@@ -725,12 +725,12 @@ pub(crate) fn has_cycle_undirected_util<
 #[must_use]
 
 pub fn find_bridges_and_articulation_points<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> (
     Vec<(usize, usize)>,
     Vec<usize>,
@@ -779,20 +779,20 @@ pub fn find_bridges_and_articulation_points<
 }
 
 pub(crate) fn b_and_ap_util<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    u : usize,
-    parent : Option<usize>,
-    time : &mut usize,
-    visited : &mut HashSet<usize>,
-    disc : &mut HashMap<usize, usize>,
-    low : &mut HashMap<usize, usize>,
-    bridges : &mut Vec<(usize, usize)>,
-    ap : &mut HashSet<usize>,
+    graph: &Graph<V>,
+    u: usize,
+    parent: Option<usize>,
+    time: &mut usize,
+    visited: &mut HashSet<usize>,
+    disc: &mut HashMap<usize, usize>,
+    low: &mut HashMap<usize, usize>,
+    bridges: &mut Vec<(usize, usize)>,
+    ap: &mut HashSet<usize>,
 ) {
 
     visited.insert(u);
@@ -914,22 +914,22 @@ pub(crate) fn b_and_ap_util<
 /// A Disjoint Set Union (DSU) data structure for Kruskal's algorithm.
 
 pub struct DSU {
-    parent : Vec<usize>,
+    parent: Vec<usize>,
 }
 
 impl DSU {
     pub(crate) fn new(
-        n : usize
+        n: usize
     ) -> Self {
 
         Self {
-            parent : (0 .. n).collect(),
+            parent: (0 .. n).collect(),
         }
     }
 
     pub(crate) fn find(
         &mut self,
-        i : usize,
+        i: usize,
     ) -> usize {
 
         if self.parent[i] == i {
@@ -945,8 +945,8 @@ impl DSU {
 
     pub(crate) fn union(
         &mut self,
-        i : usize,
-        j : usize,
+        i: usize,
+        j: usize,
     ) {
 
         let root_i = self.find(i);
@@ -975,12 +975,12 @@ impl DSU {
 #[must_use]
 
 pub fn kruskal_mst<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> Vec<(usize, usize, Expr)> {
 
     let mut edges = graph.get_edges();
@@ -1030,14 +1030,14 @@ pub fn kruskal_mst<
 #[must_use]
 
 pub fn edmonds_karp_max_flow<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    capacity_graph : &Graph<V>,
-    s : usize,
-    t : usize,
+    capacity_graph: &Graph<V>,
+    s: usize,
+    t: usize,
 ) -> f64 {
 
     let n = capacity_graph
@@ -1113,9 +1113,9 @@ pub fn edmonds_karp_max_flow<
 /// Helper BFS to find an augmenting path in the residual graph.
 
 pub(crate) fn bfs_for_augmenting_path(
-    capacity : &Vec<Vec<f64>>,
-    s : usize,
-    t : usize,
+    capacity: &Vec<Vec<f64>>,
+    s: usize,
+    t: usize,
 ) -> (
     Vec<Option<usize>>,
     f64,
@@ -1183,14 +1183,14 @@ pub(crate) fn bfs_for_augmenting_path(
 #[must_use]
 
 pub fn dinic_max_flow<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    capacity_graph : &Graph<V>,
-    s : usize,
-    t : usize,
+    capacity_graph: &Graph<V>,
+    s: usize,
+    t: usize,
 ) -> f64 {
 
     let n = capacity_graph
@@ -1262,10 +1262,10 @@ pub fn dinic_max_flow<
 }
 
 pub(crate) fn dinic_bfs(
-    capacity : &Vec<Vec<f64>>,
-    s : usize,
-    t : usize,
-    level : &mut Vec<i32>,
+    capacity: &Vec<Vec<f64>>,
+    s: usize,
+    t: usize,
+    level: &mut Vec<i32>,
 ) -> bool {
 
     for l in level.iter_mut() {
@@ -1298,12 +1298,12 @@ pub(crate) fn dinic_bfs(
 }
 
 pub(crate) fn dinic_dfs(
-    cap : &mut Vec<Vec<f64>>,
-    u : usize,
-    t : usize,
-    pushed : f64,
-    level : &Vec<i32>,
-    ptr : &mut Vec<usize>,
+    cap: &mut Vec<Vec<f64>>,
+    u: usize,
+    t: usize,
+    pushed: f64,
+    level: &Vec<i32>,
+    ptr: &mut Vec<usize>,
 ) -> f64 {
 
     if pushed == 0.0 {
@@ -1374,13 +1374,13 @@ pub(crate) fn dinic_dfs(
 /// Returns an error string if a negative-weight cycle is detected.
 
 pub fn bellman_ford<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    start_node : usize,
+    graph: &Graph<V>,
+    start_node: usize,
 ) -> Result<
     (
         HashMap<usize, Expr>,
@@ -1391,10 +1391,8 @@ pub fn bellman_ford<
 
     let n = graph.nodes.len();
 
-    let mut dist : HashMap<
-        usize,
-        Expr,
-    > = HashMap::new();
+    let mut dist: HashMap<usize, Expr> =
+        HashMap::new();
 
     let mut prev = HashMap::new();
 
@@ -1537,14 +1535,14 @@ pub fn bellman_ford<
 #[must_use]
 
 pub fn min_cost_max_flow<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    s : usize,
-    t : usize,
+    graph: &Graph<V>,
+    s: usize,
+    t: usize,
 ) -> (f64, f64) {
 
     let n = graph.nodes.len();
@@ -1667,12 +1665,12 @@ pub fn min_cost_max_flow<
 #[must_use]
 
 pub fn is_bipartite<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> Option<Vec<i8>> {
 
     let n = graph.nodes.len();
@@ -1740,13 +1738,13 @@ pub fn is_bipartite<
 #[must_use]
 
 pub fn bipartite_maximum_matching<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    partition : &[i8],
+    graph: &Graph<V>,
+    partition: &[i8],
 ) -> Vec<(usize, usize)> {
 
     let n = graph.nodes.len();
@@ -1755,7 +1753,7 @@ pub fn bipartite_maximum_matching<
     let mut matching_edges = Vec::new();
 
     // Identify nodes in partition 0
-    let u_nodes : Vec<usize> = (0 .. n)
+    let u_nodes: Vec<usize> = (0 .. n)
         .filter(|&i| partition[i] == 0)
         .collect();
 
@@ -1791,15 +1789,15 @@ pub fn bipartite_maximum_matching<
 }
 
 fn bpm_dfs<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    u : usize,
-    visited : &mut Vec<bool>,
-    match_r : &mut Vec<Option<usize>>,
+    graph: &Graph<V>,
+    u: usize,
+    visited: &mut Vec<bool>,
+    match_r: &mut Vec<Option<usize>>,
 ) -> bool {
 
     if let Some(neighbors) =
@@ -1852,13 +1850,13 @@ fn bpm_dfs<
 #[must_use]
 
 pub fn prim_mst<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    start_node : usize,
+    graph: &Graph<V>,
+    start_node: usize,
 ) -> Vec<(usize, usize, Expr)> {
 
     let n = graph.nodes.len();
@@ -1952,12 +1950,12 @@ pub fn prim_mst<
 /// or an error string if the graph has a cycle.
 
 pub fn topological_sort_kahn<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> Result<Vec<usize>, String> {
 
     if !graph.is_directed {
@@ -1979,12 +1977,10 @@ pub fn topological_sort_kahn<
             graph.in_degree(i);
     }
 
-    let mut queue : VecDeque<usize> =
-        (0 .. n)
-            .filter(|&i| {
-                in_degree[i] == 0
-            })
-            .collect();
+    let mut queue: VecDeque<usize> = (0
+        .. n)
+        .filter(|&i| in_degree[i] == 0)
+        .collect();
 
     let mut sorted_order = Vec::new();
 
@@ -2037,12 +2033,12 @@ pub fn topological_sort_kahn<
 #[must_use]
 
 pub fn topological_sort_dfs<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> Vec<usize> {
 
     let mut visited = HashSet::new();
@@ -2070,15 +2066,15 @@ pub fn topological_sort_dfs<
 }
 
 pub(crate) fn topo_dfs_util<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    u : usize,
-    visited : &mut HashSet<usize>,
-    stack : &mut Vec<usize>,
+    graph: &Graph<V>,
+    u: usize,
+    visited: &mut HashSet<usize>,
+    stack: &mut Vec<usize>,
 ) {
 
     visited.insert(u);
@@ -2118,12 +2114,12 @@ pub(crate) fn topo_dfs_util<
 #[must_use]
 
 pub fn topological_sort<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> Option<Vec<usize>> {
 
     topological_sort_kahn(graph).ok()
@@ -2145,14 +2141,14 @@ pub fn topological_sort<
 #[must_use]
 
 pub fn bipartite_minimum_vertex_cover<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    partition : &[i8],
-    matching : &[(usize, usize)],
+    graph: &Graph<V>,
+    partition: &[i8],
+    matching: &[(usize, usize)],
 ) -> Vec<usize> {
 
     let mut u_nodes = HashSet::new();
@@ -2179,7 +2175,7 @@ pub fn bipartite_minimum_vertex_cover<
         }
     }
 
-    let unmatched_u : Vec<_> = u_nodes
+    let unmatched_u: Vec<_> = u_nodes
         .difference(&matched_nodes_u)
         .copied()
         .collect();
@@ -2260,13 +2256,13 @@ pub fn bipartite_minimum_vertex_cover<
 #[must_use]
 
 pub fn hopcroft_karp_bipartite_matching<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    partition : &[i8],
+    graph: &Graph<V>,
+    partition: &[i8],
 ) -> Vec<(usize, usize)> {
 
     let n = graph.nodes.len();
@@ -2328,16 +2324,16 @@ pub fn hopcroft_karp_bipartite_matching<
 }
 
 pub(crate) fn hopcroft_karp_bfs<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    u_nodes : &[usize],
-    pair_u : &mut [Option<usize>],
-    pair_v : &mut [Option<usize>],
-    dist : &mut [usize],
+    graph: &Graph<V>,
+    u_nodes: &[usize],
+    pair_u: &mut [Option<usize>],
+    pair_v: &mut [Option<usize>],
+    dist: &mut [usize],
 ) -> bool {
 
     let mut queue = VecDeque::new();
@@ -2397,16 +2393,16 @@ pub(crate) fn hopcroft_karp_bfs<
 }
 
 pub(crate) fn hopcroft_karp_dfs<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    u : usize,
-    pair_u : &mut [Option<usize>],
-    pair_v : &mut [Option<usize>],
-    dist : &mut [usize],
+    graph: &Graph<V>,
+    u: usize,
+    pair_u: &mut [Option<usize>],
+    pair_v: &mut [Option<usize>],
+    dist: &mut [usize],
 ) -> bool {
 
     if let Some(neighbors) =
@@ -2470,12 +2466,12 @@ pub(crate) fn hopcroft_karp_dfs<
 #[allow(unused_variables)]
 
 pub fn blossom_algorithm<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> Result<Vec<(usize, usize)>, String>
 {
 
@@ -2530,14 +2526,14 @@ pub fn blossom_algorithm<
 }
 
 pub(crate) fn find_augmenting_path_with_blossoms<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    start_node : usize,
-    matching : &[Option<usize>],
+    graph: &Graph<V>,
+    start_node: usize,
+    matching: &[Option<usize>],
 ) -> Result<Vec<usize>, String> {
 
     let n = graph.nodes.len();
@@ -2650,10 +2646,10 @@ pub(crate) fn find_augmenting_path_with_blossoms<
 }
 
 pub(crate) fn find_common_ancestor(
-    origin : &[usize],
-    parent : &[Option<usize>],
-    mut u : usize,
-    mut v : usize,
+    origin: &[usize],
+    parent: &[Option<usize>],
+    mut u: usize,
+    mut v: usize,
 ) -> Result<usize, String> {
 
     let mut visited =
@@ -2699,14 +2695,14 @@ pub(crate) fn find_common_ancestor(
 }
 
 pub(crate) fn contract_blossom(
-    base : usize,
-    mut u : usize,
-    v : usize,
-    queue : &mut VecDeque<usize>,
-    level : &mut Vec<i32>,
-    origin : &mut [usize],
-    parent : &mut Vec<Option<usize>>,
-    matching : &[Option<usize>],
+    base: usize,
+    mut u: usize,
+    v: usize,
+    queue: &mut VecDeque<usize>,
+    level: &mut Vec<i32>,
+    origin: &mut [usize],
+    parent: &mut Vec<Option<usize>>,
+    matching: &[Option<usize>],
 ) {
 
     while origin[u] != base {
@@ -2750,13 +2746,13 @@ pub(crate) fn contract_blossom(
 #[must_use]
 
 pub fn shortest_path_unweighted<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    start_node : usize,
+    graph: &Graph<V>,
+    start_node: usize,
 ) -> HashMap<
     usize,
     (usize, Option<usize>),
@@ -2841,13 +2837,13 @@ pub fn shortest_path_unweighted<
 /// `(shortest_distance, predecessor_node_id)`.
 
 pub fn dijkstra<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>,
-    start_node : usize,
+    graph: &Graph<V>,
+    start_node: usize,
 ) -> HashMap<usize, (Expr, Option<usize>)>
 {
 
@@ -2970,18 +2966,17 @@ pub fn dijkstra<
 #[must_use]
 
 pub fn floyd_warshall<
-    V : Eq
+    V: Eq
         + std::hash::Hash
         + Clone
         + std::fmt::Debug,
 >(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> Expr {
 
     let n = graph.nodes.len();
 
-    let mut dist =
-        vec![
+    let mut dist = vec![
             vec![Expr::Infinity; n];
             n
         ];
@@ -3062,7 +3057,7 @@ pub fn floyd_warshall<
 /// `eigenvectors_matrix` is a matrix where each column is an eigenvector.
 
 pub fn spectral_analysis(
-    matrix : &Expr
+    matrix: &Expr
 ) -> Result<(Expr, Expr), String> {
 
     crate::symbolic::matrix::eigen_decomposition(matrix)
@@ -3081,13 +3076,13 @@ pub fn spectral_analysis(
 /// or an error string if computation fails or the graph has fewer than 2 eigenvalues.
 
 pub fn algebraic_connectivity<V>(
-    graph : &Graph<V>
+    graph: &Graph<V>
 ) -> Result<Expr, String>
 where
-    V : Clone,
-    V : Debug,
-    V : Eq,
-    V : Hash,
+    V: Clone,
+    V: Debug,
+    V: Eq,
+    V: Hash,
 {
 
     let laplacian =

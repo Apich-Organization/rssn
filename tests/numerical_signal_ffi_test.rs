@@ -95,7 +95,7 @@ fn test_numerical_signal_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -147,13 +147,13 @@ fn test_numerical_signal_bincode_ffi() {
         #[derive(Serialize)]
 
         struct ConvolveInput {
-            a : Vec<f64>,
-            v : Vec<f64>,
+            a: Vec<f64>,
+            v: Vec<f64>,
         }
 
         let input = ConvolveInput {
-            a : vec![1.0, 2.0],
-            v : vec![1.0, 0.5],
+            a: vec![1.0, 2.0],
+            v: vec![1.0, 0.5],
         };
 
         let buffer =
@@ -166,12 +166,12 @@ fn test_numerical_signal_bincode_ffi() {
         #[derive(Deserialize)]
 
         struct FfiResult<T, E> {
-            ok : Option<T>,
+            ok: Option<T>,
             #[allow(dead_code)]
-            err : Option<E>,
+            err: Option<E>,
         }
 
-        let res : FfiResult<
+        let res: FfiResult<
             Vec<f64>,
             String,
         > = from_bincode_buffer(

@@ -23,7 +23,7 @@ use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
 
-const ERROR_MARGIN : f64 = 1e-9;
+const ERROR_MARGIN: f64 = 1e-9;
 
 /// Recursively substitutes all occurrences of a variable in an expression with a replacement expression.
 ///
@@ -40,17 +40,15 @@ const ERROR_MARGIN : f64 = 1e-9;
 #[must_use]
 
 pub fn substitute(
-    expr : &Expr,
-    var : &str,
-    replacement : &Expr,
+    expr: &Expr,
+    var: &str,
+    replacement: &Expr,
 ) -> Expr {
 
     let mut stack = vec![expr.clone()];
 
-    let mut cache : HashMap<
-        Expr,
-        Expr,
-    > = HashMap::new();
+    let mut cache: HashMap<Expr, Expr> =
+        HashMap::new();
 
     while let Some(current_expr) = stack
         .last()
@@ -434,13 +432,13 @@ pub fn substitute(
                 };
 
                     Expr::Sum {
-                        body : new_body,
-                        var : sum_var
+                        body: new_body,
+                        var: sum_var
                             .clone(),
-                        from : Arc::new(
+                        from: Arc::new(
                             new_from,
                         ),
-                        to : Arc::new(
+                        to: Arc::new(
                             new_to,
                         ),
                     }
@@ -466,7 +464,7 @@ pub fn substitute(
 #[allow(dead_code)]
 
 pub(crate) fn get_real_imag_parts(
-    expr : &Expr
+    expr: &Expr
 ) -> (Expr, Expr) {
 
     match simplify(&expr.clone()) {
@@ -502,16 +500,14 @@ pub(crate) fn get_real_imag_parts(
 #[must_use]
 
 pub fn differentiate(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Expr {
 
     let mut stack = vec![expr.clone()];
 
-    let mut cache : HashMap<
-        Expr,
-        Expr,
-    > = HashMap::new();
+    let mut cache: HashMap<Expr, Expr> =
+        HashMap::new();
 
     while let Some(current_expr) = stack
         .last()
@@ -1070,10 +1066,10 @@ pub fn differentiate(
 #[must_use]
 
 pub fn integrate(
-    expr : &Expr,
-    var : &str,
-    lower_bound : Option<&Expr>,
-    upper_bound : Option<&Expr>,
+    expr: &Expr,
+    var: &str,
+    lower_bound: Option<&Expr>,
+    upper_bound: Option<&Expr>,
 ) -> Expr {
 
     if let (Some(lower), Some(upper)) = (
@@ -1159,20 +1155,20 @@ pub fn integrate(
     {
 
         Expr::Integral {
-            integrand : Arc::new(
+            integrand: Arc::new(
                 expr.clone(),
             ),
-            var : Arc::new(
+            var: Arc::new(
                 Expr::Variable(
                     var.to_string(),
                 ),
             ),
-            lower_bound : Arc::new(
+            lower_bound: Arc::new(
                 Expr::Variable(
                     "a".to_string(),
                 ),
             ),
-            upper_bound : Arc::new(
+            upper_bound: Arc::new(
                 Expr::Variable(
                     "b".to_string(),
                 ),
@@ -1185,8 +1181,8 @@ pub fn integrate(
 }
 
 pub(crate) fn integrate_basic(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Expr {
 
     match expr {
@@ -1293,20 +1289,20 @@ pub(crate) fn integrate_basic(
             }
 
             Expr::Integral {
-                integrand : Arc::new(
+                integrand: Arc::new(
                     expr.clone(),
                 ),
-                var : Arc::new(
+                var: Arc::new(
                     Expr::Variable(
                         var.to_string(),
                     ),
                 ),
-                lower_bound : Arc::new(
+                lower_bound: Arc::new(
                     Expr::Variable(
                         "a".to_string(),
                     ),
                 ),
-                upper_bound : Arc::new(
+                upper_bound: Arc::new(
                     Expr::Variable(
                         "b".to_string(),
                     ),
@@ -1329,20 +1325,20 @@ pub(crate) fn integrate_basic(
             }
 
             Expr::Integral {
-                integrand : Arc::new(
+                integrand: Arc::new(
                     expr.clone(),
                 ),
-                var : Arc::new(
+                var: Arc::new(
                     Expr::Variable(
                         var.to_string(),
                     ),
                 ),
-                lower_bound : Arc::new(
+                lower_bound: Arc::new(
                     Expr::Variable(
                         "a".to_string(),
                     ),
                 ),
-                upper_bound : Arc::new(
+                upper_bound: Arc::new(
                     Expr::Variable(
                         "b".to_string(),
                     ),
@@ -1351,20 +1347,20 @@ pub(crate) fn integrate_basic(
         },
         | _ => {
             Expr::Integral {
-                integrand : Arc::new(
+                integrand: Arc::new(
                     expr.clone(),
                 ),
-                var : Arc::new(
+                var: Arc::new(
                     Expr::Variable(
                         var.to_string(),
                     ),
                 ),
-                lower_bound : Arc::new(
+                lower_bound: Arc::new(
                     Expr::Variable(
                         "a".to_string(),
                     ),
                 ),
-                upper_bound : Arc::new(
+                upper_bound: Arc::new(
                     Expr::Variable(
                         "b".to_string(),
                     ),
@@ -1375,7 +1371,7 @@ pub(crate) fn integrate_basic(
 }
 
 pub(crate) const fn get_liate_type(
-    expr : &Expr
+    expr: &Expr
 ) -> i32 {
 
     match expr {
@@ -1398,9 +1394,9 @@ pub(crate) const fn get_liate_type(
 #[must_use]
 
 pub fn substitute_expr(
-    expr : &Expr,
-    to_replace : &Expr,
-    replacement : &Expr,
+    expr: &Expr,
+    to_replace: &Expr,
+    replacement: &Expr,
 ) -> Expr {
 
     let mut stack = vec![expr.clone()];
@@ -1719,8 +1715,8 @@ pub fn substitute_expr(
 }
 
 pub(crate) fn contains_var(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> bool {
 
     let mut found = false;
@@ -1754,8 +1750,8 @@ pub(crate) fn contains_var(
 }
 
 pub(crate) fn get_u_candidates(
-    expr : &Expr,
-    candidates : &mut Vec<Expr>,
+    expr: &Expr,
+    candidates: &mut Vec<Expr>,
 ) {
 
     let mut stack = vec![expr.clone()];
@@ -1839,8 +1835,8 @@ pub(crate) fn get_u_candidates(
 }
 
 pub(crate) fn u_substitution(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Expr> {
 
     if let Expr::Dag(node) = expr {
@@ -1959,10 +1955,10 @@ pub(crate) fn u_substitution(
 }
 
 pub(crate) fn handle_trig_sub_sum(
-    a_sq : &Expr,
-    x_sq : &Expr,
-    expr : &Expr,
-    var : &str,
+    a_sq: &Expr,
+    x_sq: &Expr,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Expr> {
 
     let a_sq_expanded =
@@ -2075,8 +2071,8 @@ pub(crate) fn handle_trig_sub_sum(
 }
 
 pub(crate) fn trig_substitution(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Expr> {
 
     if let Expr::Dag(node) = expr {
@@ -2333,9 +2329,9 @@ pub(crate) fn trig_substitution(
 #[must_use]
 
 pub fn evaluate_at_point(
-    expr : &Expr,
-    var : &str,
-    value : &Expr,
+    expr: &Expr,
+    var: &str,
+    value: &Expr,
 ) -> Expr {
 
     substitute(expr, var, value)
@@ -2359,10 +2355,10 @@ pub fn evaluate_at_point(
 #[must_use]
 
 pub fn definite_integrate(
-    expr : &Expr,
-    var : &str,
-    lower_bound : &Expr,
-    upper_bound : &Expr,
+    expr: &Expr,
+    var: &str,
+    lower_bound: &Expr,
+    upper_bound: &Expr,
 ) -> Expr {
 
     let antiderivative = integrate(
@@ -2411,8 +2407,8 @@ pub fn definite_integrate(
 #[must_use]
 
 pub fn check_analytic(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> bool {
 
     let z_replacement =
@@ -2512,8 +2508,8 @@ pub fn check_analytic(
 #[must_use]
 
 pub fn find_poles(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Vec<Expr> {
 
     match expr {
@@ -2535,9 +2531,9 @@ pub fn find_poles(
 }
 
 pub(crate) fn find_pole_order(
-    expr : &Expr,
-    var : &str,
-    pole : &Expr,
+    expr: &Expr,
+    var: &str,
+    pole: &Expr,
 ) -> usize {
 
     let mut order = 1;
@@ -2611,9 +2607,9 @@ pub(crate) fn find_pole_order(
 #[must_use]
 
 pub fn calculate_residue(
-    expr : &Expr,
-    var : &str,
-    pole : &Expr,
+    expr: &Expr,
+    var: &str,
+    pole: &Expr,
 ) -> Expr {
 
     match expr {
@@ -2705,9 +2701,9 @@ pub fn calculate_residue(
 }
 
 pub(crate) fn integrate_by_parts(
-    expr : &Expr,
-    var : &str,
-    depth : u32,
+    expr: &Expr,
+    var: &str,
+    depth: u32,
 ) -> Option<Expr> {
 
     if depth > 5 {
@@ -2792,8 +2788,8 @@ pub(crate) fn integrate_by_parts(
 #[must_use]
 
 pub fn is_inside_contour(
-    point : &Expr,
-    contour : &Expr,
+    point: &Expr,
+    contour: &Expr,
 ) -> bool {
 
     if let Expr::Dag(node) = contour {
@@ -2913,9 +2909,9 @@ pub fn is_inside_contour(
 #[must_use]
 
 pub fn path_integrate(
-    expr : &Expr,
-    var : &str,
-    contour : &Expr,
+    expr: &Expr,
+    var: &str,
+    contour: &Expr,
 ) -> Expr {
 
     if let Expr::Dag(node) = contour {
@@ -3128,22 +3124,22 @@ pub fn path_integrate(
         },
         | _ => {
             Expr::Integral {
-                integrand : Arc::new(
+                integrand: Arc::new(
                     expr.clone(),
                 ),
-                var : Arc::new(
+                var: Arc::new(
                     Expr::Variable(
                         var.to_string(),
                     ),
                 ),
-                lower_bound : Arc::new(
+                lower_bound: Arc::new(
                     Expr::Variable(
                         "C_lower"
                             .to_string(
                             ),
                     ),
                 ),
-                upper_bound : Arc::new(
+                upper_bound: Arc::new(
                     Expr::Variable(
                         "C_upper"
                             .to_string(
@@ -3167,7 +3163,7 @@ pub fn path_integrate(
 /// The factorial of `n` as an `f64`.
 #[must_use]
 
-pub fn factorial(n : usize) -> f64 {
+pub fn factorial(n: usize) -> f64 {
 
     if n > 170 {
 
@@ -3186,7 +3182,7 @@ pub fn factorial(n : usize) -> f64 {
 }
 
 impl From<f64> for Expr {
-    fn from(val : f64) -> Self {
+    fn from(val: f64) -> Self {
 
         Self::Constant(val)
     }
@@ -3211,12 +3207,12 @@ impl From<f64> for Expr {
 #[must_use]
 
 pub fn improper_integral(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Expr {
 
     pub(crate) fn get_imag_part(
-        expr : &Expr
+        expr: &Expr
     ) -> Option<f64> {
 
         match simplify(&expr.clone()) {
@@ -3295,8 +3291,8 @@ pub fn improper_integral(
 }
 
 pub(crate) fn integrate_by_rules(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Expr> {
 
     match expr {
@@ -4056,8 +4052,8 @@ pub(crate) fn integrate_by_rules(
 }
 
 pub(crate) fn integrate_by_parts_tabular(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Expr> {
 
     if let Expr::Mul(part1, part2) =
@@ -4187,9 +4183,9 @@ pub(crate) fn integrate_by_parts_tabular(
 }
 
 pub(crate) fn integrate_by_parts_master(
-    expr : &Expr,
-    var : &str,
-    depth : u32,
+    expr: &Expr,
+    var: &str,
+    depth: u32,
 ) -> Option<Expr> {
 
     if depth == 0 {
@@ -4208,8 +4204,8 @@ pub(crate) fn integrate_by_parts_master(
 }
 
 pub(crate) fn find_roots_with_multiplicity(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Vec<(Expr, usize)> {
 
     let unique_poles = solve(expr, var);
@@ -4269,8 +4265,8 @@ pub(crate) fn find_roots_with_multiplicity(
 }
 
 pub(crate) fn integrate_by_partial_fractions(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Expr> {
 
     if let Expr::Div(num, den) = expr {
@@ -4462,7 +4458,7 @@ pub(crate) fn integrate_by_partial_fractions(
 }
 
 pub(crate) fn contains_trig_function(
-    expr : &Expr
+    expr: &Expr
 ) -> bool {
 
     let mut stack = vec![expr.clone()];
@@ -4548,8 +4544,8 @@ pub(crate) fn contains_trig_function(
 }
 
 pub(crate) fn tangent_half_angle_substitution(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Expr> {
 
     if !contains_trig_function(expr) {
@@ -4677,9 +4673,9 @@ pub(crate) fn tangent_half_angle_substitution(
 #[must_use]
 
 pub fn limit(
-    expr : &Expr,
-    var : &str,
-    to : &Expr,
+    expr: &Expr,
+    var: &str,
+    to: &Expr,
 ) -> Expr {
 
     limit_internal(expr, var, to, 0)
@@ -4696,10 +4692,10 @@ pub fn limit(
 #[must_use]
 
 pub fn limit_internal(
-    expr : &Expr,
-    var : &str,
-    to : &Expr,
-    depth : u32,
+    expr: &Expr,
+    var: &str,
+    to: &Expr,
+    depth: u32,
 ) -> Expr {
 
     if depth > 7 {

@@ -32,8 +32,8 @@ fn test_simplify_and_with_false() {
 
     // A And False -> False
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::And(vec![
@@ -55,8 +55,8 @@ fn test_simplify_and_with_true() {
 
     // A And True -> A
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::And(vec![
@@ -75,8 +75,8 @@ fn test_simplify_or_with_true() {
 
     // A Or True -> True
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::Or(vec![
@@ -98,8 +98,8 @@ fn test_simplify_or_with_false() {
 
     // A Or False -> A
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::Or(vec![
@@ -118,8 +118,8 @@ fn test_simplify_tautology() {
 
     // A Or Not(A) -> True
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::Or(vec![
@@ -141,23 +141,23 @@ fn test_to_cnf_simple() {
 
     // (A Or B) And (C Or D) is already in CNF
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let b = Expr::Predicate {
-        name : "B".to_string(),
-        args : vec![],
+        name: "B".to_string(),
+        args: vec![],
     };
 
     let c = Expr::Predicate {
-        name : "C".to_string(),
-        args : vec![],
+        name: "C".to_string(),
+        args: vec![],
     };
 
     let d = Expr::Predicate {
-        name : "D".to_string(),
-        args : vec![],
+        name: "D".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::And(vec![
@@ -184,18 +184,18 @@ fn test_to_cnf_distribution() {
 
     // A Or (B And C) -> (A Or B) And (A Or C)
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let b = Expr::Predicate {
-        name : "B".to_string(),
-        args : vec![],
+        name: "B".to_string(),
+        args: vec![],
     };
 
     let c = Expr::Predicate {
-        name : "C".to_string(),
-        args : vec![],
+        name: "C".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::Or(vec![
@@ -218,23 +218,23 @@ fn test_to_dnf_simple() {
 
     // (A And B) Or (C And D) is already in DNF
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let b = Expr::Predicate {
-        name : "B".to_string(),
-        args : vec![],
+        name: "B".to_string(),
+        args: vec![],
     };
 
     let c = Expr::Predicate {
-        name : "C".to_string(),
-        args : vec![],
+        name: "C".to_string(),
+        args: vec![],
     };
 
     let d = Expr::Predicate {
-        name : "D".to_string(),
-        args : vec![],
+        name: "D".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::Or(vec![
@@ -260,8 +260,8 @@ fn test_is_satisfiable_true() {
 
     // A Or Not(A) is always satisfiable (tautology)
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::Or(vec![
@@ -280,8 +280,8 @@ fn test_is_satisfiable_false() {
 
     // A And Not(A) is unsatisfiable (contradiction)
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::And(vec![
@@ -300,13 +300,13 @@ fn test_is_satisfiable_simple_sat() {
 
     // A Or B is satisfiable
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let b = Expr::Predicate {
-        name : "B".to_string(),
-        args : vec![],
+        name: "B".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::Or(vec![a, b]);
@@ -323,8 +323,8 @@ fn test_is_satisfiable_with_quantifier()
 
     // ForAll(x, P(x)) should return None (undecidable)
     let p = Expr::Predicate {
-        name : "P".to_string(),
-        args : vec![Expr::Variable(
+        name: "P".to_string(),
+        args: vec![Expr::Variable(
             "x".to_string(),
         )],
     };
@@ -345,13 +345,13 @@ fn test_simplify_implies() {
 
     // A => B should be converted and simplified
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let b = Expr::Predicate {
-        name : "B".to_string(),
-        args : vec![],
+        name: "B".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::Implies(
@@ -371,13 +371,13 @@ fn test_simplify_equivalent() {
 
     // A <=> B should be converted and simplified
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let b = Expr::Predicate {
-        name : "B".to_string(),
-        args : vec![],
+        name: "B".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::Equivalent(
@@ -397,13 +397,13 @@ fn test_simplify_xor() {
 
     // A Xor B should be converted and simplified
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let b = Expr::Predicate {
-        name : "B".to_string(),
-        args : vec![],
+        name: "B".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::Xor(
@@ -423,8 +423,8 @@ fn test_de_morgan_forall() {
 
     // Not(ForAll(x, P(x))) -> Exists(x, Not(P(x)))
     let p = Expr::Predicate {
-        name : "P".to_string(),
-        args : vec![Expr::Variable(
+        name: "P".to_string(),
+        args: vec![Expr::Variable(
             "x".to_string(),
         )],
     };
@@ -450,8 +450,8 @@ fn test_de_morgan_exists() {
 
     // Not(Exists(x, P(x))) -> ForAll(x, Not(P(x)))
     let p = Expr::Predicate {
-        name : "P".to_string(),
-        args : vec![Expr::Variable(
+        name: "P".to_string(),
+        args: vec![Expr::Variable(
             "x".to_string(),
         )],
     };
@@ -496,18 +496,18 @@ fn test_complex_sat_problem() {
     // (A Or B) And (Not(A) Or C) And (Not(B) Or Not(C))
     // This is satisfiable with A=true, C=true, B=false
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let b = Expr::Predicate {
-        name : "B".to_string(),
-        args : vec![],
+        name: "B".to_string(),
+        args: vec![],
     };
 
     let c = Expr::Predicate {
-        name : "C".to_string(),
-        args : vec![],
+        name: "C".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::And(vec![
@@ -568,18 +568,18 @@ fn test_and_flattening() {
 
     // And(And(A, B), C) should flatten to And(A, B, C) or similar
     let a = Expr::Predicate {
-        name : "A".to_string(),
-        args : vec![],
+        name: "A".to_string(),
+        args: vec![],
     };
 
     let b = Expr::Predicate {
-        name : "B".to_string(),
-        args : vec![],
+        name: "B".to_string(),
+        args: vec![],
     };
 
     let c = Expr::Predicate {
-        name : "C".to_string(),
-        args : vec![],
+        name: "C".to_string(),
+        args: vec![],
     };
 
     let expr = Expr::And(vec![

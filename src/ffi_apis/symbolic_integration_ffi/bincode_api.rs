@@ -6,14 +6,14 @@ use crate::symbolic::integration::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_risch_norman_integrate(
-    expr_buf : BincodeBuffer,
-    x_buf : BincodeBuffer,
+    expr_buf: BincodeBuffer,
+    x_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let x : Option<String> =
+    let x: Option<String> =
         from_bincode_buffer(&x_buf);
 
     if let (Some(e), Some(var)) =
@@ -36,14 +36,14 @@ pub extern "C" fn rssn_bincode_risch_norman_integrate(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_integrate_rational_function(
-    expr_buf : BincodeBuffer,
-    x_buf : BincodeBuffer,
+    expr_buf: BincodeBuffer,
+    x_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let x : Option<String> =
+    let x: Option<String> =
         from_bincode_buffer(&x_buf);
 
     if let (Some(e), Some(var)) =

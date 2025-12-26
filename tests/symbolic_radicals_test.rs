@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::radicals::simplify_radicals;
 
-fn is_one(expr : &Expr) -> bool {
+fn is_one(expr: &Expr) -> bool {
 
     match expr {
         | Expr::Constant(c) => {
@@ -18,8 +18,8 @@ fn is_one(expr : &Expr) -> bool {
 }
 
 fn is_sqrt_k(
-    expr : &Expr,
-    k : f64,
+    expr: &Expr,
+    k: f64,
 ) -> bool {
 
     match expr {
@@ -37,8 +37,8 @@ fn is_sqrt_k(
 }
 
 fn is_neg_sqrt_k(
-    expr : &Expr,
-    k : f64,
+    expr: &Expr,
+    k: f64,
 ) -> bool {
 
     match expr {
@@ -82,12 +82,13 @@ fn is_neg_sqrt_k(
     }
 }
 
-fn resolve(expr : Expr) -> Expr {
+fn resolve(expr: Expr) -> Expr {
 
     if let Expr::Dag(node) = expr {
 
         node.to_expr()
             .unwrap_or_else(|_| {
+
                 Expr::Dag(node)
             })
     } else {

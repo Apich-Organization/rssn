@@ -16,9 +16,9 @@ use std::os::raw::c_char;
 
 pub struct BincodeBuffer {
     /// Pointer to the binary data.
-    pub data : *mut u8,
+    pub data: *mut u8,
     /// Length of the binary data in bytes.
-    pub len : usize,
+    pub len: usize,
 }
 
 impl BincodeBuffer {
@@ -27,15 +27,15 @@ impl BincodeBuffer {
     pub fn empty() -> Self {
 
         Self {
-            data : std::ptr::null_mut(),
-            len : 0,
+            data: std::ptr::null_mut(),
+            len: 0,
         }
     }
 
     /// Creates a buffer from a Vec<u8>.
 
     pub fn from_vec(
-        bytes : Vec<u8>
+        bytes: Vec<u8>
     ) -> Self {
 
         let len = bytes.len();
@@ -88,7 +88,7 @@ impl BincodeBuffer {
 #[no_mangle]
 
 pub extern "C" fn rssn_free_string(
-    s : *mut c_char
+    s: *mut c_char
 ) {
 
     if !s.is_null() {
@@ -109,7 +109,7 @@ pub extern "C" fn rssn_free_string(
 #[no_mangle]
 
 pub extern "C" fn rssn_free_bincode_buffer(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) {
 
     if !buffer.is_null() {
@@ -131,7 +131,7 @@ pub extern "C" fn rssn_free_bincode_buffer(
 /// Returns null on error.
 
 pub fn to_c_string(
-    s : String
+    s: String
 ) -> *mut c_char {
 
     match CString::new(s) {
@@ -147,9 +147,9 @@ pub fn to_c_string(
 /// Returns null on error.
 
 pub fn to_json_string<
-    T : serde::Serialize,
+    T: serde::Serialize,
 >(
-    value : &T
+    value: &T
 ) -> *mut c_char {
 
     match serde_json::to_string(value) {
@@ -165,9 +165,9 @@ pub fn to_json_string<
 /// Returns None on error.
 
 pub fn from_json_string<
-    T : serde::de::DeserializeOwned,
+    T: serde::de::DeserializeOwned,
 >(
-    json : *const c_char
+    json: *const c_char
 ) -> Option<T> {
 
     if json.is_null() {
@@ -186,6 +186,7 @@ pub fn from_json_string<
             .to_str()
             .ok()
             .and_then(|s| {
+
                 serde_json::from_str(s)
                     .ok()
             })
@@ -197,9 +198,9 @@ pub fn from_json_string<
 /// Returns empty buffer on error.
 
 pub fn to_bincode_buffer<
-    T : serde::Serialize,
+    T: serde::Serialize,
 >(
-    value : &T
+    value: &T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -216,9 +217,9 @@ pub fn to_bincode_buffer<
 /// Returns None on error.
 
 pub fn from_bincode_buffer<
-    T : serde::de::DeserializeOwned,
+    T: serde::de::DeserializeOwned,
 >(
-    buffer : &BincodeBuffer
+    buffer: &BincodeBuffer
 ) -> Option<T> {
 
     if buffer.is_null() {
@@ -244,7 +245,7 @@ pub fn from_bincode_buffer<
 /// Returns None if the pointer is null or the string is not valid UTF-8.
 
 pub unsafe fn c_str_to_str<'a>(
-    s : *const c_char
+    s: *const c_char
 ) -> Option<&'a str> {
 
     if s.is_null() {

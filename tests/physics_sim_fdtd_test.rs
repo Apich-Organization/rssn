@@ -9,11 +9,11 @@ use rssn::physics::physics_sim::fdtd_electrodynamics::*;
 fn test_run_fdtd_simulation_basic() {
 
     let params = FdtdParameters {
-        width : 50,
-        height : 50,
-        time_steps : 100,
-        source_pos : (25, 25),
-        source_freq : 0.1,
+        width: 50,
+        height: 50,
+        time_steps: 100,
+        source_pos: (25, 25),
+        source_freq: 0.1,
     };
 
     let snapshots =
@@ -32,7 +32,7 @@ fn test_run_fdtd_simulation_basic() {
     );
 
     // Check if there is some activity in the field
-    let sum_abs : f64 = final_ez
+    let sum_abs: f64 = final_ez
         .iter()
         .map(|&x| x.abs())
         .sum();

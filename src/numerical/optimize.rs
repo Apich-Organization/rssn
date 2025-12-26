@@ -62,10 +62,10 @@ pub enum ProblemType {
 #[derive(Debug, Clone)]
 
 pub struct OptimizationConfig {
-    pub max_iters : u64,
-    pub tolerance : f64,
-    pub problem_type : ProblemType,
-    pub dimension : usize,
+    pub max_iters: u64,
+    pub tolerance: f64,
+    pub problem_type: ProblemType,
+    pub dimension: usize,
 }
 
 impl Default for OptimizationConfig {
@@ -74,11 +74,11 @@ impl Default for OptimizationConfig {
     fn default() -> Self {
 
         Self {
-            max_iters : 1000,
-            tolerance : 1e-6,
+            max_iters: 1000,
+            tolerance: 1e-6,
             problem_type:
                 ProblemType::Rosenbrock,
-            dimension : 2,
+            dimension: 2,
         }
     }
 }
@@ -86,16 +86,16 @@ impl Default for OptimizationConfig {
 /// Rosenbrock function optimization (classical test function)
 
 pub struct Rosenbrock {
-    pub a : f64,
-    pub b : f64,
+    pub a: f64,
+    pub b: f64,
 }
 
 impl Default for Rosenbrock {
     fn default() -> Self {
 
         Self {
-            a : 1.0,
-            b : 100.0,
+            a: 1.0,
+            b: 100.0,
         }
     }
 }
@@ -106,7 +106,7 @@ impl CostFunction for Rosenbrock {
 
     fn cost(
         &self,
-        param : &Self::Param,
+        param: &Self::Param,
     ) -> Result<Self::Output, Error>
     {
 
@@ -147,7 +147,7 @@ impl Gradient for Rosenbrock {
 
     fn gradient(
         &self,
-        param : &Self::Param,
+        param: &Self::Param,
     ) -> Result<Self::Gradient, Error>
     {
 
@@ -212,7 +212,7 @@ impl CostFunction for Sphere {
 
     fn cost(
         &self,
-        param : &Self::Param,
+        param: &Self::Param,
     ) -> Result<Self::Output, Error>
     {
 
@@ -229,7 +229,7 @@ impl Gradient for Sphere {
 
     fn gradient(
         &self,
-        param : &Self::Param,
+        param: &Self::Param,
     ) -> Result<Self::Gradient, Error>
     {
 
@@ -243,14 +243,14 @@ impl Gradient for Sphere {
 /// Rastrigin function optimization (multimodal function)
 
 pub struct Rastrigin {
-    pub a : f64,
+    pub a: f64,
 }
 
 impl Default for Rastrigin {
     fn default() -> Self {
 
         Self {
-            a : 10.0,
+            a: 10.0,
         }
     }
 }
@@ -261,13 +261,13 @@ impl CostFunction for Rastrigin {
 
     fn cost(
         &self,
-        param : &Self::Param,
+        param: &Self::Param,
     ) -> Result<Self::Output, Error>
     {
 
         let n = param.len() as f64;
 
-        let sum : f64 = param
+        let sum: f64 = param
             .iter()
             .map(|&x| {
 
@@ -291,14 +291,14 @@ impl CostFunction for Rastrigin {
 /// Linear regression problem optimization
 
 pub struct LinearRegression {
-    pub x : Array2<f64>,
-    pub y : Array1<f64>,
+    pub x: Array2<f64>,
+    pub y: Array1<f64>,
 }
 
 impl LinearRegression {
     pub fn new(
-        x : Array2<f64>,
-        y : Array1<f64>,
+        x: Array2<f64>,
+        y: Array1<f64>,
     ) -> Result<Self, Error> {
 
         if x.is_empty()
@@ -325,7 +325,7 @@ impl CostFunction for LinearRegression {
 
     fn cost(
         &self,
-        param : &Self::Param,
+        param: &Self::Param,
     ) -> Result<Self::Output, Error>
     {
 
@@ -361,7 +361,7 @@ impl Gradient for LinearRegression {
 
     fn gradient(
         &self,
-        param : &Self::Param,
+        param: &Self::Param,
     ) -> Result<Self::Gradient, Error>
     {
 
@@ -539,12 +539,12 @@ impl EquationOptimizer {
     pub fn solve_with_gradient_descent<
         C,
     >(
-        cost_function : C,
-        initial_param : Array1<f64>,
-        config : &OptimizationConfig,
+        cost_function: C,
+        initial_param: Array1<f64>,
+        config: &OptimizationConfig,
     ) -> SolveResult<C, Error>
     where
-        C : CostFunction<
+        C: CostFunction<
                 Param = Array1<f64>,
                 Output = f64,
             > + Gradient<
@@ -585,9 +585,9 @@ impl EquationOptimizer {
     pub fn auto_solve_conjugate_gradient<
         C,
     >(
-        cost_function : C,
-        init_param : P,
-        options : &OptimizationConfig,
+        cost_function: C,
+        init_param: P,
+        options: &OptimizationConfig,
     ) -> AutoSolveResult<
         C,
         P,
@@ -596,7 +596,7 @@ impl EquationOptimizer {
         Error,
     >
     where
-        C : CostFunction<
+        C: CostFunction<
                 Param = P,
                 Output = F,
             > + Gradient<
@@ -606,25 +606,25 @@ impl EquationOptimizer {
                 Param = P,
                 Output = P,
             >,
-        P : ArgminDot<P, F>
+        P: ArgminDot<P, F>
             + ArgminScaledAdd<P, F, P>
             + ArgminSub<P, P>
             + ArgminConj
             + ArgminMul<F, P>
             + Clone
             + std::fmt::Debug,
-        G : ArgminL2Norm<F>,
-        F : ArgminFloat
+        G: ArgminL2Norm<F>,
+        F: ArgminFloat
             + ArgminL2Norm<F>,
     {
 
         let _linesearch_condition : ArmijoCondition<F> =
             ArmijoCondition::new(0.0001).expect("Failed to create Armijo condition");
 
-        let linesearch : MThLineSearch =
+        let linesearch: MThLineSearch =
             MoreThuenteLineSearch::new();
 
-        let solver : SteepestDescent<
+        let solver: SteepestDescent<
             MThLineSearch,
         > = SteepestDescent::new(
             linesearch,
@@ -653,12 +653,12 @@ impl EquationOptimizer {
     /// Solve using BFGS quasi-Newton method
 
     pub fn solve_with_bfgs<C>(
-        cost_function : C,
-        initial_param : Array1<f64>,
-        config : &OptimizationConfig,
+        cost_function: C,
+        initial_param: Array1<f64>,
+        config: &OptimizationConfig,
     ) -> BFGSSolveResult<C, Error>
     where
-        C : CostFunction<
+        C: CostFunction<
                 Param = Array1<f64>,
                 Output = f64,
             > + Gradient<
@@ -706,15 +706,15 @@ impl EquationOptimizer {
     /// Solve using particle swarm optimization (for non-differentiable functions)
 
     pub fn solve_with_pso<C>(
-        cost_function : C,
-        bounds : (
+        cost_function: C,
+        bounds: (
             Array1<f64>,
             Array1<f64>,
         ),
-        config : &OptimizationConfig,
+        config: &OptimizationConfig,
     ) -> PsoSolveResult<C, Error>
     where
-        C : CostFunction<
+        C: CostFunction<
             Param = Array1<f64>,
             Output = f64,
         >,
@@ -747,15 +747,15 @@ impl EquationOptimizer {
     /// Automatically select solver and solve
 
     pub fn auto_solve<S, I>(
-        problem : P,
-        solver : S,
+        problem: P,
+        solver: S,
     ) -> Result<
         OptimizationResult<P, S, I>,
         Error,
     >
     where
-        S : Solver<P, I>,
-        I : State<Param = Array1<f64>>,
+        S: Solver<P, I>,
+        I: State<Param = Array1<f64>>,
     {
 
         Executor::new(problem, solver)
@@ -769,12 +769,12 @@ pub struct ResultAnalyzer;
 
 impl ResultAnalyzer {
     pub fn print_optimization_result<
-        S : State<
+        S: State<
             Param = Array1<f64>,
             Float = f64,
         >,
     >(
-        state : &S
+        state: &S
     ) {
 
         println!(
@@ -840,9 +840,9 @@ impl ResultAnalyzer {
     }
 
     pub fn analyze_convergence<
-        S : State<Float = f64>,
+        S: State<Float = f64>,
     >(
-        state : &S
+        state: &S
     ) -> String {
 
         let cost =

@@ -6,14 +6,14 @@ use crate::symbolic::multi_valued::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_general_log(
-    z_buf : BincodeBuffer,
-    k_buf : BincodeBuffer,
+    z_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
     if let (
@@ -38,14 +38,14 @@ pub extern "C" fn rssn_bincode_general_log(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_general_sqrt(
-    z_buf : BincodeBuffer,
-    k_buf : BincodeBuffer,
+    z_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
     if let (
@@ -70,18 +70,18 @@ pub extern "C" fn rssn_bincode_general_sqrt(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_general_power(
-    z_buf : BincodeBuffer,
-    w_buf : BincodeBuffer,
-    k_buf : BincodeBuffer,
+    z_buf: BincodeBuffer,
+    w_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
-    let w : Option<Expr> =
+    let w: Option<Expr> =
         from_bincode_buffer(&w_buf);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
     if let (
@@ -108,18 +108,18 @@ pub extern "C" fn rssn_bincode_general_power(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_general_nth_root(
-    z_buf : BincodeBuffer,
-    n_buf : BincodeBuffer,
-    k_buf : BincodeBuffer,
+    z_buf: BincodeBuffer,
+    n_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
-    let n : Option<Expr> =
+    let n: Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
     if let (
@@ -146,14 +146,14 @@ pub extern "C" fn rssn_bincode_general_nth_root(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_general_arcsin(
-    z_buf : BincodeBuffer,
-    k_buf : BincodeBuffer,
+    z_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
     if let (
@@ -178,18 +178,18 @@ pub extern "C" fn rssn_bincode_general_arcsin(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_general_arccos(
-    z_buf : BincodeBuffer,
-    k_buf : BincodeBuffer,
-    s_buf : BincodeBuffer,
+    z_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
+    s_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
-    let s : Option<Expr> =
+    let s: Option<Expr> =
         from_bincode_buffer(&s_buf);
 
     if let (
@@ -216,14 +216,14 @@ pub extern "C" fn rssn_bincode_general_arccos(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_general_arctan(
-    z_buf : BincodeBuffer,
-    k_buf : BincodeBuffer,
+    z_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
-    let k : Option<Expr> =
+    let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
     if let (
@@ -248,10 +248,10 @@ pub extern "C" fn rssn_bincode_general_arctan(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_arg(
-    z_buf : BincodeBuffer
+    z_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
     if let Some(z_expr) = z {
@@ -269,10 +269,10 @@ pub extern "C" fn rssn_bincode_arg(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_abs(
-    z_buf : BincodeBuffer
+    z_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> =
+    let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
     if let Some(z_expr) = z {

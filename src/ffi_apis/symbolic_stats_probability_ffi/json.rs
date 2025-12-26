@@ -17,7 +17,7 @@ use crate::symbolic::stats_probability::Uniform; // Need CStr
 
 // Helper to safely convert JSON string to Expr
 fn parse_expr(
-    json : *const c_char
+    json: *const c_char
 ) -> Option<Expr> {
 
     from_json_string(json)
@@ -33,8 +33,8 @@ fn parse_expr(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_normal(
-    mean_json : *const c_char,
-    std_dev_json : *const c_char,
+    mean_json: *const c_char,
+    std_dev_json: *const c_char,
 ) -> *mut c_char {
 
     let mean = parse_expr(mean_json)
@@ -59,8 +59,8 @@ pub unsafe extern "C" fn rssn_json_dist_normal(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_uniform(
-    min_json : *const c_char,
-    max_json : *const c_char,
+    min_json: *const c_char,
+    max_json: *const c_char,
 ) -> *mut c_char {
 
     let min = parse_expr(min_json)
@@ -82,8 +82,8 @@ pub unsafe extern "C" fn rssn_json_dist_uniform(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_binomial(
-    n_json : *const c_char,
-    p_json : *const c_char,
+    n_json: *const c_char,
+    p_json: *const c_char,
 ) -> *mut c_char {
 
     let n = parse_expr(n_json)
@@ -105,7 +105,7 @@ pub unsafe extern "C" fn rssn_json_dist_binomial(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_poisson(
-    rate_json : *const c_char
+    rate_json: *const c_char
 ) -> *mut c_char {
 
     let rate = parse_expr(rate_json)
@@ -123,7 +123,7 @@ pub unsafe extern "C" fn rssn_json_dist_poisson(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_bernoulli(
-    p_json : *const c_char
+    p_json: *const c_char
 ) -> *mut c_char {
 
     let p = parse_expr(p_json)
@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rssn_json_dist_bernoulli(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_exponential(
-    rate_json : *const c_char
+    rate_json: *const c_char
 ) -> *mut c_char {
 
     let rate = parse_expr(rate_json)
@@ -159,8 +159,8 @@ pub unsafe extern "C" fn rssn_json_dist_exponential(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_gamma(
-    shape_json : *const c_char,
-    rate_json : *const c_char,
+    shape_json: *const c_char,
+    rate_json: *const c_char,
 ) -> *mut c_char {
 
     let shape = parse_expr(shape_json)
@@ -182,8 +182,8 @@ pub unsafe extern "C" fn rssn_json_dist_gamma(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_beta(
-    alpha_json : *const c_char,
-    beta_json : *const c_char,
+    alpha_json: *const c_char,
+    beta_json: *const c_char,
 ) -> *mut c_char {
 
     let alpha = parse_expr(alpha_json)
@@ -205,7 +205,7 @@ pub unsafe extern "C" fn rssn_json_dist_beta(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_student_t(
-    nu_json : *const c_char
+    nu_json: *const c_char
 ) -> *mut c_char {
 
     let nu = parse_expr(nu_json)
@@ -225,8 +225,8 @@ pub unsafe extern "C" fn rssn_json_dist_student_t(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_pdf(
-    dist_json : *const c_char,
-    x_json : *const c_char,
+    dist_json: *const c_char,
+    x_json: *const c_char,
 ) -> *mut c_char {
 
     let dist_expr =
@@ -251,8 +251,8 @@ pub unsafe extern "C" fn rssn_json_dist_pdf(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_cdf(
-    dist_json : *const c_char,
-    x_json : *const c_char,
+    dist_json: *const c_char,
+    x_json: *const c_char,
 ) -> *mut c_char {
 
     let dist_expr =
@@ -277,7 +277,7 @@ pub unsafe extern "C" fn rssn_json_dist_cdf(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_expectation(
-    dist_json : *const c_char
+    dist_json: *const c_char
 ) -> *mut c_char {
 
     let dist_expr =
@@ -299,7 +299,7 @@ pub unsafe extern "C" fn rssn_json_dist_expectation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_variance(
-    dist_json : *const c_char
+    dist_json: *const c_char
 ) -> *mut c_char {
 
     let dist_expr =
@@ -321,8 +321,8 @@ pub unsafe extern "C" fn rssn_json_dist_variance(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_mgf(
-    dist_json : *const c_char,
-    t_json : *const c_char,
+    dist_json: *const c_char,
+    t_json: *const c_char,
 ) -> *mut c_char {
 
     let dist_expr =

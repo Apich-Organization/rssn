@@ -34,7 +34,7 @@ fn test_rs_encode_json() {
             .contains("\"ok\":"));
 
         // Parse the result
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -73,7 +73,11 @@ fn test_rs_check_json_valid() {
             )
             .to_string_lossy();
 
-        let encoded : serde_json::Value = serde_json::from_str(&encode_str).unwrap();
+        let encoded: serde_json::Value =
+            serde_json::from_str(
+                &encode_str,
+            )
+            .unwrap();
 
         let codeword = encoded["ok"]
             .as_array()
@@ -103,7 +107,11 @@ fn test_rs_check_json_valid() {
             )
             .to_string_lossy();
 
-        let checked : serde_json::Value = serde_json::from_str(&check_str).unwrap();
+        let checked: serde_json::Value =
+            serde_json::from_str(
+                &check_str,
+            )
+            .unwrap();
 
         assert_eq!(checked["ok"], true);
     }
@@ -131,7 +139,7 @@ fn test_hamming_encode_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -171,7 +179,11 @@ fn test_hamming_decode_json() {
             )
             .to_string_lossy();
 
-        let encoded : serde_json::Value = serde_json::from_str(&encode_str).unwrap();
+        let encoded: serde_json::Value =
+            serde_json::from_str(
+                &encode_str,
+            )
+            .unwrap();
 
         let codeword = encoded["ok"]
             .as_array()
@@ -200,7 +212,11 @@ fn test_hamming_decode_json() {
             )
             .to_string_lossy();
 
-        let decoded : serde_json::Value = serde_json::from_str(&decode_str).unwrap();
+        let decoded: serde_json::Value =
+            serde_json::from_str(
+                &decode_str,
+            )
+            .unwrap();
 
         // Check decoded data
         assert!(
@@ -243,7 +259,11 @@ fn test_hamming_check_json() {
             )
             .to_string_lossy();
 
-        let encoded : serde_json::Value = serde_json::from_str(&encode_str).unwrap();
+        let encoded: serde_json::Value =
+            serde_json::from_str(
+                &encode_str,
+            )
+            .unwrap();
 
         let codeword = encoded["ok"]
             .as_array()
@@ -272,7 +292,11 @@ fn test_hamming_check_json() {
             )
             .to_string_lossy();
 
-        let checked : serde_json::Value = serde_json::from_str(&check_str).unwrap();
+        let checked: serde_json::Value =
+            serde_json::from_str(
+                &check_str,
+            )
+            .unwrap();
 
         assert_eq!(checked["ok"], true);
     }
@@ -299,7 +323,7 @@ fn test_hamming_distance_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -330,7 +354,7 @@ fn test_hamming_weight_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -362,7 +386,7 @@ fn test_crc32_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -380,10 +404,10 @@ fn test_crc32_json() {
 fn test_crc32_verify_json() {
 
     // Use proper JSON construction with serde_json
-    let data : Vec<u8> =
+    let data: Vec<u8> =
         b"Hello, World!".to_vec();
 
-    let expected_crc : u32 = 0xEC4AC3D0;
+    let expected_crc: u32 = 0xEC4AC3D0;
 
     let input_obj = serde_json::json!({
         "data": data,
@@ -410,7 +434,7 @@ fn test_crc32_verify_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -442,7 +466,7 @@ fn test_crc16_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -478,7 +502,7 @@ fn test_crc8_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -512,7 +536,7 @@ fn test_interleave_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -617,7 +641,7 @@ fn test_code_rate_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -656,7 +680,7 @@ fn test_capability_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -729,9 +753,9 @@ fn test_crc16_handle() {
 
 fn test_hamming_encode_handle() {
 
-    let data : [u8; 4] = [1, 0, 1, 1];
+    let data: [u8; 4] = [1, 0, 1, 1];
 
-    let mut output : [u8; 7] = [0; 7];
+    let mut output: [u8; 7] = [0; 7];
 
     unsafe {
 
@@ -748,13 +772,13 @@ fn test_hamming_encode_handle() {
 
 fn test_hamming_decode_handle() {
 
-    let data : [u8; 4] = [1, 0, 1, 1];
+    let data: [u8; 4] = [1, 0, 1, 1];
 
-    let mut codeword : [u8; 7] = [0; 7];
+    let mut codeword: [u8; 7] = [0; 7];
 
-    let mut decoded : [u8; 4] = [0; 4];
+    let mut decoded: [u8; 4] = [0; 4];
 
-    let mut error_pos : i32 = 0;
+    let mut error_pos: i32 = 0;
 
     unsafe {
 
@@ -782,9 +806,9 @@ fn test_hamming_decode_handle() {
 
 fn test_hamming_distance_handle() {
 
-    let a : [u8; 4] = [1, 0, 1, 0];
+    let a: [u8; 4] = [1, 0, 1, 0];
 
-    let b : [u8; 4] = [0, 0, 1, 1];
+    let b: [u8; 4] = [0, 0, 1, 1];
 
     unsafe {
 
@@ -802,7 +826,7 @@ fn test_hamming_distance_handle() {
 
 fn test_hamming_weight_handle() {
 
-    let data : [u8; 6] =
+    let data: [u8; 6] =
         [1, 0, 1, 1, 0, 1];
 
     unsafe {
@@ -856,10 +880,10 @@ fn test_detection_capability_handle() {
 
 fn test_interleave_handle() {
 
-    let data : [u8; 6] =
+    let data: [u8; 6] =
         [1, 2, 3, 4, 5, 6];
 
-    let mut output : [u8; 6] = [0; 6];
+    let mut output: [u8; 6] = [0; 6];
 
     unsafe {
 
@@ -878,11 +902,10 @@ fn test_interleave_handle() {
 
 fn test_rs_encode_handle() {
 
-    let message : [u8; 4] =
-        [1, 2, 3, 4];
+    let message: [u8; 4] = [1, 2, 3, 4];
 
-    let mut output : [u8; 8] = [0; 8]; // 4 data + 4 parity
-    let mut out_len : usize = 8;
+    let mut output: [u8; 8] = [0; 8]; // 4 data + 4 parity
+    let mut out_len: usize = 8;
 
     unsafe {
 
@@ -910,12 +933,11 @@ fn test_rs_encode_handle() {
 
 fn test_rs_check_handle() {
 
-    let message : [u8; 4] =
-        [1, 2, 3, 4];
+    let message: [u8; 4] = [1, 2, 3, 4];
 
-    let mut codeword : [u8; 8] = [0; 8];
+    let mut codeword: [u8; 8] = [0; 8];
 
-    let mut out_len : usize = 8;
+    let mut out_len: usize = 8;
 
     unsafe {
 

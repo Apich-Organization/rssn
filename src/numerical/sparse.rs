@@ -23,9 +23,9 @@ pub type Array = ArrayD<f64>;
 #[must_use]
 
 pub fn csr_from_triplets(
-    rows : usize,
-    cols : usize,
-    triplets : &[(usize, usize, f64)],
+    rows: usize,
+    cols: usize,
+    triplets: &[(usize, usize, f64)],
 ) -> CsMat<f64> {
 
     let mut mat =
@@ -52,8 +52,8 @@ pub fn csr_from_triplets(
 /// Panics if matrix and vector dimensions are not compatible.
 
 pub fn sp_mat_vec_mul(
-    matrix : &CsMat<f64>,
-    vector : &[f64],
+    matrix: &CsMat<f64>,
+    vector: &[f64],
 ) -> Result<Vec<f64>, String> {
 
     if matrix.cols() != vector.len() {
@@ -102,7 +102,7 @@ pub fn sp_mat_vec_mul(
 #[must_use]
 
 pub fn to_csr(
-    arr : &Array
+    arr: &Array
 ) -> CsMat<f64> {
 
     assert_eq!(
@@ -165,7 +165,7 @@ pub fn to_csr(
 #[must_use]
 
 pub fn to_dense(
-    matrix : &CsMat<f64>
+    matrix: &CsMat<f64>
 ) -> Array2<f64> {
 
     matrix.to_dense()
@@ -187,10 +187,10 @@ use crate::numerical::matrix::Matrix;
 #[must_use]
 
 pub fn rank(
-    matrix : &CsMat<f64>
+    matrix: &CsMat<f64>
 ) -> usize {
 
-    let dense_array2 : Array2<f64> =
+    let dense_array2: Array2<f64> =
         matrix.to_dense();
 
     let rows = dense_array2.nrows();
@@ -214,7 +214,7 @@ pub fn rank(
 #[must_use]
 
 pub fn transpose(
-    matrix : &CsMat<f64>
+    matrix: &CsMat<f64>
 ) -> CsMat<f64> {
 
     matrix
@@ -225,7 +225,7 @@ pub fn transpose(
 /// Computes the trace of a square sparse matrix.
 
 pub fn trace(
-    matrix : &CsMat<f64>
+    matrix: &CsMat<f64>
 ) -> Result<f64, String> {
 
     if matrix.rows() != matrix.cols() {
@@ -255,8 +255,8 @@ pub fn trace(
 #[must_use]
 
 pub fn is_symmetric(
-    matrix : &CsMat<f64>,
-    epsilon : f64,
+    matrix: &CsMat<f64>,
+    epsilon: f64,
 ) -> bool {
 
     if matrix.rows() != matrix.cols() {
@@ -285,7 +285,7 @@ pub fn is_symmetric(
 #[must_use]
 
 pub fn is_diagonal(
-    matrix : &CsMat<f64>
+    matrix: &CsMat<f64>
 ) -> bool {
 
     for (&val, (r, c)) in matrix {
@@ -303,7 +303,7 @@ pub fn is_diagonal(
 #[must_use]
 
 pub fn frobenius_norm(
-    matrix : &CsMat<f64>
+    matrix: &CsMat<f64>
 ) -> f64 {
 
     let mut sum = 0.0;
@@ -320,7 +320,7 @@ pub fn frobenius_norm(
 #[must_use]
 
 pub fn l1_norm(
-    matrix : &CsMat<f64>
+    matrix: &CsMat<f64>
 ) -> f64 {
 
     let mut col_sums =
@@ -348,7 +348,7 @@ pub fn l1_norm(
 #[must_use]
 
 pub fn linf_norm(
-    matrix : &CsMat<f64>
+    matrix: &CsMat<f64>
 ) -> f64 {
 
     let mut max_sum = 0.0;
@@ -380,30 +380,30 @@ use serde::Serialize;
 )]
 
 pub struct SparseMatrixData {
-    pub rows : usize,
-    pub cols : usize,
-    pub indptr : Vec<usize>,
-    pub indices : Vec<usize>,
-    pub data : Vec<f64>,
+    pub rows: usize,
+    pub cols: usize,
+    pub indptr: Vec<usize>,
+    pub indices: Vec<usize>,
+    pub data: Vec<f64>,
 }
 
 impl From<&CsMat<f64>>
     for SparseMatrixData
 {
-    fn from(mat : &CsMat<f64>) -> Self {
+    fn from(mat: &CsMat<f64>) -> Self {
 
         Self {
-            rows : mat.rows(),
-            cols : mat.cols(),
-            indptr : mat
+            rows: mat.rows(),
+            cols: mat.cols(),
+            indptr: mat
                 .indptr()
                 .as_slice()
                 .unwrap_or(&[])
                 .to_vec(),
-            indices : mat
+            indices: mat
                 .indices()
                 .to_vec(),
-            data : mat.data().to_vec(),
+            data: mat.data().to_vec(),
         }
     }
 }
@@ -583,11 +583,11 @@ use ndarray::Array1;
 /// A `Result` containing the solution vector `x`, or an error string.
 
 pub fn solve_conjugate_gradient(
-    a : &CsMat<f64>,
-    b : &Array1<f64>,
-    x0 : Option<&Array1<f64>>,
-    max_iter : usize,
-    tolerance : f64,
+    a: &CsMat<f64>,
+    b: &Array1<f64>,
+    x0: Option<&Array1<f64>>,
+    max_iter: usize,
+    tolerance: f64,
 ) -> Result<Array1<f64>, String> {
 
     let n = a.cols();
@@ -604,6 +604,7 @@ pub fn solve_conjugate_gradient(
     let mut x = x0
         .cloned()
         .unwrap_or_else(|| {
+
             Array1::zeros(n)
         });
 

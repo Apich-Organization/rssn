@@ -13,21 +13,21 @@ use crate::numerical::solve::{
 #[derive(Deserialize)]
 
 struct SolveLinearInput {
-    matrix : Matrix<f64>,
-    vector : Vec<f64>,
+    matrix: Matrix<f64>,
+    vector: Vec<f64>,
 }
 
 #[derive(Serialize)]
 
 struct FfiResult<T> {
-    ok : Option<T>,
-    err : Option<String>,
+    ok: Option<T>,
+    err: Option<String>,
 }
 
 fn decode<
-    T : for<'de> Deserialize<'de>,
+    T: for<'de> Deserialize<'de>,
 >(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> Option<T> {
 
     let slice = unsafe {
@@ -43,8 +43,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T : Serialize>(
-    val : T
+fn encode<T: Serialize>(
+    val: T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -60,7 +60,7 @@ fn encode<T : Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_linear_system_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : SolveLinearInput = match decode(buffer) {
@@ -81,16 +81,16 @@ pub unsafe extern "C" fn rssn_solve_linear_system_bincode(
     ) {
         | Ok(sol) => {
             encode(FfiResult {
-                ok : Some(sol),
-                err : None::<String>,
+                ok: Some(sol),
+                err: None::<String>,
             })
         },
         | Err(e) => {
             encode(FfiResult::<
                 LinearSolution,
             > {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             })
         },
     }

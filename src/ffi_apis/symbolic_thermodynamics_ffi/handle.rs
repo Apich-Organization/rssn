@@ -9,11 +9,11 @@ use crate::symbolic::thermodynamics;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_ideal_gas_law(
-    p : *const Expr,
-    v : *const Expr,
-    n : *const Expr,
-    r : *const Expr,
-    t : *const Expr,
+    p: *const Expr,
+    v: *const Expr,
+    n: *const Expr,
+    r: *const Expr,
+    t: *const Expr,
 ) -> *mut Expr {
 
     if p.is_null()
@@ -37,9 +37,9 @@ pub unsafe extern "C" fn rssn_ideal_gas_law(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_enthalpy(
-    u : *const Expr,
-    p : *const Expr,
-    v : *const Expr,
+    u: *const Expr,
+    p: *const Expr,
+    v: *const Expr,
 ) -> *mut Expr {
 
     if u.is_null()
@@ -61,9 +61,9 @@ pub unsafe extern "C" fn rssn_enthalpy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_gibbs_free_energy(
-    h : *const Expr,
-    t : *const Expr,
-    s : *const Expr,
+    h: *const Expr,
+    t: *const Expr,
+    s: *const Expr,
 ) -> *mut Expr {
 
     if h.is_null()
@@ -83,8 +83,8 @@ pub unsafe extern "C" fn rssn_gibbs_free_energy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_carnot_efficiency(
-    tc : *const Expr,
-    th : *const Expr,
+    tc: *const Expr,
+    th: *const Expr,
 ) -> *mut Expr {
 
     if tc.is_null() || th.is_null() {
@@ -101,9 +101,9 @@ pub unsafe extern "C" fn rssn_carnot_efficiency(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_boltzmann_distribution(
-    energy : *const Expr,
-    temperature : *const Expr,
-    partition_function : *const Expr,
+    energy: *const Expr,
+    temperature: *const Expr,
+    partition_function: *const Expr,
 ) -> *mut Expr {
 
     if energy.is_null()

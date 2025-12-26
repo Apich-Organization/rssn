@@ -34,9 +34,9 @@
 //!
 //! // Create a simple 1D bar
 //! let element = LinearElement1D {
-//!     length : 1.0,
-//!     youngs_modulus : 200e9, // Steel
-//!     area : 0.001,
+//!     length: 1.0,
+//!     youngs_modulus: 200e9, // Steel
+//!     area: 0.001,
 //! };
 //!
 //! let k = element
@@ -64,17 +64,17 @@ use crate::numerical::matrix::Matrix;
 
 pub struct Material {
     /// Young's modulus (Pa)
-    pub youngs_modulus : f64,
+    pub youngs_modulus: f64,
     /// Poisson's ratio (dimensionless)
-    pub poissons_ratio : f64,
+    pub poissons_ratio: f64,
     /// Density (kg/m³)
-    pub density : f64,
+    pub density: f64,
     /// Thermal conductivity (W/(m·K))
-    pub thermal_conductivity : f64,
+    pub thermal_conductivity: f64,
     /// Coefficient of thermal expansion (1/K)
-    pub thermal_expansion : f64,
+    pub thermal_expansion: f64,
     /// Yield strength (Pa)
-    pub yield_strength : f64,
+    pub yield_strength: f64,
 }
 
 impl Material {
@@ -82,12 +82,12 @@ impl Material {
     #[must_use]
 
     pub const fn new(
-        youngs_modulus : f64,
-        poissons_ratio : f64,
-        density : f64,
-        thermal_conductivity : f64,
-        thermal_expansion : f64,
-        yield_strength : f64,
+        youngs_modulus: f64,
+        poissons_ratio: f64,
+        density: f64,
+        thermal_conductivity: f64,
+        thermal_expansion: f64,
+        yield_strength: f64,
     ) -> Self {
 
         Self {
@@ -106,12 +106,12 @@ impl Material {
     pub const fn steel() -> Self {
 
         Self {
-            youngs_modulus : 200e9,
-            poissons_ratio : 0.3,
-            density : 7850.0,
-            thermal_conductivity : 50.0,
-            thermal_expansion : 12e-6,
-            yield_strength : 250e6,
+            youngs_modulus: 200e9,
+            poissons_ratio: 0.3,
+            density: 7850.0,
+            thermal_conductivity: 50.0,
+            thermal_expansion: 12e-6,
+            yield_strength: 250e6,
         }
     }
 
@@ -121,13 +121,12 @@ impl Material {
     pub const fn aluminum() -> Self {
 
         Self {
-            youngs_modulus : 70e9,
-            poissons_ratio : 0.33,
-            density : 2700.0,
-            thermal_conductivity:
-                205.0,
-            thermal_expansion : 23e-6,
-            yield_strength : 270e6,
+            youngs_modulus: 70e9,
+            poissons_ratio: 0.33,
+            density: 2700.0,
+            thermal_conductivity: 205.0,
+            thermal_expansion: 23e-6,
+            yield_strength: 270e6,
         }
     }
 
@@ -137,13 +136,12 @@ impl Material {
     pub const fn copper() -> Self {
 
         Self {
-            youngs_modulus : 117e9,
-            poissons_ratio : 0.34,
-            density : 8960.0,
-            thermal_conductivity:
-                401.0,
-            thermal_expansion : 17e-6,
-            yield_strength : 70e6,
+            youngs_modulus: 117e9,
+            poissons_ratio: 0.34,
+            density: 8960.0,
+            thermal_conductivity: 401.0,
+            thermal_expansion: 17e-6,
+            yield_strength: 70e6,
         }
     }
 
@@ -188,9 +186,9 @@ impl Material {
 )]
 
 pub struct Node2D {
-    pub id : usize,
-    pub x : f64,
-    pub y : f64,
+    pub id: usize,
+    pub x: f64,
+    pub y: f64,
 }
 
 impl Node2D {
@@ -198,9 +196,9 @@ impl Node2D {
     #[must_use]
 
     pub const fn new(
-        id : usize,
-        x : f64,
-        y : f64,
+        id: usize,
+        x: f64,
+        y: f64,
     ) -> Self {
 
         Self {
@@ -215,7 +213,7 @@ impl Node2D {
 
     pub fn distance_to(
         &self,
-        other : &Self,
+        other: &Self,
     ) -> f64 {
 
         let dx = other.x - self.x;
@@ -237,10 +235,10 @@ impl Node2D {
 )]
 
 pub struct Node3D {
-    pub id : usize,
-    pub x : f64,
-    pub y : f64,
-    pub z : f64,
+    pub id: usize,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 
 impl Node3D {
@@ -248,10 +246,10 @@ impl Node3D {
     #[must_use]
 
     pub const fn new(
-        id : usize,
-        x : f64,
-        y : f64,
-        z : f64,
+        id: usize,
+        x: f64,
+        y: f64,
+        z: f64,
     ) -> Self {
 
         Self {
@@ -270,9 +268,9 @@ impl Node3D {
 /// Represents a 1D linear finite element.
 
 pub struct LinearElement1D {
-    pub length : f64,
-    pub youngs_modulus : f64,
-    pub area : f64,
+    pub length: f64,
+    pub youngs_modulus: f64,
+    pub area: f64,
 }
 
 impl LinearElement1D {
@@ -319,8 +317,8 @@ impl LinearElement1D {
 #[must_use]
 
 pub fn assemble_global_stiffness_matrix(
-    num_nodes : usize,
-    elements : &[(
+    num_nodes: usize,
+    elements: &[(
         Matrix<f64>,
         usize,
         usize,
@@ -365,9 +363,9 @@ pub fn assemble_global_stiffness_matrix(
 /// A `Result` containing a `Vec<f64>` of nodal displacements, or an error string if the system is singular.
 
 pub fn solve_static_structural(
-    mut global_k : Matrix<f64>,
-    mut forces : Vec<f64>,
-    fixed_dofs : &[(usize, f64)],
+    mut global_k: Matrix<f64>,
+    mut forces: Vec<f64>,
+    fixed_dofs: &[(usize, f64)],
 ) -> Result<Vec<f64>, String> {
 
     let n = global_k.rows();
@@ -441,15 +439,15 @@ pub fn solve_static_structural(
 
 pub struct TriangleElement2D {
     /// Node indices (3 nodes)
-    pub nodes : [usize; 3],
+    pub nodes: [usize; 3],
     /// Node coordinates
-    pub coords : [(f64, f64); 3],
+    pub coords: [(f64, f64); 3],
     /// Thickness
-    pub thickness : f64,
+    pub thickness: f64,
     /// Material
-    pub material : Material,
+    pub material: Material,
     /// Plane stress (true) or plane strain (false)
-    pub plane_stress : bool,
+    pub plane_stress: bool,
 }
 
 impl TriangleElement2D {
@@ -457,11 +455,11 @@ impl TriangleElement2D {
     #[must_use]
 
     pub const fn new(
-        nodes : [usize; 3],
-        coords : [(f64, f64); 3],
-        thickness : f64,
-        material : Material,
-        plane_stress : bool,
+        nodes: [usize; 3],
+        coords: [(f64, f64); 3],
+        thickness: f64,
+        material: Material,
+        plane_stress: bool,
     ) -> Self {
 
         Self {
@@ -638,7 +636,7 @@ impl TriangleElement2D {
 
     pub fn compute_stress(
         &self,
-        displacements : &[f64],
+        displacements: &[f64],
     ) -> Vec<f64> {
 
         assert_eq!(
@@ -686,7 +684,7 @@ impl TriangleElement2D {
     #[must_use]
 
     pub fn von_mises_stress(
-        stress : &[f64]
+        stress: &[f64]
     ) -> f64 {
 
         assert_eq!(stress.len(), 3);
@@ -719,15 +717,15 @@ impl TriangleElement2D {
 
 pub struct BeamElement2D {
     /// Element length
-    pub length : f64,
+    pub length: f64,
     /// Young's modulus
-    pub youngs_modulus : f64,
+    pub youngs_modulus: f64,
     /// Cross-sectional area
-    pub area : f64,
+    pub area: f64,
     /// Second moment of area (moment of inertia)
-    pub moment_of_inertia : f64,
+    pub moment_of_inertia: f64,
     /// Angle of orientation (radians from global x-axis)
-    pub angle : f64,
+    pub angle: f64,
 }
 
 impl BeamElement2D {
@@ -735,11 +733,11 @@ impl BeamElement2D {
     #[must_use]
 
     pub const fn new(
-        length : f64,
-        youngs_modulus : f64,
-        area : f64,
-        moment_of_inertia : f64,
-        angle : f64,
+        length: f64,
+        youngs_modulus: f64,
+        area: f64,
+        moment_of_inertia: f64,
+        angle: f64,
     ) -> Self {
 
         Self {
@@ -876,7 +874,7 @@ impl BeamElement2D {
 
     pub fn mass_matrix(
         &self,
-        density : f64,
+        density: f64,
     ) -> Matrix<f64> {
 
         let a = self.area;
@@ -948,11 +946,11 @@ impl BeamElement2D {
 
 pub struct ThermalElement1D {
     /// Element length
-    pub length : f64,
+    pub length: f64,
     /// Thermal conductivity
-    pub conductivity : f64,
+    pub conductivity: f64,
     /// Cross-sectional area
-    pub area : f64,
+    pub area: f64,
 }
 
 impl ThermalElement1D {
@@ -960,9 +958,9 @@ impl ThermalElement1D {
     #[must_use]
 
     pub const fn new(
-        length : f64,
-        conductivity : f64,
-        area : f64,
+        length: f64,
+        conductivity: f64,
+        area: f64,
     ) -> Self {
 
         Self {
@@ -996,11 +994,11 @@ impl ThermalElement1D {
 
 pub struct ThermalTriangle2D {
     /// Node coordinates
-    pub coords : [(f64, f64); 3],
+    pub coords: [(f64, f64); 3],
     /// Thickness
-    pub thickness : f64,
+    pub thickness: f64,
     /// Thermal conductivity
-    pub conductivity : f64,
+    pub conductivity: f64,
 }
 
 impl ThermalTriangle2D {
@@ -1008,9 +1006,9 @@ impl ThermalTriangle2D {
     #[must_use]
 
     pub const fn new(
-        coords : [(f64, f64); 3],
-        thickness : f64,
-        conductivity : f64,
+        coords: [(f64, f64); 3],
+        thickness: f64,
+        conductivity: f64,
     ) -> Self {
 
         Self {
@@ -1136,10 +1134,10 @@ impl ThermalTriangle2D {
 /// Uses the penalty method for prescribed DOFs.
 
 pub fn apply_boundary_conditions_penalty(
-    global_k : &mut Matrix<f64>,
-    forces : &mut [f64],
-    fixed_dofs : &[(usize, f64)],
-    penalty : f64,
+    global_k: &mut Matrix<f64>,
+    forces: &mut [f64],
+    fixed_dofs: &[(usize, f64)],
+    penalty: f64,
 ) {
 
     for &(dof, value) in fixed_dofs {
@@ -1155,8 +1153,8 @@ pub fn apply_boundary_conditions_penalty(
 #[must_use]
 
 pub fn assemble_2d_stiffness_matrix(
-    num_dofs : usize,
-    elements : &[(
+    num_dofs: usize,
+    elements: &[(
         Matrix<f64>,
         [usize; 6],
     )],
@@ -1191,8 +1189,8 @@ pub fn assemble_2d_stiffness_matrix(
 #[must_use]
 
 pub fn compute_element_strain(
-    b_matrix : &Matrix<f64>,
-    displacements : &[f64],
+    b_matrix: &Matrix<f64>,
+    displacements: &[f64],
 ) -> Vec<f64> {
 
     let mut strain =
@@ -1216,7 +1214,7 @@ pub fn compute_element_strain(
 #[must_use]
 
 pub fn principal_stresses(
-    stress : &[f64]
+    stress: &[f64]
 ) -> (f64, f64, f64) {
 
     assert_eq!(
@@ -1254,8 +1252,8 @@ pub fn principal_stresses(
 #[must_use]
 
 pub fn max_shear_stress(
-    sigma1 : f64,
-    sigma2 : f64,
+    sigma1: f64,
+    sigma2: f64,
 ) -> f64 {
 
     (sigma1 - sigma2).abs() / 2.0
@@ -1265,8 +1263,8 @@ pub fn max_shear_stress(
 #[must_use]
 
 pub fn safety_factor_von_mises(
-    stress : &[f64],
-    yield_strength : f64,
+    stress: &[f64],
+    yield_strength: f64,
 ) -> f64 {
 
     let vm = TriangleElement2D::von_mises_stress(stress);
@@ -1285,10 +1283,10 @@ pub fn safety_factor_von_mises(
 #[must_use]
 
 pub fn create_rectangular_mesh(
-    width : f64,
-    height : f64,
-    nx : usize,
-    ny : usize,
+    width: f64,
+    height: f64,
+    nx: usize,
+    ny: usize,
 ) -> (
     Vec<Node2D>,
     Vec<[usize; 3]>,
@@ -1348,8 +1346,8 @@ pub fn create_rectangular_mesh(
 #[must_use]
 
 pub fn refine_mesh(
-    nodes : &[Node2D],
-    elements : &[[usize; 3]],
+    nodes: &[Node2D],
+    elements: &[[usize; 3]],
 ) -> (
     Vec<Node2D>,
     Vec<[usize; 3]>,
@@ -1369,8 +1367,8 @@ pub fn refine_mesh(
 
         // Get or create midpoint nodes
         let mut get_midpoint =
-            |a : usize,
-             b : usize|
+            |a: usize,
+             b: usize|
              -> usize {
 
                 let key = if a < b {

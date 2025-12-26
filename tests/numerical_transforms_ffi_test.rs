@@ -114,7 +114,7 @@ fn test_numerical_transforms_json_ffi()
             res_str
         );
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -151,11 +151,11 @@ fn test_numerical_transforms_bincode_ffi(
         #[derive(Serialize)]
 
         struct TransformInput {
-            data : Vec<Complex<f64>>,
+            data: Vec<Complex<f64>>,
         }
 
         let input = TransformInput {
-            data : vec![
+            data: vec![
                 Complex::new(1.0, 0.0),
                 Complex::new(1.0, 0.0),
                 Complex::new(0.0, 0.0),
@@ -173,12 +173,12 @@ fn test_numerical_transforms_bincode_ffi(
         #[derive(Deserialize)]
 
         struct FfiResult<T, E> {
-            ok : Option<T>,
+            ok: Option<T>,
             #[allow(dead_code)]
-            err : Option<E>,
+            err: Option<E>,
         }
 
-        let res : FfiResult<
+        let res: FfiResult<
             Vec<Complex<f64>>,
             String,
         > = from_bincode_buffer(

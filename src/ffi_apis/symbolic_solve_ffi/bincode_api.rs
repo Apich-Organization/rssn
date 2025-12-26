@@ -7,14 +7,14 @@ use crate::symbolic::solve::solve_system;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve(
-    expr_buf : BincodeBuffer,
-    var_buf : BincodeBuffer,
+    expr_buf: BincodeBuffer,
+    var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let expr : Option<Expr> =
+    let expr: Option<Expr> =
         from_bincode_buffer(&expr_buf);
 
-    let var : Option<String> =
+    let var: Option<String> =
         from_bincode_buffer(&var_buf);
 
     if let (Some(e), Some(v)) =
@@ -33,23 +33,23 @@ pub extern "C" fn rssn_bincode_solve(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_system(
-    equations_buf : BincodeBuffer,
-    vars_buf : BincodeBuffer,
+    equations_buf: BincodeBuffer,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equations : Option<Vec<Expr>> =
+    let equations: Option<Vec<Expr>> =
         from_bincode_buffer(
             &equations_buf,
         );
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     if let (Some(eqs), Some(vs)) =
         (equations, vars)
     {
 
-        let vars_str : Vec<&str> = vs
+        let vars_str: Vec<&str> = vs
             .iter()
             .map(|s| s.as_str())
             .collect();
@@ -76,16 +76,16 @@ pub extern "C" fn rssn_bincode_solve_system(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_linear_system(
-    system_buf : BincodeBuffer,
-    vars_buf : BincodeBuffer,
+    system_buf: BincodeBuffer,
+    vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let system : Option<Expr> =
+    let system: Option<Expr> =
         from_bincode_buffer(
             &system_buf,
         );
 
-    let vars : Option<Vec<String>> =
+    let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
     if let (Some(sys), Some(vs)) =

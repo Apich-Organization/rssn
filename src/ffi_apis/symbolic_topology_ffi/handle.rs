@@ -12,8 +12,8 @@ use crate::symbolic::topology::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_simplex_create(
-    vertices_ptr : *const usize,
-    len : usize,
+    vertices_ptr: *const usize,
+    len: usize,
 ) -> *mut Simplex {
 
     if vertices_ptr.is_null() {
@@ -40,7 +40,7 @@ pub extern "C" fn rssn_simplex_create(
 #[no_mangle]
 
 pub extern "C" fn rssn_simplex_free(
-    ptr : *mut Simplex
+    ptr: *mut Simplex
 ) {
 
     if !ptr.is_null() {
@@ -56,7 +56,7 @@ pub extern "C" fn rssn_simplex_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_simplex_dimension(
-    ptr : *const Simplex
+    ptr: *const Simplex
 ) -> usize {
 
     if ptr.is_null() {
@@ -88,7 +88,7 @@ pub extern "C" fn rssn_simplicial_complex_create(
 #[no_mangle]
 
 pub extern "C" fn rssn_simplicial_complex_free(
-    ptr : *mut SimplicialComplex
+    ptr: *mut SimplicialComplex
 ) {
 
     if !ptr.is_null() {
@@ -104,9 +104,9 @@ pub extern "C" fn rssn_simplicial_complex_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_simplicial_complex_add_simplex(
-    complex_ptr : *mut SimplicialComplex,
-    vertices_ptr : *const usize,
-    len : usize,
+    complex_ptr: *mut SimplicialComplex,
+    vertices_ptr: *const usize,
+    len: usize,
 ) {
 
     if complex_ptr.is_null()
@@ -134,7 +134,7 @@ pub extern "C" fn rssn_simplicial_complex_add_simplex(
 #[no_mangle]
 
 pub extern "C" fn rssn_simplicial_complex_dimension(
-    ptr : *const SimplicialComplex
+    ptr: *const SimplicialComplex
 ) -> c_int {
 
     if ptr.is_null() {
@@ -155,7 +155,7 @@ pub extern "C" fn rssn_simplicial_complex_dimension(
 #[no_mangle]
 
 pub extern "C" fn rssn_simplicial_complex_euler_characteristic(
-    ptr : *const SimplicialComplex
+    ptr: *const SimplicialComplex
 ) -> isize {
 
     if ptr.is_null() {
@@ -174,7 +174,7 @@ pub extern "C" fn rssn_simplicial_complex_euler_characteristic(
 
 pub extern "C" fn rssn_simplicial_complex_get_symbolic_boundary_matrix(
     complex_ptr : *const SimplicialComplex,
-    k : usize,
+    k: usize,
 ) -> *mut Expr {
 
     if complex_ptr.is_null() {
@@ -197,7 +197,7 @@ pub extern "C" fn rssn_simplicial_complex_get_symbolic_boundary_matrix(
 #[no_mangle]
 
 pub extern "C" fn rssn_symbolic_chain_create(
-    dimension : usize
+    dimension: usize
 ) -> *mut SymbolicChain {
 
     let chain =
@@ -210,7 +210,7 @@ pub extern "C" fn rssn_symbolic_chain_create(
 #[no_mangle]
 
 pub extern "C" fn rssn_symbolic_chain_free(
-    ptr : *mut SymbolicChain
+    ptr: *mut SymbolicChain
 ) {
 
     if !ptr.is_null() {
@@ -226,9 +226,9 @@ pub extern "C" fn rssn_symbolic_chain_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_symbolic_chain_add_term(
-    chain_ptr : *mut SymbolicChain,
-    simplex_ptr : *const Simplex,
-    coeff_ptr : *const Expr,
+    chain_ptr: *mut SymbolicChain,
+    simplex_ptr: *const Simplex,
+    coeff_ptr: *const Expr,
 ) -> bool {
 
     if chain_ptr.is_null()
@@ -262,7 +262,7 @@ pub extern "C" fn rssn_symbolic_chain_add_term(
 
 pub extern "C" fn rssn_simplicial_complex_apply_symbolic_boundary_operator(
     complex_ptr : *const SimplicialComplex,
-    chain_ptr : *const SymbolicChain,
+    chain_ptr: *const SymbolicChain,
 ) -> *mut SymbolicChain {
 
     if complex_ptr.is_null()
@@ -291,8 +291,8 @@ pub extern "C" fn rssn_simplicial_complex_apply_symbolic_boundary_operator(
 #[no_mangle]
 
 pub extern "C" fn rssn_create_grid_complex(
-    width : usize,
-    height : usize,
+    width: usize,
+    height: usize,
 ) -> *mut SimplicialComplex {
 
     let complex = create_grid_complex(
@@ -307,8 +307,8 @@ pub extern "C" fn rssn_create_grid_complex(
 #[no_mangle]
 
 pub extern "C" fn rssn_create_torus_complex(
-    m : usize,
-    n : usize,
+    m: usize,
+    n: usize,
 ) -> *mut SimplicialComplex {
 
     let complex =

@@ -60,7 +60,7 @@ fn test_wedge_product() {
         Expr::Constant(1.0),
     ); // dx (blade 1 = 0b01)
     let form1 = DifferentialForm {
-        terms : form1_terms,
+        terms: form1_terms,
     };
 
     let mut form2_terms =
@@ -71,7 +71,7 @@ fn test_wedge_product() {
         Expr::Constant(1.0),
     ); // dy (blade 2 = 0b10)
     let form2 = DifferentialForm {
-        terms : form2_terms,
+        terms: form2_terms,
     };
 
     let wedge =
@@ -96,7 +96,7 @@ fn test_wedge_product_antisymmetry() {
         Expr::Constant(1.0),
     ); // dx
     let form = DifferentialForm {
-        terms : form_terms,
+        terms: form_terms,
     };
 
     let wedge =
@@ -180,13 +180,13 @@ fn test_generalized_stokes_theorem() {
 fn test_gauss_theorem() {
 
     let vector_field = Vector {
-        x : Expr::Variable(
+        x: Expr::Variable(
             "Fx".to_string(),
         ),
-        y : Expr::Variable(
+        y: Expr::Variable(
             "Fy".to_string(),
         ),
-        z : Expr::Variable(
+        z: Expr::Variable(
             "Fz".to_string(),
         ),
     };
@@ -215,13 +215,13 @@ fn test_gauss_theorem() {
 fn test_stokes_theorem() {
 
     let vector_field = Vector {
-        x : Expr::Variable(
+        x: Expr::Variable(
             "Fx".to_string(),
         ),
-        y : Expr::Variable(
+        y: Expr::Variable(
             "Fy".to_string(),
         ),
-        z : Expr::Variable(
+        z: Expr::Variable(
             "Fz".to_string(),
         ),
     };

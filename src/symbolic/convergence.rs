@@ -110,8 +110,8 @@ pub enum ConvergenceResult {
 /// `true` if the function is likely positive for large n, `false` otherwise.
 
 pub(crate) fn is_positive(
-    f_n : &Expr,
-    n : &str,
+    f_n: &Expr,
+    n: &str,
 ) -> bool {
 
     let large_n =
@@ -145,8 +145,8 @@ pub(crate) fn is_positive(
 /// `true` if the function is likely decreasing for large n, `false` otherwise.
 
 pub(crate) fn is_eventually_decreasing(
-    f_n : &Expr,
-    n : &str,
+    f_n: &Expr,
+    n: &str,
 ) -> bool {
 
     let derivative =
@@ -192,8 +192,8 @@ pub(crate) fn is_eventually_decreasing(
 #[must_use]
 
 pub fn analyze_convergence(
-    a_n : &Expr,
-    n : &str,
+    a_n: &Expr,
+    n: &str,
 ) -> ConvergenceResult {
 
     // Simplify first to convert DAG nodes to regular expressions

@@ -17,14 +17,14 @@ use serde::Serialize;
 )]
 
 pub struct Vector2D {
-    pub x : f64,
-    pub y : f64,
+    pub x: f64,
+    pub y: f64,
 }
 
 impl Vector2D {
     pub fn new(
-        x : f64,
-        y : f64,
+        x: f64,
+        y: f64,
     ) -> Self {
 
         Self {
@@ -47,12 +47,12 @@ impl Add for Vector2D {
 
     fn add(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         Self {
-            x : self.x + rhs.x,
-            y : self.y + rhs.y,
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
         }
     }
 }
@@ -62,12 +62,12 @@ impl Sub for Vector2D {
 
     fn sub(
         self,
-        rhs : Self,
+        rhs: Self,
     ) -> Self {
 
         Self {
-            x : self.x - rhs.x,
-            y : self.y - rhs.y,
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
         }
     }
 }
@@ -77,12 +77,12 @@ impl Mul<f64> for Vector2D {
 
     fn mul(
         self,
-        rhs : f64,
+        rhs: f64,
     ) -> Self {
 
         Self {
-            x : self.x * rhs,
-            y : self.y * rhs,
+            x: self.x * rhs,
+            y: self.y * rhs,
         }
     }
 }
@@ -92,12 +92,12 @@ impl Div<f64> for Vector2D {
 
     fn div(
         self,
-        rhs : f64,
+        rhs: f64,
     ) -> Self {
 
         Self {
-            x : self.x / rhs,
-            y : self.y / rhs,
+            x: self.x / rhs,
+            y: self.y / rhs,
         }
     }
 }
@@ -108,12 +108,12 @@ impl Div<f64> for Vector2D {
 )]
 
 pub struct Particle {
-    pub pos : Vector2D,
-    pub vel : Vector2D,
-    pub force : Vector2D,
-    pub density : f64,
-    pub pressure : f64,
-    pub mass : f64,
+    pub pos: Vector2D,
+    pub vel: Vector2D,
+    pub force: Vector2D,
+    pub density: f64,
+    pub pressure: f64,
+    pub mass: f64,
 }
 
 #[derive(
@@ -121,12 +121,12 @@ pub struct Particle {
 )]
 
 pub struct Poly6Kernel {
-    pub h_sq : f64,
-    pub factor : f64,
+    pub h_sq: f64,
+    pub factor: f64,
 }
 
 impl Poly6Kernel {
-    pub fn new(h : f64) -> Self {
+    pub fn new(h: f64) -> Self {
 
         Self {
             h_sq : h * h,
@@ -136,7 +136,7 @@ impl Poly6Kernel {
 
     pub(crate) fn value(
         &self,
-        r_sq : f64,
+        r_sq: f64,
     ) -> f64 {
 
         if r_sq >= self.h_sq {
@@ -155,16 +155,16 @@ impl Poly6Kernel {
 )]
 
 pub struct SpikyKernel {
-    pub h : f64,
-    pub factor : f64,
+    pub h: f64,
+    pub factor: f64,
 }
 
 impl SpikyKernel {
-    pub fn new(h : f64) -> Self {
+    pub fn new(h: f64) -> Self {
 
         Self {
             h,
-            factor : -45.0
+            factor: -45.0
                 / (std::f64::consts::PI
                     * h.powi(6)),
         }
@@ -172,8 +172,8 @@ impl SpikyKernel {
 
     pub(crate) fn gradient(
         &self,
-        r_vec : Vector2D,
-        r_norm : f64,
+        r_vec: Vector2D,
+        r_norm: f64,
     ) -> Vector2D {
 
         if r_norm >= self.h
@@ -198,14 +198,14 @@ impl SpikyKernel {
 )]
 
 pub struct SPHSystem {
-    pub particles : Vec<Particle>,
-    pub poly6 : Poly6Kernel,
-    pub spiky : SpikyKernel,
-    pub gravity : Vector2D,
-    pub viscosity : f64,
-    pub gas_const : f64,
-    pub rest_density : f64,
-    pub bounds : Vector2D,
+    pub particles: Vec<Particle>,
+    pub poly6: Poly6Kernel,
+    pub spiky: SpikyKernel,
+    pub gravity: Vector2D,
+    pub viscosity: f64,
+    pub gas_const: f64,
+    pub rest_density: f64,
+    pub bounds: Vector2D,
 }
 
 impl SPHSystem {
@@ -321,7 +321,7 @@ impl SPHSystem {
 
     pub fn integrate(
         &mut self,
-        dt : f64,
+        dt: f64,
     ) {
 
         let bounds = self.bounds;
@@ -370,7 +370,7 @@ impl SPHSystem {
 
     pub fn update(
         &mut self,
-        dt : f64,
+        dt: f64,
     ) {
 
         self.compute_density_pressure();
@@ -396,18 +396,16 @@ pub fn simulate_dam_break_2d_scenario(
     let h = 0.1;
 
     let mut system = SPHSystem {
-        particles : Vec::new(),
-        poly6 : Poly6Kernel::new(h),
-        spiky : SpikyKernel::new(h),
-        gravity : Vector2D::new(
+        particles: Vec::new(),
+        poly6: Poly6Kernel::new(h),
+        spiky: SpikyKernel::new(h),
+        gravity: Vector2D::new(
             0.0, -9.8,
         ),
-        viscosity : 0.01,
-        gas_const : 2000.0,
-        rest_density : 1000.0,
-        bounds : Vector2D::new(
-            4.0, 4.0,
-        ),
+        viscosity: 0.01,
+        gas_const: 2000.0,
+        rest_density: 1000.0,
+        bounds: Vector2D::new(4.0, 4.0),
     };
 
     let particle_mass = 1.0;
@@ -417,23 +415,24 @@ pub fn simulate_dam_break_2d_scenario(
     {
 
         for x in (0 .. 10).map(|v| {
+
             f64::from(v) * h * 0.8
         }) {
 
             system
                 .particles
                 .push(Particle {
-                pos : Vector2D::new(
+                pos: Vector2D::new(
                     x,
                     y + 0.1,
                 ),
-                vel : Vector2D::default(
+                vel: Vector2D::default(
                 ),
                 force:
                     Vector2D::default(),
-                density : 0.0,
-                pressure : 0.0,
-                mass : particle_mass,
+                density: 0.0,
+                pressure: 0.0,
+                mass: particle_mass,
             });
         }
     }

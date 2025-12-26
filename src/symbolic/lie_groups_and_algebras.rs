@@ -33,9 +33,9 @@ pub struct LieAlgebraElement(pub Expr);
 )]
 
 pub struct LieAlgebra {
-    pub name : String,
-    pub basis : Vec<LieAlgebraElement>,
-    pub dimension : usize,
+    pub name: String,
+    pub basis: Vec<LieAlgebraElement>,
+    pub dimension: usize,
 }
 
 /// Computes the Lie bracket `[X, Y] = XY - YX` for matrix Lie algebras.
@@ -52,8 +52,8 @@ pub struct LieAlgebra {
 /// or an error string if operands are not valid matrices.
 
 pub fn lie_bracket(
-    x : &Expr,
-    y : &Expr,
+    x: &Expr,
+    y: &Expr,
 ) -> Result<Expr, String> {
 
     let xy = matrix::mul_matrices(x, y);
@@ -91,13 +91,14 @@ pub fn lie_bracket(
 /// or an error string if the input is not a square matrix.
 
 pub fn exponential_map(
-    x : &Expr,
-    order : usize,
+    x: &Expr,
+    order: usize,
 ) -> Result<Expr, String> {
 
     let (rows, cols) =
         matrix::get_matrix_dims(x)
             .ok_or_else(|| {
+
                 "Input must be a valid \
                  matrix."
                     .to_string()
@@ -165,8 +166,8 @@ pub fn exponential_map(
 /// or an error string if `g` is not invertible.
 
 pub fn adjoint_representation_group(
-    g : &Expr,
-    x : &Expr,
+    g: &Expr,
+    x: &Expr,
 ) -> Result<Expr, String> {
 
     let g_inv =
@@ -205,8 +206,8 @@ pub fn adjoint_representation_group(
 /// A `Result` containing an `Expr` representing `ad_X(Y)`.
 
 pub fn adjoint_representation_algebra(
-    x : &Expr,
-    y : &Expr,
+    x: &Expr,
+    y: &Expr,
 ) -> Result<Expr, String> {
 
     lie_bracket(x, y)
@@ -222,7 +223,7 @@ pub fn adjoint_representation_algebra(
 /// is the Lie bracket `[basis[i], basis[j]]`, or an error string.
 
 pub fn commutator_table(
-    algebra : &LieAlgebra
+    algebra: &LieAlgebra
 ) -> Result<Vec<Vec<Expr>>, String> {
 
     let n = algebra.dimension;
@@ -267,7 +268,7 @@ pub fn commutator_table(
 /// it might return false negatives (but shouldn't return false positives if simplification is correct).
 
 pub fn check_jacobi_identity(
-    algebra : &LieAlgebra
+    algebra: &LieAlgebra
 ) -> Result<bool, String> {
 
     let n = algebra.dimension;
@@ -422,8 +423,8 @@ pub fn so3() -> LieAlgebra {
     let basis = so3_generators();
 
     LieAlgebra {
-        name : "so(3)".to_string(),
-        dimension : basis.len(),
+        name: "so(3)".to_string(),
+        dimension: basis.len(),
         basis,
     }
 }
@@ -518,8 +519,8 @@ pub fn su2() -> LieAlgebra {
     let basis = su2_generators();
 
     LieAlgebra {
-        name : "su(2)".to_string(),
-        dimension : basis.len(),
+        name: "su(2)".to_string(),
+        dimension: basis.len(),
         basis,
     }
 }

@@ -15,25 +15,25 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct NewtonInput {
-    f : Expr,
-    f_prime : Expr,
-    start_re : f64,
-    start_im : f64,
-    tolerance : f64,
-    max_iter : usize,
+    f: Expr,
+    f_prime: Expr,
+    start_re: f64,
+    start_im: f64,
+    tolerance: f64,
+    max_iter: usize,
 }
 
 #[derive(Serialize)]
 
 struct ComplexResult {
-    re : f64,
-    im : f64,
+    re: f64,
+    im: f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : NewtonInput = match from_json_string(input_json) {
@@ -95,15 +95,15 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_json(
 #[derive(Deserialize)]
 
 struct LogSqrtInput {
-    re : f64,
-    im : f64,
-    k : i32,
+    re: f64,
+    im: f64,
+    k: i32,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
-    json : *const c_char
+    json: *const c_char
 ) -> *mut c_char {
 
     let input : LogSqrtInput = match from_json_string(json) {
@@ -133,15 +133,15 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
         );
 
     let out = ComplexResult {
-        re : res.re,
-        im : res.im,
+        re: res.re,
+        im: res.im,
     };
 
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(out),
-                err : None::<String>,
+                ok: Some(out),
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -151,7 +151,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(
-    json : *const c_char
+    json: *const c_char
 ) -> *mut c_char {
 
     let input : LogSqrtInput = match from_json_string(json) {
@@ -181,15 +181,15 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(
         );
 
     let out = ComplexResult {
-        re : res.re,
-        im : res.im,
+        re: res.re,
+        im: res.im,
     };
 
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(out),
-                err : None::<String>,
+                ok: Some(out),
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -199,17 +199,17 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(
 #[derive(Deserialize)]
 
 struct PowInput {
-    z_re : f64,
-    z_im : f64,
-    w_re : f64,
-    w_im : f64,
-    k : i32,
+    z_re: f64,
+    z_im: f64,
+    w_re: f64,
+    w_im: f64,
+    k: i32,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(
-    json : *const c_char
+    json: *const c_char
 ) -> *mut c_char {
 
     let input : PowInput = match from_json_string(json) {
@@ -245,15 +245,15 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(
         );
 
     let out = ComplexResult {
-        re : res.re,
-        im : res.im,
+        re: res.re,
+        im: res.im,
     };
 
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(out),
-                err : None::<String>,
+                ok: Some(out),
+                err: None::<String>,
             },
         )
         .unwrap(),

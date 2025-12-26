@@ -13,10 +13,10 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
-    f : *const Expr,
-    var : *const c_char,
-    at_point : f64,
-    order : usize,
+    f: *const Expr,
+    var: *const c_char,
+    at_point: f64,
+    order: usize,
 ) -> *mut Vec<f64> {
 
     if f.is_null() || var.is_null() {
@@ -68,9 +68,9 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
-    coeffs : *const Vec<f64>,
-    at_point : f64,
-    x : f64,
+    coeffs: *const Vec<f64>,
+    at_point: f64,
+    x: f64,
 ) -> f64 {
 
     if coeffs.is_null() {
@@ -89,11 +89,11 @@ pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_sum_series(
-    f : *const Expr,
-    var : *const c_char,
-    start : i64,
-    end : i64,
-    result : *mut f64,
+    f: *const Expr,
+    var: *const c_char,
+    start: i64,
+    end: i64,
+    result: *mut f64,
 ) -> i32 {
 
     if f.is_null()

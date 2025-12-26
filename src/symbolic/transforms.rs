@@ -42,9 +42,9 @@ pub(crate) fn i_complex() -> Expr {
 #[must_use]
 
 pub fn fourier_time_shift(
-    f_omega : &Expr,
-    a : &Expr,
-    out_var : &str,
+    f_omega: &Expr,
+    a: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -76,9 +76,9 @@ pub fn fourier_time_shift(
 #[must_use]
 
 pub fn fourier_frequency_shift(
-    f_omega : &Expr,
-    a : &Expr,
-    out_var : &str,
+    f_omega: &Expr,
+    a: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::Substitute(
@@ -108,9 +108,9 @@ pub fn fourier_frequency_shift(
 #[must_use]
 
 pub fn fourier_scaling(
-    f_omega : &Expr,
-    a : &Expr,
-    out_var : &str,
+    f_omega: &Expr,
+    a: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -145,8 +145,8 @@ pub fn fourier_scaling(
 #[must_use]
 
 pub fn fourier_differentiation(
-    f_omega : &Expr,
-    out_var : &str,
+    f_omega: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -175,9 +175,9 @@ pub fn fourier_differentiation(
 #[must_use]
 
 pub fn laplace_time_shift(
-    f_s : &Expr,
-    a : &Expr,
-    out_var : &str,
+    f_s: &Expr,
+    a: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -206,9 +206,9 @@ pub fn laplace_time_shift(
 #[must_use]
 
 pub fn laplace_differentiation(
-    f_s : &Expr,
-    out_var : &str,
-    f_zero : &Expr,
+    f_s: &Expr,
+    out_var: &str,
+    f_zero: &Expr,
 ) -> Expr {
 
     simplify(&Expr::new_sub(
@@ -237,9 +237,9 @@ pub fn laplace_differentiation(
 #[must_use]
 
 pub fn laplace_frequency_shift(
-    f_s : &Expr,
-    a : &Expr,
-    out_var : &str,
+    f_s: &Expr,
+    a: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::Substitute(
@@ -269,9 +269,9 @@ pub fn laplace_frequency_shift(
 #[must_use]
 
 pub fn laplace_scaling(
-    f_s : &Expr,
-    a : &Expr,
-    out_var : &str,
+    f_s: &Expr,
+    a: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -298,8 +298,8 @@ pub fn laplace_scaling(
 #[must_use]
 
 pub fn laplace_integration(
-    f_s : &Expr,
-    out_var : &str,
+    f_s: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::new_div(
@@ -316,9 +316,9 @@ pub fn laplace_integration(
 #[must_use]
 
 pub fn z_time_shift(
-    f_z : &Expr,
-    k : &Expr,
-    out_var : &str,
+    f_z: &Expr,
+    k: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -338,9 +338,9 @@ pub fn z_time_shift(
 #[must_use]
 
 pub fn z_scaling(
-    f_z : &Expr,
-    a : &Expr,
-    out_var : &str,
+    f_z: &Expr,
+    a: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::Substitute(
@@ -361,8 +361,8 @@ pub fn z_scaling(
 #[must_use]
 
 pub fn z_differentiation(
-    f_z : &Expr,
-    out_var : &str,
+    f_z: &Expr,
+    out_var: &str,
 ) -> Expr {
 
     simplify(&Expr::new_mul(
@@ -389,9 +389,9 @@ pub fn z_differentiation(
 #[must_use]
 
 pub fn fourier_transform(
-    expr : &Expr,
-    in_var : &str,
-    out_var : &str,
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
 ) -> Expr {
 
     let integrand = Expr::new_mul(
@@ -438,9 +438,9 @@ pub fn fourier_transform(
 #[must_use]
 
 pub fn inverse_fourier_transform(
-    expr : &Expr,
-    in_var : &str,
-    out_var : &str,
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
 ) -> Expr {
 
     let factor = Expr::new_div(
@@ -498,9 +498,9 @@ pub fn inverse_fourier_transform(
 #[must_use]
 
 pub fn laplace_transform(
-    expr : &Expr,
-    in_var : &str,
-    out_var : &str,
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
 ) -> Expr {
 
     let integrand = Expr::new_mul(
@@ -544,9 +544,9 @@ pub fn laplace_transform(
 #[must_use]
 
 pub fn inverse_laplace_transform(
-    expr : &Expr,
-    in_var : &str,
-    out_var : &str,
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
 ) -> Expr {
 
     if let Some(result) =
@@ -652,9 +652,9 @@ pub fn inverse_laplace_transform(
 #[must_use]
 
 pub fn z_transform(
-    expr : &Expr,
-    in_var : &str,
-    out_var : &str,
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
 ) -> Expr {
 
     let term = Expr::new_mul(
@@ -696,9 +696,9 @@ pub fn z_transform(
 #[must_use]
 
 pub fn inverse_z_transform(
-    expr : &Expr,
-    in_var : &str,
-    out_var : &str,
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
 ) -> Expr {
 
     let factor = Expr::new_div(
@@ -756,8 +756,8 @@ pub fn inverse_z_transform(
 #[must_use]
 
 pub fn partial_fraction_decomposition(
-    expr : &Expr,
-    var : &str,
+    expr: &Expr,
+    var: &str,
 ) -> Option<Vec<Expr>> {
 
     if let Expr::Dag(node) = expr {
@@ -770,7 +770,7 @@ pub fn partial_fraction_decomposition(
 
     if let Expr::Div(num, den) = expr {
 
-        let roots : Vec<Expr> =
+        let roots: Vec<Expr> =
             solve(den, var)
                 .into_iter()
                 .map(|r| simplify(&r))
@@ -780,6 +780,7 @@ pub fn partial_fraction_decomposition(
             || roots
                 .iter()
                 .any(|r| {
+
                     matches!(
                         r,
                         Expr::Solve(
@@ -873,9 +874,9 @@ pub fn partial_fraction_decomposition(
 }
 
 pub(crate) fn lookup_inverse_laplace(
-    expr : &Expr,
-    in_var : &str,
-    out_var : &str,
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
 ) -> Option<Expr> {
 
     match expr {
@@ -1056,10 +1057,10 @@ pub(crate) fn lookup_inverse_laplace(
 #[must_use]
 
 pub fn convolution_fourier(
-    f : &Expr,
-    g : &Expr,
-    in_var : &str,
-    out_var : &str,
+    f: &Expr,
+    g: &Expr,
+    in_var: &str,
+    out_var: &str,
 ) -> Expr {
 
     let ft_f = fourier_transform(
@@ -1096,10 +1097,10 @@ pub fn convolution_fourier(
 #[must_use]
 
 pub fn convolution_laplace(
-    f : &Expr,
-    g : &Expr,
-    in_var : &str,
-    out_var : &str,
+    f: &Expr,
+    g: &Expr,
+    in_var: &str,
+    out_var: &str,
 ) -> Expr {
 
     let lt_f = laplace_transform(

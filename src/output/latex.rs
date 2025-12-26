@@ -5,9 +5,7 @@ use crate::symbolic::core::Expr;
 
 /// Converts an expression to a LaTeX string.
 
-pub fn to_latex(
-    expr : &Expr
-) -> String {
+pub fn to_latex(expr: &Expr) -> String {
 
     to_latex_prec(expr, 0)
 }
@@ -17,24 +15,24 @@ pub fn to_latex(
 #[derive(Clone)]
 
 struct LatexResult {
-    precedence : u8,
-    content : String,
+    precedence: u8,
+    content: String,
 }
 
 /// Converts an expression to a LaTeX string with precedence handling.
 /// This function is iterative to avoid stack overflows with deep expression trees.
 
 pub(crate) fn to_latex_prec(
-    root_expr : &Expr,
-    root_precedence : u8,
+    root_expr: &Expr,
+    root_precedence: u8,
 ) -> String {
 
-    let mut results : HashMap<
+    let mut results: HashMap<
         *const Expr,
         LatexResult,
     > = HashMap::new();
 
-    let mut stack : Vec<Expr> =
+    let mut stack: Vec<Expr> =
         vec![root_expr.clone()];
 
     while let Some(expr) = stack.pop() {
@@ -410,9 +408,8 @@ pub(crate) fn to_latex_prec(
             results.insert(
                 current_expr_ptr,
                 LatexResult {
-                    precedence:
-                        op_prec,
-                    content : s,
+                    precedence: op_prec,
+                    content: s,
                 },
             );
         } else {
@@ -454,8 +451,8 @@ pub(crate) fn to_latex_prec(
 /// iterative function handles most of the logic.
 
 pub fn to_latex_prec_with_parens(
-    expr : &Expr,
-    precedence : u8,
+    expr: &Expr,
+    precedence: u8,
 ) -> String {
 
     let op = expr.op();
@@ -482,7 +479,7 @@ pub fn to_latex_prec_with_parens(
 
 /// Converts common Greek letter names to LaTeX.
 
-pub fn to_greek(s : &str) -> String {
+pub fn to_greek(s: &str) -> String {
 
     match s {
         | "alpha" => {

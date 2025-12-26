@@ -86,7 +86,7 @@ fn test_numerical_ode_json_ffi() {
                 .to_str()
                 .unwrap();
 
-        let v : serde_json::Value =
+        let v: serde_json::Value =
             serde_json::from_str(
                 res_str,
             )
@@ -129,11 +129,11 @@ fn test_numerical_ode_bincode_ffi() {
         #[derive(Serialize)]
 
         struct OdeInput {
-            funcs : Vec<Expr>,
-            y0 : Vec<f64>,
-            x_range : (f64, f64),
-            num_steps : usize,
-            method : OdeSolverMethod,
+            funcs: Vec<Expr>,
+            y0: Vec<f64>,
+            x_range: (f64, f64),
+            num_steps: usize,
+            method: OdeSolverMethod,
         }
 
         let input = OdeInput {
@@ -156,12 +156,12 @@ fn test_numerical_ode_bincode_ffi() {
         #[derive(Deserialize)]
 
         struct FfiResult<T, E> {
-            ok : Option<T>,
+            ok: Option<T>,
             #[allow(dead_code)]
-            err : Option<E>,
+            err: Option<E>,
         }
 
-        let res : FfiResult<
+        let res: FfiResult<
             Vec<Vec<f64>>,
             String,
         > = from_bincode_buffer(

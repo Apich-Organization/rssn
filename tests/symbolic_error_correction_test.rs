@@ -303,7 +303,7 @@ fn test_hamming_weight_mixed() {
 
 fn test_hamming_weight_empty() {
 
-    let data : Vec<u8> = vec![];
+    let data: Vec<u8> = vec![];
 
     assert_eq!(
         hamming_weight(&data),
@@ -483,7 +483,7 @@ fn test_rs_error_count_with_errors() {
 
 fn test_crc32_compute_empty() {
 
-    let data : Vec<u8> = vec![];
+    let data: Vec<u8> = vec![];
 
     let crc = crc32_compute(&data);
 

@@ -25,14 +25,14 @@ use crate::symbolic::vector::Vector;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_translation_2d(
-    tx_json : *const c_char,
-    ty_json : *const c_char,
+    tx_json: *const c_char,
+    ty_json: *const c_char,
 ) -> *mut c_char {
 
-    let tx : Option<Expr> =
+    let tx: Option<Expr> =
         from_json_string(tx_json);
 
-    let ty : Option<Expr> =
+    let ty: Option<Expr> =
         from_json_string(ty_json);
 
     if let (Some(tx), Some(ty)) =
@@ -52,18 +52,18 @@ pub unsafe extern "C" fn rssn_json_translation_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_translation_3d(
-    tx_json : *const c_char,
-    ty_json : *const c_char,
-    tz_json : *const c_char,
+    tx_json: *const c_char,
+    ty_json: *const c_char,
+    tz_json: *const c_char,
 ) -> *mut c_char {
 
-    let tx : Option<Expr> =
+    let tx: Option<Expr> =
         from_json_string(tx_json);
 
-    let ty : Option<Expr> =
+    let ty: Option<Expr> =
         from_json_string(ty_json);
 
-    let tz : Option<Expr> =
+    let tz: Option<Expr> =
         from_json_string(tz_json);
 
     if let (
@@ -86,10 +86,10 @@ pub unsafe extern "C" fn rssn_json_translation_3d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rotation_2d(
-    angle_json : *const c_char
+    angle_json: *const c_char
 ) -> *mut c_char {
 
-    let angle : Option<Expr> =
+    let angle: Option<Expr> =
         from_json_string(angle_json);
 
     if let Some(a) = angle {
@@ -105,10 +105,10 @@ pub unsafe extern "C" fn rssn_json_rotation_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rotation_3d_x(
-    angle_json : *const c_char
+    angle_json: *const c_char
 ) -> *mut c_char {
 
-    let angle : Option<Expr> =
+    let angle: Option<Expr> =
         from_json_string(angle_json);
 
     if let Some(a) = angle {
@@ -126,10 +126,10 @@ pub unsafe extern "C" fn rssn_json_rotation_3d_x(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rotation_3d_y(
-    angle_json : *const c_char
+    angle_json: *const c_char
 ) -> *mut c_char {
 
-    let angle : Option<Expr> =
+    let angle: Option<Expr> =
         from_json_string(angle_json);
 
     if let Some(a) = angle {
@@ -147,10 +147,10 @@ pub unsafe extern "C" fn rssn_json_rotation_3d_y(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rotation_3d_z(
-    angle_json : *const c_char
+    angle_json: *const c_char
 ) -> *mut c_char {
 
-    let angle : Option<Expr> =
+    let angle: Option<Expr> =
         from_json_string(angle_json);
 
     if let Some(a) = angle {
@@ -168,14 +168,14 @@ pub unsafe extern "C" fn rssn_json_rotation_3d_z(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_scaling_2d(
-    sx_json : *const c_char,
-    sy_json : *const c_char,
+    sx_json: *const c_char,
+    sy_json: *const c_char,
 ) -> *mut c_char {
 
-    let sx : Option<Expr> =
+    let sx: Option<Expr> =
         from_json_string(sx_json);
 
-    let sy : Option<Expr> =
+    let sy: Option<Expr> =
         from_json_string(sy_json);
 
     if let (Some(sx), Some(sy)) =
@@ -195,18 +195,18 @@ pub unsafe extern "C" fn rssn_json_scaling_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_scaling_3d(
-    sx_json : *const c_char,
-    sy_json : *const c_char,
-    sz_json : *const c_char,
+    sx_json: *const c_char,
+    sy_json: *const c_char,
+    sz_json: *const c_char,
 ) -> *mut c_char {
 
-    let sx : Option<Expr> =
+    let sx: Option<Expr> =
         from_json_string(sx_json);
 
-    let sy : Option<Expr> =
+    let sy: Option<Expr> =
         from_json_string(sy_json);
 
-    let sz : Option<Expr> =
+    let sz: Option<Expr> =
         from_json_string(sz_json);
 
     if let (
@@ -229,14 +229,14 @@ pub unsafe extern "C" fn rssn_json_scaling_3d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_shear_2d(
-    shx_json : *const c_char,
-    shy_json : *const c_char,
+    shx_json: *const c_char,
+    shy_json: *const c_char,
 ) -> *mut c_char {
 
-    let shx : Option<Expr> =
+    let shx: Option<Expr> =
         from_json_string(shx_json);
 
-    let shy : Option<Expr> =
+    let shy: Option<Expr> =
         from_json_string(shy_json);
 
     if let (Some(shx), Some(shy)) =
@@ -256,10 +256,10 @@ pub unsafe extern "C" fn rssn_json_shear_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_reflection_2d(
-    angle_json : *const c_char
+    angle_json: *const c_char
 ) -> *mut c_char {
 
-    let angle : Option<Expr> =
+    let angle: Option<Expr> =
         from_json_string(angle_json);
 
     if let Some(a) = angle {
@@ -277,18 +277,18 @@ pub unsafe extern "C" fn rssn_json_reflection_2d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_reflection_3d(
-    nx_json : *const c_char,
-    ny_json : *const c_char,
-    nz_json : *const c_char,
+    nx_json: *const c_char,
+    ny_json: *const c_char,
+    nz_json: *const c_char,
 ) -> *mut c_char {
 
-    let nx : Option<Expr> =
+    let nx: Option<Expr> =
         from_json_string(nx_json);
 
-    let ny : Option<Expr> =
+    let ny: Option<Expr> =
         from_json_string(ny_json);
 
-    let nz : Option<Expr> =
+    let nz: Option<Expr> =
         from_json_string(nz_json);
 
     if let (
@@ -311,22 +311,22 @@ pub unsafe extern "C" fn rssn_json_reflection_3d(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rotation_axis_angle(
-    axis_x_json : *const c_char,
-    axis_y_json : *const c_char,
-    axis_z_json : *const c_char,
-    angle_json : *const c_char,
+    axis_x_json: *const c_char,
+    axis_y_json: *const c_char,
+    axis_z_json: *const c_char,
+    angle_json: *const c_char,
 ) -> *mut c_char {
 
-    let ax : Option<Expr> =
+    let ax: Option<Expr> =
         from_json_string(axis_x_json);
 
-    let ay : Option<Expr> =
+    let ay: Option<Expr> =
         from_json_string(axis_y_json);
 
-    let az : Option<Expr> =
+    let az: Option<Expr> =
         from_json_string(axis_z_json);
 
-    let angle : Option<Expr> =
+    let angle: Option<Expr> =
         from_json_string(angle_json);
 
     if let (

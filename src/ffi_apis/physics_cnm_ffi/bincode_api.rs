@@ -15,14 +15,14 @@ use crate::physics::physics_cnm::{
 #[derive(Deserialize)]
 
 struct Heat2DInput {
-    initial_condition : Vec<f64>,
-    config : HeatEquationSolverConfig,
+    initial_condition: Vec<f64>,
+    config: HeatEquationSolverConfig,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : Heat2DInput = match from_bincode_buffer(&buffer) {

@@ -22,7 +22,7 @@ struct AdvectionDiffusion2DInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : AdvectionDiffusion2DInput = match from_bincode_buffer(&buffer) {

@@ -67,7 +67,7 @@ fn test_json_api_build_info() {
             .unwrap();
 
         // Parse JSON
-        let info : serde_json::Value =
+        let info: serde_json::Value =
             serde_json::from_str(json)
                 .unwrap();
 
@@ -104,7 +104,7 @@ fn test_json_api_build_date() {
             .unwrap();
 
         // Should be a JSON string
-        let date : String =
+        let date: String =
             serde_json::from_str(json)
                 .unwrap();
 
@@ -206,7 +206,7 @@ fn test_all_three_apis_consistency() {
             .to_str()
             .unwrap();
 
-        let date : String =
+        let date: String =
             serde_json::from_str(json)
                 .unwrap();
 

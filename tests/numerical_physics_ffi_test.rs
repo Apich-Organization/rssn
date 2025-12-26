@@ -175,7 +175,7 @@ fn test_simple_harmonic_oscillator_json(
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -215,7 +215,7 @@ fn test_coulomb_force_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -253,7 +253,7 @@ fn test_ideal_gas_pressure_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -294,7 +294,7 @@ fn test_lorentz_factor_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -338,7 +338,7 @@ fn test_time_dilation_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -378,7 +378,7 @@ fn test_mass_energy_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -415,7 +415,7 @@ fn test_quantum_harmonic_oscillator_energy_json(
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -455,7 +455,7 @@ fn test_hydrogen_energy_level_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -499,7 +499,7 @@ fn test_photon_energy_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )

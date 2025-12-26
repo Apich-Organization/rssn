@@ -173,9 +173,9 @@ fn test_node3d_new() {
 fn test_linear_element_1d() {
 
     let elem = LinearElement1D {
-        length : 1.0,
-        youngs_modulus : 200e9,
-        area : 0.001,
+        length: 1.0,
+        youngs_modulus: 200e9,
+        area: 0.001,
     };
 
     let k =
@@ -667,9 +667,9 @@ fn test_assemble_global_stiffness_matrix(
 ) {
 
     let elem1 = LinearElement1D {
-        length : 1.0,
-        youngs_modulus : 200e9,
-        area : 0.001,
+        length: 1.0,
+        youngs_modulus: 200e9,
+        area: 0.001,
     };
 
     let k1 =
@@ -701,9 +701,9 @@ fn test_solve_static_structural() {
 
     // Simple 2-element bar
     let elem = LinearElement1D {
-        length : 1.0,
-        youngs_modulus : 200e9,
-        area : 0.001,
+        length: 1.0,
+        youngs_modulus: 200e9,
+        area: 0.001,
     };
 
     let k_local =

@@ -70,12 +70,12 @@ pub enum QuadratureMethod {
 /// ```
 
 pub fn trapezoidal_rule<F>(
-    f : F,
-    range : (f64, f64),
-    n_steps : usize,
+    f: F,
+    range: (f64, f64),
+    n_steps: usize,
 ) -> f64
 where
-    F : Fn(f64) -> f64,
+    F: Fn(f64) -> f64,
 {
 
     let (a, b) = range;
@@ -133,12 +133,12 @@ where
 /// ```
 
 pub fn simpson_rule<F>(
-    f : F,
-    range : (f64, f64),
-    n_steps : usize,
+    f: F,
+    range: (f64, f64),
+    n_steps: usize,
 ) -> Result<f64, String>
 where
-    F : Fn(f64) -> f64,
+    F: Fn(f64) -> f64,
 {
 
     let (a, b) = range;
@@ -216,25 +216,25 @@ where
 /// ```
 
 pub fn adaptive_quadrature<F>(
-    f : F,
-    range : (f64, f64),
-    tolerance : f64,
+    f: F,
+    range: (f64, f64),
+    tolerance: f64,
 ) -> f64
 where
-    F : Fn(f64) -> f64,
+    F: Fn(f64) -> f64,
 {
 
     // Inner recursive function
     fn adaptive_recursive<F>(
-        f : &F,
-        a : f64,
-        b : f64,
-        eps : f64,
-        whole_simpson : f64,
-        limit : usize,
+        f: &F,
+        a: f64,
+        b: f64,
+        eps: f64,
+        whole_simpson: f64,
+        limit: usize,
     ) -> f64
     where
-        F : Fn(f64) -> f64,
+        F: Fn(f64) -> f64,
     {
 
         if limit == 0 {
@@ -358,12 +358,12 @@ where
 /// ```
 
 pub fn romberg_integration<F>(
-    f : F,
-    range : (f64, f64),
-    max_steps : usize,
+    f: F,
+    range: (f64, f64),
+    max_steps: usize,
 ) -> f64
 where
-    F : Fn(f64) -> f64,
+    F: Fn(f64) -> f64,
 {
 
     let (a, b) = range;
@@ -447,11 +447,11 @@ where
 /// ```
 
 pub fn gauss_legendre_quadrature<F>(
-    f : F,
-    range : (f64, f64),
+    f: F,
+    range: (f64, f64),
 ) -> f64
 where
-    F : Fn(f64) -> f64,
+    F: Fn(f64) -> f64,
 {
 
     let (a, b) = range;
@@ -510,14 +510,14 @@ where
 /// A `Result` containing the numerical value of the integral, or an error string.
 
 pub fn quadrature(
-    f : &Expr,
-    var : &str,
-    range : (f64, f64),
-    n_steps : usize,
-    method : &QuadratureMethod,
+    f: &Expr,
+    var: &str,
+    range: (f64, f64),
+    n_steps: usize,
+    method: &QuadratureMethod,
 ) -> Result<f64, String> {
 
-    let func = |x : f64| -> f64 {
+    let func = |x: f64| -> f64 {
 
         let mut vars = HashMap::new();
 

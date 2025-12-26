@@ -12,28 +12,28 @@ use crate::numerical::optimize::*;
 #[derive(Serialize, Deserialize)]
 
 struct OptimizeRequest {
-    problem_type : String,
-    init_param : Vec<f64>,
-    max_iters : u64,
-    tolerance : f64,
-    rosenbrock_a : Option<f64>,
-    rosenbrock_b : Option<f64>,
+    problem_type: String,
+    init_param: Vec<f64>,
+    max_iters: u64,
+    tolerance: f64,
+    rosenbrock_a: Option<f64>,
+    rosenbrock_b: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize)]
 
 struct OptimizeResponse {
-    success : bool,
-    best_param : Option<Vec<f64>>,
-    best_cost : Option<f64>,
-    iterations : Option<u64>,
-    error : Option<String>,
+    success: bool,
+    best_param: Option<Vec<f64>>,
+    best_cost: Option<f64>,
+    iterations: Option<u64>,
+    error: Option<String>,
 }
 
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_solve_json(
-    json_ptr : *const c_char
+    json_ptr: *const c_char
 ) -> *mut c_char {
 
     if json_ptr.is_null() {
@@ -54,7 +54,7 @@ pub extern "C" fn numerical_optimize_solve_json(
         },
     };
 
-    let request : OptimizeRequest =
+    let request: OptimizeRequest =
         match serde_json::from_str(
             json_str,
         ) {
@@ -63,14 +63,13 @@ pub extern "C" fn numerical_optimize_solve_json(
 
                 let response =
                     OptimizeResponse {
-                        success : false,
+                        success: false,
                         best_param:
                             None,
-                        best_cost:
-                            None,
+                        best_cost: None,
                         iterations:
                             None,
-                        error : Some(
+                        error: Some(
                             format!(
                     "Invalid JSON: {}",
                     e
@@ -95,11 +94,11 @@ pub extern "C" fn numerical_optimize_solve_json(
     );
 
     let config = OptimizationConfig {
-        max_iters : request.max_iters,
-        tolerance : request.tolerance,
+        max_iters: request.max_iters,
+        tolerance: request.tolerance,
         problem_type:
             ProblemType::Custom, /* Placeholder, not used by logic below effectively */
-        dimension : request
+        dimension: request
             .init_param
             .len(),
     };
@@ -195,11 +194,11 @@ pub extern "C" fn numerical_optimize_solve_json(
         },
         | _ => {
             OptimizeResponse {
-                success : false,
-                best_param : None,
-                best_cost : None,
-                iterations : None,
-                error : Some(format!(
+                success: false,
+                best_param: None,
+                best_cost: None,
+                iterations: None,
+                error: Some(format!(
                     "Unknown problem \
                      type: {}",
                     request
@@ -223,7 +222,7 @@ pub extern "C" fn numerical_optimize_solve_json(
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_free_json(
-    ptr : *mut c_char
+    ptr: *mut c_char
 ) {
 
     if !ptr.is_null() {

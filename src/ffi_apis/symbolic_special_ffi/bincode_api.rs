@@ -15,10 +15,10 @@ use crate::symbolic::special;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_gamma_numerical(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -38,10 +38,10 @@ pub extern "C" fn rssn_bincode_gamma_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_ln_gamma_numerical(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -57,10 +57,10 @@ pub extern "C" fn rssn_bincode_ln_gamma_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_digamma_numerical(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -80,14 +80,14 @@ pub extern "C" fn rssn_bincode_digamma_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_beta_numerical(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<f64> =
+    let a: Option<f64> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<f64> =
+    let b: Option<f64> =
         from_bincode_buffer(&b_buf);
 
     if let (Some(val_a), Some(val_b)) =
@@ -109,14 +109,14 @@ pub extern "C" fn rssn_bincode_beta_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_ln_beta_numerical(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<f64> =
+    let a: Option<f64> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<f64> =
+    let b: Option<f64> =
         from_bincode_buffer(&b_buf);
 
     if let (Some(val_a), Some(val_b)) =
@@ -138,18 +138,18 @@ pub extern "C" fn rssn_bincode_ln_beta_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_regularized_incomplete_beta(
-    a_buf : BincodeBuffer,
-    b_buf : BincodeBuffer,
-    x_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    b_buf: BincodeBuffer,
+    x_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<f64> =
+    let a: Option<f64> =
         from_bincode_buffer(&a_buf);
 
-    let b : Option<f64> =
+    let b: Option<f64> =
         from_bincode_buffer(&b_buf);
 
-    let x : Option<f64> =
+    let x: Option<f64> =
         from_bincode_buffer(&x_buf);
 
     if let (
@@ -170,14 +170,14 @@ pub extern "C" fn rssn_bincode_regularized_incomplete_beta(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_regularized_gamma_p(
-    a_buf : BincodeBuffer,
-    x_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    x_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<f64> =
+    let a: Option<f64> =
         from_bincode_buffer(&a_buf);
 
-    let x : Option<f64> =
+    let x: Option<f64> =
         from_bincode_buffer(&x_buf);
 
     if let (Some(va), Some(vx)) = (a, x)
@@ -194,14 +194,14 @@ pub extern "C" fn rssn_bincode_regularized_gamma_p(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_regularized_gamma_q(
-    a_buf : BincodeBuffer,
-    x_buf : BincodeBuffer,
+    a_buf: BincodeBuffer,
+    x_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let a : Option<f64> =
+    let a: Option<f64> =
         from_bincode_buffer(&a_buf);
 
-    let x : Option<f64> =
+    let x: Option<f64> =
         from_bincode_buffer(&x_buf);
 
     if let (Some(va), Some(vx)) = (a, x)
@@ -222,10 +222,10 @@ pub extern "C" fn rssn_bincode_regularized_gamma_q(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_erf_numerical(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -243,10 +243,10 @@ pub extern "C" fn rssn_bincode_erf_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_erfc_numerical(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -264,10 +264,10 @@ pub extern "C" fn rssn_bincode_erfc_numerical(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_inverse_erf(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -285,10 +285,10 @@ pub extern "C" fn rssn_bincode_inverse_erf(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_inverse_erfc(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -310,10 +310,10 @@ pub extern "C" fn rssn_bincode_inverse_erfc(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_factorial(
-    n_buf : BincodeBuffer
+    n_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let n : Option<u64> =
+    let n: Option<u64> =
         from_bincode_buffer(&n_buf);
 
     if let Some(v) = n {
@@ -331,10 +331,10 @@ pub extern "C" fn rssn_bincode_factorial(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_double_factorial(
-    n_buf : BincodeBuffer
+    n_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let n : Option<u64> =
+    let n: Option<u64> =
         from_bincode_buffer(&n_buf);
 
     if let Some(v) = n {
@@ -354,14 +354,14 @@ pub extern "C" fn rssn_bincode_double_factorial(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_binomial(
-    n_buf : BincodeBuffer,
-    k_buf : BincodeBuffer,
+    n_buf: BincodeBuffer,
+    k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let n : Option<u64> =
+    let n: Option<u64> =
         from_bincode_buffer(&n_buf);
 
-    let k : Option<u64> =
+    let k: Option<u64> =
         from_bincode_buffer(&k_buf);
 
     if let (Some(vn), Some(vk)) = (n, k)
@@ -380,14 +380,14 @@ pub extern "C" fn rssn_bincode_binomial(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_rising_factorial(
-    x_buf : BincodeBuffer,
-    n_buf : BincodeBuffer,
+    x_buf: BincodeBuffer,
+    n_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let x : Option<f64> =
+    let x: Option<f64> =
         from_bincode_buffer(&x_buf);
 
-    let n : Option<u32> =
+    let n: Option<u32> =
         from_bincode_buffer(&n_buf);
 
     if let (Some(vx), Some(vn)) = (x, n)
@@ -408,14 +408,14 @@ pub extern "C" fn rssn_bincode_rising_factorial(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_falling_factorial(
-    x_buf : BincodeBuffer,
-    n_buf : BincodeBuffer,
+    x_buf: BincodeBuffer,
+    n_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let x : Option<f64> =
+    let x: Option<f64> =
         from_bincode_buffer(&x_buf);
 
-    let n : Option<u32> =
+    let n: Option<u32> =
         from_bincode_buffer(&n_buf);
 
     if let (Some(vx), Some(vn)) = (x, n)
@@ -436,10 +436,10 @@ pub extern "C" fn rssn_bincode_falling_factorial(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_ln_factorial(
-    n_buf : BincodeBuffer
+    n_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let n : Option<u64> =
+    let n: Option<u64> =
         from_bincode_buffer(&n_buf);
 
     if let Some(v) = n {
@@ -461,10 +461,10 @@ pub extern "C" fn rssn_bincode_ln_factorial(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_j0(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -482,10 +482,10 @@ pub extern "C" fn rssn_bincode_bessel_j0(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_j1(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -503,10 +503,10 @@ pub extern "C" fn rssn_bincode_bessel_j1(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_y0(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -524,10 +524,10 @@ pub extern "C" fn rssn_bincode_bessel_y0(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_y1(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -545,10 +545,10 @@ pub extern "C" fn rssn_bincode_bessel_y1(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_i0(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -566,10 +566,10 @@ pub extern "C" fn rssn_bincode_bessel_i0(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_i1(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -587,10 +587,10 @@ pub extern "C" fn rssn_bincode_bessel_i1(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_k0(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -608,10 +608,10 @@ pub extern "C" fn rssn_bincode_bessel_k0(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_bessel_k1(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -633,10 +633,10 @@ pub extern "C" fn rssn_bincode_bessel_k1(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_sinc(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {
@@ -654,10 +654,10 @@ pub extern "C" fn rssn_bincode_sinc(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_zeta_numerical(
-    val_buf : BincodeBuffer
+    val_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
-    let val : Option<f64> =
+    let val: Option<f64> =
         from_bincode_buffer(&val_buf);
 
     if let Some(v) = val {

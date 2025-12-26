@@ -15,11 +15,11 @@ use crate::ffi_apis::common::to_c_string;
 )]
 
 pub struct BuildInfo {
-    pub build_date : String,
-    pub commit_sha : String,
-    pub rustc_version : String,
-    pub cargo_target_triple : String,
-    pub system_info : String,
+    pub build_date: String,
+    pub commit_sha: String,
+    pub rustc_version: String,
+    pub cargo_target_triple: String,
+    pub system_info: String,
 }
 
 /// Returns all build information as a JSON string.

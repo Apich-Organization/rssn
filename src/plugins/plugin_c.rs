@@ -32,14 +32,14 @@ pub enum PluginHealth {
 #[derive(Debug)]
 
 pub struct PluginError {
-    message : String,
+    message: String,
 }
 
 impl PluginError {
-    pub fn new(msg : &str) -> Self {
+    pub fn new(msg: &str) -> Self {
 
         PluginError {
-            message : msg.to_string(),
+            message: msg.to_string(),
         }
     }
 }
@@ -47,7 +47,7 @@ impl PluginError {
 impl fmt::Display for PluginError {
     fn fmt(
         &self,
-        f : &mut fmt::Formatter<'_>,
+        f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
 
         write!(
@@ -97,8 +97,8 @@ pub trait Plugin: Send + Sync {
 
     fn execute(
         &self,
-        command : &str,
-        args : &Expr,
+        command: &str,
+        args: &Expr,
     ) -> Result<Expr, PluginError>;
 
     /// Performs a health check on the plugin.

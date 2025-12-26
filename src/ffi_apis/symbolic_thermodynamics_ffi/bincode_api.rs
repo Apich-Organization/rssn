@@ -8,26 +8,26 @@ use crate::symbolic::thermodynamics;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_ideal_gas_law(
-    p_buf : BincodeBuffer,
-    v_buf : BincodeBuffer,
-    n_buf : BincodeBuffer,
-    r_buf : BincodeBuffer,
-    t_buf : BincodeBuffer,
+    p_buf: BincodeBuffer,
+    v_buf: BincodeBuffer,
+    n_buf: BincodeBuffer,
+    r_buf: BincodeBuffer,
+    t_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let p : Option<Expr> =
+    let p: Option<Expr> =
         from_bincode_buffer(&p_buf);
 
-    let v : Option<Expr> =
+    let v: Option<Expr> =
         from_bincode_buffer(&v_buf);
 
-    let n : Option<Expr> =
+    let n: Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    let r : Option<Expr> =
+    let r: Option<Expr> =
         from_bincode_buffer(&r_buf);
 
-    let t : Option<Expr> =
+    let t: Option<Expr> =
         from_bincode_buffer(&t_buf);
 
     if let (
@@ -50,18 +50,18 @@ pub extern "C" fn rssn_bincode_ideal_gas_law(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_gibbs_free_energy(
-    h_buf : BincodeBuffer,
-    t_buf : BincodeBuffer,
-    s_buf : BincodeBuffer,
+    h_buf: BincodeBuffer,
+    t_buf: BincodeBuffer,
+    s_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let h : Option<Expr> =
+    let h: Option<Expr> =
         from_bincode_buffer(&h_buf);
 
-    let t : Option<Expr> =
+    let t: Option<Expr> =
         from_bincode_buffer(&t_buf);
 
-    let s : Option<Expr> =
+    let s: Option<Expr> =
         from_bincode_buffer(&s_buf);
 
     if let (Some(h), Some(t), Some(s)) =

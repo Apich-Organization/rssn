@@ -5,7 +5,7 @@ use crate::symbolic::radicals::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_simplify_radicals_handle(
-    expr : *const Expr
+    expr: *const Expr
 ) -> *mut Expr {
 
     let expr_ref = unsafe {
@@ -29,7 +29,7 @@ pub extern "C" fn rssn_simplify_radicals_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_denest_sqrt_handle(
-    expr : *const Expr
+    expr: *const Expr
 ) -> *mut Expr {
 
     let expr_ref = unsafe {

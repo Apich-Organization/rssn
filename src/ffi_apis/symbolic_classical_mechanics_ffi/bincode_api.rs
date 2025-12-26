@@ -10,14 +10,14 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_kinetic_energy(
-    mass_buf : BincodeBuffer,
-    velocity_buf : BincodeBuffer,
+    mass_buf: BincodeBuffer,
+    velocity_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let mass : Option<Expr> =
+    let mass: Option<Expr> =
         from_bincode_buffer(&mass_buf);
 
-    let velocity : Option<Expr> =
+    let velocity: Option<Expr> =
         from_bincode_buffer(
             &velocity_buf,
         );
@@ -37,13 +37,13 @@ pub extern "C" fn rssn_bincode_kinetic_energy(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_euler_lagrange_equation(
-    lagrangian_buf : BincodeBuffer,
-    q : *const c_char,
-    q_dot : *const c_char,
-    t_var : *const c_char,
+    lagrangian_buf: BincodeBuffer,
+    q: *const c_char,
+    q_dot: *const c_char,
+    t_var: *const c_char,
 ) -> BincodeBuffer {
 
-    let lagrangian : Option<Expr> =
+    let lagrangian: Option<Expr> =
         from_bincode_buffer(
             &lagrangian_buf,
         );

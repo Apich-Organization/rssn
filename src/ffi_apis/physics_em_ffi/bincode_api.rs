@@ -14,18 +14,18 @@ use crate::physics::physics_rkm::LorenzSystem;
 #[derive(Deserialize)]
 
 struct EulerInput {
-    system_type : String,
-    params_bincode : Vec<u8>,
-    y0 : Vec<f64>,
-    t_span : (f64, f64),
-    dt : f64,
-    method : String,
+    system_type: String,
+    params_bincode: Vec<u8>,
+    y0: Vec<f64>,
+    t_span: (f64, f64),
+    dt: f64,
+    method: String,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_em_solve_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : EulerInput = match from_bincode_buffer(&buffer) {

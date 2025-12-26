@@ -7,7 +7,7 @@ use rssn::symbolic::core::Expr;
 use rssn::symbolic::elementary::*;
 
 fn bench_trig_construction(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let x = Expr::new_variable("x");
@@ -59,7 +59,7 @@ fn bench_trig_construction(
 }
 
 fn bench_hyperbolic_construction(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let x = Expr::new_variable("x");
@@ -96,7 +96,7 @@ fn bench_hyperbolic_construction(
 }
 
 fn bench_exp_log_construction(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let x = Expr::new_variable("x");
@@ -133,7 +133,7 @@ fn bench_exp_log_construction(
 }
 
 fn bench_power_construction(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let x = Expr::new_variable("x");
@@ -175,7 +175,7 @@ fn bench_power_construction(
 }
 
 fn bench_expand_operations(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let x = Expr::new_variable("x");
@@ -238,7 +238,7 @@ fn bench_expand_operations(
 }
 
 fn bench_binomial_coefficient(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     use rssn::symbolic::elementary::binomial_coefficient;

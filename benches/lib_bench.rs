@@ -6,7 +6,7 @@ use criterion::Criterion;
 use rssn::is_exclusive;
 
 fn bench_is_exclusive(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let arc = Arc::new(10);

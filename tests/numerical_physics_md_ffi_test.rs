@@ -91,7 +91,7 @@ fn test_lennard_jones_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -133,7 +133,7 @@ fn test_morse_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -174,7 +174,7 @@ fn test_harmonic_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -217,7 +217,7 @@ fn test_system_properties_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -259,7 +259,7 @@ fn test_create_cubic_lattice_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -296,7 +296,7 @@ fn test_apply_pbc_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )
@@ -349,7 +349,7 @@ fn test_minimum_image_json() {
             )
             .to_string_lossy();
 
-        let parsed : serde_json::Value =
+        let parsed: serde_json::Value =
             serde_json::from_str(
                 &result_str,
             )

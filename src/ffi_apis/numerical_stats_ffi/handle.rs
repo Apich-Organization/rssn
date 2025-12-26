@@ -8,8 +8,8 @@ use crate::numerical::stats;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_mean(
-    data : *const f64,
-    len : usize,
+    data: *const f64,
+    len: usize,
 ) -> f64 {
 
     if data.is_null() || len == 0 {
@@ -28,8 +28,8 @@ pub unsafe extern "C" fn rssn_num_stats_mean(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_variance(
-    data : *const f64,
-    len : usize,
+    data: *const f64,
+    len: usize,
 ) -> f64 {
 
     if data.is_null() || len == 0 {
@@ -48,8 +48,8 @@ pub unsafe extern "C" fn rssn_num_stats_variance(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_std_dev(
-    data : *const f64,
-    len : usize,
+    data: *const f64,
+    len: usize,
 ) -> f64 {
 
     if data.is_null() || len == 0 {
@@ -68,8 +68,8 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_geometric_mean(
-    data : *const f64,
-    len : usize,
+    data: *const f64,
+    len: usize,
 ) -> f64 {
 
     if data.is_null() || len == 0 {
@@ -88,8 +88,8 @@ pub unsafe extern "C" fn rssn_num_stats_geometric_mean(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_harmonic_mean(
-    data : *const f64,
-    len : usize,
+    data: *const f64,
+    len: usize,
 ) -> f64 {
 
     if data.is_null() || len == 0 {
@@ -108,8 +108,8 @@ pub unsafe extern "C" fn rssn_num_stats_harmonic_mean(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_range(
-    data : *const f64,
-    len : usize,
+    data: *const f64,
+    len: usize,
 ) -> f64 {
 
     if data.is_null() || len == 0 {
@@ -128,8 +128,8 @@ pub unsafe extern "C" fn rssn_num_stats_range(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_cv(
-    data : *const f64,
-    len : usize,
+    data: *const f64,
+    len: usize,
 ) -> f64 {
 
     if data.is_null() || len == 0 {
@@ -150,8 +150,8 @@ pub unsafe extern "C" fn rssn_num_stats_cv(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_standard_error(
-    data : *const f64,
-    len : usize,
+    data: *const f64,
+    len: usize,
 ) -> f64 {
 
     if data.is_null() || len == 0 {
@@ -170,8 +170,8 @@ pub unsafe extern "C" fn rssn_num_stats_standard_error(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_shannon_entropy(
-    data : *const f64,
-    len : usize,
+    data: *const f64,
+    len: usize,
 ) -> f64 {
 
     if data.is_null() || len == 0 {
@@ -190,10 +190,10 @@ pub unsafe extern "C" fn rssn_num_stats_shannon_entropy(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_covariance(
-    data1 : *const f64,
-    len1 : usize,
-    data2 : *const f64,
-    len2 : usize,
+    data1: *const f64,
+    len1: usize,
+    data2: *const f64,
+    len2: usize,
 ) -> f64 {
 
     if data1.is_null()
@@ -220,10 +220,10 @@ pub unsafe extern "C" fn rssn_num_stats_covariance(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_correlation(
-    data1 : *const f64,
-    len1 : usize,
-    data2 : *const f64,
-    len2 : usize,
+    data1: *const f64,
+    len1: usize,
+    data2: *const f64,
+    len2: usize,
 ) -> f64 {
 
     if data1.is_null()
@@ -251,12 +251,12 @@ pub unsafe extern "C" fn rssn_num_stats_correlation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test(
-    sample1 : *const f64,
-    len1 : usize,
-    sample2 : *const f64,
-    len2 : usize,
-    out_t : *mut f64,
-    out_p : *mut f64,
+    sample1: *const f64,
+    len1: usize,
+    sample2: *const f64,
+    len2: usize,
+    out_t: *mut f64,
+    out_p: *mut f64,
 ) -> i32 {
 
     if sample1.is_null()
@@ -295,12 +295,12 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_welch_t_test(
-    sample1 : *const f64,
-    len1 : usize,
-    sample2 : *const f64,
-    len2 : usize,
-    out_t : *mut f64,
-    out_p : *mut f64,
+    sample1: *const f64,
+    len1: usize,
+    sample2: *const f64,
+    len2: usize,
+    out_t: *mut f64,
+    out_p: *mut f64,
 ) -> i32 {
 
     if sample1.is_null()
@@ -337,11 +337,11 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_chi_squared_test(
-    observed : *const f64,
-    expected : *const f64,
-    len : usize,
-    out_chi : *mut f64,
-    out_p : *mut f64,
+    observed: *const f64,
+    expected: *const f64,
+    len: usize,
+    out_chi: *mut f64,
+    out_p: *mut f64,
 ) -> i32 {
 
     if observed.is_null()
@@ -380,11 +380,11 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_linear_regression(
-    x : *const f64,
-    y : *const f64,
-    len : usize,
-    out_slope : *mut f64,
-    out_intercept : *mut f64,
+    x: *const f64,
+    y: *const f64,
+    len: usize,
+    out_slope: *mut f64,
+    out_intercept: *mut f64,
 ) -> i32 {
 
     if x.is_null()
@@ -402,7 +402,7 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression(
     let ys =
         slice::from_raw_parts(y, len);
 
-    let data : Vec<(f64, f64)> = xs
+    let data: Vec<(f64, f64)> = xs
         .iter()
         .zip(ys.iter())
         .map(|(&a, &b)| (a, b))

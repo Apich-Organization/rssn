@@ -78,7 +78,7 @@ fn generate_headers() -> Result<
     let cpp_config = cbindgen::Config {
         language:
             cbindgen::Language::Cxx,
-        namespace : Some(
+        namespace: Some(
             "rssn".to_string(),
         ),
         ..cbindgen::Config::from_file(

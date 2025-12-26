@@ -9,7 +9,7 @@ use rssn::symbolic::finite_field::PrimeFieldElement;
 use rssn::symbolic::poly_factorization::*;
 
 fn create_test_field(
-    modulus : i64
+    modulus: i64
 ) -> Arc<PrimeField> {
 
     PrimeField::new(BigInt::from(
@@ -18,11 +18,11 @@ fn create_test_field(
 }
 
 fn create_poly(
-    coeffs : Vec<i64>,
-    field : Arc<PrimeField>,
+    coeffs: Vec<i64>,
+    field: Arc<PrimeField>,
 ) -> FiniteFieldPolynomial {
 
-    let elements : Vec<
+    let elements: Vec<
         PrimeFieldElement,
     > = coeffs
         .into_iter()

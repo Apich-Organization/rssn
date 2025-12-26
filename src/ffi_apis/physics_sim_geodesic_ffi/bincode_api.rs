@@ -12,7 +12,7 @@ use crate::physics::physics_sim::geodesic_relativity::{
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_geodesic_run_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let params : GeodesicParameters = match from_bincode_buffer(&buffer) {

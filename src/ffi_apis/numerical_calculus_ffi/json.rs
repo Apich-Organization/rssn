@@ -14,31 +14,31 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct GradientInput {
-    expr : Expr,
-    vars : Vec<String>,
-    point : Vec<f64>,
+    expr: Expr,
+    vars: Vec<String>,
+    point: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct JacobianInput {
-    funcs : Vec<Expr>,
-    vars : Vec<String>,
-    point : Vec<f64>,
+    funcs: Vec<Expr>,
+    vars: Vec<String>,
+    point: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct HessianInput {
-    expr : Expr,
-    vars : Vec<String>,
-    point : Vec<f64>,
+    expr: Expr,
+    vars: Vec<String>,
+    point: Vec<f64>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_gradient_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : GradientInput = match from_json_string(input_json) {
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(
         },
     };
 
-    let vars_refs : Vec<&str> = input
+    let vars_refs: Vec<&str> = input
         .vars
         .iter()
         .map(|s| s.as_str())
@@ -71,14 +71,14 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(
     let ffi_res = match res {
         | Ok(v) => {
             FfiResult {
-                ok : Some(v),
-                err : None,
+                ok: Some(v),
+                err: None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             }
         },
     };
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_jacobian_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : JacobianInput = match from_json_string(input_json) {
@@ -110,7 +110,7 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(
         },
     };
 
-    let vars_refs : Vec<&str> = input
+    let vars_refs: Vec<&str> = input
         .vars
         .iter()
         .map(|s| s.as_str())
@@ -125,14 +125,14 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(
     let ffi_res = match res {
         | Ok(v) => {
             FfiResult {
-                ok : Some(v),
-                err : None,
+                ok: Some(v),
+                err: None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             }
         },
     };
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_hessian_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : HessianInput = match from_json_string(input_json) {
@@ -164,7 +164,7 @@ pub unsafe extern "C" fn rssn_numerical_hessian_json(
         },
     };
 
-    let vars_refs : Vec<&str> = input
+    let vars_refs: Vec<&str> = input
         .vars
         .iter()
         .map(|s| s.as_str())
@@ -179,14 +179,14 @@ pub unsafe extern "C" fn rssn_numerical_hessian_json(
     let ffi_res = match res {
         | Ok(v) => {
             FfiResult {
-                ok : Some(v),
-                err : None,
+                ok: Some(v),
+                err: None,
             }
         },
         | Err(e) => {
             FfiResult {
-                ok : None,
-                err : Some(e),
+                ok: None,
+                err: Some(e),
             }
         },
     };

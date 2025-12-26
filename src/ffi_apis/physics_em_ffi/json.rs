@@ -18,18 +18,18 @@ use crate::physics::physics_rkm::LorenzSystem;
 #[derive(Deserialize)]
 
 struct EulerInput {
-    system_type : String, /* "lorenz", "oscillator", "orbital" */
-    params : serde_json::Value,
-    y0 : Vec<f64>,
-    t_span : (f64, f64),
-    dt : f64,
-    method : String, /* "forward", "midpoint", "heun" */
+    system_type: String, /* "lorenz", "oscillator", "orbital" */
+    params: serde_json::Value,
+    y0: Vec<f64>,
+    t_span: (f64, f64),
+    dt: f64,
+    method: String, /* "forward", "midpoint", "heun" */
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_em_solve_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : EulerInput = match from_json_string(input) {

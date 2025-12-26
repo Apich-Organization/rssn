@@ -7,9 +7,9 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
 
 unsafe fn collect_pairs(
-    x_data : *const *const Expr,
-    y_data : *const *const Expr,
-    len : usize,
+    x_data: *const *const Expr,
+    y_data: *const *const Expr,
+    len: usize,
 ) -> Vec<(Expr, Expr)> {
 
     let mut data =
@@ -38,9 +38,9 @@ unsafe fn collect_pairs(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_simple_linear_regression(
-    x_data : *const *const Expr,
-    y_data : *const *const Expr,
-    len : usize,
+    x_data: *const *const Expr,
+    y_data: *const *const Expr,
+    len: usize,
 ) -> *mut Expr {
 
     if x_data.is_null()
@@ -66,10 +66,10 @@ pub unsafe extern "C" fn rssn_simple_linear_regression(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_polynomial_regression(
-    x_data : *const *const Expr,
-    y_data : *const *const Expr,
-    len : usize,
-    degree : usize,
+    x_data: *const *const Expr,
+    y_data: *const *const Expr,
+    len: usize,
+    degree: usize,
 ) -> *mut Expr {
 
     if x_data.is_null()
@@ -98,14 +98,14 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_nonlinear_regression(
-    x_data : *const *const Expr,
-    y_data : *const *const Expr,
-    len : usize,
-    model : *const Expr,
-    vars : *const *const c_char,
-    vars_len : usize,
-    params : *const *const c_char,
-    params_len : usize,
+    x_data: *const *const Expr,
+    y_data: *const *const Expr,
+    len: usize,
+    model: *const Expr,
+    vars: *const *const c_char,
+    vars_len: usize,
+    params: *const *const c_char,
+    params_len: usize,
 ) -> *mut Expr {
 
     if x_data.is_null()

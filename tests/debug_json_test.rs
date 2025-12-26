@@ -7,9 +7,8 @@ use serde::Serialize;
 #[derive(Serialize)]
 
 struct EvalInput {
-    expr : Expr,
-    vars :
-        HashMap<String, Complex<f64>>,
+    expr: Expr,
+    vars: HashMap<String, Complex<f64>>,
 }
 
 #[test]
@@ -24,7 +23,7 @@ fn see_json() {
     );
 
     let input = EvalInput {
-        expr : Expr::Variable(
+        expr: Expr::Variable(
             "z".to_string(),
         ),
         vars,

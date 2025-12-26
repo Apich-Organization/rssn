@@ -113,8 +113,8 @@ use crate::symbolic::error_correction_helper::poly_mul_gf256;
 #[must_use]
 
 pub fn hamming_distance(
-    a : &[u8],
-    b : &[u8],
+    a: &[u8],
+    b: &[u8],
 ) -> Option<usize> {
 
     if a.len() != b.len() {
@@ -142,7 +142,7 @@ pub fn hamming_distance(
 #[must_use]
 
 pub fn hamming_weight(
-    data : &[u8]
+    data: &[u8]
 ) -> usize {
 
     data.iter()
@@ -163,7 +163,7 @@ pub fn hamming_weight(
 #[must_use]
 
 pub fn hamming_encode(
-    data : &[u8]
+    data: &[u8]
 ) -> Option<Vec<u8>> {
 
     if data.len() != 4 {
@@ -200,7 +200,7 @@ pub fn hamming_encode(
 #[must_use]
 
 pub fn hamming_check(
-    codeword : &[u8]
+    codeword: &[u8]
 ) -> bool {
 
     if codeword.len() != 7 {
@@ -248,7 +248,7 @@ pub fn hamming_check(
 /// - `Err(String)` if the input length is not 7.
 
 pub fn hamming_decode(
-    codeword : &[u8]
+    codeword: &[u8]
 ) -> Result<
     (
         Vec<u8>,
@@ -336,7 +336,7 @@ pub fn hamming_decode(
 /// Computes the generator polynomial for a Reed-Solomon code with `n_sym` error correction symbols.
 
 pub(crate) fn rs_generator_poly(
-    n_sym : usize
+    n_sym: usize
 ) -> Result<Vec<u8>, String> {
 
     if n_sym == 0 {
@@ -378,8 +378,8 @@ pub(crate) fn rs_generator_poly(
 /// if the message length exceeds the maximum allowed for the chosen code.
 
 pub fn rs_encode(
-    data : &[u8],
-    n_sym : usize,
+    data: &[u8],
+    n_sym: usize,
 ) -> Result<Vec<u8>, String> {
 
     if data.len() + n_sym > 255 {
@@ -414,8 +414,8 @@ pub fn rs_encode(
 /// Calculates the syndromes of a received codeword.
 
 pub(crate) fn rs_calc_syndromes(
-    codeword_poly : &[u8],
-    n_sym : usize,
+    codeword_poly: &[u8],
+    n_sym: usize,
 ) -> Vec<u8> {
 
     let mut syndromes = vec![0; n_sym];
@@ -448,8 +448,8 @@ pub(crate) fn rs_calc_syndromes(
 #[must_use]
 
 pub fn rs_check(
-    codeword : &[u8],
-    n_sym : usize,
+    codeword: &[u8],
+    n_sym: usize,
 ) -> bool {
 
     let syndromes = rs_calc_syndromes(
@@ -475,8 +475,8 @@ pub fn rs_check(
 #[must_use]
 
 pub fn rs_error_count(
-    codeword : &[u8],
-    n_sym : usize,
+    codeword: &[u8],
+    n_sym: usize,
 ) -> usize {
 
     let syndromes = rs_calc_syndromes(
@@ -504,7 +504,7 @@ pub fn rs_error_count(
 #[allow(clippy::cast_possible_wrap)]
 
 pub(crate) fn rs_find_error_locator_poly(
-    syndromes : &[u8]
+    syndromes: &[u8]
 ) -> Vec<u8> {
 
     let mut sigma = vec![1];
@@ -576,8 +576,8 @@ pub(crate) fn rs_find_error_locator_poly(
 /// Finds the locations of errors by finding the roots of the error locator polynomial.
 
 pub(crate) fn rs_find_error_locations(
-    sigma : &[u8],
-    codeword_len : usize,
+    sigma: &[u8],
+    codeword_len: usize,
 ) -> Result<Vec<usize>, String> {
 
     let mut error_locs = Vec::new();
@@ -627,8 +627,8 @@ pub(crate) fn rs_find_error_locations(
 /// if error correction fails (e.g., too many errors).
 
 pub fn rs_decode(
-    codeword : &[u8],
-    n_sym : usize,
+    codeword: &[u8],
+    n_sym: usize,
 ) -> Result<Vec<u8>, String> {
 
     let mut codeword_poly =
@@ -718,7 +718,7 @@ pub fn rs_decode(
 
 /// CRC-32 polynomial (IEEE 802.3)
 
-const CRC32_POLYNOMIAL : u32 =
+const CRC32_POLYNOMIAL: u32 =
     0xEDB88320;
 
 /// Computes CRC-32 checksum of data.
@@ -733,10 +733,10 @@ const CRC32_POLYNOMIAL : u32 =
 #[must_use]
 
 pub fn crc32_compute(
-    data : &[u8]
+    data: &[u8]
 ) -> u32 {
 
-    let mut crc : u32 = 0xFFFFFFFF;
+    let mut crc: u32 = 0xFFFFFFFF;
 
     for byte in data {
 
@@ -769,8 +769,8 @@ pub fn crc32_compute(
 #[must_use]
 
 pub fn crc32_verify(
-    data : &[u8],
-    expected_crc : u32,
+    data: &[u8],
+    expected_crc: u32,
 ) -> bool {
 
     crc32_compute(data) == expected_crc
@@ -789,8 +789,8 @@ pub fn crc32_verify(
 #[must_use]
 
 pub fn crc32_update(
-    crc : u32,
-    data : &[u8],
+    crc: u32,
+    data: &[u8],
 ) -> u32 {
 
     let mut crc = crc;
@@ -825,7 +825,7 @@ pub fn crc32_update(
 #[must_use]
 
 pub const fn crc32_finalize(
-    crc : u32
+    crc: u32
 ) -> u32 {
 
     !crc

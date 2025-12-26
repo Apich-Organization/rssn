@@ -10,12 +10,12 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_euler_lagrange(
-    lagrangian_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
+    lagrangian_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
 ) -> BincodeBuffer {
 
-    let lagrangian : Option<Expr> =
+    let lagrangian: Option<Expr> =
         from_bincode_buffer(
             &lagrangian_buf,
         );
@@ -69,12 +69,12 @@ pub extern "C" fn rssn_bincode_euler_lagrange(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_euler_lagrange(
-    lagrangian_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
+    lagrangian_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
 ) -> BincodeBuffer {
 
-    let lagrangian : Option<Expr> =
+    let lagrangian: Option<Expr> =
         from_bincode_buffer(
             &lagrangian_buf,
         );
@@ -128,12 +128,12 @@ pub extern "C" fn rssn_bincode_solve_euler_lagrange(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hamiltons_principle(
-    lagrangian_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
+    lagrangian_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
 ) -> BincodeBuffer {
 
-    let lagrangian : Option<Expr> =
+    let lagrangian: Option<Expr> =
         from_bincode_buffer(
             &lagrangian_buf,
         );

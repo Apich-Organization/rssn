@@ -4,7 +4,7 @@ use crate::symbolic::discrete_groups::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_cyclic_group_create(
-    n : usize
+    n: usize
 ) -> BincodeBuffer {
 
     let group = cyclic_group(n);
@@ -15,7 +15,7 @@ pub unsafe extern "C" fn rssn_bincode_cyclic_group_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_dihedral_group_create(
-    n : usize
+    n: usize
 ) -> BincodeBuffer {
 
     let group = dihedral_group(n);
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn rssn_bincode_dihedral_group_create(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_symmetric_group_create(
-    n : usize
+    n: usize
 ) -> BincodeBuffer {
 
     match symmetric_group(n) {

@@ -200,7 +200,7 @@ fn test_serialization() {
         serde_json::to_string(&g)
             .unwrap();
 
-    let deserialized : Graph<String> =
+    let deserialized: Graph<String> =
         serde_json::from_str(
             &serialized,
         )

@@ -7,14 +7,14 @@ use crate::symbolic::graph_operations::*;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_induced_subgraph(
-    input_buf : BincodeBuffer
+    input_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        graph : Graph<String>,
-        nodes : Vec<String>,
+        graph: Graph<String>,
+        nodes: Vec<String>,
     }
 
     let input : Input = match from_bincode_buffer(&input_buf) {
@@ -34,14 +34,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_induced_subgraph(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_union(
-    input_buf : BincodeBuffer
+    input_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1 : Graph<String>,
-        g2 : Graph<String>,
+        g1: Graph<String>,
+        g2: Graph<String>,
     }
 
     let input : Input = match from_bincode_buffer(&input_buf) {
@@ -59,14 +59,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_union(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_intersection(
-    input_buf : BincodeBuffer
+    input_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1 : Graph<String>,
-        g2 : Graph<String>,
+        g1: Graph<String>,
+        g2: Graph<String>,
     }
 
     let input : Input = match from_bincode_buffer(&input_buf) {
@@ -86,14 +86,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_intersection(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_cartesian_product(
-    input_buf : BincodeBuffer
+    input_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1 : Graph<String>,
-        g2 : Graph<String>,
+        g1: Graph<String>,
+        g2: Graph<String>,
     }
 
     let input : Input = match from_bincode_buffer(&input_buf) {
@@ -115,14 +115,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_cartesian_product(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_tensor_product(
-    input_buf : BincodeBuffer
+    input_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1 : Graph<String>,
-        g2 : Graph<String>,
+        g1: Graph<String>,
+        g2: Graph<String>,
     }
 
     let input : Input = match from_bincode_buffer(&input_buf) {
@@ -144,7 +144,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_tensor_product(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_complement(
-    graph_buf : BincodeBuffer
+    graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
@@ -161,14 +161,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_complement(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_disjoint_union(
-    input_buf : BincodeBuffer
+    input_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1 : Graph<String>,
-        g2 : Graph<String>,
+        g1: Graph<String>,
+        g2: Graph<String>,
     }
 
     let input : Input = match from_bincode_buffer(&input_buf) {
@@ -190,14 +190,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_disjoint_union(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_graph_join(
-    input_buf : BincodeBuffer
+    input_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
     #[derive(serde::Deserialize)]
 
     struct Input {
-        g1 : Graph<String>,
-        g2 : Graph<String>,
+        g1: Graph<String>,
+        g2: Graph<String>,
     }
 
     let input : Input = match from_bincode_buffer(&input_buf) {

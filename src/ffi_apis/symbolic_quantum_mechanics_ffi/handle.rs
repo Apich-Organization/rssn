@@ -12,7 +12,7 @@ use crate::symbolic::quantum_mechanics::{
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_ket_new(
-    state : *const Expr
+    state: *const Expr
 ) -> *mut Ket {
 
     if state.is_null() {
@@ -21,7 +21,7 @@ pub unsafe extern "C" fn rssn_ket_new(
     }
 
     Box::into_raw(Box::new(Ket {
-        state : (*state).clone(),
+        state: (*state).clone(),
     }))
 }
 
@@ -29,7 +29,7 @@ pub unsafe extern "C" fn rssn_ket_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_ket_free(
-    ket : *mut Ket
+    ket: *mut Ket
 ) {
 
     if !ket.is_null() {
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rssn_ket_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bra_new(
-    state : *const Expr
+    state: *const Expr
 ) -> *mut Bra {
 
     if state.is_null() {
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rssn_bra_new(
     }
 
     Box::into_raw(Box::new(Bra {
-        state : (*state).clone(),
+        state: (*state).clone(),
     }))
 }
 
@@ -59,7 +59,7 @@ pub unsafe extern "C" fn rssn_bra_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bra_free(
-    bra : *mut Bra
+    bra: *mut Bra
 ) {
 
     if !bra.is_null() {
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_bra_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_operator_new(
-    op : *const Expr
+    op: *const Expr
 ) -> *mut Operator {
 
     if op.is_null() {
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rssn_operator_new(
     }
 
     Box::into_raw(Box::new(Operator {
-        op : (*op).clone(),
+        op: (*op).clone(),
     }))
 }
 
@@ -89,7 +89,7 @@ pub unsafe extern "C" fn rssn_operator_new(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_operator_free(
-    op_ptr : *mut Operator
+    op_ptr: *mut Operator
 ) {
 
     if !op_ptr.is_null() {
@@ -104,8 +104,8 @@ pub unsafe extern "C" fn rssn_operator_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bra_ket(
-    bra : *const Bra,
-    ket : *const Ket,
+    bra: *const Bra,
+    ket: *const Ket,
 ) -> *mut Expr {
 
     if bra.is_null() || ket.is_null() {
@@ -124,9 +124,9 @@ pub unsafe extern "C" fn rssn_bra_ket(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_commutator(
-    a : *const Operator,
-    b : *const Operator,
-    ket : *const Ket,
+    a: *const Operator,
+    b: *const Operator,
+    ket: *const Ket,
 ) -> *mut Expr {
 
     if a.is_null()
@@ -148,8 +148,8 @@ pub unsafe extern "C" fn rssn_commutator(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_expectation_value(
-    op : *const Operator,
-    psi : *const Ket,
+    op: *const Operator,
+    psi: *const Ket,
 ) -> *mut Expr {
 
     if op.is_null() || psi.is_null() {
@@ -166,8 +166,8 @@ pub unsafe extern "C" fn rssn_expectation_value(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_uncertainty(
-    op : *const Operator,
-    psi : *const Ket,
+    op: *const Operator,
+    psi: *const Ket,
 ) -> *mut Expr {
 
     if op.is_null() || psi.is_null() {
@@ -186,7 +186,7 @@ pub unsafe extern "C" fn rssn_uncertainty(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_probability_density(
-    psi : *const Ket
+    psi: *const Ket
 ) -> *mut Expr {
 
     if psi.is_null() {
@@ -203,7 +203,7 @@ pub unsafe extern "C" fn rssn_probability_density(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hamiltonian_free_particle(
-    m : *const Expr
+    m: *const Expr
 ) -> *mut Operator {
 
     if m.is_null() {
@@ -220,8 +220,8 @@ pub unsafe extern "C" fn rssn_hamiltonian_free_particle(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hamiltonian_harmonic_oscillator(
-    m : *const Expr,
-    omega : *const Expr,
+    m: *const Expr,
+    omega: *const Expr,
 ) -> *mut Operator {
 
     if m.is_null() || omega.is_null() {
@@ -238,9 +238,9 @@ pub unsafe extern "C" fn rssn_hamiltonian_harmonic_oscillator(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_pauli_matrices(
-    sigma_x : *mut *mut Expr,
-    sigma_y : *mut *mut Expr,
-    sigma_z : *mut *mut Expr,
+    sigma_x: *mut *mut Expr,
+    sigma_y: *mut *mut Expr,
+    sigma_z: *mut *mut Expr,
 ) {
 
     let (sx, sy, sz) = quantum_mechanics::pauli_matrices();
@@ -268,7 +268,7 @@ pub unsafe extern "C" fn rssn_pauli_matrices(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_spin_operator(
-    pauli : *const Expr
+    pauli: *const Expr
 ) -> *mut Expr {
 
     if pauli.is_null() {
@@ -285,8 +285,8 @@ pub unsafe extern "C" fn rssn_spin_operator(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_time_dependent_schrodinger_equation(
-    hamiltonian : *const Operator,
-    wave_function : *const Ket,
+    hamiltonian: *const Operator,
+    wave_function: *const Ket,
 ) -> *mut Expr {
 
     if hamiltonian.is_null()
@@ -308,8 +308,8 @@ pub unsafe extern "C" fn rssn_time_dependent_schrodinger_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_first_order_energy_correction(
-    perturbation : *const Operator,
-    unperturbed_state : *const Ket,
+    perturbation: *const Operator,
+    unperturbed_state: *const Ket,
 ) -> *mut Expr {
 
     if perturbation.is_null()
@@ -331,8 +331,8 @@ pub unsafe extern "C" fn rssn_first_order_energy_correction(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dirac_equation(
-    psi : *const Expr,
-    m : *const Expr,
+    psi: *const Expr,
+    m: *const Expr,
 ) -> *mut Expr {
 
     if psi.is_null() || m.is_null() {
@@ -349,8 +349,8 @@ pub unsafe extern "C" fn rssn_dirac_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_klein_gordon_equation(
-    psi : *const Expr,
-    m : *const Expr,
+    psi: *const Expr,
+    m: *const Expr,
 ) -> *mut Expr {
 
     if psi.is_null() || m.is_null() {
@@ -367,9 +367,9 @@ pub unsafe extern "C" fn rssn_klein_gordon_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_scattering_amplitude(
-    initial_state : *const Ket,
-    final_state : *const Ket,
-    potential : *const Operator,
+    initial_state: *const Ket,
+    final_state: *const Ket,
+    potential: *const Operator,
 ) -> *mut Expr {
 
     if initial_state.is_null()

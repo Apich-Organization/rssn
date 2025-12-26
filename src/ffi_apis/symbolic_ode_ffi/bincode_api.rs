@@ -10,12 +10,12 @@ use crate::symbolic::ode;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_ode(
-    ode_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
+    ode_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
 ) -> BincodeBuffer {
 
-    let ode_expr : Option<Expr> =
+    let ode_expr: Option<Expr> =
         from_bincode_buffer(&ode_buf);
 
     let func_str = unsafe {
@@ -73,12 +73,12 @@ pub extern "C" fn rssn_bincode_solve_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_separable_ode(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
@@ -145,12 +145,12 @@ pub extern "C" fn rssn_bincode_solve_separable_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_first_order_linear_ode(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
@@ -209,12 +209,12 @@ pub extern "C" fn rssn_bincode_solve_first_order_linear_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_bernoulli_ode(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
@@ -281,18 +281,18 @@ pub extern "C" fn rssn_bincode_solve_bernoulli_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_riccati_ode(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
-    y1_buf : BincodeBuffer,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
+    y1_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
 
-    let y1 : Option<Expr> =
+    let y1: Option<Expr> =
         from_bincode_buffer(&y1_buf);
 
     let func_str = unsafe {
@@ -359,12 +359,12 @@ pub extern "C" fn rssn_bincode_solve_riccati_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_cauchy_euler_ode(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
@@ -423,12 +423,12 @@ pub extern "C" fn rssn_bincode_solve_cauchy_euler_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_exact_ode(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
@@ -495,18 +495,18 @@ pub extern "C" fn rssn_bincode_solve_exact_ode(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_by_reduction_of_order(
-    equation_buf : BincodeBuffer,
-    func : *const c_char,
-    var : *const c_char,
-    y1_buf : BincodeBuffer,
+    equation_buf: BincodeBuffer,
+    func: *const c_char,
+    var: *const c_char,
+    y1_buf: BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let equation : Option<Expr> =
+    let equation: Option<Expr> =
         from_bincode_buffer(
             &equation_buf,
         );
 
-    let y1 : Option<Expr> =
+    let y1: Option<Expr> =
         from_bincode_buffer(&y1_buf);
 
     let func_str = unsafe {

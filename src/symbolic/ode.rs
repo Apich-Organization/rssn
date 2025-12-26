@@ -26,15 +26,15 @@ use crate::symbolic::transforms;
 /// A structured representation of a parsed ODE.
 
 pub struct ParsedODE {
-    pub order : u32,
-    pub coeffs : HashMap<u32, Expr>,
-    pub remaining_expr : Expr,
+    pub order: u32,
+    pub coeffs: HashMap<u32, Expr>,
+    pub remaining_expr: Expr,
 }
 
 pub(crate) fn parse_ode(
-    equation : &Expr,
-    func : &str,
-    var : &str,
+    equation: &Expr,
+    func: &str,
+    var: &str,
 ) -> ParsedODE {
 
     let mut coeffs = HashMap::new();
@@ -43,14 +43,11 @@ pub(crate) fn parse_ode(
         Expr::Constant(0.0);
 
     pub(crate) fn collect_terms(
-        expr : &Expr,
-        func : &str,
-        var : &str,
-        coeffs : &mut HashMap<
-            u32,
-            Expr,
-        >,
-        remaining : &mut Expr,
+        expr: &Expr,
+        func: &str,
+        var: &str,
+        coeffs: &mut HashMap<u32, Expr>,
+        remaining: &mut Expr,
     ) {
 
         if let Expr::Dag(node) = expr {
@@ -156,16 +153,16 @@ pub(crate) fn parse_ode(
         .unwrap_or(0);
 
     ParsedODE {
-        order : max_order,
+        order: max_order,
         coeffs,
         remaining_expr,
     }
 }
 
 pub(crate) fn get_term_order_and_coeff(
-    expr : &Expr,
-    func : &str,
-    var : &str,
+    expr: &Expr,
+    func: &str,
+    var: &str,
 ) -> (u32, Expr) {
 
     match expr {
@@ -248,8 +245,8 @@ pub(crate) fn get_term_order_and_coeff(
 }
 
 pub(crate) fn find_constants(
-    expr : &Expr,
-    constants : &mut Vec<String>,
+    expr: &Expr,
+    constants: &mut Vec<String>,
 ) {
 
     if let Expr::Variable(s) = expr {
@@ -258,6 +255,7 @@ pub(crate) fn find_constants(
             && s.chars()
                 .skip(1)
                 .all(|c| {
+
                     c.is_ascii_digit()
                 })
             && !constants.contains(s)
@@ -312,9 +310,9 @@ pub(crate) fn find_constants(
 }
 
 pub(crate) fn find_derivatives(
-    expr : &Expr,
-    var : &str,
-    derivatives : &mut HashMap<
+    expr: &Expr,
+    var: &str,
+    derivatives: &mut HashMap<
         String,
         u32,
     >,
@@ -436,10 +434,10 @@ pub(crate) fn find_derivatives(
 #[must_use]
 
 pub fn solve_ode(
-    ode : &Expr,
-    func : &str,
-    var : &str,
-    initial_conditions : Option<
+    ode: &Expr,
+    func: &str,
+    var: &str,
+    initial_conditions: Option<
         &[(Expr, u32, Expr)],
     >,
 ) -> Expr {
@@ -451,6 +449,7 @@ pub fn solve_ode(
             var,
         )
         .and_then(|mut solutions| {
+
             solutions.pop()
         })
         .map_or_else(
@@ -512,9 +511,9 @@ pub fn solve_ode(
 #[must_use]
 
 pub fn solve_ode_system(
-    equations : &[Expr],
-    funcs : &[&str],
-    var : &str,
+    equations: &[Expr],
+    funcs: &[&str],
+    var: &str,
 ) -> Option<Vec<Expr>> {
 
     let (
@@ -559,9 +558,9 @@ pub fn solve_ode_system(
 }
 
 pub(crate) fn try_all_solvers(
-    equation : &Expr,
-    func : &str,
-    var : &str,
+    equation: &Expr,
+    func: &str,
+    var: &str,
 ) -> Option<Expr> {
 
     let eq = if let Expr::Eq(l, r) =
@@ -597,11 +596,13 @@ pub(crate) fn try_all_solvers(
 
     solve_bernoulli_ode(&eq, func, var)
         .or_else(|| {
+
             solve_cauchy_euler_ode(
                 &eq, func, var,
             )
         })
         .or_else(|| {
+
             solve_exact_ode(
                 &eq, func, var,
             )
@@ -609,9 +610,9 @@ pub(crate) fn try_all_solvers(
 }
 
 pub(crate) fn apply_initial_conditions(
-    general_solution : &Expr,
-    var : &str,
-    conditions : &[(Expr, u32, Expr)],
+    general_solution: &Expr,
+    var: &str,
+    conditions: &[(Expr, u32, Expr)],
 ) -> Expr {
 
     let mut constants = Vec::new();
@@ -713,9 +714,9 @@ pub(crate) fn apply_initial_conditions(
 }
 
 pub(crate) fn reduce_to_first_order_system(
-    equations : &[Expr],
-    funcs : &[&str],
-    var : &str,
+    equations: &[Expr],
+    funcs: &[&str],
+    var: &str,
 ) -> Result<
     (
         Vec<Expr>,
@@ -727,7 +728,7 @@ pub(crate) fn reduce_to_first_order_system(
 
     let mut new_eqs = Vec::new();
 
-    let mut new_vars_map : HashMap<
+    let mut new_vars_map: HashMap<
         (String, u32),
         String,
     > = HashMap::new();
@@ -889,15 +890,15 @@ pub(crate) fn reduce_to_first_order_system(
 }
 
 pub(crate) fn solve_first_order_system_sequentially(
-    equations : &[Expr],
-    funcs : &[&str],
-    var : &str,
+    equations: &[Expr],
+    funcs: &[&str],
+    var: &str,
 ) -> Option<HashMap<String, Expr>> {
 
-    let mut remaining_eqs : Vec<Expr> =
+    let mut remaining_eqs: Vec<Expr> =
         equations.to_vec();
 
-    let mut solutions : HashMap<
+    let mut solutions: HashMap<
         String,
         Expr,
     > = HashMap::new();
@@ -1048,9 +1049,9 @@ pub(crate) fn solve_first_order_system_sequentially(
 }
 
 fn separate_factors(
-    expr : &Expr,
-    func : &str,
-    var : &str,
+    expr: &Expr,
+    func: &str,
+    var: &str,
 ) -> Option<(Expr, Expr)> {
 
     if !contains_var(expr, func) {
@@ -1152,9 +1153,9 @@ fn separate_factors(
 #[must_use]
 
 pub fn solve_separable_ode(
-    equation : &Expr,
-    func : &str,
-    var : &str,
+    equation: &Expr,
+    func: &str,
+    var: &str,
 ) -> Option<Expr> {
 
     // Handle DAG-wrapped expressions
@@ -1340,9 +1341,9 @@ pub fn solve_separable_ode(
 #[must_use]
 
 pub fn solve_first_order_linear_ode(
-    equation : &Expr,
-    func : &str,
-    var : &str,
+    equation: &Expr,
+    func: &str,
+    var: &str,
 ) -> Option<Expr> {
 
     // Handle DAG-wrapped expressions
@@ -1412,9 +1413,9 @@ pub fn solve_first_order_linear_ode(
 #[must_use]
 
 pub fn solve_bernoulli_ode(
-    equation : &Expr,
-    func : &str,
-    var : &str,
+    equation: &Expr,
+    func: &str,
+    var: &str,
 ) -> Option<Expr> {
 
     /// Solves a Bernoulli differential equation.
@@ -1568,10 +1569,10 @@ pub fn solve_bernoulli_ode(
 #[must_use]
 
 pub fn solve_riccati_ode(
-    equation : &Expr,
-    func : &str,
-    var : &str,
-    y1 : &Expr,
+    equation: &Expr,
+    func: &str,
+    var: &str,
+    y1: &Expr,
 ) -> Option<Expr> {
 
     /// Solves a Riccati differential equation.
@@ -1690,8 +1691,8 @@ pub fn solve_riccati_ode(
 
     // Collect all additive terms
     fn collect_add_terms(
-        expr : &Expr,
-        terms : &mut Vec<Expr>,
+        expr: &Expr,
+        terms: &mut Vec<Expr>,
     ) {
 
         match expr {
@@ -2007,9 +2008,9 @@ pub fn solve_riccati_ode(
 #[must_use]
 
 pub fn solve_cauchy_euler_ode(
-    equation : &Expr,
-    func : &str,
-    var : &str,
+    equation: &Expr,
+    func: &str,
+    var: &str,
 ) -> Option<Expr> {
 
     /// Solves a homogeneous Cauchy-Euler (equidimensional) differential equation of second order.
@@ -2177,10 +2178,10 @@ pub fn solve_cauchy_euler_ode(
 #[must_use]
 
 pub fn solve_by_reduction_of_order(
-    equation : &Expr,
-    func : &str,
-    var : &str,
-    y1 : &Expr,
+    equation: &Expr,
+    func: &str,
+    var: &str,
+    y1: &Expr,
 ) -> Option<Expr> {
 
     /// Solves a second-order homogeneous linear ODE by reduction of order.
@@ -2292,9 +2293,9 @@ pub fn solve_by_reduction_of_order(
 #[must_use]
 
 pub fn solve_exact_ode(
-    equation : &Expr,
-    func : &str,
-    var : &str,
+    equation: &Expr,
+    func: &str,
+    var: &str,
 ) -> Option<Expr> {
 
     /// Solves an exact first-order Ordinary Differential Equation.
@@ -2405,12 +2406,12 @@ pub fn solve_exact_ode(
 #[must_use]
 
 pub fn solve_ode_by_series(
-    equation : &Expr,
-    func : &str,
-    var : &str,
-    x0 : &Expr,
-    order : u32,
-    initial_conditions : &[(
+    equation: &Expr,
+    func: &str,
+    var: &str,
+    x0: &Expr,
+    order: u32,
+    initial_conditions: &[(
         u32,
         Expr,
     )],
@@ -2434,7 +2435,7 @@ pub fn solve_ode_by_series(
     ///
     /// # Returns
     /// An `Option<Expr>` representing the truncated power series solution.
-    let mut y_n_at_x0 : HashMap<
+    let mut y_n_at_x0: HashMap<
         u32,
         Expr,
     > = initial_conditions
@@ -2593,9 +2594,9 @@ pub fn solve_ode_by_series(
 #[must_use]
 
 pub fn solve_ode_by_fourier(
-    equation : &Expr,
-    func : &str,
-    var : &str,
+    equation: &Expr,
+    func: &str,
+    var: &str,
 ) -> Option<Expr> {
 
     /// Solves a linear Ordinary Differential Equation using the Fourier Transform method.

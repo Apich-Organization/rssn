@@ -16,9 +16,9 @@ pub type CubicSplineHandle =
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
-    x_coords : *const f64,
-    y_coords : *const f64,
-    len : usize,
+    x_coords: *const f64,
+    y_coords: *const f64,
+    len: usize,
 ) -> *mut Polynomial {
 
     if x_coords.is_null()
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
         )
     };
 
-    let points : Vec<(f64, f64)> =
+    let points: Vec<(f64, f64)> =
         x_slice
             .iter()
             .zip(y_slice.iter())
@@ -68,9 +68,9 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
-    x_coords : *const f64,
-    y_coords : *const f64,
-    len : usize,
+    x_coords: *const f64,
+    y_coords: *const f64,
+    len: usize,
 ) -> *mut CubicSplineHandle {
 
     if x_coords.is_null()
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
         )
     };
 
-    let points : Vec<(f64, f64)> =
+    let points: Vec<(f64, f64)> =
         x_slice
             .iter()
             .zip(y_slice.iter())
@@ -120,8 +120,8 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cubic_spline_evaluate(
-    handle : *const CubicSplineHandle,
-    x : f64,
+    handle: *const CubicSplineHandle,
+    x: f64,
 ) -> f64 {
 
     if handle.is_null() {
@@ -143,7 +143,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_evaluate(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cubic_spline_free(
-    handle : *mut CubicSplineHandle
+    handle: *mut CubicSplineHandle
 ) {
 
     if !handle.is_null() {
@@ -161,11 +161,11 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_free(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_bezier_curve(
-    control_points : *const f64,
-    n_points : usize,
-    dim : usize,
-    t : f64,
-    out_point : *mut f64,
+    control_points: *const f64,
+    n_points: usize,
+    dim: usize,
+    t: f64,
+    out_point: *mut f64,
 ) -> i32 {
 
     if control_points.is_null()
@@ -217,14 +217,14 @@ pub unsafe extern "C" fn rssn_num_bezier_curve(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_b_spline(
-    control_points : *const f64,
-    n_points : usize,
-    dim : usize,
-    degree : usize,
-    knots : *const f64,
-    n_knots : usize,
-    t : f64,
-    out_point : *mut f64,
+    control_points: *const f64,
+    n_points: usize,
+    dim: usize,
+    degree: usize,
+    knots: *const f64,
+    n_knots: usize,
+    t: f64,
+    out_point: *mut f64,
 ) -> i32 {
 
     if control_points.is_null()

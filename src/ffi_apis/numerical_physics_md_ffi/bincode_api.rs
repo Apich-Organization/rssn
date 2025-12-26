@@ -12,30 +12,30 @@ use crate::numerical::physics_md;
 #[derive(Deserialize)]
 
 struct LennardJonesInput {
-    p1_position : Vec<f64>,
-    p2_position : Vec<f64>,
-    epsilon : f64,
-    sigma : f64,
+    p1_position: Vec<f64>,
+    p2_position: Vec<f64>,
+    epsilon: f64,
+    sigma: f64,
 }
 
 #[derive(Serialize)]
 
 struct InteractionOutput {
-    potential : f64,
-    force : Vec<f64>,
+    potential: f64,
+    force: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct PbcInput {
-    position : Vec<f64>,
-    box_size : Vec<f64>,
+    position: Vec<f64>,
+    box_size: Vec<f64>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : LennardJonesInput = match from_bincode_buffer(&buffer) {
@@ -96,7 +96,7 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : PbcInput = match from_bincode_buffer(&buffer) {
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(
     );
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(wrapped),
-        err : None::<String>,
+        ok: Some(wrapped),
+        err: None::<String>,
     })
 }

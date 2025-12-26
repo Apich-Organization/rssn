@@ -32,11 +32,11 @@ use crate::symbolic::simplify::is_zero;
 
 pub struct CadCell {
     /// A sample point that lies within the cell.
-    pub sample_point : Vec<f64>,
+    pub sample_point: Vec<f64>,
     /// The dimension of the cell (e.g., 0 for a point, 1 for a curve, n for a region).
-    pub dim : usize,
+    pub dim: usize,
     /// An index representing the cell's position in the stack over a lower-dimensional cell.
-    pub index : Vec<usize>,
+    pub index: Vec<usize>,
 }
 
 /// Represents the full Cylindrical Algebraic Decomposition of R^n.
@@ -46,9 +46,9 @@ pub struct CadCell {
 
 pub struct Cad {
     /// The collection of cells in the decomposition.
-    pub cells : Vec<CadCell>,
+    pub cells: Vec<CadCell>,
     /// The dimension of the space (n).
-    pub dim : usize,
+    pub dim: usize,
 }
 
 /// Computes the Cylindrical Algebraic Decomposition for a set of polynomials.
@@ -61,8 +61,8 @@ pub struct Cad {
 /// A `Result` containing the `Cad` structure or an error message.
 
 pub fn cad(
-    polys : &[SparsePolynomial],
-    vars : &[&str],
+    polys: &[SparsePolynomial],
+    vars: &[&str],
 ) -> Result<Cad, String> {
 
     if vars.is_empty() {
@@ -82,15 +82,15 @@ pub fn cad(
 
     Ok(Cad {
         cells,
-        dim : vars.len(),
+        dim: vars.len(),
     })
 }
 
 /// Performs the projection phase of CAD.
 
 pub(crate) fn projection_phase(
-    polys : &[SparsePolynomial],
-    vars : &[&str],
+    polys: &[SparsePolynomial],
+    vars: &[&str],
 ) -> Result<
     Vec<Vec<SparsePolynomial>>,
     String,
@@ -194,10 +194,10 @@ pub(crate) fn projection_phase(
 /// Performs the lifting phase of CAD.
 
 pub(crate) fn lifting_phase(
-    projections : &[Vec<
+    projections: &[Vec<
         SparsePolynomial,
     >],
-    vars : &[&str],
+    vars: &[&str],
 ) -> Result<Vec<CadCell>, String> {
 
     let base_polys = &projections[0];
@@ -229,6 +229,7 @@ pub(crate) fn lifting_phase(
     });
 
     all_roots.dedup_by(|a, b| {
+
         (*a - *b).abs() < 1e-9
     });
 
@@ -238,19 +239,19 @@ pub(crate) fn lifting_phase(
     if all_roots.is_empty() {
 
         current_cells.push(CadCell {
-            sample_point : vec![0.0],
-            dim : 1,
-            index : vec![0],
+            sample_point: vec![0.0],
+            dim: 1,
+            index: vec![0],
         });
     } else {
 
         // Interval (-inf, first_root)
         current_cells.push(CadCell {
-            sample_point : vec![
+            sample_point: vec![
                 all_roots[0] - 1.0,
             ],
-            dim : 1,
-            index : vec![0],
+            dim: 1,
+            index: vec![0],
         });
 
         for (i, root) in all_roots
@@ -261,11 +262,11 @@ pub(crate) fn lifting_phase(
             // Point {root}
             current_cells.push(
                 CadCell {
-                    sample_point : vec![
+                    sample_point: vec![
                         *root,
                     ],
-                    dim : 0,
-                    index : vec![
+                    dim: 0,
+                    index: vec![
                         2 * i + 1,
                     ],
                 },
@@ -274,20 +275,22 @@ pub(crate) fn lifting_phase(
             // Interval (root, next_root) or (root, inf)
             if i + 1 < all_roots.len() {
 
-                current_cells
-                    .push(CadCell {
-                    sample_point : vec![
+                current_cells.push(
+                    CadCell {
+                        sample_point:
+                            vec![
                         f64::midpoint(
                             *root,
                             all_roots
                                 [i + 1],
                         ),
                     ],
-                    dim : 1,
-                    index : vec![
-                        2 * i + 2,
-                    ],
-                });
+                        dim: 1,
+                        index: vec![
+                            2 * i + 2,
+                        ],
+                    },
+                );
             } else {
 
                 current_cells.push(CadCell {
@@ -391,6 +394,7 @@ pub(crate) fn lifting_phase(
 
             roots_at_sample.dedup_by(
                 |a, b| {
+
                     (*a - *b).abs()
                         < 1e-9
                 },
@@ -415,7 +419,7 @@ pub(crate) fn lifting_phase(
                     CadCell {
                         sample_point:
                             new_sample,
-                        dim : cell.dim
+                        dim: cell.dim
                             + 1,
                         index:
                             new_index,
@@ -442,7 +446,7 @@ pub(crate) fn lifting_phase(
                     CadCell {
                         sample_point:
                             new_sample,
-                        dim : cell.dim
+                        dim: cell.dim
                             + 1,
                         index:
                             new_index,
@@ -524,8 +528,8 @@ pub(crate) fn lifting_phase(
 /// Evaluates an expression by substituting variables with constant values.
 
 pub(crate) fn substitute_map(
-    expr : &Expr,
-    vars : &HashMap<String, f64>,
+    expr: &Expr,
+    vars: &HashMap<String, f64>,
 ) -> Expr {
 
     let mut result = expr.clone();
@@ -546,9 +550,9 @@ pub(crate) fn substitute_map(
 #[allow(clippy::needless_range_loop)]
 
 pub(crate) fn sylvester_matrix(
-    p : &SparsePolynomial,
-    q : &SparsePolynomial,
-    var : &str,
+    p: &SparsePolynomial,
+    q: &SparsePolynomial,
+    var: &str,
 ) -> Expr {
 
     let n = p.degree(var) as usize;
@@ -562,14 +566,13 @@ pub(crate) fn sylvester_matrix(
         ]);
     }
 
-    let mut matrix_rows =
+    let mut matrix_rows = vec![
         vec![
-            vec![
                 Expr::Constant(0.0);
                 n + m
             ];
-            n + m
-        ];
+        n + m
+    ];
 
     let p_coeffs_rev =
         p.get_coeffs_as_vec(var);
@@ -611,9 +614,9 @@ pub(crate) fn sylvester_matrix(
 /// Computes the resultant of two polynomials with respect to a given variable.
 
 pub(crate) fn resultant(
-    p : &SparsePolynomial,
-    q : &SparsePolynomial,
-    var : &str,
+    p: &SparsePolynomial,
+    q: &SparsePolynomial,
+    var: &str,
 ) -> Expr {
 
     let sylvester =

@@ -36,12 +36,12 @@ use crate::symbolic::solve::solve;
 pub struct IteratedFunctionSystem {
     /// The set of contraction mappings. Each expression should be a function of the coordinates.
     /// For 2D, these are typically affine transformations.
-    pub functions : Vec<Expr>,
+    pub functions: Vec<Expr>,
     /// The probabilities associated with each function (for randomized algorithms).
     /// These should sum to 1.
-    pub probabilities : Vec<Expr>,
+    pub probabilities: Vec<Expr>,
     /// The variables involved in the functions (e.g., ["x", "y"]).
-    pub variables : Vec<String>,
+    pub variables: Vec<String>,
 }
 
 impl IteratedFunctionSystem {
@@ -49,9 +49,9 @@ impl IteratedFunctionSystem {
     #[must_use]
 
     pub const fn new(
-        functions : Vec<Expr>,
-        probabilities : Vec<Expr>,
-        variables : Vec<String>,
+        functions: Vec<Expr>,
+        probabilities: Vec<Expr>,
+        variables: Vec<String>,
     ) -> Self {
 
         Self {
@@ -72,7 +72,7 @@ impl IteratedFunctionSystem {
 
     pub fn apply(
         &self,
-        point : &[Expr],
+        point: &[Expr],
     ) -> Vec<Vec<Expr>> {
 
         if point.len()
@@ -169,7 +169,7 @@ impl IteratedFunctionSystem {
     #[must_use]
 
     pub fn similarity_dimension(
-        scaling_factors : &[Expr]
+        scaling_factors: &[Expr]
     ) -> Expr {
 
         // We need to solve sum(r_i^D) = 1 for D.
@@ -249,9 +249,9 @@ impl IteratedFunctionSystem {
 
 pub struct ComplexDynamicalSystem {
     /// The function f(z) (e.g., z^2).
-    pub function : Expr,
+    pub function: Expr,
     /// The parameter c.
-    pub c : Expr,
+    pub c: Expr,
 }
 
 impl ComplexDynamicalSystem {
@@ -259,7 +259,7 @@ impl ComplexDynamicalSystem {
     #[must_use]
 
     pub fn new_mandelbrot_family(
-        c : Expr
+        c: Expr
     ) -> Self {
 
         // f(z) = z^2
@@ -273,7 +273,7 @@ impl ComplexDynamicalSystem {
         );
 
         Self {
-            function : f,
+            function: f,
             c,
         }
     }
@@ -283,7 +283,7 @@ impl ComplexDynamicalSystem {
 
     pub fn iterate(
         &self,
-        z_n : &Expr,
+        z_n: &Expr,
     ) -> Expr {
 
         let f_z = substitute(
@@ -303,8 +303,8 @@ impl ComplexDynamicalSystem {
 
     pub fn orbit(
         &self,
-        start_z : Expr,
-        n : usize,
+        start_z: Expr,
+        n: usize,
     ) -> Vec<Expr> {
 
         let mut orbit =
@@ -358,7 +358,7 @@ impl ComplexDynamicalSystem {
 
     pub fn stability_index(
         &self,
-        fixed_point : &Expr,
+        fixed_point: &Expr,
     ) -> Expr {
 
         let map = Expr::new_add(
@@ -389,8 +389,8 @@ impl ComplexDynamicalSystem {
 #[must_use]
 
 pub fn find_fixed_points(
-    map_function : &Expr,
-    var : &str,
+    map_function: &Expr,
+    var: &str,
 ) -> Vec<Expr> {
 
     let x =
@@ -411,9 +411,9 @@ pub fn find_fixed_points(
 #[must_use]
 
 pub fn analyze_stability(
-    map_function : &Expr,
-    var : &str,
-    fixed_point : &Expr,
+    map_function: &Expr,
+    var: &str,
+    fixed_point: &Expr,
 ) -> Expr {
 
     let deriv = differentiate(
@@ -446,10 +446,10 @@ pub fn analyze_stability(
 #[must_use]
 
 pub fn lyapunov_exponent(
-    map_function : &Expr,
-    var : &str,
-    initial_x : &Expr,
-    n_iterations : usize,
+    map_function: &Expr,
+    var: &str,
+    initial_x: &Expr,
+    n_iterations: usize,
 ) -> Expr {
 
     let mut current_x =

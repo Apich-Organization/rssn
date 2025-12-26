@@ -5,8 +5,8 @@ use crate::symbolic::multi_valued::*;
 #[no_mangle]
 
 pub extern "C" fn rssn_general_log_handle(
-    z : *const Expr,
-    k : *const Expr,
+    z: *const Expr,
+    k: *const Expr,
 ) -> *mut Expr {
 
     let z_ref = unsafe {
@@ -41,8 +41,8 @@ pub extern "C" fn rssn_general_log_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_general_sqrt_handle(
-    z : *const Expr,
-    k : *const Expr,
+    z: *const Expr,
+    k: *const Expr,
 ) -> *mut Expr {
 
     let z_ref = unsafe {
@@ -77,9 +77,9 @@ pub extern "C" fn rssn_general_sqrt_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_general_power_handle(
-    z : *const Expr,
-    w : *const Expr,
-    k : *const Expr,
+    z: *const Expr,
+    w: *const Expr,
+    k: *const Expr,
 ) -> *mut Expr {
 
     let z_ref = unsafe {
@@ -126,9 +126,9 @@ pub extern "C" fn rssn_general_power_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_general_nth_root_handle(
-    z : *const Expr,
-    n : *const Expr,
-    k : *const Expr,
+    z: *const Expr,
+    n: *const Expr,
+    k: *const Expr,
 ) -> *mut Expr {
 
     let z_ref = unsafe {
@@ -175,8 +175,8 @@ pub extern "C" fn rssn_general_nth_root_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_general_arcsin_handle(
-    z : *const Expr,
-    k : *const Expr,
+    z: *const Expr,
+    k: *const Expr,
 ) -> *mut Expr {
 
     let z_ref = unsafe {
@@ -211,9 +211,9 @@ pub extern "C" fn rssn_general_arcsin_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_general_arccos_handle(
-    z : *const Expr,
-    k : *const Expr,
-    s : *const Expr,
+    z: *const Expr,
+    k: *const Expr,
+    s: *const Expr,
 ) -> *mut Expr {
 
     let z_ref = unsafe {
@@ -260,8 +260,8 @@ pub extern "C" fn rssn_general_arccos_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_general_arctan_handle(
-    z : *const Expr,
-    k : *const Expr,
+    z: *const Expr,
+    k: *const Expr,
 ) -> *mut Expr {
 
     let z_ref = unsafe {
@@ -296,7 +296,7 @@ pub extern "C" fn rssn_general_arctan_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_arg_handle(
-    z : *const Expr
+    z: *const Expr
 ) -> *mut Expr {
 
     let z_ref = unsafe {
@@ -319,7 +319,7 @@ pub extern "C" fn rssn_arg_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_abs_handle(
-    z : *const Expr
+    z: *const Expr
 ) -> *mut Expr {
 
     let z_ref = unsafe {

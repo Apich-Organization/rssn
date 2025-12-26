@@ -31,8 +31,8 @@ use crate::symbolic::simplify::as_f64;
 #[must_use]
 
 pub fn sturm_sequence(
-    poly : &SparsePolynomial,
-    var : &str,
+    poly: &SparsePolynomial,
+    var: &str,
 ) -> Vec<SparsePolynomial> {
 
     if poly
@@ -112,14 +112,14 @@ pub fn sturm_sequence(
 /// Counts the number of sign changes in the Sturm sequence at a given point.
 
 pub(crate) fn count_sign_changes(
-    sequence : &[SparsePolynomial],
-    point : f64,
-    var : &str,
+    sequence: &[SparsePolynomial],
+    point: f64,
+    var: &str,
 ) -> usize {
 
     let mut changes = 0;
 
-    let mut last_sign : Option<i8> =
+    let mut last_sign: Option<i8> =
         None;
 
     let mut vars = HashMap::new();
@@ -179,10 +179,10 @@ pub(crate) fn count_sign_changes(
 /// or an error string if evaluation fails.
 
 pub fn count_real_roots_in_interval(
-    poly : &SparsePolynomial,
-    var : &str,
-    a : f64,
-    b : f64,
+    poly: &SparsePolynomial,
+    var: &str,
+    a: f64,
+    b: f64,
 ) -> Result<usize, String> {
 
     let seq = sturm_sequence(poly, var);
@@ -215,9 +215,9 @@ pub fn count_real_roots_in_interval(
 /// if root bounding or counting fails.
 
 pub fn isolate_real_roots(
-    poly : &SparsePolynomial,
-    var : &str,
-    precision : f64,
+    poly: &SparsePolynomial,
+    var: &str,
+    precision: f64,
 ) -> Result<Vec<(f64, f64)>, String> {
 
     let sq_free = poly
@@ -319,8 +319,8 @@ pub fn isolate_real_roots(
 /// Computes an upper bound for the absolute value of the real roots of a polynomial (Cauchy's bound).
 
 pub(crate) fn root_bound(
-    poly : &SparsePolynomial,
-    var : &str,
+    poly: &SparsePolynomial,
+    var: &str,
 ) -> Result<f64, String> {
 
     let coeffs =
@@ -371,8 +371,8 @@ pub(crate) fn root_bound(
 #[must_use]
 
 pub fn eval_expr(
-    expr : &Expr,
-    vars : &HashMap<String, f64>,
+    expr: &Expr,
+    vars: &HashMap<String, f64>,
 ) -> f64 {
 
     match expr {

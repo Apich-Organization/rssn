@@ -7,8 +7,8 @@ use crate::symbolic::differential_geometry::*;
 use crate::symbolic::vector::Vector;
 
 unsafe fn parse_c_str_array(
-    arr : *const *const c_char,
-    len : usize,
+    arr: *const *const c_char,
+    len: usize,
 ) -> Option<Vec<String>> {
 
     if arr.is_null() {
@@ -45,9 +45,9 @@ unsafe fn parse_c_str_array(
 #[no_mangle]
 
 pub extern "C" fn rssn_exterior_derivative_handle(
-    form_ptr : *const DifferentialForm,
-    vars_ptr : *const *const c_char,
-    vars_len : c_int,
+    form_ptr: *const DifferentialForm,
+    vars_ptr: *const *const c_char,
+    vars_len: c_int,
 ) -> *mut DifferentialForm {
 
     if form_ptr.is_null() {
@@ -67,7 +67,7 @@ pub extern "C" fn rssn_exterior_derivative_handle(
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs : Vec<&str> =
+        let vars_refs: Vec<&str> =
             vars_strings
                 .iter()
                 .map(|s| s.as_str())
@@ -87,8 +87,8 @@ pub extern "C" fn rssn_exterior_derivative_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_wedge_product_handle(
-    form1_ptr : *const DifferentialForm,
-    form2_ptr : *const DifferentialForm,
+    form1_ptr: *const DifferentialForm,
+    form2_ptr: *const DifferentialForm,
 ) -> *mut DifferentialForm {
 
     if form1_ptr.is_null()
@@ -115,7 +115,7 @@ pub extern "C" fn rssn_wedge_product_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_boundary_handle(
-    domain_ptr : *const Expr
+    domain_ptr: *const Expr
 ) -> *mut Expr {
 
     if domain_ptr.is_null() {
@@ -137,10 +137,10 @@ pub extern "C" fn rssn_boundary_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_generalized_stokes_theorem_handle(
-    omega_ptr : *const DifferentialForm,
-    manifold_ptr : *const Expr,
-    vars_ptr : *const *const c_char,
-    vars_len : c_int,
+    omega_ptr: *const DifferentialForm,
+    manifold_ptr: *const Expr,
+    vars_ptr: *const *const c_char,
+    vars_len: c_int,
 ) -> *mut Expr {
 
     if omega_ptr.is_null()
@@ -164,7 +164,7 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs : Vec<&str> =
+        let vars_refs: Vec<&str> =
             vars_strings
                 .iter()
                 .map(|s| s.as_str())
@@ -185,8 +185,8 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_gauss_theorem_handle(
-    vector_field_ptr : *const Vector,
-    volume_ptr : *const Expr,
+    vector_field_ptr: *const Vector,
+    volume_ptr: *const Expr,
 ) -> *mut Expr {
 
     if vector_field_ptr.is_null()
@@ -216,8 +216,8 @@ pub extern "C" fn rssn_gauss_theorem_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_stokes_theorem_handle(
-    vector_field_ptr : *const Vector,
-    surface_ptr : *const Expr,
+    vector_field_ptr: *const Vector,
+    surface_ptr: *const Expr,
 ) -> *mut Expr {
 
     if vector_field_ptr.is_null()
@@ -247,9 +247,9 @@ pub extern "C" fn rssn_stokes_theorem_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_greens_theorem_handle(
-    p_ptr : *const Expr,
-    q_ptr : *const Expr,
-    domain_ptr : *const Expr,
+    p_ptr: *const Expr,
+    q_ptr: *const Expr,
+    domain_ptr: *const Expr,
 ) -> *mut Expr {
 
     if p_ptr.is_null()
@@ -282,7 +282,7 @@ pub extern "C" fn rssn_greens_theorem_handle(
 #[no_mangle]
 
 pub extern "C" fn rssn_free_differential_form_handle(
-    ptr : *mut DifferentialForm
+    ptr: *mut DifferentialForm
 ) {
 
     if !ptr.is_null() {

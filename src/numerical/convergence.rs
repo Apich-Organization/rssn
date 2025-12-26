@@ -22,11 +22,11 @@ use crate::symbolic::core::Expr;
 /// A `Result` containing the numerical sum, or an error string if evaluation fails.
 
 pub fn sum_series_numerical(
-    term_expr : &Expr,
-    var : &str,
-    start_n : usize,
-    max_terms : usize,
-    tolerance : f64,
+    term_expr: &Expr,
+    var: &str,
+    start_n: usize,
+    max_terms: usize,
+    tolerance: f64,
 ) -> Result<f64, String> {
 
     let mut sum = 0.0;
@@ -72,7 +72,7 @@ pub fn sum_series_numerical(
 #[must_use]
 
 pub fn aitken_acceleration(
-    sequence : &[f64]
+    sequence: &[f64]
 ) -> Vec<f64> {
 
     if sequence.len() < 3 {
@@ -125,10 +125,10 @@ pub fn aitken_acceleration(
 /// A `Result` containing the numerical limit, or an error string if convergence is not found.
 
 pub fn find_sequence_limit(
-    term_expr : &Expr,
-    var : &str,
-    max_terms : usize,
-    tolerance : f64,
+    term_expr: &Expr,
+    var: &str,
+    max_terms: usize,
+    tolerance: f64,
 ) -> Result<f64, String> {
 
     let mut sequence = Vec::new();
@@ -153,20 +153,19 @@ pub fn find_sequence_limit(
 
     while accelerated.len() > 1 {
 
-        let last = match accelerated
-            .last()
-        {
-            | Some(l) => l,
-            | None => {
+        let last =
+            match accelerated.last() {
+                | Some(l) => l,
+                | None => {
 
-                return Err(
+                    return Err(
                     "Unexpected empty \
                      sequence in \
                      convergence loop."
                         .to_string(),
                 );
-            },
-        };
+                },
+            };
 
         let second_last = accelerated
             [accelerated.len() - 2];
@@ -188,6 +187,7 @@ pub fn find_sequence_limit(
         .last()
         .copied()
         .ok_or_else(|| {
+
             "Convergence not found"
                 .to_string()
         })
@@ -207,7 +207,7 @@ pub fn find_sequence_limit(
 #[must_use]
 
 pub fn richardson_extrapolation(
-    sequence : &[f64]
+    sequence: &[f64]
 ) -> Vec<f64> {
 
     if sequence.is_empty() {
@@ -265,7 +265,7 @@ pub fn richardson_extrapolation(
 #[must_use]
 
 pub fn wynn_epsilon(
-    sequence : &[f64]
+    sequence: &[f64]
 ) -> Vec<f64> {
 
     let n = sequence.len();

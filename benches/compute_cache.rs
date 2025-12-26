@@ -9,7 +9,7 @@ use rssn::compute::computation::Value;
 use rssn::symbolic::core::Expr;
 
 fn bench_parsing_cache(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let cache = ParsingCache::new();
@@ -40,7 +40,7 @@ fn bench_parsing_cache(
 }
 
 fn bench_computation_result_cache(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let cache =

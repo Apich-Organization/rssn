@@ -4,7 +4,7 @@ use criterion::Criterion;
 use rssn::prelude::numerical::*;
 
 pub fn benchmark_vector_ops(
-    c : &mut Criterion
+    c: &mut Criterion
 ) {
 
     let v1 = vec![1.0; 1000];

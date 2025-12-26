@@ -14,7 +14,7 @@ use crate::symbolic::special_functions;
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_gamma(
-    arg : *const Expr
+    arg: *const Expr
 ) -> *mut Expr {
 
     if arg.is_null() {
@@ -33,7 +33,7 @@ pub unsafe extern "C" fn rssn_gamma(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_ln_gamma(
-    arg : *const Expr
+    arg: *const Expr
 ) -> *mut Expr {
 
     if arg.is_null() {
@@ -52,8 +52,8 @@ pub unsafe extern "C" fn rssn_ln_gamma(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_beta(
-    a : *const Expr,
-    b : *const Expr,
+    a: *const Expr,
+    b: *const Expr,
 ) -> *mut Expr {
 
     if a.is_null() || b.is_null() {
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn rssn_beta(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_digamma(
-    arg : *const Expr
+    arg: *const Expr
 ) -> *mut Expr {
 
     if arg.is_null() {
@@ -92,8 +92,8 @@ pub unsafe extern "C" fn rssn_digamma(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_polygamma(
-    n : *const Expr,
-    z : *const Expr,
+    n: *const Expr,
+    z: *const Expr,
 ) -> *mut Expr {
 
     if n.is_null() || z.is_null() {
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn rssn_polygamma(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_erf(
-    arg : *const Expr
+    arg: *const Expr
 ) -> *mut Expr {
 
     if arg.is_null() {
@@ -136,7 +136,7 @@ pub unsafe extern "C" fn rssn_erf(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_erfc(
-    arg : *const Expr
+    arg: *const Expr
 ) -> *mut Expr {
 
     if arg.is_null() {
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rssn_erfc(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_erfi(
-    arg : *const Expr
+    arg: *const Expr
 ) -> *mut Expr {
 
     if arg.is_null() {
@@ -178,7 +178,7 @@ pub unsafe extern "C" fn rssn_erfi(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_zeta(
-    arg : *const Expr
+    arg: *const Expr
 ) -> *mut Expr {
 
     if arg.is_null() {
@@ -201,8 +201,8 @@ pub unsafe extern "C" fn rssn_zeta(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bessel_j(
-    order : *const Expr,
-    arg : *const Expr,
+    order: *const Expr,
+    arg: *const Expr,
 ) -> *mut Expr {
 
     if order.is_null() || arg.is_null()
@@ -223,8 +223,8 @@ pub unsafe extern "C" fn rssn_bessel_j(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bessel_y(
-    order : *const Expr,
-    arg : *const Expr,
+    order: *const Expr,
+    arg: *const Expr,
 ) -> *mut Expr {
 
     if order.is_null() || arg.is_null()
@@ -245,8 +245,8 @@ pub unsafe extern "C" fn rssn_bessel_y(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bessel_i(
-    order : *const Expr,
-    arg : *const Expr,
+    order: *const Expr,
+    arg: *const Expr,
 ) -> *mut Expr {
 
     if order.is_null() || arg.is_null()
@@ -267,8 +267,8 @@ pub unsafe extern "C" fn rssn_bessel_i(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bessel_k(
-    order : *const Expr,
-    arg : *const Expr,
+    order: *const Expr,
+    arg: *const Expr,
 ) -> *mut Expr {
 
     if order.is_null() || arg.is_null()
@@ -293,8 +293,8 @@ pub unsafe extern "C" fn rssn_bessel_k(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_legendre_p(
-    degree : *const Expr,
-    arg : *const Expr,
+    degree: *const Expr,
+    arg: *const Expr,
 ) -> *mut Expr {
 
     if degree.is_null() || arg.is_null()
@@ -315,8 +315,8 @@ pub unsafe extern "C" fn rssn_legendre_p(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_laguerre_l(
-    degree : *const Expr,
-    arg : *const Expr,
+    degree: *const Expr,
+    arg: *const Expr,
 ) -> *mut Expr {
 
     if degree.is_null() || arg.is_null()
@@ -337,9 +337,9 @@ pub unsafe extern "C" fn rssn_laguerre_l(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_generalized_laguerre(
-    n : *const Expr,
-    alpha : *const Expr,
-    x : *const Expr,
+    n: *const Expr,
+    alpha: *const Expr,
+    x: *const Expr,
 ) -> *mut Expr {
 
     if n.is_null()
@@ -363,8 +363,8 @@ pub unsafe extern "C" fn rssn_generalized_laguerre(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hermite_h(
-    degree : *const Expr,
-    arg : *const Expr,
+    degree: *const Expr,
+    arg: *const Expr,
 ) -> *mut Expr {
 
     if degree.is_null() || arg.is_null()
@@ -385,8 +385,8 @@ pub unsafe extern "C" fn rssn_hermite_h(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_chebyshev_t(
-    n : *const Expr,
-    x : *const Expr,
+    n: *const Expr,
+    x: *const Expr,
 ) -> *mut Expr {
 
     if n.is_null() || x.is_null() {
@@ -406,8 +406,8 @@ pub unsafe extern "C" fn rssn_chebyshev_t(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_chebyshev_u(
-    n : *const Expr,
-    x : *const Expr,
+    n: *const Expr,
+    x: *const Expr,
 ) -> *mut Expr {
 
     if n.is_null() || x.is_null() {
@@ -431,9 +431,9 @@ pub unsafe extern "C" fn rssn_chebyshev_u(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bessel_differential_equation(
-    y : *const Expr,
-    x : *const Expr,
-    n : *const Expr,
+    y: *const Expr,
+    x: *const Expr,
+    n: *const Expr,
 ) -> *mut Expr {
 
     if y.is_null()
@@ -453,9 +453,9 @@ pub unsafe extern "C" fn rssn_bessel_differential_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_legendre_differential_equation(
-    y : *const Expr,
-    x : *const Expr,
-    n : *const Expr,
+    y: *const Expr,
+    x: *const Expr,
+    n: *const Expr,
 ) -> *mut Expr {
 
     if y.is_null()
@@ -475,9 +475,9 @@ pub unsafe extern "C" fn rssn_legendre_differential_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_laguerre_differential_equation(
-    y : *const Expr,
-    x : *const Expr,
-    n : *const Expr,
+    y: *const Expr,
+    x: *const Expr,
+    n: *const Expr,
 ) -> *mut Expr {
 
     if y.is_null()
@@ -497,9 +497,9 @@ pub unsafe extern "C" fn rssn_laguerre_differential_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hermite_differential_equation(
-    y : *const Expr,
-    x : *const Expr,
-    n : *const Expr,
+    y: *const Expr,
+    x: *const Expr,
+    n: *const Expr,
 ) -> *mut Expr {
 
     if y.is_null()
@@ -519,9 +519,9 @@ pub unsafe extern "C" fn rssn_hermite_differential_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_chebyshev_differential_equation(
-    y : *const Expr,
-    x : *const Expr,
-    n : *const Expr,
+    y: *const Expr,
+    x: *const Expr,
+    n: *const Expr,
 ) -> *mut Expr {
 
     if y.is_null()
@@ -545,8 +545,8 @@ pub unsafe extern "C" fn rssn_chebyshev_differential_equation(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_legendre_rodrigues_formula(
-    n : *const Expr,
-    x : *const Expr,
+    n: *const Expr,
+    x: *const Expr,
 ) -> *mut Expr {
 
     if n.is_null() || x.is_null() {
@@ -563,8 +563,8 @@ pub unsafe extern "C" fn rssn_legendre_rodrigues_formula(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hermite_rodrigues_formula(
-    n : *const Expr,
-    x : *const Expr,
+    n: *const Expr,
+    x: *const Expr,
 ) -> *mut Expr {
 
     if n.is_null() || x.is_null() {

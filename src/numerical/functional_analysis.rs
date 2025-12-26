@@ -17,7 +17,7 @@
 #[must_use]
 
 pub fn l1_norm(
-    points : &[(f64, f64)]
+    points: &[(f64, f64)]
 ) -> f64 {
 
     points
@@ -49,10 +49,10 @@ pub fn l1_norm(
 #[must_use]
 
 pub fn l2_norm(
-    points : &[(f64, f64)]
+    points: &[(f64, f64)]
 ) -> f64 {
 
-    let integral_sq : f64 = points
+    let integral_sq: f64 = points
         .windows(2)
         .map(|w| {
 
@@ -81,7 +81,7 @@ pub fn l2_norm(
 /// The numerical value of the L-infinity norm.
 
 pub fn infinity_norm(
-    points : &[(f64, f64)]
+    points: &[(f64, f64)]
 ) -> f64 {
 
     points
@@ -104,8 +104,8 @@ pub fn infinity_norm(
 /// if the input functions have different numbers of sample points.
 
 pub fn inner_product(
-    f_points : &[(f64, f64)],
-    g_points : &[(f64, f64)],
+    f_points: &[(f64, f64)],
+    g_points: &[(f64, f64)],
 ) -> Result<f64, String> {
 
     if f_points.len() != g_points.len()
@@ -159,8 +159,8 @@ pub fn inner_product(
 /// Both functions must be sampled at the same x-coordinates.
 
 pub fn project(
-    f_points : &[(f64, f64)],
-    g_points : &[(f64, f64)],
+    f_points: &[(f64, f64)],
+    g_points: &[(f64, f64)],
 ) -> Result<Vec<(f64, f64)>, String> {
 
     let ip_fg = inner_product(
@@ -194,7 +194,7 @@ pub fn project(
 #[must_use]
 
 pub fn normalize(
-    points : &[(f64, f64)]
+    points: &[(f64, f64)]
 ) -> Vec<(f64, f64)> {
 
     let n = l2_norm(points);
@@ -214,11 +214,11 @@ pub fn normalize(
 /// All functions must have the same sampling points.
 
 pub fn gram_schmidt(
-    basis : &[Vec<(f64, f64)>]
+    basis: &[Vec<(f64, f64)>]
 ) -> Result<Vec<Vec<(f64, f64)>>, String>
 {
 
-    let mut orthogonal_basis : Vec<
+    let mut orthogonal_basis: Vec<
         Vec<(f64, f64)>,
     > = Vec::new();
 
@@ -249,7 +249,7 @@ pub fn gram_schmidt(
 /// Performs the Gram-Schmidt process to orthonormalize a set of functions.
 
 pub fn gram_schmidt_orthonormal(
-    basis : &[Vec<(f64, f64)>]
+    basis: &[Vec<(f64, f64)>]
 ) -> Result<Vec<Vec<(f64, f64)>>, String>
 {
 

@@ -26,23 +26,23 @@ pub type Elements = Vec<[usize; 4]>;
 )]
 
 pub struct ElasticityParameters {
-    pub nodes : Nodes,
-    pub elements : Elements,
-    pub youngs_modulus : f64,
-    pub poissons_ratio : f64,
-    pub fixed_nodes : Vec<usize>,
-    pub loads : Vec<(usize, f64, f64)>,
+    pub nodes: Nodes,
+    pub elements: Elements,
+    pub youngs_modulus: f64,
+    pub poissons_ratio: f64,
+    pub fixed_nodes: Vec<usize>,
+    pub loads: Vec<(usize, f64, f64)>,
 }
 
 /// Calculates the element stiffness matrix for a 2D quadrilateral element (plane stress).
 
 pub fn element_stiffness_matrix(
-    _p1 : (f64, f64),
-    _p2 : (f64, f64),
-    _p3 : (f64, f64),
-    _p4 : (f64, f64),
-    e : f64,
-    nu : f64,
+    _p1: (f64, f64),
+    _p2: (f64, f64),
+    _p3: (f64, f64),
+    _p4: (f64, f64),
+    e: f64,
+    nu: f64,
 ) -> Array2<f64> {
 
     // B-matrix for a 2D quadrilateral (Q4) element under plane stress.
@@ -101,7 +101,7 @@ pub fn element_stiffness_matrix(
 /// or an error string if the linear system cannot be solved.
 
 pub fn run_elasticity_simulation(
-    params : &ElasticityParameters
+    params: &ElasticityParameters
 ) -> Result<Vec<f64>, String> {
 
     let n_nodes = params.nodes.len();
@@ -186,13 +186,14 @@ pub fn run_elasticity_simulation(
         })
         .collect();
 
-    let mut filtered_triplets : Vec<(
+    let mut filtered_triplets: Vec<(
         usize,
         usize,
         f64,
     )> = triplets
         .into_par_iter()
         .filter(|(r, c, _)| {
+
             !fixed_dofs.contains(r)
                 && !fixed_dofs
                     .contains(c)
@@ -217,7 +218,7 @@ pub fn run_elasticity_simulation(
         f_global[dof2] = 0.0;
     }
 
-    let k_global : CsMat<f64> =
+    let k_global: CsMat<f64> =
         csr_from_triplets(
             n_dofs,
             n_dofs,
@@ -259,7 +260,7 @@ pub fn simulate_cantilever_beam_scenario(
 
     let ny = 4;
 
-    let mut nodes : Nodes = Vec::new();
+    let mut nodes: Nodes = Vec::new();
 
     for j in 0 ..= ny {
 
@@ -274,7 +275,7 @@ pub fn simulate_cantilever_beam_scenario(
         }
     }
 
-    let mut elements : Elements =
+    let mut elements: Elements =
         Vec::new();
 
     for j in 0 .. ny {
@@ -298,7 +299,7 @@ pub fn simulate_cantilever_beam_scenario(
         }
     }
 
-    let fixed_nodes : Vec<usize> = (0
+    let fixed_nodes: Vec<usize> = (0
         ..= ny)
         .map(|j| j * (nx + 1))
         .collect();
@@ -310,10 +311,10 @@ pub fn simulate_cantilever_beam_scenario(
     )];
 
     let params = ElasticityParameters {
-        nodes : nodes.clone(),
+        nodes: nodes.clone(),
         elements,
-        youngs_modulus : 1e7,
-        poissons_ratio : 0.3,
+        youngs_modulus: 1e7,
+        poissons_ratio: 0.3,
         fixed_nodes,
         loads,
     };

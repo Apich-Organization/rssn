@@ -24,27 +24,27 @@ use crate::symbolic::core::Expr;
 
 pub struct Graph<V>
 where
-    V : Eq + Hash + Clone + Debug,
+    V: Eq + Hash + Clone + Debug,
 {
-    pub(crate) nodes : Vec<V>,
-    pub(crate) node_map :
+    pub(crate) nodes: Vec<V>,
+    pub(crate) node_map:
         HashMap<V, usize>,
-    pub(crate) adj :
+    pub(crate) adj:
         Vec<Vec<(usize, Expr)>>,
-    pub(crate) rev_adj :
+    pub(crate) rev_adj:
         Vec<Vec<(usize, Expr)>>,
-    pub(crate) hyperedges : Vec<(
+    pub(crate) hyperedges: Vec<(
         std::collections::HashSet<
             usize,
         >,
         Expr,
     )>,
-    pub(crate) is_directed : bool,
+    pub(crate) is_directed: bool,
 }
 
 impl<V> Graph<V>
 where
-    V : Eq + Hash + Clone + Debug,
+    V: Eq + Hash + Clone + Debug,
 {
     /// Creates a new graph.
     ///
@@ -56,15 +56,15 @@ where
     #[must_use]
 
     pub fn new(
-        is_directed : bool
+        is_directed: bool
     ) -> Self {
 
         Self {
-            nodes : Vec::new(),
-            node_map : HashMap::new(),
-            adj : Vec::new(),
-            rev_adj : Vec::new(),
-            hyperedges : Vec::new(),
+            nodes: Vec::new(),
+            node_map: HashMap::new(),
+            adj: Vec::new(),
+            rev_adj: Vec::new(),
+            hyperedges: Vec::new(),
             is_directed,
         }
     }
@@ -109,7 +109,7 @@ where
 
     pub fn add_node(
         &mut self,
-        label : V,
+        label: V,
     ) -> usize {
 
         if let Some(&id) = self
@@ -149,9 +149,9 @@ where
 
     pub fn add_edge(
         &mut self,
-        from_label : &V,
-        to_label : &V,
-        weight : Expr,
+        from_label: &V,
+        to_label: &V,
+        weight: Expr,
     ) {
 
         let from_id = self.add_node(
@@ -193,7 +193,7 @@ where
 
     pub fn get_node_id(
         &self,
-        label : &V,
+        label: &V,
     ) -> Option<usize> {
 
         self.node_map
@@ -211,7 +211,7 @@ where
 
     pub fn neighbors(
         &self,
-        node_id : usize,
+        node_id: usize,
     ) -> impl Iterator<Item = &(usize, Expr)>
     {
 
@@ -235,7 +235,7 @@ where
 
     pub fn out_degree(
         &self,
-        node_id : usize,
+        node_id: usize,
     ) -> usize {
 
         self.adj
@@ -260,7 +260,7 @@ where
 
     pub fn in_degree(
         &self,
-        node_id : usize,
+        node_id: usize,
     ) -> usize {
 
         self.rev_adj
@@ -323,8 +323,8 @@ where
 
     pub fn add_hyperedge(
         &mut self,
-        labels : &[V],
-        weight : Expr,
+        labels: &[V],
+        weight: Expr,
     ) {
 
         let ids : std::collections::HashSet<usize> = labels
@@ -351,14 +351,13 @@ where
 
         let n = self.nodes.len();
 
-        let mut matrix =
+        let mut matrix = vec![
             vec![
-                vec![
                     Expr::Constant(0.0);
                     n
                 ];
-                n
-            ];
+            n
+        ];
 
         for u in 0 .. n {
 
@@ -399,14 +398,13 @@ where
 
         let m = edges.len();
 
-        let mut matrix =
+        let mut matrix = vec![
             vec![
-                vec![
                     Expr::Constant(0.0);
                     m
                 ];
-                n
-            ];
+            n
+        ];
 
         for (j, &(u, v, _)) in edges
             .iter()
@@ -467,14 +465,13 @@ where
                 );
             };
 
-        let mut deg_matrix =
+        let mut deg_matrix = vec![
             vec![
-                vec![
                     Expr::Constant(0.0);
                     n
                 ];
-                n
-            ];
+            n
+        ];
 
         for i in 0 .. n {
 

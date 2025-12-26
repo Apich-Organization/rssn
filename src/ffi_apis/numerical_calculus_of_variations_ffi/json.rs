@@ -14,18 +14,18 @@ use crate::symbolic::core::Expr;
 #[derive(Deserialize)]
 
 struct ActionInput {
-    lagrangian : Expr,
-    path : Expr,
-    t_var : String,
-    path_var : String,
-    path_dot_var : String,
-    t_range : (f64, f64),
+    lagrangian: Expr,
+    path: Expr,
+    t_var: String,
+    path_var: String,
+    path_dot_var: String,
+    t_range: (f64, f64),
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
-    input_json : *const c_char
+    input_json: *const c_char
 ) -> *mut c_char {
 
     let input : ActionInput = match from_json_string(input_json) {

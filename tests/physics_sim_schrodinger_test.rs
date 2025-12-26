@@ -17,20 +17,19 @@ fn test_schrodinger_simulation_box_smoke(
         SchrodingerParameters {
             nx,
             ny,
-            lx : 10.0,
-            ly : 10.0,
-            dt : 0.1,
-            time_steps : 20,
-            hbar : 1.0,
-            mass : 1.0,
-            potential : vec![
+            lx: 10.0,
+            ly: 10.0,
+            dt: 0.1,
+            time_steps: 20,
+            hbar: 1.0,
+            mass: 1.0,
+            potential: vec![
                 0.0;
                 nx * ny
             ],
         };
 
-    let mut initial_psi =
-        vec![
+    let mut initial_psi = vec![
             Complex::new(1.0, 0.0);
             nx * ny
         ];
@@ -58,7 +57,7 @@ fn test_schrodinger_simulation_box_smoke(
         nx
     );
 
-    let sum_density : f64 =
+    let sum_density: f64 =
         final_density
             .iter()
             .sum();

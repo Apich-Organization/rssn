@@ -15,8 +15,8 @@ use crate::physics::physics_bem::{
 #[derive(Deserialize)]
 
 struct Bem2DInput {
-    points : Vec<(f64, f64)>,
-    bcs : Vec<BemBoundaryCondition>,
+    points: Vec<(f64, f64)>,
+    bcs: Vec<BemBoundaryCondition>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -29,14 +29,14 @@ enum BemBoundaryCondition {
 #[derive(Serialize)]
 
 struct Bem2DOutput {
-    u : Vec<f64>,
-    q : Vec<f64>,
+    u: Vec<f64>,
+    q: Vec<f64>,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_bincode(
-    buffer : BincodeBuffer
+    buffer: BincodeBuffer
 ) -> BincodeBuffer {
 
     let input : Bem2DInput = match from_bincode_buffer(&buffer) {

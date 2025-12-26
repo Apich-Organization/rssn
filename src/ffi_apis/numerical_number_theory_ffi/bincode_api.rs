@@ -10,14 +10,14 @@ use crate::numerical::number_theory as nt;
 #[derive(Deserialize)]
 
 struct FactorizeRequest {
-    n : u64,
+    n: u64,
 }
 
 fn decode<
-    T : for<'de> Deserialize<'de>,
+    T: for<'de> Deserialize<'de>,
 >(
-    data : *const u8,
-    len : usize,
+    data: *const u8,
+    len: usize,
 ) -> Option<T> {
 
     if data.is_null() {
@@ -40,8 +40,8 @@ fn decode<
     .map(|(v, _)| v)
 }
 
-fn encode<T : Serialize>(
-    val : &T
+fn encode<T: Serialize>(
+    val: &T
 ) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
@@ -57,8 +57,8 @@ fn encode<T : Serialize>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_nt_factorize_bincode(
-    data : *const u8,
-    len : usize,
+    data: *const u8,
+    len: usize,
 ) -> BincodeBuffer {
 
     let req : FactorizeRequest = match decode(data, len) {
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn rssn_num_nt_factorize_bincode(
         Vec<u64>,
         String,
     > {
-        ok : Some(factors),
-        err : None,
+        ok: Some(factors),
+        err: None,
     })
 }

@@ -28,21 +28,21 @@ use crate::symbolic::solve::solve_linear_system;
 
 pub struct FredholmEquation {
     /// The unknown function `y(x)`.
-    pub y_x : Expr,
+    pub y_x: Expr,
     /// The known function `f(x)`.
-    pub f_x : Expr,
+    pub f_x: Expr,
     /// The constant parameter `lambda`.
-    pub lambda : Expr,
+    pub lambda: Expr,
     /// The kernel of the integral, `K(x, t)`.
-    pub kernel : Expr,
+    pub kernel: Expr,
     /// The lower bound of integration, `a`.
-    pub lower_bound : Expr,
+    pub lower_bound: Expr,
     /// The upper bound of integration, `b`.
-    pub upper_bound : Expr,
+    pub upper_bound: Expr,
     /// The main variable of the functions, `x`.
-    pub var_x : String,
+    pub var_x: String,
     /// The integration variable, `t`.
-    pub var_t : String,
+    pub var_t: String,
 }
 
 impl FredholmEquation {
@@ -63,14 +63,14 @@ impl FredholmEquation {
     #[must_use]
 
     pub const fn new(
-        y_x : Expr,
-        f_x : Expr,
-        lambda : Expr,
-        kernel : Expr,
-        lower_bound : Expr,
-        upper_bound : Expr,
-        var_x : String,
-        var_t : String,
+        y_x: Expr,
+        f_x: Expr,
+        lambda: Expr,
+        kernel: Expr,
+        lower_bound: Expr,
+        upper_bound: Expr,
+        var_x: String,
+        var_t: String,
     ) -> Self {
 
         Self {
@@ -102,7 +102,7 @@ impl FredholmEquation {
 
     pub fn solve_neumann_series(
         &self,
-        iterations : usize,
+        iterations: usize,
     ) -> Expr {
 
         let mut y_n = self.f_x.clone();
@@ -163,8 +163,8 @@ impl FredholmEquation {
 
     pub fn solve_separable_kernel(
         &self,
-        a_funcs : Vec<Expr>,
-        b_funcs : Vec<Expr>,
+        a_funcs: Vec<Expr>,
+        b_funcs: Vec<Expr>,
     ) -> Result<Expr, String> {
 
         if a_funcs.len()
@@ -181,12 +181,12 @@ impl FredholmEquation {
 
         let m = a_funcs.len();
 
-        let c_vars : Vec<String> = (0
+        let c_vars: Vec<String> = (0
             .. m)
             .map(|i| format!("c{i}"))
             .collect();
 
-        let mut system_eqs : Vec<Expr> =
+        let mut system_eqs: Vec<Expr> =
             Vec::new();
 
         for k in 0 .. m {
@@ -371,19 +371,19 @@ impl FredholmEquation {
 
 pub struct VolterraEquation {
     /// The unknown function `y(x)`.
-    pub y_x : Expr,
+    pub y_x: Expr,
     /// The known function `f(x)`.
-    pub f_x : Expr,
+    pub f_x: Expr,
     /// The constant parameter `lambda`.
-    pub lambda : Expr,
+    pub lambda: Expr,
     /// The kernel of the integral, `K(x, t)`.
-    pub kernel : Expr,
+    pub kernel: Expr,
     /// The lower bound of integration, `a`.
-    pub lower_bound : Expr,
+    pub lower_bound: Expr,
     /// The main variable of the functions, `x`.
-    pub var_x : String,
+    pub var_x: String,
     /// The integration variable, `t`.
-    pub var_t : String,
+    pub var_t: String,
 }
 
 impl VolterraEquation {
@@ -403,13 +403,13 @@ impl VolterraEquation {
     #[must_use]
 
     pub const fn new(
-        y_x : Expr,
-        f_x : Expr,
-        lambda : Expr,
-        kernel : Expr,
-        lower_bound : Expr,
-        var_x : String,
-        var_t : String,
+        y_x: Expr,
+        f_x: Expr,
+        lambda: Expr,
+        kernel: Expr,
+        lower_bound: Expr,
+        var_x: String,
+        var_t: String,
     ) -> Self {
 
         Self {
@@ -439,7 +439,7 @@ impl VolterraEquation {
 
     pub fn solve_successive_approximations(
         &self,
-        iterations : usize,
+        iterations: usize,
     ) -> Expr {
 
         let mut y_n = self.f_x.clone();
@@ -593,9 +593,9 @@ impl VolterraEquation {
 #[must_use]
 
 pub fn solve_airfoil_equation(
-    f_x : &Expr,
-    var_x : &str,
-    var_t : &str,
+    f_x: &Expr,
+    var_x: &str,
+    var_t: &str,
 ) -> Expr {
 
     let one = Expr::Constant(1.0);

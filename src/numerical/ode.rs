@@ -58,11 +58,11 @@ pub enum OdeSolverMethod {
 /// ```
 
 pub fn solve_ode_system(
-    funcs : &[Expr],
-    y0 : &[f64],
-    x_range : (f64, f64),
-    num_steps : usize,
-    method : OdeSolverMethod,
+    funcs: &[Expr],
+    y0: &[f64],
+    x_range: (f64, f64),
+    num_steps: usize,
+    method: OdeSolverMethod,
 ) -> Result<Vec<Vec<f64>>, String> {
 
     match method {
@@ -96,10 +96,10 @@ pub fn solve_ode_system(
 /// Solves an ODE system using the Euler method (first-order).
 
 pub fn solve_ode_euler(
-    funcs : &[Expr],
-    y0 : &[f64],
-    x_range : (f64, f64),
-    num_steps : usize,
+    funcs: &[Expr],
+    y0: &[f64],
+    x_range: (f64, f64),
+    num_steps: usize,
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let (x0, x_end) = x_range;
@@ -140,10 +140,10 @@ pub fn solve_ode_euler(
 /// Solves an ODE system using Heun's method (second-order).
 
 pub fn solve_ode_heun(
-    funcs : &[Expr],
-    y0 : &[f64],
-    x_range : (f64, f64),
-    num_steps : usize,
+    funcs: &[Expr],
+    y0: &[f64],
+    x_range: (f64, f64),
+    num_steps: usize,
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let (x0, x_end) = x_range;
@@ -201,10 +201,10 @@ pub fn solve_ode_heun(
 /// Solves an ODE system using the fourth-order Runge-Kutta method.
 
 pub fn solve_ode_system_rk4(
-    funcs : &[Expr],
-    y0 : &[f64],
-    x_range : (f64, f64),
-    num_steps : usize,
+    funcs: &[Expr],
+    y0: &[f64],
+    x_range: (f64, f64),
+    num_steps: usize,
 ) -> Result<Vec<Vec<f64>>, String> {
 
     let (x0, x_end) = x_range;
@@ -290,6 +290,7 @@ pub fn solve_ode_system_rk4(
         if y_vec
             .iter()
             .any(|&val| {
+
                 !val.is_finite()
             })
         {
@@ -309,10 +310,10 @@ pub fn solve_ode_system_rk4(
 }
 
 pub(crate) fn eval_f(
-    funcs : &[Expr],
-    x : f64,
-    y_vec : &[f64],
-    vars : &mut HashMap<String, f64>,
+    funcs: &[Expr],
+    x: f64,
+    y_vec: &[f64],
+    vars: &mut HashMap<String, f64>,
 ) -> Result<Vec<f64>, String> {
 
     vars.insert("x".to_string(), x);
@@ -340,8 +341,8 @@ pub(crate) fn eval_f(
 }
 
 pub(crate) fn add_vec(
-    v1 : &[f64],
-    v2 : &[f64],
+    v1: &[f64],
+    v2: &[f64],
 ) -> Vec<f64> {
 
     v1.iter()
@@ -351,8 +352,8 @@ pub(crate) fn add_vec(
 }
 
 pub(crate) fn scale_vec(
-    v : &[f64],
-    s : f64,
+    v: &[f64],
+    s: f64,
 ) -> Vec<f64> {
 
     v.iter()

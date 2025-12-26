@@ -31,18 +31,26 @@ pub unsafe extern "C" fn rssn_json_lie_algebra_su2(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_lie_bracket(
-    x_json : *const c_char,
-    y_json : *const c_char,
+    x_json: *const c_char,
+    y_json: *const c_char,
 ) -> *mut c_char {
 
-    let x : Expr = match from_json_string(x_json) {
+    let x: Expr = match from_json_string(
+        x_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let y : Expr = match from_json_string(y_json) {
+    let y: Expr = match from_json_string(
+        y_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match lie_bracket(&x, &y) {
@@ -60,13 +68,17 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_exponential_map(
-    x_json : *const c_char,
-    order : usize,
+    x_json: *const c_char,
+    order: usize,
 ) -> *mut c_char {
 
-    let x : Expr = match from_json_string(x_json) {
+    let x: Expr = match from_json_string(
+        x_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match exponential_map(&x, order) {
@@ -84,18 +96,26 @@ pub unsafe extern "C" fn rssn_json_exponential_map(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
-    g_json : *const c_char,
-    x_json : *const c_char,
+    g_json: *const c_char,
+    x_json: *const c_char,
 ) -> *mut c_char {
 
-    let g : Expr = match from_json_string(g_json) {
+    let g: Expr = match from_json_string(
+        g_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let x : Expr = match from_json_string(x_json) {
+    let x: Expr = match from_json_string(
+        x_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match adjoint_representation_group(
@@ -113,18 +133,26 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
-    x_json : *const c_char,
-    y_json : *const c_char,
+    x_json: *const c_char,
+    y_json: *const c_char,
 ) -> *mut c_char {
 
-    let x : Expr = match from_json_string(x_json) {
+    let x: Expr = match from_json_string(
+        x_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let y : Expr = match from_json_string(y_json) {
+    let y: Expr = match from_json_string(
+        y_json,
+    ) {
         | Some(e) => e,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match adjoint_representation_algebra(
@@ -144,7 +172,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_commutator_table(
-    algebra_json : *const c_char
+    algebra_json: *const c_char
 ) -> *mut c_char {
 
     let algebra : LieAlgebra = match from_json_string(algebra_json) {
@@ -167,10 +195,10 @@ pub unsafe extern "C" fn rssn_json_commutator_table(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_check_jacobi_identity(
-    algebra_json : *const c_char
+    algebra_json: *const c_char
 ) -> bool {
 
-    let algebra : LieAlgebra =
+    let algebra: LieAlgebra =
         match from_json_string(
             algebra_json,
         ) {
@@ -195,7 +223,7 @@ pub unsafe extern "C" fn rssn_json_so3_generators(
 
     let generators = so3_generators();
 
-    let exprs : Vec<Expr> = generators
+    let exprs: Vec<Expr> = generators
         .into_iter()
         .map(|g| g.0)
         .collect();
@@ -210,7 +238,7 @@ pub unsafe extern "C" fn rssn_json_su2_generators(
 
     let generators = su2_generators();
 
-    let exprs : Vec<Expr> = generators
+    let exprs: Vec<Expr> = generators
         .into_iter()
         .map(|g| g.0)
         .collect();

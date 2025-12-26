@@ -22,7 +22,7 @@ pub extern "C" fn rssn_state_new(
 #[no_mangle]
 
 pub extern "C" fn rssn_state_free(
-    state : *mut State
+    state: *mut State
 ) {
 
     if state.is_null() {
@@ -41,7 +41,7 @@ pub extern "C" fn rssn_state_free(
 #[no_mangle]
 
 pub extern "C" fn rssn_state_get_intermediate_value(
-    state : *const State
+    state: *const State
 ) -> *mut c_char {
 
     if state.is_null() {
@@ -69,8 +69,8 @@ pub extern "C" fn rssn_state_get_intermediate_value(
 #[no_mangle]
 
 pub extern "C" fn rssn_state_set_intermediate_value(
-    state : *mut State,
-    value : *const c_char,
+    state: *mut State,
+    value: *const c_char,
 ) {
 
     if state.is_null()

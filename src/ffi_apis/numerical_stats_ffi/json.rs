@@ -13,41 +13,41 @@ use crate::numerical::stats;
 #[derive(Deserialize)]
 
 struct DataInput {
-    data : Vec<f64>,
+    data: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct TwoDataInput {
-    data1 : Vec<f64>,
-    data2 : Vec<f64>,
+    data1: Vec<f64>,
+    data2: Vec<f64>,
 }
 
 #[derive(Deserialize)]
 
 struct RegressionInput {
-    x : Vec<f64>,
-    y : Vec<f64>,
+    x: Vec<f64>,
+    y: Vec<f64>,
 }
 
 #[derive(Serialize)]
 
 struct RegressionOutput {
-    slope : f64,
-    intercept : f64,
+    slope: f64,
+    intercept: f64,
 }
 
 #[derive(Serialize)]
 
 struct TestOutput {
-    statistic : f64,
-    p_value : f64,
+    statistic: f64,
+    p_value: f64,
 }
 
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_mean_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : DataInput = match from_json_string(input) {
@@ -71,8 +71,8 @@ pub unsafe extern "C" fn rssn_num_stats_mean_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -82,7 +82,7 @@ pub unsafe extern "C" fn rssn_num_stats_mean_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_variance_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : DataInput = match from_json_string(input) {
@@ -106,8 +106,8 @@ pub unsafe extern "C" fn rssn_num_stats_variance_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn rssn_num_stats_variance_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_std_dev_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : DataInput = match from_json_string(input) {
@@ -141,8 +141,8 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -152,7 +152,7 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_geometric_mean_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : DataInput = match from_json_string(input) {
@@ -177,8 +177,8 @@ pub unsafe extern "C" fn rssn_num_stats_geometric_mean_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -188,7 +188,7 @@ pub unsafe extern "C" fn rssn_num_stats_geometric_mean_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_harmonic_mean_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : DataInput = match from_json_string(input) {
@@ -213,8 +213,8 @@ pub unsafe extern "C" fn rssn_num_stats_harmonic_mean_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -224,7 +224,7 @@ pub unsafe extern "C" fn rssn_num_stats_harmonic_mean_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_covariance_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : TwoDataInput = match from_json_string(input) {
@@ -250,8 +250,8 @@ pub unsafe extern "C" fn rssn_num_stats_covariance_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -261,7 +261,7 @@ pub unsafe extern "C" fn rssn_num_stats_covariance_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_correlation_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : TwoDataInput = match from_json_string(input) {
@@ -287,8 +287,8 @@ pub unsafe extern "C" fn rssn_num_stats_correlation_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -298,7 +298,7 @@ pub unsafe extern "C" fn rssn_num_stats_correlation_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : TwoDataInput = match from_json_string(input) {
@@ -325,11 +325,11 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(TestOutput {
-                    statistic : t,
-                    p_value : p,
+                ok: Some(TestOutput {
+                    statistic: t,
+                    p_value: p,
                 }),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -339,7 +339,7 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_welch_t_test_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : TwoDataInput = match from_json_string(input) {
@@ -365,11 +365,11 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(TestOutput {
-                    statistic : t,
-                    p_value : p,
+                ok: Some(TestOutput {
+                    statistic: t,
+                    p_value: p,
                 }),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -379,7 +379,7 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : TwoDataInput = match from_json_string(input) {
@@ -406,11 +406,11 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(TestOutput {
-                    statistic : chi,
-                    p_value : p,
+                ok: Some(TestOutput {
+                    statistic: chi,
+                    p_value: p,
                 }),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -420,7 +420,7 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_linear_regression_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : RegressionInput = match from_json_string(input) {
@@ -438,7 +438,7 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_json(
         },
     };
 
-    let data : Vec<(f64, f64)> = input
+    let data: Vec<(f64, f64)> = input
         .x
         .iter()
         .zip(input.y.iter())
@@ -453,13 +453,13 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(
+                ok: Some(
                     RegressionOutput {
                         slope,
                         intercept,
                     },
                 ),
-                err : None::<String>,
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -469,7 +469,7 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_z_scores_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : DataInput = match from_json_string(input) {
@@ -493,8 +493,8 @@ pub unsafe extern "C" fn rssn_num_stats_z_scores_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             },
         )
         .unwrap(),
@@ -504,7 +504,7 @@ pub unsafe extern "C" fn rssn_num_stats_z_scores_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_shannon_entropy_json(
-    input : *const c_char
+    input: *const c_char
 ) -> *mut c_char {
 
     let input : DataInput = match from_json_string(input) {
@@ -529,8 +529,8 @@ pub unsafe extern "C" fn rssn_num_stats_shannon_entropy_json(
     to_c_string(
         serde_json::to_string(
             &FfiResult {
-                ok : Some(result),
-                err : None::<String>,
+                ok: Some(result),
+                err: None::<String>,
             },
         )
         .unwrap(),

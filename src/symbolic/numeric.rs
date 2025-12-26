@@ -11,7 +11,7 @@ use num_traits::ToPrimitive;
 
 use crate::symbolic::core::Expr;
 
-const F64_EPSILON : f64 = 1e-9;
+const F64_EPSILON: f64 = 1e-9;
 
 /// Evaluates a symbolic expression to a numerical `f64` value, if possible.
 ///
@@ -34,7 +34,7 @@ const F64_EPSILON : f64 = 1e-9;
 #[must_use]
 
 pub fn evaluate_numerical(
-    expr : &Expr
+    expr: &Expr
 ) -> Option<f64> {
 
     match expr {

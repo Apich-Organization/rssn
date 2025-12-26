@@ -10,7 +10,7 @@ struct DummyComputable;
 impl Computable for DummyComputable {
     fn compute(
         &self,
-        _state : &mut State,
+        _state: &mut State,
         progress : &mut ComputationProgress,
     ) -> Result<(), String> {
 
@@ -20,9 +20,7 @@ impl Computable for DummyComputable {
     }
 }
 
-fn bench_computable(
-    c : &mut Criterion
-) {
+fn bench_computable(c: &mut Criterion) {
 
     let computable = DummyComputable;
 
@@ -30,8 +28,8 @@ fn bench_computable(
 
     let mut progress =
         ComputationProgress {
-            percentage : 0.0,
-            description : "Starting"
+            percentage: 0.0,
+            description: "Starting"
                 .to_string(),
         };
 

@@ -7,7 +7,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::ode;
 
 unsafe fn c_str_to_str<'a>(
-    s : *const c_char
+    s: *const c_char
 ) -> Option<&'a str> {
 
     if s.is_null() {
@@ -28,9 +28,9 @@ unsafe fn c_str_to_str<'a>(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_ode(
-    ode_expr : *const Expr,
-    func : *const c_char,
-    var : *const c_char,
+    ode_expr: *const Expr,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut Expr {
 
     if ode_expr.is_null()
@@ -78,9 +78,9 @@ pub unsafe extern "C" fn rssn_solve_ode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_separable_ode(
-    equation : *const Expr,
-    func : *const c_char,
-    var : *const c_char,
+    equation: *const Expr,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -132,9 +132,9 @@ pub unsafe extern "C" fn rssn_solve_separable_ode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_first_order_linear_ode(
-    equation : *const Expr,
-    func : *const c_char,
-    var : *const c_char,
+    equation: *const Expr,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -182,9 +182,9 @@ pub unsafe extern "C" fn rssn_solve_first_order_linear_ode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
-    equation : *const Expr,
-    func : *const c_char,
-    var : *const c_char,
+    equation: *const Expr,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -236,10 +236,10 @@ pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_riccati_ode(
-    equation : *const Expr,
-    func : *const c_char,
-    var : *const c_char,
-    y1 : *const Expr,
+    equation: *const Expr,
+    func: *const c_char,
+    var: *const c_char,
+    y1: *const Expr,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -295,9 +295,9 @@ pub unsafe extern "C" fn rssn_solve_riccati_ode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
-    equation : *const Expr,
-    func : *const c_char,
-    var : *const c_char,
+    equation: *const Expr,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -349,9 +349,9 @@ pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_exact_ode(
-    equation : *const Expr,
-    func : *const c_char,
-    var : *const c_char,
+    equation: *const Expr,
+    func: *const c_char,
+    var: *const c_char,
 ) -> *mut Expr {
 
     if equation.is_null()
@@ -403,10 +403,10 @@ pub unsafe extern "C" fn rssn_solve_exact_ode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_solve_by_reduction_of_order(
-    equation : *const Expr,
-    func : *const c_char,
-    var : *const c_char,
-    y1 : *const Expr,
+    equation: *const Expr,
+    func: *const c_char,
+    var: *const c_char,
+    y1: *const Expr,
 ) -> *mut Expr {
 
     if equation.is_null()
