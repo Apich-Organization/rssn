@@ -4898,6 +4898,11 @@ rssn_ void rssn_free_expr_vec_handle(rssn_Vec<rssn_Expr> *aPtr) ;
 rssn_ void rssn_free_f64_array(double *aPtr, size_t aSize) ;
 
 /*
+ Frees a float64 array allocated by the CNM FFI.
+ */
+rssn_ void rssn_free_f64_cnm_array(double *aPtr, size_t aSize) ;
+
+/*
  Frees a multivector (Handle)
  */
 rssn_ void rssn_free_multivector_handle(rssn_Multivector *aPtr) ;
@@ -11665,6 +11670,24 @@ int32_t rssn_physics_bem_solve_laplace_2d(const double *aPointsX,
 rssn_ rssn_BincodeBuffer rssn_physics_bem_solve_laplace_2d_bincode(rssn_BincodeBuffer aBuffer) ;
 
 rssn_ char *rssn_physics_bem_solve_laplace_2d_json(const char *aInput) ;
+
+/*
+ Solves 1D heat equation using CN and returns a flat array of doubles.
+ The caller is responsible for freeing the memory using rssn_free_f64_array.
+ */
+rssn_
+double *rssn_physics_cnm_solve_heat_1d(const double *aInitialCondition,
+                                       size_t aN,
+                                       double aDx,
+                                       double aDt,
+                                       double aDCoeff,
+                                       size_t aSteps,
+                                       size_t *aOutSize)
+;
+
+rssn_ rssn_BincodeBuffer rssn_physics_cnm_solve_heat_2d_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_cnm_solve_heat_2d_json(const char *aInput) ;
 
 rssn_ char *rssn_physics_fdm_burgers_json(const char *aInput) ;
 
