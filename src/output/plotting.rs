@@ -14,127 +14,70 @@ pub(crate) fn eval_expr(
     root_expr: &Expr,
     vars: &HashMap<String, f64>,
 ) -> Result<f64, String> {
+    let mut results: HashMap<Expr, f64> = HashMap::new();
+    let mut stack: Vec<Expr> = vec![root_expr.clone()];
+    let mut visited = std::collections::HashSet::new();
 
-    let mut results: HashMap<
-        *const Expr,
-        f64,
-    > = HashMap::new();
-
-    let mut stack: Vec<Expr> =
-        vec![root_expr.clone()];
-
-    while let Some(expr) = stack.last()
-    {
-
-        let expr_ptr =
-            &*expr as *const Expr;
-
-        if results
-            .contains_key(&expr_ptr)
-        {
-
+    while let Some(expr) = stack.last() {
+        if results.contains_key(expr) {
             stack.pop();
-
             continue;
         }
 
         let children = expr.children();
-
-        let all_children_processed = children
-            .iter()
-            .all(|c| results.contains_key(&(c as *const Expr)));
-
-        if all_children_processed {
-
-            let current_expr =
-                stack.pop().expect(
-                    "Value is valid",
-                );
-
-            let current_expr_ptr =
-                &current_expr
-                    as *const Expr;
-
-            let get_child_val =
-                |i: usize| -> f64 {
-
-                    results[&(&children
-                        [i]
-                        as *const Expr)]
-                };
+        if children.is_empty() || visited.contains(expr) {
+            let current_expr = stack.pop().expect("Expr present");
+            let children = current_expr.children();
+            
+            let get_child_val = |i: usize| -> f64 {
+                results[&children[i]]
+            };
 
             let val_result = match current_expr.op() {
-                | DagOp::Constant(c) => Ok(c.into_inner()),
-                | DagOp::BigInt(i) => {
-                    i.to_f64()
-                        .ok_or_else(|| "BigInt conversion to f64 failed".to_string())
-                },
-                | DagOp::Variable(v) => {
-                    vars.get(&v)
-                        .copied()
-                        .ok_or_else(|| {
-
-                            format!(
-                                "Variable '{}' not found",
-                                v
-                            )
-                        })
-                },
-                | DagOp::Add => Ok(get_child_val(0) + get_child_val(1)),
-                | DagOp::Sub => Ok(get_child_val(0) - get_child_val(1)),
-                | DagOp::Mul => Ok(get_child_val(0) * get_child_val(1)),
-                | DagOp::Div => Ok(get_child_val(0) / get_child_val(1)),
-                | DagOp::Power => Ok(get_child_val(0).powf(get_child_val(1))),
-                | DagOp::Neg => Ok(-get_child_val(0)),
-                | DagOp::Sqrt => Ok(get_child_val(0).sqrt()),
-                | DagOp::Abs => Ok(get_child_val(0).abs()),
-                | DagOp::Sin => Ok(get_child_val(0).sin()),
-                | DagOp::Cos => Ok(get_child_val(0).cos()),
-                | DagOp::Tan => Ok(get_child_val(0).tan()),
-                | DagOp::Log => Ok(get_child_val(0).ln()),
-                | DagOp::Exp => Ok(get_child_val(0).exp()),
-                | DagOp::Pi => Ok(std::f64::consts::PI),
-                | DagOp::E => Ok(std::f64::consts::E),
-                | _ => {
-                    Err(format!(
-                        "Numerical evaluation for expression {:?} is not implemented",
-                        current_expr
-                    ))
-                },
+                DagOp::Constant(c) => Ok(c.into_inner()),
+                DagOp::BigInt(i) => i.to_f64().ok_or_else(|| "BigInt conversion to f64 failed".to_string()),
+                DagOp::Rational(r) => Ok(r.numer().to_f64().unwrap() / r.denom().to_f64().unwrap()),
+                DagOp::Variable(v) => vars.get(&v).copied().ok_or_else(|| format!("Variable '{}' not found", v)),
+                DagOp::Add => Ok(get_child_val(0) + get_child_val(1)),
+                DagOp::Sub => Ok(get_child_val(0) - get_child_val(1)),
+                DagOp::Mul => Ok(get_child_val(0) * get_child_val(1)),
+                DagOp::Div => Ok(get_child_val(0) / get_child_val(1)),
+                DagOp::Power => Ok(get_child_val(0).powf(get_child_val(1))),
+                DagOp::Neg => Ok(-get_child_val(0)),
+                DagOp::Sqrt => Ok(get_child_val(0).sqrt()),
+                DagOp::Abs => Ok(get_child_val(0).abs()),
+                DagOp::Sin => Ok(get_child_val(0).sin()),
+                DagOp::Cos => Ok(get_child_val(0).cos()),
+                DagOp::Tan => Ok(get_child_val(0).tan()),
+                DagOp::Csc => Ok(1.0 / get_child_val(0).sin()),
+                DagOp::Sec => Ok(1.0 / get_child_val(0).cos()),
+                DagOp::Cot => Ok(1.0 / get_child_val(0).tan()),
+                DagOp::ArcSin => Ok(get_child_val(0).asin()),
+                DagOp::ArcCos => Ok(get_child_val(0).acos()),
+                DagOp::ArcTan => Ok(get_child_val(0).atan()),
+                DagOp::Sinh => Ok(get_child_val(0).sinh()),
+                DagOp::Cosh => Ok(get_child_val(0).cosh()),
+                DagOp::Tanh => Ok(get_child_val(0).tanh()),
+                DagOp::Log => Ok(get_child_val(0).ln()),
+                DagOp::LogBase => Ok(get_child_val(1).log(get_child_val(0))),
+                DagOp::Exp => Ok(get_child_val(0).exp()),
+                DagOp::Floor => Ok(get_child_val(0).floor()),
+                DagOp::Pi => Ok(std::f64::consts::PI),
+                DagOp::E => Ok(std::f64::consts::E),
+                _ => Err(format!("Numerical evaluation for operation {:?} is not implemented", current_expr.op())),
             };
 
             let val = val_result?;
-
-            results.insert(
-                current_expr_ptr,
-                val,
-            );
+            results.insert(current_expr, val);
         } else {
-
-            for child in children
-                .iter()
-                .rev()
-            {
-
-                if !results
-                    .contains_key(
-                    &(child
-                        as *const Expr),
-                ) {
-
-                    let child_clone =
-                        child.clone();
-
-                    stack.push(
-                        child_clone,
-                    );
-                }
+            visited.insert(expr.clone());
+            for child in children.iter().rev() {
+                stack.push(child.clone());
             }
         }
     }
 
-    Ok(results
-        [&(root_expr as *const Expr)])
+    Ok(results[root_expr])
 }
 
 /// Plots a 2D function y = f(x) and saves it to a file.
@@ -712,4 +655,68 @@ pub fn plot_vector_field_3d(
         .map_err(|e| e.to_string())?;
 
     Ok(())
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prelude::Expr;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_eval_basic() {
+        let x = Expr::Variable("x".to_string());
+        let expr = Expr::new_add(x, Expr::Constant(2.0));
+        let mut vars = HashMap::new();
+        vars.insert("x".to_string(), 3.0);
+        let res = eval_expr(&expr, &vars).unwrap();
+        assert_eq!(res, 5.0);
+    }
+
+    #[test]
+    fn test_eval_trig() {
+        let x = Expr::Variable("x".to_string());
+        let expr = Expr::new_sin(x);
+        let mut vars = HashMap::new();
+        vars.insert("x".to_string(), std::f64::consts::PI / 2.0);
+        let res = eval_expr(&expr, &vars).unwrap();
+        assert!((res - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_eval_log_power() {
+        let x = Expr::Variable("x".to_string());
+        // e^(ln(x)) = x
+        let expr = Expr::new_exp(Expr::new_log(x.clone()));
+        let mut vars = HashMap::new();
+        vars.insert("x".to_string(), 5.0);
+        let res = eval_expr(&expr, &vars).unwrap();
+        assert!((res - 5.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_eval_error() {
+        let x = Expr::Variable("x".to_string());
+        let vars = HashMap::new(); // Missing x
+        let res = eval_expr(&x, &vars);
+        assert!(res.is_err());
+    }
+
+    use proptest::prelude::*;
+    proptest! {
+        #[test]
+        fn prop_no_panic_eval(
+            val in -100.0..100.0f64,
+            depth in 1..4usize,
+        ) {
+            let x = Expr::Variable("x".to_string());
+            let mut expr = x.clone();
+            for _ in 0..depth {
+                expr = Expr::new_add(expr.clone(), Expr::Constant(1.0));
+                expr = Expr::new_mul(expr.clone(), Expr::Constant(0.5));
+            }
+            let mut vars = HashMap::new();
+            vars.insert("x".to_string(), val);
+            let _ = eval_expr(&expr, &vars);
+        }
+    }
 }
