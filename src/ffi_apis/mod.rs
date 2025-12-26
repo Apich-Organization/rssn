@@ -56,6 +56,7 @@ pub mod physics_mm_ffi;
 pub mod physics_sm_ffi;
 pub mod physics_sim_linear_elasticity_ffi;
 pub mod physics_sim_navier_stokes_ffi;
+pub mod physics_sim_fdtd_ffi;
 pub mod numerical_sparse_ffi;
 pub mod numerical_special_ffi;
 pub mod numerical_stats_ffi;

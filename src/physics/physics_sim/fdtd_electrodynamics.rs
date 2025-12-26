@@ -1,6 +1,10 @@
 use crate::output::io::write_npy_file;
 use ndarray::{Array1, Array2};
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+
 /// Parameters for the FDTD simulation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FdtdParameters {
     pub width: usize,
     pub height: usize,
@@ -22,35 +26,84 @@ pub fn run_fdtd_simulation(params: &FdtdParameters) -> Vec<Array2<f64>> {
     let mut hx = Array2::<f64>::zeros((nx, ny));
     let mut hy = Array2::<f64>::zeros((nx, ny));
     let pml_thickness = 10;
-    let _ez_x_pml = Array2::<f64>::zeros((pml_thickness, ny));
-    let _ez_y_pml = Array2::<f64>::zeros((nx, pml_thickness));
     let mut snapshots = Vec::new();
+
     for t in 0..params.time_steps {
-        for i in 0..nx - 1 {
-            for j in 0..ny - 1 {
-                hx[[i, j]] -= 0.5 * (ez[[i, j + 1]] - ez[[i, j]]);
-                hy[[i, j]] += 0.5 * (ez[[i + 1, j]] - ez[[i, j]]);
+        // Update Hx and Hy (Magnetic field)
+        let ez_ptr = ez.as_ptr() as usize;
+        let hx_ptr = hx.as_mut_ptr() as usize;
+        let hy_ptr = hy.as_mut_ptr() as usize;
+
+        // Parallel update for Hx
+        (0..nx).into_par_iter().for_each(|i| {
+            if i < nx - 1 {
+                for j in 0..ny - 1 {
+                    unsafe {
+                        let ez = ez_ptr as *const f64;
+                        let hx = hx_ptr as *mut f64;
+                        let val_j1 = *ez.add(i * ny + (j + 1));
+                        let val_j = *ez.add(i * ny + j);
+                        *hx.add(i * ny + j) -= 0.5 * (val_j1 - val_j);
+                    }
+                }
             }
-        }
-        for i in 1..nx - 1 {
+        });
+
+        // Parallel update for Hy
+        (0..nx).into_par_iter().for_each(|i| {
+            if i < nx - 1 {
+                for j in 0..ny - 1 {
+                    unsafe {
+                        let ez = ez_ptr as *const f64;
+                        let hy = hy_ptr as *mut f64;
+                        let val_i1 = *ez.add((i + 1) * ny + j);
+                        let val_j = *ez.add(i * ny + j);
+                        *hy.add(i * ny + j) += 0.5 * (val_i1 - val_j);
+                    }
+                }
+            }
+        });
+
+        // Update Ez (Electric field)
+        let ez_mut_ptr = ez.as_mut_ptr() as usize;
+        let hx_const_ptr = hx.as_ptr() as usize;
+        let hy_const_ptr = hy.as_ptr() as usize;
+        (1..nx - 1).into_par_iter().for_each(|i| {
             for j in 1..ny - 1 {
-                ez[[i, j]] += 0.5 * (hy[[i, j]] - hy[[i - 1, j]] - (hx[[i, j]] - hx[[i, j - 1]]));
+                unsafe {
+                    let ez = ez_mut_ptr as *mut f64;
+                    let hx = hx_const_ptr as *const f64;
+                    let hy = hy_const_ptr as *const f64;
+                    let hy_val = *hy.add(i * ny + j);
+                    let hy_prev = *hy.add((i - 1) * ny + j);
+                    let hx_val = *hx.add(i * ny + j);
+                    let hx_prev = *hx.add(i * ny + (j - 1));
+                    *ez.add(i * ny + j) += 0.5 * (hy_val - hy_prev - (hx_val - hx_prev));
+                }
             }
-        }
-        let pulse = (-((t as f64 - 30.0) * (t as f64 - 30.0)) / 100.0).exp()
+        });
+
+        // Add soft source
+        let pulse = (-((t as f64 - 30.0).powi(2)) / 100.0).exp()
             * (2.0 * std::f64::consts::PI * params.source_freq * (t as f64)).sin();
         ez[[params.source_pos.0, params.source_pos.1]] += pulse;
-        for i in 0..nx {
+
+        // Apply PML/Boundary Damping in parallel
+        (0..nx).into_par_iter().for_each(|i| {
             for j in 0..ny {
                 if i < pml_thickness
                     || i >= nx - pml_thickness
                     || j < pml_thickness
                     || j >= ny - pml_thickness
                 {
-                    ez[[i, j]] *= 0.95;
+                    unsafe {
+                        let ez = ez_mut_ptr as *mut f64;
+                        *ez.add(i * ny + j) *= 0.95;
+                    }
                 }
             }
-        }
+        });
+
         if t % 5 == 0 {
             snapshots.push(ez.clone());
         }

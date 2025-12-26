@@ -11908,6 +11908,22 @@ rssn_ rssn_Matrix<double> *rssn_physics_rkm_simulate_vanderpol() ;
 
 rssn_ char *rssn_physics_rkm_vanderpol_json(const char *aInput) ;
 
+/*
+ Runs a 2D FDTD simulation and returns the final Ez field as a Matrix handle (WxH).
+ */
+rssn_
+rssn_Matrix<double> *rssn_physics_sim_fdtd_run_2d(size_t aWidth,
+                                                  size_t aHeight,
+                                                  size_t aTimeSteps,
+                                                  size_t aSourceX,
+                                                  size_t aSourceY,
+                                                  double aSourceFreq)
+;
+
+rssn_ rssn_BincodeBuffer rssn_physics_sim_fdtd_run_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_sim_fdtd_run_json(const char *aInput) ;
+
 rssn_
 rssn_BincodeBuffer rssn_physics_sim_linear_elasticity_run_bincode(rssn_BincodeBuffer aBuffer)
 ;
