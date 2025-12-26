@@ -106,11 +106,13 @@ pub extern "C" fn rssn_matrix_solve_linear_system_handle(
 
     match solve_linear_system(a, b) {
         Ok(result) => Box::into_raw(Box::new(result)),
-        Err(e) => Box::into_raw(Box::new(
-            Expr::Variable(format!(
-                "Error: {}",
-                e
-            )),
-        )),
+        Err(e) => {
+            Box::into_raw(Box::new(
+                Expr::Variable(format!(
+                    "Error: {}",
+                    e
+                )),
+            ))
+        }
     }
 }

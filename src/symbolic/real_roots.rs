@@ -323,19 +323,24 @@ pub fn eval_expr(
 ) -> f64 {
 
     match expr {
-        Expr::Dag(node) => eval_expr(
-            &node
-                .to_expr()
-                .expect("Dag Eval Expr"),
-            vars,
-        ),
+        Expr::Dag(node) => {
+            eval_expr(
+                &node
+                    .to_expr()
+                    .expect("Dag Eval Expr"),
+                vars,
+            )
+        }
         Expr::Constant(c) => *c,
-        Expr::BigInt(i) => i
-            .to_f64()
-            .unwrap_or(0.0),
-        Expr::Variable(v) => *vars
-            .get(v)
-            .unwrap_or(&0.0),
+        Expr::BigInt(i) => {
+            i.to_f64()
+                .unwrap_or(0.0)
+        }
+        Expr::Variable(v) => {
+            *vars
+                .get(v)
+                .unwrap_or(&0.0)
+        }
         Expr::Add(a, b) => eval_expr(a, vars) + eval_expr(b, vars),
         Expr::Sub(a, b) => eval_expr(a, vars) - eval_expr(b, vars),
         Expr::Mul(a, b) => eval_expr(a, vars) * eval_expr(b, vars),

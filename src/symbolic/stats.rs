@@ -32,6 +32,7 @@ pub fn mean(data: &[Expr]) -> Expr {
         .iter()
         .cloned()
         .reduce(|acc, e| {
+
             simplify(&Expr::new_add(
                 acc, e,
             ))
@@ -82,6 +83,7 @@ pub fn variance(data: &[Expr]) -> Expr {
             )
         })
         .reduce(|acc, e| {
+
             simplify(&Expr::new_add(
                 acc, e,
             ))
@@ -161,6 +163,7 @@ pub fn covariance(
             Expr::new_mul(diff_x, diff_y)
         })
         .reduce(|acc, e| {
+
             simplify(&Expr::new_add(
                 acc, e,
             ))

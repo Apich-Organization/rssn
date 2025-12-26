@@ -22,13 +22,15 @@ impl ToBigInt for Expr {
         match self {
             Self::BigInt(i) => Some(i.clone()),
             Self::Constant(f) => f.to_bigint(),
-            Self::Rational(r) => r
-                .to_integer()
-                .into(),
-            Self::Dag(node) => node
-                .to_expr()
-                .ok()?
-                .to_bigint(),
+            Self::Rational(r) => {
+                r.to_integer()
+                    .into()
+            }
+            Self::Dag(node) => {
+                node.to_expr()
+                    .ok()?
+                    .to_bigint()
+            }
             _ => None,
         }
     }

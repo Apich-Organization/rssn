@@ -96,6 +96,7 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
 
     let path: Vec<Complex<f64>> = (0..path_len)
         .map(|i| {
+
             Complex::new(
                 *path_re.add(i),
                 *path_im.add(i),

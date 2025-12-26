@@ -63,14 +63,18 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(input_json: *const c_char)
     );
 
     let ffi_res = match res {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
@@ -108,14 +112,18 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(input_json: *const c_char)
     );
 
     let ffi_res = match res {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
@@ -153,14 +161,18 @@ pub unsafe extern "C" fn rssn_numerical_hessian_json(input_json: *const c_char) 
     );
 
     let ffi_res = match res {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_c_string(serde_json::to_string(&ffi_res).unwrap())

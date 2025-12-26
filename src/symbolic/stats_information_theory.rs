@@ -37,6 +37,7 @@ pub fn shannon_entropy(probs: &[Expr]) -> Expr {
             Expr::new_mul(p.clone(), log2_p)
         })
         .reduce(|acc, e| {
+
             simplify(&Expr::new_add(
                 acc, e,
             ))
@@ -90,6 +91,7 @@ pub fn kl_divergence(
             )
         })
         .reduce(|acc, e| {
+
             simplify(&Expr::new_add(
                 acc, e,
             ))
@@ -138,6 +140,7 @@ pub fn cross_entropy(
             Expr::new_mul(p.clone(), log2_q)
         })
         .reduce(|acc, e| {
+
             simplify(&Expr::new_add(
                 acc, e,
             ))
@@ -307,12 +310,14 @@ pub fn gini_impurity(probs: &[Expr]) -> Expr {
     let sum_of_squares = probs
         .iter()
         .map(|p| {
+
             Expr::new_pow(
                 p.clone(),
                 Expr::Constant(2.0),
             )
         })
         .reduce(|acc, e| {
+
             simplify(&Expr::new_add(
                 acc, e,
             ))

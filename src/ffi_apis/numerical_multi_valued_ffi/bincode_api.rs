@@ -67,12 +67,14 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
                 err: None::<String>,
             })
         }
-        None => to_bincode_buffer(
-            &FfiResult::<ComplexResult, String> {
-                ok: None,
-                err: Some("Newton's method failed to converge".to_string()),
-            },
-        ),
+        None => {
+            to_bincode_buffer(
+                &FfiResult::<ComplexResult, String> {
+                    ok: None,
+                    err: Some("Newton's method failed to converge".to_string()),
+                },
+            )
+        }
     }
 }
 

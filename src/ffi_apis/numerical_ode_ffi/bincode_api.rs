@@ -41,14 +41,18 @@ pub unsafe extern "C" fn rssn_num_ode_solve_bincode(buffer: BincodeBuffer) -> Bi
     );
 
     let ffi_res = match res {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_bincode_buffer(&ffi_res)

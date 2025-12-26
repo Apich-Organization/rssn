@@ -73,12 +73,14 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(buffer: BincodeBuffer
                 err: None::<String>,
             })
         }
-        Err(e) => to_bincode_buffer(
-            &FfiResult::<InteractionOutput, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Err(e) => {
+            to_bincode_buffer(
+                &FfiResult::<InteractionOutput, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }
 

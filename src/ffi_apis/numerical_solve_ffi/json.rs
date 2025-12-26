@@ -42,14 +42,18 @@ pub unsafe extern "C" fn rssn_solve_linear_system_json(json_ptr: *const c_char) 
     );
 
     let res = match result {
-        Ok(sol) => FfiResult {
-            ok: Some(sol),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(sol) => {
+            FfiResult {
+                ok: Some(sol),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())

@@ -903,38 +903,46 @@ impl Clone for Expr {
             Self::Eq(a, b) => Self::Eq(a.clone(), b.clone()),
             Self::Matrix(m) => Self::Matrix(m.clone()),
             Self::Vector(v) => Self::Vector(v.clone()),
-            Self::Complex(re, im) => Self::Complex(
-                re.clone(),
-                im.clone(),
-            ),
+            Self::Complex(re, im) => {
+                Self::Complex(
+                    re.clone(),
+                    im.clone(),
+                )
+            }
             Self::Derivative(e, s) => Self::Derivative(e.clone(), s.clone()),
             Self::Sum {
                 body,
                 var,
                 from,
                 to,
-            } => Self::Sum {
-                body: body.clone(),
-                var: var.clone(),
-                from: from.clone(),
-                to: to.clone(),
-            },
+            } => {
+                Self::Sum {
+                    body: body.clone(),
+                    var: var.clone(),
+                    from: from.clone(),
+                    to: to.clone(),
+                }
+            }
             Self::Integral {
                 integrand,
                 var,
                 lower_bound,
                 upper_bound,
-            } => Self::Integral {
-                integrand: integrand.clone(),
-                var: var.clone(),
-                lower_bound: lower_bound.clone(),
-                upper_bound: upper_bound.clone(),
-            },
-            Self::Path(pt, p1, p2) => Self::Path(
-                pt.clone(),
-                p1.clone(),
-                p2.clone(),
-            ),
+            } => {
+                Self::Integral {
+                    integrand: integrand.clone(),
+                    var: var.clone(),
+                    lower_bound: lower_bound.clone(),
+                    upper_bound: upper_bound.clone(),
+                }
+            }
+            Self::Path(pt, p1, p2) => {
+                Self::Path(
+                    pt.clone(),
+                    p1.clone(),
+                    p2.clone(),
+                )
+            }
             Self::Abs(a) => Self::Abs(a.clone()),
             Self::Sqrt(a) => Self::Sqrt(a.clone()),
             Self::Sec(a) => Self::Sec(a.clone()),
@@ -966,17 +974,21 @@ impl Clone for Expr {
             Self::VolumeIntegral {
                 scalar_field,
                 volume,
-            } => Self::VolumeIntegral {
-                scalar_field: scalar_field.clone(),
-                volume: volume.clone(),
-            },
+            } => {
+                Self::VolumeIntegral {
+                    scalar_field: scalar_field.clone(),
+                    volume: volume.clone(),
+                }
+            }
             Self::SurfaceIntegral {
                 vector_field,
                 surface,
-            } => Self::SurfaceIntegral {
-                vector_field: vector_field.clone(),
-                surface: surface.clone(),
-            },
+            } => {
+                Self::SurfaceIntegral {
+                    vector_field: vector_field.clone(),
+                    surface: surface.clone(),
+                }
+            }
             Self::Pi => Self::Pi,
             Self::E => Self::E,
             Self::Infinity => Self::Infinity,
@@ -996,58 +1008,74 @@ impl Clone for Expr {
             Self::HermiteH(a, b) => Self::HermiteH(a.clone(), b.clone()),
             Self::Digamma(a) => Self::Digamma(a.clone()),
             Self::KroneckerDelta(a, b) => Self::KroneckerDelta(a.clone(), b.clone()),
-            Self::DerivativeN(e, s, n) => Self::DerivativeN(
-                e.clone(),
-                s.clone(),
-                n.clone(),
-            ),
-            Self::Series(a, b, c, d) => Self::Series(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-                d.clone(),
-            ),
-            Self::Summation(a, b, c, d) => Self::Summation(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-                d.clone(),
-            ),
-            Self::Product(a, b, c, d) => Self::Product(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-                d.clone(),
-            ),
+            Self::DerivativeN(e, s, n) => {
+                Self::DerivativeN(
+                    e.clone(),
+                    s.clone(),
+                    n.clone(),
+                )
+            }
+            Self::Series(a, b, c, d) => {
+                Self::Series(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                    d.clone(),
+                )
+            }
+            Self::Summation(a, b, c, d) => {
+                Self::Summation(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                    d.clone(),
+                )
+            }
+            Self::Product(a, b, c, d) => {
+                Self::Product(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                    d.clone(),
+                )
+            }
             Self::ConvergenceAnalysis(e, s) => Self::ConvergenceAnalysis(e.clone(), s.clone()),
-            Self::AsymptoticExpansion(a, b, c, d) => Self::AsymptoticExpansion(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-                d.clone(),
-            ),
+            Self::AsymptoticExpansion(a, b, c, d) => {
+                Self::AsymptoticExpansion(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                    d.clone(),
+                )
+            }
             Self::Lt(a, b) => Self::Lt(a.clone(), b.clone()),
             Self::Gt(a, b) => Self::Gt(a.clone(), b.clone()),
             Self::Le(a, b) => Self::Le(a.clone(), b.clone()),
             Self::Ge(a, b) => Self::Ge(a.clone(), b.clone()),
             Self::Union(v) => Self::Union(v.clone()),
-            Self::Interval(a, b, c, d) => Self::Interval(
-                a.clone(),
-                b.clone(),
-                *c,
-                *d,
-            ),
+            Self::Interval(a, b, c, d) => {
+                Self::Interval(
+                    a.clone(),
+                    b.clone(),
+                    *c,
+                    *d,
+                )
+            }
             Self::Solve(e, s) => Self::Solve(e.clone(), s.clone()),
-            Self::Substitute(a, b, c) => Self::Substitute(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-            ),
-            Self::Limit(a, b, c) => Self::Limit(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-            ),
+            Self::Substitute(a, b, c) => {
+                Self::Substitute(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                )
+            }
+            Self::Limit(a, b, c) => {
+                Self::Limit(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                )
+            }
             Self::InfiniteSolutions => Self::InfiniteSolutions,
             Self::NoSolution => Self::NoSolution,
             Self::Dag(n) => Self::Dag(n.clone()),
@@ -1060,44 +1088,54 @@ impl Clone for Expr {
                 equation,
                 func,
                 var,
-            } => Self::Ode {
-                equation: equation.clone(),
-                func: func.clone(),
-                var: var.clone(),
-            },
+            } => {
+                Self::Ode {
+                    equation: equation.clone(),
+                    func: func.clone(),
+                    var: var.clone(),
+                }
+            }
             Self::Pde {
                 equation,
                 func,
                 vars,
-            } => Self::Pde {
-                equation: equation.clone(),
-                func: func.clone(),
-                vars: vars.clone(),
-            },
+            } => {
+                Self::Pde {
+                    equation: equation.clone(),
+                    func: func.clone(),
+                    vars: vars.clone(),
+                }
+            }
             Self::GeneralSolution(e) => Self::GeneralSolution(e.clone()),
             Self::ParticularSolution(e) => Self::ParticularSolution(e.clone()),
-            Self::Fredholm(a, b, c, d) => Self::Fredholm(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-                d.clone(),
-            ),
-            Self::Volterra(a, b, c, d) => Self::Volterra(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-                d.clone(),
-            ),
+            Self::Fredholm(a, b, c, d) => {
+                Self::Fredholm(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                    d.clone(),
+                )
+            }
+            Self::Volterra(a, b, c, d) => {
+                Self::Volterra(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                    d.clone(),
+                )
+            }
             Self::And(v) => Self::And(v.clone()),
             Self::Or(v) => Self::Or(v.clone()),
             Self::Not(a) => Self::Not(a.clone()),
             Self::Xor(a, b) => Self::Xor(a.clone(), b.clone()),
             Self::Implies(a, b) => Self::Implies(a.clone(), b.clone()),
             Self::Equivalent(a, b) => Self::Equivalent(a.clone(), b.clone()),
-            Self::Predicate { name, args } => Self::Predicate {
-                name: name.clone(),
-                args: args.clone(),
-            },
+            Self::Predicate { name, args } => {
+                Self::Predicate {
+                    name: name.clone(),
+                    args: args.clone(),
+                }
+            }
             Self::ForAll(s, e) => Self::ForAll(s.clone(), e.clone()),
             Self::Exists(s, e) => Self::Exists(s.clone(), e.clone()),
             Self::Polynomial(c) => Self::Polynomial(c.clone()),
@@ -1116,63 +1154,81 @@ impl Clone for Expr {
             Self::Inverse(a) => Self::Inverse(a.clone()),
             Self::System(v) => Self::System(v.clone()),
             Self::Solutions(v) => Self::Solutions(v.clone()),
-            Self::ParametricSolution { x, y } => Self::ParametricSolution {
-                x: x.clone(),
-                y: y.clone(),
-            },
-            Self::RootOf { poly, index } => Self::RootOf {
-                poly: poly.clone(),
-                index: *index,
-            },
+            Self::ParametricSolution { x, y } => {
+                Self::ParametricSolution {
+                    x: x.clone(),
+                    y: y.clone(),
+                }
+            }
+            Self::RootOf { poly, index } => {
+                Self::RootOf {
+                    poly: poly.clone(),
+                    index: *index,
+                }
+            }
 
             Self::CustomZero => Self::CustomZero,
             Self::CustomString(a) => Self::CustomString(a.clone()),
             Self::CustomArcOne(a) => Self::CustomArcOne(a.clone()),
             Self::CustomArcTwo(a, b) => Self::CustomArcTwo(a.clone(), b.clone()),
-            Self::CustomArcThree(a, b, c) => Self::CustomArcThree(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-            ),
-            Self::CustomArcFour(a, b, c, d) => Self::CustomArcFour(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-                d.clone(),
-            ),
-            Self::CustomArcFive(a, b, c, d, e) => Self::CustomArcFive(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-                d.clone(),
-                e.clone(),
-            ),
+            Self::CustomArcThree(a, b, c) => {
+                Self::CustomArcThree(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                )
+            }
+            Self::CustomArcFour(a, b, c, d) => {
+                Self::CustomArcFour(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                    d.clone(),
+                )
+            }
+            Self::CustomArcFive(a, b, c, d, e) => {
+                Self::CustomArcFive(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                    d.clone(),
+                    e.clone(),
+                )
+            }
             Self::CustomVecOne(a) => Self::CustomVecOne(a.clone()),
             Self::CustomVecTwo(a, b) => Self::CustomVecTwo(a.clone(), b.clone()),
-            Self::CustomVecThree(a, b, c) => Self::CustomVecThree(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-            ),
-            Self::CustomVecFour(a, b, c, d) => Self::CustomVecFour(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-                d.clone(),
-            ),
-            Self::CustomVecFive(a, b, c, d, e) => Self::CustomVecFive(
-                a.clone(),
-                b.clone(),
-                c.clone(),
-                d.clone(),
-                e.clone(),
-            ),
+            Self::CustomVecThree(a, b, c) => {
+                Self::CustomVecThree(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                )
+            }
+            Self::CustomVecFour(a, b, c, d) => {
+                Self::CustomVecFour(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                    d.clone(),
+                )
+            }
+            Self::CustomVecFive(a, b, c, d, e) => {
+                Self::CustomVecFive(
+                    a.clone(),
+                    b.clone(),
+                    c.clone(),
+                    d.clone(),
+                    e.clone(),
+                )
+            }
             Self::UnaryList(s, a) => Self::UnaryList(s.clone(), a.clone()),
-            Self::BinaryList(s, a, b) => Self::BinaryList(
-                s.clone(),
-                a.clone(),
-                b.clone(),
-            ),
+            Self::BinaryList(s, a, b) => {
+                Self::BinaryList(
+                    s.clone(),
+                    a.clone(),
+                    b.clone(),
+                )
+            }
             Self::NaryList(s, v) => Self::NaryList(s.clone(), v.clone()),
         }
     }
@@ -1196,13 +1252,17 @@ impl fmt::Display for Expr {
     ) -> fmt::Result {
 
         match self {
-            Self::Dag(node) => match node.to_expr() {
-                Ok(expr) => write!(f, "{expr}"),
-                Err(e) => write!(
-                    f,
-                    "<Error converting DAG to Expr: {e}>"
-                ),
-            },
+            Self::Dag(node) => {
+                match node.to_expr() {
+                    Ok(expr) => write!(f, "{expr}"),
+                    Err(e) => {
+                        write!(
+                            f,
+                            "<Error converting DAG to Expr: {e}>"
+                        )
+                    }
+                }
+            }
             Self::Constant(c) => write!(f, "{c}"),
             Self::BigInt(i) => write!(f, "{i}"),
             Self::Rational(r) => write!(f, "{r}"),
@@ -1315,19 +1375,23 @@ impl fmt::Display for Expr {
                 write!(f, "{s}")
             }
             Self::Complex(re, im) => write!(f, "({re} + {im}i)"),
-            Self::Derivative(expr, var) => write!(
-                f,
-                "d/d{var}({expr})"
-            ),
+            Self::Derivative(expr, var) => {
+                write!(
+                    f,
+                    "d/d{var}({expr})"
+                )
+            }
             Self::Integral {
                 integrand,
                 var,
                 lower_bound,
                 upper_bound,
-            } => write!(
-                f,
-                "integral({integrand}, {var}, {lower_bound}, {upper_bound})"
-            ),
+            } => {
+                write!(
+                    f,
+                    "integral({integrand}, {var}, {lower_bound}, {upper_bound})"
+                )
+            }
             Self::Sum {
                 body,
                 var,
@@ -1340,10 +1404,12 @@ impl fmt::Display for Expr {
                     "sum({body}, {var}, {from}, {to})"
                 )
             }
-            Self::Path(path_type, p1, p2) => write!(
-                f,
-                "path({path_type:?}, {p1}, {p2})"
-            ),
+            Self::Path(path_type, p1, p2) => {
+                write!(
+                    f,
+                    "path({path_type:?}, {p1}, {p2})"
+                )
+            }
             Self::Abs(a) => write!(f, "|{a}|"),
             Self::Sqrt(a) => write!(f, "sqrt({a})"),
             Self::Sec(a) => write!(f, "sec({a})"),
@@ -1367,10 +1433,12 @@ impl fmt::Display for Expr {
             Self::ArcSech(a) => write!(f, "asech({a})"),
             Self::ArcCsch(a) => write!(f, "acsch({a})"),
             Self::ArcCoth(a) => write!(f, "acoth({a})"),
-            Self::LogBase(b, a) => write!(
-                f,
-                "log_base({b}, {a})"
-            ),
+            Self::LogBase(b, a) => {
+                write!(
+                    f,
+                    "log_base({b}, {a})"
+                )
+            }
             Self::Atan2(y, x) => write!(f, "atan2({y}, {x})"),
             Self::Pi => write!(f, "Pi"),
             Self::E => write!(f, "E"),
@@ -1380,42 +1448,54 @@ impl fmt::Display for Expr {
                 equation,
                 func,
                 var,
-            } => write!(
-                f,
-                "ode({equation}, {func}, {var})"
-            ),
+            } => {
+                write!(
+                    f,
+                    "ode({equation}, {func}, {var})"
+                )
+            }
             Self::Pde {
                 equation,
                 func,
                 vars,
-            } => write!(
-                f,
-                "pde({equation}, {func}, {vars:?})"
-            ),
-            Self::Fredholm(a, b, c, d) => write!(
-                f,
-                "fredholm({a}, {b}, {c}, {d})"
-            ),
-            Self::Volterra(a, b, c, d) => write!(
-                f,
-                "volterra({a}, {b}, {c}, {d})"
-            ),
-            Self::And(v) => write!(
-                f,
-                "({})",
-                v.iter()
-                    .map(std::string::ToString::to_string)
-                    .collect::<Vec<String>>()
-                    .join(" && ")
-            ),
-            Self::Or(v) => write!(
-                f,
-                "({})",
-                v.iter()
-                    .map(std::string::ToString::to_string)
-                    .collect::<Vec<String>>()
-                    .join(" || ")
-            ),
+            } => {
+                write!(
+                    f,
+                    "pde({equation}, {func}, {vars:?})"
+                )
+            }
+            Self::Fredholm(a, b, c, d) => {
+                write!(
+                    f,
+                    "fredholm({a}, {b}, {c}, {d})"
+                )
+            }
+            Self::Volterra(a, b, c, d) => {
+                write!(
+                    f,
+                    "volterra({a}, {b}, {c}, {d})"
+                )
+            }
+            Self::And(v) => {
+                write!(
+                    f,
+                    "({})",
+                    v.iter()
+                        .map(std::string::ToString::to_string)
+                        .collect::<Vec<String>>()
+                        .join(" && ")
+                )
+            }
+            Self::Or(v) => {
+                write!(
+                    f,
+                    "({})",
+                    v.iter()
+                        .map(std::string::ToString::to_string)
+                        .collect::<Vec<String>>()
+                        .join(" || ")
+                )
+            }
             Self::Not(a) => write!(f, "!({a})"),
             Self::Xor(a, b) => write!(f, "({a} ^ {b})"),
             Self::Implies(a, b) => write!(f, "({a} => {b})"),
@@ -1484,39 +1564,53 @@ impl fmt::Display for Expr {
             Self::Mod(a, b) => write!(f, "({a} mod {b})"),
             Self::Max(a, b) => write!(f, "max({a}, {b})"),
             Self::System(v) => write!(f, "system({v:?})"),
-            Self::Solutions(v) => write!(
-                f,
-                "solutions({v:?})"
-            ),
-            Self::ParametricSolution { x, y } => write!(
-                f,
-                "parametric_solution({x}, {y})"
-            ),
-            Self::RootOf { poly, index } => write!(
-                f,
-                "root_of({poly}, {index})"
-            ),
+            Self::Solutions(v) => {
+                write!(
+                    f,
+                    "solutions({v:?})"
+                )
+            }
+            Self::ParametricSolution { x, y } => {
+                write!(
+                    f,
+                    "parametric_solution({x}, {y})"
+                )
+            }
+            Self::RootOf { poly, index } => {
+                write!(
+                    f,
+                    "root_of({poly}, {index})"
+                )
+            }
             Self::Erfc(a) => write!(f, "erfc({a})"),
             Self::Erfi(a) => write!(f, "erfi({a})"),
             Self::Zeta(a) => write!(f, "zeta({a})"),
 
             Self::CustomZero => write!(f, "CustomZero"),
-            Self::CustomString(s) => write!(
-                f,
-                "CustomString({s})"
-            ),
-            Self::CustomArcOne(a) => write!(
-                f,
-                "CustomArcOne({a})"
-            ),
-            Self::CustomArcTwo(a, b) => write!(
-                f,
-                "CustomArcTwo({a}, {b})"
-            ),
-            Self::CustomArcThree(a, b, c) => write!(
-                f,
-                "CustomArcThree({a}, {b}, {c})"
-            ),
+            Self::CustomString(s) => {
+                write!(
+                    f,
+                    "CustomString({s})"
+                )
+            }
+            Self::CustomArcOne(a) => {
+                write!(
+                    f,
+                    "CustomArcOne({a})"
+                )
+            }
+            Self::CustomArcTwo(a, b) => {
+                write!(
+                    f,
+                    "CustomArcTwo({a}, {b})"
+                )
+            }
+            Self::CustomArcThree(a, b, c) => {
+                write!(
+                    f,
+                    "CustomArcThree({a}, {b}, {c})"
+                )
+            }
             Self::CustomArcFour(a, b, c, d) => {
 
                 write!(
@@ -1531,14 +1625,18 @@ impl fmt::Display for Expr {
                     "CustomArcFive({a}, {b}, {c}, {d}, {e})"
                 )
             }
-            Self::CustomVecOne(v) => write!(
-                f,
-                "CustomVecOne({v:?})"
-            ),
-            Self::CustomVecTwo(v1, v2) => write!(
-                f,
-                "CustomVecTwo({v1:?}, {v2:?})"
-            ),
+            Self::CustomVecOne(v) => {
+                write!(
+                    f,
+                    "CustomVecOne({v:?})"
+                )
+            }
+            Self::CustomVecTwo(v1, v2) => {
+                write!(
+                    f,
+                    "CustomVecTwo({v1:?}, {v2:?})"
+                )
+            }
             Self::CustomVecThree(v1, v2, v3) => {
 
                 write!(
@@ -1580,40 +1678,56 @@ impl fmt::Display for Expr {
                 write!(f, ")")
             }
 
-            Self::GeneralSolution(e) => write!(
-                f,
-                "general_solution({e})"
-            ),
-            Self::ParticularSolution(e) => write!(
-                f,
-                "particular_solution({e})"
-            ),
-            Self::InfiniteSolutions => write!(
-                f,
-                "InfiniteSolutions"
-            ),
+            Self::GeneralSolution(e) => {
+                write!(
+                    f,
+                    "general_solution({e})"
+                )
+            }
+            Self::ParticularSolution(e) => {
+                write!(
+                    f,
+                    "particular_solution({e})"
+                )
+            }
+            Self::InfiniteSolutions => {
+                write!(
+                    f,
+                    "InfiniteSolutions"
+                )
+            }
             Self::NoSolution => write!(f, "NoSolution"),
-            Self::KroneckerDelta(a, b) => write!(
-                f,
-                "kronecker_delta({a}, {b})"
-            ),
-            Self::MatrixMul(a, b) => write!(
-                f,
-                "matrix_mul({a}, {b})"
-            ),
-            Self::MatrixVecMul(a, b) => write!(
-                f,
-                "matrix_vec_mul({a}, {b})"
-            ),
-            Self::QuantityWithValue(v, u) => write!(
-                f,
-                "quantity_with_value({v}, \"{u}\")"
-            ),
+            Self::KroneckerDelta(a, b) => {
+                write!(
+                    f,
+                    "kronecker_delta({a}, {b})"
+                )
+            }
+            Self::MatrixMul(a, b) => {
+                write!(
+                    f,
+                    "matrix_mul({a}, {b})"
+                )
+            }
+            Self::MatrixVecMul(a, b) => {
+                write!(
+                    f,
+                    "matrix_vec_mul({a}, {b})"
+                )
+            }
+            Self::QuantityWithValue(v, u) => {
+                write!(
+                    f,
+                    "quantity_with_value({v}, \"{u}\")"
+                )
+            }
             Self::Tuple(v) => write!(f, "tuple({v:?})"),
-            Self::Interval(a, b, c, d) => write!(
-                f,
-                "interval({a}, {b}, {c}, {d})"
-            ),
+            Self::Interval(a, b, c, d) => {
+                write!(
+                    f,
+                    "interval({a}, {b}, {c}, {d})"
+                )
+            }
             Self::Domain(s) => write!(f, "domain({s})"),
             Self::AsymptoticExpansion(a, b, c, d) => {
 
@@ -1622,34 +1736,48 @@ impl fmt::Display for Expr {
                     "asymptotic_expansion({a}, {b}, {c}, {d})"
                 )
             }
-            Self::ConvergenceAnalysis(e, s) => write!(
-                f,
-                "convergence_analysis({e}, {s})"
-            ),
-            Self::DerivativeN(e, s, n) => write!(
-                f,
-                "derivative_n({e}, {s}, {n})"
-            ),
-            Self::FallingFactorial(a, b) => write!(
-                f,
-                "falling_factorial({a}, {b})"
-            ),
-            Self::RisingFactorial(a, b) => write!(
-                f,
-                "rising_factorial({a}, {b})"
-            ),
-            Self::Product(a, b, c, d) => write!(
-                f,
-                "product({a}, {b}, {c}, {d})"
-            ),
-            Self::Series(a, b, c, d) => write!(
-                f,
-                "series({a}, {b}, {c}, {d})"
-            ),
-            Self::Summation(a, b, c, d) => write!(
-                f,
-                "summation({a}, {b}, {c}, {d})"
-            ),
+            Self::ConvergenceAnalysis(e, s) => {
+                write!(
+                    f,
+                    "convergence_analysis({e}, {s})"
+                )
+            }
+            Self::DerivativeN(e, s, n) => {
+                write!(
+                    f,
+                    "derivative_n({e}, {s}, {n})"
+                )
+            }
+            Self::FallingFactorial(a, b) => {
+                write!(
+                    f,
+                    "falling_factorial({a}, {b})"
+                )
+            }
+            Self::RisingFactorial(a, b) => {
+                write!(
+                    f,
+                    "rising_factorial({a}, {b})"
+                )
+            }
+            Self::Product(a, b, c, d) => {
+                write!(
+                    f,
+                    "product({a}, {b}, {c}, {d})"
+                )
+            }
+            Self::Series(a, b, c, d) => {
+                write!(
+                    f,
+                    "series({a}, {b}, {c}, {d})"
+                )
+            }
+            Self::Summation(a, b, c, d) => {
+                write!(
+                    f,
+                    "summation({a}, {b}, {c}, {d})"
+                )
+            }
             Self::Lt(a, b) => write!(f, "({a} < {b})"),
             Self::Gt(a, b) => write!(f, "({a} > {b})"),
             Self::Le(a, b) => write!(f, "({a} <= {b})"),
@@ -1658,67 +1786,91 @@ impl fmt::Display for Expr {
             Self::VolumeIntegral {
                 scalar_field,
                 volume,
-            } => write!(
-                f,
-                "volume_integral({scalar_field}, {volume})"
-            ),
+            } => {
+                write!(
+                    f,
+                    "volume_integral({scalar_field}, {volume})"
+                )
+            }
             Self::SurfaceIntegral {
                 vector_field,
                 surface,
-            } => write!(
-                f,
-                "surface_integral({vector_field}, {surface})"
-            ),
+            } => {
+                write!(
+                    f,
+                    "surface_integral({vector_field}, {surface})"
+                )
+            }
             Self::Union(v) => write!(f, "union({v:?})"),
             Self::Solve(e, s) => write!(f, "solve({e}, {s})"),
             Self::Apply(a, b) => write!(f, "apply({a}, {b})"),
             Self::Quantity(q) => write!(f, "{q:?}"),
             Self::Inverse(a) => write!(f, "inverse({a})"),
-            Self::Limit(a, b, c) => write!(
-                f,
-                "limit({a}, {b}, {c})"
-            ),
-            Self::Binomial(a, b) => write!(
-                f,
-                "binomial({a}, {b})"
-            ),
-            Self::Permutation(a, b) => write!(
-                f,
-                "permutation({a}, {b})"
-            ),
-            Self::Combination(a, b) => write!(
-                f,
-                "combination({a}, {b})"
-            ),
+            Self::Limit(a, b, c) => {
+                write!(
+                    f,
+                    "limit({a}, {b}, {c})"
+                )
+            }
+            Self::Binomial(a, b) => {
+                write!(
+                    f,
+                    "binomial({a}, {b})"
+                )
+            }
+            Self::Permutation(a, b) => {
+                write!(
+                    f,
+                    "permutation({a}, {b})"
+                )
+            }
+            Self::Combination(a, b) => {
+                write!(
+                    f,
+                    "combination({a}, {b})"
+                )
+            }
             Self::Boundary(a) => write!(f, "boundary({a})"),
             Self::Gamma(a) => write!(f, "gamma({a})"),
             Self::Beta(a, b) => write!(f, "beta({a}, {b})"),
             Self::Erf(a) => write!(f, "erf({a})"),
-            Self::BesselJ(a, b) => write!(
-                f,
-                "BesselJ({a}, {b})"
-            ),
-            Self::BesselY(a, b) => write!(
-                f,
-                "BesselY({a}, {b})"
-            ),
-            Self::LegendreP(a, b) => write!(
-                f,
-                "LegendreP({a}, {b})"
-            ),
-            Self::LaguerreL(a, b) => write!(
-                f,
-                "LaguerreL({a}, {b})"
-            ),
-            Self::HermiteH(a, b) => write!(
-                f,
-                "HermiteH({a}, {b})"
-            ),
+            Self::BesselJ(a, b) => {
+                write!(
+                    f,
+                    "BesselJ({a}, {b})"
+                )
+            }
+            Self::BesselY(a, b) => {
+                write!(
+                    f,
+                    "BesselY({a}, {b})"
+                )
+            }
+            Self::LegendreP(a, b) => {
+                write!(
+                    f,
+                    "LegendreP({a}, {b})"
+                )
+            }
+            Self::LaguerreL(a, b) => {
+                write!(
+                    f,
+                    "LaguerreL({a}, {b})"
+                )
+            }
+            Self::HermiteH(a, b) => {
+                write!(
+                    f,
+                    "HermiteH({a}, {b})"
+                )
+            }
             Self::Digamma(a) => write!(f, "Digamma({a})"),
-            Self::Substitute(a, b, c) => write!(
-                f,
-                "substitute({a}, {b}, {c})"
-            ),
+            Self::Substitute(a, b, c) => {
+                write!(
+                    f,
+                    "substitute({a}, {b}, {c})"
+                )
+            }
         }
     }
 }
@@ -1763,10 +1915,11 @@ impl Expr {
             Self::Rational(val) => val.to_f64(),
             Self::Pi => Some(std::f64::consts::PI),
             Self::E => Some(std::f64::consts::E),
-            Self::Dag(node) => node
-                .to_expr()
-                .ok()?
-                .to_f64(),
+            Self::Dag(node) => {
+                node.to_expr()
+                    .ok()?
+                    .to_f64()
+            }
             _ => None,
         }
     }
@@ -1806,11 +1959,12 @@ impl Expr {
     pub fn children(&self) -> Vec<Self> {
 
         match self {
-            Self::Dag(node) => node
-                .children
-                .iter()
-                .map(|n| Self::Dag(n.clone()))
-                .collect(),
+            Self::Dag(node) => {
+                node.children
+                    .iter()
+                    .map(|n| Self::Dag(n.clone()))
+                    .collect()
+            }
             _ => self.get_children_internal(),
         }
     }
@@ -2497,10 +2651,12 @@ impl DagNode {
                             vars: vars.clone(),
                         }
                     }
-                    DagOp::Predicate { name } => Expr::Predicate {
-                        name: name.clone(),
-                        args: children_exprs.clone(),
-                    },
+                    DagOp::Predicate { name } => {
+                        Expr::Predicate {
+                            name: name.clone(),
+                            args: children_exprs.clone(),
+                        }
+                    }
                     DagOp::Path(pt) => {
 
                         if children_exprs.len() < 2 {
@@ -3654,10 +3810,12 @@ impl DagNode {
                             arc!(1),
                         )
                     }
-                    DagOp::NaryList(s) => Expr::NaryList(
-                        s.clone(),
-                        children_exprs.clone(),
-                    ),
+                    DagOp::NaryList(s) => {
+                        Expr::NaryList(
+                            s.clone(),
+                            children_exprs.clone(),
+                        )
+                    }
                 };
 
                 // Store the converted expression
@@ -4388,10 +4546,11 @@ impl Expr {
                 a.pre_order_walk(f);
             }
             // N-ary operators
-            Self::Matrix(m) => m
-                .iter()
-                .flatten()
-                .for_each(|e| e.pre_order_walk(f)),
+            Self::Matrix(m) => {
+                m.iter()
+                    .flatten()
+                    .for_each(|e| e.pre_order_walk(f))
+            }
             Self::Vector(v)
             | Self::Tuple(v)
             | Self::Polynomial(v)
@@ -4401,16 +4560,19 @@ impl Expr {
             | Self::System(v)
             | Self::Solutions(v)
             | Self::AddList(v)
-            | Self::MulList(v) => v
-                .iter()
-                .for_each(|e| e.pre_order_walk(f)),
-            Self::Predicate { args, .. } => args
-                .iter()
-                .for_each(|e| e.pre_order_walk(f)),
-            Self::SparsePolynomial(p) => p
-                .terms
-                .values()
-                .for_each(|c| c.pre_order_walk(f)),
+            | Self::MulList(v) => {
+                v.iter()
+                    .for_each(|e| e.pre_order_walk(f))
+            }
+            Self::Predicate { args, .. } => {
+                args.iter()
+                    .for_each(|e| e.pre_order_walk(f))
+            }
+            Self::SparsePolynomial(p) => {
+                p.terms
+                    .values()
+                    .for_each(|c| c.pre_order_walk(f))
+            }
             // More complex operators
             Self::Sum {
                 body,
@@ -4561,9 +4723,10 @@ impl Expr {
 
                 e.pre_order_walk(f);
             }
-            Self::CustomVecOne(v) => v
-                .iter()
-                .for_each(|e| e.pre_order_walk(f)),
+            Self::CustomVecOne(v) => {
+                v.iter()
+                    .for_each(|e| e.pre_order_walk(f))
+            }
             Self::CustomVecTwo(v1, v2) => {
 
                 for e in v1 {
@@ -4795,10 +4958,11 @@ impl Expr {
                 a.post_order_walk(f);
             }
             // N-ary operators
-            Self::Matrix(m) => m
-                .iter()
-                .flatten()
-                .for_each(|e| e.post_order_walk(f)),
+            Self::Matrix(m) => {
+                m.iter()
+                    .flatten()
+                    .for_each(|e| e.post_order_walk(f))
+            }
             Self::Vector(v)
             | Self::Tuple(v)
             | Self::Polynomial(v)
@@ -4808,16 +4972,19 @@ impl Expr {
             | Self::System(v)
             | Self::Solutions(v)
             | Self::AddList(v)
-            | Self::MulList(v) => v
-                .iter()
-                .for_each(|e| e.post_order_walk(f)),
-            Self::Predicate { args, .. } => args
-                .iter()
-                .for_each(|e| e.post_order_walk(f)),
-            Self::SparsePolynomial(p) => p
-                .terms
-                .values()
-                .for_each(|c| c.post_order_walk(f)),
+            | Self::MulList(v) => {
+                v.iter()
+                    .for_each(|e| e.post_order_walk(f))
+            }
+            Self::Predicate { args, .. } => {
+                args.iter()
+                    .for_each(|e| e.post_order_walk(f))
+            }
+            Self::SparsePolynomial(p) => {
+                p.terms
+                    .values()
+                    .for_each(|c| c.post_order_walk(f))
+            }
             // More complex operators
             Self::Integral {
                 integrand,
@@ -5567,10 +5734,12 @@ impl Expr {
             | Self::Max(a, b)
             | Self::MatrixMul(a, b)
             | Self::MatrixVecMul(a, b)
-            | Self::Apply(a, b) => vec![
-                a.as_ref().clone(),
-                b.as_ref().clone(),
-            ],
+            | Self::Apply(a, b) => {
+                vec![
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ]
+            }
             Self::AddList(v) | Self::MulList(v) => v.clone(),
             Self::Sin(a)
             | Self::Cos(a)
@@ -5621,11 +5790,12 @@ impl Expr {
             | Self::ConvergenceAnalysis(a, _)
             | Self::ForAll(_, a)
             | Self::Exists(_, a) => vec![a.as_ref().clone()],
-            Self::Matrix(m) => m
-                .iter()
-                .flatten()
-                .cloned()
-                .collect(),
+            Self::Matrix(m) => {
+                m.iter()
+                    .flatten()
+                    .cloned()
+                    .collect()
+            }
             Self::Vector(v)
             | Self::Tuple(v)
             | Self::Polynomial(v)
@@ -5635,54 +5805,63 @@ impl Expr {
             | Self::System(v)
             | Self::Solutions(v) => v.clone(),
             Self::Predicate { args, .. } => args.clone(),
-            Self::SparsePolynomial(p) => p
-                .terms
-                .values()
-                .cloned()
-                .collect(),
+            Self::SparsePolynomial(p) => {
+                p.terms
+                    .values()
+                    .cloned()
+                    .collect()
+            }
             Self::Integral {
                 integrand,
                 var,
                 lower_bound,
                 upper_bound,
-            } => vec![
-                integrand
-                    .as_ref()
-                    .clone(),
-                var.as_ref().clone(),
-                lower_bound
-                    .as_ref()
-                    .clone(),
-                upper_bound
-                    .as_ref()
-                    .clone(),
-            ],
+            } => {
+                vec![
+                    integrand
+                        .as_ref()
+                        .clone(),
+                    var.as_ref().clone(),
+                    lower_bound
+                        .as_ref()
+                        .clone(),
+                    upper_bound
+                        .as_ref()
+                        .clone(),
+                ]
+            }
             Self::VolumeIntegral {
                 scalar_field,
                 volume,
-            } => vec![
-                scalar_field
-                    .as_ref()
-                    .clone(),
-                volume
-                    .as_ref()
-                    .clone(),
-            ],
+            } => {
+                vec![
+                    scalar_field
+                        .as_ref()
+                        .clone(),
+                    volume
+                        .as_ref()
+                        .clone(),
+                ]
+            }
             Self::SurfaceIntegral {
                 vector_field,
                 surface,
-            } => vec![
-                vector_field
-                    .as_ref()
-                    .clone(),
-                surface
-                    .as_ref()
-                    .clone(),
-            ],
-            Self::DerivativeN(e, _, n) => vec![
-                e.as_ref().clone(),
-                n.as_ref().clone(),
-            ],
+            } => {
+                vec![
+                    vector_field
+                        .as_ref()
+                        .clone(),
+                    surface
+                        .as_ref()
+                        .clone(),
+                ]
+            }
+            Self::DerivativeN(e, _, n) => {
+                vec![
+                    e.as_ref().clone(),
+                    n.as_ref().clone(),
+                ]
+            }
             Self::Series(a, _, c, d) | Self::Summation(a, _, c, d) | Self::Product(a, _, c, d) => {
 
                 vec![
@@ -5699,43 +5878,61 @@ impl Expr {
                     d.as_ref().clone(),
                 ]
             }
-            Self::Interval(a, b, _, _) => vec![
-                a.as_ref().clone(),
-                b.as_ref().clone(),
-            ],
-            Self::Substitute(a, _, c) => vec![
-                a.as_ref().clone(),
-                c.as_ref().clone(),
-            ],
-            Self::Limit(a, _, c) => vec![
-                a.as_ref().clone(),
-                c.as_ref().clone(),
-            ],
-            Self::Ode { equation, .. } => vec![equation
-                .as_ref()
-                .clone()],
-            Self::Pde { equation, .. } => vec![equation
-                .as_ref()
-                .clone()],
-            Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => vec![
-                a.as_ref().clone(),
-                b.as_ref().clone(),
-                c.as_ref().clone(),
-                d.as_ref().clone(),
-            ],
-            Self::ParametricSolution { x, y } => vec![
-                x.as_ref().clone(),
-                y.as_ref().clone(),
-            ],
-            Self::RootOf { poly, .. } => vec![poly
-                .as_ref()
-                .clone()],
+            Self::Interval(a, b, _, _) => {
+                vec![
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ]
+            }
+            Self::Substitute(a, _, c) => {
+                vec![
+                    a.as_ref().clone(),
+                    c.as_ref().clone(),
+                ]
+            }
+            Self::Limit(a, _, c) => {
+                vec![
+                    a.as_ref().clone(),
+                    c.as_ref().clone(),
+                ]
+            }
+            Self::Ode { equation, .. } => {
+                vec![equation
+                    .as_ref()
+                    .clone()]
+            }
+            Self::Pde { equation, .. } => {
+                vec![equation
+                    .as_ref()
+                    .clone()]
+            }
+            Self::Fredholm(a, b, c, d) | Self::Volterra(a, b, c, d) => {
+                vec![
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                    c.as_ref().clone(),
+                    d.as_ref().clone(),
+                ]
+            }
+            Self::ParametricSolution { x, y } => {
+                vec![
+                    x.as_ref().clone(),
+                    y.as_ref().clone(),
+                ]
+            }
+            Self::RootOf { poly, .. } => {
+                vec![poly
+                    .as_ref()
+                    .clone()]
+            }
             Self::QuantityWithValue(v, _) => vec![v.as_ref().clone()],
             Self::CustomArcOne(a) => vec![a.as_ref().clone()],
-            Self::CustomArcTwo(a, b) => vec![
-                a.as_ref().clone(),
-                b.as_ref().clone(),
-            ],
+            Self::CustomArcTwo(a, b) => {
+                vec![
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ]
+            }
             Self::CustomArcThree(a, b, c) => {
 
                 vec![
@@ -5744,51 +5941,61 @@ impl Expr {
                     c.as_ref().clone(),
                 ]
             }
-            Self::CustomArcFour(a, b, c, d) => vec![
-                a.as_ref().clone(),
-                b.as_ref().clone(),
-                c.as_ref().clone(),
-                d.as_ref().clone(),
-            ],
-            Self::CustomArcFive(a, b, c, d, e) => vec![
-                a.as_ref().clone(),
-                b.as_ref().clone(),
-                c.as_ref().clone(),
-                d.as_ref().clone(),
-                e.as_ref().clone(),
-            ],
+            Self::CustomArcFour(a, b, c, d) => {
+                vec![
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                    c.as_ref().clone(),
+                    d.as_ref().clone(),
+                ]
+            }
+            Self::CustomArcFive(a, b, c, d, e) => {
+                vec![
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                    c.as_ref().clone(),
+                    d.as_ref().clone(),
+                    e.as_ref().clone(),
+                ]
+            }
             Self::CustomVecOne(v) => v.clone(),
-            Self::CustomVecTwo(v1, v2) => v1
-                .iter()
-                .chain(v2.iter())
-                .cloned()
-                .collect(),
-            Self::CustomVecThree(v1, v2, v3) => v1
-                .iter()
-                .chain(v2.iter())
-                .chain(v3.iter())
-                .cloned()
-                .collect(),
-            Self::CustomVecFour(v1, v2, v3, v4) => v1
-                .iter()
-                .chain(v2.iter())
-                .chain(v3.iter())
-                .chain(v4.iter())
-                .cloned()
-                .collect(),
-            Self::CustomVecFive(v1, v2, v3, v4, v5) => v1
-                .iter()
-                .chain(v2.iter())
-                .chain(v3.iter())
-                .chain(v4.iter())
-                .chain(v5.iter())
-                .cloned()
-                .collect(),
+            Self::CustomVecTwo(v1, v2) => {
+                v1.iter()
+                    .chain(v2.iter())
+                    .cloned()
+                    .collect()
+            }
+            Self::CustomVecThree(v1, v2, v3) => {
+                v1.iter()
+                    .chain(v2.iter())
+                    .chain(v3.iter())
+                    .cloned()
+                    .collect()
+            }
+            Self::CustomVecFour(v1, v2, v3, v4) => {
+                v1.iter()
+                    .chain(v2.iter())
+                    .chain(v3.iter())
+                    .chain(v4.iter())
+                    .cloned()
+                    .collect()
+            }
+            Self::CustomVecFive(v1, v2, v3, v4, v5) => {
+                v1.iter()
+                    .chain(v2.iter())
+                    .chain(v3.iter())
+                    .chain(v4.iter())
+                    .chain(v5.iter())
+                    .cloned()
+                    .collect()
+            }
             Self::UnaryList(_, a) => vec![a.as_ref().clone()],
-            Self::BinaryList(_, a, b) => vec![
-                a.as_ref().clone(),
-                b.as_ref().clone(),
-            ],
+            Self::BinaryList(_, a, b) => {
+                vec![
+                    a.as_ref().clone(),
+                    b.as_ref().clone(),
+                ]
+            }
             Self::NaryList(_, v) => v.clone(),
             _ => vec![],
         }
@@ -5893,10 +6100,12 @@ impl Expr {
                     Arc::new(children[1].clone()),
                 )
             }
-            Self::UnaryList(s, a) => Self::UnaryList(
-                s.clone(),
-                Arc::new(a.normalize()),
-            ),
+            Self::UnaryList(s, a) => {
+                Self::UnaryList(
+                    s.clone(),
+                    Arc::new(a.normalize()),
+                )
+            }
             Self::BinaryList(s, a, b) => {
 
                 let mut children = [
@@ -5948,25 +6157,37 @@ impl Expr {
     pub(crate) fn to_dag_op_internal(&self) -> Result<DagOp, String> {
 
         match self {
-            Self::Constant(c) => Ok(DagOp::Constant(
-                OrderedFloat(*c),
-            )),
-            Self::BigInt(i) => Ok(DagOp::BigInt(
-                i.clone(),
-            )),
-            Self::Rational(r) => Ok(DagOp::Rational(
-                r.clone(),
-            )),
+            Self::Constant(c) => {
+                Ok(DagOp::Constant(
+                    OrderedFloat(*c),
+                ))
+            }
+            Self::BigInt(i) => {
+                Ok(DagOp::BigInt(
+                    i.clone(),
+                ))
+            }
+            Self::Rational(r) => {
+                Ok(DagOp::Rational(
+                    r.clone(),
+                ))
+            }
             Self::Boolean(b) => Ok(DagOp::Boolean(*b)),
-            Self::Variable(s) => Ok(DagOp::Variable(
-                s.clone(),
-            )),
-            Self::Pattern(s) => Ok(DagOp::Pattern(
-                s.clone(),
-            )),
-            Self::Domain(s) => Ok(DagOp::Domain(
-                s.clone(),
-            )),
+            Self::Variable(s) => {
+                Ok(DagOp::Variable(
+                    s.clone(),
+                ))
+            }
+            Self::Pattern(s) => {
+                Ok(DagOp::Pattern(
+                    s.clone(),
+                ))
+            }
+            Self::Domain(s) => {
+                Ok(DagOp::Domain(
+                    s.clone(),
+                ))
+            }
             Self::Pi => Ok(DagOp::Pi),
             Self::E => Ok(DagOp::E),
             Self::Infinity => Ok(DagOp::Infinity),
@@ -5974,44 +6195,66 @@ impl Expr {
             Self::InfiniteSolutions => Ok(DagOp::InfiniteSolutions),
             Self::NoSolution => Ok(DagOp::NoSolution),
 
-            Self::Derivative(_, s) => Ok(DagOp::Derivative(
-                s.clone(),
-            )),
-            Self::DerivativeN(_, s, _) => Ok(DagOp::DerivativeN(
-                s.clone(),
-            )),
-            Self::Limit(_, s, _) => Ok(DagOp::Limit(
-                s.clone(),
-            )),
-            Self::Solve(_, s) => Ok(DagOp::Solve(
-                s.clone(),
-            )),
+            Self::Derivative(_, s) => {
+                Ok(DagOp::Derivative(
+                    s.clone(),
+                ))
+            }
+            Self::DerivativeN(_, s, _) => {
+                Ok(DagOp::DerivativeN(
+                    s.clone(),
+                ))
+            }
+            Self::Limit(_, s, _) => {
+                Ok(DagOp::Limit(
+                    s.clone(),
+                ))
+            }
+            Self::Solve(_, s) => {
+                Ok(DagOp::Solve(
+                    s.clone(),
+                ))
+            }
             Self::ConvergenceAnalysis(_, s) => Ok(DagOp::ConvergenceAnalysis(s.clone())),
-            Self::ForAll(s, _) => Ok(DagOp::ForAll(
-                s.clone(),
-            )),
-            Self::Exists(s, _) => Ok(DagOp::Exists(
-                s.clone(),
-            )),
-            Self::Substitute(_, s, _) => Ok(DagOp::Substitute(
-                s.clone(),
-            )),
-            Self::Ode { func, var, .. } => Ok(DagOp::Ode {
-                func: func.clone(),
-                var: var.clone(),
-            }),
-            Self::Pde { func, vars, .. } => Ok(DagOp::Pde {
-                func: func.clone(),
-                vars: vars.clone(),
-            }),
+            Self::ForAll(s, _) => {
+                Ok(DagOp::ForAll(
+                    s.clone(),
+                ))
+            }
+            Self::Exists(s, _) => {
+                Ok(DagOp::Exists(
+                    s.clone(),
+                ))
+            }
+            Self::Substitute(_, s, _) => {
+                Ok(DagOp::Substitute(
+                    s.clone(),
+                ))
+            }
+            Self::Ode { func, var, .. } => {
+                Ok(DagOp::Ode {
+                    func: func.clone(),
+                    var: var.clone(),
+                })
+            }
+            Self::Pde { func, vars, .. } => {
+                Ok(DagOp::Pde {
+                    func: func.clone(),
+                    vars: vars.clone(),
+                })
+            }
             Self::Predicate { name, .. } => Ok(DagOp::Predicate { name: name.clone() }),
-            Self::Path(pt, _, _) => Ok(DagOp::Path(
-                pt.clone(),
-            )),
-            Self::Interval(_, _, incl_lower, incl_upper) => Ok(DagOp::Interval(
-                *incl_lower,
-                *incl_upper,
-            )),
+            Self::Path(pt, _, _) => {
+                Ok(DagOp::Path(
+                    pt.clone(),
+                ))
+            }
+            Self::Interval(_, _, incl_lower, incl_upper) => {
+                Ok(DagOp::Interval(
+                    *incl_lower,
+                    *incl_upper,
+                ))
+            }
             Self::RootOf { index, .. } => Ok(DagOp::RootOf { index: *index }),
             Self::SparsePolynomial(p) => Ok(DagOp::SparsePolynomial(p.clone())),
             Self::QuantityWithValue(_, u) => Ok(DagOp::QuantityWithValue(u.clone())),
@@ -6054,15 +6297,21 @@ impl Expr {
             Self::VolumeIntegral { .. } => Ok(DagOp::VolumeIntegral),
             Self::SurfaceIntegral { .. } => Ok(DagOp::SurfaceIntegral),
             Self::Sum { .. } => Ok(DagOp::Sum),
-            Self::Series(_, s, _, _) => Ok(DagOp::Series(
-                s.clone(),
-            )),
-            Self::Summation(_, s, _, _) => Ok(DagOp::Summation(
-                s.clone(),
-            )),
-            Self::Product(_, s, _, _) => Ok(DagOp::Product(
-                s.clone(),
-            )),
+            Self::Series(_, s, _, _) => {
+                Ok(DagOp::Series(
+                    s.clone(),
+                ))
+            }
+            Self::Summation(_, s, _, _) => {
+                Ok(DagOp::Summation(
+                    s.clone(),
+                ))
+            }
+            Self::Product(_, s, _, _) => {
+                Ok(DagOp::Product(
+                    s.clone(),
+                ))
+            }
             Self::AsymptoticExpansion(_, s, _, _) => Ok(DagOp::AsymptoticExpansion(s.clone())),
             Self::Sec(_) => Ok(DagOp::Sec),
             Self::Csc(_) => Ok(DagOp::Csc),
@@ -6134,9 +6383,11 @@ impl Expr {
             Self::Dag(_) => Err("Cannot convert Dag to DagOp".to_string()),
 
             Self::CustomZero => Ok(DagOp::CustomZero),
-            Self::CustomString(s) => Ok(DagOp::CustomString(
-                s.clone(),
-            )),
+            Self::CustomString(s) => {
+                Ok(DagOp::CustomString(
+                    s.clone(),
+                ))
+            }
             Self::CustomArcOne(_) => Ok(DagOp::CustomArcOne),
             Self::CustomArcTwo(_, _) => Ok(DagOp::CustomArcTwo),
             Self::CustomArcThree(_, _, _) => Ok(DagOp::CustomArcThree),
@@ -6147,15 +6398,21 @@ impl Expr {
             Self::CustomVecThree(_, _, _) => Ok(DagOp::CustomVecThree),
             Self::CustomVecFour(_, _, _, _) => Ok(DagOp::CustomVecFour),
             Self::CustomVecFive(_, _, _, _, _) => Ok(DagOp::CustomVecFive),
-            Self::UnaryList(s, _) => Ok(DagOp::UnaryList(
-                s.clone(),
-            )),
-            Self::BinaryList(s, _, _) => Ok(DagOp::BinaryList(
-                s.clone(),
-            )),
-            Self::NaryList(s, _) => Ok(DagOp::NaryList(
-                s.clone(),
-            )),
+            Self::UnaryList(s, _) => {
+                Ok(DagOp::UnaryList(
+                    s.clone(),
+                ))
+            }
+            Self::BinaryList(s, _, _) => {
+                Ok(DagOp::BinaryList(
+                    s.clone(),
+                ))
+            }
+            Self::NaryList(s, _) => {
+                Ok(DagOp::NaryList(
+                    s.clone(),
+                ))
+            }
         }
     }
 }

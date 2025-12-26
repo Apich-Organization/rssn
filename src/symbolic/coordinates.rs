@@ -351,15 +351,17 @@ pub fn get_to_cartesian_rules(from: CoordinateSystem) -> Result<TransformationRu
     ];
 
     match from {
-        CoordinateSystem::Cartesian => Ok((
-            cartesian_vars.clone(),
-            cartesian_vars,
-            vec![
-                Expr::Variable("x".to_string()),
-                Expr::Variable("y".to_string()),
-                Expr::Variable("z".to_string()),
-            ],
-        )),
+        CoordinateSystem::Cartesian => {
+            Ok((
+                cartesian_vars.clone(),
+                cartesian_vars,
+                vec![
+                    Expr::Variable("x".to_string()),
+                    Expr::Variable("y".to_string()),
+                    Expr::Variable("z".to_string()),
+                ],
+            ))
+        }
         CoordinateSystem::Cylindrical => {
 
             let cyl_vars = vec![
@@ -474,11 +476,13 @@ pub(crate) fn get_from_cartesian_rules(to: CoordinateSystem) -> TransformationRu
     let z = Expr::Variable("z".to_string());
 
     match to {
-        CoordinateSystem::Cartesian => (
-            cartesian_vars.clone(),
-            cartesian_vars,
-            vec![x, y, z],
-        ),
+        CoordinateSystem::Cartesian => {
+            (
+                cartesian_vars.clone(),
+                cartesian_vars,
+                vec![x, y, z],
+            )
+        }
         CoordinateSystem::Cylindrical => {
 
             let cyl_vars = vec![
@@ -813,27 +817,33 @@ pub fn transform_tensor2(
     let jacobian_inv = inverse_matrix(&jacobian);
 
     let transformed_tensor = match tensor_type {
-        TensorType::Contravariant => mul_matrices(
-            &jacobian,
-            &mul_matrices(
-                tensor,
-                &transpose_matrix(&jacobian),
-            ),
-        ),
-        TensorType::Covariant => mul_matrices(
-            &transpose_matrix(&jacobian_inv),
-            &mul_matrices(
-                tensor,
-                &jacobian_inv,
-            ),
-        ),
-        TensorType::Mixed => mul_matrices(
-            &jacobian,
-            &mul_matrices(
-                tensor,
-                &jacobian_inv,
-            ),
-        ),
+        TensorType::Contravariant => {
+            mul_matrices(
+                &jacobian,
+                &mul_matrices(
+                    tensor,
+                    &transpose_matrix(&jacobian),
+                ),
+            )
+        }
+        TensorType::Covariant => {
+            mul_matrices(
+                &transpose_matrix(&jacobian_inv),
+                &mul_matrices(
+                    tensor,
+                    &jacobian_inv,
+                ),
+            )
+        }
+        TensorType::Mixed => {
+            mul_matrices(
+                &jacobian,
+                &mul_matrices(
+                    tensor,
+                    &jacobian_inv,
+                ),
+            )
+        }
     };
 
     Ok(transformed_tensor)

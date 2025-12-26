@@ -48,18 +48,21 @@ pub(crate) fn eval_expr(
 
             let val_result = match current_expr.op() {
                 DagOp::Constant(c) => Ok(c.into_inner()),
-                DagOp::BigInt(i) => i
-                    .to_f64()
-                    .ok_or_else(|| "BigInt conversion to f64 failed".to_string()),
-                DagOp::Variable(v) => vars
-                    .get(&v)
-                    .copied()
-                    .ok_or_else(|| {
-                        format!(
-                            "Variable '{}' not found",
-                            v
-                        )
-                    }),
+                DagOp::BigInt(i) => {
+                    i.to_f64()
+                        .ok_or_else(|| "BigInt conversion to f64 failed".to_string())
+                }
+                DagOp::Variable(v) => {
+                    vars.get(&v)
+                        .copied()
+                        .ok_or_else(|| {
+
+                            format!(
+                                "Variable '{}' not found",
+                                v
+                            )
+                        })
+                }
                 DagOp::Add => Ok(get_child_val(0) + get_child_val(1)),
                 DagOp::Sub => Ok(get_child_val(0) - get_child_val(1)),
                 DagOp::Mul => Ok(get_child_val(0) * get_child_val(1)),
@@ -75,10 +78,12 @@ pub(crate) fn eval_expr(
                 DagOp::Exp => Ok(get_child_val(0).exp()),
                 DagOp::Pi => Ok(std::f64::consts::PI),
                 DagOp::E => Ok(std::f64::consts::E),
-                _ => Err(format!(
-                    "Numerical evaluation for expression {:?} is not implemented",
-                    current_expr
-                )),
+                _ => {
+                    Err(format!(
+                        "Numerical evaluation for expression {:?} is not implemented",
+                        current_expr
+                    ))
+                }
             };
 
             let val = val_result?;

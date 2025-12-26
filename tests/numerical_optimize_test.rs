@@ -86,10 +86,12 @@ fn test_linear_regression() {
 
     let problem = match LinearRegression::new(x, y) {
         Ok(p) => p,
-        Err(e) => panic!(
-            "Failed to create LinearRegression problem: {}",
-            e
-        ),
+        Err(e) => {
+            panic!(
+                "Failed to create LinearRegression problem: {}",
+                e
+            )
+        }
     };
 
     let config = OptimizationConfig {
@@ -105,10 +107,12 @@ fn test_linear_regression() {
         &config,
     ) {
         Ok(r) => r,
-        Err(e) => panic!(
-            "Solver failed for linear regression: {}",
-            e
-        ),
+        Err(e) => {
+            panic!(
+                "Solver failed for linear regression: {}",
+                e
+            )
+        }
     };
 
     let best_param = match result

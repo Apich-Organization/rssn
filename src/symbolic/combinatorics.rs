@@ -638,10 +638,12 @@ pub(crate) fn guess_particular_form(
 
             (form, unknown_coeffs)
         }
-        _ => (
-            Expr::Constant(0.0),
-            vec![],
-        ),
+        _ => {
+            (
+                Expr::Constant(0.0),
+                vec![],
+            )
+        }
     }
 }
 

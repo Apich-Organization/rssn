@@ -99,22 +99,26 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
         &input.message,
         input.n_parity,
     ) {
-        Ok(codeword) => to_c_string(
-            serde_json::to_string(&FfiResult {
-                ok: Some(codeword),
-                err: None::<String>,
-            })
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<Vec<u8>, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Ok(codeword) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult {
+                    ok: Some(codeword),
+                    err: None::<String>,
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
+            )
+        }
     }
 }
 
@@ -145,22 +149,26 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
         &mut codeword,
         input.n_parity,
     ) {
-        Ok(()) => to_c_string(
-            serde_json::to_string(&FfiResult {
-                ok: Some(codeword),
-                err: None::<String>,
-            })
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<Vec<u8>, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Ok(()) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult {
+                    ok: Some(codeword),
+                    err: None::<String>,
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
+            )
+        }
     }
 }
 
@@ -222,22 +230,26 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
     };
 
     match error_correction::hamming_encode_numerical(&input.data) {
-        Some(codeword) => to_c_string(
-            serde_json::to_string(&FfiResult {
-                ok: Some(codeword),
-                err: None::<String>,
-            })
-            .unwrap(),
-        ),
-        None => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<Vec<u8>, String> {
-                    ok: None,
-                    err: Some("Input must be exactly 4 bytes".to_string()),
-                },
+        Some(codeword) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult {
+                    ok: Some(codeword),
+                    err: None::<String>,
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
+        None => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<u8>, String> {
+                        ok: None,
+                        err: Some("Input must be exactly 4 bytes".to_string()),
+                    },
+                )
+                .unwrap(),
+            )
+        }
     }
 }
 
@@ -263,22 +275,26 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
     };
 
     match error_correction::hamming_decode_numerical(&input.data) {
-        Ok((data, error_pos)) => to_c_string(
-            serde_json::to_string(&FfiResult {
-                ok: Some(HammingDecodeResult { data, error_pos }),
-                err: None::<String>,
-            })
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<HammingDecodeResult, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Ok((data, error_pos)) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult {
+                    ok: Some(HammingDecodeResult { data, error_pos }),
+                    err: None::<String>,
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<HammingDecodeResult, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
+            )
+        }
     }
 }
 
@@ -336,22 +352,26 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
     };
 
     match error_correction::hamming_distance_numerical(&input.a, &input.b) {
-        Some(dist) => to_c_string(
-            serde_json::to_string(&FfiResult {
-                ok: Some(dist),
-                err: None::<String>,
-            })
-            .unwrap(),
-        ),
-        None => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<usize, String> {
-                    ok: None,
-                    err: Some("Vectors must have same length".to_string()),
-                },
+        Some(dist) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult {
+                    ok: Some(dist),
+                    err: None::<String>,
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
+        None => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<usize, String> {
+                        ok: None,
+                        err: Some("Vectors must have same length".to_string()),
+                    },
+                )
+                .unwrap(),
+            )
+        }
     }
 }
 

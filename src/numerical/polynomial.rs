@@ -46,6 +46,7 @@ impl Polynomial {
         self.coeffs
             .iter()
             .fold(0.0, |acc, &c| {
+
                 acc.mul_add(x, c)
             })
     }

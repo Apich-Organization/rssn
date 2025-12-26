@@ -166,9 +166,10 @@ pub fn analyze_convergence(
 
     // Convert DAG to tree for pattern matching
     let a_n = match simplified {
-        Expr::Dag(ref node) => node
-            .to_expr()
-            .unwrap_or(simplified.clone()),
+        Expr::Dag(ref node) => {
+            node.to_expr()
+                .unwrap_or(simplified.clone())
+        }
         _ => simplified,
     };
 

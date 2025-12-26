@@ -74,22 +74,26 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product_json(input_json: *const c_cha
     };
 
     match functional_analysis::inner_product(&input.f, &input.g) {
-        Ok(res) => to_c_string(
-            serde_json::to_string(&FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            })
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Ok(res) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult {
+                    ok: Some(res),
+                    err: None::<String>,
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
+            )
+        }
     }
 }
 
@@ -113,21 +117,25 @@ pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_json(input_json: *const c_char
     };
 
     match functional_analysis::gram_schmidt(&input.basis) {
-        Ok(res) => to_c_string(
-            serde_json::to_string(&FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            })
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<Vec<Vec<(f64, f64)>>, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Ok(res) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult {
+                    ok: Some(res),
+                    err: None::<String>,
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Vec<Vec<(f64, f64)>>, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
+            )
+        }
     }
 }

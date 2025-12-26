@@ -51,28 +51,38 @@ pub fn simplify_radicals(expr: &Expr) -> Expr {
                 simplified_exp,
             )
         }
-        Expr::Add(a, b) => Expr::new_add(
-            simplify_radicals(a),
-            simplify_radicals(b),
-        ),
-        Expr::Sub(a, b) => Expr::new_sub(
-            simplify_radicals(a),
-            simplify_radicals(b),
-        ),
-        Expr::Mul(a, b) => Expr::new_mul(
-            simplify_radicals(a),
-            simplify_radicals(b),
-        ),
-        Expr::Div(a, b) => Expr::new_div(
-            simplify_radicals(a),
-            simplify_radicals(b),
-        ),
+        Expr::Add(a, b) => {
+            Expr::new_add(
+                simplify_radicals(a),
+                simplify_radicals(b),
+            )
+        }
+        Expr::Sub(a, b) => {
+            Expr::new_sub(
+                simplify_radicals(a),
+                simplify_radicals(b),
+            )
+        }
+        Expr::Mul(a, b) => {
+            Expr::new_mul(
+                simplify_radicals(a),
+                simplify_radicals(b),
+            )
+        }
+        Expr::Div(a, b) => {
+            Expr::new_div(
+                simplify_radicals(a),
+                simplify_radicals(b),
+            )
+        }
         Expr::Neg(a) => Expr::new_neg(simplify_radicals(a)),
-        Expr::Dag(node) => simplify_radicals(
-            &node
-                .to_expr()
-                .unwrap_or_else(|_| expr.clone()),
-        ),
+        Expr::Dag(node) => {
+            simplify_radicals(
+                &node
+                    .to_expr()
+                    .unwrap_or_else(|_| expr.clone()),
+            )
+        }
         _ => expr.clone(),
     }
 }

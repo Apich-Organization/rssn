@@ -53,14 +53,18 @@ pub unsafe extern "C" fn rssn_num_eval_json(json_ptr: *const c_char) -> *mut c_c
     let result = elementary::eval_expr(&req.expr, &req.vars);
 
     let ffi_res = match result {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&ffi_res).unwrap())

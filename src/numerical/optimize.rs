@@ -233,6 +233,7 @@ impl CostFunction for Rastrigin {
         let sum: f64 = param
             .iter()
             .map(|&x| {
+
                 x.mul_add(
                     x,
                     -(self.a * (2.0 * PI * x).cos()),

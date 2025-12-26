@@ -50,14 +50,18 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
     );
 
     let ffi_res = match res {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_bincode_buffer(&ffi_res)
@@ -87,14 +91,18 @@ pub unsafe extern "C" fn rssn_numerical_sum_series_bincode(buffer: BincodeBuffer
     );
 
     let ffi_res = match res {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_bincode_buffer(&ffi_res)

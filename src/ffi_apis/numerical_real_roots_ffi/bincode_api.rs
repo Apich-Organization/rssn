@@ -69,15 +69,19 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_bincode(
         &poly,
         input.tolerance,
     ) {
-        Ok(roots) => encode(FfiResult {
-            ok: Some(roots),
-            err: None::<String>,
-        }),
-        Err(e) => encode(
-            FfiResult::<Vec<f64>> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(roots) => {
+            encode(FfiResult {
+                ok: Some(roots),
+                err: None::<String>,
+            })
+        }
+        Err(e) => {
+            encode(
+                FfiResult::<Vec<f64>> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }

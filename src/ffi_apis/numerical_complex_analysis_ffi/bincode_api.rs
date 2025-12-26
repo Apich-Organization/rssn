@@ -35,16 +35,20 @@ pub unsafe extern "C" fn rssn_num_complex_eval_bincode(buffer: BincodeBuffer) ->
         &input.expr,
         &input.vars,
     ) {
-        Ok(res) => to_bincode_buffer(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        }),
-        Err(e) => to_bincode_buffer(
-            &FfiResult::<Complex<f64>, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(res) => {
+            to_bincode_buffer(&FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            })
+        }
+        Err(e) => {
+            to_bincode_buffer(
+                &FfiResult::<Complex<f64>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }
 
@@ -79,15 +83,19 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_bincode(
         &input.var,
         &input.path,
     ) {
-        Ok(res) => to_bincode_buffer(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        }),
-        Err(e) => to_bincode_buffer(
-            &FfiResult::<Complex<f64>, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(res) => {
+            to_bincode_buffer(&FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            })
+        }
+        Err(e) => {
+            to_bincode_buffer(
+                &FfiResult::<Complex<f64>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }

@@ -25,23 +25,27 @@ pub unsafe extern "C" fn rssn_physics_sim_gpe_run_json(input: *const c_char) -> 
     };
 
     match gpe_superfluidity::run_gpe_ground_state_finder(&params) {
-        Ok(res) => to_c_string(
-            serde_json::to_string(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(
-                res.into_raw_vec(),
-            ))
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
-                e
-            ))
-            .unwrap(),
-        ),
+        Ok(res) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::ok(
+                    res.into_raw_vec(),
+                ))
+                .unwrap(),
+            )
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
+                    e
+                ))
+                .unwrap(),
+            )
+        }
     }
 }

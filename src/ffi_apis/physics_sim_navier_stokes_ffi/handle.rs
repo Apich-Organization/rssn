@@ -59,11 +59,13 @@ pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
                 p: Box::into_raw(Box::new(p_mat)),
             }
         }
-        Err(_) => NavierStokesResultHandles {
-            u: std::ptr::null_mut(),
-            v: std::ptr::null_mut(),
-            p: std::ptr::null_mut(),
-        },
+        Err(_) => {
+            NavierStokesResultHandles {
+                u: std::ptr::null_mut(),
+                v: std::ptr::null_mut(),
+                p: std::ptr::null_mut(),
+            }
+        }
     }
 }
 

@@ -45,14 +45,18 @@ pub unsafe extern "C" fn rssn_num_ode_solve_json(input_json: *const c_char) -> *
     );
 
     let ffi_res = match res {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_c_string(serde_json::to_string(&ffi_res).unwrap())

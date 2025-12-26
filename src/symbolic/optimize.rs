@@ -149,11 +149,13 @@ fn evaluate_constant_expr(expr: &Expr) -> Option<f64> {
         Expr::Neg(a) => Some(-evaluate_constant_expr(a)?),
         Expr::Power(a, b) => Some(evaluate_constant_expr(a)?.powf(evaluate_constant_expr(b)?)),
         Expr::Sqrt(a) => Some(evaluate_constant_expr(a)?.sqrt()),
-        Expr::Dag(node) => evaluate_constant_expr(
-            &node
-                .to_expr()
-                .ok()?,
-        ),
+        Expr::Dag(node) => {
+            evaluate_constant_expr(
+                &node
+                    .to_expr()
+                    .ok()?,
+            )
+        }
         _ => None,
     }
 }
@@ -263,9 +265,11 @@ pub fn find_constrained_extrema(
     }
 
     match solve_system(&grad_eqs, &all_vars) {
-        Some(solution) => Ok(vec![solution
-            .into_iter()
-            .collect()]),
+        Some(solution) => {
+            Ok(vec![solution
+                .into_iter()
+                .collect()])
+        }
         None => Ok(vec![]),
     }
 }

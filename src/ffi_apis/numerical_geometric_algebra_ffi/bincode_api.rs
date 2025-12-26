@@ -235,14 +235,18 @@ pub unsafe extern "C" fn rssn_num_ga_inv_bincode(buffer: BincodeBuffer) -> Binco
     };
 
     let res = match input.mv.inv() {
-        Some(v) => FfiResult {
-            ok: Some(v),
-            err: None,
-        },
-        None => FfiResult {
-            ok: None,
-            err: Some("Multivector is not invertible".to_string()),
-        },
+        Some(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None,
+            }
+        }
+        None => {
+            FfiResult {
+                ok: None,
+                err: Some("Multivector is not invertible".to_string()),
+            }
+        }
     };
 
     encode(res)

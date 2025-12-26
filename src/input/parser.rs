@@ -66,28 +66,40 @@ pub(crate) fn comparison_expr(input: &str) -> IResult<&str, Expr> {
             additive_expr,
         ),
         move || init.clone(),
-        |acc, (op, val)| match op {
-            "=" => Expr::Eq(
-                Arc::new(acc),
-                Arc::new(val),
-            ),
-            "<" => Expr::Lt(
-                Arc::new(acc),
-                Arc::new(val),
-            ),
-            ">" => Expr::Gt(
-                Arc::new(acc),
-                Arc::new(val),
-            ),
-            "<=" => Expr::Le(
-                Arc::new(acc),
-                Arc::new(val),
-            ),
-            ">=" => Expr::Ge(
-                Arc::new(acc),
-                Arc::new(val),
-            ),
-            _ => unreachable!(),
+        |acc, (op, val)| {
+            match op {
+                "=" => {
+                    Expr::Eq(
+                        Arc::new(acc),
+                        Arc::new(val),
+                    )
+                }
+                "<" => {
+                    Expr::Lt(
+                        Arc::new(acc),
+                        Arc::new(val),
+                    )
+                }
+                ">" => {
+                    Expr::Gt(
+                        Arc::new(acc),
+                        Arc::new(val),
+                    )
+                }
+                "<=" => {
+                    Expr::Le(
+                        Arc::new(acc),
+                        Arc::new(val),
+                    )
+                }
+                ">=" => {
+                    Expr::Ge(
+                        Arc::new(acc),
+                        Arc::new(val),
+                    )
+                }
+                _ => unreachable!(),
+            }
         },
     )(input)
 }
@@ -245,6 +257,7 @@ pub(crate) fn power(input: &str) -> IResult<&str, Expr> {
 pub(crate) fn parse_bigint(input: &str) -> IResult<&str, Expr> {
 
     map(nom_i64, |n| {
+
         Expr::BigInt(BigInt::from(n))
     })(input)
 }
@@ -308,9 +321,11 @@ pub(crate) fn parse_boolean(input: &str) -> IResult<&str, Expr> {
 
     alt((
         map(tag("true"), |_| {
+
             Expr::Boolean(true)
         }),
         map(tag("false"), |_| {
+
             Expr::Boolean(false)
         }),
     ))(input)
@@ -387,556 +402,722 @@ pub(crate) fn parse_function_call(input: &str) -> IResult<&str, Expr> {
     //println!("Remaining input after args: '{}'", input);
     match func_name {
         // Two-argument functions with specific names
-        "log_base" => Ok((
-            input,
-            Expr::LogBase(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "atan2" => Ok((
-            input,
-            Expr::Atan2(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "falling_factorial" => Ok((
-            input,
-            Expr::FallingFactorial(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "rising_factorial" => Ok((
-            input,
-            Expr::RisingFactorial(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "kronecker_delta" => Ok((
-            input,
-            Expr::KroneckerDelta(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "matrix_mul" => Ok((
-            input,
-            Expr::MatrixMul(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "matrix_vec_mul" => Ok((
-            input,
-            Expr::MatrixVecMul(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "quantity_with_value" => Ok((
-            input,
-            Expr::QuantityWithValue(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-            ),
-        )),
+        "log_base" => {
+            Ok((
+                input,
+                Expr::LogBase(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "atan2" => {
+            Ok((
+                input,
+                Expr::Atan2(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "falling_factorial" => {
+            Ok((
+                input,
+                Expr::FallingFactorial(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "rising_factorial" => {
+            Ok((
+                input,
+                Expr::RisingFactorial(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "kronecker_delta" => {
+            Ok((
+                input,
+                Expr::KroneckerDelta(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "matrix_mul" => {
+            Ok((
+                input,
+                Expr::MatrixMul(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "matrix_vec_mul" => {
+            Ok((
+                input,
+                Expr::MatrixVecMul(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "quantity_with_value" => {
+            Ok((
+                input,
+                Expr::QuantityWithValue(
+                    Arc::new(args[0].clone()),
+                    match &args[1] {
+                        Expr::Variable(s) => s.clone(),
+                        _ => return nom::combinator::fail(input),
+                    },
+                ),
+            ))
+        }
 
         // Single-argument functions
-        "sin" => Ok((
-            input,
-            Expr::Sin(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "cos" => Ok((
-            input,
-            Expr::Cos(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "tan" => Ok((
-            input,
-            Expr::Tan(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "log" => Ok((
-            input,
-            Expr::Log(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "exp" => Ok((
-            input,
-            Expr::Exp(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "sqrt" => Ok((
-            input,
-            Expr::Sqrt(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "abs" => Ok((
-            input,
-            Expr::Abs(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "sec" => Ok((
-            input,
-            Expr::Sec(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "csc" => Ok((
-            input,
-            Expr::Csc(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "cot" => Ok((
-            input,
-            Expr::Cot(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "asin" => Ok((
-            input,
-            Expr::ArcSin(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "acos" => Ok((
-            input,
-            Expr::ArcCos(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "atan" => Ok((
-            input,
-            Expr::ArcTan(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "asec" => Ok((
-            input,
-            Expr::ArcSec(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "acsc" => Ok((
-            input,
-            Expr::ArcCsc(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "acot" => Ok((
-            input,
-            Expr::ArcCot(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "sinh" => Ok((
-            input,
-            Expr::Sinh(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "cosh" => Ok((
-            input,
-            Expr::Cosh(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "tanh" => Ok((
-            input,
-            Expr::Tanh(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "sech" => Ok((
-            input,
-            Expr::Sech(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "csch" => Ok((
-            input,
-            Expr::Csch(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "coth" => Ok((
-            input,
-            Expr::Coth(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "asinh" => Ok((
-            input,
-            Expr::ArcSinh(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "acosh" => Ok((
-            input,
-            Expr::ArcCosh(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "atanh" => Ok((
-            input,
-            Expr::ArcTanh(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "asech" => Ok((
-            input,
-            Expr::ArcSech(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "acsch" => Ok((
-            input,
-            Expr::ArcCsch(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "acoth" => Ok((
-            input,
-            Expr::ArcCoth(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "gamma" => Ok((
-            input,
-            Expr::Gamma(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "erf" => Ok((
-            input,
-            Expr::Erf(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "erfc" => Ok((
-            input,
-            Expr::Erfc(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "erfi" => Ok((
-            input,
-            Expr::Erfi(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "zeta" => Ok((
-            input,
-            Expr::Zeta(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "digamma" => Ok((
-            input,
-            Expr::Digamma(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "floor" => Ok((
-            input,
-            Expr::Floor(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "is_prime" => Ok((
-            input,
-            Expr::IsPrime(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "transpose" => Ok((
-            input,
-            Expr::Transpose(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "inverse" => Ok((
-            input,
-            Expr::Inverse(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "general_solution" => Ok((
-            input,
-            Expr::GeneralSolution(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "particular_solution" => Ok((
-            input,
-            Expr::ParticularSolution(Arc::new(
-                args[0].clone(),
-            )),
-        )),
-        "boundary" => Ok((
-            input,
-            Expr::Boundary(Arc::new(
-                args[0].clone(),
-            )),
-        )),
+        "sin" => {
+            Ok((
+                input,
+                Expr::Sin(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "cos" => {
+            Ok((
+                input,
+                Expr::Cos(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "tan" => {
+            Ok((
+                input,
+                Expr::Tan(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "log" => {
+            Ok((
+                input,
+                Expr::Log(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "exp" => {
+            Ok((
+                input,
+                Expr::Exp(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "sqrt" => {
+            Ok((
+                input,
+                Expr::Sqrt(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "abs" => {
+            Ok((
+                input,
+                Expr::Abs(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "sec" => {
+            Ok((
+                input,
+                Expr::Sec(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "csc" => {
+            Ok((
+                input,
+                Expr::Csc(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "cot" => {
+            Ok((
+                input,
+                Expr::Cot(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "asin" => {
+            Ok((
+                input,
+                Expr::ArcSin(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "acos" => {
+            Ok((
+                input,
+                Expr::ArcCos(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "atan" => {
+            Ok((
+                input,
+                Expr::ArcTan(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "asec" => {
+            Ok((
+                input,
+                Expr::ArcSec(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "acsc" => {
+            Ok((
+                input,
+                Expr::ArcCsc(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "acot" => {
+            Ok((
+                input,
+                Expr::ArcCot(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "sinh" => {
+            Ok((
+                input,
+                Expr::Sinh(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "cosh" => {
+            Ok((
+                input,
+                Expr::Cosh(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "tanh" => {
+            Ok((
+                input,
+                Expr::Tanh(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "sech" => {
+            Ok((
+                input,
+                Expr::Sech(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "csch" => {
+            Ok((
+                input,
+                Expr::Csch(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "coth" => {
+            Ok((
+                input,
+                Expr::Coth(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "asinh" => {
+            Ok((
+                input,
+                Expr::ArcSinh(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "acosh" => {
+            Ok((
+                input,
+                Expr::ArcCosh(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "atanh" => {
+            Ok((
+                input,
+                Expr::ArcTanh(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "asech" => {
+            Ok((
+                input,
+                Expr::ArcSech(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "acsch" => {
+            Ok((
+                input,
+                Expr::ArcCsch(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "acoth" => {
+            Ok((
+                input,
+                Expr::ArcCoth(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "gamma" => {
+            Ok((
+                input,
+                Expr::Gamma(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "erf" => {
+            Ok((
+                input,
+                Expr::Erf(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "erfc" => {
+            Ok((
+                input,
+                Expr::Erfc(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "erfi" => {
+            Ok((
+                input,
+                Expr::Erfi(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "zeta" => {
+            Ok((
+                input,
+                Expr::Zeta(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "digamma" => {
+            Ok((
+                input,
+                Expr::Digamma(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "floor" => {
+            Ok((
+                input,
+                Expr::Floor(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "is_prime" => {
+            Ok((
+                input,
+                Expr::IsPrime(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "transpose" => {
+            Ok((
+                input,
+                Expr::Transpose(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "inverse" => {
+            Ok((
+                input,
+                Expr::Inverse(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "general_solution" => {
+            Ok((
+                input,
+                Expr::GeneralSolution(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "particular_solution" => {
+            Ok((
+                input,
+                Expr::ParticularSolution(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
+        "boundary" => {
+            Ok((
+                input,
+                Expr::Boundary(Arc::new(
+                    args[0].clone(),
+                )),
+            ))
+        }
 
         // Two-argument functions
-        "binomial" => Ok((
-            input,
-            Expr::Binomial(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "permutation" => Ok((
-            input,
-            Expr::Permutation(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "combination" => Ok((
-            input,
-            Expr::Combination(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "beta" => Ok((
-            input,
-            Expr::Beta(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "besselj" => Ok((
-            input,
-            Expr::BesselJ(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "bessely" => Ok((
-            input,
-            Expr::BesselY(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "legendrep" => Ok((
-            input,
-            Expr::LegendreP(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "laguerrel" => Ok((
-            input,
-            Expr::LaguerreL(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "hermiteh" => Ok((
-            input,
-            Expr::HermiteH(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "xor" => Ok((
-            input,
-            Expr::Xor(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "implies" => Ok((
-            input,
-            Expr::Implies(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "equivalent" => Ok((
-            input,
-            Expr::Equivalent(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "gcd" => Ok((
-            input,
-            Expr::Gcd(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "mod" => Ok((
-            input,
-            Expr::Mod(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "complex" => Ok((
-            input,
-            Expr::Complex(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "apply" => Ok((
-            input,
-            Expr::Apply(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "max" => Ok((
-            input,
-            Expr::Max(
-                Arc::new(args[0].clone()),
-                Arc::new(args[1].clone()),
-            ),
-        )),
-        "parametric_solution" => Ok((
-            input,
-            Expr::ParametricSolution {
-                x: Arc::new(args[0].clone()),
-                y: Arc::new(args[1].clone()),
-            },
-        )),
+        "binomial" => {
+            Ok((
+                input,
+                Expr::Binomial(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "permutation" => {
+            Ok((
+                input,
+                Expr::Permutation(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "combination" => {
+            Ok((
+                input,
+                Expr::Combination(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "beta" => {
+            Ok((
+                input,
+                Expr::Beta(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "besselj" => {
+            Ok((
+                input,
+                Expr::BesselJ(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "bessely" => {
+            Ok((
+                input,
+                Expr::BesselY(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "legendrep" => {
+            Ok((
+                input,
+                Expr::LegendreP(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "laguerrel" => {
+            Ok((
+                input,
+                Expr::LaguerreL(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "hermiteh" => {
+            Ok((
+                input,
+                Expr::HermiteH(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "xor" => {
+            Ok((
+                input,
+                Expr::Xor(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "implies" => {
+            Ok((
+                input,
+                Expr::Implies(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "equivalent" => {
+            Ok((
+                input,
+                Expr::Equivalent(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "gcd" => {
+            Ok((
+                input,
+                Expr::Gcd(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "mod" => {
+            Ok((
+                input,
+                Expr::Mod(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "complex" => {
+            Ok((
+                input,
+                Expr::Complex(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "apply" => {
+            Ok((
+                input,
+                Expr::Apply(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "max" => {
+            Ok((
+                input,
+                Expr::Max(
+                    Arc::new(args[0].clone()),
+                    Arc::new(args[1].clone()),
+                ),
+            ))
+        }
+        "parametric_solution" => {
+            Ok((
+                input,
+                Expr::ParametricSolution {
+                    x: Arc::new(args[0].clone()),
+                    y: Arc::new(args[1].clone()),
+                },
+            ))
+        }
 
         // N-ary functions
-        "and" => Ok((
-            input,
-            Expr::And(args),
-        )),
-        "or" => Ok((
-            input,
-            Expr::Or(args),
-        )),
-        "union" => Ok((
-            input,
-            Expr::Union(args),
-        )),
-        "polynomial" => Ok((
-            input,
-            Expr::Polynomial(args),
-        )),
-        "vector" => Ok((
-            input,
-            Expr::Vector(args),
-        )),
-        "tuple" => Ok((
-            input,
-            Expr::Tuple(args),
-        )),
-        "system" => Ok((
-            input,
-            Expr::System(args),
-        )),
-        "solutions" => Ok((
-            input,
-            Expr::Solutions(args),
-        )),
+        "and" => {
+            Ok((
+                input,
+                Expr::And(args),
+            ))
+        }
+        "or" => {
+            Ok((
+                input,
+                Expr::Or(args),
+            ))
+        }
+        "union" => {
+            Ok((
+                input,
+                Expr::Union(args),
+            ))
+        }
+        "polynomial" => {
+            Ok((
+                input,
+                Expr::Polynomial(args),
+            ))
+        }
+        "vector" => {
+            Ok((
+                input,
+                Expr::Vector(args),
+            ))
+        }
+        "tuple" => {
+            Ok((
+                input,
+                Expr::Tuple(args),
+            ))
+        }
+        "system" => {
+            Ok((
+                input,
+                Expr::System(args),
+            ))
+        }
+        "solutions" => {
+            Ok((
+                input,
+                Expr::Solutions(args),
+            ))
+        }
 
         // Functions with special parsing
-        "derivative" => Ok((
-            input,
-            Expr::Derivative(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-            ),
-        )),
-        "convergence_analysis" => Ok((
-            input,
-            Expr::ConvergenceAnalysis(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-            ),
-        )),
-        "solve" => Ok((
-            input,
-            Expr::Solve(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-            ),
-        )),
-        "derivative_n" => Ok((
-            input,
-            Expr::DerivativeN(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[2].clone()),
-            ),
-        )),
-        "limit" => Ok((
-            input,
-            Expr::Limit(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[2].clone()),
-            ),
-        )),
-        "substitute" => Ok((
-            input,
-            Expr::Substitute(
-                Arc::new(args[0].clone()),
-                match &args[1] {
-                    Expr::Variable(s) => s.clone(),
-                    _ => return nom::combinator::fail(input),
-                },
-                Arc::new(args[2].clone()),
-            ),
-        )),
+        "derivative" => {
+            Ok((
+                input,
+                Expr::Derivative(
+                    Arc::new(args[0].clone()),
+                    match &args[1] {
+                        Expr::Variable(s) => s.clone(),
+                        _ => return nom::combinator::fail(input),
+                    },
+                ),
+            ))
+        }
+        "convergence_analysis" => {
+            Ok((
+                input,
+                Expr::ConvergenceAnalysis(
+                    Arc::new(args[0].clone()),
+                    match &args[1] {
+                        Expr::Variable(s) => s.clone(),
+                        _ => return nom::combinator::fail(input),
+                    },
+                ),
+            ))
+        }
+        "solve" => {
+            Ok((
+                input,
+                Expr::Solve(
+                    Arc::new(args[0].clone()),
+                    match &args[1] {
+                        Expr::Variable(s) => s.clone(),
+                        _ => return nom::combinator::fail(input),
+                    },
+                ),
+            ))
+        }
+        "derivative_n" => {
+            Ok((
+                input,
+                Expr::DerivativeN(
+                    Arc::new(args[0].clone()),
+                    match &args[1] {
+                        Expr::Variable(s) => s.clone(),
+                        _ => return nom::combinator::fail(input),
+                    },
+                    Arc::new(args[2].clone()),
+                ),
+            ))
+        }
+        "limit" => {
+            Ok((
+                input,
+                Expr::Limit(
+                    Arc::new(args[0].clone()),
+                    match &args[1] {
+                        Expr::Variable(s) => s.clone(),
+                        _ => return nom::combinator::fail(input),
+                    },
+                    Arc::new(args[2].clone()),
+                ),
+            ))
+        }
+        "substitute" => {
+            Ok((
+                input,
+                Expr::Substitute(
+                    Arc::new(args[0].clone()),
+                    match &args[1] {
+                        Expr::Variable(s) => s.clone(),
+                        _ => return nom::combinator::fail(input),
+                    },
+                    Arc::new(args[2].clone()),
+                ),
+            ))
+        }
 
-        "predicate" => Ok((
-            input,
-            Expr::Predicate {
-                name: func_name.to_string(),
-                args,
-            },
-        )),
+        "predicate" => {
+            Ok((
+                input,
+                Expr::Predicate {
+                    name: func_name.to_string(),
+                    args,
+                },
+            ))
+        }
 
-        _ => Ok((
-            input,
-            Expr::Predicate {
-                name: func_name.to_string(),
-                args,
-            },
-        )),
+        _ => {
+            Ok((
+                input,
+                Expr::Predicate {
+                    name: func_name.to_string(),
+                    args,
+                },
+            ))
+        }
     }
 }
 
@@ -1033,6 +1214,7 @@ pub(crate) fn parse_path_type(input: &str) -> IResult<&str, PathType> {
 
     alt((
         map(tag("Line"), |_| {
+
             PathType::Line
         }),
         map(
@@ -1153,20 +1335,24 @@ pub(crate) fn parse_quantifier(input: &str) -> IResult<&str, Expr> {
     let (input, body) = expr(input)?;
 
     match quantifier_type {
-        "forall" => Ok((
-            input,
-            Expr::ForAll(
-                var_name.to_string(),
-                Arc::new(body),
-            ),
-        )),
-        "exists" => Ok((
-            input,
-            Expr::Exists(
-                var_name.to_string(),
-                Arc::new(body),
-            ),
-        )),
+        "forall" => {
+            Ok((
+                input,
+                Expr::ForAll(
+                    var_name.to_string(),
+                    Arc::new(body),
+                ),
+            ))
+        }
+        "exists" => {
+            Ok((
+                input,
+                Expr::Exists(
+                    var_name.to_string(),
+                    Arc::new(body),
+                ),
+            ))
+        }
         _ => unreachable!(),
     }
 }
@@ -1369,33 +1555,39 @@ pub(crate) fn parse_series_like_function(input: &str) -> IResult<&str, Expr> {
     let (input, _) = char(')')(input)?;
 
     match func_name {
-        "series" => Ok((
-            input,
-            Expr::Series(
-                Arc::new(arg1),
-                var_name,
-                Arc::new(arg3),
-                Arc::new(arg4),
-            ),
-        )),
-        "summation" => Ok((
-            input,
-            Expr::Summation(
-                Arc::new(arg1),
-                var_name,
-                Arc::new(arg3),
-                Arc::new(arg4),
-            ),
-        )),
-        "product" => Ok((
-            input,
-            Expr::Product(
-                Arc::new(arg1),
-                var_name,
-                Arc::new(arg3),
-                Arc::new(arg4),
-            ),
-        )),
+        "series" => {
+            Ok((
+                input,
+                Expr::Series(
+                    Arc::new(arg1),
+                    var_name,
+                    Arc::new(arg3),
+                    Arc::new(arg4),
+                ),
+            ))
+        }
+        "summation" => {
+            Ok((
+                input,
+                Expr::Summation(
+                    Arc::new(arg1),
+                    var_name,
+                    Arc::new(arg3),
+                    Arc::new(arg4),
+                ),
+            ))
+        }
+        "product" => {
+            Ok((
+                input,
+                Expr::Product(
+                    Arc::new(arg1),
+                    var_name,
+                    Arc::new(arg3),
+                    Arc::new(arg4),
+                ),
+            ))
+        }
         _ => unreachable!(),
     }
 }
@@ -1682,9 +1874,11 @@ pub(crate) fn parse_constant(input: &str) -> IResult<&str, Expr> {
 
     alt((
         map(tag("Pi"), |_| {
+
             Expr::Pi
         }),
         map(tag("E"), |_| {
+
             Expr::E
         }),
         map(

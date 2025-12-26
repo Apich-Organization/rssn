@@ -209,26 +209,36 @@ pub fn substitute(
 
         let result = match &processed_expr {
             Expr::Variable(name) if name == var => replacement.clone(),
-            Expr::Add(a, b) => Expr::new_add(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            ),
-            Expr::Sub(a, b) => Expr::new_sub(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            ),
-            Expr::Mul(a, b) => Expr::new_mul(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            ),
-            Expr::Div(a, b) => Expr::new_div(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            ),
-            Expr::Power(base, exp) => Expr::new_pow(
-                cache[base.as_ref()].clone(),
-                cache[exp.as_ref()].clone(),
-            ),
+            Expr::Add(a, b) => {
+                Expr::new_add(
+                    cache[a.as_ref()].clone(),
+                    cache[b.as_ref()].clone(),
+                )
+            }
+            Expr::Sub(a, b) => {
+                Expr::new_sub(
+                    cache[a.as_ref()].clone(),
+                    cache[b.as_ref()].clone(),
+                )
+            }
+            Expr::Mul(a, b) => {
+                Expr::new_mul(
+                    cache[a.as_ref()].clone(),
+                    cache[b.as_ref()].clone(),
+                )
+            }
+            Expr::Div(a, b) => {
+                Expr::new_div(
+                    cache[a.as_ref()].clone(),
+                    cache[b.as_ref()].clone(),
+                )
+            }
+            Expr::Power(base, exp) => {
+                Expr::new_pow(
+                    cache[base.as_ref()].clone(),
+                    cache[exp.as_ref()].clone(),
+                )
+            }
             Expr::Sin(arg) => Expr::new_sin(cache[arg.as_ref()].clone()),
             Expr::Cos(arg) => Expr::new_cos(cache[arg.as_ref()].clone()),
             Expr::Tan(arg) => Expr::new_tan(cache[arg.as_ref()].clone()),
@@ -315,14 +325,18 @@ pub fn substitute(
 pub(crate) fn get_real_imag_parts(expr: &Expr) -> (Expr, Expr) {
 
     match simplify(&expr.clone()) {
-        Expr::Complex(re, im) => (
-            (*re).clone(),
-            (*im).clone(),
-        ),
-        other => (
-            other,
-            Expr::BigInt(BigInt::zero()),
-        ),
+        Expr::Complex(re, im) => {
+            (
+                (*re).clone(),
+                (*im).clone(),
+            )
+        }
+        other => {
+            (
+                other,
+                Expr::BigInt(BigInt::zero()),
+            )
+        }
     }
 }
 
@@ -472,26 +486,20 @@ pub fn differentiate(
             }
             Expr::Variable(name) if name == var => Expr::BigInt(BigInt::one()),
             Expr::Variable(_) => Expr::BigInt(BigInt::zero()),
-            Expr::Add(a, b) => simplify(&Expr::new_add(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            )),
-            Expr::Sub(a, b) => simplify(&Expr::new_sub(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            )),
-            Expr::Mul(a, b) => simplify(&Expr::new_add(
-                Expr::new_mul(
+            Expr::Add(a, b) => {
+                simplify(&Expr::new_add(
                     cache[a.as_ref()].clone(),
-                    b.as_ref().clone(),
-                ),
-                Expr::new_mul(
-                    a.as_ref().clone(),
                     cache[b.as_ref()].clone(),
-                ),
-            )),
-            Expr::Div(a, b) => simplify(&Expr::new_div(
-                Expr::new_sub(
+                ))
+            }
+            Expr::Sub(a, b) => {
+                simplify(&Expr::new_sub(
+                    cache[a.as_ref()].clone(),
+                    cache[b.as_ref()].clone(),
+                ))
+            }
+            Expr::Mul(a, b) => {
+                simplify(&Expr::new_add(
                     Expr::new_mul(
                         cache[a.as_ref()].clone(),
                         b.as_ref().clone(),
@@ -500,12 +508,26 @@ pub fn differentiate(
                         a.as_ref().clone(),
                         cache[b.as_ref()].clone(),
                     ),
-                ),
-                Expr::new_pow(
-                    b.as_ref().clone(),
-                    Expr::BigInt(BigInt::from(2)),
-                ),
-            )),
+                ))
+            }
+            Expr::Div(a, b) => {
+                simplify(&Expr::new_div(
+                    Expr::new_sub(
+                        Expr::new_mul(
+                            cache[a.as_ref()].clone(),
+                            b.as_ref().clone(),
+                        ),
+                        Expr::new_mul(
+                            a.as_ref().clone(),
+                            cache[b.as_ref()].clone(),
+                        ),
+                    ),
+                    Expr::new_pow(
+                        b.as_ref().clone(),
+                        Expr::BigInt(BigInt::from(2)),
+                    ),
+                ))
+            }
             Expr::Power(base, exp) => {
 
                 let d_base = cache[base.as_ref()].clone();
@@ -570,85 +592,176 @@ pub fn differentiate(
                     ))
                 }
             }
-            Expr::Sin(arg) => simplify(&Expr::new_mul(
-                Expr::new_cos(arg.as_ref().clone()),
-                cache[arg.as_ref()].clone(),
-            )),
-            Expr::Cos(arg) => simplify(&Expr::new_mul(
-                Expr::new_neg(Expr::new_sin(
-                    arg.as_ref().clone(),
-                )),
-                cache[arg.as_ref()].clone(),
-            )),
-            Expr::Tan(arg) => simplify(&Expr::new_mul(
-                Expr::new_pow(
+            Expr::Sin(arg) => {
+                simplify(&Expr::new_mul(
+                    Expr::new_cos(arg.as_ref().clone()),
+                    cache[arg.as_ref()].clone(),
+                ))
+            }
+            Expr::Cos(arg) => {
+                simplify(&Expr::new_mul(
+                    Expr::new_neg(Expr::new_sin(
+                        arg.as_ref().clone(),
+                    )),
+                    cache[arg.as_ref()].clone(),
+                ))
+            }
+            Expr::Tan(arg) => {
+                simplify(&Expr::new_mul(
+                    Expr::new_pow(
+                        Expr::new_sec(arg.as_ref().clone()),
+                        Expr::BigInt(BigInt::from(2)),
+                    ),
+                    cache[arg.as_ref()].clone(),
+                ))
+            }
+            Expr::Sec(arg) => {
+                simplify(&Expr::new_mul(
                     Expr::new_sec(arg.as_ref().clone()),
-                    Expr::BigInt(BigInt::from(2)),
-                ),
-                cache[arg.as_ref()].clone(),
-            )),
-            Expr::Sec(arg) => simplify(&Expr::new_mul(
-                Expr::new_sec(arg.as_ref().clone()),
-                Expr::new_mul(
-                    Expr::new_tan(arg.as_ref().clone()),
+                    Expr::new_mul(
+                        Expr::new_tan(arg.as_ref().clone()),
+                        cache[arg.as_ref()].clone(),
+                    ),
+                ))
+            }
+            Expr::Csc(arg) => {
+                simplify(&Expr::new_mul(
+                    Expr::new_neg(Expr::new_csc(
+                        arg.as_ref().clone(),
+                    )),
+                    Expr::new_mul(
+                        Expr::new_cot(arg.as_ref().clone()),
+                        cache[arg.as_ref()].clone(),
+                    ),
+                ))
+            }
+            Expr::Cot(arg) => {
+                simplify(&Expr::new_mul(
+                    Expr::new_neg(Expr::new_pow(
+                        Expr::new_csc(arg.as_ref().clone()),
+                        Expr::BigInt(BigInt::from(2)),
+                    )),
                     cache[arg.as_ref()].clone(),
-                ),
-            )),
-            Expr::Csc(arg) => simplify(&Expr::new_mul(
-                Expr::new_neg(Expr::new_csc(
+                ))
+            }
+            Expr::Sinh(arg) => {
+                simplify(&Expr::new_mul(
+                    Expr::new_cosh(arg.as_ref().clone()),
+                    cache[arg.as_ref()].clone(),
+                ))
+            }
+            Expr::Cosh(arg) => {
+                simplify(&Expr::new_mul(
+                    Expr::new_sinh(arg.as_ref().clone()),
+                    cache[arg.as_ref()].clone(),
+                ))
+            }
+            Expr::Tanh(arg) => {
+                simplify(&Expr::new_mul(
+                    Expr::new_pow(
+                        Expr::new_sech(arg.as_ref().clone()),
+                        Expr::BigInt(BigInt::from(2)),
+                    ),
+                    cache[arg.as_ref()].clone(),
+                ))
+            }
+            Expr::Exp(arg) => {
+                simplify(&Expr::new_mul(
+                    Expr::new_exp(arg.as_ref().clone()),
+                    cache[arg.as_ref()].clone(),
+                ))
+            }
+            Expr::Log(arg) => {
+                simplify(&Expr::new_div(
+                    cache[arg.as_ref()].clone(),
                     arg.as_ref().clone(),
-                )),
-                Expr::new_mul(
-                    Expr::new_cot(arg.as_ref().clone()),
+                ))
+            }
+            Expr::ArcCot(arg) => {
+                simplify(&Expr::new_neg(
+                    Expr::new_div(
+                        cache[arg.as_ref()].clone(),
+                        Expr::new_add(
+                            Expr::BigInt(BigInt::one()),
+                            Expr::new_pow(
+                                arg.as_ref().clone(),
+                                Expr::BigInt(BigInt::from(2)),
+                            ),
+                        ),
+                    ),
+                ))
+            }
+            Expr::ArcSec(arg) => {
+                simplify(&Expr::new_div(
                     cache[arg.as_ref()].clone(),
-                ),
-            )),
-            Expr::Cot(arg) => simplify(&Expr::new_mul(
-                Expr::new_neg(Expr::new_pow(
-                    Expr::new_csc(arg.as_ref().clone()),
-                    Expr::BigInt(BigInt::from(2)),
-                )),
-                cache[arg.as_ref()].clone(),
-            )),
-            Expr::Sinh(arg) => simplify(&Expr::new_mul(
-                Expr::new_cosh(arg.as_ref().clone()),
-                cache[arg.as_ref()].clone(),
-            )),
-            Expr::Cosh(arg) => simplify(&Expr::new_mul(
-                Expr::new_sinh(arg.as_ref().clone()),
-                cache[arg.as_ref()].clone(),
-            )),
-            Expr::Tanh(arg) => simplify(&Expr::new_mul(
-                Expr::new_pow(
-                    Expr::new_sech(arg.as_ref().clone()),
-                    Expr::BigInt(BigInt::from(2)),
-                ),
-                cache[arg.as_ref()].clone(),
-            )),
-            Expr::Exp(arg) => simplify(&Expr::new_mul(
-                Expr::new_exp(arg.as_ref().clone()),
-                cache[arg.as_ref()].clone(),
-            )),
-            Expr::Log(arg) => simplify(&Expr::new_div(
-                cache[arg.as_ref()].clone(),
-                arg.as_ref().clone(),
-            )),
-            Expr::ArcCot(arg) => simplify(&Expr::new_neg(
-                Expr::new_div(
+                    Expr::new_mul(
+                        Expr::new_abs(arg.as_ref().clone()),
+                        Expr::new_sqrt(Expr::new_sub(
+                            Expr::new_pow(
+                                arg.as_ref().clone(),
+                                Expr::BigInt(BigInt::from(2)),
+                            ),
+                            Expr::BigInt(BigInt::one()),
+                        )),
+                    ),
+                ))
+            }
+            Expr::ArcCsc(arg) => {
+                simplify(&Expr::new_neg(
+                    Expr::new_div(
+                        cache[arg.as_ref()].clone(),
+                        Expr::new_mul(
+                            Expr::new_abs(arg.as_ref().clone()),
+                            Expr::new_sqrt(Expr::new_sub(
+                                Expr::new_pow(
+                                    arg.as_ref().clone(),
+                                    Expr::BigInt(BigInt::from(2)),
+                                ),
+                                Expr::BigInt(BigInt::one()),
+                            )),
+                        ),
+                    ),
+                ))
+            }
+            Expr::Coth(arg) => {
+                simplify(&Expr::new_neg(
+                    Expr::new_pow(
+                        Expr::new_csch(arg.as_ref().clone()),
+                        Expr::BigInt(BigInt::from(2)),
+                    ),
+                ))
+            }
+            Expr::Sech(arg) => {
+                simplify(&Expr::new_neg(
+                    Expr::new_mul(
+                        Expr::new_sech(arg.as_ref().clone()),
+                        Expr::new_tanh(arg.as_ref().clone()),
+                    ),
+                ))
+            }
+            Expr::Csch(arg) => {
+                simplify(&Expr::new_neg(
+                    Expr::new_mul(
+                        Expr::new_csch(arg.as_ref().clone()),
+                        Expr::new_coth(arg.as_ref().clone()),
+                    ),
+                ))
+            }
+            Expr::ArcSinh(arg) => {
+                simplify(&Expr::new_div(
                     cache[arg.as_ref()].clone(),
-                    Expr::new_add(
-                        Expr::BigInt(BigInt::one()),
+                    Expr::new_sqrt(Expr::new_add(
                         Expr::new_pow(
                             arg.as_ref().clone(),
                             Expr::BigInt(BigInt::from(2)),
                         ),
-                    ),
-                ),
-            )),
-            Expr::ArcSec(arg) => simplify(&Expr::new_div(
-                cache[arg.as_ref()].clone(),
-                Expr::new_mul(
-                    Expr::new_abs(arg.as_ref().clone()),
+                        Expr::BigInt(BigInt::one()),
+                    )),
+                ))
+            }
+            Expr::ArcCosh(arg) => {
+                simplify(&Expr::new_div(
+                    cache[arg.as_ref()].clone(),
                     Expr::new_sqrt(Expr::new_sub(
                         Expr::new_pow(
                             arg.as_ref().clone(),
@@ -656,111 +769,66 @@ pub fn differentiate(
                         ),
                         Expr::BigInt(BigInt::one()),
                     )),
-                ),
-            )),
-            Expr::ArcCsc(arg) => simplify(&Expr::new_neg(
-                Expr::new_div(
+                ))
+            }
+            Expr::ArcTanh(arg) => {
+                simplify(&Expr::new_div(
                     cache[arg.as_ref()].clone(),
-                    Expr::new_mul(
-                        Expr::new_abs(arg.as_ref().clone()),
-                        Expr::new_sqrt(Expr::new_sub(
-                            Expr::new_pow(
-                                arg.as_ref().clone(),
-                                Expr::BigInt(BigInt::from(2)),
-                            ),
-                            Expr::BigInt(BigInt::one()),
-                        )),
+                    Expr::new_sub(
+                        Expr::BigInt(BigInt::one()),
+                        Expr::new_pow(
+                            arg.as_ref().clone(),
+                            Expr::BigInt(BigInt::from(2)),
+                        ),
                     ),
-                ),
-            )),
-            Expr::Coth(arg) => simplify(&Expr::new_neg(
-                Expr::new_pow(
-                    Expr::new_csch(arg.as_ref().clone()),
-                    Expr::BigInt(BigInt::from(2)),
-                ),
-            )),
-            Expr::Sech(arg) => simplify(&Expr::new_neg(
-                Expr::new_mul(
-                    Expr::new_sech(arg.as_ref().clone()),
-                    Expr::new_tanh(arg.as_ref().clone()),
-                ),
-            )),
-            Expr::Csch(arg) => simplify(&Expr::new_neg(
-                Expr::new_mul(
-                    Expr::new_csch(arg.as_ref().clone()),
-                    Expr::new_coth(arg.as_ref().clone()),
-                ),
-            )),
-            Expr::ArcSinh(arg) => simplify(&Expr::new_div(
-                cache[arg.as_ref()].clone(),
-                Expr::new_sqrt(Expr::new_add(
-                    Expr::new_pow(
-                        arg.as_ref().clone(),
-                        Expr::BigInt(BigInt::from(2)),
-                    ),
-                    Expr::BigInt(BigInt::one()),
-                )),
-            )),
-            Expr::ArcCosh(arg) => simplify(&Expr::new_div(
-                cache[arg.as_ref()].clone(),
-                Expr::new_sqrt(Expr::new_sub(
-                    Expr::new_pow(
-                        arg.as_ref().clone(),
-                        Expr::BigInt(BigInt::from(2)),
-                    ),
-                    Expr::BigInt(BigInt::one()),
-                )),
-            )),
-            Expr::ArcTanh(arg) => simplify(&Expr::new_div(
-                cache[arg.as_ref()].clone(),
-                Expr::new_sub(
-                    Expr::BigInt(BigInt::one()),
-                    Expr::new_pow(
-                        arg.as_ref().clone(),
-                        Expr::BigInt(BigInt::from(2)),
-                    ),
-                ),
-            )),
-            Expr::ArcCoth(arg) => simplify(&Expr::new_div(
-                cache[arg.as_ref()].clone(),
-                Expr::new_sub(
-                    Expr::BigInt(BigInt::one()),
-                    Expr::new_pow(
-                        arg.as_ref().clone(),
-                        Expr::BigInt(BigInt::from(2)),
-                    ),
-                ),
-            )),
-            Expr::ArcSech(arg) => simplify(&Expr::new_neg(
-                Expr::new_div(
+                ))
+            }
+            Expr::ArcCoth(arg) => {
+                simplify(&Expr::new_div(
                     cache[arg.as_ref()].clone(),
-                    Expr::new_mul(
-                        arg.as_ref().clone(),
-                        Expr::new_sqrt(Expr::new_sub(
-                            Expr::BigInt(BigInt::one()),
-                            Expr::new_pow(
-                                arg.as_ref().clone(),
-                                Expr::BigInt(BigInt::from(2)),
-                            ),
-                        )),
+                    Expr::new_sub(
+                        Expr::BigInt(BigInt::one()),
+                        Expr::new_pow(
+                            arg.as_ref().clone(),
+                            Expr::BigInt(BigInt::from(2)),
+                        ),
                     ),
-                ),
-            )),
-            Expr::ArcCsch(arg) => simplify(&Expr::new_neg(
-                Expr::new_div(
-                    cache[arg.as_ref()].clone(),
-                    Expr::new_mul(
-                        Expr::new_abs(arg.as_ref().clone()),
-                        Expr::new_sqrt(Expr::new_add(
-                            Expr::BigInt(BigInt::one()),
-                            Expr::new_pow(
-                                arg.as_ref().clone(),
-                                Expr::BigInt(BigInt::from(2)),
-                            ),
-                        )),
+                ))
+            }
+            Expr::ArcSech(arg) => {
+                simplify(&Expr::new_neg(
+                    Expr::new_div(
+                        cache[arg.as_ref()].clone(),
+                        Expr::new_mul(
+                            arg.as_ref().clone(),
+                            Expr::new_sqrt(Expr::new_sub(
+                                Expr::BigInt(BigInt::one()),
+                                Expr::new_pow(
+                                    arg.as_ref().clone(),
+                                    Expr::BigInt(BigInt::from(2)),
+                                ),
+                            )),
+                        ),
                     ),
-                ),
-            )),
+                ))
+            }
+            Expr::ArcCsch(arg) => {
+                simplify(&Expr::new_neg(
+                    Expr::new_div(
+                        cache[arg.as_ref()].clone(),
+                        Expr::new_mul(
+                            Expr::new_abs(arg.as_ref().clone()),
+                            Expr::new_sqrt(Expr::new_add(
+                                Expr::BigInt(BigInt::one()),
+                                Expr::new_pow(
+                                    arg.as_ref().clone(),
+                                    Expr::BigInt(BigInt::from(2)),
+                                ),
+                            )),
+                        ),
+                    ),
+                ))
+            }
             Expr::Integral {
                 integrand,
                 var: int_var,
@@ -795,13 +863,17 @@ pub fn differentiate(
                     to: to.clone(),
                 }
             }
-            Expr::Neg(arg) => simplify(&Expr::new_neg(
-                cache[arg.as_ref()].clone(),
-            )),
-            _ => Expr::Derivative(
-                Arc::new(processed_expr.clone()),
-                var.to_string(),
-            ),
+            Expr::Neg(arg) => {
+                simplify(&Expr::new_neg(
+                    cache[arg.as_ref()].clone(),
+                ))
+            }
+            _ => {
+                Expr::Derivative(
+                    Arc::new(processed_expr.clone()),
+                    var.to_string(),
+                )
+            }
         };
 
         cache.insert(
@@ -937,39 +1009,53 @@ pub(crate) fn integrate_basic(
 ) -> Expr {
 
     match expr {
-        Expr::Dag(node) => integrate_basic(
-            &node
-                .to_expr()
-                .expect("Integrate Basic"),
-            var,
-        ),
-        Expr::Constant(c) => Expr::new_mul(
-            Expr::Constant(*c),
-            Expr::Variable(var.to_string()),
-        ),
-        Expr::BigInt(i) => Expr::new_mul(
-            Expr::BigInt(i.clone()),
-            Expr::Variable(var.to_string()),
-        ),
-        Expr::Rational(r) => Expr::new_mul(
-            Expr::Rational(r.clone()),
-            Expr::Variable(var.to_string()),
-        ),
-        Expr::Variable(name) if name == var => Expr::new_div(
-            Expr::new_pow(
+        Expr::Dag(node) => {
+            integrate_basic(
+                &node
+                    .to_expr()
+                    .expect("Integrate Basic"),
+                var,
+            )
+        }
+        Expr::Constant(c) => {
+            Expr::new_mul(
+                Expr::Constant(*c),
                 Expr::Variable(var.to_string()),
+            )
+        }
+        Expr::BigInt(i) => {
+            Expr::new_mul(
+                Expr::BigInt(i.clone()),
+                Expr::Variable(var.to_string()),
+            )
+        }
+        Expr::Rational(r) => {
+            Expr::new_mul(
+                Expr::Rational(r.clone()),
+                Expr::Variable(var.to_string()),
+            )
+        }
+        Expr::Variable(name) if name == var => {
+            Expr::new_div(
+                Expr::new_pow(
+                    Expr::Variable(var.to_string()),
+                    Expr::BigInt(BigInt::from(2)),
+                ),
                 Expr::BigInt(BigInt::from(2)),
-            ),
-            Expr::BigInt(BigInt::from(2)),
-        ),
-        Expr::Add(a, b) => simplify(&Expr::new_add(
-            integrate(a, var, None, None),
-            integrate(b, var, None, None),
-        )),
-        Expr::Sub(a, b) => simplify(&Expr::new_sub(
-            integrate(a, var, None, None),
-            integrate(b, var, None, None),
-        )),
+            )
+        }
+        Expr::Add(a, b) => {
+            simplify(&Expr::new_add(
+                integrate(a, var, None, None),
+                integrate(b, var, None, None),
+            ))
+        }
+        Expr::Sub(a, b) => {
+            simplify(&Expr::new_sub(
+                integrate(a, var, None, None),
+                integrate(b, var, None, None),
+            ))
+        }
         Expr::Power(base, exp) => {
 
             if let (Expr::Variable(name), Expr::Constant(n)) = (&**base, &**exp) {
@@ -1031,18 +1117,20 @@ pub(crate) fn integrate_basic(
                 )),
             }
         }
-        _ => Expr::Integral {
-            integrand: Arc::new(expr.clone()),
-            var: Arc::new(Expr::Variable(
-                var.to_string(),
-            )),
-            lower_bound: Arc::new(Expr::Variable(
-                "a".to_string(),
-            )),
-            upper_bound: Arc::new(Expr::Variable(
-                "b".to_string(),
-            )),
-        },
+        _ => {
+            Expr::Integral {
+                integrand: Arc::new(expr.clone()),
+                var: Arc::new(Expr::Variable(
+                    var.to_string(),
+                )),
+                lower_bound: Arc::new(Expr::Variable(
+                    "a".to_string(),
+                )),
+                upper_bound: Arc::new(Expr::Variable(
+                    "b".to_string(),
+                )),
+            }
+        }
     }
 }
 
@@ -1216,58 +1304,74 @@ pub fn substitute_expr(
         }
 
         let result = match &processed_expr {
-            Expr::Add(a, b) => Expr::new_add(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            ),
-            Expr::Sub(a, b) => Expr::new_sub(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            ),
-            Expr::Mul(a, b) => Expr::new_mul(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            ),
-            Expr::Div(a, b) => Expr::new_div(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            ),
-            Expr::Power(a, b) => Expr::new_pow(
-                cache[a.as_ref()].clone(),
-                cache[b.as_ref()].clone(),
-            ),
+            Expr::Add(a, b) => {
+                Expr::new_add(
+                    cache[a.as_ref()].clone(),
+                    cache[b.as_ref()].clone(),
+                )
+            }
+            Expr::Sub(a, b) => {
+                Expr::new_sub(
+                    cache[a.as_ref()].clone(),
+                    cache[b.as_ref()].clone(),
+                )
+            }
+            Expr::Mul(a, b) => {
+                Expr::new_mul(
+                    cache[a.as_ref()].clone(),
+                    cache[b.as_ref()].clone(),
+                )
+            }
+            Expr::Div(a, b) => {
+                Expr::new_div(
+                    cache[a.as_ref()].clone(),
+                    cache[b.as_ref()].clone(),
+                )
+            }
+            Expr::Power(a, b) => {
+                Expr::new_pow(
+                    cache[a.as_ref()].clone(),
+                    cache[b.as_ref()].clone(),
+                )
+            }
             Expr::Sin(a) => Expr::new_sin(cache[a.as_ref()].clone()),
             Expr::Cos(a) => Expr::new_cos(cache[a.as_ref()].clone()),
             Expr::Tan(a) => Expr::new_tan(cache[a.as_ref()].clone()),
             Expr::Exp(a) => Expr::new_exp(cache[a.as_ref()].clone()),
             Expr::Log(a) => Expr::new_log(cache[a.as_ref()].clone()),
             Expr::Neg(a) => Expr::new_neg(cache[a.as_ref()].clone()),
-            Expr::Derivative(e, var) => Expr::Derivative(
-                Arc::new(cache[e.as_ref()].clone()),
-                var.clone(),
-            ),
+            Expr::Derivative(e, var) => {
+                Expr::Derivative(
+                    Arc::new(cache[e.as_ref()].clone()),
+                    var.clone(),
+                )
+            }
             Expr::Integral {
                 integrand,
                 var,
                 lower_bound,
                 upper_bound,
-            } => Expr::Integral {
-                integrand: Arc::new(cache[integrand.as_ref()].clone()),
-                var: var.clone(),
-                lower_bound: Arc::new(cache[lower_bound.as_ref()].clone()),
-                upper_bound: Arc::new(cache[upper_bound.as_ref()].clone()),
-            },
+            } => {
+                Expr::Integral {
+                    integrand: Arc::new(cache[integrand.as_ref()].clone()),
+                    var: var.clone(),
+                    lower_bound: Arc::new(cache[lower_bound.as_ref()].clone()),
+                    upper_bound: Arc::new(cache[upper_bound.as_ref()].clone()),
+                }
+            }
             Expr::Sum {
                 body,
                 var,
                 from,
                 to,
-            } => Expr::Sum {
-                body: Arc::new(cache[body.as_ref()].clone()),
-                var: var.clone(),
-                from: Arc::new(cache[from.as_ref()].clone()),
-                to: Arc::new(cache[to.as_ref()].clone()),
-            },
+            } => {
+                Expr::Sum {
+                    body: Arc::new(cache[body.as_ref()].clone()),
+                    var: var.clone(),
+                    from: Arc::new(cache[from.as_ref()].clone()),
+                    to: Arc::new(cache[to.as_ref()].clone()),
+                }
+            }
             Expr::Sinh(a) => Expr::new_sinh(cache[a.as_ref()].clone()),
             Expr::Cosh(a) => Expr::new_cosh(cache[a.as_ref()].clone()),
             Expr::Tanh(a) => Expr::new_tanh(cache[a.as_ref()].clone()),
@@ -1278,26 +1382,36 @@ pub fn substitute_expr(
                 let children = processed_expr.children();
 
                 match op {
-                    DagOp::Add => Expr::new_add(
-                        cache[&children[0]].clone(),
-                        cache[&children[1]].clone(),
-                    ),
-                    DagOp::Sub => Expr::new_sub(
-                        cache[&children[0]].clone(),
-                        cache[&children[1]].clone(),
-                    ),
-                    DagOp::Mul => Expr::new_mul(
-                        cache[&children[0]].clone(),
-                        cache[&children[1]].clone(),
-                    ),
-                    DagOp::Div => Expr::new_div(
-                        cache[&children[0]].clone(),
-                        cache[&children[1]].clone(),
-                    ),
-                    DagOp::Power => Expr::new_pow(
-                        cache[&children[0]].clone(),
-                        cache[&children[1]].clone(),
-                    ),
+                    DagOp::Add => {
+                        Expr::new_add(
+                            cache[&children[0]].clone(),
+                            cache[&children[1]].clone(),
+                        )
+                    }
+                    DagOp::Sub => {
+                        Expr::new_sub(
+                            cache[&children[0]].clone(),
+                            cache[&children[1]].clone(),
+                        )
+                    }
+                    DagOp::Mul => {
+                        Expr::new_mul(
+                            cache[&children[0]].clone(),
+                            cache[&children[1]].clone(),
+                        )
+                    }
+                    DagOp::Div => {
+                        Expr::new_div(
+                            cache[&children[0]].clone(),
+                            cache[&children[1]].clone(),
+                        )
+                    }
+                    DagOp::Power => {
+                        Expr::new_pow(
+                            cache[&children[0]].clone(),
+                            cache[&children[1]].clone(),
+                        )
+                    }
                     DagOp::Sin => Expr::new_sin(cache[&children[0]].clone()),
                     _ => processed_expr.clone(),
                 }
@@ -1323,23 +1437,25 @@ pub(crate) fn contains_var(
 
     let mut found = false;
 
-    expr.pre_order_walk(&mut |e| match e {
-        Expr::Variable(name) => {
-            if name == var {
-
-                found = true;
-            }
-        }
-        Expr::Dag(node) => {
-            if let DagOp::Variable(name) = &node.op {
-
+    expr.pre_order_walk(&mut |e| {
+        match e {
+            Expr::Variable(name) => {
                 if name == var {
 
                     found = true;
                 }
             }
+            Expr::Dag(node) => {
+                if let DagOp::Variable(name) = &node.op {
+
+                    if name == var {
+
+                        found = true;
+                    }
+                }
+            }
+            _ => {}
         }
-        _ => {}
     });
 
     found
@@ -1966,12 +2082,14 @@ pub fn find_poles(
 ) -> Vec<Expr> {
 
     match expr {
-        Expr::Dag(node) => find_poles(
-            &node
-                .to_expr()
-                .expect("Find Poles"),
-            var,
-        ),
+        Expr::Dag(node) => {
+            find_poles(
+                &node
+                    .to_expr()
+                    .expect("Find Poles"),
+                var,
+            )
+        }
         Expr::Div(_, den) => solve(den, var),
         _ => vec![],
     }
@@ -2297,141 +2415,145 @@ pub fn path_integrate(
     }
 
     match contour {
-        Expr::Path(path_type, param1, param2) => match path_type {
-            PathType::Circle => {
+        Expr::Path(path_type, param1, param2) => {
+            match path_type {
+                PathType::Circle => {
 
-                if check_analytic(expr, var) {
+                    if check_analytic(expr, var) {
 
-                    return Expr::BigInt(BigInt::zero());
-                }
-
-                let poles = find_poles(expr, var);
-
-                let mut sum_of_residues = Expr::BigInt(BigInt::zero());
-
-                for pole in poles {
-
-                    if is_inside_contour(&pole, contour) {
-
-                        let residue = calculate_residue(expr, var, &pole);
-
-                        sum_of_residues = Expr::new_add(
-                            sum_of_residues,
-                            residue,
-                        );
+                        return Expr::BigInt(BigInt::zero());
                     }
+
+                    let poles = find_poles(expr, var);
+
+                    let mut sum_of_residues = Expr::BigInt(BigInt::zero());
+
+                    for pole in poles {
+
+                        if is_inside_contour(&pole, contour) {
+
+                            let residue = calculate_residue(expr, var, &pole);
+
+                            sum_of_residues = Expr::new_add(
+                                sum_of_residues,
+                                residue,
+                            );
+                        }
+                    }
+
+                    let two_pi_i = Expr::new_mul(
+                        Expr::Constant(2.0 * std::f64::consts::PI),
+                        Expr::new_complex(
+                            Expr::BigInt(BigInt::zero()),
+                            Expr::BigInt(BigInt::one()),
+                        ),
+                    );
+
+                    simplify(&Expr::new_mul(
+                        two_pi_i,
+                        sum_of_residues,
+                    ))
                 }
+                PathType::Line => {
 
-                let two_pi_i = Expr::new_mul(
-                    Expr::Constant(2.0 * std::f64::consts::PI),
-                    Expr::new_complex(
-                        Expr::BigInt(BigInt::zero()),
-                        Expr::BigInt(BigInt::one()),
-                    ),
-                );
+                    let (z0, z1) = (&**param1, &**param2);
 
-                simplify(&Expr::new_mul(
-                    two_pi_i,
-                    sum_of_residues,
-                ))
+                    let dz_dt = simplify(&Expr::new_sub(
+                        z1.clone(),
+                        z0.clone(),
+                    ));
+
+                    let t_var = Expr::Variable("t".to_string());
+
+                    let z_t = simplify(&Expr::new_add(
+                        z0.clone(),
+                        Expr::new_mul(t_var, dz_dt.clone()),
+                    ));
+
+                    let integrand_t = simplify(&Expr::new_mul(
+                        substitute(expr, var, &z_t),
+                        dz_dt,
+                    ));
+
+                    definite_integrate(
+                        &integrand_t,
+                        "t",
+                        &Expr::BigInt(BigInt::zero()),
+                        &Expr::BigInt(BigInt::one()),
+                    )
+                }
+                PathType::Rectangle => {
+
+                    let (z_bl, z_tr) = (&**param1, &**param2);
+
+                    let z_br = Expr::new_complex(z_tr.re(), z_bl.im());
+
+                    let z_tl = Expr::new_complex(z_bl.re(), z_tr.im());
+
+                    let i1 = path_integrate(
+                        expr,
+                        var,
+                        &Expr::Path(
+                            PathType::Line,
+                            Arc::new(z_bl.clone()),
+                            Arc::new(z_br.clone()),
+                        ),
+                    );
+
+                    let i2 = path_integrate(
+                        expr,
+                        var,
+                        &Expr::Path(
+                            PathType::Line,
+                            Arc::new(z_br),
+                            Arc::new(z_tr.clone()),
+                        ),
+                    );
+
+                    let i3 = path_integrate(
+                        expr,
+                        var,
+                        &Expr::Path(
+                            PathType::Line,
+                            Arc::new(z_tr.clone()),
+                            Arc::new(z_tl.clone()),
+                        ),
+                    );
+
+                    let i4 = path_integrate(
+                        expr,
+                        var,
+                        &Expr::Path(
+                            PathType::Line,
+                            Arc::new(z_tl),
+                            Arc::new(z_bl.clone()),
+                        ),
+                    );
+
+                    simplify(&Expr::new_add(
+                        i1,
+                        Expr::new_add(
+                            i2,
+                            Expr::new_add(i3, i4),
+                        ),
+                    ))
+                }
             }
-            PathType::Line => {
-
-                let (z0, z1) = (&**param1, &**param2);
-
-                let dz_dt = simplify(&Expr::new_sub(
-                    z1.clone(),
-                    z0.clone(),
-                ));
-
-                let t_var = Expr::Variable("t".to_string());
-
-                let z_t = simplify(&Expr::new_add(
-                    z0.clone(),
-                    Expr::new_mul(t_var, dz_dt.clone()),
-                ));
-
-                let integrand_t = simplify(&Expr::new_mul(
-                    substitute(expr, var, &z_t),
-                    dz_dt,
-                ));
-
-                definite_integrate(
-                    &integrand_t,
-                    "t",
-                    &Expr::BigInt(BigInt::zero()),
-                    &Expr::BigInt(BigInt::one()),
-                )
+        }
+        _ => {
+            Expr::Integral {
+                integrand: Arc::new(expr.clone()),
+                var: Arc::new(Expr::Variable(
+                    var.to_string(),
+                )),
+                lower_bound: Arc::new(Expr::Variable(
+                    "C_lower".to_string(),
+                )),
+                upper_bound: Arc::new(Expr::Variable(
+                    "C_upper".to_string(),
+                )),
             }
-            PathType::Rectangle => {
-
-                let (z_bl, z_tr) = (&**param1, &**param2);
-
-                let z_br = Expr::new_complex(z_tr.re(), z_bl.im());
-
-                let z_tl = Expr::new_complex(z_bl.re(), z_tr.im());
-
-                let i1 = path_integrate(
-                    expr,
-                    var,
-                    &Expr::Path(
-                        PathType::Line,
-                        Arc::new(z_bl.clone()),
-                        Arc::new(z_br.clone()),
-                    ),
-                );
-
-                let i2 = path_integrate(
-                    expr,
-                    var,
-                    &Expr::Path(
-                        PathType::Line,
-                        Arc::new(z_br),
-                        Arc::new(z_tr.clone()),
-                    ),
-                );
-
-                let i3 = path_integrate(
-                    expr,
-                    var,
-                    &Expr::Path(
-                        PathType::Line,
-                        Arc::new(z_tr.clone()),
-                        Arc::new(z_tl.clone()),
-                    ),
-                );
-
-                let i4 = path_integrate(
-                    expr,
-                    var,
-                    &Expr::Path(
-                        PathType::Line,
-                        Arc::new(z_tl),
-                        Arc::new(z_bl.clone()),
-                    ),
-                );
-
-                simplify(&Expr::new_add(
-                    i1,
-                    Expr::new_add(
-                        i2,
-                        Expr::new_add(i3, i4),
-                    ),
-                ))
-            }
-        },
-        _ => Expr::Integral {
-            integrand: Arc::new(expr.clone()),
-            var: Arc::new(Expr::Variable(
-                var.to_string(),
-            )),
-            lower_bound: Arc::new(Expr::Variable(
-                "C_lower".to_string(),
-            )),
-            upper_bound: Arc::new(Expr::Variable(
-                "C_upper".to_string(),
-            )),
-        },
+        }
     }
 }
 
@@ -2556,31 +2678,41 @@ pub(crate) fn integrate_by_rules(
 ) -> Option<Expr> {
 
     match expr {
-        Expr::Dag(node) => integrate_by_rules(
-            &node
-                .to_expr()
-                .expect("Intergrate by rules"),
-            var,
-        ),
-        Expr::Constant(c) => Some(Expr::new_mul(
-            Expr::Constant(*c),
-            Expr::Variable(var.to_string()),
-        )),
-        Expr::BigInt(i) => Some(Expr::new_mul(
-            Expr::BigInt(i.clone()),
-            Expr::Variable(var.to_string()),
-        )),
-        Expr::Rational(r) => Some(Expr::new_mul(
-            Expr::Rational(r.clone()),
-            Expr::Variable(var.to_string()),
-        )),
-        Expr::Variable(name) if name == var => Some(Expr::new_div(
-            Expr::new_pow(
+        Expr::Dag(node) => {
+            integrate_by_rules(
+                &node
+                    .to_expr()
+                    .expect("Intergrate by rules"),
+                var,
+            )
+        }
+        Expr::Constant(c) => {
+            Some(Expr::new_mul(
+                Expr::Constant(*c),
                 Expr::Variable(var.to_string()),
+            ))
+        }
+        Expr::BigInt(i) => {
+            Some(Expr::new_mul(
+                Expr::BigInt(i.clone()),
+                Expr::Variable(var.to_string()),
+            ))
+        }
+        Expr::Rational(r) => {
+            Some(Expr::new_mul(
+                Expr::Rational(r.clone()),
+                Expr::Variable(var.to_string()),
+            ))
+        }
+        Expr::Variable(name) if name == var => {
+            Some(Expr::new_div(
+                Expr::new_pow(
+                    Expr::Variable(var.to_string()),
+                    Expr::BigInt(BigInt::from(2)),
+                ),
                 Expr::BigInt(BigInt::from(2)),
-            ),
-            Expr::BigInt(BigInt::from(2)),
-        )),
+            ))
+        }
         Expr::Exp(arg) => {
 
             if let Expr::Variable(name) = &**arg {
@@ -3650,34 +3782,38 @@ pub fn limit_internal(
     let expr = &simplify(&expr.clone());
 
     match to {
-        Expr::Infinity => match expr {
-            Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
+        Expr::Infinity => {
+            match expr {
+                Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
 
-                return Expr::Infinity;
-            }
-            Expr::Log(arg) if **arg == Expr::Variable(var.to_string()) => {
+                    return Expr::Infinity;
+                }
+                Expr::Log(arg) if **arg == Expr::Variable(var.to_string()) => {
 
-                return Expr::Infinity;
-            }
-            Expr::ArcTan(arg) if **arg == Expr::Variable(var.to_string()) => {
+                    return Expr::Infinity;
+                }
+                Expr::ArcTan(arg) if **arg == Expr::Variable(var.to_string()) => {
 
-                return Expr::Constant(std::f64::consts::PI / 2.0);
+                    return Expr::Constant(std::f64::consts::PI / 2.0);
+                }
+                Expr::Variable(v) if v == var => return Expr::Infinity,
+                _ => {}
             }
-            Expr::Variable(v) if v == var => return Expr::Infinity,
-            _ => {}
-        },
-        Expr::NegativeInfinity => match expr {
-            Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
+        }
+        Expr::NegativeInfinity => {
+            match expr {
+                Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
 
-                return Expr::BigInt(BigInt::zero());
-            }
-            Expr::ArcTan(arg) if **arg == Expr::Variable(var.to_string()) => {
+                    return Expr::BigInt(BigInt::zero());
+                }
+                Expr::ArcTan(arg) if **arg == Expr::Variable(var.to_string()) => {
 
-                return Expr::Constant(-std::f64::consts::PI / 2.0);
+                    return Expr::Constant(-std::f64::consts::PI / 2.0);
+                }
+                Expr::Variable(v) if v == var => return Expr::NegativeInfinity,
+                _ => {}
             }
-            Expr::Variable(v) if v == var => return Expr::NegativeInfinity,
-            _ => {}
-        },
+        }
         _ => {}
     }
 

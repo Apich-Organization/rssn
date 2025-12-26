@@ -71,18 +71,22 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
     match nc::transform_point(
         &req.point, req.from, req.to,
     ) {
-        Ok(res) => encode(
-            &FfiResult::<Vec<f64>, String> {
-                ok: Some(res),
-                err: None,
-            },
-        ),
-        Err(e) => encode(
-            &FfiResult::<Vec<f64>, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(res) => {
+            encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok: Some(res),
+                    err: None,
+                },
+            )
+        }
+        Err(e) => {
+            encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }
 
@@ -109,17 +113,21 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_bincode(
     match nc::transform_point_pure(
         &req.point, req.from, req.to,
     ) {
-        Ok(res) => encode(
-            &FfiResult::<Vec<f64>, String> {
-                ok: Some(res),
-                err: None,
-            },
-        ),
-        Err(e) => encode(
-            &FfiResult::<Vec<f64>, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(res) => {
+            encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok: Some(res),
+                    err: None,
+                },
+            )
+        }
+        Err(e) => {
+            encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }

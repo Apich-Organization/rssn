@@ -71,17 +71,21 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv_bincode(
         .to_csmat();
 
     match sparse::sp_mat_vec_mul(&mat, &req.vector) {
-        Ok(res) => encode(
-            &FfiResult::<Vec<f64>, String> {
-                ok: Some(res),
-                err: None,
-            },
-        ),
-        Err(e) => encode(
-            &FfiResult::<Vec<f64>, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(res) => {
+            encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok: Some(res),
+                    err: None,
+                },
+            )
+        }
+        Err(e) => {
+            encode(
+                &FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }

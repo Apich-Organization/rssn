@@ -387,11 +387,13 @@ pub(crate) fn unify_recursive(
 pub(crate) fn complexity(expr: &Expr) -> usize {
 
     match expr {
-        Expr::Dag(node) => complexity(
-            &node
-                .to_expr()
-                .expect("Complexity"),
-        ),
+        Expr::Dag(node) => {
+            complexity(
+                &node
+                    .to_expr()
+                    .expect("Complexity"),
+            )
+        }
         Expr::Add(a, b) | Expr::Mul(a, b) | Expr::Sub(a, b) | Expr::Div(a, b) => {
             complexity(a) + complexity(b) + 1
         }

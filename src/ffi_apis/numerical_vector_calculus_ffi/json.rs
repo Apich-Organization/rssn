@@ -65,14 +65,18 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
     );
 
     let ffi_res = match res {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
@@ -112,14 +116,18 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
     );
 
     let ffi_res = match res {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_c_string(serde_json::to_string(&ffi_res).unwrap())
@@ -159,14 +167,18 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
     );
 
     let ffi_res = match res {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_c_string(serde_json::to_string(&ffi_res).unwrap())

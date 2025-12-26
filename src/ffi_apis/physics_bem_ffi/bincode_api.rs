@@ -47,22 +47,30 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_bincode(
     let bcs: Vec<BoundaryCondition<f64>> = input
         .bcs
         .into_iter()
-        .map(|bc| match bc {
-            BemBoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
-            BemBoundaryCondition::Flux(v) => BoundaryCondition::Flux(v),
+        .map(|bc| {
+            match bc {
+                BemBoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
+                BemBoundaryCondition::Flux(v) => BoundaryCondition::Flux(v),
+            }
         })
         .collect();
 
     match physics_bem::solve_laplace_bem_2d(&input.points, &bcs) {
-        Ok((u, q)) => to_bincode_buffer(&FfiResult::<
-            Bem2DOutput,
-            String,
-        >::ok(
-            Bem2DOutput { u, q },
-        )),
-        Err(e) => to_bincode_buffer(&FfiResult::<
-            Bem2DOutput,
-            String,
-        >::err(e)),
+        Ok((u, q)) => {
+            to_bincode_buffer(&FfiResult::<
+                Bem2DOutput,
+                String,
+            >::ok(
+                Bem2DOutput { u, q },
+            ))
+        }
+        Err(e) => {
+            to_bincode_buffer(&FfiResult::<
+                Bem2DOutput,
+                String,
+            >::err(
+                e
+            ))
+        }
     }
 }

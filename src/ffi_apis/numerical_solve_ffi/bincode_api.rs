@@ -66,15 +66,19 @@ pub unsafe extern "C" fn rssn_solve_linear_system_bincode(buffer: BincodeBuffer)
         &input.matrix,
         &input.vector,
     ) {
-        Ok(sol) => encode(FfiResult {
-            ok: Some(sol),
-            err: None::<String>,
-        }),
-        Err(e) => encode(
-            FfiResult::<LinearSolution> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(sol) => {
+            encode(FfiResult {
+                ok: Some(sol),
+                err: None::<String>,
+            })
+        }
+        Err(e) => {
+            encode(
+                FfiResult::<LinearSolution> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }

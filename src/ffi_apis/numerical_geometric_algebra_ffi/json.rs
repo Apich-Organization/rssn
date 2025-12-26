@@ -274,14 +274,18 @@ pub unsafe extern "C" fn rssn_num_ga_inv_json(json_ptr: *const c_char) -> *mut c
     };
 
     let res = match input.mv.inv() {
-        Some(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        None => FfiResult {
-            ok: None,
-            err: Some("Multivector is not invertible".to_string()),
-        },
+        Some(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        None => {
+            FfiResult {
+                ok: None,
+                err: Some("Multivector is not invertible".to_string()),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())

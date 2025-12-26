@@ -362,12 +362,14 @@ pub fn is_polynomial(
 ) -> bool {
 
     match expr {
-        Expr::Dag(node) => is_polynomial(
-            &node
-                .to_expr()
-                .expect("Is Polynomial"),
-            var,
-        ),
+        Expr::Dag(node) => {
+            is_polynomial(
+                &node
+                    .to_expr()
+                    .expect("Is Polynomial"),
+                var,
+            )
+        }
         Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) => true,
         Expr::Variable(_) => true,
         Expr::Add(a, b) | Expr::Sub(a, b) | Expr::Mul(a, b) => {
@@ -395,15 +397,18 @@ pub fn is_polynomial(
         }
         Expr::Neg(a) => is_polynomial(a, var),
         // N-ary list variants
-        Expr::AddList(terms) | Expr::MulList(terms) => terms
-            .iter()
-            .all(|t| is_polynomial(t, var)),
+        Expr::AddList(terms) | Expr::MulList(terms) => {
+            terms
+                .iter()
+                .all(|t| is_polynomial(t, var))
+        }
         // Generic list variants - check if they don't contain the variable
         Expr::UnaryList(_, a) => is_polynomial(a, var),
         Expr::BinaryList(_, a, b) => is_polynomial(a, var) && is_polynomial(b, var),
-        Expr::NaryList(_, args) => args
-            .iter()
-            .all(|arg| is_polynomial(arg, var)),
+        Expr::NaryList(_, args) => {
+            args.iter()
+                .all(|arg| is_polynomial(arg, var))
+        }
         Expr::Sin(_)
         | Expr::Cos(_)
         | Expr::Tan(_)
@@ -454,10 +459,12 @@ pub fn polynomial_degree(
     };
 
     match s_expr {
-        Expr::Add(a, b) | Expr::Sub(a, b) => std::cmp::max(
-            polynomial_degree(&a, var),
-            polynomial_degree(&b, var),
-        ),
+        Expr::Add(a, b) | Expr::Sub(a, b) => {
+            std::cmp::max(
+                polynomial_degree(&a, var),
+                polynomial_degree(&b, var),
+            )
+        }
         Expr::Mul(a, b) => polynomial_degree(&a, var) + polynomial_degree(&b, var),
         Expr::Div(a, b) => polynomial_degree(&a, var) - polynomial_degree(&b, var),
         Expr::Power(ref base, ref exp) => {
@@ -469,14 +476,16 @@ pub fn polynomial_degree(
 
                     // Extract the exponent value
                     return match exp.as_ref() {
-                        Expr::BigInt(n) => n
-                            .to_i64()
-                            .unwrap_or(0),
+                        Expr::BigInt(n) => {
+                            n.to_i64()
+                                .unwrap_or(0)
+                        }
                         Expr::Constant(c) if c.fract() == 0.0 && *c >= 0.0 => *c as i64,
-                        Expr::Rational(r) if r.is_integer() && r >= &BigRational::zero() => r
-                            .to_integer()
-                            .to_i64()
-                            .unwrap_or(0),
+                        Expr::Rational(r) if r.is_integer() && r >= &BigRational::zero() => {
+                            r.to_integer()
+                                .to_i64()
+                                .unwrap_or(0)
+                        }
                         _ => 0,
                     };
                 }
@@ -588,14 +597,18 @@ pub fn leading_coefficient(
                 ))
             }
         }
-        Expr::Mul(a, b) => simplify(&Expr::new_mul(
-            leading_coefficient(&a, var),
-            leading_coefficient(&b, var),
-        )),
-        Expr::Div(a, b) => simplify(&Expr::new_div(
-            leading_coefficient(&a, var),
-            leading_coefficient(&b, var),
-        )),
+        Expr::Mul(a, b) => {
+            simplify(&Expr::new_mul(
+                leading_coefficient(&a, var),
+                leading_coefficient(&b, var),
+            ))
+        }
+        Expr::Div(a, b) => {
+            simplify(&Expr::new_div(
+                leading_coefficient(&a, var),
+                leading_coefficient(&b, var),
+            ))
+        }
         Expr::Power(base, exp) => {
 
             if let (Expr::Variable(v), Expr::BigInt(_)) = (&*base, &*exp) {
@@ -640,11 +653,13 @@ pub fn polynomial_long_division(
     pub(crate) fn is_zero_local(expr: &Expr) -> bool {
 
         match expr {
-            Expr::Dag(node) => is_zero_local(
-                &node
-                    .to_expr()
-                    .expect("Is Zero"),
-            ),
+            Expr::Dag(node) => {
+                is_zero_local(
+                    &node
+                        .to_expr()
+                        .expect("Is Zero"),
+                )
+            }
             Expr::Constant(c) => *c == 0.0,
             Expr::BigInt(i) => i.is_zero(),
             Expr::Rational(r) => r.is_zero(),
@@ -1048,6 +1063,7 @@ pub fn polynomial_long_division_coeffs(
     while den_coeffs
         .last()
         .is_some_and(|c| {
+
             is_zero(&simplify(
                 &c.clone(),
             ))
@@ -1120,6 +1136,7 @@ pub fn polynomial_long_division_coeffs(
         while num_coeffs
             .last()
             .is_some_and(|c| {
+
                 is_zero(&simplify(
                     &c.clone(),
                 ))
@@ -1814,6 +1831,7 @@ impl SparsePolynomial {
 
         self.terms
             .retain(|_, coeff| {
+
                 !is_zero(&simplify(
                     &coeff.clone(),
                 ))

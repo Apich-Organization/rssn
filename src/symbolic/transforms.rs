@@ -769,101 +769,107 @@ pub(crate) fn lookup_inverse_laplace(
 ) -> Option<Expr> {
 
     match expr {
-        Expr::Dag(node) => lookup_inverse_laplace(
-            &node
-                .to_expr()
-                .expect("Dag Inverse"),
-            in_var,
-            out_var,
-        ),
-        Expr::Div(num, den) => match (&**num, &**den) {
-            (Expr::BigInt(n), Expr::Variable(v)) if n.is_one() && v == in_var => Some(
-                Expr::BigInt(BigInt::one()),
-            ),
-            (Expr::BigInt(n), Expr::Sub(s_var, a_const)) if n.is_one() => {
-
-                if let (Expr::Variable(v), Expr::Constant(a)) = (&**s_var, &**a_const) {
-
-                    if v == in_var {
-
-                        return Some(Expr::new_exp(
-                            Expr::new_mul(
-                                Expr::Constant(*a),
-                                Expr::Variable(out_var.to_string()),
-                            ),
-                        ));
-                    }
+        Expr::Dag(node) => {
+            lookup_inverse_laplace(
+                &node
+                    .to_expr()
+                    .expect("Dag Inverse"),
+                in_var,
+                out_var,
+            )
+        }
+        Expr::Div(num, den) => {
+            match (&**num, &**den) {
+                (Expr::BigInt(n), Expr::Variable(v)) if n.is_one() && v == in_var => {
+                    Some(Expr::BigInt(
+                        BigInt::one(),
+                    ))
                 }
+                (Expr::BigInt(n), Expr::Sub(s_var, a_const)) if n.is_one() => {
 
-                None
-            }
-            (Expr::Constant(w), Expr::Add(s_sq, w_sq)) => {
+                    if let (Expr::Variable(v), Expr::Constant(a)) = (&**s_var, &**a_const) {
 
-                if let (Expr::Power(s_var, s_exp), Expr::Power(w_const, _w_exp)) =
-                    (&**s_sq, &**w_sq)
-                {
+                        if v == in_var {
 
-                    if let (Expr::Variable(v), s_exp_expr) = (
-                        &**s_var,
-                        s_exp.clone(),
-                    ) {
+                            return Some(Expr::new_exp(
+                                Expr::new_mul(
+                                    Expr::Constant(*a),
+                                    Expr::Variable(out_var.to_string()),
+                                ),
+                            ));
+                        }
+                    }
 
-                        if let Expr::BigInt(s_exp_val) = &*s_exp_expr {
+                    None
+                }
+                (Expr::Constant(w), Expr::Add(s_sq, w_sq)) => {
 
-                            if s_exp_val == &BigInt::from(2)
-                                && v == in_var
-                                && if let Expr::Constant(val) = **w_const {
+                    if let (Expr::Power(s_var, s_exp), Expr::Power(w_const, _w_exp)) =
+                        (&**s_sq, &**w_sq)
+                    {
 
-                                    val
-                                } else {
+                        if let (Expr::Variable(v), s_exp_expr) = (
+                            &**s_var,
+                            s_exp.clone(),
+                        ) {
 
-                                    return None;
-                                } == *w
-                            {
+                            if let Expr::BigInt(s_exp_val) = &*s_exp_expr {
 
-                                return Some(Expr::new_sin(
-                                    Expr::new_mul(
-                                        w_const.clone(),
-                                        Expr::Variable(out_var.to_string()),
-                                    ),
-                                ));
+                                if s_exp_val == &BigInt::from(2)
+                                    && v == in_var
+                                    && if let Expr::Constant(val) = **w_const {
+
+                                        val
+                                    } else {
+
+                                        return None;
+                                    } == *w
+                                {
+
+                                    return Some(Expr::new_sin(
+                                        Expr::new_mul(
+                                            w_const.clone(),
+                                            Expr::Variable(out_var.to_string()),
+                                        ),
+                                    ));
+                                }
                             }
                         }
                     }
+
+                    None
                 }
+                (Expr::Variable(v), Expr::Add(s_sq, w_sq)) if v == in_var => {
 
-                None
-            }
-            (Expr::Variable(v), Expr::Add(s_sq, w_sq)) if v == in_var => {
+                    if let (Expr::Power(s_var, s_exp), Expr::Power(w_const, _w_exp)) =
+                        (&**s_sq, &**w_sq)
+                    {
 
-                if let (Expr::Power(s_var, s_exp), Expr::Power(w_const, _w_exp)) =
-                    (&**s_sq, &**w_sq)
-                {
+                        if let (Expr::Variable(s), s_exp_expr) = (
+                            &**s_var,
+                            s_exp.clone(),
+                        ) {
 
-                    if let (Expr::Variable(s), s_exp_expr) = (
-                        &**s_var,
-                        s_exp.clone(),
-                    ) {
+                            if let Expr::BigInt(s_exp_val) = &*s_exp_expr {
 
-                        if let Expr::BigInt(s_exp_val) = &*s_exp_expr {
+                                if s_exp_val == &BigInt::from(2) && s == in_var {
 
-                            if s_exp_val == &BigInt::from(2) && s == in_var {
-
-                                return Some(Expr::new_cos(
-                                    Expr::new_mul(
-                                        w_const.clone(),
-                                        Expr::Variable(out_var.to_string()),
-                                    ),
-                                ));
+                                    return Some(Expr::new_cos(
+                                        Expr::new_mul(
+                                            w_const.clone(),
+                                            Expr::Variable(out_var.to_string()),
+                                        ),
+                                    ));
+                                }
                             }
                         }
                     }
-                }
 
-                None
+                    None
+                }
+                _ => None,
             }
-            _ => None,
-        },
+        }
         _ => None,
     }
 }

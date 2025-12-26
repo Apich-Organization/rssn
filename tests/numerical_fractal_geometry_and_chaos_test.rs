@@ -496,6 +496,7 @@ fn test_box_counting_dimension_line() {
     // A line should have dimension ~1
     let points: Vec<(f64, f64)> = (0..100)
         .map(|i| {
+
             (
                 i as f64 / 100.0,
                 0.0,

@@ -196,10 +196,12 @@ pub(crate) fn flatten_product(
 pub fn normalize(expr: Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => normalize(
-            node.to_expr()
-                .expect("Noramlize"),
-        ),
+        Expr::Dag(node) => {
+            normalize(
+                node.to_expr()
+                    .expect("Noramlize"),
+            )
+        }
         Expr::Add(a, b) => {
 
             let mut terms = Vec::new();
@@ -254,51 +256,73 @@ pub fn normalize(expr: Expr) -> Expr {
                 other_factors,
             )
         }
-        Expr::Sub(a, b) => Expr::new_sub(
-            normalize((*a).clone()),
-            normalize((*b).clone()),
-        ),
-        Expr::Div(a, b) => Expr::new_div(
-            normalize((*a).clone()),
-            normalize((*b).clone()),
-        ),
-        Expr::Power(a, b) => Expr::new_pow(
-            normalize((*a).clone()),
-            normalize((*b).clone()),
-        ),
-        Expr::Neg(a) => Expr::new_neg(normalize(
-            (*a).clone(),
-        )),
-        Expr::Sin(a) => Expr::new_sin(normalize(
-            (*a).clone(),
-        )),
-        Expr::Cos(a) => Expr::new_cos(normalize(
-            (*a).clone(),
-        )),
-        Expr::Tan(a) => Expr::new_tan(normalize(
-            (*a).clone(),
-        )),
-        Expr::Exp(a) => Expr::new_exp(normalize(
-            (*a).clone(),
-        )),
-        Expr::Log(a) => Expr::new_log(normalize(
-            (*a).clone(),
-        )),
-        Expr::Vector(v) => Expr::Vector(
-            v.into_iter()
-                .map(normalize)
-                .collect(),
-        ),
-        Expr::Matrix(m) => Expr::Matrix(
-            m.into_iter()
-                .map(|row| {
+        Expr::Sub(a, b) => {
+            Expr::new_sub(
+                normalize((*a).clone()),
+                normalize((*b).clone()),
+            )
+        }
+        Expr::Div(a, b) => {
+            Expr::new_div(
+                normalize((*a).clone()),
+                normalize((*b).clone()),
+            )
+        }
+        Expr::Power(a, b) => {
+            Expr::new_pow(
+                normalize((*a).clone()),
+                normalize((*b).clone()),
+            )
+        }
+        Expr::Neg(a) => {
+            Expr::new_neg(normalize(
+                (*a).clone(),
+            ))
+        }
+        Expr::Sin(a) => {
+            Expr::new_sin(normalize(
+                (*a).clone(),
+            ))
+        }
+        Expr::Cos(a) => {
+            Expr::new_cos(normalize(
+                (*a).clone(),
+            ))
+        }
+        Expr::Tan(a) => {
+            Expr::new_tan(normalize(
+                (*a).clone(),
+            ))
+        }
+        Expr::Exp(a) => {
+            Expr::new_exp(normalize(
+                (*a).clone(),
+            ))
+        }
+        Expr::Log(a) => {
+            Expr::new_log(normalize(
+                (*a).clone(),
+            ))
+        }
+        Expr::Vector(v) => {
+            Expr::Vector(
+                v.into_iter()
+                    .map(normalize)
+                    .collect(),
+            )
+        }
+        Expr::Matrix(m) => {
+            Expr::Matrix(
+                m.into_iter()
+                    .map(|row| {
 
-                    row.into_iter()
-                        .map(normalize)
-                        .collect()
-                })
-                .collect(),
-        ),
+                        row.into_iter()
+                            .map(normalize)
+                            .collect()
+                    })
+                    .collect(),
+            )
+        }
         e => e,
     }
 }
@@ -322,16 +346,18 @@ pub fn expand(expr: Expr) -> Expr {
             let exp_b = expand(b.as_ref().clone());
 
             let exp_a_unwrapped = match exp_a {
-                Expr::Dag(ref node) => node
-                    .to_expr()
-                    .unwrap_or(exp_a.clone()),
+                Expr::Dag(ref node) => {
+                    node.to_expr()
+                        .unwrap_or(exp_a.clone())
+                }
                 _ => exp_a,
             };
 
             let exp_b_unwrapped = match exp_b {
-                Expr::Dag(ref node) => node
-                    .to_expr()
-                    .unwrap_or(exp_b.clone()),
+                Expr::Dag(ref node) => {
+                    node.to_expr()
+                        .unwrap_or(exp_b.clone())
+                }
                 _ => exp_b,
             };
 
@@ -360,6 +386,7 @@ pub fn expand(expr: Expr) -> Expr {
                     let new_terms: Vec<Expr> = terms
                         .iter()
                         .map(|t| {
+
                             Expr::new_mul(
                                 t.clone(),
                                 b_expr.clone(),
@@ -392,6 +419,7 @@ pub fn expand(expr: Expr) -> Expr {
                     let new_terms: Vec<Expr> = terms
                         .iter()
                         .map(|t| {
+
                             Expr::new_mul(
                                 a_expr.clone(),
                                 t.clone(),
@@ -437,52 +465,74 @@ pub fn expand(expr: Expr) -> Expr {
 
             Expr::new_pow(exp_base, exp_exp)
         }
-        Expr::Sub(a, b) => Expr::new_sub(
-            expand(a.as_ref().clone()),
-            expand(b.as_ref().clone()),
-        ),
-        Expr::Neg(a) => match expand(a.as_ref().clone()) {
-            Expr::Add(b, c) => Expr::new_add(
-                Expr::new_neg(b),
-                Expr::new_neg(c),
-            ),
-            Expr::Neg(b) => b.as_ref().clone(),
-            expanded_a => Expr::new_neg(expanded_a),
-        },
-        Expr::Div(a, b) => Expr::new_div(
-            expand(a.as_ref().clone()),
-            expand(b.as_ref().clone()),
-        ),
-        Expr::Sin(a) => Expr::new_sin(expand(
-            a.as_ref().clone(),
-        )),
-        Expr::Cos(a) => Expr::new_cos(expand(
-            a.as_ref().clone(),
-        )),
-        Expr::Tan(a) => Expr::new_tan(expand(
-            a.as_ref().clone(),
-        )),
-        Expr::Exp(a) => Expr::new_exp(expand(
-            a.as_ref().clone(),
-        )),
-        Expr::Log(a) => Expr::new_log(expand(
-            a.as_ref().clone(),
-        )),
-        Expr::Vector(v) => Expr::Vector(
-            v.into_iter()
-                .map(expand)
-                .collect(),
-        ),
-        Expr::Matrix(m) => Expr::Matrix(
-            m.into_iter()
-                .map(|row| {
+        Expr::Sub(a, b) => {
+            Expr::new_sub(
+                expand(a.as_ref().clone()),
+                expand(b.as_ref().clone()),
+            )
+        }
+        Expr::Neg(a) => {
+            match expand(a.as_ref().clone()) {
+                Expr::Add(b, c) => {
+                    Expr::new_add(
+                        Expr::new_neg(b),
+                        Expr::new_neg(c),
+                    )
+                }
+                Expr::Neg(b) => b.as_ref().clone(),
+                expanded_a => Expr::new_neg(expanded_a),
+            }
+        }
+        Expr::Div(a, b) => {
+            Expr::new_div(
+                expand(a.as_ref().clone()),
+                expand(b.as_ref().clone()),
+            )
+        }
+        Expr::Sin(a) => {
+            Expr::new_sin(expand(
+                a.as_ref().clone(),
+            ))
+        }
+        Expr::Cos(a) => {
+            Expr::new_cos(expand(
+                a.as_ref().clone(),
+            ))
+        }
+        Expr::Tan(a) => {
+            Expr::new_tan(expand(
+                a.as_ref().clone(),
+            ))
+        }
+        Expr::Exp(a) => {
+            Expr::new_exp(expand(
+                a.as_ref().clone(),
+            ))
+        }
+        Expr::Log(a) => {
+            Expr::new_log(expand(
+                a.as_ref().clone(),
+            ))
+        }
+        Expr::Vector(v) => {
+            Expr::Vector(
+                v.into_iter()
+                    .map(expand)
+                    .collect(),
+            )
+        }
+        Expr::Matrix(m) => {
+            Expr::Matrix(
+                m.into_iter()
+                    .map(|row| {
 
-                    row.into_iter()
-                        .map(expand)
-                        .collect()
-                })
-                .collect(),
-        ),
+                        row.into_iter()
+                            .map(expand)
+                            .collect()
+                    })
+                    .collect(),
+            )
+        }
         _ => expr,
     };
 
@@ -497,9 +547,10 @@ pub fn factorize(expr: Expr) -> Expr {
     let expanded = expand(expr);
 
     let expanded_unwrapped = match &expanded {
-        Expr::Dag(node) => node
-            .to_expr()
-            .unwrap_or_else(|_| expanded.clone()),
+        Expr::Dag(node) => {
+            node.to_expr()
+                .unwrap_or_else(|_| expanded.clone())
+        }
         _ => expanded.clone(),
     };
 
@@ -529,10 +580,12 @@ pub fn factorize(expr: Expr) -> Expr {
 
             factorize_terms(flat_terms)
         }
-        Expr::Mul(a, b) => Expr::new_mul(
-            factorize(a.as_ref().clone()),
-            factorize(b.as_ref().clone()),
-        ),
+        Expr::Mul(a, b) => {
+            Expr::new_mul(
+                factorize(a.as_ref().clone()),
+                factorize(b.as_ref().clone()),
+            )
+        }
         Expr::MulList(factors) => {
 
             let new_factors: Vec<Expr> = factors
@@ -560,13 +613,17 @@ pub fn factorize(expr: Expr) -> Expr {
                 res
             }
         }
-        Expr::Power(a, b) => Expr::new_pow(
-            factorize(a.as_ref().clone()),
-            factorize(b.as_ref().clone()),
-        ),
-        Expr::Neg(a) => Expr::new_neg(factorize(
-            a.as_ref().clone(),
-        )),
+        Expr::Power(a, b) => {
+            Expr::new_pow(
+                factorize(a.as_ref().clone()),
+                factorize(b.as_ref().clone()),
+            )
+        }
+        Expr::Neg(a) => {
+            Expr::new_neg(factorize(
+                a.as_ref().clone(),
+            ))
+        }
         e => e,
     }
 }

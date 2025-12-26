@@ -39,22 +39,26 @@ pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json: *const c_char) -
         &input.expr,
         &input.vars,
     ) {
-        Ok(res) => to_c_string(
-            serde_json::to_string(&FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            })
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<Complex<f64>, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Ok(res) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult {
+                    ok: Some(res),
+                    err: None::<String>,
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Complex<f64>, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
+            )
+        }
     }
 }
 
@@ -92,21 +96,25 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
         &input.var,
         &input.path,
     ) {
-        Ok(res) => to_c_string(
-            serde_json::to_string(&FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            })
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<Complex<f64>, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Ok(res) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult {
+                    ok: Some(res),
+                    err: None::<String>,
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<Complex<f64>, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
+            )
+        }
     }
 }

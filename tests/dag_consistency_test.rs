@@ -44,11 +44,13 @@ fn test_simplify_dag_consistency() {
         match expr {
             Expr::Constant(c) => c.abs() < 1e-9,
             Expr::BigInt(n) => n.is_zero(),
-            Expr::Dag(node) => match &node.op {
-                rssn::symbolic::core::DagOp::Constant(c) => c.abs() < 1e-9,
-                rssn::symbolic::core::DagOp::BigInt(n) => n.is_zero(),
-                _ => false,
-            },
+            Expr::Dag(node) => {
+                match &node.op {
+                    rssn::symbolic::core::DagOp::Constant(c) => c.abs() < 1e-9,
+                    rssn::symbolic::core::DagOp::BigInt(n) => n.is_zero(),
+                    _ => false,
+                }
+            }
             _ => false,
         }
     };

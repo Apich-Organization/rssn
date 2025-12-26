@@ -43,14 +43,18 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_json(json_ptr: *const c_char
     );
 
     let res = match result {
-        Ok(roots) => FfiResult {
-            ok: Some(roots),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(roots) => {
+            FfiResult {
+                ok: Some(roots),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())

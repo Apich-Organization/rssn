@@ -21,15 +21,21 @@ pub unsafe extern "C" fn rssn_physics_sim_gpe_run_bincode(buffer: BincodeBuffer)
     };
 
     match gpe_superfluidity::run_gpe_ground_state_finder(&params) {
-        Ok(res) => to_bincode_buffer(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::ok(
-            res.into_raw_vec(),
-        )),
-        Err(e) => to_bincode_buffer(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::err(e)),
+        Ok(res) => {
+            to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::ok(
+                res.into_raw_vec(),
+            ))
+        }
+        Err(e) => {
+            to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
+                e
+            ))
+        }
     }
 }

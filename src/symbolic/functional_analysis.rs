@@ -126,10 +126,12 @@ impl LinearOperator {
                     &x,
                 )
             }
-            Self::Multiplication(g) => simplify(&Expr::new_mul(
-                g.clone(),
-                expr.clone(),
-            )),
+            Self::Multiplication(g) => {
+                simplify(&Expr::new_mul(
+                    g.clone(),
+                    expr.clone(),
+                ))
+            }
             Self::Composition(op1, op2) => op1.apply(&op2.apply(expr)),
         }
     }

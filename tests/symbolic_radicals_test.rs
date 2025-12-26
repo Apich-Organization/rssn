@@ -17,10 +17,12 @@ fn is_sqrt_k(
 ) -> bool {
 
     match expr {
-        Expr::Sqrt(inner) => match inner.as_ref() {
-            Expr::Constant(c) => (c - k).abs() < f64::EPSILON,
-            _ => false,
-        },
+        Expr::Sqrt(inner) => {
+            match inner.as_ref() {
+                Expr::Constant(c) => (c - k).abs() < f64::EPSILON,
+                _ => false,
+            }
+        }
         _ => false,
     }
 }

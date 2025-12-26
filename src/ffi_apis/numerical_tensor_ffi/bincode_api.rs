@@ -98,19 +98,23 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
         &req.axes_a,
         &req.axes_b,
     ) {
-        Ok(res) => encode(
-            &FfiResult::<TensorData, String> {
-                ok: Some(TensorData::from(
-                    &res,
-                )),
-                err: None,
-            },
-        ),
-        Err(e) => encode(
-            &FfiResult::<TensorData, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(res) => {
+            encode(
+                &FfiResult::<TensorData, String> {
+                    ok: Some(TensorData::from(
+                        &res,
+                    )),
+                    err: None,
+                },
+            )
+        }
+        Err(e) => {
+            encode(
+                &FfiResult::<TensorData, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }

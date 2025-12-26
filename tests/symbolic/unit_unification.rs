@@ -24,10 +24,12 @@ fn test_add_meters_and_centimeters() {
 
     let result = match unify_expression(&addition_expr) {
         Ok(r) => r,
-        Err(e) => panic!(
-            "Unit unification failed: {}",
-            e
-        ),
+        Err(e) => {
+            panic!(
+                "Unit unification failed: {}",
+                e
+            )
+        }
     };
 
     if let Expr::Quantity(unit_quantity) = result {

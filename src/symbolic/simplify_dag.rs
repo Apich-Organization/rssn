@@ -1622,16 +1622,22 @@ pub(crate) fn fold_constants(node: &Arc<DagNode>) -> Option<Arc<DagNode>> {
             (DagOp::Sub, [a, b]) => Some(sub_em(a, b)),
             (DagOp::Mul, [a, b]) => Some(mul_em(a, b)),
             (DagOp::Div, [a, b]) => div_em(a, b),
-            (DagOp::Power, [Expr::Constant(a), Expr::Constant(b)]) => Some(Expr::Constant(
-                a.powf(*b),
-            )),
+            (DagOp::Power, [Expr::Constant(a), Expr::Constant(b)]) => {
+                Some(Expr::Constant(
+                    a.powf(*b),
+                ))
+            }
             (DagOp::Neg, [a]) => Some(neg_em(a)),
-            (DagOp::Sqrt, [a]) => match a.to_f64() {
-                Some(val) if val >= 0.0 => Some(Expr::Constant(
-                    val.sqrt(),
-                )),
-                _ => None,
-            },
+            (DagOp::Sqrt, [a]) => {
+                match a.to_f64() {
+                    Some(val) if val >= 0.0 => {
+                        Some(Expr::Constant(
+                            val.sqrt(),
+                        ))
+                    }
+                    _ => None,
+                }
+            }
             _ => None,
         };
 
@@ -1654,15 +1660,21 @@ pub(crate) fn fold_constants(node: &Arc<DagNode>) -> Option<Arc<DagNode>> {
 pub(crate) fn get_numeric_value(node: &Arc<DagNode>) -> Option<Expr> {
 
     match &node.op {
-        DagOp::Constant(c) => Some(Expr::Constant(
-            c.into_inner(),
-        )),
-        DagOp::BigInt(i) => Some(Expr::BigInt(
-            i.clone(),
-        )),
-        DagOp::Rational(r) => Some(Expr::Rational(
-            r.clone(),
-        )),
+        DagOp::Constant(c) => {
+            Some(Expr::Constant(
+                c.into_inner(),
+            ))
+        }
+        DagOp::BigInt(i) => {
+            Some(Expr::BigInt(
+                i.clone(),
+            ))
+        }
+        DagOp::Rational(r) => {
+            Some(Expr::Rational(
+                r.clone(),
+            ))
+        }
         _ => None,
     }
 }
@@ -1857,15 +1869,19 @@ pub(crate) fn div_em(
             }
         }
         // For integers, create a rational
-        (Expr::BigInt(ia), Expr::BigInt(ib)) => Some(Expr::Rational(
-            BigRational::new(
-                ia.clone(),
-                ib.clone(),
-            ),
-        )),
-        (Expr::Rational(ra), Expr::Rational(rb)) => Some(Expr::Rational(
-            ra / rb,
-        )),
+        (Expr::BigInt(ia), Expr::BigInt(ib)) => {
+            Some(Expr::Rational(
+                BigRational::new(
+                    ia.clone(),
+                    ib.clone(),
+                ),
+            ))
+        }
+        (Expr::Rational(ra), Expr::Rational(rb)) => {
+            Some(Expr::Rational(
+                ra / rb,
+            ))
+        }
         _ => {
 
             match (
@@ -2724,16 +2740,18 @@ pub(crate) fn pattern_match_recursive(
 
     // Unwrap DAG nodes for structural matching
     let expr_unwrapped = match expr {
-        Expr::Dag(node) => node
-            .to_expr()
-            .unwrap_or_else(|_| expr.clone()),
+        Expr::Dag(node) => {
+            node.to_expr()
+                .unwrap_or_else(|_| expr.clone())
+        }
         _ => expr.clone(),
     };
 
     let pattern_unwrapped = match pattern {
-        Expr::Dag(node) => node
-            .to_expr()
-            .unwrap_or_else(|_| pattern.clone()),
+        Expr::Dag(node) => {
+            node.to_expr()
+                .unwrap_or_else(|_| pattern.clone())
+        }
         _ => pattern.clone(),
     };
 
@@ -2839,94 +2857,129 @@ pub fn substitute_patterns(
 ) -> Expr {
 
     let template_unwrapped = match template {
-        Expr::Dag(node) => node
-            .to_expr()
-            .unwrap_or_else(|_| template.clone()),
+        Expr::Dag(node) => {
+            node.to_expr()
+                .unwrap_or_else(|_| template.clone())
+        }
         _ => template.clone(),
     };
 
     match template_unwrapped {
-        Expr::Pattern(name) => assignments
-            .get(&name)
-            .cloned()
-            .unwrap_or_else(|| template.clone()),
-        Expr::Add(a, b) => Expr::new_add(
-            substitute_patterns(&a, assignments),
-            substitute_patterns(&b, assignments),
-        ),
-        Expr::Sub(a, b) => Expr::new_sub(
-            substitute_patterns(&a, assignments),
-            substitute_patterns(&b, assignments),
-        ),
-        Expr::Mul(a, b) => Expr::new_mul(
-            substitute_patterns(&a, assignments),
-            substitute_patterns(&b, assignments),
-        ),
-        Expr::Div(a, b) => Expr::new_div(
-            substitute_patterns(&a, assignments),
-            substitute_patterns(&b, assignments),
-        ),
-        Expr::Power(b, e) => Expr::new_pow(
-            substitute_patterns(&b, assignments),
-            substitute_patterns(&e, assignments),
-        ),
-        Expr::Sin(a) => Expr::new_sin(substitute_patterns(
-            &a,
-            assignments,
-        )),
-        Expr::Cos(a) => Expr::new_cos(substitute_patterns(
-            &a,
-            assignments,
-        )),
-        Expr::Tan(a) => Expr::new_tan(substitute_patterns(
-            &a,
-            assignments,
-        )),
-        Expr::Exp(a) => Expr::new_exp(substitute_patterns(
-            &a,
-            assignments,
-        )),
-        Expr::Log(a) => Expr::new_log(substitute_patterns(
-            &a,
-            assignments,
-        )),
-        Expr::Neg(a) => Expr::new_neg(substitute_patterns(
-            &a,
-            assignments,
-        )),
-        Expr::Abs(a) => Expr::new_abs(substitute_patterns(
-            &a,
-            assignments,
-        )),
-        Expr::Sqrt(a) => Expr::new_sqrt(substitute_patterns(
-            &a,
-            assignments,
-        )),
-
-        Expr::NaryList(s, v) => Expr::NaryList(
-            s,
-            v.iter()
-                .map(|e| substitute_patterns(e, assignments))
-                .collect(),
-        ),
-        Expr::UnaryList(s, e) => Expr::UnaryList(
-            s,
-            Arc::new(substitute_patterns(
-                &e,
-                assignments,
-            )),
-        ),
-        Expr::BinaryList(s, a, b) => Expr::BinaryList(
-            s,
-            Arc::new(substitute_patterns(
+        Expr::Pattern(name) => {
+            assignments
+                .get(&name)
+                .cloned()
+                .unwrap_or_else(|| template.clone())
+        }
+        Expr::Add(a, b) => {
+            Expr::new_add(
+                substitute_patterns(&a, assignments),
+                substitute_patterns(&b, assignments),
+            )
+        }
+        Expr::Sub(a, b) => {
+            Expr::new_sub(
+                substitute_patterns(&a, assignments),
+                substitute_patterns(&b, assignments),
+            )
+        }
+        Expr::Mul(a, b) => {
+            Expr::new_mul(
+                substitute_patterns(&a, assignments),
+                substitute_patterns(&b, assignments),
+            )
+        }
+        Expr::Div(a, b) => {
+            Expr::new_div(
+                substitute_patterns(&a, assignments),
+                substitute_patterns(&b, assignments),
+            )
+        }
+        Expr::Power(b, e) => {
+            Expr::new_pow(
+                substitute_patterns(&b, assignments),
+                substitute_patterns(&e, assignments),
+            )
+        }
+        Expr::Sin(a) => {
+            Expr::new_sin(substitute_patterns(
                 &a,
                 assignments,
-            )),
-            Arc::new(substitute_patterns(
-                &b,
+            ))
+        }
+        Expr::Cos(a) => {
+            Expr::new_cos(substitute_patterns(
+                &a,
                 assignments,
-            )),
-        ),
+            ))
+        }
+        Expr::Tan(a) => {
+            Expr::new_tan(substitute_patterns(
+                &a,
+                assignments,
+            ))
+        }
+        Expr::Exp(a) => {
+            Expr::new_exp(substitute_patterns(
+                &a,
+                assignments,
+            ))
+        }
+        Expr::Log(a) => {
+            Expr::new_log(substitute_patterns(
+                &a,
+                assignments,
+            ))
+        }
+        Expr::Neg(a) => {
+            Expr::new_neg(substitute_patterns(
+                &a,
+                assignments,
+            ))
+        }
+        Expr::Abs(a) => {
+            Expr::new_abs(substitute_patterns(
+                &a,
+                assignments,
+            ))
+        }
+        Expr::Sqrt(a) => {
+            Expr::new_sqrt(substitute_patterns(
+                &a,
+                assignments,
+            ))
+        }
+
+        Expr::NaryList(s, v) => {
+            Expr::NaryList(
+                s,
+                v.iter()
+                    .map(|e| substitute_patterns(e, assignments))
+                    .collect(),
+            )
+        }
+        Expr::UnaryList(s, e) => {
+            Expr::UnaryList(
+                s,
+                Arc::new(substitute_patterns(
+                    &e,
+                    assignments,
+                )),
+            )
+        }
+        Expr::BinaryList(s, a, b) => {
+            Expr::BinaryList(
+                s,
+                Arc::new(substitute_patterns(
+                    &a,
+                    assignments,
+                )),
+                Arc::new(substitute_patterns(
+                    &b,
+                    assignments,
+                )),
+            )
+        }
         _ => template.clone(),
     }
 }

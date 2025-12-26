@@ -199,10 +199,12 @@ fn test_knuth_bendix_simple() {
             // We expect at least the 2 input rules to be oriented
             assert!(rules.len() >= 2);
         }
-        Err(e) => panic!(
-            "Knuth-Bendix failed: {}",
-            e
-        ),
+        Err(e) => {
+            panic!(
+                "Knuth-Bendix failed: {}",
+                e
+            )
+        }
     }
 }
 

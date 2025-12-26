@@ -181,6 +181,7 @@ impl FieldElement {
             if e & 1 == 1 {
 
                 result = (result * base.clone()).unwrap_or_else(|_| {
+
                     Self::new(
                         BigInt::zero(),
                         self.field.clone(),
@@ -189,6 +190,7 @@ impl FieldElement {
             }
 
             base = (base.clone() * base.clone()).unwrap_or_else(|_| {
+
                 Self::new(
                     BigInt::zero(),
                     self.field.clone(),

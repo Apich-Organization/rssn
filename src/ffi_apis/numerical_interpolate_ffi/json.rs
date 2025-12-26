@@ -50,14 +50,18 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
     let result = interpolate::lagrange_interpolation(&input.points);
 
     let ffi_result = match result {
-        Ok(poly) => FfiResult {
-            ok: Some(poly),
-            err: None,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(poly) => {
+            FfiResult {
+                ok: Some(poly),
+                err: None,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_c_string(serde_json::to_string(&ffi_result).unwrap())
@@ -86,10 +90,12 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
                 err: None,
             }
         }
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_c_string(serde_json::to_string(&ffi_result).unwrap())
@@ -134,14 +140,18 @@ pub unsafe extern "C" fn rssn_num_b_spline_json(input_ptr: *const c_char) -> *mu
     );
 
     let ffi_result = match result {
-        Some(p) => FfiResult {
-            ok: Some(p),
-            err: None,
-        },
-        None => FfiResult {
-            ok: None,
-            err: Some("Invalid B-spline parameters".to_string()),
-        },
+        Some(p) => {
+            FfiResult {
+                ok: Some(p),
+                err: None,
+            }
+        }
+        None => {
+            FfiResult {
+                ok: None,
+                err: Some("Invalid B-spline parameters".to_string()),
+            }
+        }
     };
 
     to_c_string(serde_json::to_string(&ffi_result).unwrap())

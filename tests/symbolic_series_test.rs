@@ -13,6 +13,7 @@ fn assert_is_value(
 ) {
 
     let val = evaluate_numerical(expr).unwrap_or_else(|| {
+
         panic!(
             "Failed to evaluate expression: {:?}",
             expr

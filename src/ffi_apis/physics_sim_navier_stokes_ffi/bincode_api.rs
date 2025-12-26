@@ -44,9 +44,13 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_bincode(
                 out
             ))
         }
-        Err(e) => to_bincode_buffer(&FfiResult::<
-            NavierStokesOutputData,
-            String,
-        >::err(e)),
+        Err(e) => {
+            to_bincode_buffer(&FfiResult::<
+                NavierStokesOutputData,
+                String,
+            >::err(
+                e
+            ))
+        }
     }
 }

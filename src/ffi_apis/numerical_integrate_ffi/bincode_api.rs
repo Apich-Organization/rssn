@@ -44,14 +44,18 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(buffer: BincodeBuffer
     );
 
     let res = match result {
-        Ok(val) => FfiResult {
-            ok: Some(val),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(val) => {
+            FfiResult {
+                ok: Some(val),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     to_bincode_buffer(&res)

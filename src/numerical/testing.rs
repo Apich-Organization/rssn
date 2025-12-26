@@ -121,16 +121,18 @@ pub fn solve_polynomial(coeffs: &mut Vec<Expr>) -> Vec<Expr> {
         3 => solve_quadratic(coeffs),
         4 => solve_cubic(coeffs),
         5 => solve_quartic(coeffs),
-        _ => solve_polynomial_numerical(
-            &coeffs
-                .iter()
-                .map(|e| {
+        _ => {
+            solve_polynomial_numerical(
+                &coeffs
+                    .iter()
+                    .map(|e| {
 
-                    e.to_f64()
-                        .unwrap_or(0.0)
-                })
-                .collect(),
-        ),
+                        e.to_f64()
+                            .unwrap_or(0.0)
+                    })
+                    .collect(),
+            )
+        }
     }
 }
 
@@ -196,38 +198,50 @@ pub(crate) fn eval_as_constant(
 ) -> Option<Expr> {
 
     match expr {
-        Expr::Dag(node) => eval_as_constant(
-            &node
-                .to_expr()
-                .expect("Eval as constant"),
-            var,
-        ),
+        Expr::Dag(node) => {
+            eval_as_constant(
+                &node
+                    .to_expr()
+                    .expect("Eval as constant"),
+                var,
+            )
+        }
         Expr::Constant(c) => Some(Expr::Constant(*c)),
-        Expr::BigInt(i) => Some(Expr::BigInt(
-            i.clone(),
-        )),
-        Expr::Rational(r) => Some(Expr::Rational(
-            r.clone(),
-        )),
+        Expr::BigInt(i) => {
+            Some(Expr::BigInt(
+                i.clone(),
+            ))
+        }
+        Expr::Rational(r) => {
+            Some(Expr::Rational(
+                r.clone(),
+            ))
+        }
         Expr::Variable(v) if v != var => None,
-        Expr::Add(l, r) => Some(simplify(
-            &Expr::new_add(
-                eval_as_constant(l, var)?,
-                eval_as_constant(r, var)?,
-            ),
-        )),
-        Expr::Sub(l, r) => Some(simplify(
-            &Expr::new_sub(
-                eval_as_constant(l, var)?,
-                eval_as_constant(r, var)?,
-            ),
-        )),
-        Expr::Mul(l, r) => Some(simplify(
-            &Expr::new_mul(
-                eval_as_constant(l, var)?,
-                eval_as_constant(r, var)?,
-            ),
-        )),
+        Expr::Add(l, r) => {
+            Some(simplify(
+                &Expr::new_add(
+                    eval_as_constant(l, var)?,
+                    eval_as_constant(r, var)?,
+                ),
+            ))
+        }
+        Expr::Sub(l, r) => {
+            Some(simplify(
+                &Expr::new_sub(
+                    eval_as_constant(l, var)?,
+                    eval_as_constant(r, var)?,
+                ),
+            ))
+        }
+        Expr::Mul(l, r) => {
+            Some(simplify(
+                &Expr::new_mul(
+                    eval_as_constant(l, var)?,
+                    eval_as_constant(r, var)?,
+                ),
+            ))
+        }
         Expr::Div(l, r) => {
 
             let den = eval_as_constant(r, var)?;
@@ -245,11 +259,13 @@ pub(crate) fn eval_as_constant(
                 ))
             }
         }
-        Expr::Neg(e) => Some(simplify(
-            &Expr::new_neg(eval_as_constant(
-                e, var,
-            )?),
-        )),
+        Expr::Neg(e) => {
+            Some(simplify(
+                &Expr::new_neg(eval_as_constant(
+                    e, var,
+                )?),
+            ))
+        }
         _ => None,
     }
 }
@@ -420,12 +436,14 @@ pub(crate) fn collect_coeffs(
                 None
             }
         }
-        Expr::Neg(e) => collect_coeffs(
-            e,
-            var,
-            coeffs,
-            &Expr::new_neg(factor.clone()),
-        ),
+        Expr::Neg(e) => {
+            collect_coeffs(
+                e,
+                var,
+                coeffs,
+                &Expr::new_neg(factor.clone()),
+            )
+        }
         _ => None,
     }
 }
@@ -726,13 +744,15 @@ pub(crate) fn evaluate_expr(
 ) -> Option<f64> {
 
     match expr {
-        Expr::Dag(node) => evaluate_expr(
-            &node
-                .to_expr()
-                .expect("Evaluate Expr"),
-            var,
-            val,
-        ),
+        Expr::Dag(node) => {
+            evaluate_expr(
+                &node
+                    .to_expr()
+                    .expect("Evaluate Expr"),
+                var,
+                val,
+            )
+        }
         Expr::Constant(c) => Some(*c),
         Expr::BigInt(i) => i.to_f64(),
         Expr::Rational(r) => r.to_f64(),
@@ -753,19 +773,23 @@ pub(crate) fn evaluate_expr(
                 Some(evaluate_expr(l, var, val)? / den)
             }
         }
-        Expr::Power(b, e) => Some(
-            evaluate_expr(b, var, val)?.powf(evaluate_expr(
-                e, var, val,
-            )?),
-        ),
+        Expr::Power(b, e) => {
+            Some(
+                evaluate_expr(b, var, val)?.powf(evaluate_expr(
+                    e, var, val,
+                )?),
+            )
+        }
         Expr::Sin(arg) => Some(evaluate_expr(arg, var, val)?.sin()),
         Expr::Cos(arg) => Some(evaluate_expr(arg, var, val)?.cos()),
         Expr::Tan(arg) => Some(evaluate_expr(arg, var, val)?.tan()),
         Expr::Exp(arg) => Some(evaluate_expr(arg, var, val)?.exp()),
         Expr::Log(arg) => Some(evaluate_expr(arg, var, val)?.ln()),
-        Expr::Neg(arg) => Some(-evaluate_expr(
-            arg, var, val,
-        )?),
+        Expr::Neg(arg) => {
+            Some(-evaluate_expr(
+                arg, var, val,
+            )?)
+        }
         _ => None,
     }
 }
@@ -855,18 +879,22 @@ pub(crate) fn evaluate_expr_with_vars(
 ) -> Option<f64> {
 
     match expr {
-        Expr::Dag(node) => evaluate_expr_with_vars(
-            &node
-                .to_expr()
-                .expect("Evaluate Expr with vars"),
-            var_values,
-        ),
+        Expr::Dag(node) => {
+            evaluate_expr_with_vars(
+                &node
+                    .to_expr()
+                    .expect("Evaluate Expr with vars"),
+                var_values,
+            )
+        }
         Expr::Constant(c) => Some(*c),
         Expr::BigInt(i) => i.to_f64(),
         Expr::Rational(r) => r.to_f64(),
-        Expr::Variable(v) => var_values
-            .get(v)
-            .copied(),
+        Expr::Variable(v) => {
+            var_values
+                .get(v)
+                .copied()
+        }
         Expr::Add(l, r) => {
             Some(evaluate_expr_with_vars(l, var_values)? + evaluate_expr_with_vars(r, var_values)?)
         }
@@ -889,9 +917,12 @@ pub(crate) fn evaluate_expr_with_vars(
             }
         }
         Expr::Neg(e) => Some(-evaluate_expr_with_vars(e, var_values)?),
-        Expr::Power(b, e) => Some(
-            evaluate_expr_with_vars(b, var_values)?.powf(evaluate_expr_with_vars(e, var_values)?),
-        ),
+        Expr::Power(b, e) => {
+            Some(
+                evaluate_expr_with_vars(b, var_values)?
+                    .powf(evaluate_expr_with_vars(e, var_values)?),
+            )
+        }
         Expr::Sin(arg) => Some(evaluate_expr_with_vars(arg, var_values)?.sin()),
         Expr::Cos(arg) => Some(evaluate_expr_with_vars(arg, var_values)?.cos()),
         Expr::Tan(arg) => Some(evaluate_expr_with_vars(arg, var_values)?.tan()),

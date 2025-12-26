@@ -133,21 +133,23 @@ impl ComputeEngine {
             .get(input)
         {
             Some(expr) => expr,
-            None => match crate::input::parser::parse_expr(input) {
-                Ok((_, expr)) => {
+            None => {
+                match crate::input::parser::parse_expr(input) {
+                    Ok((_, expr)) => {
 
-                    let expr = Arc::new(expr);
+                        let expr = Arc::new(expr);
 
-                    self.parsing_cache
-                        .set(
-                            input.to_string(),
-                            expr.clone(),
-                        );
+                        self.parsing_cache
+                            .set(
+                                input.to_string(),
+                                expr.clone(),
+                            );
 
-                    expr
+                        expr
+                    }
+                    Err(e) => return Err(e.to_string()),
                 }
-                Err(e) => return Err(e.to_string()),
-            },
+            }
         };
 
         Ok(self.submit(expr))

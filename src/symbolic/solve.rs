@@ -703,6 +703,7 @@ pub(crate) fn solve_system_by_substitution(
             let remaining_vars: Vec<&str> = vars
                 .iter()
                 .filter(|v| {
+
                     !solutions.contains_key(&Expr::Variable(
                         (**v).to_string(),
                     ))
@@ -894,16 +895,22 @@ pub(crate) fn solve_polynomial(
 
     match degree {
         0 => Some(vec![]),
-        1 => Some(solve_linear(
-            &coeffs,
-        )),
-        2 => Some(solve_quadratic(
-            &coeffs,
-        )),
+        1 => {
+            Some(solve_linear(
+                &coeffs,
+            ))
+        }
+        2 => {
+            Some(solve_quadratic(
+                &coeffs,
+            ))
+        }
         3 => Some(solve_cubic(&coeffs)),
-        4 => Some(solve_quartic(
-            &coeffs,
-        )),
+        4 => {
+            Some(solve_quartic(
+                &coeffs,
+            ))
+        }
         _ => {
 
             let poly_expr = expr.clone();
@@ -1328,14 +1335,16 @@ pub(crate) fn collect_coeffs(
 ) -> Option<()> {
 
     match expr {
-        Expr::Dag(node) => collect_coeffs(
-            &node
-                .to_expr()
-                .expect("Dag Coeffs"),
-            var,
-            coeffs,
-            factor,
-        ),
+        Expr::Dag(node) => {
+            collect_coeffs(
+                &node
+                    .to_expr()
+                    .expect("Dag Coeffs"),
+                var,
+                coeffs,
+                factor,
+            )
+        }
         Expr::Variable(v) if v == var => {
 
             let entry = coeffs
@@ -1437,14 +1446,16 @@ pub(crate) fn collect_coeffs(
                 None
             }
         }
-        Expr::Neg(e) => collect_coeffs(
-            e,
-            var,
-            coeffs,
-            &simplify(&Expr::new_neg(
-                factor.clone(),
-            )),
-        ),
+        Expr::Neg(e) => {
+            collect_coeffs(
+                e,
+                var,
+                coeffs,
+                &simplify(&Expr::new_neg(
+                    factor.clone(),
+                )),
+            )
+        }
         _ if !contains_var(expr, var) => {
 
             let entry = coeffs

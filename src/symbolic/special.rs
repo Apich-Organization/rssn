@@ -547,6 +547,7 @@ pub fn rising_factorial(
     }
 
     (0..n).fold(1.0, |acc, i| {
+
         acc * (x + f64::from(i))
     })
 }
@@ -582,6 +583,7 @@ pub fn falling_factorial(
     }
 
     (0..n).fold(1.0, |acc, i| {
+
         acc * (x - f64::from(i))
     })
 }

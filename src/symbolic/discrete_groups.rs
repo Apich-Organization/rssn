@@ -85,6 +85,7 @@ pub fn dihedral_group(n: usize) -> Group {
 
     let rotations: Vec<_> = (0..n)
         .map(|i| {
+
             GroupElement(Expr::Variable(
                 format!("r{i}"),
             ))
@@ -93,6 +94,7 @@ pub fn dihedral_group(n: usize) -> Group {
 
     let reflections: Vec<_> = (0..n)
         .map(|i| {
+
             GroupElement(Expr::Variable(
                 format!("s{i}"),
             ))

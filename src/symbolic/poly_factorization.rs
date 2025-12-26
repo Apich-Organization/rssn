@@ -517,6 +517,7 @@ pub(crate) fn hensel_lift(
             .coeffs
             .into_iter()
             .map(|c| {
+
                 PrimeFieldElement::new(
                     c.value / &current_p,
                     field.clone(),
@@ -856,6 +857,7 @@ pub fn poly_mul_scalar(
         .coeffs
         .iter()
         .map(|c| {
+
             PrimeFieldElement::new(
                 &c.value * scalar,
                 c.field.clone(),
@@ -880,6 +882,7 @@ pub(crate) fn poly_with_field(
         .coeffs
         .iter()
         .map(|c| {
+
             PrimeFieldElement::new(
                 c.value.clone(),
                 field.clone(),

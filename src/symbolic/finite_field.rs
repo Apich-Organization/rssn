@@ -629,19 +629,23 @@ impl ExtensionFieldElement {
                 .irreducible_poly
                 .clone(),
         ) {
-            Ok((_, remainder)) => Self {
-                poly: remainder,
-                field,
-            },
-            Err(_) => Self {
-                poly: FiniteFieldPolynomial::new(
-                    vec![],
-                    field
-                        .prime_field
-                        .clone(),
-                ),
-                field,
-            },
+            Ok((_, remainder)) => {
+                Self {
+                    poly: remainder,
+                    field,
+                }
+            }
+            Err(_) => {
+                Self {
+                    poly: FiniteFieldPolynomial::new(
+                        vec![],
+                        field
+                            .prime_field
+                            .clone(),
+                    ),
+                    field,
+                }
+            }
         }
     }
 

@@ -122,28 +122,36 @@ pub(crate) fn has_free_var(
 pub fn simplify_logic(expr: &Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => simplify_logic(
-            &node
-                .to_expr()
-                .expect("Simplify Logic"),
-        ),
-        Expr::Not(inner) => match simplify_logic(inner) {
-            Expr::Boolean(b) => Expr::Boolean(!b),
-            Expr::Not(sub) => (*sub).clone(),
-            Expr::ForAll(var, body) => Expr::Exists(
-                var,
-                Arc::new(simplify_logic(
-                    &Expr::new_not(body),
-                )),
-            ),
-            Expr::Exists(var, body) => Expr::ForAll(
-                var,
-                Arc::new(simplify_logic(
-                    &Expr::new_not(body),
-                )),
-            ),
-            simplified_inner => Expr::new_not(simplified_inner),
-        },
+        Expr::Dag(node) => {
+            simplify_logic(
+                &node
+                    .to_expr()
+                    .expect("Simplify Logic"),
+            )
+        }
+        Expr::Not(inner) => {
+            match simplify_logic(inner) {
+                Expr::Boolean(b) => Expr::Boolean(!b),
+                Expr::Not(sub) => (*sub).clone(),
+                Expr::ForAll(var, body) => {
+                    Expr::Exists(
+                        var,
+                        Arc::new(simplify_logic(
+                            &Expr::new_not(body),
+                        )),
+                    )
+                }
+                Expr::Exists(var, body) => {
+                    Expr::ForAll(
+                        var,
+                        Arc::new(simplify_logic(
+                            &Expr::new_not(body),
+                        )),
+                    )
+                }
+                simplified_inner => Expr::new_not(simplified_inner),
+            }
+        }
         Expr::And(v) => {
 
             let mut new_terms = Vec::new();
@@ -246,28 +254,34 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                 )
             }
         }
-        Expr::Implies(a, b) => simplify_logic(&Expr::Or(vec![
-            Expr::Not(Arc::new(
-                a.as_ref().clone(),
-            )),
-            b.as_ref().clone(),
-        ])),
-        Expr::Equivalent(a, b) => simplify_logic(&Expr::And(vec![
-            Expr::Implies(a.clone(), b.clone()),
-            Expr::Implies(b.clone(), a.clone()),
-        ])),
-        Expr::Xor(a, b) => simplify_logic(&Expr::And(vec![
-            Expr::Or(vec![
-                a.as_ref().clone(),
+        Expr::Implies(a, b) => {
+            simplify_logic(&Expr::Or(vec![
+                Expr::Not(Arc::new(
+                    a.as_ref().clone(),
+                )),
                 b.as_ref().clone(),
-            ]),
-            Expr::Not(Arc::new(Expr::And(
-                vec![
+            ]))
+        }
+        Expr::Equivalent(a, b) => {
+            simplify_logic(&Expr::And(vec![
+                Expr::Implies(a.clone(), b.clone()),
+                Expr::Implies(b.clone(), a.clone()),
+            ]))
+        }
+        Expr::Xor(a, b) => {
+            simplify_logic(&Expr::And(vec![
+                Expr::Or(vec![
                     a.as_ref().clone(),
                     b.as_ref().clone(),
-                ],
-            ))),
-        ])),
+                ]),
+                Expr::Not(Arc::new(Expr::And(
+                    vec![
+                        a.as_ref().clone(),
+                        b.as_ref().clone(),
+                    ],
+                ))),
+            ]))
+        }
         Expr::ForAll(var, body) => {
 
             let simplified_body = simplify_logic(body);
@@ -382,13 +396,15 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
                 Arc::new(simplified_body),
             )
         }
-        Expr::Predicate { name, args } => Expr::Predicate {
-            name: name.clone(),
-            args: args
-                .iter()
-                .map(|expr: &Expr| simplify(&expr.clone()))
-                .collect(),
-        },
+        Expr::Predicate { name, args } => {
+            Expr::Predicate {
+                name: name.clone(),
+                args: args
+                    .iter()
+                    .map(|expr: &Expr| simplify(&expr.clone()))
+                    .collect(),
+            }
+        }
         _ => expr.clone(),
     }
 }
@@ -396,56 +412,70 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
 pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => to_basic_logic_ops(
-            &node
-                .to_expr()
-                .expect("To Basic Logic Ops"),
-        ),
-        Expr::Implies(a, b) => Expr::Or(vec![
-            Expr::Not(Arc::new(
-                to_basic_logic_ops(a),
-            )),
-            to_basic_logic_ops(b),
-        ]),
-        Expr::Equivalent(a, b) => Expr::And(vec![
+        Expr::Dag(node) => {
+            to_basic_logic_ops(
+                &node
+                    .to_expr()
+                    .expect("To Basic Logic Ops"),
+            )
+        }
+        Expr::Implies(a, b) => {
             Expr::Or(vec![
                 Expr::Not(Arc::new(
                     to_basic_logic_ops(a),
                 )),
                 to_basic_logic_ops(b),
-            ]),
-            Expr::Or(vec![
-                Expr::Not(Arc::new(
+            ])
+        }
+        Expr::Equivalent(a, b) => {
+            Expr::And(vec![
+                Expr::Or(vec![
+                    Expr::Not(Arc::new(
+                        to_basic_logic_ops(a),
+                    )),
                     to_basic_logic_ops(b),
-                )),
-                to_basic_logic_ops(a),
-            ]),
-        ]),
-        Expr::Xor(a, b) => Expr::And(vec![
-            Expr::Or(vec![
-                to_basic_logic_ops(a),
-                to_basic_logic_ops(b),
-            ]),
-            Expr::Not(Arc::new(Expr::And(
-                vec![
+                ]),
+                Expr::Or(vec![
+                    Expr::Not(Arc::new(
+                        to_basic_logic_ops(b),
+                    )),
+                    to_basic_logic_ops(a),
+                ]),
+            ])
+        }
+        Expr::Xor(a, b) => {
+            Expr::And(vec![
+                Expr::Or(vec![
                     to_basic_logic_ops(a),
                     to_basic_logic_ops(b),
-                ],
-            ))),
-        ]),
-        Expr::And(v) => Expr::And(
-            v.iter()
-                .map(to_basic_logic_ops)
-                .collect(),
-        ),
-        Expr::Or(v) => Expr::Or(
-            v.iter()
-                .map(to_basic_logic_ops)
-                .collect(),
-        ),
-        Expr::Not(a) => Expr::new_not(to_basic_logic_ops(
-            a,
-        )),
+                ]),
+                Expr::Not(Arc::new(Expr::And(
+                    vec![
+                        to_basic_logic_ops(a),
+                        to_basic_logic_ops(b),
+                    ],
+                ))),
+            ])
+        }
+        Expr::And(v) => {
+            Expr::And(
+                v.iter()
+                    .map(to_basic_logic_ops)
+                    .collect(),
+            )
+        }
+        Expr::Or(v) => {
+            Expr::Or(
+                v.iter()
+                    .map(to_basic_logic_ops)
+                    .collect(),
+            )
+        }
+        Expr::Not(a) => {
+            Expr::new_not(to_basic_logic_ops(
+                a,
+            ))
+        }
         _ => expr.clone(),
     }
 }
@@ -453,55 +483,73 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
 pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => move_not_inwards(
-            &node
-                .to_expr()
-                .expect("Move not Inwards"),
-        ),
-        Expr::Not(a) => match &**a {
-            Expr::And(v) => Expr::Or(
+        Expr::Dag(node) => {
+            move_not_inwards(
+                &node
+                    .to_expr()
+                    .expect("Move not Inwards"),
+            )
+        }
+        Expr::Not(a) => {
+            match &**a {
+                Expr::And(v) => {
+                    Expr::Or(
+                        v.iter()
+                            .map(|e| {
+
+                                move_not_inwards(&Expr::new_not(
+                                    e.clone(),
+                                ))
+                            })
+                            .collect(),
+                    )
+                }
+                Expr::Or(v) => {
+                    Expr::And(
+                        v.iter()
+                            .map(|e| {
+
+                                move_not_inwards(&Expr::new_not(
+                                    e.clone(),
+                                ))
+                            })
+                            .collect(),
+                    )
+                }
+                Expr::Not(b) => move_not_inwards(b),
+                Expr::ForAll(var, body) => {
+                    Expr::Exists(
+                        var.clone(),
+                        Arc::new(move_not_inwards(
+                            &Expr::new_not(body.clone()),
+                        )),
+                    )
+                }
+                Expr::Exists(var, body) => {
+                    Expr::ForAll(
+                        var.clone(),
+                        Arc::new(move_not_inwards(
+                            &Expr::new_not(body.clone()),
+                        )),
+                    )
+                }
+                _ => expr.clone(),
+            }
+        }
+        Expr::And(v) => {
+            Expr::And(
                 v.iter()
-                    .map(|e| {
-                        move_not_inwards(&Expr::new_not(
-                            e.clone(),
-                        ))
-                    })
+                    .map(move_not_inwards)
                     .collect(),
-            ),
-            Expr::Or(v) => Expr::And(
+            )
+        }
+        Expr::Or(v) => {
+            Expr::Or(
                 v.iter()
-                    .map(|e| {
-                        move_not_inwards(&Expr::new_not(
-                            e.clone(),
-                        ))
-                    })
+                    .map(move_not_inwards)
                     .collect(),
-            ),
-            Expr::Not(b) => move_not_inwards(b),
-            Expr::ForAll(var, body) => Expr::Exists(
-                var.clone(),
-                Arc::new(move_not_inwards(
-                    &Expr::new_not(body.clone()),
-                )),
-            ),
-            Expr::Exists(var, body) => Expr::ForAll(
-                var.clone(),
-                Arc::new(move_not_inwards(
-                    &Expr::new_not(body.clone()),
-                )),
-            ),
-            _ => expr.clone(),
-        },
-        Expr::And(v) => Expr::And(
-            v.iter()
-                .map(move_not_inwards)
-                .collect(),
-        ),
-        Expr::Or(v) => Expr::Or(
-            v.iter()
-                .map(move_not_inwards)
-                .collect(),
-        ),
+            )
+        }
         _ => expr.clone(),
     }
 }
@@ -509,11 +557,13 @@ pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
 pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
 
     match expr {
-        Expr::Dag(node) => distribute_or_over_and(
-            &node
-                .to_expr()
-                .expect("Distribute or Over"),
-        ),
+        Expr::Dag(node) => {
+            distribute_or_over_and(
+                &node
+                    .to_expr()
+                    .expect("Distribute or Over"),
+            )
+        }
         Expr::Or(v) => {
 
             let v_dist: Vec<Expr> = v
@@ -557,11 +607,13 @@ pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
 
             Expr::Or(v_dist)
         }
-        Expr::And(v) => Expr::And(
-            v.iter()
-                .map(distribute_or_over_and)
-                .collect(),
-        ),
+        Expr::And(v) => {
+            Expr::And(
+                v.iter()
+                    .map(distribute_or_over_and)
+                    .collect(),
+            )
+        }
         _ => expr.clone(),
     }
 }
@@ -856,9 +908,11 @@ pub(crate) fn simplify_clauses(
 
         !clause
             .iter()
-            .any(|lit| match lit {
-                Literal::Positive(a) => a == atom && value,
-                Literal::Negative(a) => a == atom && !value,
+            .any(|lit| {
+                match lit {
+                    Literal::Positive(a) => a == atom && value,
+                    Literal::Negative(a) => a == atom && !value,
+                }
             })
     });
 
@@ -900,11 +954,13 @@ pub(crate) fn get_unassigned_atom(
 pub(crate) fn contains_quantifier(expr: &Expr) -> bool {
 
     match expr {
-        Expr::Dag(node) => contains_quantifier(
-            &node
-                .to_expr()
-                .expect("Contains Quantifier"),
-        ),
+        Expr::Dag(node) => {
+            contains_quantifier(
+                &node
+                    .to_expr()
+                    .expect("Contains Quantifier"),
+            )
+        }
         Expr::ForAll(_, _) | Expr::Exists(_, _) => true,
         Expr::Add(a, b)
         | Expr::Sub(a, b)
@@ -920,12 +976,14 @@ pub(crate) fn contains_quantifier(expr: &Expr) -> bool {
         | Expr::Implies(a, b)
         | Expr::Equivalent(a, b) => contains_quantifier(a) || contains_quantifier(b),
         Expr::Neg(a) | Expr::Not(a) => contains_quantifier(a),
-        Expr::And(v) | Expr::Or(v) => v
-            .iter()
-            .any(contains_quantifier),
-        Expr::Predicate { args, .. } => args
-            .iter()
-            .any(contains_quantifier),
+        Expr::And(v) | Expr::Or(v) => {
+            v.iter()
+                .any(contains_quantifier)
+        }
+        Expr::Predicate { args, .. } => {
+            args.iter()
+                .any(contains_quantifier)
+        }
         _ => false,
     }
 }

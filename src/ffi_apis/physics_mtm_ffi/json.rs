@@ -48,24 +48,28 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
         &input.f,
         input.num_cycles,
     ) {
-        Ok(res) => to_c_string(
-            serde_json::to_string(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(
-                res
-            ))
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
-                e
-            ))
-            .unwrap(),
-        ),
+        Ok(res) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::ok(
+                    res
+                ))
+                .unwrap(),
+            )
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
+                    e
+                ))
+                .unwrap(),
+            )
+        }
     }
 }
 
@@ -95,23 +99,27 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
         &input.f,
         input.num_cycles,
     ) {
-        Ok(res) => to_c_string(
-            serde_json::to_string(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(
-                res
-            ))
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
-                e
-            ))
-            .unwrap(),
-        ),
+        Ok(res) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::ok(
+                    res
+                ))
+                .unwrap(),
+            )
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
+                    e
+                ))
+                .unwrap(),
+            )
+        }
     }
 }

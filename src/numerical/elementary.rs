@@ -79,16 +79,19 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
             )
         }
         Expr::Constant(c) => Ok(*c),
-        Expr::BigInt(i) => i
-            .to_f64()
-            .ok_or_else(|| "BigInt overflow during evaluation".to_string()),
-        Expr::Rational(r) => r
-            .to_f64()
-            .ok_or_else(|| "Rational overflow during evaluation".to_string()),
-        Expr::Variable(v) => vars
-            .get(v)
-            .copied()
-            .ok_or_else(|| format!("Unknown variable: '{v}'")),
+        Expr::BigInt(i) => {
+            i.to_f64()
+                .ok_or_else(|| "BigInt overflow during evaluation".to_string())
+        }
+        Expr::Rational(r) => {
+            r.to_f64()
+                .ok_or_else(|| "Rational overflow during evaluation".to_string())
+        }
+        Expr::Variable(v) => {
+            vars.get(v)
+                .copied()
+                .ok_or_else(|| format!("Unknown variable: '{v}'"))
+        }
 
         // Arithmetic
         Expr::Add(a, b) => Ok(eval_expr(a, vars)? + eval_expr(b, vars)?),
@@ -302,9 +305,11 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         Expr::Max(a, b) => Ok(eval_expr(a, vars)?.max(eval_expr(b, vars)?)),
 
         // Fallback or Unimplemented
-        _ => Err(format!(
-            "Numerical evaluation of {expr:?} is not supported"
-        )),
+        _ => {
+            Err(format!(
+                "Numerical evaluation of {expr:?} is not supported"
+            ))
+        }
     }
 }
 

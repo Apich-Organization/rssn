@@ -211,9 +211,11 @@ pub extern "C" fn rssn_graph_bfs(
     let result = bfs(graph, start_node);
 
     match serde_json::to_string(&result) {
-        Ok(json) => CString::new(json)
-            .unwrap()
-            .into_raw(),
+        Ok(json) => {
+            CString::new(json)
+                .unwrap()
+                .into_raw()
+        }
         Err(_) => std::ptr::null_mut(),
     }
 }
@@ -240,9 +242,11 @@ pub extern "C" fn rssn_graph_dfs(
     let result = dfs(graph, start_node);
 
     match serde_json::to_string(&result) {
-        Ok(json) => CString::new(json)
-            .unwrap()
-            .into_raw(),
+        Ok(json) => {
+            CString::new(json)
+                .unwrap()
+                .into_raw()
+        }
         Err(_) => std::ptr::null_mut(),
     }
 }
@@ -266,9 +270,11 @@ pub extern "C" fn rssn_graph_connected_components(ptr: *const RssnGraph) -> *mut
     let result = connected_components(graph);
 
     match serde_json::to_string(&result) {
-        Ok(json) => CString::new(json)
-            .unwrap()
-            .into_raw(),
+        Ok(json) => {
+            CString::new(json)
+                .unwrap()
+                .into_raw()
+        }
         Err(_) => std::ptr::null_mut(),
     }
 }
@@ -317,6 +323,7 @@ pub extern "C" fn rssn_graph_kruskal_mst(ptr: *const RssnGraph) -> *mut c_char {
     let edges: Vec<(usize, usize, String)> = mst
         .iter()
         .map(|(u, v, w)| {
+
             (
                 *u,
                 *v,
@@ -326,9 +333,11 @@ pub extern "C" fn rssn_graph_kruskal_mst(ptr: *const RssnGraph) -> *mut c_char {
         .collect();
 
     match serde_json::to_string(&edges) {
-        Ok(json) => CString::new(json)
-            .unwrap()
-            .into_raw(),
+        Ok(json) => {
+            CString::new(json)
+                .unwrap()
+                .into_raw()
+        }
         Err(_) => std::ptr::null_mut(),
     }
 }

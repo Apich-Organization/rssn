@@ -82,9 +82,11 @@ pub unsafe extern "C" fn path_continuation_get_final_expression(
     let pc_ref = &*pc;
 
     match pc_ref.get_final_expression() {
-        Some(expr) => Box::into_raw(Box::new(
-            expr.clone(),
-        )),
+        Some(expr) => {
+            Box::into_raw(Box::new(
+                expr.clone(),
+            ))
+        }
         None => std::ptr::null_mut(),
     }
 }

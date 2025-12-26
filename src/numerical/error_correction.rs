@@ -112,6 +112,7 @@ impl PolyGF256 {
         self.0
             .iter()
             .rfold(0, |acc, &coeff| {
+
                 gf256_add(
                     gf256_mul(acc, x),
                     coeff,
@@ -1654,6 +1655,7 @@ pub fn minimum_distance(codewords: &[Vec<u8>]) -> Option<usize> {
 
                 min_dist = Some(
                     min_dist.map_or(dist, |m| {
+
                         m.min(dist)
                     }),
                 );

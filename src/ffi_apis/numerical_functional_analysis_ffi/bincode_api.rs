@@ -67,16 +67,20 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product_bincode(buffer: BincodeBuffer
     };
 
     match functional_analysis::inner_product(&input.f, &input.g) {
-        Ok(res) => to_bincode_buffer(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        }),
-        Err(e) => to_bincode_buffer(
-            &FfiResult::<f64, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(res) => {
+            to_bincode_buffer(&FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            })
+        }
+        Err(e) => {
+            to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }
 
@@ -97,15 +101,19 @@ pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_bincode(buffer: BincodeBuffer)
     };
 
     match functional_analysis::gram_schmidt(&input.basis) {
-        Ok(res) => to_bincode_buffer(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        }),
-        Err(e) => to_bincode_buffer(
-            &FfiResult::<Vec<Vec<(f64, f64)>>, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(res) => {
+            to_bincode_buffer(&FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            })
+        }
+        Err(e) => {
+            to_bincode_buffer(
+                &FfiResult::<Vec<Vec<(f64, f64)>>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }

@@ -23,13 +23,21 @@ pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_bincode(
     };
 
     match linear_elasticity::run_elasticity_simulation(&params) {
-        Ok(res) => to_bincode_buffer(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::ok(res)),
-        Err(e) => to_bincode_buffer(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::err(e)),
+        Ok(res) => {
+            to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::ok(
+                res
+            ))
+        }
+        Err(e) => {
+            to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
+                e
+            ))
+        }
     }
 }

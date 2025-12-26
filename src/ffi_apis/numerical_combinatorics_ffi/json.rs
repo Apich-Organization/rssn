@@ -143,22 +143,26 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
         &input.initial_conditions,
         input.target_n,
     ) {
-        Ok(res) => to_c_string(
-            serde_json::to_string(&FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            })
-            .unwrap(),
-        ),
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<f64, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Ok(res) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult {
+                    ok: Some(res),
+                    err: None::<String>,
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<f64, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
+            )
+        }
     }
 }
 

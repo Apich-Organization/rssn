@@ -864,26 +864,36 @@ fn substitute_expr_for_var(
     }
 
     match expr {
-        Expr::Add(a, b) => Expr::new_add(
-            substitute_expr_for_var(a, target, var_name),
-            substitute_expr_for_var(b, target, var_name),
-        ),
-        Expr::Sub(a, b) => Expr::new_sub(
-            substitute_expr_for_var(a, target, var_name),
-            substitute_expr_for_var(b, target, var_name),
-        ),
-        Expr::Mul(a, b) => Expr::new_mul(
-            substitute_expr_for_var(a, target, var_name),
-            substitute_expr_for_var(b, target, var_name),
-        ),
-        Expr::Div(a, b) => Expr::new_div(
-            substitute_expr_for_var(a, target, var_name),
-            substitute_expr_for_var(b, target, var_name),
-        ),
-        Expr::Power(a, b) => Expr::new_pow(
-            substitute_expr_for_var(a, target, var_name),
-            substitute_expr_for_var(b, target, var_name),
-        ),
+        Expr::Add(a, b) => {
+            Expr::new_add(
+                substitute_expr_for_var(a, target, var_name),
+                substitute_expr_for_var(b, target, var_name),
+            )
+        }
+        Expr::Sub(a, b) => {
+            Expr::new_sub(
+                substitute_expr_for_var(a, target, var_name),
+                substitute_expr_for_var(b, target, var_name),
+            )
+        }
+        Expr::Mul(a, b) => {
+            Expr::new_mul(
+                substitute_expr_for_var(a, target, var_name),
+                substitute_expr_for_var(b, target, var_name),
+            )
+        }
+        Expr::Div(a, b) => {
+            Expr::new_div(
+                substitute_expr_for_var(a, target, var_name),
+                substitute_expr_for_var(b, target, var_name),
+            )
+        }
+        Expr::Power(a, b) => {
+            Expr::new_pow(
+                substitute_expr_for_var(a, target, var_name),
+                substitute_expr_for_var(b, target, var_name),
+            )
+        }
         Expr::Neg(a) => Expr::new_neg(substitute_expr_for_var(a, target, var_name)),
         _ => expr.clone(),
     }

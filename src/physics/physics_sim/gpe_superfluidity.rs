@@ -89,6 +89,7 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
     let mut psi: Vec<Complex<f64>> = potential
         .iter()
         .map(|&v| {
+
             Complex::new(
                 (-v * 0.1).exp(),
                 0.0,

@@ -24,6 +24,7 @@ pub unsafe extern "C" fn rssn_num_signal_fft(
 
     let mut input: Vec<Complex<f64>> = (0..len)
         .map(|i| {
+
             Complex::new(
                 *real.add(i),
                 *imag.add(i),

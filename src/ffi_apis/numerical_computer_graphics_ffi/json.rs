@@ -747,8 +747,8 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
 
     let result = computer_graphics::ray_sphere_intersection(&ray, &sphere);
 
-    let output = result.map(
-        |i| IntersectionOutput {
+    let output = result.map(|i| {
+        IntersectionOutput {
             t: i.t,
             point: Vector3DOutput {
                 x: i.point.x,
@@ -760,8 +760,8 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
                 y: i.normal.y,
                 z: i.normal.z,
             },
-        },
-    );
+        }
+    });
 
     to_c_string(
         serde_json::to_string(&FfiResult {

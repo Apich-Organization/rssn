@@ -169,10 +169,12 @@ impl EllipticCurve {
 
         match point {
             CurvePoint::Infinity => CurvePoint::Infinity,
-            CurvePoint::Affine { x, y } => CurvePoint::Affine {
-                x: x.clone(),
-                y: -y.clone(),
-            },
+            CurvePoint::Affine { x, y } => {
+                CurvePoint::Affine {
+                    x: x.clone(),
+                    y: -y.clone(),
+                }
+            }
         }
     }
 

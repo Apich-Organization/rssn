@@ -150,15 +150,17 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(input: *const c_char) ->
                 .unwrap(),
             )
         }
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<InteractionOutput, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<InteractionOutput, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
     }
 }
 
@@ -210,15 +212,17 @@ pub unsafe extern "C" fn rssn_num_md_morse_json(input: *const c_char) -> *mut c_
                 .unwrap(),
             )
         }
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<InteractionOutput, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<InteractionOutput, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
     }
 }
 
@@ -270,15 +274,17 @@ pub unsafe extern "C" fn rssn_num_md_harmonic_json(input: *const c_char) -> *mut
                 .unwrap(),
             )
         }
-        Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<InteractionOutput, String> {
-                    ok: None,
-                    err: Some(e),
-                },
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(
+                    &FfiResult::<InteractionOutput, String> {
+                        ok: None,
+                        err: Some(e),
+                    },
+                )
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        }
     }
 }
 
@@ -309,6 +315,7 @@ pub unsafe extern "C" fn rssn_num_md_system_properties_json(input: *const c_char
         .particles
         .into_iter()
         .map(|p| {
+
             physics_md::Particle::new(
                 p.id, p.mass, p.position, p.velocity,
             )
@@ -372,13 +379,15 @@ pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
 
     let output: Vec<ParticleOutput> = particles
         .iter()
-        .map(|p| ParticleOutput {
-            id: p.id,
-            mass: p.mass,
-            position: p.position.clone(),
-            velocity: p.velocity.clone(),
-            kinetic_energy: p.kinetic_energy(),
-            speed: p.speed(),
+        .map(|p| {
+            ParticleOutput {
+                id: p.id,
+                mass: p.mass,
+                position: p.position.clone(),
+                velocity: p.velocity.clone(),
+                kinetic_energy: p.kinetic_energy(),
+                speed: p.speed(),
+            }
         })
         .collect();
 

@@ -72,14 +72,18 @@ pub unsafe extern "C" fn rssn_vec_add_json(json_ptr: *const c_char) -> *mut c_ch
     };
 
     let res = match vector::vec_add(&input.v1, &input.v2) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -110,14 +114,18 @@ pub unsafe extern "C" fn rssn_vec_sub_json(json_ptr: *const c_char) -> *mut c_ch
     };
 
     let res = match vector::vec_sub(&input.v1, &input.v2) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -182,14 +190,18 @@ pub unsafe extern "C" fn rssn_vec_dot_product_json(json_ptr: *const c_char) -> *
     };
 
     let res = match vector::dot_product(&input.v1, &input.v2) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -288,14 +300,18 @@ pub unsafe extern "C" fn rssn_vec_normalize_json(json_ptr: *const c_char) -> *mu
     };
 
     let res = match vector::normalize(&input.v) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -326,14 +342,18 @@ pub unsafe extern "C" fn rssn_vec_cross_product_json(json_ptr: *const c_char) ->
     };
 
     let res = match vector::cross_product(&input.v1, &input.v2) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -364,14 +384,18 @@ pub unsafe extern "C" fn rssn_vec_distance_json(json_ptr: *const c_char) -> *mut
     };
 
     let res = match vector::distance(&input.v1, &input.v2) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -402,14 +426,18 @@ pub unsafe extern "C" fn rssn_vec_angle_json(json_ptr: *const c_char) -> *mut c_
     };
 
     let res = match vector::angle(&input.v1, &input.v2) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -440,14 +468,18 @@ pub unsafe extern "C" fn rssn_vec_project_json(json_ptr: *const c_char) -> *mut 
     };
 
     let res = match vector::project(&input.v1, &input.v2) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -478,14 +510,18 @@ pub unsafe extern "C" fn rssn_vec_reflect_json(json_ptr: *const c_char) -> *mut 
     };
 
     let res = match vector::reflect(&input.v1, &input.v2) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -518,14 +554,18 @@ pub unsafe extern "C" fn rssn_vec_lerp_json(json_ptr: *const c_char) -> *mut c_c
     let res = match vector::lerp(
         &input.v1, &input.v2, input.t,
     ) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -560,14 +600,18 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(json_ptr: *const c_char) ->
         &input.v2,
         input.epsilon,
     ) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -602,14 +646,18 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_json(json_ptr: *const c_char) -> *
         &input.v2,
         input.epsilon,
     ) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())
@@ -640,14 +688,18 @@ pub unsafe extern "C" fn rssn_vec_cosine_similarity_json(json_ptr: *const c_char
     };
 
     let res = match vector::cosine_similarity(&input.v1, &input.v2) {
-        Ok(v) => FfiResult {
-            ok: Some(v),
-            err: None::<String>,
-        },
-        Err(e) => FfiResult {
-            ok: None,
-            err: Some(e),
-        },
+        Ok(v) => {
+            FfiResult {
+                ok: Some(v),
+                err: None::<String>,
+            }
+        }
+        Err(e) => {
+            FfiResult {
+                ok: None,
+                err: Some(e),
+            }
+        }
     };
 
     CString::new(serde_json::to_string(&res).unwrap())

@@ -125,16 +125,20 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_bincode(
         &input.initial_conditions,
         input.target_n,
     ) {
-        Ok(res) => to_bincode_buffer(&FfiResult {
-            ok: Some(res),
-            err: None::<String>,
-        }),
-        Err(e) => to_bincode_buffer(
-            &FfiResult::<f64, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(res) => {
+            to_bincode_buffer(&FfiResult {
+                ok: Some(res),
+                err: None::<String>,
+            })
+        }
+        Err(e) => {
+            to_bincode_buffer(
+                &FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }
 

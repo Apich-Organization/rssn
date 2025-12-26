@@ -195,10 +195,12 @@ fn test_classify_singularity() {
                 n
             );
         }
-        _ => panic!(
-            "Expected pole, got {:?}",
-            singularity_type
-        ),
+        _ => {
+            panic!(
+                "Expected pole, got {:?}",
+                singularity_type
+            )
+        }
     }
 }
 

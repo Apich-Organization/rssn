@@ -346,12 +346,12 @@ fn test_kruskal_mst() {
     // Check total weight is minimal (1 + 2 + 3 = 6)
     let total_weight: f64 = mst
         .iter()
-        .filter_map(
-            |(_, _, w)| match w {
+        .filter_map(|(_, _, w)| {
+            match w {
                 Expr::Constant(v) => Some(*v),
                 _ => None,
-            },
-        )
+            }
+        })
         .sum();
 
     assert!((total_weight - 6.0).abs() < 1e-10);

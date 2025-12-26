@@ -90,6 +90,7 @@ pub extern "C" fn rssn_json_chinese_remainder(congruences_json: *const c_char) -
         let congruences: Vec<(Expr, Expr)> = input
             .into_iter()
             .map(|c| {
+
                 (
                     c.remainder,
                     c.modulus,

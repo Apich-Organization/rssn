@@ -61,6 +61,7 @@ pub fn solve_pde(
         &equation, func, vars, conditions,
     )
     .unwrap_or_else(|| {
+
         Expr::Solve(
             Arc::new(pde.clone()),
             func.to_string(),
@@ -90,18 +91,24 @@ pub(crate) fn solve_pde_dispatch(
     let order = get_pde_order(equation, func, vars);
 
     match order {
-        1 => solve_pde_by_characteristics(equation, func, vars).or_else(|| {
-            solve_burgers_equation(
-                equation, func, vars, conditions,
-            )
-        }),
-        2 => solve_second_order_pde(equation, func, vars)
-            .or_else(|| solve_pde_by_greens_function(equation, func, vars))
-            .or_else(|| {
-                solve_with_fourier_transform(
+        1 => {
+            solve_pde_by_characteristics(equation, func, vars).or_else(|| {
+
+                solve_burgers_equation(
                     equation, func, vars, conditions,
                 )
-            }),
+            })
+        }
+        2 => {
+            solve_second_order_pde(equation, func, vars)
+                .or_else(|| solve_pde_by_greens_function(equation, func, vars))
+                .or_else(|| {
+
+                    solve_with_fourier_transform(
+                        equation, func, vars, conditions,
+                    )
+                })
+        }
         _ => None,
     }
 }
@@ -1098,11 +1105,13 @@ fn collect_terms(expr: &Expr) -> Vec<Expr> {
                 .map(Expr::new_neg)
                 .collect()
         }
-        Expr::Dag(node) => collect_terms(
-            &node
-                .to_expr()
-                .unwrap(),
-        ),
+        Expr::Dag(node) => {
+            collect_terms(
+                &node
+                    .to_expr()
+                    .unwrap(),
+            )
+        }
         _ => vec![expr.clone()],
     }
 }

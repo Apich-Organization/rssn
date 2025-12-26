@@ -95,16 +95,20 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_bincode(
         &input.message,
         input.n_parity,
     ) {
-        Ok(codeword) => to_bincode_buffer(&FfiResult {
-            ok: Some(codeword),
-            err: None::<String>,
-        }),
-        Err(e) => to_bincode_buffer(
-            &FfiResult::<Vec<u8>, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(codeword) => {
+            to_bincode_buffer(&FfiResult {
+                ok: Some(codeword),
+                err: None::<String>,
+            })
+        }
+        Err(e) => {
+            to_bincode_buffer(
+                &FfiResult::<Vec<u8>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }
 
@@ -132,16 +136,20 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_bincode(
         &mut codeword,
         input.n_parity,
     ) {
-        Ok(()) => to_bincode_buffer(&FfiResult {
-            ok: Some(codeword),
-            err: None::<String>,
-        }),
-        Err(e) => to_bincode_buffer(
-            &FfiResult::<Vec<u8>, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok(()) => {
+            to_bincode_buffer(&FfiResult {
+                ok: Some(codeword),
+                err: None::<String>,
+            })
+        }
+        Err(e) => {
+            to_bincode_buffer(
+                &FfiResult::<Vec<u8>, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }
 
@@ -194,16 +202,20 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_bincode(
     };
 
     match error_correction::hamming_encode_numerical(&input.data) {
-        Some(codeword) => to_bincode_buffer(&FfiResult {
-            ok: Some(codeword),
-            err: None::<String>,
-        }),
-        None => to_bincode_buffer(
-            &FfiResult::<Vec<u8>, String> {
-                ok: None,
-                err: Some("Input must be exactly 4 bytes".to_string()),
-            },
-        ),
+        Some(codeword) => {
+            to_bincode_buffer(&FfiResult {
+                ok: Some(codeword),
+                err: None::<String>,
+            })
+        }
+        None => {
+            to_bincode_buffer(
+                &FfiResult::<Vec<u8>, String> {
+                    ok: None,
+                    err: Some("Input must be exactly 4 bytes".to_string()),
+                },
+            )
+        }
     }
 }
 
@@ -226,16 +238,20 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_bincode(
     };
 
     match error_correction::hamming_decode_numerical(&input.data) {
-        Ok((data, error_pos)) => to_bincode_buffer(&FfiResult {
-            ok: Some(HammingDecodeResult { data, error_pos }),
-            err: None::<String>,
-        }),
-        Err(e) => to_bincode_buffer(
-            &FfiResult::<HammingDecodeResult, String> {
-                ok: None,
-                err: Some(e),
-            },
-        ),
+        Ok((data, error_pos)) => {
+            to_bincode_buffer(&FfiResult {
+                ok: Some(HammingDecodeResult { data, error_pos }),
+                err: None::<String>,
+            })
+        }
+        Err(e) => {
+            to_bincode_buffer(
+                &FfiResult::<HammingDecodeResult, String> {
+                    ok: None,
+                    err: Some(e),
+                },
+            )
+        }
     }
 }
 
@@ -284,16 +300,20 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_bincode(
     };
 
     match error_correction::hamming_distance_numerical(&input.a, &input.b) {
-        Some(dist) => to_bincode_buffer(&FfiResult {
-            ok: Some(dist),
-            err: None::<String>,
-        }),
-        None => to_bincode_buffer(
-            &FfiResult::<usize, String> {
-                ok: None,
-                err: Some("Vectors must have same length".to_string()),
-            },
-        ),
+        Some(dist) => {
+            to_bincode_buffer(&FfiResult {
+                ok: Some(dist),
+                err: None::<String>,
+            })
+        }
+        None => {
+            to_bincode_buffer(
+                &FfiResult::<usize, String> {
+                    ok: None,
+                    err: Some("Vectors must have same length".to_string()),
+                },
+            )
+        }
     }
 }
 

@@ -36,13 +36,21 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_bincode(
         &input.f,
         input.num_cycles,
     ) {
-        Ok(res) => to_bincode_buffer(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::ok(res)),
-        Err(e) => to_bincode_buffer(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::err(e)),
+        Ok(res) => {
+            to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::ok(
+                res
+            ))
+        }
+        Err(e) => {
+            to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
+                e
+            ))
+        }
     }
 }

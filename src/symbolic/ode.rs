@@ -132,13 +132,15 @@ pub(crate) fn get_term_order_and_coeff(
 ) -> (u32, Expr) {
 
     match expr {
-        Expr::Dag(node) => get_term_order_and_coeff(
-            &node
-                .to_expr()
-                .expect("Get Order and Coeff"),
-            func,
-            var,
-        ),
+        Expr::Dag(node) => {
+            get_term_order_and_coeff(
+                &node
+                    .to_expr()
+                    .expect("Get Order and Coeff"),
+                func,
+                var,
+            )
+        }
         Expr::Derivative(inner, d_var) if d_var == var => {
 
             let (order, coeff) = get_term_order_and_coeff(inner, func, var);
@@ -178,10 +180,12 @@ pub(crate) fn get_term_order_and_coeff(
                 (999, expr.clone())
             }
         }
-        Expr::Variable(v) if v == func => (
-            0,
-            Expr::Constant(1.0),
-        ),
+        Expr::Variable(v) if v == func => {
+            (
+                0,
+                Expr::Constant(1.0),
+            )
+        }
         _ => (999, expr.clone()),
     }
 }
@@ -331,12 +335,14 @@ pub fn solve_ode(
     .and_then(|mut solutions| solutions.pop())
     .map_or_else(
         || {
+
             Expr::Solve(
                 Arc::new(ode.clone()),
                 func.to_string(),
             )
         },
         |sol| {
+
             Expr::Eq(
                 Arc::new(Expr::Variable(
                     func.to_string(),
@@ -859,13 +865,15 @@ fn separate_factors(
                 h,
             ))
         }
-        Expr::Dag(node) => separate_factors(
-            &node
-                .to_expr()
-                .expect("Separate Factors"),
-            func,
-            var,
-        ),
+        Expr::Dag(node) => {
+            separate_factors(
+                &node
+                    .to_expr()
+                    .expect("Separate Factors"),
+                func,
+                var,
+            )
+        }
         _ => None,
     }
 }
@@ -901,10 +909,12 @@ pub fn solve_separable_ode(
     // Equation should be in form: coeff*y' - rhs = 0 or y' - rhs = 0
     let (f_y, g_x) = match equation {
         // Case 1: y' - rhs
-        Expr::Sub(lhs, rhs) if **lhs == y_prime => (
-            Expr::Constant(1.0),
-            rhs.as_ref().clone(),
-        ),
+        Expr::Sub(lhs, rhs) if **lhs == y_prime => {
+            (
+                Expr::Constant(1.0),
+                rhs.as_ref().clone(),
+            )
+        }
         Expr::Sub(lhs, rhs) => {
             if let Expr::Mul(a, b) = lhs.as_ref() {
 

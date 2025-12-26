@@ -292,18 +292,23 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
 
             eval_complex_expr(&inner, vars)
         }
-        Expr::Constant(c) => Ok(Complex::new(
-            *c, 0.0,
-        )),
-        Expr::BigInt(i) => Ok(Complex::new(
-            i.to_f64()
-                .ok_or("f64 conversion failed")?,
-            0.0,
-        )),
-        Expr::Variable(v) => vars
-            .get(v)
-            .copied()
-            .ok_or_else(|| format!("Variable '{v}' not found")),
+        Expr::Constant(c) => {
+            Ok(Complex::new(
+                *c, 0.0,
+            ))
+        }
+        Expr::BigInt(i) => {
+            Ok(Complex::new(
+                i.to_f64()
+                    .ok_or("f64 conversion failed")?,
+                0.0,
+            ))
+        }
+        Expr::Variable(v) => {
+            vars.get(v)
+                .copied()
+                .ok_or_else(|| format!("Variable '{v}' not found"))
+        }
         Expr::Complex(re, im) => {
 
             let re_val = eval_complex_expr(re, vars)?.re;
@@ -318,32 +323,42 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
         Expr::Sub(a, b) => Ok(eval_complex_expr(a, vars)? - eval_complex_expr(b, vars)?),
         Expr::Mul(a, b) => Ok(eval_complex_expr(a, vars)? * eval_complex_expr(b, vars)?),
         Expr::Div(a, b) => Ok(eval_complex_expr(a, vars)? / eval_complex_expr(b, vars)?),
-        Expr::Power(b, e) => Ok(
-            eval_complex_expr(b, vars)?.powc(eval_complex_expr(
-                e, vars,
-            )?),
-        ),
-        Expr::Neg(a) => Ok(-eval_complex_expr(
-            a, vars,
-        )?),
+        Expr::Power(b, e) => {
+            Ok(
+                eval_complex_expr(b, vars)?.powc(eval_complex_expr(
+                    e, vars,
+                )?),
+            )
+        }
+        Expr::Neg(a) => {
+            Ok(-eval_complex_expr(
+                a, vars,
+            )?)
+        }
         Expr::Sqrt(a) => Ok(eval_complex_expr(a, vars)?.sqrt()),
-        Expr::Abs(a) => Ok(Complex::new(
-            eval_complex_expr(a, vars)?.norm(),
-            0.0,
-        )),
+        Expr::Abs(a) => {
+            Ok(Complex::new(
+                eval_complex_expr(a, vars)?.norm(),
+                0.0,
+            ))
+        }
         Expr::Sin(a) => Ok(eval_complex_expr(a, vars)?.sin()),
         Expr::Cos(a) => Ok(eval_complex_expr(a, vars)?.cos()),
         Expr::Tan(a) => Ok(eval_complex_expr(a, vars)?.tan()),
         Expr::Log(a) => Ok(eval_complex_expr(a, vars)?.ln()),
         Expr::Exp(a) => Ok(eval_complex_expr(a, vars)?.exp()),
-        Expr::Pi => Ok(Complex::new(
-            std::f64::consts::PI,
-            0.0,
-        )),
-        Expr::E => Ok(Complex::new(
-            std::f64::consts::E,
-            0.0,
-        )),
+        Expr::Pi => {
+            Ok(Complex::new(
+                std::f64::consts::PI,
+                0.0,
+            ))
+        }
+        Expr::E => {
+            Ok(Complex::new(
+                std::f64::consts::E,
+                0.0,
+            ))
+        }
         Expr::Atan2(y, x) => {
 
             let y_val = eval_complex_expr(y, vars)?.re;
@@ -355,8 +370,10 @@ pub fn eval_complex_expr<S: ::std::hash::BuildHasher>(
                 0.0,
             ))
         }
-        _ => Err(format!(
-            "Numerical complex evaluation for expression {expr:?} is not implemented"
-        )),
+        _ => {
+            Err(format!(
+                "Numerical complex evaluation for expression {expr:?} is not implemented"
+            ))
+        }
     }
 }

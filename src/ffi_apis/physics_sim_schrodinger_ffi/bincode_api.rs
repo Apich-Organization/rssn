@@ -68,9 +68,13 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
                 ))
             }
         }
-        Err(e) => to_bincode_buffer(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::err(e)),
+        Err(e) => {
+            to_bincode_buffer(&FfiResult::<
+                Vec<f64>,
+                String,
+            >::err(
+                e
+            ))
+        }
     }
 }

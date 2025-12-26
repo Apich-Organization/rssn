@@ -78,14 +78,16 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
                 )
             }
         }
-        Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
-                e
-            ))
-            .unwrap(),
-        ),
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
+                    e
+                ))
+                .unwrap(),
+            )
+        }
     }
 }

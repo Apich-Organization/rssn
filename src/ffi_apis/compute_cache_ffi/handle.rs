@@ -193,10 +193,12 @@ pub extern "C" fn rssn_computation_result_cache_get(
         let expr_arc = Arc::new((*expr).clone());
 
         match (*cache).get(&expr_arc) {
-            Some(value) => match CString::new(value) {
-                Ok(c_str) => c_str.into_raw(),
-                Err(_) => std::ptr::null_mut(),
-            },
+            Some(value) => {
+                match CString::new(value) {
+                    Ok(c_str) => c_str.into_raw(),
+                    Err(_) => std::ptr::null_mut(),
+                }
+            }
             None => std::ptr::null_mut(),
         }
     }

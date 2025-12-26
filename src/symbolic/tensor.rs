@@ -178,6 +178,7 @@ impl Tensor {
                     .iter(),
             )
             .map(|(a, b)| {
+
                 simplify(&Expr::new_add(
                     a.clone(),
                     b.clone(),
@@ -219,6 +220,7 @@ impl Tensor {
                     .iter(),
             )
             .map(|(a, b)| {
+
                 simplify(&Expr::new_sub(
                     a.clone(),
                     b.clone(),
@@ -251,6 +253,7 @@ impl Tensor {
             .components
             .iter()
             .map(|c| {
+
                 simplify(&Expr::new_mul(
                     scalar.clone(),
                     c.clone(),

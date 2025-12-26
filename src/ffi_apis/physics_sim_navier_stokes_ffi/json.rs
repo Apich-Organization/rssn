@@ -51,14 +51,16 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
                 .unwrap(),
             )
         }
-        Err(e) => to_c_string(
-            serde_json::to_string(&FfiResult::<
-                NavierStokesOutputData,
-                String,
-            >::err(
-                e
-            ))
-            .unwrap(),
-        ),
+        Err(e) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult::<
+                    NavierStokesOutputData,
+                    String,
+                >::err(
+                    e
+                ))
+                .unwrap(),
+            )
+        }
     }
 }
