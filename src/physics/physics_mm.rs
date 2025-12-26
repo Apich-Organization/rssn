@@ -1,11 +1,14 @@
-use std::ops::{Add, Mul, Sub};
-#[derive(Debug, Clone, Copy, Default)]
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::ops::{Add, Div, Mul, Sub};
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct Vector2D {
     pub x: f64,
     pub y: f64,
 }
 impl Vector2D {
-    pub(crate) fn new(x: f64, y: f64) -> Self {
+    pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
     pub(crate) fn norm_sq(&self) -> f64 {
@@ -39,8 +42,17 @@ impl Mul<f64> for Vector2D {
         }
     }
 }
+impl Div<f64> for Vector2D {
+    type Output = Self;
+    fn div(self, rhs: f64) -> Self {
+        Self {
+            x: self.x / rhs,
+            y: self.y / rhs,
+        }
+    }
+}
 /// cbindgen:ignore
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Particle {
     pub pos: Vector2D,
     pub vel: Vector2D,
@@ -49,12 +61,13 @@ pub struct Particle {
     pub pressure: f64,
     pub mass: f64,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Poly6Kernel {
-    h_sq: f64,
-    factor: f64,
+    pub h_sq: f64,
+    pub factor: f64,
 }
 impl Poly6Kernel {
-    pub(crate) fn new(h: f64) -> Self {
+    pub fn new(h: f64) -> Self {
         Self {
             h_sq: h * h,
             factor: 315.0 / (64.0 * std::f64::consts::PI * h.powi(9)),
@@ -68,12 +81,13 @@ impl Poly6Kernel {
         self.factor * diff * diff * diff
     }
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpikyKernel {
-    h: f64,
-    factor: f64,
+    pub h: f64,
+    pub factor: f64,
 }
 impl SpikyKernel {
-    pub(crate) fn new(h: f64) -> Self {
+    pub fn new(h: f64) -> Self {
         Self {
             h,
             factor: -45.0 / (std::f64::consts::PI * h.powi(6)),
@@ -87,68 +101,92 @@ impl SpikyKernel {
         r_vec * (self.factor * diff * diff / r_norm)
     }
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SPHSystem {
-    particles: Vec<Particle>,
-    poly6: Poly6Kernel,
-    spiky: SpikyKernel,
-    gravity: Vector2D,
-    viscosity: f64,
-    gas_const: f64,
-    rest_density: f64,
-    bounds: Vector2D,
+    pub particles: Vec<Particle>,
+    pub poly6: Poly6Kernel,
+    pub spiky: SpikyKernel,
+    pub gravity: Vector2D,
+    pub viscosity: f64,
+    pub gas_const: f64,
+    pub rest_density: f64,
+    pub bounds: Vector2D,
 }
 impl SPHSystem {
-    pub(crate) fn compute_density_pressure(&mut self) {
-        for i in 0..self.particles.len() {
+    pub fn compute_density_pressure(&mut self) {
+        let poly6 = &self.poly6;
+        let gas_const = self.gas_const;
+        let rest_density = self.rest_density;
+        
+        // Use a raw pointer to provide an immutable view of all particles to each thread
+        // to avoid conflicts with the mutable iterator.
+        let particles_ptr = self.particles.as_ptr() as usize;
+        let n = self.particles.len();
+
+        self.particles.par_iter_mut().for_each(|p_i| {
+            let particles_ref = unsafe { std::slice::from_raw_parts(particles_ptr as *const Particle, n) };
             let mut density = 0.0;
-            for j in 0..self.particles.len() {
-                let r_vec = self.particles[i].pos - self.particles[j].pos;
-                density += self.particles[j].mass * self.poly6.value(r_vec.norm_sq());
+            for p_j in particles_ref {
+                let r_vec = p_i.pos - p_j.pos;
+                density += p_j.mass * poly6.value(r_vec.norm_sq());
             }
-            self.particles[i].density = density;
-            self.particles[i].pressure = self.gas_const * (density - self.rest_density).max(0.0);
-        }
+            p_i.density = density;
+            p_i.pressure = gas_const * (density - rest_density).max(0.0);
+        });
     }
-    pub(crate) fn compute_forces(&mut self) {
-        for i in 0..self.particles.len() {
+
+    pub fn compute_forces(&mut self) {
+        let spiky = &self.spiky;
+        let poly6 = &self.poly6;
+        let viscosity = self.viscosity;
+        let gravity = self.gravity;
+        
+        let particles_ptr = self.particles.as_ptr() as usize;
+        let n = self.particles.len();
+
+        self.particles.par_iter_mut().enumerate().for_each(|(i, p_i)| {
+            let particles_ref = unsafe { std::slice::from_raw_parts(particles_ptr as *const Particle, n) };
             let mut force = Vector2D::default();
-            for j in 0..self.particles.len() {
+            for (j, p_j) in particles_ref.iter().enumerate() {
                 if i == j {
                     continue;
                 }
-                let r_vec = self.particles[i].pos - self.particles[j].pos;
+                let r_vec = p_i.pos - p_j.pos;
                 let r_norm = (r_vec.norm_sq()).sqrt();
-                let avg_pressure = (self.particles[i].pressure + self.particles[j].pressure) / 2.0;
-                force = force
-                    - self.spiky.gradient(r_vec, r_norm)
-                        * (avg_pressure / self.particles[j].density);
-                let vel_diff = self.particles[j].vel - self.particles[i].vel;
-                force = force + vel_diff * (self.viscosity * self.poly6.value(r_vec.norm_sq()));
+                if r_norm < spiky.h {
+                    let avg_pressure = (p_i.pressure + p_j.pressure) / 2.0;
+                    force = force
+                        - spiky.gradient(r_vec, r_norm)
+                            * (avg_pressure / p_j.density);
+                    let vel_diff = p_j.vel - p_i.vel;
+                    force = force + vel_diff * (viscosity * poly6.value(r_vec.norm_sq()));
+                }
             }
-            self.particles[i].force = force + self.gravity * self.particles[i].density;
-        }
+            p_i.force = force + gravity * p_i.density;
+        });
     }
-    pub(crate) fn integrate(&mut self, dt: f64) {
-        for p in &mut self.particles {
+    pub fn integrate(&mut self, dt: f64) {
+        let bounds = self.bounds;
+        self.particles.par_iter_mut().for_each(|p| {
             p.vel = p.vel + p.force * (dt / p.density);
             p.pos = p.pos + p.vel * dt;
             if p.pos.x < 0.0 {
                 p.vel.x *= -0.5;
                 p.pos.x = 0.0;
             }
-            if p.pos.x > self.bounds.x {
+            if p.pos.x > bounds.x {
                 p.vel.x *= -0.5;
-                p.pos.x = self.bounds.x;
+                p.pos.x = bounds.x;
             }
             if p.pos.y < 0.0 {
                 p.vel.y *= -0.5;
                 p.pos.y = 0.0;
             }
-            if p.pos.y > self.bounds.y {
+            if p.pos.y > bounds.y {
                 p.vel.y *= -0.5;
-                p.pos.y = self.bounds.y;
+                p.pos.y = bounds.y;
             }
-        }
+        });
     }
     pub fn update(&mut self, dt: f64) {
         self.compute_density_pressure();

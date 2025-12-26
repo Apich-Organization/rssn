@@ -435,6 +435,8 @@ struct rssn_Representation;
  */
 struct rssn_RewriteRule;
 
+struct rssn_SPHSystem;
+
 /*
  Represents a k-simplex as a set of its vertex indices.
  */
@@ -11792,6 +11794,54 @@ rssn_ double *rssn_physics_fvm_simulate_advection_1d() ;
 rssn_ rssn_BincodeBuffer rssn_physics_fvm_swe_bincode(rssn_BincodeBuffer aBuffer) ;
 
 rssn_ char *rssn_physics_fvm_swe_json(const char *aInput) ;
+
+/*
+ Simulates the dam break scenario and returns the final particle positions as a Matrix handle (Nx2).
+ */
+rssn_ rssn_Matrix<double> *rssn_physics_mm_simulate_dam_break() ;
+
+rssn_ char *rssn_physics_mm_simulate_dam_break_json() ;
+
+/*
+ Adds a particle to the SPH system.
+ */
+rssn_
+void rssn_physics_mm_sph_add_particle(rssn_SPHSystem *aSystem,
+                                      double aX,
+                                      double aY,
+                                      double aVx,
+                                      double aVy,
+                                      double aMass)
+;
+
+/*
+ Creates a new SPH system.
+ */
+rssn_ rssn_SPHSystem *rssn_physics_mm_sph_create(double aH, double aBoundsX, double aBoundsY) ;
+
+/*
+ Frees an SPH system.
+ */
+rssn_ void rssn_physics_mm_sph_free(rssn_SPHSystem *aSystem) ;
+
+/*
+ Returns the number of particles in the SPH system.
+ */
+rssn_ size_t rssn_physics_mm_sph_get_particle_count(rssn_SPHSystem *aSystem) ;
+
+/*
+ Gets particle positions as a Matrix (Nx2).
+ */
+rssn_ rssn_Matrix<double> *rssn_physics_mm_sph_get_positions(rssn_SPHSystem *aSystem) ;
+
+/*
+ Updates the SPH system by one time step.
+ */
+rssn_ void rssn_physics_mm_sph_update(rssn_SPHSystem *aSystem, double aDt) ;
+
+rssn_ rssn_BincodeBuffer rssn_physics_mm_sph_update_bincode(rssn_BincodeBuffer aBuffer) ;
+
+rssn_ char *rssn_physics_mm_sph_update_json(const char *aInput) ;
 
 /*
  Solves 1D Poisson using Multigrid and returns a flat array of doubles.
