@@ -213,8 +213,8 @@ pub fn bell(n : u64) -> f64 {
         .sum()
 }
 
-/// Computes the nth Catalan number C_n.
-/// C_n = (1 / (n + 1)) * C(2n, n)
+/// Computes the nth Catalan number `C_n`.
+/// `C_n` = (1 / (n + 1)) * C(2n, n)
 #[must_use]
 
 pub fn catalan(n : u64) -> f64 {

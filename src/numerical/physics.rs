@@ -173,7 +173,7 @@ impl Particle3D {
 
     pub fn kinetic_energy(&self) -> f64 {
 
-        0.5 * self.mass * (self.vx * self.vx + self.vy * self.vy + self.vz * self.vz)
+        0.5 * self.mass * (self.vx.mul_add(self.vx, self.vy * self.vy) + self.vz * self.vz)
     }
 
     /// Momentum magnitude.
@@ -181,7 +181,7 @@ impl Particle3D {
 
     pub fn momentum(&self) -> f64 {
 
-        self.mass * (self.vx * self.vx + self.vy * self.vy + self.vz * self.vz).sqrt()
+        self.mass * (self.vx.mul_add(self.vx, self.vy * self.vy) + self.vz * self.vz).sqrt()
     }
 }
 
@@ -890,10 +890,10 @@ pub fn solve_wave_equation_1d(
         ) + u_prev[i + 1])
             / (dx * dx);
 
-        u_curr[i] = dt.mul_add(
+        u_curr[i] = (0.5 * (c * c) * (dt * dt)).mul_add(u_xx, dt.mul_add(
             initial_ut[i],
             u_prev[i],
-        ) + 0.5 * (c * c) * (dt * dt) * u_xx;
+        ));
     }
 
     u_curr[0] = 0.0;
@@ -918,10 +918,10 @@ pub fn solve_wave_equation_1d(
             ) + u_curr[i + 1])
                 / (dx * dx);
 
-            u_next[i] = 2.0f64.mul_add(
+            u_next[i] = ((c * c) * (dt * dt)).mul_add(u_xx, 2.0f64.mul_add(
                 u_curr[i],
                 -u_prev[i],
-            ) + (c * c) * (dt * dt) * u_xx;
+            ));
         }
 
         u_next[0] = 0.0;
@@ -944,13 +944,13 @@ pub fn solve_wave_equation_1d(
 
 /// Simulates projectile motion with air drag.
 ///
-/// Uses F_drag = -0.5 * C_d * ρ * A * v² in the direction opposite to velocity.
+/// Uses `F_drag` = -0.5 * `C_d` * ρ * A * v² in the direction opposite to velocity.
 ///
 /// # Arguments
 /// * `v0` - Initial velocity magnitude (m/s)
 /// * `angle` - Launch angle from horizontal (radians)
 /// * `mass` - Projectile mass (kg)
-/// * `drag_coeff` - Drag coefficient C_d (dimensionless)
+/// * `drag_coeff` - Drag coefficient `C_d` (dimensionless)
 /// * `area` - Cross-sectional area (m²)
 /// * `air_density` - Air density (kg/m³), typically 1.225 at sea level
 /// * `dt` - Time step (s)
@@ -995,13 +995,13 @@ pub fn projectile_motion_with_drag(
 
         results.push((t, x, y, vx, vy));
 
-        let v = (vx * vx + vy * vy).sqrt();
+        let v = vx.hypot(vy);
 
         if v > 1e-10 {
 
             let ax = -k * v * vx;
 
-            let ay = -STANDARD_GRAVITY - k * v * vy;
+            let ay = (k * v).mul_add(-vy, -STANDARD_GRAVITY);
 
             vx += ax * dt;
 
@@ -1039,7 +1039,7 @@ pub fn simple_harmonic_oscillator(
     time : f64,
 ) -> f64 {
 
-    amplitude * (omega * time + phase).cos()
+    amplitude * omega.mul_add(time, phase).cos()
 }
 
 /// Damped harmonic oscillator solution.
@@ -1063,14 +1063,14 @@ pub fn damped_harmonic_oscillator(
     time : f64,
 ) -> f64 {
 
-    let omega_sq = omega0 * omega0 - gamma * gamma;
+    let omega_sq = omega0.mul_add(omega0, -(gamma * gamma));
 
     if omega_sq > 0.0 {
 
         // Underdamped
         let omega_prime = omega_sq.sqrt();
 
-        amplitude * (-gamma * time).exp() * (omega_prime * time + phase).cos()
+        amplitude * (-gamma * time).exp() * omega_prime.mul_add(time, phase).cos()
     } else if omega_sq < 0.0 {
 
         // Overdamped
@@ -1080,7 +1080,7 @@ pub fn damped_harmonic_oscillator(
     } else {
 
         // Critically damped
-        amplitude * (1.0 + gamma * time) * (-gamma * time).exp()
+        amplitude * gamma.mul_add(time, 1.0) * (-gamma * time).exp()
     }
 }
 
@@ -1090,7 +1090,7 @@ pub fn damped_harmonic_oscillator(
 /// * `particles` - Vector of particles with mass, position, and velocity
 /// * `dt` - Time step
 /// * `num_steps` - Number of steps to simulate
-/// * `g` - Gravitational constant (default: use GRAVITATIONAL_CONSTANT)
+/// * `g` - Gravitational constant (default: use `GRAVITATIONAL_CONSTANT`)
 ///
 /// # Returns
 /// Vector of particle state snapshots at each time step
@@ -1130,7 +1130,7 @@ pub fn simulate_n_body(
 
                     let dz = particles[j].z - particles[i].z;
 
-                    let r_sq = dx * dx + dy * dy + dz * dz + 1e-10; // Softening
+                    let r_sq = dx.mul_add(dx, dy * dy) + dz * dz + 1e-10; // Softening
                     let r = r_sq.sqrt();
 
                     let f = g * particles[j].mass / (r_sq * r);
@@ -1188,7 +1188,7 @@ pub fn gravitational_potential_energy(
 
             let dz = particles[j].z - particles[i].z;
 
-            let r = (dx * dx + dy * dy + dz * dz).sqrt();
+            let r = (dx.mul_add(dx, dy * dy) + dz * dz).sqrt();
 
             if r > 1e-10 {
 
@@ -1207,7 +1207,7 @@ pub fn total_kinetic_energy(particles : &[Particle3D]) -> f64 {
 
     particles
         .iter()
-        .map(|p| p.kinetic_energy())
+        .map(Particle3D::kinetic_energy)
         .sum()
 }
 
@@ -1324,7 +1324,7 @@ pub fn lorentz_force(
     b_field : f64,
 ) -> f64 {
 
-    charge.abs() * (e_field + velocity * b_field)
+    charge.abs() * velocity.mul_add(b_field, e_field)
 }
 
 /// Calculates the cyclotron radius (Larmor radius) for a charged particle.
@@ -1456,7 +1456,7 @@ pub fn maxwell_boltzmann_mean_speed(
 
 /// RMS speed from Maxwell-Boltzmann distribution.
 ///
-/// v_rms = √(3kT/m)
+/// `v_rms` = √(3kT/m)
 #[must_use]
 
 pub fn maxwell_boltzmann_rms_speed(
@@ -1486,7 +1486,7 @@ pub fn blackbody_power(
 
 /// Wien's displacement law: peak wavelength of blackbody radiation.
 ///
-/// λ_max = b / T, where b ≈ 2.898 × 10⁻³ m·K
+/// `λ_max` = b / T, where b ≈ 2.898 × 10⁻³ m·K
 #[must_use]
 
 pub fn wien_displacement_wavelength(temperature : f64) -> f64 {
@@ -1520,7 +1520,7 @@ pub fn lorentz_factor(velocity : f64) -> f64 {
         return f64::INFINITY;
     }
 
-    1.0 / (1.0 - beta * beta).sqrt()
+    1.0 / beta.mul_add(-beta, 1.0).sqrt()
 }
 
 /// Time dilation: Δt = γ * Δt₀
@@ -1623,7 +1623,7 @@ pub fn relativistic_velocity_addition(
 
 /// Quantum harmonic oscillator energy levels.
 ///
-/// E_n = ħω(n + 1/2)
+/// `E_n` = ħω(n + 1/2)
 ///
 /// # Arguments
 /// * `n` - Quantum number (0, 1, 2, ...)
@@ -1640,7 +1640,7 @@ pub fn quantum_harmonic_oscillator_energy(
 
 /// Hydrogen atom energy levels (Bohr model).
 ///
-/// E_n = -13.6 eV / n²
+/// `E_n` = -13.6 eV / n²
 ///
 /// # Arguments
 /// * `n` - Principal quantum number (1, 2, 3, ...)
@@ -1719,7 +1719,7 @@ pub fn photon_wavelength(energy : f64) -> f64 {
     PLANCK_CONSTANT * SPEED_OF_LIGHT / energy
 }
 
-/// Compton wavelength of a particle: λ_C = h/(mc)
+/// Compton wavelength of a particle: `λ_C` = h/(mc)
 #[must_use]
 
 pub fn compton_wavelength(mass : f64) -> f64 {

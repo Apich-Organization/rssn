@@ -25,7 +25,8 @@ pub struct Polynomial {
 impl Polynomial {
     /// Creates a new `Polynomial` from coefficients (highest degree first).
 
-    pub fn new(coeffs : Vec<f64>) -> Self {
+    #[must_use] 
+    pub const fn new(coeffs : Vec<f64>) -> Self {
 
         Self {
             coeffs,

@@ -246,6 +246,7 @@ pub(crate) fn root_bound(poly : &Polynomial) -> Result<f64, String> {
 /// # Returns
 /// The approximated root.
 
+#[must_use] 
 pub fn refine_root_bisection(
     poly : &Polynomial,
     interval : (f64, f64),
@@ -326,12 +327,7 @@ pub fn find_roots(
     let intervals = isolate_real_roots(
         poly,
         isolation_precision,
-    )
-    .or_else(|e| {
-
-        // If isolation fails (e.g., zero polynomial), just return error or empty
-        Err(e)
-    })?;
+    ).map_err(|e| e)?;
 
     let mut roots = Vec::with_capacity(intervals.len());
 

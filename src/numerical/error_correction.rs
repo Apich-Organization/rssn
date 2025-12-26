@@ -103,7 +103,7 @@ impl PolyGF256 {
     /// * `coeffs` - Coefficients in descending order of powers.
     #[must_use]
 
-    pub fn new(coeffs : Vec<u8>) -> Self {
+    pub const fn new(coeffs : Vec<u8>) -> Self {
 
         Self(coeffs)
     }
@@ -458,7 +458,7 @@ fn poly_eval_gf256(
 ///
 /// This function implements a systematic encoding scheme for Reed-Solomon codes.
 /// It appends `n_parity` parity symbols to the message. The parity symbols are
-/// computed by dividing the message polynomial (shifted by n_parity positions)
+/// computed by dividing the message polynomial (shifted by `n_parity` positions)
 /// by the generator polynomial and taking the remainder.
 ///
 /// # Arguments
@@ -851,7 +851,7 @@ pub fn reed_solomon_check(
 
 /// Calculates the syndromes of a received codeword.
 ///
-/// The syndrome S_i is computed as the codeword polynomial evaluated at α^i.
+/// The syndrome `S_i` is computed as the codeword polynomial evaluated at α^i.
 #[must_use]
 
 pub fn calculate_syndromes(
@@ -1569,7 +1569,7 @@ pub fn interleave(
 
     let n = data.len();
 
-    let rows = (n + depth - 1) / depth;
+    let rows = n.div_ceil(depth);
 
     let mut result = Vec::with_capacity(n);
 
@@ -1611,7 +1611,7 @@ pub fn deinterleave(
 
     let n = data.len();
 
-    let rows = (n + depth - 1) / depth;
+    let rows = n.div_ceil(depth);
 
     let full_cols = n % depth;
 
@@ -1679,10 +1679,10 @@ pub fn convolutional_encode(data : &[u8]) -> Vec<u8> {
         state = (state >> 1) | ((bit & 1) << 2);
 
         // G1 = 0b101: bits 0 and 2
-        let g1 = ((state >> 0) & 1) ^ ((state >> 2) & 1);
+        let g1 = (state & 1) ^ ((state >> 2) & 1);
 
         // G2 = 0b111: bits 0, 1, and 2
-        let g2 = ((state >> 0) & 1) ^ ((state >> 1) & 1) ^ ((state >> 2) & 1);
+        let g2 = (state & 1) ^ ((state >> 1) & 1) ^ ((state >> 2) & 1);
 
         output.push(g1);
 
@@ -1692,11 +1692,11 @@ pub fn convolutional_encode(data : &[u8]) -> Vec<u8> {
     // Flush encoder state
     for _ in 0 .. 2 {
 
-        state = state >> 1;
+        state >>= 1;
 
-        let g1 = ((state >> 0) & 1) ^ ((state >> 2) & 1);
+        let g1 = (state & 1) ^ ((state >> 2) & 1);
 
-        let g2 = ((state >> 0) & 1) ^ ((state >> 1) & 1) ^ ((state >> 2) & 1);
+        let g2 = (state & 1) ^ ((state >> 1) & 1) ^ ((state >> 2) & 1);
 
         output.push(g1);
 

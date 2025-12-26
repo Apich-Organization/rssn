@@ -112,7 +112,7 @@ impl Point2D {
 
         let dy = self.y - other.y;
 
-        (dx * dx + dy * dy).sqrt()
+        dx.hypot(dy)
     }
 }
 
@@ -156,7 +156,7 @@ impl Point3D {
 
         let dz = self.z - other.z;
 
-        (dx * dx + dy * dy + dz * dz).sqrt()
+        (dx.mul_add(dx, dy * dy) + dz * dz).sqrt()
     }
 
     /// Returns the point as a vector from the origin.
@@ -200,7 +200,7 @@ impl Vector2D {
 
     pub fn magnitude(&self) -> f64 {
 
-        (self.x * self.x + self.y * self.y).sqrt()
+        self.x.hypot(self.y)
     }
 
     /// Normalizes the vector to have a magnitude of 1.
@@ -230,8 +230,8 @@ impl Vector2D {
         let (s, c) = angle.sin_cos();
 
         Self {
-            x : self.x * c - self.y * s,
-            y : self.x * s + self.y * c,
+            x : self.x.mul_add(c, -(self.y * s)),
+            y : self.x.mul_add(s, self.y * c),
         }
     }
 
@@ -350,7 +350,7 @@ impl Vector3D {
 
     pub fn magnitude(&self) -> f64 {
 
-        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+        (self.x.mul_add(self.x, self.y * self.y) + self.z * self.z).sqrt()
     }
 
     /// Returns the squared magnitude (avoids sqrt).
@@ -358,7 +358,7 @@ impl Vector3D {
 
     pub fn magnitude_squared(&self) -> f64 {
 
-        self.x * self.x + self.y * self.y + self.z * self.z
+        self.x.mul_add(self.x, self.y * self.y) + self.z * self.z
     }
 
     /// Normalizes the vector to have a magnitude of 1.
@@ -549,7 +549,7 @@ impl Color {
     /// Clamps color values to [0, 1].
     #[must_use]
 
-    pub fn clamp(&self) -> Self {
+    pub const fn clamp(&self) -> Self {
 
         Self {
             r : self
@@ -577,10 +577,10 @@ impl Color {
     ) -> Self {
 
         Self {
-            r : self.r + (other.r - self.r) * t,
-            g : self.g + (other.g - self.g) * t,
-            b : self.b + (other.b - self.b) * t,
-            a : self.a + (other.a - self.a) * t,
+            r : (other.r - self.r).mul_add(t, self.r),
+            g : (other.g - self.g).mul_add(t, self.g),
+            b : (other.b - self.b).mul_add(t, self.b),
+            a : (other.a - self.a).mul_add(t, self.a),
         }
     }
 }
@@ -597,7 +597,7 @@ pub fn dot_product_2d(
     v2 : &Vector2D,
 ) -> f64 {
 
-    v1.x * v2.x + v1.y * v2.y
+    v1.x.mul_add(v2.x, v1.y * v2.y)
 }
 
 /// Computes the dot product of two 3D vectors.
@@ -608,7 +608,7 @@ pub fn dot_product(
     v2 : &Vector3D,
 ) -> f64 {
 
-    v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
+    v1.x.mul_add(v2.x, v1.y * v2.y) + v1.z * v2.z
 }
 
 /// Computes the cross product of two 3D vectors.
@@ -620,9 +620,9 @@ pub fn cross_product(
 ) -> Vector3D {
 
     Vector3D {
-        x : v1.y * v2.z - v1.z * v2.y,
-        y : v1.z * v2.x - v1.x * v2.z,
-        z : v1.x * v2.y - v1.y * v2.x,
+        x : v1.y.mul_add(v2.z, -(v1.z * v2.y)),
+        y : v1.z.mul_add(v2.x, -(v1.x * v2.z)),
+        z : v1.x.mul_add(v2.y, -(v1.y * v2.x)),
     }
 }
 
@@ -659,7 +659,7 @@ pub fn refract(
 
     let cos_i = -dot_product(&i, &n);
 
-    let sin2_t = eta * eta * (1.0 - cos_i * cos_i);
+    let sin2_t = eta * eta * cos_i.mul_add(-cos_i, 1.0);
 
     if sin2_t > 1.0 {
 
@@ -668,7 +668,7 @@ pub fn refract(
 
     let cos_t = (1.0 - sin2_t).sqrt();
 
-    Some(i * eta + n * (eta * cos_i - cos_t))
+    Some(i * eta + n * eta.mul_add(cos_i, -cos_t))
 }
 
 /// Linear interpolation between two vectors.
@@ -870,17 +870,17 @@ pub fn rotation_matrix_axis(
         4,
         4,
         vec![
-            t * n.x * n.x + c,
-            t * n.x * n.y - s * n.z,
-            t * n.x * n.z + s * n.y,
+            (t * n.x).mul_add(n.x, c),
+            (t * n.x).mul_add(n.y, -(s * n.z)),
+            (t * n.x).mul_add(n.z, s * n.y),
             0.0,
-            t * n.x * n.y + s * n.z,
-            t * n.y * n.y + c,
-            t * n.y * n.z - s * n.x,
+            (t * n.x).mul_add(n.y, s * n.z),
+            (t * n.y).mul_add(n.y, c),
+            (t * n.y).mul_add(n.z, -(s * n.x)),
             0.0,
-            t * n.x * n.z - s * n.y,
-            t * n.y * n.z + s * n.x,
-            t * n.z * n.z + c,
+            (t * n.x).mul_add(n.z, -(s * n.y)),
+            (t * n.y).mul_add(n.z, s * n.x),
+            (t * n.z).mul_add(n.z, c),
             0.0,
             0.0,
             0.0,
@@ -1151,10 +1151,10 @@ impl Quaternion {
         let (sy, cy) = (yaw / 2.0).sin_cos();
 
         Self {
-            w : cr * cp * cy + sr * sp * sy,
-            x : sr * cp * cy - cr * sp * sy,
-            y : cr * sp * cy + sr * cp * sy,
-            z : cr * cp * sy - sr * sp * cy,
+            w : (cr * cp).mul_add(cy, sr * sp * sy),
+            x : (sr * cp).mul_add(cy, -(cr * sp * sy)),
+            y : (cr * sp).mul_add(cy, sr * cp * sy),
+            z : (cr * cp).mul_add(sy, -(sr * sp * cy)),
         }
     }
 
@@ -1163,7 +1163,7 @@ impl Quaternion {
 
     pub fn magnitude(&self) -> f64 {
 
-        (self.w * self.w + self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+        (self.w.mul_add(self.w, self.x * self.x) + self.y * self.y + self.z * self.z).sqrt()
     }
 
     /// Normalizes the quaternion.
@@ -1205,7 +1205,7 @@ impl Quaternion {
 
     pub fn inverse(&self) -> Self {
 
-        let mag_sq = self.w * self.w + self.x * self.x + self.y * self.y + self.z * self.z;
+        let mag_sq = self.w.mul_add(self.w, self.x * self.x) + self.y * self.y + self.z * self.z;
 
         let conj = self.conjugate();
 
@@ -1226,10 +1226,10 @@ impl Quaternion {
     ) -> Self {
 
         Self {
-            w : self.w * other.w - self.x * other.x - self.y * other.y - self.z * other.z,
-            x : self.w * other.x + self.x * other.w + self.y * other.z - self.z * other.y,
-            y : self.w * other.y - self.x * other.z + self.y * other.w + self.z * other.x,
-            z : self.w * other.z + self.x * other.y - self.y * other.x + self.z * other.w,
+            w : self.w.mul_add(other.w, -(self.x * other.x)) - self.y * other.y - self.z * other.z,
+            x : self.w.mul_add(other.x, self.x * other.w) + self.y * other.z - self.z * other.y,
+            y : self.w.mul_add(other.y, -(self.x * other.z)) + self.y * other.w + self.z * other.x,
+            z : self.w.mul_add(other.z, self.x * other.y) - self.y * other.x + self.z * other.w,
         }
     }
 
@@ -1283,17 +1283,17 @@ impl Quaternion {
             4,
             4,
             vec![
-                1.0 - 2.0 * (yy + zz),
+                2.0f64.mul_add(-(yy + zz), 1.0),
                 2.0 * (xy - wz),
                 2.0 * (xz + wy),
                 0.0,
                 2.0 * (xy + wz),
-                1.0 - 2.0 * (xx + zz),
+                2.0f64.mul_add(-(xx + zz), 1.0),
                 2.0 * (yz - wx),
                 0.0,
                 2.0 * (xz - wy),
                 2.0 * (yz + wx),
-                1.0 - 2.0 * (xx + yy),
+                2.0f64.mul_add(-(xx + yy), 1.0),
                 0.0,
                 0.0,
                 0.0,
@@ -1312,7 +1312,7 @@ impl Quaternion {
         t : f64,
     ) -> Self {
 
-        let dot = self.w * other.w + self.x * other.x + self.y * other.y + self.z * other.z;
+        let dot = self.w.mul_add(other.w, self.x * other.x) + self.y * other.y + self.z * other.z;
 
         // If dot is negative, negate one quaternion to take the shorter path
         let (q2, dot) = if dot < 0.0 {
@@ -1335,10 +1335,10 @@ impl Quaternion {
         if dot > 0.9995 {
 
             return Self::new(
-                self.w + t * (q2.w - self.w),
-                self.x + t * (q2.x - self.x),
-                self.y + t * (q2.y - self.y),
-                self.z + t * (q2.z - self.z),
+                t.mul_add(q2.w - self.w, self.w),
+                t.mul_add(q2.x - self.x, self.x),
+                t.mul_add(q2.y - self.y, self.y),
+                t.mul_add(q2.z - self.z, self.z),
             )
             .normalize();
         }
@@ -1356,10 +1356,10 @@ impl Quaternion {
         let s1 = sin_theta / sin_theta_0;
 
         Self::new(
-            s0 * self.w + s1 * q2.w,
-            s0 * self.x + s1 * q2.x,
-            s0 * self.y + s1 * q2.y,
-            s0 * self.z + s1 * q2.z,
+            s0.mul_add(self.w, s1 * q2.w),
+            s0.mul_add(self.x, s1 * q2.x),
+            s0.mul_add(self.y, s1 * q2.y),
+            s0.mul_add(self.z, s1 * q2.z),
         )
     }
 }
@@ -1400,9 +1400,9 @@ impl Ray {
     ) -> Point3D {
 
         Point3D {
-            x : self.origin.x + t * self.direction.x,
-            y : self.origin.y + t * self.direction.y,
-            z : self.origin.z + t * self.direction.z,
+            x : t.mul_add(self.direction.x, self.origin.x),
+            y : t.mul_add(self.direction.y, self.origin.y),
+            z : t.mul_add(self.direction.z, self.origin.z),
         }
     }
 }
@@ -1466,7 +1466,7 @@ pub fn ray_sphere_intersection(
 
     let b = 2.0 * dot_product(&oc, &ray.direction);
 
-    let c = dot_product(&oc, &oc) - sphere.radius * sphere.radius;
+    let c = sphere.radius.mul_add(-sphere.radius, dot_product(&oc, &oc));
 
     let discriminant = b * b - 4.0 * a * c;
 
@@ -1683,9 +1683,9 @@ pub fn bezier_quadratic(
     let mt2 = mt * mt;
 
     Point3D {
-        x : mt2 * p0.x + 2.0 * mt * t * p1.x + t2 * p2.x,
-        y : mt2 * p0.y + 2.0 * mt * t * p1.y + t2 * p2.y,
-        z : mt2 * p0.z + 2.0 * mt * t * p1.z + t2 * p2.z,
+        x : t2.mul_add(p2.x, mt2 * p0.x + 2.0 * mt * t * p1.x),
+        y : t2.mul_add(p2.y, mt2 * p0.y + 2.0 * mt * t * p1.y),
+        z : t2.mul_add(p2.z, mt2 * p0.z + 2.0 * mt * t * p1.z),
     }
 }
 
@@ -1715,9 +1715,9 @@ pub fn bezier_cubic(
     let mt3 = mt2 * mt;
 
     Point3D {
-        x : mt3 * p0.x + 3.0 * mt2 * t * p1.x + 3.0 * mt * t2 * p2.x + t3 * p3.x,
-        y : mt3 * p0.y + 3.0 * mt2 * t * p1.y + 3.0 * mt * t2 * p2.y + t3 * p3.y,
-        z : mt3 * p0.z + 3.0 * mt2 * t * p1.z + 3.0 * mt * t2 * p2.z + t3 * p3.z,
+        x : (3.0 * mt * t2).mul_add(p2.x, mt3 * p0.x + 3.0 * mt2 * t * p1.x) + t3 * p3.x,
+        y : (3.0 * mt * t2).mul_add(p2.y, mt3 * p0.y + 3.0 * mt2 * t * p1.y) + t3 * p3.y,
+        z : (3.0 * mt * t2).mul_add(p2.z, mt3 * p0.z + 3.0 * mt2 * t * p1.z) + t3 * p3.z,
     }
 }
 
@@ -1740,20 +1740,17 @@ pub fn catmull_rom(
 
     Point3D {
         x : 0.5
-            * ((2.0 * p1.x)
-                + (-p0.x + p2.x) * t
-                + (2.0 * p0.x - 5.0 * p1.x + 4.0 * p2.x - p3.x) * t2
-                + (-p0.x + 3.0 * p1.x - 3.0 * p2.x + p3.x) * t3),
+            * (2.0f64.mul_add(p1.x, (-p0.x + p2.x) * t)
+                + (2.0f64.mul_add(p0.x, -(5.0 * p1.x)) + 4.0 * p2.x - p3.x) * t2
+                + (3.0f64.mul_add(p1.x, -p0.x) - 3.0 * p2.x + p3.x) * t3),
         y : 0.5
-            * ((2.0 * p1.y)
-                + (-p0.y + p2.y) * t
-                + (2.0 * p0.y - 5.0 * p1.y + 4.0 * p2.y - p3.y) * t2
-                + (-p0.y + 3.0 * p1.y - 3.0 * p2.y + p3.y) * t3),
+            * (2.0f64.mul_add(p1.y, (-p0.y + p2.y) * t)
+                + (2.0f64.mul_add(p0.y, -(5.0 * p1.y)) + 4.0 * p2.y - p3.y) * t2
+                + (3.0f64.mul_add(p1.y, -p0.y) - 3.0 * p2.y + p3.y) * t3),
         z : 0.5
-            * ((2.0 * p1.z)
-                + (-p0.z + p2.z) * t
-                + (2.0 * p0.z - 5.0 * p1.z + 4.0 * p2.z - p3.z) * t2
-                + (-p0.z + 3.0 * p1.z - 3.0 * p2.z + p3.z) * t3),
+            * (2.0f64.mul_add(p1.z, (-p0.z + p2.z) * t)
+                + (2.0f64.mul_add(p0.z, -(5.0 * p1.z)) + 4.0 * p2.z - p3.z) * t2
+                + (3.0f64.mul_add(p1.z, -p0.z) - 3.0 * p2.z + p3.z) * t3),
     }
 }
 
@@ -1766,7 +1763,7 @@ pub fn catmull_rom(
 
 pub fn degrees_to_radians(degrees : f64) -> f64 {
 
-    degrees * std::f64::consts::PI / 180.0
+    degrees.to_radians()
 }
 
 /// Converts radians to degrees.
@@ -1774,7 +1771,7 @@ pub fn degrees_to_radians(degrees : f64) -> f64 {
 
 pub fn radians_to_degrees(radians : f64) -> f64 {
 
-    radians * 180.0 / std::f64::consts::PI
+    radians.to_degrees()
 }
 
 /// Applies a 4x4 transformation matrix to a 3D point.
@@ -1871,16 +1868,16 @@ pub fn barycentric_coordinates(
 
     let d21 = dot_product(&v0p, &v0v2);
 
-    let denom = d00 * d11 - d01 * d01;
+    let denom = d00.mul_add(d11, -(d01 * d01));
 
     if denom.abs() < 1e-10 {
 
         return (1.0, 0.0, 0.0);
     }
 
-    let v = (d11 * d20 - d01 * d21) / denom;
+    let v = d11.mul_add(d20, -(d01 * d21)) / denom;
 
-    let w = (d00 * d21 - d01 * d20) / denom;
+    let w = d00.mul_add(d21, -(d01 * d20)) / denom;
 
     let u = 1.0 - v - w;
 

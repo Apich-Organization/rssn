@@ -106,10 +106,11 @@ impl Neg for Multivector3D {
 /// based on `e_i*e_j = -e_j*e_i` for `i != j` and `e_i*e_i = 1`.
 
 impl Multivector3D {
-    /// Creates a new Multivector3D with all components.
+    /// Creates a new `Multivector3D` with all components.
     #[allow(clippy::too_many_arguments)]
 
-    pub fn new(
+    #[must_use] 
+    pub const fn new(
         s : f64,
         v1 : f64,
         v2 : f64,
@@ -136,8 +137,8 @@ impl Multivector3D {
     ///
     /// The reverse operation reverses the order of products of basis vectors.
     /// For G3: s, v1, v2, v3 are unchanged; b12, b23, b31, pss are negated.
-    /// Wait, reverse(e_i e_j) = e_j e_i = -e_i e_j. So bivectors are negated.
-    /// reverse(e_1 e_2 e_3) = e_3 e_2 e_1 = -e_1 e_2 e_3. So pseudoscalar is negated.
+    /// Wait, `reverse(e_i` `e_j`) = `e_j` `e_i` = -`e_i` `e_j`. So bivectors are negated.
+    /// `reverse(e_1` `e_2` `e_3`) = `e_3` `e_2` `e_1` = -`e_1` `e_2` `e_3`. So pseudoscalar is negated.
     #[must_use]
 
     pub fn reverse(self) -> Self {
@@ -178,8 +179,7 @@ impl Multivector3D {
 
     pub fn norm_sq(self) -> f64 {
 
-        self.s * self.s
-            + self.v1 * self.v1
+        self.s.mul_add(self.s, self.v1 * self.v1)
             + self.v2 * self.v2
             + self.v3 * self.v3
             + self.b12 * self.b12
@@ -199,7 +199,7 @@ impl Multivector3D {
 
     /// Returns the inverse of the multivector, if it exists.
     ///
-    /// For simple multivectors (like vectors or blades), this is A_rev / |A|^2.
+    /// For simple multivectors (like vectors or blades), this is `A_rev` / |A|^2.
     #[must_use]
 
     pub fn inv(self) -> Option<Self> {
@@ -238,16 +238,16 @@ impl Multivector3D {
         // A ^ B = sum_{r,s} <<a>_r <b>_s>_{r+s}
         Self {
             s : self.s * rhs.s,
-            v1 : self.s * rhs.v1 + self.v1 * rhs.s,
-            v2 : self.s * rhs.v2 + self.v2 * rhs.s,
-            v3 : self.s * rhs.v3 + self.v3 * rhs.s,
-            b12 : self.s * rhs.b12 + self.b12 * rhs.s + self.v1 * rhs.v2 - self.v2 * rhs.v1,
-            b23 : self.s * rhs.b23 + self.b23 * rhs.s + self.v2 * rhs.v3 - self.v3 * rhs.v2,
-            b31 : self.s * rhs.b31 + self.b31 * rhs.s + self.v3 * rhs.v1 - self.v1 * rhs.v3,
-            pss : self.s.mul_add(
+            v1 : self.s.mul_add(rhs.v1, self.v1 * rhs.s),
+            v2 : self.s.mul_add(rhs.v2, self.v2 * rhs.s),
+            v3 : self.s.mul_add(rhs.v3, self.v3 * rhs.s),
+            b12 : self.s.mul_add(rhs.b12, self.b12 * rhs.s) + self.v1 * rhs.v2 - self.v2 * rhs.v1,
+            b23 : self.s.mul_add(rhs.b23, self.b23 * rhs.s) + self.v2 * rhs.v3 - self.v3 * rhs.v2,
+            b31 : self.s.mul_add(rhs.b31, self.b31 * rhs.s) + self.v3 * rhs.v1 - self.v1 * rhs.v3,
+            pss : self.v1.mul_add(rhs.b23, self.s.mul_add(
                 rhs.pss,
                 self.pss * rhs.s,
-            ) + self.v1 * rhs.b23
+            ))
                 + self.v2 * rhs.b31
                 + self.v3 * rhs.b12
                 + self.b12 * rhs.v3
@@ -267,36 +267,36 @@ impl Multivector3D {
         // The inner product is the grade-decreasing part of the geometric product.
         // A . B = sum_{r,s} <<a>_r <b>_s>_{|r-s|}
         Self {
-            s : self.s.mul_add(
+            s : self.v2.mul_add(rhs.v2, self.s.mul_add(
                 rhs.s,
                 self.v1 * rhs.v1,
-            ) + self.v2 * rhs.v2
+            ))
                 + self.v3 * rhs.v3
                 - self.b12 * rhs.b12
                 - self.b23 * rhs.b23
                 - self.b31 * rhs.b31
                 - self.pss * rhs.pss,
-            v1 : self.s * rhs.v1 + self.v1 * rhs.s - self.v2 * rhs.b12
+            v1 : self.s.mul_add(rhs.v1, self.v1 * rhs.s) - self.v2 * rhs.b12
                 + self.v3 * rhs.b31
                 + self.b12 * rhs.v2
                 - self.b31 * rhs.v3
                 - self.b23 * rhs.pss
                 - self.pss * rhs.b23,
-            v2 : self.s * rhs.v2 + self.v1 * rhs.b12 + self.v2 * rhs.s
+            v2 : self.s.mul_add(rhs.v2, self.v1 * rhs.b12) + self.v2 * rhs.s
                 - self.v3 * rhs.b23
                 - self.b12 * rhs.v1
                 + self.b23 * rhs.v3
                 - self.b31 * rhs.pss
                 - self.pss * rhs.b31,
-            v3 : self.s * rhs.v3 - self.v1 * rhs.b31 + self.v2 * rhs.b23 + self.v3 * rhs.s
+            v3 : self.s.mul_add(rhs.v3, -(self.v1 * rhs.b31)) + self.v2 * rhs.b23 + self.v3 * rhs.s
                 - self.b12 * rhs.pss
                 - self.b23 * rhs.v2
                 + self.b31 * rhs.v1
                 - self.pss * rhs.b12,
-            b12 : self.s * rhs.b12 + self.b12 * rhs.s - self.b23 * rhs.b31 + self.b31 * rhs.b23,
-            b23 : self.s * rhs.b23 + self.b23 * rhs.s + self.b12 * rhs.b31 - self.b31 * rhs.b12,
-            b31 : self.s * rhs.b31 + self.b31 * rhs.s - self.b12 * rhs.b23 + self.b23 * rhs.b12,
-            pss : self.s * rhs.pss + self.pss * rhs.s,
+            b12 : self.s.mul_add(rhs.b12, self.b12 * rhs.s) - self.b23 * rhs.b31 + self.b31 * rhs.b23,
+            b23 : self.s.mul_add(rhs.b23, self.b23 * rhs.s) + self.b12 * rhs.b31 - self.b31 * rhs.b12,
+            b31 : self.s.mul_add(rhs.b31, self.b31 * rhs.s) - self.b12 * rhs.b23 + self.b23 * rhs.b12,
+            pss : self.s.mul_add(rhs.pss, self.pss * rhs.s),
         }
     }
 }
@@ -310,73 +310,73 @@ impl std::ops::Mul for Multivector3D {
     ) -> Self::Output {
 
         Self {
-            s : self.s.mul_add(
+            s : self.v2.mul_add(rhs.v2, self.s.mul_add(
                 rhs.s,
                 self.v1 * rhs.v1,
-            ) + self.v2 * rhs.v2
+            ))
                 + self.v3 * rhs.v3
                 - self.b12 * rhs.b12
                 - self.b23 * rhs.b23
                 - self.b31 * rhs.b31
                 - self.pss * rhs.pss,
-            v1 : self.s.mul_add(
+            v1 : self.v2.mul_add(-rhs.b12, self.s.mul_add(
                 rhs.v1,
                 self.v1 * rhs.s,
-            ) - self.v2 * rhs.b12
+            ))
                 + self.v3 * rhs.b31
                 + self.b12 * rhs.v2
                 - self.b31 * rhs.v3
                 - self.b23 * rhs.pss
                 - self.pss * rhs.b23,
-            v2 : self.s.mul_add(
+            v2 : self.v1.mul_add(rhs.b12, self.s.mul_add(
                 rhs.v2,
                 self.v2 * rhs.s,
-            ) + self.v1 * rhs.b12
+            ))
                 - self.v3 * rhs.b23
                 - self.b12 * rhs.v1
                 + self.b23 * rhs.v3
                 - self.b31 * rhs.pss
                 - self.pss * rhs.b31,
-            v3 : self.s.mul_add(
+            v3 : self.v1.mul_add(-rhs.b31, self.s.mul_add(
                 rhs.v3,
                 self.v3 * rhs.s,
-            ) - self.v1 * rhs.b31
+            ))
                 + self.v2 * rhs.b23
                 + self.b31 * rhs.v1
                 - self.b23 * rhs.v2
                 - self.b12 * rhs.pss
                 - self.pss * rhs.b12,
-            b12 : self.s.mul_add(
+            b12 : self.v1.mul_add(rhs.v2, self.s.mul_add(
                 rhs.b12,
                 self.b12 * rhs.s,
-            ) + self.v1 * rhs.v2
+            ))
                 - self.v2 * rhs.v1
                 + self.v3 * rhs.pss
                 + self.pss * rhs.v3
                 - self.b23 * rhs.b31
                 + self.b31 * rhs.b23,
-            b23 : self.s.mul_add(
+            b23 : self.v2.mul_add(rhs.v3, self.s.mul_add(
                 rhs.b23,
                 self.b23 * rhs.s,
-            ) + self.v2 * rhs.v3
+            ))
                 - self.v3 * rhs.v2
                 + self.v1 * rhs.pss
                 + self.pss * rhs.v1
                 - self.b31 * rhs.b12
                 + self.b12 * rhs.b31,
-            b31 : self.s.mul_add(
+            b31 : self.v3.mul_add(rhs.v1, self.s.mul_add(
                 rhs.b31,
                 self.b31 * rhs.s,
-            ) + self.v3 * rhs.v1
+            ))
                 - self.v1 * rhs.v3
                 + self.v2 * rhs.pss
                 + self.pss * rhs.v2
                 - self.b12 * rhs.b23
                 + self.b23 * rhs.b12,
-            pss : self.s.mul_add(
+            pss : self.v1.mul_add(rhs.b23, self.s.mul_add(
                 rhs.pss,
                 self.pss * rhs.s,
-            ) + self.v1 * rhs.b23
+            ))
                 + self.v2 * rhs.b31
                 + self.v3 * rhs.b12
                 + self.b12 * rhs.v3

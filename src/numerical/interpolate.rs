@@ -211,10 +211,10 @@ pub fn cubic_spline_interpolation(
 
         let dx = x - points_owned[i].0;
 
-        b[i].mul_add(
+        c[i].mul_add(dx.powi(2), b[i].mul_add(
             dx,
             points_owned[i].1,
-        ) + c[i] * dx.powi(2)
+        ))
             + d[i] * dx.powi(3)
     };
 

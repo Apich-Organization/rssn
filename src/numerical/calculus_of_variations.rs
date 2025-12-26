@@ -23,7 +23,7 @@ use crate::symbolic::core::Expr;
 /// * `path` - The actual path `y(t)` as an expression.
 /// * `t_var` - The name of the independent variable (e.g., "t").
 /// * `path_var` - The name of the path variable used in the Lagrangian (e.g., "y").
-/// * `path_dot_var` - The name of the path's derivative used in the Lagrangian (e.g., "y_dot").
+/// * `path_dot_var` - The name of the path's derivative used in the Lagrangian (e.g., "`y_dot`").
 /// * `t_range` - The interval of integration `(a, b)`.
 ///
 /// # Returns
@@ -108,7 +108,7 @@ pub fn evaluate_action(
 /// * `lagrangian` - The Lagrangian expression `L(t, y, y_dot)`.
 /// * `t_var` - The independent variable (e.g., "t").
 /// * `path_var` - The path variable (e.g., "y").
-/// * `path_dot_var` - The derivative of the path variable (e.g., "y_dot").
+/// * `path_dot_var` - The derivative of the path variable (e.g., "`y_dot`").
 ///
 /// # Example
 /// ```rust
@@ -120,6 +120,7 @@ pub fn evaluate_action(
 /// // EL: m * y_ddot + m * g = 0
 /// ```
 
+#[must_use] 
 pub fn euler_lagrange(
     lagrangian : &Expr,
     t_var : &str,
@@ -144,8 +145,7 @@ pub fn euler_lagrange(
     let y_dot_sym = Expr::new_variable(path_dot_var);
 
     let y_ddot_sym = Expr::new_variable(&format!(
-        "{}_dot",
-        path_dot_var
+        "{path_dot_var}_dot"
     ));
 
     let d_dt_explicit = differentiate(&dl_dy_dot, t_var);

@@ -7,7 +7,7 @@ use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 
 /// Methods for solving ordinary differential equations.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 
 pub enum OdeSolverMethod {
     Euler,

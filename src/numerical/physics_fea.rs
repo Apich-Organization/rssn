@@ -150,7 +150,7 @@ impl Material {
 
     pub fn bulk_modulus(&self) -> f64 {
 
-        self.youngs_modulus / (3.0 * (1.0 - 2.0 * self.poissons_ratio))
+        self.youngs_modulus / (3.0 * 2.0f64.mul_add(-self.poissons_ratio, 1.0))
     }
 }
 
@@ -189,14 +189,14 @@ impl Node2D {
 
     pub fn distance_to(
         &self,
-        other : &Node2D,
+        other : &Self,
     ) -> f64 {
 
         let dx = other.x - self.x;
 
         let dy = other.y - self.y;
 
-        (dx * dx + dy * dy).sqrt()
+        dx.hypot(dy)
     }
 }
 
@@ -397,7 +397,7 @@ impl TriangleElement2D {
     /// Creates a new triangular element.
     #[must_use]
 
-    pub fn new(
+    pub const fn new(
         nodes : [usize; 3],
         coords : [(f64, f64); 3],
         thickness : f64,
@@ -425,7 +425,7 @@ impl TriangleElement2D {
 
         let (x3, y3) = self.coords[2];
 
-        0.5 * ((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)).abs()
+        0.5 * (x2 - x1).mul_add(y3 - y1, -((x3 - x1) * (y2 - y1))).abs()
     }
 
     /// Computes the constitutive (D) matrix for plane stress or plane strain.
@@ -443,7 +443,7 @@ impl TriangleElement2D {
 
         if self.plane_stress {
 
-            let factor = e / (1.0 - nu * nu);
+            let factor = e / nu.mul_add(-nu, 1.0);
 
             Matrix::new(
                 3,
@@ -463,7 +463,7 @@ impl TriangleElement2D {
         } else {
 
             // Plane strain
-            let factor = e / ((1.0 + nu) * (1.0 - 2.0 * nu));
+            let factor = e / ((1.0 + nu) * 2.0f64.mul_add(-nu, 1.0));
 
             Matrix::new(
                 3,
@@ -477,7 +477,7 @@ impl TriangleElement2D {
                     0.0,
                     0.0,
                     0.0,
-                    factor * (1.0 - 2.0 * nu) / 2.0,
+                    factor * 2.0f64.mul_add(-nu, 1.0) / 2.0,
                 ],
             )
         }
@@ -565,7 +565,7 @@ impl TriangleElement2D {
         let d = self.constitutive_matrix();
 
         // Strain = B * u
-        let mut strain = vec![0.0; 3];
+        let mut strain = [0.0; 3];
 
         for i in 0 .. 3 {
 
@@ -602,7 +602,7 @@ impl TriangleElement2D {
 
         let txy = stress[2];
 
-        ((sx * sx - sx * sy + sy * sy) + 3.0 * txy * txy).sqrt()
+        ((sx.mul_add(sx, -(sx * sy)) + sy * sy) + 3.0 * txy * txy).sqrt()
     }
 }
 
@@ -879,7 +879,7 @@ impl ThermalTriangle2D {
     /// Creates a new 2D triangular thermal element.
     #[must_use]
 
-    pub fn new(
+    pub const fn new(
         coords : [(f64, f64); 3],
         thickness : f64,
         conductivity : f64,
@@ -903,7 +903,7 @@ impl ThermalTriangle2D {
 
         let (x3, y3) = self.coords[2];
 
-        0.5 * ((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)).abs()
+        0.5 * (x2 - x1).mul_add(y3 - y1, -((x3 - x1) * (y2 - y1))).abs()
     }
 
     /// Computes the conductivity matrix (3x3).
@@ -942,15 +942,15 @@ impl ThermalTriangle2D {
             3,
             3,
             vec![
-                factor * (b1 * b1 + c1 * c1),
-                factor * (b1 * b2 + c1 * c2),
-                factor * (b1 * b3 + c1 * c3),
-                factor * (b2 * b1 + c2 * c1),
-                factor * (b2 * b2 + c2 * c2),
-                factor * (b2 * b3 + c2 * c3),
-                factor * (b3 * b1 + c3 * c1),
-                factor * (b3 * b2 + c3 * c2),
-                factor * (b3 * b3 + c3 * c3),
+                factor * b1.mul_add(b1, c1 * c1),
+                factor * b1.mul_add(b2, c1 * c2),
+                factor * b1.mul_add(b3, c1 * c3),
+                factor * b2.mul_add(b1, c2 * c1),
+                factor * b2.mul_add(b2, c2 * c2),
+                factor * b2.mul_add(b3, c2 * c3),
+                factor * b3.mul_add(b1, c3 * c1),
+                factor * b3.mul_add(b2, c3 * c2),
+                factor * b3.mul_add(b3, c3 * c3),
             ],
         )
     }
@@ -1048,11 +1048,11 @@ pub fn principal_stresses(stress : &[f64]) -> (f64, f64, f64) {
 
     let txy = stress[2];
 
-    let avg = (sx + sy) / 2.0;
+    let avg = f64::midpoint(sx, sy);
 
     let diff = (sx - sy) / 2.0;
 
-    let r = (diff * diff + txy * txy).sqrt();
+    let r = diff.hypot(txy);
 
     let sigma1 = avg + r;
 
@@ -1194,9 +1194,9 @@ pub fn refine_mesh(
                 idx
             } else {
 
-                let mid_x = (new_nodes[a].x + new_nodes[b].x) / 2.0;
+                let mid_x = f64::midpoint(new_nodes[a].x, new_nodes[b].x);
 
-                let mid_y = (new_nodes[a].y + new_nodes[b].y) / 2.0;
+                let mid_y = f64::midpoint(new_nodes[a].y, new_nodes[b].y);
 
                 let idx = new_nodes.len();
 

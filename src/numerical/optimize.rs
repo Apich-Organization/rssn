@@ -121,10 +121,8 @@ impl CostFunction for Rosenbrock {
 
             let y = param[i + 1];
 
-            sum += (self.a - x).powi(2)
-                + self.b
-                    * x.mul_add(-x, y)
-                        .powi(2);
+            sum += (self.a - x).mul_add(self.a - x, self.b * x.mul_add(-x, y)
+                        .powi(2));
         }
 
         Ok(sum)
@@ -159,7 +157,7 @@ impl Gradient for Rosenbrock {
 
             if i == 0 {
 
-                grad[i] = -2.0 * (self.a - x) - 4.0 * self.b * x * x.mul_add(-x, y);
+                grad[i] = (-2.0f64).mul_add(self.a - x, -(4.0 * self.b * x * x.mul_add(-x, y)));
             } else {
 
                 grad[i] += 2.0

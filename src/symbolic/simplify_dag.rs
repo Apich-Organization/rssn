@@ -894,9 +894,9 @@ pub(crate) fn apply_rules(node : &Arc<DagNode>) -> Arc<DagNode> {
             if matches!(
                 &base.op,
                 DagOp::Sqrt
-            ) {
+            )
 
-                if (is_const_node(exp, 2.0)
+                && (is_const_node(exp, 2.0)
                     || matches!(&exp.op, DagOp::BigInt(b) if *b == BigInt::from(2)))
                     && !base
                         .children
@@ -905,7 +905,6 @@ pub(crate) fn apply_rules(node : &Arc<DagNode>) -> Arc<DagNode> {
 
                     return base.children[0].clone();
                 }
-            }
 
             // (x^a)^b -> x^(a*b)
             if matches!(
@@ -2215,7 +2214,7 @@ pub(crate) fn simplify_mul(node : &Arc<DagNode>) -> Arc<DagNode> {
 
         if let Ok(constant_node) = DAG_MANAGER.get_or_create(&constant) {
 
-            new_factors.insert(0, constant_node)
+            new_factors.insert(0, constant_node);
         } else {
             // If creating the constant fails, skip it (equivalent to multiplying by 1)
         }
@@ -2516,7 +2515,7 @@ pub(crate) fn simplify_add(node : &Arc<DagNode>) -> Arc<DagNode> {
 
         if let Ok(constant_node) = DAG_MANAGER.get_or_create(&constant) {
 
-            new_terms.push(constant_node)
+            new_terms.push(constant_node);
         } else {
             // If creating the constant fails, skip it (equivalent to adding 0)
         }

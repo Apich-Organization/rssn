@@ -79,6 +79,7 @@ pub fn taylor_coefficients(
 /// assert!((val - 2.5).abs() < 1e-5);
 /// ```
 
+#[must_use] 
 pub fn evaluate_power_series(
     coeffs : &[f64],
     at_point : f64,

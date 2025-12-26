@@ -72,7 +72,7 @@ pub const BOLTZMANN_CONSTANT_SI : f64 = 1.380_649e-23;
 pub const AVOGADRO_NUMBER : f64 = 6.022_140_76e23;
 
 /// Reduced unit for temperature (using argon as reference)
-/// 1 reduced temperature = ε/k_B ≈ 120 K for argon
+/// 1 reduced temperature = `ε/k_B` ≈ 120 K for argon
 
 pub const TEMPERATURE_UNIT_ARGON : f64 = 119.8;
 
@@ -196,7 +196,7 @@ impl Particle {
 
     pub fn distance_to(
         &self,
-        other : &Particle,
+        other : &Self,
     ) -> Result<f64, String> {
 
         let r_vec = vec_sub(
@@ -456,7 +456,7 @@ pub fn harmonic_interaction(
 
 /// Coulomb (electrostatic) potential.
 ///
-/// V(r) = k_e * q1 * q2 / r
+/// V(r) = `k_e` * q1 * q2 / r
 ///
 /// # Arguments
 /// * `p1`, `p2` - The two particles (with charge fields)
@@ -538,7 +538,7 @@ pub fn soft_sphere_interaction(
 
     let potential = epsilon * sigma_over_r.powi(n);
 
-    let force_magnitude = (n as f64) * epsilon * sigma_over_r.powi(n) / r;
+    let force_magnitude = f64::from(n) * epsilon * sigma_over_r.powi(n) / r;
 
     let force_on_p1 = scalar_mul(
         &r_vec,
@@ -562,7 +562,7 @@ pub fn total_kinetic_energy(particles : &[Particle]) -> f64 {
 
     particles
         .iter()
-        .map(|p| p.kinetic_energy())
+        .map(Particle::kinetic_energy)
         .sum()
 }
 
@@ -638,8 +638,8 @@ pub fn center_of_mass(particles : &[Particle]) -> Result<Vec<f64>, String> {
 
 /// Calculates the temperature from kinetic energy.
 ///
-/// T = 2 * KE / (dim * N * k_B)
-/// In reduced units with k_B = 1: T = 2 * KE / (dim * N)
+/// T = 2 * KE / (dim * N * `k_B`)
+/// In reduced units with `k_B` = 1: T = 2 * KE / (dim * N)
 #[must_use]
 
 pub fn temperature(particles : &[Particle]) -> f64 {
@@ -663,8 +663,9 @@ pub fn temperature(particles : &[Particle]) -> f64 {
 
 /// Calculates instantaneous pressure using the virial theorem.
 ///
-/// P = (N * k_B * T + virial) / V
+/// P = (N * `k_B` * T + virial) / V
 
+#[must_use] 
 pub fn pressure(
     particles : &[Particle],
     volume : f64,
@@ -681,7 +682,7 @@ pub fn pressure(
     let t = temperature(particles);
 
     // In reduced units (k_B = 1)
-    (n * t + virial) / volume
+    n.mul_add(t, virial) / volume
 }
 
 /// Removes center of mass velocity from the system.
@@ -759,9 +760,8 @@ pub fn velocity_rescale(
 
     for p in particles.iter_mut() {
 
-        for v in p
+        for v in &mut p
             .velocity
-            .iter_mut()
         {
 
             *v *= scale;
@@ -793,13 +793,12 @@ pub fn berendsen_thermostat(
         return;
     }
 
-    let scale = (1.0 + (dt / tau) * (target_temp / current_temp - 1.0)).sqrt();
+    let scale = (dt / tau).mul_add(target_temp / current_temp - 1.0, 1.0).sqrt();
 
     for p in particles.iter_mut() {
 
-        for v in p
+        for v in &mut p
             .velocity
-            .iter_mut()
         {
 
             *v *= scale;
@@ -876,8 +875,9 @@ pub fn minimum_image_distance(
 /// * `r_max` - Maximum distance to consider
 ///
 /// # Returns
-/// (r_values, g_r) where r_values are bin centers and g_r are g(r) values
+/// (`r_values`, `g_r`) where `r_values` are bin centers and `g_r` are g(r) values
 
+#[must_use] 
 pub fn radial_distribution_function(
     particles : &[Particle],
     box_size : &[f64],
@@ -1034,9 +1034,8 @@ pub fn initialize_velocities_maxwell_boltzmann(
 
         let sigma = (target_temp / p.mass).sqrt();
 
-        for v in p
+        for v in &mut p
             .velocity
-            .iter_mut()
         {
 
             // Create a mutable closure to use with gaussian

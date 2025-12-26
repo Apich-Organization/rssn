@@ -180,6 +180,7 @@ pub fn vietoris_rips_complex(
 /// * `epsilon` - The distance threshold.
 /// * `max_dim` - Maximum dimension to compute Betti numbers for.
 
+#[must_use] 
 pub fn betti_numbers_at_radius(
     points : &[&[f64]],
     epsilon : f64,
@@ -218,6 +219,7 @@ pub fn betti_numbers_at_radius(
 /// Computes the persistent homology (persistence diagram) for a point cloud.
 /// This is a simplified version using a fixed number of steps.
 
+#[must_use] 
 pub fn compute_persistence(
     points : &[Vec<f64>],
     max_epsilon : f64,
@@ -253,7 +255,7 @@ pub fn compute_persistence(
         let current_betti = betti_numbers_at_radius(
             &points
                 .iter()
-                .map(|v| v.as_slice())
+                .map(std::vec::Vec::as_slice)
                 .collect::<Vec<_>>(),
             epsilon,
             max_dim,
@@ -316,6 +318,7 @@ pub fn compute_persistence(
 
 /// Computes the Euclidean distance between two points.
 
+#[must_use] 
 pub fn euclidean_distance(
     p1 : &[f64],
     p2 : &[f64],

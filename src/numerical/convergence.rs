@@ -203,7 +203,7 @@ pub fn richardson_extrapolation(sequence : &[f64]) -> Vec<f64> {
 
             let power_of_4 = 4.0f64.powi(j as i32);
 
-            table[i][j] = (power_of_4 * table[i][j - 1] - table[i - 1][j - 1]) / (power_of_4 - 1.0);
+            table[i][j] = power_of_4.mul_add(table[i][j - 1], -table[i - 1][j - 1]) / (power_of_4 - 1.0);
         }
     }
 

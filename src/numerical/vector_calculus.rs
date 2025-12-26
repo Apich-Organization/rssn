@@ -316,7 +316,7 @@ pub fn laplacian(
 
         let f_minus = eval_at_point(f, vars, &p_minus)?;
 
-        lap += (f_plus - 2.0 * f_center + f_minus) / (h * h);
+        lap += (2.0f64.mul_add(-f_center, f_plus) + f_minus) / (h * h);
     }
 
     Ok(lap)

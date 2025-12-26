@@ -164,7 +164,8 @@ pub struct MobiusTransformation {
 impl MobiusTransformation {
     /// Creates a new Möbius transformation.
 
-    pub fn new(
+    #[must_use] 
+    pub const fn new(
         a : Complex<f64>,
         b : Complex<f64>,
         c : Complex<f64>,
@@ -181,6 +182,7 @@ impl MobiusTransformation {
 
     /// Applies the transformation to a point z.
 
+    #[must_use] 
     pub fn apply(
         &self,
         z : Complex<f64>,
@@ -191,6 +193,7 @@ impl MobiusTransformation {
 
     /// Composes two Möbius transformations.
 
+    #[must_use] 
     pub fn compose(
         &self,
         other : &Self,
@@ -206,6 +209,7 @@ impl MobiusTransformation {
 
     /// Computes the inverse transformation.
 
+    #[must_use] 
     pub fn inverse(&self) -> Self {
 
         Self {
@@ -300,7 +304,7 @@ pub fn eval_complex_expr<S : ::std::hash::BuildHasher>(
 
             let inner = node
                 .to_expr()
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| e.clone())?;
 
             eval_complex_expr(&inner, vars)
         },

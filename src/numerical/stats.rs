@@ -346,7 +346,7 @@ pub fn simple_linear_regression(data : &[(f64, f64)]) -> (f64, f64) {
 
     let b1 = numerator / denominator;
 
-    let b0 = mean_y - b1 * mean_x;
+    let b0 = b1.mul_add(-mean_x, mean_y);
 
     (b1, b0)
 }
@@ -710,7 +710,7 @@ pub fn range(data : &[f64]) -> f64 {
 
     let max_val = data
         .iter()
-        .cloned()
+        .copied()
         .fold(
             f64::NEG_INFINITY,
             f64::max,
@@ -718,7 +718,7 @@ pub fn range(data : &[f64]) -> f64 {
 
     let min_val = data
         .iter()
-        .cloned()
+        .copied()
         .fold(
             f64::INFINITY,
             f64::min,
@@ -746,7 +746,7 @@ pub fn iqr(data : &mut [f64]) -> f64 {
 }
 
 /// Computes the z-scores (standard scores) for each data point.
-/// z = (x - mean) / std_dev
+/// z = (x - mean) / `std_dev`
 #[must_use]
 
 pub fn z_scores(data : &[f64]) -> Vec<f64> {
@@ -918,7 +918,7 @@ pub fn chi_squared_test(
     (chi_sq, p_value)
 }
 
-/// Computes the coefficient of variation (CV = std_dev / mean).
+/// Computes the coefficient of variation (CV = `std_dev` / mean).
 /// Useful for comparing variability across datasets with different means.
 #[must_use]
 
@@ -934,7 +934,7 @@ pub fn coefficient_of_variation(data : &[f64]) -> f64 {
     std_dev(data) / m
 }
 
-/// Computes the sample standard error of the mean (SEM = std_dev / sqrt(n)).
+/// Computes the sample standard error of the mean (SEM = `std_dev` / sqrt(n)).
 #[must_use]
 
 pub fn standard_error(data : &[f64]) -> f64 {

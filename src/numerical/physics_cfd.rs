@@ -349,7 +349,7 @@ pub fn solve_diffusion_1d(
 
         for i in 1 .. (n - 1) {
 
-            u_next[i] = u[i] + r * (2.0f64.mul_add(-u[i], u[i - 1]) + u[i + 1]);
+            u_next[i] = r.mul_add(2.0f64.mul_add(-u[i], u[i - 1]) + u[i + 1], u[i]);
         }
 
         u = u_next;
@@ -470,8 +470,7 @@ pub fn solve_poisson_2d_gauss_seidel(
 
                 let old_val = *u.get(i, j);
 
-                let new_val = (dy2 * (*u.get(i + 1, j) + *u.get(i - 1, j))
-                    + dx2 * (*u.get(i, j + 1) + *u.get(i, j - 1))
+                let new_val = (dy2.mul_add(*u.get(i + 1, j) + *u.get(i - 1, j), dx2 * (*u.get(i, j + 1) + *u.get(i, j - 1)))
                     - dx2 * dy2 * *f.get(i, j))
                     / factor;
 
@@ -533,12 +532,11 @@ pub fn solve_poisson_2d_sor(
 
                 let old_val = *u.get(i, j);
 
-                let gs_val = (dy2 * (*u.get(i + 1, j) + *u.get(i - 1, j))
-                    + dx2 * (*u.get(i, j + 1) + *u.get(i, j - 1))
+                let gs_val = (dy2.mul_add(*u.get(i + 1, j) + *u.get(i - 1, j), dx2 * (*u.get(i, j + 1) + *u.get(i, j - 1)))
                     - dx2 * dy2 * *f.get(i, j))
                     / factor;
 
-                let new_val = old_val + omega * (gs_val - old_val);
+                let new_val = omega.mul_add(gs_val - old_val, old_val);
 
                 *u.get_mut(i, j) = new_val;
 
@@ -607,7 +605,7 @@ pub fn solve_advection_diffusion_1d(
                 -nu * (u[i + 1] - u[i])
             };
 
-            let diffusion = r * (u[i + 1] - 2.0 * u[i] + u[i - 1]);
+            let diffusion = r * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]);
 
             u_next[i] = u[i] + advection + diffusion;
         }
@@ -667,9 +665,9 @@ pub fn solve_burgers_1d(
             };
 
             // Diffusion
-            let diffusion = r * (u[i + 1] - 2.0 * u[i] + u[i - 1]);
+            let diffusion = r * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]);
 
-            u_next[i] = u[i] - dt * advection + diffusion;
+            u_next[i] = dt.mul_add(-advection, u[i]) + diffusion;
         }
 
         u = u_next;
@@ -892,9 +890,9 @@ pub fn compute_laplacian(
 
         for j in 1 .. (ny - 1) {
 
-            let d2f_dx2 = (*f.get(i + 1, j) - 2.0 * *f.get(i, j) + *f.get(i - 1, j)) / dx2;
+            let d2f_dx2 = (2.0f64.mul_add(-*f.get(i, j), *f.get(i + 1, j)) + *f.get(i - 1, j)) / dx2;
 
-            let d2f_dy2 = (*f.get(i, j + 1) - 2.0 * *f.get(i, j) + *f.get(i, j - 1)) / dy2;
+            let d2f_dy2 = (2.0f64.mul_add(-*f.get(i, j), *f.get(i, j + 1)) + *f.get(i, j - 1)) / dy2;
 
             *lap.get_mut(i, j) = d2f_dx2 + d2f_dy2;
         }
@@ -977,16 +975,16 @@ pub fn lid_driven_cavity_simple(
                 let domega_dy = (*omega.get(i, j + 1) - *omega.get(i, j - 1)) / (2.0 * dy);
 
                 // Diffusion
-                let d2omega_dx2 = (*omega.get(i + 1, j) - 2.0 * *omega.get(i, j)
+                let d2omega_dx2 = (2.0f64.mul_add(-*omega.get(i, j), *omega.get(i + 1, j))
                     + *omega.get(i - 1, j))
                     / (dx * dx);
 
-                let d2omega_dy2 = (*omega.get(i, j + 1) - 2.0 * *omega.get(i, j)
+                let d2omega_dy2 = (2.0f64.mul_add(-*omega.get(i, j), *omega.get(i, j + 1))
                     + *omega.get(i, j - 1))
                     / (dy * dy);
 
                 *omega_new.get_mut(i, j) = *omega.get(i, j)
-                    + dt * (-(u * domega_dx + v * domega_dy) + nu * (d2omega_dx2 + d2omega_dy2));
+                    + dt * nu.mul_add(d2omega_dx2 + d2omega_dy2, -(u * domega_dx + v * domega_dy));
             }
         }
 
@@ -1086,7 +1084,7 @@ pub fn max_velocity_magnitude(
 
         for j in 0 .. ny {
 
-            let vel = (*u.get(i, j) * *u.get(i, j) + *v.get(i, j) * *v.get(i, j)).sqrt();
+            let vel = (*u.get(i, j)).mul_add(*u.get(i, j), *v.get(i, j) * *v.get(i, j)).sqrt();
 
             if vel > max_vel {
 

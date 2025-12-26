@@ -3633,10 +3633,17 @@ impl DagNode {
                         cols,
                     } => {
 
-                        if !children_exprs
+                        if children_exprs
                             .len()
-                            .is_multiple_of(*cols)
-                        {
+                            .is_multiple_of(*cols) {
+
+                            let reconstructed_matrix : Vec<Vec<Expr>> = children_exprs
+                                .chunks(*cols)
+                                .map(<[Expr]>::to_vec)
+                                .collect();
+
+                            Expr::Matrix(reconstructed_matrix)
+                        } else {
 
                             let complete_rows = (children_exprs.len() / cols) * cols;
 
@@ -3645,14 +3652,6 @@ impl DagNode {
                                 .take(complete_rows)
                                 .cloned()
                                 .collect::<Vec<_>>()
-                                .chunks(*cols)
-                                .map(<[Expr]>::to_vec)
-                                .collect();
-
-                            Expr::Matrix(reconstructed_matrix)
-                        } else {
-
-                            let reconstructed_matrix : Vec<Vec<Expr>> = children_exprs
                                 .chunks(*cols)
                                 .map(<[Expr]>::to_vec)
                                 .collect();
@@ -4739,7 +4738,7 @@ impl Expr {
             | Self::Matrix(m) => {
                 m.iter()
                     .flatten()
-                    .for_each(|e| e.pre_order_walk(f))
+                    .for_each(|e| e.pre_order_walk(f));
             },
             | Self::Vector(v)
             | Self::Tuple(v)
@@ -4752,19 +4751,19 @@ impl Expr {
             | Self::AddList(v)
             | Self::MulList(v) => {
                 v.iter()
-                    .for_each(|e| e.pre_order_walk(f))
+                    .for_each(|e| e.pre_order_walk(f));
             },
             | Self::Predicate {
                 args,
                 ..
             } => {
                 args.iter()
-                    .for_each(|e| e.pre_order_walk(f))
+                    .for_each(|e| e.pre_order_walk(f));
             },
             | Self::SparsePolynomial(p) => {
                 p.terms
                     .values()
-                    .for_each(|c| c.pre_order_walk(f))
+                    .for_each(|c| c.pre_order_walk(f));
             },
             // More complex operators
             | Self::Sum {
@@ -4932,7 +4931,7 @@ impl Expr {
             },
             | Self::CustomVecOne(v) => {
                 v.iter()
-                    .for_each(|e| e.pre_order_walk(f))
+                    .for_each(|e| e.pre_order_walk(f));
             },
             | Self::CustomVecTwo(v1, v2) => {
 
@@ -5167,7 +5166,7 @@ impl Expr {
             | Self::Matrix(m) => {
                 m.iter()
                     .flatten()
-                    .for_each(|e| e.post_order_walk(f))
+                    .for_each(|e| e.post_order_walk(f));
             },
             | Self::Vector(v)
             | Self::Tuple(v)
@@ -5180,19 +5179,19 @@ impl Expr {
             | Self::AddList(v)
             | Self::MulList(v) => {
                 v.iter()
-                    .for_each(|e| e.post_order_walk(f))
+                    .for_each(|e| e.post_order_walk(f));
             },
             | Self::Predicate {
                 args,
                 ..
             } => {
                 args.iter()
-                    .for_each(|e| e.post_order_walk(f))
+                    .for_each(|e| e.post_order_walk(f));
             },
             | Self::SparsePolynomial(p) => {
                 p.terms
                     .values()
-                    .for_each(|c| c.post_order_walk(f))
+                    .for_each(|c| c.post_order_walk(f));
             },
             // More complex operators
             | Self::Integral {

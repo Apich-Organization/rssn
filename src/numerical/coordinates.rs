@@ -261,7 +261,7 @@ pub(crate) fn from_cartesian_pure(
             let rho = z
                 .mul_add(
                     z,
-                    x.powi(2) + y.powi(2),
+                    y.mul_add(y, x.powi(2)),
                 )
                 .sqrt();
 

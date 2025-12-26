@@ -26,7 +26,7 @@ pub fn l1_norm(points : &[(f64, f64)]) -> f64 {
 
             let (x2, y2) = w[1];
 
-            ((y1.abs() + y2.abs()) / 2.0) * (x2 - x1)
+            f64::midpoint(y1.abs(), y2.abs()) * (x2 - x1)
         })
         .sum()
 }
@@ -53,7 +53,7 @@ pub fn l2_norm(points : &[(f64, f64)]) -> f64 {
 
             let (x2, y2) = w[1];
 
-            (y2 * y2 + y1 * y1) / 2.0 * (x2 - x1)
+            y2.mul_add(y2, y1 * y1) / 2.0 * (x2 - x1)
         })
         .sum();
 
@@ -120,7 +120,7 @@ pub fn inner_product(
                 return 0.0;
             }
 
-            (y1_f * y1_g + y2_f * y2_g) / 2.0 * (x2 - x1)
+            y1_f.mul_add(y1_g, y2_f * y2_g) / 2.0 * (x2 - x1)
         })
         .sum();
 
@@ -157,6 +157,7 @@ pub fn project(
 
 /// Normalizes a function relative to its L2 norm.
 
+#[must_use] 
 pub fn normalize(points : &[(f64, f64)]) -> Vec<(f64, f64)> {
 
     let n = l2_norm(points);

@@ -118,7 +118,7 @@ static const double rssn_STEFAN_BOLTZMANN = 5.670374419e-8;
 
 /*
  Reduced unit for temperature (using argon as reference)
- 1 reduced temperature = ε/k_B ≈ 120 K for argon
+ 1 reduced temperature = `ε/k_B` ≈ 120 K for argon
  */
 static const double rssn_TEMPERATURE_UNIT_ARGON = 119.8;
 

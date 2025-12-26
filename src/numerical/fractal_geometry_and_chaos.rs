@@ -209,9 +209,9 @@ pub fn generate_mandelbrot_set(
             .enumerate()
         {
 
-            let x0 = x_range.0 + c as f64 * x_scale;
+            let x0 = (c as f64).mul_add(x_scale, x_range.0);
 
-            let y0 = y_range.0 + r as f64 * y_scale;
+            let y0 = (r as f64).mul_add(y_scale, y_range.0);
 
             let mut z = Complex::new(0.0, 0.0);
 
@@ -330,9 +330,9 @@ pub fn generate_julia_set(
             .enumerate()
         {
 
-            let x0 = x_range.0 + col as f64 * x_scale;
+            let x0 = (col as f64).mul_add(x_scale, x_range.0);
 
-            let y0 = y_range.0 + r as f64 * y_scale;
+            let y0 = (r as f64).mul_add(y_scale, y_range.0);
 
             let mut z = Complex::new(x0, y0);
 
@@ -423,9 +423,9 @@ pub fn generate_burning_ship(
             .enumerate()
         {
 
-            let cx = x_range.0 + col as f64 * x_scale;
+            let cx = (col as f64).mul_add(x_scale, x_range.0);
 
-            let cy = y_range.0 + r as f64 * y_scale;
+            let cy = (r as f64).mul_add(y_scale, y_range.0);
 
             let mut zx = 0.0;
 
@@ -437,7 +437,7 @@ pub fn generate_burning_ship(
 
                 let xtemp = zx * zx - zy * zy + cx;
 
-                zy = (2.0 * zx.abs() * zy.abs()) + cy;
+                zy = (2.0 * zx.abs()).mul_add(zy.abs(), cy);
 
                 zx = xtemp;
 
@@ -495,9 +495,9 @@ pub fn generate_multibrot(
             .enumerate()
         {
 
-            let x0 = x_range.0 + col as f64 * x_scale;
+            let x0 = (col as f64).mul_add(x_scale, x_range.0);
 
-            let y0 = y_range.0 + r as f64 * y_scale;
+            let y0 = (r as f64).mul_add(y_scale, y_range.0);
 
             let mut z = Complex::new(0.0, 0.0);
 
@@ -584,9 +584,9 @@ pub fn generate_newton_fractal(
             .enumerate()
         {
 
-            let x0 = x_range.0 + col as f64 * x_scale;
+            let x0 = (col as f64).mul_add(x_scale, x_range.0);
 
-            let y0 = y_range.0 + r as f64 * y_scale;
+            let y0 = (r as f64).mul_add(y_scale, y_range.0);
 
             let mut z = Complex::new(x0, y0);
 
@@ -608,7 +608,7 @@ pub fn generate_newton_fractal(
                     break;
                 }
 
-                z = z - f / df;
+                z -= f / df;
 
                 // Check if close to any root
                 for (i, &root) in roots
@@ -722,9 +722,9 @@ pub fn generate_lorenz_attractor_custom(
 
         let dx = sigma * (y - x);
 
-        let dy = x * (rho - z) - y;
+        let dy = x.mul_add(rho - z, -y);
 
-        let dz = x * y - beta * z;
+        let dz = x.mul_add(y, -(beta * z));
 
         x += dx * dt;
 
@@ -781,9 +781,9 @@ pub fn generate_rossler_attractor(
 
         let dx = -y - z;
 
-        let dy = x + a * y;
+        let dy = a.mul_add(y, x);
 
-        let dz = b + z * (x - c);
+        let dz = z.mul_add(x - c, b);
 
         x += dx * dt;
 
@@ -806,8 +806,8 @@ pub fn generate_rossler_attractor(
 /// The Henon map is a discrete-time dynamical system that exhibits chaotic behavior.
 ///
 /// The map is:
-/// - x_{n+1} = 1 - a*x_n^2 + y_n
-/// - y_{n+1} = b*x_n
+/// - x_{n+1} = 1 - a*`x_n^2` + `y_n`
+/// - y_{n+1} = b*`x_n`
 ///
 /// Classic parameter values: a = 1.4, b = 0.3
 ///
@@ -833,7 +833,7 @@ pub fn generate_henon_map(
 
     for _ in 0 .. num_steps {
 
-        let x_new = 1.0 - a * x * x + y;
+        let x_new = (a * x).mul_add(-x, 1.0) + y;
 
         let y_new = b * x;
 
@@ -854,8 +854,8 @@ pub fn generate_henon_map(
 /// Generates the Tinkerbell map trajectory.
 ///
 /// The Tinkerbell map is a two-dimensional iterated map:
-/// - x_{n+1} = x_n^2 - y_n^2 + ax_n + by_n
-/// - y_{n+1} = 2x_n*y_n + cx_n + dy_n
+/// - x_{n+1} = `x_n^2` - `y_n^2` + `ax_n` + `by_n`
+/// - y_{n+1} = `2x_n`*`y_n` + `cx_n` + `dy_n`
 ///
 /// Classic parameter values: a = 0.9, b = -0.6013, c = 2.0, d = 0.5
 ///
@@ -883,9 +883,9 @@ pub fn generate_tinkerbell_map(
 
     for _ in 0 .. num_steps {
 
-        let x_new = x * x - y * y + a * x + b * y;
+        let x_new = x.mul_add(x, -(y * y)) + a * x + b * y;
 
-        let y_new = 2.0 * x * y + c * x + d * y;
+        let y_new = (2.0 * x).mul_add(y, c * x) + d * y;
 
         x = x_new;
 
@@ -903,7 +903,7 @@ pub fn generate_tinkerbell_map(
 
 /// Iterates the logistic map.
 ///
-/// The logistic map is defined by: x_{n+1} = r * x_n * (1 - x_n)
+/// The logistic map is defined by: x_{n+1} = r * `x_n` * (1 - `x_n`)
 ///
 /// It is a classic example of how complex behavior can arise from simple nonlinear
 /// dynamical equations. For r between 0 and 4, the dynamics range from stable
@@ -970,7 +970,7 @@ pub fn logistic_bifurcation(
 
     for i in 0 .. num_r_values {
 
-        let r = r_range.0 + i as f64 * r_step;
+        let r = (i as f64).mul_add(r_step, r_range.0);
 
         let mut x = x0;
 
@@ -1035,7 +1035,7 @@ pub fn lyapunov_exponent_logistic(
     for _ in 0 .. num_iterations {
 
         // Derivative of f(x) = rx(1-x) is f'(x) = r(1-2x)
-        let deriv = r * (1.0 - 2.0 * x);
+        let deriv = r * 2.0f64.mul_add(-x, 1.0);
 
         if deriv.abs() > 0.0 {
 
@@ -1089,9 +1089,9 @@ pub fn lyapunov_exponent_lorenz(
         // Evolve the main trajectory
         let dx_main = sigma * (y - x);
 
-        let dy_main = x * (rho - z) - y;
+        let dy_main = x.mul_add(rho - z, -y);
 
-        let dz_main = x * y - beta * z;
+        let dz_main = x.mul_add(y, -(beta * z));
 
         x += dx_main * dt;
 
@@ -1104,7 +1104,7 @@ pub fn lyapunov_exponent_lorenz(
 
         let ddy = dx * (rho - z) - x * dz - dy;
 
-        let ddz = dx * y + x * dy - beta * dz;
+        let ddz = beta.mul_add(-dz, dx * y + x * dy);
 
         dx += ddx * dt;
 
@@ -1201,7 +1201,7 @@ pub fn box_counting_dimension(
     for scale_idx in 0 .. num_scales {
 
         let num_boxes = 1 << (scale_idx + 1); // 2, 4, 8, 16, ...
-        let eps = extent / num_boxes as f64;
+        let eps = extent / f64::from(num_boxes);
 
         // Count occupied boxes using a hash set
         use std::collections::HashSet;
@@ -1272,7 +1272,7 @@ pub fn correlation_dimension(
 
             let dy = points[i].1 - points[j].1;
 
-            distances.push((dx * dx + dy * dy).sqrt());
+            distances.push(dx.hypot(dy));
         }
     }
 
@@ -1353,14 +1353,14 @@ fn linear_regression_slope(
         .map(|xi| xi * xi)
         .sum();
 
-    let denom = n * sum_xx - sum_x * sum_x;
+    let denom = n.mul_add(sum_xx, -(sum_x * sum_x));
 
     if denom.abs() < 1e-10 {
 
         return 0.0;
     }
 
-    (n * sum_xy - sum_x * sum_y) / denom
+    n.mul_add(sum_xy, -(sum_x * sum_y)) / denom
 }
 
 // ============================================================================
@@ -1414,7 +1414,7 @@ pub fn orbit_density(
 
 /// Computes the entropy of an orbit from its density distribution.
 ///
-/// Uses Shannon entropy: H = -sum(p_i * log(p_i))
+/// Uses Shannon entropy: H = -`sum(p_i` * `log(p_i)`)
 ///
 /// # Arguments
 /// * `density` - A 2D density histogram from `orbit_density`.
@@ -1508,8 +1508,8 @@ impl AffineTransform2D {
         let (x, y) = point;
 
         (
-            self.a * x + self.b * y + self.e,
-            self.c * x + self.d * y + self.f,
+            self.a.mul_add(x, self.b * y) + self.e,
+            self.c.mul_add(x, self.d * y) + self.f,
         )
     }
 }
@@ -1571,7 +1571,7 @@ pub fn generate_ifs_fractal(
             .wrapping_mul(6364136223846793005)
             .wrapping_add(1);
 
-        (*state >> 33) as f64 / (u32::MAX as f64)
+        (*state >> 33) as f64 / f64::from(u32::MAX)
     };
 
     for i in 0 .. (num_points + skip) {

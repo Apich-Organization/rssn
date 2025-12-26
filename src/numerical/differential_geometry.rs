@@ -401,8 +401,7 @@ pub fn riemann_tensor(
 
                     for lambda in 0 .. dim {
 
-                        sum_product += gamma[rho][lambda][mu] * gamma[lambda][sigma][nu]
-                            - gamma[rho][lambda][nu] * gamma[lambda][sigma][mu];
+                        sum_product += gamma[rho][lambda][mu].mul_add(gamma[lambda][sigma][nu], -(gamma[rho][lambda][nu] * gamma[lambda][sigma][mu]));
                     }
 
                     riemann[rho][sigma][mu][nu] =
@@ -445,13 +444,13 @@ fn invert_mat_num(mat : &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
                     | Expr::BigInt(b) => {
                         res[i][j] = b
                             .to_f64()
-                            .unwrap_or(0.0)
+                            .unwrap_or(0.0);
                     },
                     | _ => {
                         res[i][j] = eval_expr(
                             &rows[i][j],
                             &HashMap::new(),
-                        )?
+                        )?;
                     },
                 }
             }

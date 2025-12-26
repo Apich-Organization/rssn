@@ -91,7 +91,7 @@ where
 
     for i in 1 .. n_steps {
 
-        let x = a + (i as f64) * h;
+        let x = (i as f64).mul_add(h, a);
 
         sum += f(x);
     }
@@ -146,7 +146,7 @@ where
 
     // Simpson's rule requires even number of intervals for the strict global formula.
     // If odd, we can warn or adjust. For now, enforce even.
-    let steps = if n_steps % 2 != 0 {
+    let steps = if !n_steps.is_multiple_of(2) {
 
         n_steps + 1
     } else {
@@ -160,7 +160,7 @@ where
 
     for i in 1 .. steps {
 
-        let x = a + (i as f64) * h;
+        let x = (i as f64).mul_add(h, a);
 
         let weight = if i % 2 == 0 {
 
@@ -232,11 +232,11 @@ where
             return whole_simpson;
         }
 
-        let mid = (a + b) / 2.0;
+        let mid = f64::midpoint(a, b);
 
-        let sub_mid_left = (a + mid) / 2.0;
+        let sub_mid_left = f64::midpoint(a, mid);
 
-        let sub_mid_right = (mid + b) / 2.0;
+        let sub_mid_right = f64::midpoint(mid, b);
 
         let fa = f(a);
 
@@ -249,9 +249,9 @@ where
         let fmr = f(sub_mid_right);
 
         // Simp(a, b) = (b-a)/6 * (f(a) + 4f(m) + f(b))
-        let left_simpson = (mid - a) / 6.0 * (fa + 4.0 * fml + fm);
+        let left_simpson = (mid - a) / 6.0 * (4.0f64.mul_add(fml, fa) + fm);
 
-        let right_simpson = (b - mid) / 6.0 * (fm + 4.0 * fmr + fb);
+        let right_simpson = (b - mid) / 6.0 * (4.0f64.mul_add(fmr, fm) + fb);
 
         let sum_halves = left_simpson + right_simpson;
 
@@ -290,11 +290,11 @@ where
     }
 
     // Initial Simpson estimate
-    let mid = (a + b) / 2.0;
+    let mid = f64::midpoint(a, b);
 
     let fm = f(mid);
 
-    let initial_simpson = (b - a) / 6.0 * (f(a) + 4.0 * fm + f(b));
+    let initial_simpson = (b - a) / 6.0 * (4.0f64.mul_add(fm, f(a)) + f(b));
 
     adaptive_recursive(
         &f,
@@ -363,25 +363,25 @@ where
         // But we can update from R[i-1][0] efficiently
         let steps_prev = 1 << (i - 1);
 
-        let h_i = h / (1 << i) as f64;
+        let h_i = h / f64::from(1 << i);
 
         let mut sum = 0.0;
 
         for k in 1 ..= steps_prev {
 
-            let x = a + (2 * k - 1) as f64 * h_i;
+            let x = a + f64::from(2 * k - 1) * h_i;
 
             sum += f(x);
         }
 
-        r[i][0] = 0.5 * r[i - 1][0] + h_i * sum;
+        r[i][0] = 0.5f64.mul_add(r[i - 1][0], h_i * sum);
 
         // Richardson extrapolation
         for j in 1 ..= i {
 
             let k = 4.0_f64.powi(j as i32);
 
-            r[i][j] = (k * r[i][j - 1] - r[i - 1][j - 1]) / (k - 1.0);
+            r[i][j] = k.mul_add(r[i][j - 1], -r[i - 1][j - 1]) / (k - 1.0);
         }
     }
 
@@ -420,7 +420,7 @@ where
         return 0.0;
     }
 
-    let mid = (a + b) / 2.0;
+    let mid = f64::midpoint(a, b);
 
     let half_len = (b - a) / 2.0;
 

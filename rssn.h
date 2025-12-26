@@ -119,7 +119,7 @@ namespace rssn {
 
 /*
  Reduced unit for temperature (using argon as reference)
- 1 reduced temperature = ε/k_B ≈ 120 K for argon
+ 1 reduced temperature = `ε/k_B` ≈ 120 K for argon
  */
 #define rssn_TEMPERATURE_UNIT_ARGON 119.8
 

@@ -181,6 +181,6 @@ pub fn hamming_window(n : usize) -> Vec<f64> {
     }
 
     (0 .. n)
-        .map(|i| 0.54 - 0.46 * (2.0 * PI * i as f64 / (n - 1) as f64).cos())
+        .map(|i| 0.46f64.mul_add(-(2.0 * PI * i as f64 / (n - 1) as f64).cos(), 0.54))
         .collect()
 }

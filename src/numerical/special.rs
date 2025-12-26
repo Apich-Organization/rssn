@@ -71,7 +71,7 @@ pub fn lower_incomplete_gamma(
 
     for n in 1 .. 200 {
 
-        term *= x / (s + n as f64);
+        term *= x / (s + f64::from(n));
 
         sum += term;
 
@@ -152,7 +152,7 @@ pub fn incomplete_beta(
     b : f64,
 ) -> f64 {
 
-    if x < 0.0 || x > 1.0 || a <= 0.0 || b <= 0.0 {
+    if !(0.0..=1.0).contains(&x) || a <= 0.0 || b <= 0.0 {
 
         return f64::NAN;
     }
@@ -171,7 +171,7 @@ pub fn incomplete_beta(
     regularized_beta(x, a, b) * beta(a, b)
 }
 
-/// Computes the regularized incomplete beta function, I_x(a, b) = B(x; a, b) / B(a, b).
+/// Computes the regularized incomplete beta function, `I_x(a`, b) = B(x; a, b) / B(a, b).
 /// Uses continued fraction expansion for better convergence.
 #[must_use]
 
@@ -181,7 +181,7 @@ pub fn regularized_beta(
     b : f64,
 ) -> f64 {
 
-    if x < 0.0 || x > 1.0 || a <= 0.0 || b <= 0.0 {
+    if !(0.0..=1.0).contains(&x) || a <= 0.0 || b <= 0.0 {
 
         return f64::NAN;
     }
@@ -208,7 +208,7 @@ pub fn regularized_beta(
         0.0
     } else {
 
-        (ln_gamma(a + b) - ln_gamma(a) - ln_gamma(b) + a * x.ln() + b * (1.0 - x).ln()).exp()
+        (a.mul_add(x.ln(), ln_gamma(a + b) - ln_gamma(a) - ln_gamma(b)) + b * (1.0 - x).ln()).exp()
     };
 
     let mut am = 1.0;
@@ -227,7 +227,7 @@ pub fn regularized_beta(
 
     for m in 1 .. 200 {
 
-        let em = m as f64;
+        let em = f64::from(m);
 
         let tem = em + em;
 
@@ -319,9 +319,9 @@ pub fn inverse_erf_numerical(x : f64) -> f64 {
 
         let x2 = x * x;
 
-        let num = x * (1.0 + x2 * (-0.140543331 + x2 * 0.0140002));
+        let num = x * (1.0 + x2 * x2.mul_add(0.0140002, -0.140543331));
 
-        let den = 1.0 + x2 * (-0.453004011 + x2 * 0.049988);
+        let den = 1.0 + x2 * x2.mul_add(0.049988, -0.453004011);
 
         num / den
     } else {
@@ -375,10 +375,10 @@ pub fn bessel_j0(x : f64) -> f64 {
 
         let ans1 = 57568490574.0
             + y * (-13362590354.0
-                + y * (651619640.7 + y * (-11214424.18 + y * (77392.33017 + y * (-184.9052456)))));
+                + y * (651619640.7 + y * (-11214424.18 + y * y.mul_add(-184.9052456, 77392.33017))));
 
         let ans2 = 57568490411.0
-            + y * (1029532985.0 + y * (9494680.718 + y * (59272.64853 + y * (267.8532712 + y))));
+            + y * (1029532985.0 + y * (9494680.718 + y * y.mul_add(267.8532712 + y, 59272.64853)));
 
         ans1 / ans2
     } else {
@@ -397,7 +397,7 @@ pub fn bessel_j0(x : f64) -> f64 {
             + y * (0.1430488765e-3
                 + y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934945152e-7)));
 
-        (0.636619772 / ax).sqrt() * (xx.cos() * ans1 - z * xx.sin() * ans2)
+        (0.636619772 / ax).sqrt() * xx.cos().mul_add(ans1, -(z * xx.sin() * ans2))
     }
 }
 
@@ -421,10 +421,10 @@ pub fn bessel_j1(x : f64) -> f64 {
             * (72362614232.0
                 + y * (-7895059235.0
                     + y * (242396853.1
-                        + y * (-2972611.439 + y * (15704.48260 + y * (-30.16036606))))));
+                        + y * (-2972611.439 + y * y.mul_add(-30.16036606, 15704.48260)))));
 
         let ans2 = 144725228442.0
-            + y * (2300535178.0 + y * (18583304.74 + y * (99447.43394 + y * (376.9991397 + y))));
+            + y * (2300535178.0 + y * (18583304.74 + y * y.mul_add(376.9991397 + y, 99447.43394)));
 
         ans1 / ans2
     } else {
@@ -443,7 +443,7 @@ pub fn bessel_j1(x : f64) -> f64 {
             + y * (-0.2002690873e-3
                 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
 
-        let ans = (0.636619772 / ax).sqrt() * (xx.cos() * ans1 - z * xx.sin() * ans2);
+        let ans = (0.636619772 / ax).sqrt() * xx.cos().mul_add(ans1, -(z * xx.sin() * ans2));
 
         if x < 0.0 {
 
@@ -471,12 +471,12 @@ pub fn bessel_y0(x : f64) -> f64 {
 
         let ans1 = -2957821389.0
             + y * (7062834065.0
-                + y * (-512359803.6 + y * (10879881.29 + y * (-86327.92757 + y * 228.4622733))));
+                + y * (-512359803.6 + y * (10879881.29 + y * y.mul_add(228.4622733, -86327.92757))));
 
         let ans2 = 40076544269.0
-            + y * (745249964.8 + y * (7189466.438 + y * (47447.26470 + y * (226.1030244 + y))));
+            + y * (745249964.8 + y * (7189466.438 + y * y.mul_add(226.1030244 + y, 47447.26470)));
 
-        ans1 / ans2 + 0.636619772 * bessel_j0(x) * x.ln()
+        (0.636619772 * bessel_j0(x)).mul_add(x.ln(), ans1 / ans2)
     } else {
 
         let z = 8.0 / x;
@@ -493,7 +493,7 @@ pub fn bessel_y0(x : f64) -> f64 {
             + y * (0.1430488765e-3
                 + y * (-0.6911147651e-5 + y * (0.7621095161e-6 + y * (-0.934945152e-7))));
 
-        (0.636619772 / x).sqrt() * (xx.sin() * ans1 + z * xx.cos() * ans2)
+        (0.636619772 / x).sqrt() * xx.sin().mul_add(ans1, z * xx.cos() * ans2)
     }
 }
 
@@ -515,14 +515,14 @@ pub fn bessel_y1(x : f64) -> f64 {
             * (-0.4900604943e13
                 + y * (0.1275274390e13
                     + y * (-0.5153438139e11
-                        + y * (0.7349264551e9 + y * (-0.4237922726e7 + y * 0.8511937935e4)))));
+                        + y * (0.7349264551e9 + y * y.mul_add(0.8511937935e4, -0.4237922726e7)))));
 
         let ans2 = 0.2499580570e14
             + y * (0.4244419664e12
                 + y * (0.3733650367e10
-                    + y * (0.2245904002e8 + y * (0.1020426050e6 + y * (0.3549632885e3 + y)))));
+                    + y * (0.2245904002e8 + y * y.mul_add(0.3549632885e3 + y, 0.1020426050e6))));
 
-        ans1 / ans2 + 0.636619772 * (bessel_j1(x) * x.ln() - 1.0 / x)
+        ans1 / ans2 + 0.636619772 * bessel_j1(x).mul_add(x.ln(), -(1.0 / x))
     } else {
 
         let z = 8.0 / x;
@@ -539,7 +539,7 @@ pub fn bessel_y1(x : f64) -> f64 {
             + y * (-0.2002690873e-3
                 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
 
-        (0.636619772 / x).sqrt() * (xx.sin() * ans1 + z * xx.cos() * ans2)
+        (0.636619772 / x).sqrt() * xx.sin().mul_add(ans1, z * xx.cos() * ans2)
     }
 }
 
@@ -623,7 +623,7 @@ pub fn bessel_i1(x : f64) -> f64 {
 // Orthogonal Polynomials
 // ============================================================================
 
-/// Computes the Legendre polynomial P_n(x) using recurrence relation.
+/// Computes the Legendre polynomial `P_n(x)` using recurrence relation.
 #[must_use]
 
 pub fn legendre_p(
@@ -647,7 +647,7 @@ pub fn legendre_p(
 
     for k in 2 ..= n {
 
-        let p_next = ((2 * k - 1) as f64 * x * p_curr - (k - 1) as f64 * p_prev) / k as f64;
+        let p_next = (f64::from(2 * k - 1) * x * p_curr - f64::from(k - 1) * p_prev) / f64::from(k);
 
         p_prev = p_curr;
 
@@ -657,7 +657,7 @@ pub fn legendre_p(
     p_curr
 }
 
-/// Computes the Chebyshev polynomial of the first kind T_n(x).
+/// Computes the Chebyshev polynomial of the first kind `T_n(x)`.
 #[must_use]
 
 pub fn chebyshev_t(
@@ -681,7 +681,7 @@ pub fn chebyshev_t(
 
     for _ in 2 ..= n {
 
-        let t_next = 2.0 * x * t_curr - t_prev;
+        let t_next = (2.0 * x).mul_add(t_curr, -t_prev);
 
         t_prev = t_curr;
 
@@ -691,7 +691,7 @@ pub fn chebyshev_t(
     t_curr
 }
 
-/// Computes the Chebyshev polynomial of the second kind U_n(x).
+/// Computes the Chebyshev polynomial of the second kind `U_n(x)`.
 #[must_use]
 
 pub fn chebyshev_u(
@@ -715,7 +715,7 @@ pub fn chebyshev_u(
 
     for _ in 2 ..= n {
 
-        let u_next = 2.0 * x * u_curr - u_prev;
+        let u_next = (2.0 * x).mul_add(u_curr, -u_prev);
 
         u_prev = u_curr;
 
@@ -725,7 +725,7 @@ pub fn chebyshev_u(
     u_curr
 }
 
-/// Computes the (physicists') Hermite polynomial H_n(x).
+/// Computes the (physicists') Hermite polynomial `H_n(x)`.
 #[must_use]
 
 pub fn hermite_h(
@@ -749,7 +749,7 @@ pub fn hermite_h(
 
     for k in 2 ..= n {
 
-        let h_next = 2.0 * x * h_curr - 2.0 * (k - 1) as f64 * h_prev;
+        let h_next = 2.0 * x * h_curr - 2.0 * f64::from(k - 1) * h_prev;
 
         h_prev = h_curr;
 
@@ -759,7 +759,7 @@ pub fn hermite_h(
     h_curr
 }
 
-/// Computes the Laguerre polynomial L_n(x).
+/// Computes the Laguerre polynomial `L_n(x)`.
 #[must_use]
 
 pub fn laguerre_l(
@@ -784,7 +784,7 @@ pub fn laguerre_l(
     for k in 2 ..= n {
 
         let l_next =
-            ((2 * k - 1) as f64 - x) * l_curr / k as f64 - (k - 1) as f64 * l_prev / k as f64;
+            (f64::from(2 * k - 1) - x) * l_curr / f64::from(k) - f64::from(k - 1) * l_prev / f64::from(k);
 
         l_prev = l_curr;
 
@@ -880,7 +880,7 @@ pub fn riemann_zeta(s : f64) -> f64 {
 
     for n in 1 .. 10000 {
 
-        let term = 1.0 / (n as f64).powf(s);
+        let term = 1.0 / f64::from(n).powf(s);
 
         sum += term;
 
@@ -942,6 +942,6 @@ pub fn softplus(x : f64) -> f64 {
         x.exp()
     } else {
 
-        (1.0 + x.exp()).ln()
+        x.exp().ln_1p()
     }
 }

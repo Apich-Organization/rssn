@@ -261,7 +261,7 @@ pub fn hessian(
 
                 let f_minus = eval_at_point(f, vars, &p_minus)?;
 
-                (f_plus - 2.0 * f_center + f_minus) / (h * h)
+                (2.0f64.mul_add(-f_center, f_plus) + f_minus) / (h * h)
             } else {
 
                 // fxy approx (f(x+h, y+h) - f(x+h, y-h) - f(x-h, y+h) + f(x-h, y-h)) / (4h^2)

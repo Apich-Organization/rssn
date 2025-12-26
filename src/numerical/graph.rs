@@ -182,6 +182,7 @@ pub fn dijkstra(
 /// Returns the unweighted shortest path distances from the start node to all other reachable nodes.
 /// Returns `usize::MAX` for unreachable nodes.
 
+#[must_use] 
 pub fn bfs(
     graph : &Graph,
     start_node : usize,
@@ -213,7 +214,7 @@ pub fn bfs(
     dist
 }
 
-/// Computes the PageRank of the nodes in the graph.
+/// Computes the `PageRank` of the nodes in the graph.
 ///
 /// # Arguments
 /// * `graph` - The graph.
@@ -224,6 +225,7 @@ pub fn bfs(
 /// # Returns
 /// A vector of scores summing to 1.
 
+#[must_use] 
 pub fn page_rank(
     graph : &Graph,
     damping_factor : f64,
@@ -311,6 +313,7 @@ pub fn page_rank(
 /// A flattened vector of size `n * n` representing the distance matrix.
 /// `dist[i * n + j]` is the distance from i to j.
 
+#[must_use] 
 pub fn floyd_warshall(graph : &Graph) -> Vec<f64> {
 
     let n = graph.num_nodes();
@@ -352,6 +355,7 @@ pub fn floyd_warshall(graph : &Graph) -> Vec<f64> {
 /// Finds the connected components of the graph.
 /// Returns a vector where each element corresponds to a node and contains its component ID.
 
+#[must_use] 
 pub fn connected_components(graph : &Graph) -> Vec<usize> {
 
     let num_nodes = graph.num_nodes();
@@ -394,6 +398,7 @@ pub fn connected_components(graph : &Graph) -> Vec<usize> {
 /// Returns a Graph representing the MST.
 /// Assumes graph is connected (or computes MST forest).
 
+#[must_use] 
 pub fn minimum_spanning_tree(graph : &Graph) -> Graph {
 
     let num_nodes = graph.num_nodes();
