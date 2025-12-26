@@ -59,10 +59,15 @@ impl Graph {
     /// A new `Graph` instance.
     #[must_use]
 
-    pub fn new(num_nodes : usize) -> Self {
+    pub fn new(
+        num_nodes : usize
+    ) -> Self {
 
         Self {
-            adj : vec![vec![]; num_nodes],
+            adj : vec![
+                vec![];
+                num_nodes
+            ],
         }
     }
 
@@ -86,7 +91,9 @@ impl Graph {
     /// Returns the total number of nodes in the graph.
     #[must_use]
 
-    pub const fn num_nodes(&self) -> usize {
+    pub const fn num_nodes(
+        &self
+    ) -> usize {
 
         self.adj.len()
     }
@@ -135,9 +142,11 @@ pub fn dijkstra(
 
     let num_nodes = graph.adj.len();
 
-    let mut dist : Vec<f64> = vec![f64::INFINITY; num_nodes];
+    let mut dist : Vec<f64> =
+        vec![f64::INFINITY; num_nodes];
 
-    let mut prev : Vec<Option<usize>> = vec![None; num_nodes];
+    let mut prev : Vec<Option<usize>> =
+        vec![None; num_nodes];
 
     let mut heap = BinaryHeap::new();
 
@@ -159,16 +168,24 @@ pub fn dijkstra(
             continue;
         }
 
-        for &(neighbor, weight) in &graph.adj[position] {
+        for &(neighbor, weight) in
+            &graph.adj[position]
+        {
 
-            if dist[position] + weight < dist[neighbor] {
+            if dist[position] + weight
+                < dist[neighbor]
+            {
 
-                dist[neighbor] = dist[position] + weight;
+                dist[neighbor] = dist
+                    [position]
+                    + weight;
 
-                prev[neighbor] = Some(position);
+                prev[neighbor] =
+                    Some(position);
 
                 heap.push(State {
-                    cost : dist[neighbor],
+                    cost : dist
+                        [neighbor],
                     position : neighbor,
                 });
             }
@@ -182,7 +199,8 @@ pub fn dijkstra(
 /// Returns the unweighted shortest path distances from the start node to all other reachable nodes.
 /// Returns `usize::MAX` for unreachable nodes.
 
-#[must_use] 
+#[must_use]
+
 pub fn bfs(
     graph : &Graph,
     start_node : usize,
@@ -190,15 +208,20 @@ pub fn bfs(
 
     let num_nodes = graph.num_nodes();
 
-    let mut dist = vec![usize::MAX; num_nodes];
+    let mut dist =
+        vec![usize::MAX; num_nodes];
 
-    let mut queue = std::collections::VecDeque::new();
+    let mut queue =
+        std::collections::VecDeque::new(
+        );
 
     dist[start_node] = 0;
 
     queue.push_back(start_node);
 
-    while let Some(u) = queue.pop_front() {
+    while let Some(u) =
+        queue.pop_front()
+    {
 
         for &(v, _) in graph.adj(u) {
 
@@ -225,7 +248,8 @@ pub fn bfs(
 /// # Returns
 /// A vector of scores summing to 1.
 
-#[must_use] 
+#[must_use]
+
 pub fn page_rank(
     graph : &Graph,
     damping_factor : f64,
@@ -240,18 +264,23 @@ pub fn page_rank(
         return vec![];
     }
 
-    let initial_score = 1.0 / num_nodes as f64;
+    let initial_score =
+        1.0 / num_nodes as f64;
 
-    let mut scores = vec![initial_score; num_nodes];
+    let mut scores =
+        vec![initial_score; num_nodes];
 
-    let mut new_scores = vec![0.0; num_nodes];
+    let mut new_scores =
+        vec![0.0; num_nodes];
 
     // Calculate out-degree for each node
-    let mut out_degree = vec![0; num_nodes];
+    let mut out_degree =
+        vec![0; num_nodes];
 
     for u in 0 .. num_nodes {
 
-        out_degree[u] = graph.adj(u).len();
+        out_degree[u] =
+            graph.adj(u).len();
     }
 
     for _ in 0 .. max_iter {
@@ -262,28 +291,41 @@ pub fn page_rank(
 
             if out_degree[u] == 0 {
 
-                total_sink_score += scores[u];
+                total_sink_score +=
+                    scores[u];
             }
         }
 
-        let base_score = (1.0 - damping_factor) / num_nodes as f64;
+        let base_score = (1.0
+            - damping_factor)
+            / num_nodes as f64;
 
-        let sink_share = damping_factor * total_sink_score / num_nodes as f64;
+        let sink_share = damping_factor
+            * total_sink_score
+            / num_nodes as f64;
 
         for v in 0 .. num_nodes {
 
-            new_scores[v] = base_score + sink_share;
+            new_scores[v] =
+                base_score + sink_share;
         }
 
         for u in 0 .. num_nodes {
 
             if out_degree[u] > 0 {
 
-                let share = damping_factor * scores[u] / out_degree[u] as f64;
+                let share =
+                    damping_factor
+                        * scores[u]
+                        / out_degree[u]
+                            as f64;
 
-                for &(v, _) in graph.adj(u) {
+                for &(v, _) in
+                    graph.adj(u)
+                {
 
-                    new_scores[v] += share;
+                    new_scores[v] +=
+                        share;
                 }
             }
         }
@@ -293,10 +335,14 @@ pub fn page_rank(
 
         for i in 0 .. num_nodes {
 
-            diff += (new_scores[i] - scores[i]).abs();
+            diff += (new_scores[i]
+                - scores[i])
+                .abs();
         }
 
-        scores.copy_from_slice(&new_scores);
+        scores.copy_from_slice(
+            &new_scores,
+        );
 
         if diff < tolerance {
 
@@ -313,12 +359,16 @@ pub fn page_rank(
 /// A flattened vector of size `n * n` representing the distance matrix.
 /// `dist[i * n + j]` is the distance from i to j.
 
-#[must_use] 
-pub fn floyd_warshall(graph : &Graph) -> Vec<f64> {
+#[must_use]
+
+pub fn floyd_warshall(
+    graph : &Graph
+) -> Vec<f64> {
 
     let n = graph.num_nodes();
 
-    let mut dist = vec![f64::INFINITY; n * n];
+    let mut dist =
+        vec![f64::INFINITY; n * n];
 
     // Initialize distances
     for i in 0 .. n {
@@ -327,7 +377,8 @@ pub fn floyd_warshall(graph : &Graph) -> Vec<f64> {
 
         for &(j, w) in graph.adj(i) {
 
-            dist[i * n + j] = dist[i * n + j].min(w);
+            dist[i * n + j] =
+                dist[i * n + j].min(w);
         }
     }
 
@@ -337,13 +388,18 @@ pub fn floyd_warshall(graph : &Graph) -> Vec<f64> {
 
             for j in 0 .. n {
 
-                let d_ik = dist[i * n + k];
+                let d_ik =
+                    dist[i * n + k];
 
-                let d_kj = dist[k * n + j];
+                let d_kj =
+                    dist[k * n + j];
 
-                if d_ik + d_kj < dist[i * n + j] {
+                if d_ik + d_kj
+                    < dist[i * n + j]
+                {
 
-                    dist[i * n + j] = d_ik + d_kj;
+                    dist[i * n + j] =
+                        d_ik + d_kj;
                 }
             }
         }
@@ -355,12 +411,16 @@ pub fn floyd_warshall(graph : &Graph) -> Vec<f64> {
 /// Finds the connected components of the graph.
 /// Returns a vector where each element corresponds to a node and contains its component ID.
 
-#[must_use] 
-pub fn connected_components(graph : &Graph) -> Vec<usize> {
+#[must_use]
+
+pub fn connected_components(
+    graph : &Graph
+) -> Vec<usize> {
 
     let num_nodes = graph.num_nodes();
 
-    let mut component = vec![usize::MAX; num_nodes];
+    let mut component =
+        vec![usize::MAX; num_nodes];
 
     let mut current_component = 0;
 
@@ -372,17 +432,27 @@ pub fn connected_components(graph : &Graph) -> Vec<usize> {
 
             queue.push_back(i);
 
-            component[i] = current_component;
+            component[i] =
+                current_component;
 
-            while let Some(u) = queue.pop_front() {
+            while let Some(u) =
+                queue.pop_front()
+            {
 
-                for &(v, _) in graph.adj(u) {
+                for &(v, _) in
+                    graph.adj(u)
+                {
 
-                    if component[v] == usize::MAX {
+                    if component[v]
+                        == usize::MAX
+                    {
 
                         component[v] = current_component;
 
-                        queue.push_back(v);
+                        queue
+                            .push_back(
+                                v,
+                            );
                     }
                 }
             }
@@ -398,8 +468,11 @@ pub fn connected_components(graph : &Graph) -> Vec<usize> {
 /// Returns a Graph representing the MST.
 /// Assumes graph is connected (or computes MST forest).
 
-#[must_use] 
-pub fn minimum_spanning_tree(graph : &Graph) -> Graph {
+#[must_use]
+
+pub fn minimum_spanning_tree(
+    graph : &Graph
+) -> Graph {
 
     let num_nodes = graph.num_nodes();
 
@@ -410,11 +483,14 @@ pub fn minimum_spanning_tree(graph : &Graph) -> Graph {
         return mst;
     }
 
-    let mut visited = vec![false; num_nodes];
+    let mut visited =
+        vec![false; num_nodes];
 
-    let mut min_edge = vec![f64::INFINITY; num_nodes];
+    let mut min_edge =
+        vec![f64::INFINITY; num_nodes];
 
-    let mut parent = vec![None; num_nodes];
+    let mut parent =
+        vec![None; num_nodes];
 
     let mut heap = BinaryHeap::new();
 
@@ -453,16 +529,26 @@ pub fn minimum_spanning_tree(graph : &Graph) -> Graph {
                 // Here our Graph is directed.
                 // If it represents undirected, edges are doubled.
                 // We add edge p->u and u->p to MST.
-                mst.add_edge(p, u, cost);
+                mst.add_edge(
+                    p, u, cost,
+                );
 
-                mst.add_edge(u, p, cost);
+                mst.add_edge(
+                    u, p, cost,
+                );
             }
 
-            for &(v, weight) in graph.adj(u) {
+            for &(v, weight) in
+                graph.adj(u)
+            {
 
-                if !visited[v] && weight < min_edge[v] {
+                if !visited[v]
+                    && weight
+                        < min_edge[v]
+                {
 
-                    min_edge[v] = weight;
+                    min_edge[v] =
+                        weight;
 
                     parent[v] = Some(u);
 

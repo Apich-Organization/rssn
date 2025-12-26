@@ -17,7 +17,10 @@ fn test_contour_integral_circle() {
 
     for i in 0 ..= n {
 
-        let angle = 2.0 * std::f64::consts::PI * (i as f64) / (n as f64);
+        let angle = 2.0
+            * std::f64::consts::PI
+            * (i as f64)
+            / (n as f64);
 
         path.push(Complex::new(
             angle.cos(),
@@ -25,16 +28,25 @@ fn test_contour_integral_circle() {
         ));
     }
 
-    let res = contour_integral(f, &path);
+    let res =
+        contour_integral(f, &path);
 
     println!(
         "Circle integral res: {:?}",
         res
     );
 
-    assert!((res.re - 0.0).abs() < 1e-7);
+    assert!(
+        (res.re - 0.0).abs() < 1e-7
+    );
 
-    assert!((res.im - 2.0 * std::f64::consts::PI).abs() < 1e-7);
+    assert!(
+        (res.im
+            - 2.0
+                * std::f64::consts::PI)
+            .abs()
+            < 1e-7
+    );
 }
 
 #[test]
@@ -56,9 +68,13 @@ fn test_residue_simple_pole() {
         res
     );
 
-    assert!((res.re - 1.0).abs() < 1e-7);
+    assert!(
+        (res.re - 1.0).abs() < 1e-7
+    );
 
-    assert!((res.im - 0.0).abs() < 1e-7);
+    assert!(
+        (res.im - 0.0).abs() < 1e-7
+    );
 }
 
 #[test]
@@ -66,7 +82,9 @@ fn test_residue_simple_pole() {
 fn test_residue_double_pole() {
 
     // f(z) = 1/z^2 has residue 0 at z=0
-    let f = |z : Complex<f64>| 1.0 / (z * z);
+    let f = |z : Complex<f64>| {
+        1.0 / (z * z)
+    };
 
     let res = residue(
         f,
@@ -95,7 +113,8 @@ fn test_eval_complex_expr() {
     );
 
     // expr = z^2 + 1
-    let z = Expr::Variable("z".to_string());
+    let z =
+        Expr::Variable("z".to_string());
 
     let expr = Expr::new_add(
         Expr::new_pow(
@@ -105,16 +124,22 @@ fn test_eval_complex_expr() {
         Expr::Constant(1.0),
     );
 
-    let res = eval_complex_expr(&expr, &vars).unwrap();
+    let res =
+        eval_complex_expr(&expr, &vars)
+            .unwrap();
 
     println!(
         "Eval res: {:?}",
         res
     );
 
-    assert!((res.re - 1.0).abs() < 1e-9);
+    assert!(
+        (res.re - 1.0).abs() < 1e-9
+    );
 
-    assert!((res.im - 2.0).abs() < 1e-9);
+    assert!(
+        (res.im - 2.0).abs() < 1e-9
+    );
 }
 
 #[test]
@@ -145,15 +170,17 @@ fn test_moebius_transform() {
 
     let inv = m.inverse();
 
-    let res = inv.apply(
-        m.apply(Complex::new(
-            2.0, 3.0,
-        )),
+    let res = inv.apply(m.apply(
+        Complex::new(2.0, 3.0),
+    ));
+
+    assert!(
+        (res.re - 2.0).abs() < 1e-9
     );
 
-    assert!((res.re - 2.0).abs() < 1e-9);
-
-    assert!((res.im - 3.0).abs() < 1e-9);
+    assert!(
+        (res.im - 3.0).abs() < 1e-9
+    );
 }
 
 #[cfg(test)]

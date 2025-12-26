@@ -25,7 +25,9 @@ struct SweInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fvm_swe_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_physics_fvm_swe_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : SweInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,

@@ -22,7 +22,9 @@ struct CoordinateTransformRequest {
 /// Transforms a point using JSON.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_coord_transform_json(json_ptr : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_coord_transform_json(
+    json_ptr : *const c_char
+) -> *mut c_char {
 
     if json_ptr.is_null() {
 
@@ -31,10 +33,13 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(json_ptr : *const c_char)
 
     let json_str = match unsafe {
 
-        CStr::from_ptr(json_ptr).to_str()
+        CStr::from_ptr(json_ptr)
+            .to_str()
     } {
         | Ok(s) => s,
-        | Err(_) => return std::ptr::null_mut(),
+        | Err(_) => {
+            return std::ptr::null_mut()
+        },
     };
 
     let req : CoordinateTransformRequest = match serde_json::from_str(json_str) {
@@ -59,25 +64,41 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(json_ptr : *const c_char)
     ) {
         | Ok(res) => {
 
-            let ffi_res : FfiResult<Vec<f64>, String> = FfiResult {
+            let ffi_res : FfiResult<
+                Vec<f64>,
+                String,
+            > = FfiResult {
                 ok : Some(res),
                 err : None,
             };
 
-            CString::new(serde_json::to_string(&ffi_res).unwrap())
-                .unwrap()
-                .into_raw()
+            CString::new(
+                serde_json::to_string(
+                    &ffi_res,
+                )
+                .unwrap(),
+            )
+            .unwrap()
+            .into_raw()
         },
         | Err(e) => {
 
-            let ffi_res : FfiResult<Vec<f64>, String> = FfiResult {
+            let ffi_res : FfiResult<
+                Vec<f64>,
+                String,
+            > = FfiResult {
                 ok : None,
                 err : Some(e),
             };
 
-            CString::new(serde_json::to_string(&ffi_res).unwrap())
-                .unwrap()
-                .into_raw()
+            CString::new(
+                serde_json::to_string(
+                    &ffi_res,
+                )
+                .unwrap(),
+            )
+            .unwrap()
+            .into_raw()
         },
     }
 }
@@ -96,10 +117,13 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(
 
     let json_str = match unsafe {
 
-        CStr::from_ptr(json_ptr).to_str()
+        CStr::from_ptr(json_ptr)
+            .to_str()
     } {
         | Ok(s) => s,
-        | Err(_) => return std::ptr::null_mut(),
+        | Err(_) => {
+            return std::ptr::null_mut()
+        },
     };
 
     let req : CoordinateTransformRequest = match serde_json::from_str(json_str) {
@@ -124,25 +148,41 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(
     ) {
         | Ok(res) => {
 
-            let ffi_res : FfiResult<Vec<f64>, String> = FfiResult {
+            let ffi_res : FfiResult<
+                Vec<f64>,
+                String,
+            > = FfiResult {
                 ok : Some(res),
                 err : None,
             };
 
-            CString::new(serde_json::to_string(&ffi_res).unwrap())
-                .unwrap()
-                .into_raw()
+            CString::new(
+                serde_json::to_string(
+                    &ffi_res,
+                )
+                .unwrap(),
+            )
+            .unwrap()
+            .into_raw()
         },
         | Err(e) => {
 
-            let ffi_res : FfiResult<Vec<f64>, String> = FfiResult {
+            let ffi_res : FfiResult<
+                Vec<f64>,
+                String,
+            > = FfiResult {
                 ok : None,
                 err : Some(e),
             };
 
-            CString::new(serde_json::to_string(&ffi_res).unwrap())
-                .unwrap()
-                .into_raw()
+            CString::new(
+                serde_json::to_string(
+                    &ffi_res,
+                )
+                .unwrap(),
+            )
+            .unwrap()
+            .into_raw()
         },
     }
 }

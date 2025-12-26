@@ -14,7 +14,9 @@ pub struct PrintBox {
 
 /// Main entry point. Converts an expression to a formatted string.
 
-pub fn pretty_print(expr : &Expr) -> String {
+pub fn pretty_print(
+    expr : &Expr
+) -> String {
 
     let root_box = to_box(expr);
 
@@ -25,17 +27,27 @@ pub fn pretty_print(expr : &Expr) -> String {
 
 /// Converts an expression to a PrintBox iteratively.
 
-pub(crate) fn to_box(root_expr : &Expr) -> PrintBox {
+pub(crate) fn to_box(
+    root_expr : &Expr
+) -> PrintBox {
 
-    let mut results : HashMap<*const Expr, PrintBox> = HashMap::new();
+    let mut results : HashMap<
+        *const Expr,
+        PrintBox,
+    > = HashMap::new();
 
-    let mut stack : Vec<Expr> = vec![root_expr.clone()];
+    let mut stack : Vec<Expr> =
+        vec![root_expr.clone()];
 
-    while let Some(expr) = stack.last() {
+    while let Some(expr) = stack.last()
+    {
 
-        let expr_ptr = &*expr as *const Expr;
+        let expr_ptr =
+            &*expr as *const Expr;
 
-        if results.contains_key(&expr_ptr) {
+        if results
+            .contains_key(&expr_ptr)
+        {
 
             stack.pop();
 
@@ -50,11 +62,14 @@ pub(crate) fn to_box(root_expr : &Expr) -> PrintBox {
 
         if all_children_processed {
 
-            let current_expr = stack
-                .pop()
-                .expect("Value is valid");
+            let current_expr =
+                stack.pop().expect(
+                    "Value is valid",
+                );
 
-            let current_expr_ptr = &current_expr as *const Expr;
+            let current_expr_ptr =
+                &current_expr
+                    as *const Expr;
 
             let get_child_box = |i : usize| -> &PrintBox {
 
@@ -497,18 +512,27 @@ pub(crate) fn to_box(root_expr : &Expr) -> PrintBox {
                 .rev()
             {
 
-                if !results.contains_key(&(child as *const Expr)) {
+                if !results
+                    .contains_key(
+                    &(child
+                        as *const Expr),
+                ) {
 
-                    let child_clone = child.clone();
+                    let child_clone =
+                        child.clone();
 
-                    stack.push(child_clone);
+                    stack.push(
+                        child_clone,
+                    );
                 }
             }
         }
     }
 
     results
-        .remove(&(root_expr as *const Expr))
+        .remove(
+            &(root_expr as *const Expr),
+        )
         .expect("Remove Failed")
 }
 
@@ -524,7 +548,8 @@ pub(crate) fn combine_horizontal(
         .height
         .max(box_b.height);
 
-    let mut lines = vec![String::new(); new_height];
+    let mut lines =
+        vec![String::new(); new_height];
 
     for (i, vars) in lines
         .iter_mut()
@@ -536,13 +561,17 @@ pub(crate) fn combine_horizontal(
             .lines
             .get(i)
             .cloned()
-            .unwrap_or_else(|| " ".repeat(box_a.width));
+            .unwrap_or_else(|| {
+                " ".repeat(box_a.width)
+            });
 
         let line_b = box_b
             .lines
             .get(i)
             .cloned()
-            .unwrap_or_else(|| " ".repeat(box_b.width));
+            .unwrap_or_else(|| {
+                " ".repeat(box_b.width)
+            });
 
         *vars = format!(
             "{}{}{}",
@@ -551,7 +580,9 @@ pub(crate) fn combine_horizontal(
     }
 
     PrintBox {
-        width : box_a.width + op.len() + box_b.width,
+        width : box_a.width
+            + op.len()
+            + box_b.width,
         height : new_height,
         lines,
     }
@@ -564,11 +595,13 @@ pub(crate) fn center_text(
     width : usize,
 ) -> String {
 
-    let padding = width.saturating_sub(text.len());
+    let padding = width
+        .saturating_sub(text.len());
 
     let left_padding = padding / 2;
 
-    let right_padding = padding - left_padding;
+    let right_padding =
+        padding - left_padding;
 
     format!(
         "{}{}{}",
@@ -647,7 +680,8 @@ pub(crate) fn build_symbol(
         return vec![symbol.to_string()];
     }
 
-    let mut lines = vec![String::new(); height];
+    let mut lines =
+        vec![String::new(); height];
 
     let mid = height / 2;
 
@@ -664,7 +698,8 @@ pub(crate) fn build_symbol(
             *i = "⎮".to_string();
         }
 
-        lines[height - 1] = "⌡".to_string();
+        lines[height - 1] =
+            "⌡".to_string();
     } else if symbol == 'Σ' {
 
         lines[0] = "┌".to_string();
@@ -678,7 +713,8 @@ pub(crate) fn build_symbol(
             *i = "│".to_string();
         }
 
-        lines[height - 1] = "└".to_string();
+        lines[height - 1] =
+            "└".to_string();
     } else {
 
         for (i, vars) in lines
@@ -689,7 +725,8 @@ pub(crate) fn build_symbol(
 
             if i == mid {
 
-                *vars = symbol.to_string();
+                *vars =
+                    symbol.to_string();
             } else {
 
                 *vars = " ".to_string();

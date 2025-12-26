@@ -19,7 +19,8 @@ pub unsafe extern "C" fn rssn_mean(
         return std::ptr::null_mut();
     }
 
-    let mut exprs = Vec::with_capacity(len);
+    let mut exprs =
+        Vec::with_capacity(len);
 
     for i in 0 .. len {
 
@@ -52,7 +53,8 @@ pub unsafe extern "C" fn rssn_variance(
         return std::ptr::null_mut();
     }
 
-    let mut exprs = Vec::with_capacity(len);
+    let mut exprs =
+        Vec::with_capacity(len);
 
     for i in 0 .. len {
 
@@ -85,7 +87,8 @@ pub unsafe extern "C" fn rssn_std_dev(
         return std::ptr::null_mut();
     }
 
-    let mut exprs = Vec::with_capacity(len);
+    let mut exprs =
+        Vec::with_capacity(len);
 
     for i in 0 .. len {
 
@@ -115,12 +118,15 @@ pub unsafe extern "C" fn rssn_covariance(
     len2 : usize,
 ) -> *mut Expr {
 
-    if data1.is_null() || data2.is_null() {
+    if data1.is_null()
+        || data2.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
-    let mut exprs1 = Vec::with_capacity(len1);
+    let mut exprs1 =
+        Vec::with_capacity(len1);
 
     for i in 0 .. len1 {
 
@@ -132,7 +138,8 @@ pub unsafe extern "C" fn rssn_covariance(
         }
     }
 
-    let mut exprs2 = Vec::with_capacity(len2);
+    let mut exprs2 =
+        Vec::with_capacity(len2);
 
     for i in 0 .. len2 {
 
@@ -145,7 +152,10 @@ pub unsafe extern "C" fn rssn_covariance(
     }
 
     Box::into_raw(Box::new(
-        stats::covariance(&exprs1, &exprs2),
+        stats::covariance(
+            &exprs1,
+            &exprs2,
+        ),
     ))
 }
 
@@ -162,12 +172,15 @@ pub unsafe extern "C" fn rssn_correlation(
     len2 : usize,
 ) -> *mut Expr {
 
-    if data1.is_null() || data2.is_null() {
+    if data1.is_null()
+        || data2.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
-    let mut exprs1 = Vec::with_capacity(len1);
+    let mut exprs1 =
+        Vec::with_capacity(len1);
 
     for i in 0 .. len1 {
 
@@ -179,7 +192,8 @@ pub unsafe extern "C" fn rssn_correlation(
         }
     }
 
-    let mut exprs2 = Vec::with_capacity(len2);
+    let mut exprs2 =
+        Vec::with_capacity(len2);
 
     for i in 0 .. len2 {
 
@@ -192,6 +206,9 @@ pub unsafe extern "C" fn rssn_correlation(
     }
 
     Box::into_raw(Box::new(
-        stats::correlation(&exprs1, &exprs2),
+        stats::correlation(
+            &exprs1,
+            &exprs2,
+        ),
     ))
 }

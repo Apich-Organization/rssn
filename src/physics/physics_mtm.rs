@@ -2,7 +2,9 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct Grid {
     pub u : Vec<f64>,
@@ -31,11 +33,14 @@ impl Grid {
 
 /// Computes the residual r = f - Au for the 1D Poisson problem.
 
-pub(crate) fn calculate_residual(grid : &Grid) -> Vec<f64> {
+pub(crate) fn calculate_residual(
+    grid : &Grid
+) -> Vec<f64> {
 
     let n = grid.size();
 
-    let h_sq_inv = 1.0 / (grid.h * grid.h);
+    let h_sq_inv =
+        1.0 / (grid.h * grid.h);
 
     let mut residual = vec![0.0; n];
 
@@ -46,7 +51,10 @@ pub(crate) fn calculate_residual(grid : &Grid) -> Vec<f64> {
         .skip(1)
     {
 
-        let a_u = (-grid.u[i - 1] + 2.0 * grid.u[i] - grid.u[i + 1]) * h_sq_inv;
+        let a_u = (-grid.u[i - 1]
+            + 2.0 * grid.u[i]
+            - grid.u[i + 1])
+            * h_sq_inv;
 
         *vars = grid.f[i] - a_u;
     }
@@ -79,22 +87,30 @@ pub(crate) fn smooth(
 
             let f_i = grid.f[i];
 
-            let new_u_i = 0.5 * (prev + next + h_sq * f_i);
+            let new_u_i = 0.5
+                * (prev
+                    + next
+                    + h_sq * f_i);
 
-            grid.u[i] = (1.0 - omega) * u_old[i] + omega * new_u_i;
+            grid.u[i] = (1.0 - omega)
+                * u_old[i]
+                + omega * new_u_i;
         }
     }
 }
 
 /// Restriction: Transfers a fine-grid residual to a coarse grid using full weighting.
 
-pub(crate) fn restrict(fine_residual : &[f64]) -> Vec<f64> {
+pub(crate) fn restrict(
+    fine_residual : &[f64]
+) -> Vec<f64> {
 
     let fine_n = fine_residual.len();
 
     let coarse_n = (fine_n / 2) + 1;
 
-    let mut coarse_f = vec![0.0; coarse_n];
+    let mut coarse_f =
+        vec![0.0; coarse_n];
 
     for (i, vars) in coarse_f
         .iter_mut()
@@ -105,7 +121,11 @@ pub(crate) fn restrict(fine_residual : &[f64]) -> Vec<f64> {
 
         let j = 2 * i;
 
-        *vars = 0.25 * fine_residual[j - 1] + 0.5 * fine_residual[j] + 0.25 * fine_residual[j + 1];
+        *vars = 0.25
+            * fine_residual[j - 1]
+            + 0.5 * fine_residual[j]
+            + 0.25
+                * fine_residual[j + 1];
     }
 
     coarse_f
@@ -113,22 +133,30 @@ pub(crate) fn restrict(fine_residual : &[f64]) -> Vec<f64> {
 
 /// Prolongation: Interpolates a coarse-grid correction to a fine grid.
 
-pub(crate) fn prolongate(coarse_correction : &[f64]) -> Vec<f64> {
+pub(crate) fn prolongate(
+    coarse_correction : &[f64]
+) -> Vec<f64> {
 
-    let coarse_n = coarse_correction.len();
+    let coarse_n =
+        coarse_correction.len();
 
     let fine_n = 2 * (coarse_n - 1) + 1;
 
-    let mut fine_correction = vec![0.0; fine_n];
+    let mut fine_correction =
+        vec![0.0; fine_n];
 
     for i in 0 .. coarse_n {
 
-        fine_correction[2 * i] = coarse_correction[i];
+        fine_correction[2 * i] =
+            coarse_correction[i];
     }
 
     for i in 0 .. coarse_n - 1 {
 
-        fine_correction[2 * i + 1] = 0.5 * (coarse_correction[i] + coarse_correction[i + 1]);
+        fine_correction[2 * i + 1] = 0.5
+            * (coarse_correction[i]
+                + coarse_correction
+                    [i + 1]);
     }
 
     fine_correction
@@ -150,9 +178,11 @@ pub(crate) fn v_cycle(
 
     if level < max_levels - 1 {
 
-        let residual = calculate_residual(grid);
+        let residual =
+            calculate_residual(grid);
 
-        let coarse_f = restrict(&residual);
+        let coarse_f =
+            restrict(&residual);
 
         let coarse_n = coarse_f.len();
 
@@ -169,7 +199,8 @@ pub(crate) fn v_cycle(
             max_levels,
         );
 
-        let correction = prolongate(&coarse_grid.u);
+        let correction =
+            prolongate(&coarse_grid.u);
 
         for (i, _vars) in correction
             .iter()
@@ -200,11 +231,19 @@ pub fn solve_poisson_1d_multigrid(
     num_cycles : usize,
 ) -> Result<Vec<f64>, String> {
 
-    let num_levels = (n as f64 + 1.0).log2() as usize;
+    let num_levels = (n as f64 + 1.0)
+        .log2()
+        as usize;
 
-    if (2_usize.pow(num_levels as u32) - 1) != n {
+    if (2_usize.pow(num_levels as u32)
+        - 1)
+        != n
+    {
 
-        return Err("Grid size `n` must be of the form 2^k - 1.".to_string());
+        return Err("Grid size `n` \
+                    must be of the \
+                    form 2^k - 1."
+            .to_string());
     }
 
     let mut finest_grid = Grid::new(
@@ -212,7 +251,8 @@ pub fn solve_poisson_1d_multigrid(
         1.0 / (n + 1) as f64,
     );
 
-    finest_grid.f[1 ..= n].copy_from_slice(f);
+    finest_grid.f[1 ..= n]
+        .copy_from_slice(f);
 
     for _ in 0 .. num_cycles {
 
@@ -229,11 +269,13 @@ pub fn solve_poisson_1d_multigrid(
 /// Solves a 1D Poisson problem with a known analytical solution.
 /// `-u_xx = 2` on `[0, 1]` with `u(0)=u(1)=0`. Exact solution is `u(x) = x(1-x)`.
 
-pub fn simulate_1d_poisson_multigrid_scenario() -> Result<Vec<f64>, String> {
+pub fn simulate_1d_poisson_multigrid_scenario(
+) -> Result<Vec<f64>, String> {
 
     const K : usize = 7;
 
-    const N_INTERIOR : usize = 2_usize.pow(K as u32) - 1;
+    const N_INTERIOR : usize =
+        2_usize.pow(K as u32) - 1;
 
     let f = vec![2.0; N_INTERIOR];
 
@@ -246,7 +288,9 @@ pub fn simulate_1d_poisson_multigrid_scenario() -> Result<Vec<f64>, String> {
     )
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct Grid2D {
     pub u : Vec<f64>,
@@ -293,7 +337,8 @@ pub(crate) fn smooth_2d(
     for _ in 0 .. num_sweeps {
 
         // Red points
-        let u_ptr = grid.u.as_ptr() as usize;
+        let u_ptr =
+            grid.u.as_ptr() as usize;
 
         (1 .. n - 1)
             .into_par_iter()
@@ -344,13 +389,17 @@ pub(crate) fn smooth_2d(
 
 /// 2D Residual Calculation.
 
-pub(crate) fn calculate_residual_2d(grid : &Grid2D) -> Grid2D {
+pub(crate) fn calculate_residual_2d(
+    grid : &Grid2D
+) -> Grid2D {
 
     let n = grid.n;
 
-    let h_sq_inv = 1.0 / (grid.h * grid.h);
+    let h_sq_inv =
+        1.0 / (grid.h * grid.h);
 
-    let mut residual_grid = Grid2D::new(n, grid.h);
+    let mut residual_grid =
+        Grid2D::new(n, grid.h);
 
     residual_grid.f[n .. n * (n - 1)] // Interior rows
         .par_chunks_mut(n)
@@ -361,14 +410,24 @@ pub(crate) fn calculate_residual_2d(grid : &Grid2D) -> Grid2D {
 
             for j in 1 .. n - 1 {
 
-                let a_u = (4.0 * grid.u[i * n + j]
-                    - grid.u[(i - 1) * n + j]
-                    - grid.u[(i + 1) * n + j]
-                    - grid.u[i * n + (j - 1)]
-                    - grid.u[i * n + (j + 1)])
+                let a_u = (4.0
+                    * grid.u
+                        [i * n + j]
+                    - grid.u[(i - 1)
+                        * n
+                        + j]
+                    - grid.u[(i + 1)
+                        * n
+                        + j]
+                    - grid.u[i * n
+                        + (j - 1)]
+                    - grid.u[i * n
+                        + (j + 1)])
                     * h_sq_inv;
 
-                row[j] = grid.f[i * n + j] - a_u;
+                row[j] = grid.f
+                    [i * n + j]
+                    - a_u;
             }
         });
 
@@ -377,7 +436,9 @@ pub(crate) fn calculate_residual_2d(grid : &Grid2D) -> Grid2D {
 
 /// 2D Restriction: Full-weighting.
 
-pub(crate) fn restrict_2d(fine_grid : &Grid2D) -> Grid2D {
+pub(crate) fn restrict_2d(
+    fine_grid : &Grid2D
+) -> Grid2D {
 
     let fine_n = fine_grid.n;
 
@@ -396,19 +457,61 @@ pub(crate) fn restrict_2d(fine_grid : &Grid2D) -> Grid2D {
 
             let fj = 2 * j;
 
-            let val = (fine_grid.f[fine_grid.idx(fi, fj)] * 4.0
-                + (fine_grid.f[fine_grid.idx(fi - 1, fj)]
-                    + fine_grid.f[fine_grid.idx(fi + 1, fj)]
-                    + fine_grid.f[fine_grid.idx(fi, fj - 1)]
-                    + fine_grid.f[fine_grid.idx(fi, fj + 1)])
+            let val = (fine_grid.f
+                [fine_grid
+                    .idx(fi, fj)]
+                * 4.0
+                + (fine_grid.f
+                    [fine_grid.idx(
+                        fi - 1,
+                        fj,
+                    )]
+                    + fine_grid.f
+                        [fine_grid
+                            .idx(
+                                fi + 1,
+                                fj,
+                            )]
+                    + fine_grid.f
+                        [fine_grid
+                            .idx(
+                                fi,
+                                fj - 1,
+                            )]
+                    + fine_grid.f
+                        [fine_grid
+                            .idx(
+                                fi,
+                                fj + 1,
+                            )])
                     * 2.0
-                + (fine_grid.f[fine_grid.idx(fi - 1, fj - 1)]
-                    + fine_grid.f[fine_grid.idx(fi + 1, fj - 1)]
-                    + fine_grid.f[fine_grid.idx(fi - 1, fj + 1)]
-                    + fine_grid.f[fine_grid.idx(fi + 1, fj + 1)]))
+                + (fine_grid.f
+                    [fine_grid.idx(
+                        fi - 1,
+                        fj - 1,
+                    )]
+                    + fine_grid.f
+                        [fine_grid
+                            .idx(
+                                fi + 1,
+                                fj - 1,
+                            )]
+                    + fine_grid.f
+                        [fine_grid
+                            .idx(
+                                fi - 1,
+                                fj + 1,
+                            )]
+                    + fine_grid.f
+                        [fine_grid
+                            .idx(
+                                fi + 1,
+                                fj + 1,
+                            )]))
                 / 16.0;
 
-            let helper = coarse_grid.idx(i, j);
+            let helper =
+                coarse_grid.idx(i, j);
 
             coarse_grid.f[helper] = val;
         }
@@ -419,7 +522,9 @@ pub(crate) fn restrict_2d(fine_grid : &Grid2D) -> Grid2D {
 
 /// 2D Prolongation: Bilinear interpolation.
 
-pub(crate) fn prolongate_2d(coarse_grid : &Grid2D) -> Grid2D {
+pub(crate) fn prolongate_2d(
+    coarse_grid : &Grid2D
+) -> Grid2D {
 
     let coarse_n = coarse_grid.n;
 
@@ -434,9 +539,13 @@ pub(crate) fn prolongate_2d(coarse_grid : &Grid2D) -> Grid2D {
 
         for j in 0 .. coarse_n {
 
-            let helper = fine_grid.idx(2 * i, 2 * j);
+            let helper = fine_grid
+                .idx(2 * i, 2 * j);
 
-            fine_grid.u[helper] = coarse_grid.u[coarse_grid.idx(i, j)];
+            fine_grid.u[helper] =
+                coarse_grid.u
+                    [coarse_grid
+                        .idx(i, j)];
         }
     }
 
@@ -444,32 +553,72 @@ pub(crate) fn prolongate_2d(coarse_grid : &Grid2D) -> Grid2D {
 
         for j in 0 .. fine_n {
 
-            if i % 2 == 1 && j % 2 == 0 {
+            if i % 2 == 1 && j % 2 == 0
+            {
 
-                let helper_a =
-                    fine_grid.u[fine_grid.idx(i - 1, j)] + fine_grid.u[fine_grid.idx(i + 1, j)];
+                let helper_a = fine_grid
+                    .u[fine_grid
+                    .idx(i - 1, j)]
+                    + fine_grid.u
+                        [fine_grid
+                            .idx(
+                                i + 1,
+                                j,
+                            )];
 
-                let a_helper = fine_grid.idx(i, j);
+                let a_helper =
+                    fine_grid.idx(i, j);
 
-                fine_grid.u[a_helper] = 0.5 * (helper_a);
-            } else if i % 2 == 0 && j % 2 == 1 {
+                fine_grid.u[a_helper] =
+                    0.5 * (helper_a);
+            } else if i % 2 == 0
+                && j % 2 == 1
+            {
 
-                let helper_b =
-                    fine_grid.u[fine_grid.idx(i, j - 1)] + fine_grid.u[fine_grid.idx(i, j + 1)];
+                let helper_b = fine_grid
+                    .u[fine_grid
+                    .idx(i, j - 1)]
+                    + fine_grid.u
+                        [fine_grid
+                            .idx(
+                                i,
+                                j + 1,
+                            )];
 
-                let b_helper = fine_grid.idx(i, j);
+                let b_helper =
+                    fine_grid.idx(i, j);
 
-                fine_grid.u[b_helper] = 0.5 * (helper_b);
-            } else if i % 2 == 1 && j % 2 == 1 {
+                fine_grid.u[b_helper] =
+                    0.5 * (helper_b);
+            } else if i % 2 == 1
+                && j % 2 == 1
+            {
 
-                let helper_c = fine_grid.u[fine_grid.idx(i - 1, j - 1)]
-                    + fine_grid.u[fine_grid.idx(i + 1, j - 1)]
-                    + fine_grid.u[fine_grid.idx(i - 1, j + 1)]
-                    + fine_grid.u[fine_grid.idx(i + 1, j + 1)];
+                let helper_c = fine_grid
+                    .u[fine_grid
+                    .idx(i - 1, j - 1)]
+                    + fine_grid.u
+                        [fine_grid.idx(
+                            i + 1,
+                            j - 1,
+                        )]
+                    + fine_grid.u
+                        [fine_grid.idx(
+                            i - 1,
+                            j + 1,
+                        )]
+                    + fine_grid.u
+                        [fine_grid
+                            .idx(
+                                i + 1,
+                                j + 1,
+                            )];
 
-                let c_helper = fine_grid.idx(i, j);
+                let c_helper =
+                    fine_grid.idx(i, j);
 
-                fine_grid.u[c_helper] = 0.25 * (helper_c);
+                fine_grid.u[c_helper] =
+                    0.25 * (helper_c);
             }
         }
     }
@@ -489,9 +638,11 @@ pub(crate) fn v_cycle_2d(
 
     if level < max_levels - 1 {
 
-        let residual_grid = calculate_residual_2d(grid);
+        let residual_grid =
+            calculate_residual_2d(grid);
 
-        let mut coarse_grid = restrict_2d(&residual_grid);
+        let mut coarse_grid =
+            restrict_2d(&residual_grid);
 
         v_cycle_2d(
             &mut coarse_grid,
@@ -499,11 +650,13 @@ pub(crate) fn v_cycle_2d(
             max_levels,
         );
 
-        let correction_grid = prolongate_2d(&coarse_grid);
+        let correction_grid =
+            prolongate_2d(&coarse_grid);
 
         for i in 0 .. grid.u.len() {
 
-            grid.u[i] += correction_grid.u[i];
+            grid.u[i] +=
+                correction_grid.u[i];
         }
     }
 
@@ -518,11 +671,19 @@ pub fn solve_poisson_2d_multigrid(
     num_cycles : usize,
 ) -> Result<Vec<f64>, String> {
 
-    let num_levels = (n as f64 - 1.0).log2() as usize;
+    let num_levels = (n as f64 - 1.0)
+        .log2()
+        as usize;
 
-    if (2_usize.pow(num_levels as u32) + 1) != n {
+    if (2_usize.pow(num_levels as u32)
+        + 1)
+        != n
+    {
 
-        return Err("Grid size `n` must be of the form 2^k + 1.".to_string());
+        return Err("Grid size `n` \
+                    must be of the \
+                    form 2^k + 1."
+            .to_string());
     }
 
     let mut finest_grid = Grid2D::new(
@@ -548,11 +709,13 @@ pub fn solve_poisson_2d_multigrid(
 
 /// Solves a 2D Poisson problem with a known analytical solution.
 
-pub fn simulate_2d_poisson_multigrid_scenario() -> Result<Vec<f64>, String> {
+pub fn simulate_2d_poisson_multigrid_scenario(
+) -> Result<Vec<f64>, String> {
 
     const K : usize = 5;
 
-    const N : usize = 2_usize.pow(K as u32) + 1;
+    const N : usize =
+        2_usize.pow(K as u32) + 1;
 
     let h = 1.0 / (N - 1) as f64;
 
@@ -567,11 +730,18 @@ pub fn simulate_2d_poisson_multigrid_scenario() -> Result<Vec<f64>, String> {
             let y = j as f64 * h;
 
             f[i * N + j] = 2.0
-                * std::f64::consts::PI.powi(2)
-                * (std::f64::consts::PI * x).sin()
-                * (std::f64::consts::PI * y).sin();
+                * std::f64::consts::PI
+                    .powi(2)
+                * (std::f64::consts::PI
+                    * x)
+                    .sin()
+                * (std::f64::consts::PI
+                    * y)
+                    .sin();
         }
     }
 
-    solve_poisson_2d_multigrid(N, &f, 10)
+    solve_poisson_2d_multigrid(
+        N, &f, 10,
+    )
 }

@@ -13,25 +13,29 @@ use rssn::symbolic::core::Expr;
 
 fn test_computation_creation() {
 
-    let expr = Arc::new(Expr::Constant(1.0));
+    let expr =
+        Arc::new(Expr::Constant(1.0));
 
     let computation = Computation {
         id : "test_id".to_string(),
         expr : expr.clone(),
-        status : ComputationStatus::Pending,
-        progress : ComputationProgress {
-            percentage : 0.0,
-            description : "Init".to_string(),
-        },
+        status:
+            ComputationStatus::Pending,
+        progress:
+            ComputationProgress {
+                percentage : 0.0,
+                description : "Init"
+                    .to_string(),
+            },
         result : None,
         state : State::new(),
         pause : Arc::new((
             Mutex::new(false),
             Condvar::new(),
         )),
-        cancel_signal : Arc::new(AtomicBool::new(
-            false,
-        )),
+        cancel_signal : Arc::new(
+            AtomicBool::new(false),
+        ),
     };
 
     assert_eq!(
@@ -56,30 +60,42 @@ fn test_computation_creation() {
 
 fn test_computation_serialization() {
 
-    let expr = Arc::new(Expr::Constant(1.0));
+    let expr =
+        Arc::new(Expr::Constant(1.0));
 
     let computation = Computation {
         id : "test_id".to_string(),
         expr : expr.clone(),
-        status : ComputationStatus::Completed,
-        progress : ComputationProgress {
-            percentage : 100.0,
-            description : "Done".to_string(),
-        },
+        status:
+            ComputationStatus::Completed,
+        progress:
+            ComputationProgress {
+                percentage : 100.0,
+                description : "Done"
+                    .to_string(),
+            },
         result : Some("42".to_string()),
         state : State::new(),
         pause : Arc::new((
             Mutex::new(false),
             Condvar::new(),
         )),
-        cancel_signal : Arc::new(AtomicBool::new(
-            false,
-        )),
+        cancel_signal : Arc::new(
+            AtomicBool::new(false),
+        ),
     };
 
-    let serialized = serde_json::to_string(&computation).unwrap();
+    let serialized =
+        serde_json::to_string(
+            &computation,
+        )
+        .unwrap();
 
-    let deserialized : Computation = serde_json::from_str(&serialized).unwrap();
+    let deserialized : Computation =
+        serde_json::from_str(
+            &serialized,
+        )
+        .unwrap();
 
     assert_eq!(
         deserialized.id,

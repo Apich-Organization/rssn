@@ -11,19 +11,40 @@ use rssn::numerical::special::*;
 fn test_gamma() {
 
     // Γ(1) = 0! = 1
-    assert!((gamma_numerical(1.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (gamma_numerical(1.0) - 1.0)
+            .abs()
+            < 1e-10
+    );
 
     // Γ(2) = 1! = 1
-    assert!((gamma_numerical(2.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (gamma_numerical(2.0) - 1.0)
+            .abs()
+            < 1e-10
+    );
 
     // Γ(3) = 2! = 2
-    assert!((gamma_numerical(3.0) - 2.0).abs() < 1e-10);
+    assert!(
+        (gamma_numerical(3.0) - 2.0)
+            .abs()
+            < 1e-10
+    );
 
     // Γ(5) = 4! = 24
-    assert!((gamma_numerical(5.0) - 24.0).abs() < 1e-10);
+    assert!(
+        (gamma_numerical(5.0) - 24.0)
+            .abs()
+            < 1e-10
+    );
 
     // Γ(0.5) = √π
-    assert!((gamma_numerical(0.5) - PI.sqrt()).abs() < 1e-10);
+    assert!(
+        (gamma_numerical(0.5)
+            - PI.sqrt())
+        .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -31,7 +52,12 @@ fn test_gamma() {
 fn test_ln_gamma() {
 
     // ln(Γ(5)) = ln(24) ≈ 3.178
-    assert!((ln_gamma_numerical(5.0) - 24_f64.ln()).abs() < 1e-10);
+    assert!(
+        (ln_gamma_numerical(5.0)
+            - 24_f64.ln())
+        .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -41,7 +67,11 @@ fn test_digamma() {
     // ψ(1) = -γ where γ is Euler's constant ≈ -0.5772
     let psi1 = digamma_numerical(1.0);
 
-    assert!((psi1 - (-0.5772156649015329)).abs() < 1e-10);
+    assert!(
+        (psi1 - (-0.5772156649015329))
+            .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -49,14 +79,25 @@ fn test_digamma() {
 fn test_lower_incomplete_gamma() {
 
     // At x=0, γ(s,0) = 0
-    assert!((lower_incomplete_gamma(2.0, 0.0) - 0.0).abs() < 1e-10);
+    assert!(
+        (lower_incomplete_gamma(
+            2.0, 0.0
+        ) - 0.0)
+            .abs()
+            < 1e-10
+    );
 
     // γ(s, ∞) → Γ(s)
-    let lic = lower_incomplete_gamma(2.0, 100.0);
+    let lic = lower_incomplete_gamma(
+        2.0, 100.0,
+    );
 
-    let full_gamma = gamma_numerical(2.0);
+    let full_gamma =
+        gamma_numerical(2.0);
 
-    assert!((lic - full_gamma).abs() < 1e-5);
+    assert!(
+        (lic - full_gamma).abs() < 1e-5
+    );
 }
 
 // ============================================================================
@@ -68,14 +109,23 @@ fn test_lower_incomplete_gamma() {
 fn test_beta() {
 
     // B(1,1) = 1
-    assert!((beta_numerical(1.0, 1.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (beta_numerical(1.0, 1.0)
+            - 1.0)
+            .abs()
+            < 1e-10
+    );
 
     // B(a,b) = Γ(a)Γ(b)/Γ(a+b)
     let b23 = beta_numerical(2.0, 3.0);
 
-    let expected = gamma_numerical(2.0) * gamma_numerical(3.0) / gamma_numerical(5.0);
+    let expected = gamma_numerical(2.0)
+        * gamma_numerical(3.0)
+        / gamma_numerical(5.0);
 
-    assert!((b23 - expected).abs() < 1e-10);
+    assert!(
+        (b23 - expected).abs() < 1e-10
+    );
 }
 
 #[test]
@@ -83,13 +133,31 @@ fn test_beta() {
 fn test_regularized_beta() {
 
     // I_0(a,b) = 0
-    assert!((regularized_beta(0.0, 2.0, 3.0) - 0.0).abs() < 1e-10);
+    assert!(
+        (regularized_beta(
+            0.0, 2.0, 3.0
+        ) - 0.0)
+            .abs()
+            < 1e-10
+    );
 
     // I_1(a,b) = 1
-    assert!((regularized_beta(1.0, 2.0, 3.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (regularized_beta(
+            1.0, 2.0, 3.0
+        ) - 1.0)
+            .abs()
+            < 1e-10
+    );
 
     // I_0.5(1,1) = 0.5 (uniform distribution)
-    assert!((regularized_beta(0.5, 1.0, 1.0) - 0.5).abs() < 1e-10);
+    assert!(
+        (regularized_beta(
+            0.5, 1.0, 1.0
+        ) - 0.5)
+            .abs()
+            < 1e-10
+    );
 }
 
 // ============================================================================
@@ -101,13 +169,25 @@ fn test_regularized_beta() {
 fn test_erf() {
 
     // erf(0) = 0
-    assert!(erf_numerical(0.0).abs() < 1e-10);
+    assert!(
+        erf_numerical(0.0).abs()
+            < 1e-10
+    );
 
     // erf(∞) → 1
-    assert!((erf_numerical(10.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (erf_numerical(10.0) - 1.0)
+            .abs()
+            < 1e-10
+    );
 
     // erf(-x) = -erf(x) (odd function)
-    assert!((erf_numerical(-1.0) + erf_numerical(1.0)).abs() < 1e-10);
+    assert!(
+        (erf_numerical(-1.0)
+            + erf_numerical(1.0))
+        .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -117,7 +197,12 @@ fn test_erfc() {
     // erfc(x) = 1 - erf(x)
     let x = 1.5;
 
-    assert!((erfc_numerical(x) - (1.0 - erf_numerical(x))).abs() < 1e-10);
+    assert!(
+        (erfc_numerical(x)
+            - (1.0 - erf_numerical(x)))
+        .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -129,7 +214,11 @@ fn test_inverse_erf() {
 
     let y = erf_numerical(x);
 
-    assert!((inverse_erf_numerical(y) - x).abs() < 1e-10);
+    assert!(
+        (inverse_erf_numerical(y) - x)
+            .abs()
+            < 1e-10
+    );
 }
 
 // ============================================================================
@@ -141,10 +230,15 @@ fn test_inverse_erf() {
 fn test_bessel_j0() {
 
     // J₀(0) = 1
-    assert!((bessel_j0(0.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (bessel_j0(0.0) - 1.0).abs()
+            < 1e-10
+    );
 
     // J₀ has a zero near x ≈ 2.4048
-    assert!(bessel_j0(2.4048).abs() < 0.001);
+    assert!(
+        bessel_j0(2.4048).abs() < 0.001
+    );
 }
 
 #[test]
@@ -152,7 +246,9 @@ fn test_bessel_j0() {
 fn test_bessel_j1() {
 
     // J₁(0) = 0
-    assert!(bessel_j1(0.0).abs() < 1e-10);
+    assert!(
+        bessel_j1(0.0).abs() < 1e-10
+    );
     // J₁ has an extremum at x ≈ 1.841
 }
 
@@ -164,7 +260,9 @@ fn test_bessel_y0() {
     assert!(bessel_y0(-1.0).is_nan());
 
     // Y₀ has a zero near x ≈ 0.8936
-    assert!(bessel_y0(0.8936).abs() < 0.01);
+    assert!(
+        bessel_y0(0.8936).abs() < 0.01
+    );
 }
 
 #[test]
@@ -172,7 +270,10 @@ fn test_bessel_y0() {
 fn test_bessel_i0() {
 
     // I₀(0) = 1
-    assert!((bessel_i0(0.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (bessel_i0(0.0) - 1.0).abs()
+            < 1e-10
+    );
 
     // I₀(x) > 1 for x > 0
     assert!(bessel_i0(1.0) > 1.0);
@@ -187,17 +288,30 @@ fn test_bessel_i0() {
 fn test_legendre_p() {
 
     // P₀(x) = 1
-    assert!((legendre_p(0, 0.5) - 1.0).abs() < 1e-10);
+    assert!(
+        (legendre_p(0, 0.5) - 1.0)
+            .abs()
+            < 1e-10
+    );
 
     // P₁(x) = x
-    assert!((legendre_p(1, 0.5) - 0.5).abs() < 1e-10);
+    assert!(
+        (legendre_p(1, 0.5) - 0.5)
+            .abs()
+            < 1e-10
+    );
 
     // P₂(x) = (3x² - 1)/2
     let x = 0.5;
 
-    let expected = (3.0 * x * x - 1.0) / 2.0;
+    let expected =
+        (3.0 * x * x - 1.0) / 2.0;
 
-    assert!((legendre_p(2, x) - expected).abs() < 1e-10);
+    assert!(
+        (legendre_p(2, x) - expected)
+            .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -205,20 +319,38 @@ fn test_legendre_p() {
 fn test_chebyshev_t() {
 
     // T₀(x) = 1
-    assert!((chebyshev_t(0, 0.5) - 1.0).abs() < 1e-10);
+    assert!(
+        (chebyshev_t(0, 0.5) - 1.0)
+            .abs()
+            < 1e-10
+    );
 
     // T₁(x) = x
-    assert!((chebyshev_t(1, 0.5) - 0.5).abs() < 1e-10);
+    assert!(
+        (chebyshev_t(1, 0.5) - 0.5)
+            .abs()
+            < 1e-10
+    );
 
     // T₂(x) = 2x² - 1
     let x = 0.5;
 
-    assert!((chebyshev_t(2, x) - (2.0 * x * x - 1.0)).abs() < 1e-10);
+    assert!(
+        (chebyshev_t(2, x)
+            - (2.0 * x * x - 1.0))
+            .abs()
+            < 1e-10
+    );
 
     // Tₙ(cos(θ)) = cos(nθ)
     let theta = PI / 4.0;
 
-    assert!((chebyshev_t(3, theta.cos()) - (3.0 * theta).cos()).abs() < 1e-10);
+    assert!(
+        (chebyshev_t(3, theta.cos())
+            - (3.0 * theta).cos())
+        .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -226,15 +358,26 @@ fn test_chebyshev_t() {
 fn test_hermite_h() {
 
     // H₀(x) = 1
-    assert!((hermite_h(0, 1.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (hermite_h(0, 1.0) - 1.0).abs()
+            < 1e-10
+    );
 
     // H₁(x) = 2x
-    assert!((hermite_h(1, 1.0) - 2.0).abs() < 1e-10);
+    assert!(
+        (hermite_h(1, 1.0) - 2.0).abs()
+            < 1e-10
+    );
 
     // H₂(x) = 4x² - 2
     let x = 2.0;
 
-    assert!((hermite_h(2, x) - (4.0 * x * x - 2.0)).abs() < 1e-10);
+    assert!(
+        (hermite_h(2, x)
+            - (4.0 * x * x - 2.0))
+            .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -242,17 +385,30 @@ fn test_hermite_h() {
 fn test_laguerre_l() {
 
     // L₀(x) = 1
-    assert!((laguerre_l(0, 1.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (laguerre_l(0, 1.0) - 1.0)
+            .abs()
+            < 1e-10
+    );
 
     // L₁(x) = 1 - x
-    assert!((laguerre_l(1, 1.0) - 0.0).abs() < 1e-10);
+    assert!(
+        (laguerre_l(1, 1.0) - 0.0)
+            .abs()
+            < 1e-10
+    );
 
     // L₂(x) = (x² - 4x + 2)/2
     let x = 2.0;
 
-    let expected = (x * x - 4.0 * x + 2.0) / 2.0;
+    let expected =
+        (x * x - 4.0 * x + 2.0) / 2.0;
 
-    assert!((laguerre_l(2, x) - expected).abs() < 1e-10);
+    assert!(
+        (laguerre_l(2, x) - expected)
+            .abs()
+            < 1e-10
+    );
 }
 
 // ============================================================================
@@ -263,13 +419,26 @@ fn test_laguerre_l() {
 
 fn test_factorial() {
 
-    assert!((factorial(0) - 1.0).abs() < 1e-10);
+    assert!(
+        (factorial(0) - 1.0).abs()
+            < 1e-10
+    );
 
-    assert!((factorial(1) - 1.0).abs() < 1e-10);
+    assert!(
+        (factorial(1) - 1.0).abs()
+            < 1e-10
+    );
 
-    assert!((factorial(5) - 120.0).abs() < 1e-10);
+    assert!(
+        (factorial(5) - 120.0).abs()
+            < 1e-10
+    );
 
-    assert!((factorial(10) - 3628800.0).abs() < 1e-5);
+    assert!(
+        (factorial(10) - 3628800.0)
+            .abs()
+            < 1e-5
+    );
 }
 
 #[test]
@@ -277,28 +446,56 @@ fn test_factorial() {
 fn test_double_factorial() {
 
     // 0!! = 1, 1!! = 1
-    assert!((double_factorial(0) - 1.0).abs() < 1e-10);
+    assert!(
+        (double_factorial(0) - 1.0)
+            .abs()
+            < 1e-10
+    );
 
-    assert!((double_factorial(1) - 1.0).abs() < 1e-10);
+    assert!(
+        (double_factorial(1) - 1.0)
+            .abs()
+            < 1e-10
+    );
 
     // 5!! = 5*3*1 = 15
-    assert!((double_factorial(5) - 15.0).abs() < 1e-10);
+    assert!(
+        (double_factorial(5) - 15.0)
+            .abs()
+            < 1e-10
+    );
 
     // 6!! = 6*4*2 = 48
-    assert!((double_factorial(6) - 48.0).abs() < 1e-10);
+    assert!(
+        (double_factorial(6) - 48.0)
+            .abs()
+            < 1e-10
+    );
 }
 
 #[test]
 
 fn test_binomial() {
 
-    assert!((binomial(5, 0) - 1.0).abs() < 1e-10);
+    assert!(
+        (binomial(5, 0) - 1.0).abs()
+            < 1e-10
+    );
 
-    assert!((binomial(5, 5) - 1.0).abs() < 1e-10);
+    assert!(
+        (binomial(5, 5) - 1.0).abs()
+            < 1e-10
+    );
 
-    assert!((binomial(5, 2) - 10.0).abs() < 1e-10);
+    assert!(
+        (binomial(5, 2) - 10.0).abs()
+            < 1e-10
+    );
 
-    assert!((binomial(10, 5) - 252.0).abs() < 1e-10);
+    assert!(
+        (binomial(10, 5) - 252.0).abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -318,12 +515,19 @@ fn test_riemann_zeta() {
 
     println!(
         "diff = {}",
-        (riemann_zeta(2.0) - PI * PI / 6.0).abs()
+        (riemann_zeta(2.0)
+            - PI * PI / 6.0)
+            .abs()
     );
 
     println!("1e-3 = {}", 1e-3);
 
-    assert!((riemann_zeta(2.0) - PI * PI / 6.0).abs() < 1e-3);
+    assert!(
+        (riemann_zeta(2.0)
+            - PI * PI / 6.0)
+            .abs()
+            < 1e-3
+    );
 
     // ζ(4) = π⁴/90
     println!(
@@ -331,7 +535,12 @@ fn test_riemann_zeta() {
         riemann_zeta(4.0)
     );
 
-    assert!((riemann_zeta(4.0) - PI.powi(4) / 90.0).abs() < 1e-5);
+    assert!(
+        (riemann_zeta(4.0)
+            - PI.powi(4) / 90.0)
+            .abs()
+            < 1e-5
+    );
 }
 
 #[test]
@@ -339,13 +548,18 @@ fn test_riemann_zeta() {
 fn test_sinc() {
 
     // sinc(0) = 1
-    assert!((sinc(0.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (sinc(0.0) - 1.0).abs() < 1e-10
+    );
 
     // sinc(1) = sin(π)/π = 0
     assert!(sinc(1.0).abs() < 1e-10);
 
     // sinc(0.5) = sin(π/2)/(π/2) = 2/π
-    assert!((sinc(0.5) - 2.0 / PI).abs() < 1e-10);
+    assert!(
+        (sinc(0.5) - 2.0 / PI).abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -353,16 +567,29 @@ fn test_sinc() {
 fn test_sigmoid() {
 
     // σ(0) = 0.5
-    assert!((sigmoid(0.0) - 0.5).abs() < 1e-10);
+    assert!(
+        (sigmoid(0.0) - 0.5).abs()
+            < 1e-10
+    );
 
     // σ(x) → 1 as x → ∞
-    assert!((sigmoid(100.0) - 1.0).abs() < 1e-10);
+    assert!(
+        (sigmoid(100.0) - 1.0).abs()
+            < 1e-10
+    );
 
     // σ(x) → 0 as x → -∞
-    assert!(sigmoid(-100.0).abs() < 1e-10);
+    assert!(
+        sigmoid(-100.0).abs() < 1e-10
+    );
 
     // σ(-x) = 1 - σ(x)
-    assert!((sigmoid(-2.0) - (1.0 - sigmoid(2.0))).abs() < 1e-10);
+    assert!(
+        (sigmoid(-2.0)
+            - (1.0 - sigmoid(2.0)))
+        .abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -370,10 +597,17 @@ fn test_sigmoid() {
 fn test_softplus() {
 
     // softplus(0) = ln(2)
-    assert!((softplus(0.0) - 2_f64.ln()).abs() < 1e-10);
+    assert!(
+        (softplus(0.0) - 2_f64.ln())
+            .abs()
+            < 1e-10
+    );
 
     // softplus(x) ≈ x for large x
-    assert!((softplus(100.0) - 100.0).abs() < 1e-10);
+    assert!(
+        (softplus(100.0) - 100.0).abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -386,7 +620,10 @@ fn test_logit() {
     // logit is inverse of sigmoid
     let p = 0.7;
 
-    assert!((sigmoid(logit(p)) - p).abs() < 1e-10);
+    assert!(
+        (sigmoid(logit(p)) - p).abs()
+            < 1e-10
+    );
 }
 
 // ============================================================================

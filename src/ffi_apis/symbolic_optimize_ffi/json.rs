@@ -14,20 +14,31 @@ pub extern "C" fn rssn_json_find_extrema(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
-    if let (Some(e), Some(v)) = (expr, vars) {
+    if let (Some(e), Some(v)) =
+        (expr, vars)
+    {
 
         let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
 
-        match find_extrema(&e, &vars_refs) {
-            | Ok(points) => to_json_string(&points),
-            | Err(_) => std::ptr::null_mut(),
+        match find_extrema(
+            &e,
+            &vars_refs,
+        ) {
+            | Ok(points) => {
+                to_json_string(&points)
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 
@@ -43,18 +54,25 @@ pub extern "C" fn rssn_json_hessian_matrix(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
-    if let (Some(e), Some(v)) = (expr, vars) {
+    if let (Some(e), Some(v)) =
+        (expr, vars)
+    {
 
         let vars_refs : Vec<&str> = v
             .iter()
             .map(|s| s.as_str())
             .collect();
 
-        let hessian = hessian_matrix(&e, &vars_refs);
+        let hessian = hessian_matrix(
+            &e,
+            &vars_refs,
+        );
 
         to_json_string(&hessian)
     } else {
@@ -72,11 +90,17 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
-    let constraints : Option<Vec<Expr>> = from_json_string(constraints_json);
+    let constraints : Option<
+        Vec<Expr>,
+    > = from_json_string(
+        constraints_json,
+    );
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
     if let (Some(e), Some(c), Some(v)) = (
         expr,
@@ -89,9 +113,19 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
             .map(|s| s.as_str())
             .collect();
 
-        match find_constrained_extrema(&e, &c, &vars_refs) {
-            | Ok(solutions) => to_json_string(&solutions),
-            | Err(_) => std::ptr::null_mut(),
+        match find_constrained_extrema(
+            &e,
+            &c,
+            &vars_refs,
+        ) {
+            | Ok(solutions) => {
+                to_json_string(
+                    &solutions,
+                )
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 

@@ -30,18 +30,21 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(
     buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let input : QuadratureInput = match from_bincode_buffer(&buffer) {
-        | Some(v) => v,
-        | None => {
+    let input : QuadratureInput =
+        match from_bincode_buffer(
+            &buffer,
+        ) {
+            | Some(v) => v,
+            | None => {
 
-            let res : FfiResult<f64, String> = FfiResult {
+                let res : FfiResult<f64, String> = FfiResult {
                 ok : None,
                 err : Some("Bincode decoding error".to_string()),
             };
 
-            return to_bincode_buffer(&res);
-        },
-    };
+                return to_bincode_buffer(&res);
+            },
+        };
 
     let result = integrate::quadrature(
         &input.expr,

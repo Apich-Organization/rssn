@@ -72,7 +72,9 @@ use crate::symbolic::core::Expr;
 /// assert_eq!(result, 5.0);
 /// ```
 
-pub fn eval_expr<S : ::std::hash::BuildHasher>(
+pub fn eval_expr<
+    S : ::std::hash::BuildHasher,
+>(
     expr : &Expr,
     vars : &HashMap<String, f64, S>,
 ) -> Result<f64, String> {
@@ -536,7 +538,9 @@ pub mod pure {
     /// Signum function.
     #[must_use]
 
-    pub const fn signum(x : f64) -> f64 {
+    pub const fn signum(
+        x : f64
+    ) -> f64 {
 
         x.signum()
     }

@@ -13,7 +13,9 @@ use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::vector::Vector;
 
 /// Represents a crystal lattice with basis vectors.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct CrystalLattice {
     pub a1 : Vector,
@@ -144,28 +146,34 @@ impl CrystalLattice {
             .a2
             .cross(&self.a3)
             .scalar_mul(&two_pi)
-            .scalar_mul(&Expr::new_div(
-                Expr::Constant(1.0),
-                v.clone(),
-            ));
+            .scalar_mul(
+                &Expr::new_div(
+                    Expr::Constant(1.0),
+                    v.clone(),
+                ),
+            );
 
         let b2 = self
             .a3
             .cross(&self.a1)
             .scalar_mul(&two_pi)
-            .scalar_mul(&Expr::new_div(
-                Expr::Constant(1.0),
-                v.clone(),
-            ));
+            .scalar_mul(
+                &Expr::new_div(
+                    Expr::Constant(1.0),
+                    v.clone(),
+                ),
+            );
 
         let b3 = self
             .a1
             .cross(&self.a2)
             .scalar_mul(&two_pi)
-            .scalar_mul(&Expr::new_div(
-                Expr::Constant(1.0),
-                v,
-            ));
+            .scalar_mul(
+                &Expr::new_div(
+                    Expr::Constant(1.0),
+                    v,
+                ),
+            );
 
         (
             Vector::new(
@@ -204,7 +212,8 @@ pub fn bloch_theorem(
         Expr::Constant(1.0),
     );
 
-    let k_dot_r = k_vector.dot(r_vector);
+    let k_dot_r =
+        k_vector.dot(r_vector);
 
     let ikr = Expr::new_mul(i, k_dot_r);
 
@@ -227,7 +236,8 @@ pub fn energy_band(
     band_edge : &Expr,
 ) -> Expr {
 
-    let hbar = Expr::new_variable("hbar");
+    let hbar =
+        Expr::new_variable("hbar");
 
     let hbar_sq = Expr::new_pow(
         hbar,
@@ -264,7 +274,8 @@ pub fn density_of_states_3d(
     volume : &Expr,
 ) -> Expr {
 
-    let hbar = Expr::new_variable("hbar");
+    let hbar =
+        Expr::new_variable("hbar");
 
     let pi = Expr::new_variable("pi");
 
@@ -319,7 +330,8 @@ pub fn fermi_energy_3d(
     effective_mass : &Expr,
 ) -> Expr {
 
-    let hbar = Expr::new_variable("hbar");
+    let hbar =
+        Expr::new_variable("hbar");
 
     let pi = Expr::new_variable("pi");
 
@@ -343,7 +355,8 @@ pub fn fermi_energy_3d(
                     Expr::Constant(2.0),
                 ),
             ),
-            electron_concentration.clone(),
+            electron_concentration
+                .clone(),
         ),
         Expr::new_div(
             Expr::Constant(2.0),
@@ -392,7 +405,8 @@ pub fn hall_coefficient(
     simplify(&Expr::new_div(
         Expr::Constant(1.0),
         Expr::new_mul(
-            carrier_concentration.clone(),
+            carrier_concentration
+                .clone(),
             carrier_charge.clone(),
         ),
     ))
@@ -448,12 +462,16 @@ pub fn einstein_heat_capacity(
         temperature.clone(),
     );
 
-    let exp_x = Expr::new_exp(x.clone());
+    let exp_x =
+        Expr::new_exp(x.clone());
 
     let numerator = Expr::new_mul(
         Expr::new_mul(
             Expr::Constant(3.0),
-            Expr::new_mul(n_atoms.clone(), k_b),
+            Expr::new_mul(
+                n_atoms.clone(),
+                k_b,
+            ),
         ),
         Expr::new_mul(
             Expr::new_pow(
@@ -528,7 +546,8 @@ pub fn london_penetration_depth(
     let denominator = Expr::new_mul(
         mu_0.clone(),
         Expr::new_mul(
-            supercarrier_density.clone(),
+            supercarrier_density
+                .clone(),
             Expr::new_pow(
                 charge.clone(),
                 Expr::Constant(2.0),

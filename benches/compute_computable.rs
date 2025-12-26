@@ -20,16 +20,20 @@ impl Computable for DummyComputable {
     }
 }
 
-fn bench_computable(c : &mut Criterion) {
+fn bench_computable(
+    c : &mut Criterion
+) {
 
     let computable = DummyComputable;
 
     let mut state = State::new();
 
-    let mut progress = ComputationProgress {
-        percentage : 0.0,
-        description : "Starting".to_string(),
-    };
+    let mut progress =
+        ComputationProgress {
+            percentage : 0.0,
+            description : "Starting"
+                .to_string(),
+        };
 
     c.bench_function(
         "computable_compute",
@@ -38,8 +42,12 @@ fn bench_computable(c : &mut Criterion) {
             b.iter(|| {
 
                 computable.compute(
-                    black_box(&mut state),
-                    black_box(&mut progress),
+                    black_box(
+                        &mut state,
+                    ),
+                    black_box(
+                        &mut progress,
+                    ),
                 )
             })
         },

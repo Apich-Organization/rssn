@@ -22,7 +22,14 @@ use crate::symbolic::simplify_dag::simplify;
 /// Represents a Hilbert space, a complete inner product space.
 /// This implementation specifically models L^2([a, b]), the space of square-integrable
 /// complex-valued functions on an interval [a, b].
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct HilbertSpace {
     /// The variable of the functions in this space, e.g., "x".
@@ -55,7 +62,14 @@ impl HilbertSpace {
 ///
 /// This implementation specifically models L^p([a, b]), the space of functions for which
 /// the p-th power of their absolute value is Lebesgue integrable.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct BanachSpace {
     /// The variable of the functions in this space, e.g., "x".
@@ -89,7 +103,14 @@ impl BanachSpace {
 }
 
 /// Represents common linear operators that act on functions in a vector space.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub enum LinearOperator {
     /// The identity operator I(f) = f.
@@ -117,11 +138,20 @@ impl LinearOperator {
     ) -> Expr {
 
         match self {
-            | Self::Identity => expr.clone(),
-            | Self::Derivative(var) => differentiate(expr, var),
-            | Self::Integral(lower_bound, var) => {
+            | Self::Identity => {
+                expr.clone()
+            },
+            | Self::Derivative(var) => {
+                differentiate(expr, var)
+            },
+            | Self::Integral(
+                lower_bound,
+                var,
+            ) => {
 
-                let x = Expr::Variable(var.clone());
+                let x = Expr::Variable(
+                    var.clone(),
+                );
 
                 definite_integrate(
                     expr,
@@ -130,13 +160,24 @@ impl LinearOperator {
                     &x,
                 )
             },
-            | Self::Multiplication(g) => {
-                simplify(&Expr::new_mul(
-                    g.clone(),
-                    expr.clone(),
-                ))
+            | Self::Multiplication(
+                g,
+            ) => {
+                simplify(
+                    &Expr::new_mul(
+                        g.clone(),
+                        expr.clone(),
+                    ),
+                )
             },
-            | Self::Composition(op1, op2) => op1.apply(&op2.apply(expr)),
+            | Self::Composition(
+                op1,
+                op2,
+            ) => {
+                op1.apply(
+                    &op2.apply(expr),
+                )
+            },
         }
     }
 }
@@ -154,10 +195,11 @@ pub fn inner_product(
     g : &Expr,
 ) -> Expr {
 
-    let integrand = simplify(&Expr::new_mul(
-        f.clone(),
-        g.clone(),
-    ));
+    let integrand =
+        simplify(&Expr::new_mul(
+            f.clone(),
+            g.clone(),
+        ));
 
     definite_integrate(
         &integrand,
@@ -178,7 +220,8 @@ pub fn norm(
     f : &Expr,
 ) -> Expr {
 
-    let inner_product_f_f = inner_product(space, f, f);
+    let inner_product_f_f =
+        inner_product(space, f, f);
 
     sqrt(inner_product_f_f)
 }
@@ -227,9 +270,9 @@ pub fn are_orthogonal(
     g : &Expr,
 ) -> bool {
 
-    let prod = simplify(&inner_product(
-        space, f, g,
-    ));
+    let prod = simplify(
+        &inner_product(space, f, g),
+    );
 
     is_zero(&prod)
 }
@@ -246,21 +289,26 @@ pub fn project(
     g : &Expr,
 ) -> Expr {
 
-    let inner_product_f_g = inner_product(space, f, g);
+    let inner_product_f_g =
+        inner_product(space, f, g);
 
-    let inner_product_g_g = inner_product(space, g, g);
+    let inner_product_g_g =
+        inner_product(space, g, g);
 
     if is_zero(&simplify(
         &inner_product_g_g,
     )) {
 
-        return Expr::BigInt(num_bigint::BigInt::zero());
+        return Expr::BigInt(
+            num_bigint::BigInt::zero(),
+        );
     }
 
-    let coefficient = simplify(&Expr::new_div(
-        inner_product_f_g,
-        inner_product_g_g,
-    ));
+    let coefficient =
+        simplify(&Expr::new_div(
+            inner_product_f_g,
+            inner_product_g_g,
+        ));
 
     simplify(&Expr::new_mul(
         coefficient,
@@ -282,7 +330,8 @@ pub fn gram_schmidt(
     basis : &[Expr],
 ) -> Vec<Expr> {
 
-    let mut orthogonal_basis = Vec::new();
+    let mut orthogonal_basis =
+        Vec::new();
 
     for i in 0 .. basis.len() {
 
@@ -290,12 +339,17 @@ pub fn gram_schmidt(
 
         for u in &orthogonal_basis {
 
-            let proj = project(space, &basis[i], u);
+            let proj = project(
+                space,
+                &basis[i],
+                u,
+            );
 
             v = Expr::new_sub(v, proj);
         }
 
-        orthogonal_basis.push(simplify(&v));
+        orthogonal_basis
+            .push(simplify(&v));
     }
 
     orthogonal_basis
@@ -311,9 +365,11 @@ pub fn gram_schmidt_orthonormal(
     basis : &[Expr],
 ) -> Vec<Expr> {
 
-    let orthogonal_basis = gram_schmidt(space, basis);
+    let orthogonal_basis =
+        gram_schmidt(space, basis);
 
-    let mut orthonormal_basis = Vec::new();
+    let mut orthonormal_basis =
+        Vec::new();
 
     for v in orthogonal_basis {
 
@@ -325,9 +381,13 @@ pub fn gram_schmidt_orthonormal(
             orthonormal_basis.push(v);
         } else {
 
-            orthonormal_basis.push(simplify(
-                &Expr::new_div(v, n),
-            ));
+            orthonormal_basis.push(
+                simplify(
+                    &Expr::new_div(
+                        v, n,
+                    ),
+                ),
+            );
         }
     }
 

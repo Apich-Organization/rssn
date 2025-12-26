@@ -101,7 +101,10 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
         input.v2.z,
     );
 
-    let result = computer_graphics::dot_product(&v1, &v2);
+    let result =
+        computer_graphics::dot_product(
+            &v1, &v2,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),

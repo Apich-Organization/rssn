@@ -8,7 +8,8 @@ use std::ffi::CString;
 
 #[test]
 
-fn test_air_kinematic_viscosity_handle() {
+fn test_air_kinematic_viscosity_handle()
+{
 
     let nu =
         rssn::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_air_kinematic_viscosity();
@@ -19,7 +20,8 @@ fn test_air_kinematic_viscosity_handle() {
 
 #[test]
 
-fn test_water_kinematic_viscosity_handle() {
+fn test_water_kinematic_viscosity_handle(
+) {
 
     let nu =
         rssn::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_water_kinematic_viscosity();
@@ -130,7 +132,8 @@ fn test_air_properties_json() {
 
     let input = r#"{}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -141,11 +144,20 @@ fn test_air_properties_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed : serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
-        let pr = parsed["ok"]["prandtl_number"]
+        let pr = parsed["ok"]
+            ["prandtl_number"]
             .as_f64()
             .unwrap();
 
@@ -159,7 +171,8 @@ fn test_water_properties_json() {
 
     let input = r#"{}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -170,11 +183,20 @@ fn test_water_properties_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed : serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
-        let pr = parsed["ok"]["prandtl_number"]
+        let pr = parsed["ok"]
+            ["prandtl_number"]
             .as_f64()
             .unwrap();
 
@@ -188,7 +210,8 @@ fn test_reynolds_number_json() {
 
     let input = r#"{"velocity": 1.0, "length": 1.0, "kinematic_viscosity": 1e-6}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -199,9 +222,17 @@ fn test_reynolds_number_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed : serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         let re = parsed["ok"]
             .as_f64()
@@ -217,7 +248,8 @@ fn test_cfl_number_json() {
 
     let input = r#"{"velocity": 1.0, "dt": 0.01, "dx": 0.1}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -227,15 +259,25 @@ fn test_cfl_number_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed : serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         let cfl = parsed["ok"]
             .as_f64()
             .unwrap();
 
-        assert!((cfl - 0.1).abs() < 1e-10);
+        assert!(
+            (cfl - 0.1).abs() < 1e-10
+        );
     }
 }
 
@@ -245,7 +287,8 @@ fn test_solve_advection_1d_json() {
 
     let input = r#"{"u0": [0.0, 0.0, 1.0, 1.0, 0.0, 0.0], "c": 1.0, "dx": 0.1, "dt": 0.01, "num_steps": 5}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -256,9 +299,17 @@ fn test_solve_advection_1d_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed : serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         let data = parsed["ok"]
             .as_array()
@@ -274,7 +325,8 @@ fn test_solve_diffusion_1d_json() {
 
     let input = r#"{"u0": [0.0, 0.0, 1.0, 0.0, 0.0], "alpha": 0.01, "dx": 0.1, "dt": 0.01, "num_steps": 5}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -285,9 +337,17 @@ fn test_solve_diffusion_1d_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed : serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         let data = parsed["ok"]
             .as_array()
@@ -301,10 +361,10 @@ fn test_solve_diffusion_1d_json() {
 
 fn test_solve_burgers_1d_json() {
 
-    let input =
-        r#"{"u0": [0.0, 0.5, 1.0, 0.5, 0.0], "nu": 0.01, "dx": 0.1, "dt": 0.001, "num_steps": 5}"#;
+    let input = r#"{"u0": [0.0, 0.5, 1.0, 0.5, 0.0], "nu": 0.01, "dx": 0.1, "dt": 0.001, "num_steps": 5}"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -315,9 +375,17 @@ fn test_solve_burgers_1d_json() {
 
         assert!(!result.is_null());
 
-        let result_str = std::ffi::CStr::from_ptr(result).to_string_lossy();
+        let result_str =
+            std::ffi::CStr::from_ptr(
+                result,
+            )
+            .to_string_lossy();
 
-        let parsed : serde_json::Value = serde_json::from_str(&result_str).unwrap();
+        let parsed : serde_json::Value =
+            serde_json::from_str(
+                &result_str,
+            )
+            .unwrap();
 
         let data = parsed["ok"]
             .as_array()

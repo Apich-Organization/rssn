@@ -25,7 +25,8 @@ fn test_expand() {
 
     let expanded = expand(expr);
 
-    let simplified = simplify(&expanded);
+    let simplified =
+        simplify(&expanded);
 
     println!(
         "Expanded: {}",
@@ -39,7 +40,10 @@ fn test_expand() {
 
     // The expansion should work - we just verify it doesn't crash
     // The exact form may vary depending on simplification
-    assert!(!format!("{}", simplified).is_empty());
+    assert!(
+        !format!("{}", simplified)
+            .is_empty()
+    );
 }
 
 #[test]
@@ -59,7 +63,8 @@ fn test_factorize() {
 
     let factored = factorize(expr);
 
-    let simplified = simplify(&factored);
+    let simplified =
+        simplify(&factored);
 
     println!(
         "Factored: {}",
@@ -72,7 +77,10 @@ fn test_factorize() {
     );
 
     // The factorization should work - we just verify it doesn't crash
-    assert!(!format!("{}", simplified).is_empty());
+    assert!(
+        !format!("{}", simplified)
+            .is_empty()
+    );
 }
 
 #[test]
@@ -82,11 +90,15 @@ fn test_normalize() {
     // x + x -> 2x (after simplification)
     let x = Expr::new_variable("x");
 
-    let expr = Expr::new_add(x.clone(), x.clone());
+    let expr = Expr::new_add(
+        x.clone(),
+        x.clone(),
+    );
 
     let normalized = normalize(expr);
 
-    let simplified = simplify(&normalized);
+    let simplified =
+        simplify(&normalized);
 
     println!(
         "Normalized: {}",
@@ -101,7 +113,10 @@ fn test_normalize() {
     // After simplification, should be 2*x
     let s = format!("{}", simplified);
 
-    assert!(s.contains("2") && s.contains("x"));
+    assert!(
+        s.contains("2")
+            && s.contains("x")
+    );
 }
 
 #[test]
@@ -151,7 +166,8 @@ fn test_simplify_with_relations() {
     } else {
 
         panic!(
-            "Expected numeric value 1, got non-numeric: {}",
+            "Expected numeric value \
+             1, got non-numeric: {}",
             result
         );
     }
@@ -159,7 +175,8 @@ fn test_simplify_with_relations() {
 
 #[test]
 
-fn test_simplify_with_relations_complex() {
+fn test_simplify_with_relations_complex(
+) {
 
     // x^3 - x with relation x^2 - 1 -> 0
     let x = Expr::new_variable("x");
@@ -200,14 +217,19 @@ fn test_simplify_with_relations_complex() {
         },
         | Expr::BigInt(ref i) => {
 
-            assert_eq!(i.to_string(), "0")
+            assert_eq!(
+                i.to_string(),
+                "0"
+            )
         },
         | _ => {
 
             // It might not simplify all the way to 0, which is okay
             // The important thing is it doesn't crash
             println!(
-                "Note: Result didn't fully simplify to 0: {}",
+                "Note: Result didn't \
+                 fully simplify to 0: \
+                 {}",
                 result
             );
         },

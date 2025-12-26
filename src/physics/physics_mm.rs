@@ -7,7 +7,14 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Vector2D {
     pub x : f64,
@@ -26,9 +33,12 @@ impl Vector2D {
         }
     }
 
-    pub(crate) fn norm_sq(&self) -> f64 {
+    pub(crate) fn norm_sq(
+        &self
+    ) -> f64 {
 
-        self.x * self.x + self.y * self.y
+        self.x * self.x
+            + self.y * self.y
     }
 }
 
@@ -93,7 +103,9 @@ impl Div<f64> for Vector2D {
 }
 
 /// cbindgen:ignore
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct Particle {
     pub pos : Vector2D,
@@ -104,7 +116,9 @@ pub struct Particle {
     pub mass : f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct Poly6Kernel {
     pub h_sq : f64,
@@ -136,7 +150,9 @@ impl Poly6Kernel {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct SpikyKernel {
     pub h : f64,
@@ -148,7 +164,9 @@ impl SpikyKernel {
 
         Self {
             h,
-            factor : -45.0 / (std::f64::consts::PI * h.powi(6)),
+            factor : -45.0
+                / (std::f64::consts::PI
+                    * h.powi(6)),
         }
     }
 
@@ -158,18 +176,26 @@ impl SpikyKernel {
         r_norm : f64,
     ) -> Vector2D {
 
-        if r_norm >= self.h || r_norm == 0.0 {
+        if r_norm >= self.h
+            || r_norm == 0.0
+        {
 
             return Vector2D::default();
         }
 
         let diff = self.h - r_norm;
 
-        r_vec * (self.factor * diff * diff / r_norm)
+        r_vec
+            * (self.factor
+                * diff
+                * diff
+                / r_norm)
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct SPHSystem {
     pub particles : Vec<Particle>,
@@ -183,19 +209,23 @@ pub struct SPHSystem {
 }
 
 impl SPHSystem {
-    pub fn compute_density_pressure(&mut self) {
+    pub fn compute_density_pressure(
+        &mut self
+    ) {
 
         let poly6 = &self.poly6;
 
         let gas_const = self.gas_const;
 
-        let rest_density = self.rest_density;
+        let rest_density =
+            self.rest_density;
 
         // Use a raw pointer to provide an immutable view of all particles to each thread
         // to avoid conflicts with the mutable iterator.
         let particles_ptr = self
             .particles
-            .as_ptr() as usize;
+            .as_ptr()
+            as usize;
 
         let n = self.particles.len();
 
@@ -238,7 +268,8 @@ impl SPHSystem {
 
         let particles_ptr = self
             .particles
-            .as_ptr() as usize;
+            .as_ptr()
+            as usize;
 
         let n = self.particles.len();
 
@@ -299,9 +330,13 @@ impl SPHSystem {
             .par_iter_mut()
             .for_each(|p| {
 
-                p.vel = p.vel + p.force * (dt / p.density);
+                p.vel = p.vel
+                    + p.force
+                        * (dt / p
+                            .density);
 
-                p.pos = p.pos + p.vel * dt;
+                p.pos =
+                    p.pos + p.vel * dt;
 
                 if p.pos.x < 0.0 {
 
@@ -355,7 +390,8 @@ impl SPHSystem {
 /// # Returns
 /// A `Vec` of tuples `(x, y)` representing the final positions of the particles.
 
-pub fn simulate_dam_break_2d_scenario() -> Vec<(f64, f64)> {
+pub fn simulate_dam_break_2d_scenario(
+) -> Vec<(f64, f64)> {
 
     let h = 0.1;
 
@@ -363,29 +399,42 @@ pub fn simulate_dam_break_2d_scenario() -> Vec<(f64, f64)> {
         particles : Vec::new(),
         poly6 : Poly6Kernel::new(h),
         spiky : SpikyKernel::new(h),
-        gravity : Vector2D::new(0.0, -9.8),
+        gravity : Vector2D::new(
+            0.0, -9.8,
+        ),
         viscosity : 0.01,
         gas_const : 2000.0,
         rest_density : 1000.0,
-        bounds : Vector2D::new(4.0, 4.0),
+        bounds : Vector2D::new(
+            4.0, 4.0,
+        ),
     };
 
     let particle_mass = 1.0;
 
-    for y in (0 .. 20).map(|v| f64::from(v) * h * 0.8) {
+    for y in (0 .. 20)
+        .map(|v| f64::from(v) * h * 0.8)
+    {
 
-        for x in (0 .. 10).map(|v| f64::from(v) * h * 0.8) {
+        for x in (0 .. 10).map(|v| {
+            f64::from(v) * h * 0.8
+        }) {
 
             system
                 .particles
                 .push(Particle {
-                    pos : Vector2D::new(x, y + 0.1),
-                    vel : Vector2D::default(),
-                    force : Vector2D::default(),
-                    density : 0.0,
-                    pressure : 0.0,
-                    mass : particle_mass,
-                });
+                pos : Vector2D::new(
+                    x,
+                    y + 0.1,
+                ),
+                vel : Vector2D::default(
+                ),
+                force:
+                    Vector2D::default(),
+                density : 0.0,
+                pressure : 0.0,
+                mass : particle_mass,
+            });
         }
     }
 

@@ -21,7 +21,11 @@ pub unsafe extern "C" fn rssn_bincode_are_isomorphic_heuristic(
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = are_isomorphic_heuristic(&input.g1, &input.g2);
+    let result =
+        are_isomorphic_heuristic(
+            &input.g1,
+            &input.g2,
+        );
 
     to_bincode_buffer(&result)
 }
@@ -29,14 +33,17 @@ pub unsafe extern "C" fn rssn_bincode_are_isomorphic_heuristic(
 /// Greedy coloring.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_greedy_coloring(graph_buf : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_greedy_coloring(
+    graph_buf : BincodeBuffer
+) -> BincodeBuffer {
 
     let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = greedy_coloring(&graph);
+    let result =
+        greedy_coloring(&graph);
 
     to_bincode_buffer(&result)
 }
@@ -53,7 +60,8 @@ pub unsafe extern "C" fn rssn_bincode_chromatic_number_exact(
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = chromatic_number_exact(&graph);
+    let result =
+        chromatic_number_exact(&graph);
 
     to_bincode_buffer(&result)
 }

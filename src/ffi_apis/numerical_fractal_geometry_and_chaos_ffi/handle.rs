@@ -204,18 +204,22 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim(
     num_scales : usize,
 ) -> f64 {
 
-    if points_ptr.is_null() || num_points == 0 {
+    if points_ptr.is_null()
+        || num_points == 0
+    {
 
         return 0.0;
     }
 
-    let mut points = Vec::with_capacity(num_points);
+    let mut points =
+        Vec::with_capacity(num_points);
 
     for i in 0 .. num_points {
 
         let x = *points_ptr.add(i * 2);
 
-        let y = *points_ptr.add(i * 2 + 1);
+        let y =
+            *points_ptr.add(i * 2 + 1);
 
         points.push((x, y));
     }
@@ -235,18 +239,22 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim(
     num_radii : usize,
 ) -> f64 {
 
-    if points_ptr.is_null() || num_points == 0 {
+    if points_ptr.is_null()
+        || num_points == 0
+    {
 
         return 0.0;
     }
 
-    let mut points = Vec::with_capacity(num_points);
+    let mut points =
+        Vec::with_capacity(num_points);
 
     for i in 0 .. num_points {
 
         let x = *points_ptr.add(i * 2);
 
-        let y = *points_ptr.add(i * 2 + 1);
+        let y =
+            *points_ptr.add(i * 2 + 1);
 
         points.push((x, y));
     }

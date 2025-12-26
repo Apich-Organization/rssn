@@ -7,7 +7,8 @@ fn test_integrate_polynomial() {
 
     // Integrate x^2 + 2x + 1 dx
     // Result should be x^3/3 + x^2 + x
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let expr = Expr::new_add(
         Expr::new_pow(
@@ -23,7 +24,9 @@ fn test_integrate_polynomial() {
         ),
     );
 
-    let result = risch_norman_integrate(&expr, "x");
+    let result = risch_norman_integrate(
+        &expr, "x",
+    );
 
     // We verify by differentiating back
     // Or checking structure. Since simplification might vary, checking structure is tricky.
@@ -40,7 +43,8 @@ fn test_integrate_polynomial() {
 fn test_integrate_rational_simple() {
 
     // Integrate 1/x dx = log(x)
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let expr = Expr::new_div(
         Expr::Constant(1.0),
@@ -63,7 +67,8 @@ fn test_integrate_rational_simple() {
 fn test_integrate_rational_log_part() {
 
     // Integrate 1/(x+1) dx = log(x+1)
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let expr = Expr::new_div(
         Expr::Constant(1.0),
@@ -87,10 +92,12 @@ fn test_integrate_rational_log_part() {
 
 #[test]
 
-fn test_integrate_rational_hermite_part() {
+fn test_integrate_rational_hermite_part(
+) {
 
     // Integrate 1/x^2 dx = -1/x
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let expr = Expr::new_div(
         Expr::Constant(1.0),
@@ -115,11 +122,14 @@ fn test_integrate_rational_hermite_part() {
 fn test_risch_norman_exp() {
 
     // Integrate e^x dx = e^x
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let expr = Expr::new_exp(x.clone());
 
-    let result = risch_norman_integrate(&expr, "x");
+    let result = risch_norman_integrate(
+        &expr, "x",
+    );
 
     // Should be e^x
     // We can check if it equals the input (simplification might make them identical)
@@ -136,14 +146,17 @@ fn test_risch_norman_exp() {
 fn test_risch_norman_x_exp_x() {
 
     // Integrate x * e^x dx = (x-1)e^x
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let expr = Expr::new_mul(
         x.clone(),
         Expr::new_exp(x.clone()),
     );
 
-    let result = risch_norman_integrate(&expr, "x");
+    let result = risch_norman_integrate(
+        &expr, "x",
+    );
 
     // Should be (x-1)e^x
     assert!(!matches!(
@@ -157,11 +170,14 @@ fn test_risch_norman_x_exp_x() {
 fn test_risch_norman_log() {
 
     // Integrate log(x) dx = x*log(x) - x
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let expr = Expr::new_log(x.clone());
 
-    let result = risch_norman_integrate(&expr, "x");
+    let result = risch_norman_integrate(
+        &expr, "x",
+    );
 
     // Should be x*log(x) - x
     assert!(!matches!(
@@ -175,14 +191,17 @@ fn test_risch_norman_log() {
 fn test_risch_norman_mixed() {
 
     // Integrate x + e^x dx = x^2/2 + e^x
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let expr = Expr::new_add(
         x.clone(),
         Expr::new_exp(x.clone()),
     );
 
-    let result = risch_norman_integrate(&expr, "x");
+    let result = risch_norman_integrate(
+        &expr, "x",
+    );
 
     assert!(!matches!(
         result,

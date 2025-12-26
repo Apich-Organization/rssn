@@ -39,7 +39,8 @@ fn test_damped_oscillator_simulate() {
 
 fn test_vanderpol_simulate() {
 
-    let results = simulate_vanderpol_scenario();
+    let results =
+        simulate_vanderpol_scenario();
 
     assert!(results.len() > 0);
 
@@ -141,7 +142,11 @@ fn test_adaptive_solvers_accuracy() {
         .last()
         .unwrap();
 
-    assert!((last_dp.1[0] - 1.0f64.exp()).abs() < 1e-6);
+    assert!(
+        (last_dp.1[0] - 1.0f64.exp())
+            .abs()
+            < 1e-6
+    );
 
     // Cash-Karp
     let ck45 = CashKarp45::default();
@@ -158,10 +163,15 @@ fn test_adaptive_solvers_accuracy() {
         .last()
         .unwrap();
 
-    assert!((last_ck.1[0] - 1.0f64.exp()).abs() < 1e-6);
+    assert!(
+        (last_ck.1[0] - 1.0f64.exp())
+            .abs()
+            < 1e-6
+    );
 
     // Bogacki-Shampine
-    let bs23 = BogackiShampine23::default();
+    let bs23 =
+        BogackiShampine23::default();
 
     let res_bs = bs23.solve(
         &system,
@@ -175,7 +185,11 @@ fn test_adaptive_solvers_accuracy() {
         .last()
         .unwrap();
 
-    assert!((last_bs.1[0] - 1.0f64.exp()).abs() < 1e-4);
+    assert!(
+        (last_bs.1[0] - 1.0f64.exp())
+            .abs()
+            < 1e-4
+    );
 }
 
 // ============================================================================

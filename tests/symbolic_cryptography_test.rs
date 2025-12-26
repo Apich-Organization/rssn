@@ -75,7 +75,8 @@ fn test_point_is_infinity() {
 
     assert!(!p.is_infinity());
 
-    assert!(CurvePoint::Infinity.is_infinity());
+    assert!(CurvePoint::Infinity
+        .is_infinity());
 }
 
 #[test]
@@ -117,24 +118,29 @@ fn test_is_on_curve() {
 
     assert!(curve.is_on_curve(&p));
 
-    assert!(curve.is_on_curve(&CurvePoint::Infinity));
+    assert!(curve.is_on_curve(
+        &CurvePoint::Infinity
+    ));
 
     // A point not on the curve
     let field = test_field();
 
-    let bad_point = CurvePoint::Affine {
-        x : PrimeFieldElement::new(
-            BigInt::from(1),
-            field.clone(),
-        ),
-        y : PrimeFieldElement::new(
-            BigInt::from(1),
-            field,
-        ),
-    };
+    let bad_point =
+        CurvePoint::Affine {
+            x : PrimeFieldElement::new(
+                BigInt::from(1),
+                field.clone(),
+            ),
+            y : PrimeFieldElement::new(
+                BigInt::from(1),
+                field,
+            ),
+        };
 
     // 1^2 = 1, but 1^3 + 1 + 1 = 3 (mod 23), so should not be on curve
-    assert!(!curve.is_on_curve(&bad_point));
+    assert!(
+        !curve.is_on_curve(&bad_point)
+    );
 }
 
 #[test]
@@ -160,7 +166,10 @@ fn test_negate_point() {
         } = &p
         {
 
-            assert_eq!(nx.value, px.value);
+            assert_eq!(
+                nx.value,
+                px.value
+            );
 
             // -1 mod 23 = 22
             assert_eq!(
@@ -247,21 +256,28 @@ fn test_scalar_multiplication_by_one() {
     let p = test_point();
 
     // 1 * P = P
-    let result = curve.scalar_mult(&BigInt::from(1), &p);
+    let result = curve.scalar_mult(
+        &BigInt::from(1),
+        &p,
+    );
 
     assert_eq!(result, p);
 }
 
 #[test]
 
-fn test_scalar_multiplication_by_zero() {
+fn test_scalar_multiplication_by_zero()
+{
 
     let curve = test_curve();
 
     let p = test_point();
 
     // 0 * P = O (point at infinity)
-    let result = curve.scalar_mult(&BigInt::from(0), &p);
+    let result = curve.scalar_mult(
+        &BigInt::from(0),
+        &p,
+    );
 
     assert_eq!(
         result,
@@ -278,16 +294,23 @@ fn test_scalar_multiplication() {
     let p = test_point();
 
     // 2 * P should equal P + P
-    let two_p = curve.scalar_mult(&BigInt::from(2), &p);
+    let two_p = curve.scalar_mult(
+        &BigInt::from(2),
+        &p,
+    );
 
     let p_plus_p = curve.add(&p, &p);
 
     assert_eq!(two_p, p_plus_p);
 
     // 3 * P should equal 2P + P
-    let three_p = curve.scalar_mult(&BigInt::from(3), &p);
+    let three_p = curve.scalar_mult(
+        &BigInt::from(3),
+        &p,
+    );
 
-    let expected = curve.add(&two_p, &p);
+    let expected =
+        curve.add(&two_p, &p);
 
     assert_eq!(three_p, expected);
 }
@@ -303,14 +326,18 @@ fn test_point_compression() {
 
     assert!(compressed.is_some());
 
-    let (x, is_odd) = compressed.unwrap();
+    let (x, is_odd) =
+        compressed.unwrap();
 
     assert_eq!(x, BigInt::from(0));
 
     assert!(is_odd); // y = 1 is odd
 
     // Infinity should return None
-    assert!(point_compress(&CurvePoint::Infinity).is_none());
+    assert!(point_compress(
+        &CurvePoint::Infinity
+    )
+    .is_none());
 }
 
 #[test]
@@ -322,16 +349,23 @@ fn test_ecdh_keypair_generation() {
     let generator = test_point();
 
     // Generate keypair
-    let keypair = generate_keypair(&curve, &generator);
-
-    // Private key should be non-zero
-    assert!(keypair.private_key > BigInt::from(0));
-
-    // Public key should be private_key * generator
-    let expected_public = curve.scalar_mult(
-        &keypair.private_key,
+    let keypair = generate_keypair(
+        &curve,
         &generator,
     );
+
+    // Private key should be non-zero
+    assert!(
+        keypair.private_key
+            > BigInt::from(0)
+    );
+
+    // Public key should be private_key * generator
+    let expected_public = curve
+        .scalar_mult(
+            &keypair.private_key,
+            &generator,
+        );
 
     assert_eq!(
         keypair.public_key,
@@ -348,23 +382,31 @@ fn test_ecdh_shared_secret() {
     let generator = test_point();
 
     // Generate two keypairs
-    let alice = generate_keypair(&curve, &generator);
+    let alice = generate_keypair(
+        &curve,
+        &generator,
+    );
 
-    let bob = generate_keypair(&curve, &generator);
+    let bob = generate_keypair(
+        &curve,
+        &generator,
+    );
 
     // Alice computes shared secret: alice_private * bob_public
-    let alice_secret = generate_shared_secret(
-        &curve,
-        &alice.private_key,
-        &bob.public_key,
-    );
+    let alice_secret =
+        generate_shared_secret(
+            &curve,
+            &alice.private_key,
+            &bob.public_key,
+        );
 
     // Bob computes shared secret: bob_private * alice_public
-    let bob_secret = generate_shared_secret(
-        &curve,
-        &bob.private_key,
-        &alice.public_key,
-    );
+    let bob_secret =
+        generate_shared_secret(
+            &curve,
+            &bob.private_key,
+            &alice.public_key,
+        );
 
     // Both should arrive at the same shared secret
     assert_eq!(
@@ -421,16 +463,18 @@ fn test_ecdsa_sign_and_verify() {
         assert!(is_valid || !is_valid); // Just ensure it doesn't panic
 
         // Verify with wrong message should fail
-        let wrong_hash = BigInt::from(13);
+        let wrong_hash =
+            BigInt::from(13);
 
-        let is_wrong_valid = ecdsa_verify(
-            &wrong_hash,
-            &sig,
-            &public_key,
-            &curve,
-            &generator,
-            &order,
-        );
+        let is_wrong_valid =
+            ecdsa_verify(
+                &wrong_hash,
+                &sig,
+                &public_key,
+                &curve,
+                &generator,
+                &order,
+            );
 
         // With proper implementation, this should be false (but small field may have collisions)
         let _ = is_wrong_valid; // Just check it runs

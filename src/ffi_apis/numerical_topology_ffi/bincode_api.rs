@@ -85,12 +85,13 @@ pub unsafe extern "C" fn rssn_num_topology_persistence_bincode(
         },
     };
 
-    let res = topology::compute_persistence(
-        &input.points,
-        input.max_epsilon,
-        input.steps,
-        input.max_dim,
-    );
+    let res =
+        topology::compute_persistence(
+            &input.points,
+            input.max_epsilon,
+            input.steps,
+            input.max_dim,
+        );
 
     let ffi_res = FfiResult {
         ok : Some(res),

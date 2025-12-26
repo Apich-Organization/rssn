@@ -51,7 +51,10 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
         },
     };
 
-    let stiffness = input.youngs_modulus * input.area / input.length;
+    let stiffness = input
+        .youngs_modulus
+        * input.area
+        / input.length;
 
     to_bincode_buffer(&FfiResult {
         ok : Some(stiffness),
@@ -107,17 +110,21 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(
         },
     };
 
-    let (sigma1, sigma2, angle) = physics_fea::principal_stresses(&[
-        input.sx,
-        input.sy,
-        input.txy,
-    ]);
+    let (sigma1, sigma2, angle) =
+        physics_fea::principal_stresses(
+            &[
+                input.sx,
+                input.sy,
+                input.txy,
+            ],
+        );
 
-    let output = PrincipalStressOutput {
-        sigma1,
-        sigma2,
-        angle,
-    };
+    let output =
+        PrincipalStressOutput {
+            sigma1,
+            sigma2,
+            angle,
+        };
 
     to_bincode_buffer(&FfiResult {
         ok : Some(output),

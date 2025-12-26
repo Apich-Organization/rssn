@@ -52,7 +52,9 @@ struct BinomialInput {
 // Gamma functions
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_special_gamma_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_special_gamma_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -67,7 +69,11 @@ pub unsafe extern "C" fn rssn_num_special_gamma_bincode(buffer : BincodeBuffer) 
     };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(special::gamma_numerical(input.x)),
+        ok : Some(
+            special::gamma_numerical(
+                input.x,
+            ),
+        ),
         err : None::<String>,
     })
 }
@@ -91,14 +97,20 @@ pub unsafe extern "C" fn rssn_num_special_ln_gamma_bincode(
     };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(special::ln_gamma_numerical(input.x)),
+        ok : Some(
+            special::ln_gamma_numerical(
+                input.x,
+            ),
+        ),
         err : None::<String>,
     })
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_special_digamma_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_special_digamma_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -113,7 +125,11 @@ pub unsafe extern "C" fn rssn_num_special_digamma_bincode(buffer : BincodeBuffer
     };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(special::digamma_numerical(input.x)),
+        ok : Some(
+            special::digamma_numerical(
+                input.x,
+            ),
+        ),
         err : None::<String>,
     })
 }
@@ -121,7 +137,9 @@ pub unsafe extern "C" fn rssn_num_special_digamma_bincode(buffer : BincodeBuffer
 // Beta functions
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_special_beta_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_special_beta_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : TwoInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -136,7 +154,12 @@ pub unsafe extern "C" fn rssn_num_special_beta_bincode(buffer : BincodeBuffer) -
     };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(special::beta_numerical(input.a, input.b)),
+        ok : Some(
+            special::beta_numerical(
+                input.a,
+                input.b,
+            ),
+        ),
         err : None::<String>,
     })
 }
@@ -174,7 +197,9 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_bincode(
 // Error functions
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_special_erf_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_special_erf_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -189,14 +214,20 @@ pub unsafe extern "C" fn rssn_num_special_erf_bincode(buffer : BincodeBuffer) ->
     };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(special::erf_numerical(input.x)),
+        ok : Some(
+            special::erf_numerical(
+                input.x,
+            ),
+        ),
         err : None::<String>,
     })
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_special_erfc_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_special_erfc_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -211,7 +242,11 @@ pub unsafe extern "C" fn rssn_num_special_erfc_bincode(buffer : BincodeBuffer) -
     };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(special::erfc_numerical(input.x)),
+        ok : Some(
+            special::erfc_numerical(
+                input.x,
+            ),
+        ),
         err : None::<String>,
     })
 }
@@ -316,7 +351,12 @@ pub unsafe extern "C" fn rssn_num_special_chebyshev_t_bincode(
     };
 
     to_bincode_buffer(&FfiResult {
-        ok : Some(special::chebyshev_t(input.n, input.x)),
+        ok : Some(
+            special::chebyshev_t(
+                input.n,
+                input.x,
+            ),
+        ),
         err : None::<String>,
     })
 }
@@ -404,7 +444,9 @@ pub unsafe extern "C" fn rssn_num_special_binomial_bincode(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_special_sigmoid_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_special_sigmoid_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -428,7 +470,9 @@ pub unsafe extern "C" fn rssn_num_special_sigmoid_bincode(buffer : BincodeBuffer
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_special_sinc_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_special_sinc_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,

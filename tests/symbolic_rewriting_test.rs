@@ -10,7 +10,8 @@ use rssn::symbolic::rewriting::RewriteRule;
 fn test_apply_rules_simple() {
 
     // Rule: x + 0 -> x
-    let p_x = Expr::Pattern("x".to_string());
+    let p_x =
+        Expr::Pattern("x".to_string());
 
     let zero = Expr::Constant(0.0);
 
@@ -34,7 +35,11 @@ fn test_apply_rules_simple() {
         zero.clone(),
     );
 
-    let result = apply_rules_to_normal_form(&expr, &[rule]);
+    let result =
+        apply_rules_to_normal_form(
+            &expr,
+            &[rule],
+        );
 
     // Should reduce to y
     assert_eq!(
@@ -49,11 +54,14 @@ fn test_apply_rules_associativity() {
 
     // Rule: op(op(x, y), z) -> op(x, op(y, z))
     // We use NaryList for "op"
-    let px = Expr::Pattern("x".to_string());
+    let px =
+        Expr::Pattern("x".to_string());
 
-    let py = Expr::Pattern("y".to_string());
+    let py =
+        Expr::Pattern("y".to_string());
 
-    let pz = Expr::Pattern("z".to_string());
+    let pz =
+        Expr::Pattern("z".to_string());
 
     let op_name = "op".to_string();
 
@@ -116,7 +124,11 @@ fn test_apply_rules_associativity() {
         ],
     );
 
-    let result = apply_rules_to_normal_form(&expr, &[rule]);
+    let result =
+        apply_rules_to_normal_form(
+            &expr,
+            &[rule],
+        );
 
     // Should be op(a, op(b, c))
     let expected_inner = Expr::NaryList(
@@ -146,7 +158,8 @@ fn test_knuth_bendix_simple() {
     // f(g(x)) = x  (lhs is more complex)
     // g(f(x)) = x  (lhs is more complex)
 
-    let px = Expr::Pattern("x".to_string());
+    let px =
+        Expr::Pattern("x".to_string());
 
     // f(g(x))
     let gx = Expr::UnaryList(
@@ -184,7 +197,8 @@ fn test_knuth_bendix_simple() {
 
     let equations = vec![eq1, eq2];
 
-    let result = knuth_bendix(&equations);
+    let result =
+        knuth_bendix(&equations);
 
     match result {
         | Ok(rules) => {
@@ -208,7 +222,8 @@ fn test_knuth_bendix_simple() {
         | Err(e) => {
 
             panic!(
-                "Knuth-Bendix failed: {}",
+                "Knuth-Bendix failed: \
+                 {}",
                 e
             )
         },
@@ -224,9 +239,13 @@ fn test_rewrite_rule_serialization() {
         rhs : Expr::new_variable("b"),
     };
 
-    let json = serde_json::to_string(&rule).expect("Serialize");
+    let json =
+        serde_json::to_string(&rule)
+            .expect("Serialize");
 
-    let deserialized : RewriteRule = serde_json::from_str(&json).expect("Deserialize");
+    let deserialized : RewriteRule =
+        serde_json::from_str(&json)
+            .expect("Deserialize");
 
     assert_eq!(
         format!("{}", rule.lhs),

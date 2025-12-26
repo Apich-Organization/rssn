@@ -74,7 +74,8 @@ pub unsafe extern "C" fn rssn_json_graph_connected_components_api(
         | None => return std::ptr::null_mut(),
     };
 
-    let result = connected_components(&graph);
+    let result =
+        connected_components(&graph);
 
     to_json_string(&result)
 }
@@ -112,7 +113,10 @@ pub unsafe extern "C" fn rssn_json_graph_strongly_connected_components(
         | None => return std::ptr::null_mut(),
     };
 
-    let result = strongly_connected_components(&graph);
+    let result =
+        strongly_connected_components(
+            &graph,
+        );
 
     to_json_string(&result)
 }
@@ -156,7 +160,8 @@ pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
 
     struct Result {
         bridges : Vec<(usize, usize)>,
-        articulation_points : Vec<usize>,
+        articulation_points :
+            Vec<usize>,
     }
 
     let result = Result {
@@ -183,11 +188,13 @@ pub unsafe extern "C" fn rssn_json_graph_kruskal_mst_api(
 
     let mst_edges = kruskal_mst(&graph);
 
-    let mut mst_graph = Graph::new(graph.is_directed);
+    let mut mst_graph =
+        Graph::new(graph.is_directed);
 
     for node in &graph.nodes {
 
-        mst_graph.add_node(node.clone());
+        mst_graph
+            .add_node(node.clone());
     }
 
     for (u, v, weight) in mst_edges {
@@ -304,10 +311,11 @@ pub unsafe extern "C" fn rssn_json_graph_bipartite_maximum_matching(
         | None => return std::ptr::null_mut(),
     };
 
-    let result = bipartite_maximum_matching(
-        &input.graph,
-        &input.partition,
-    );
+    let result =
+        bipartite_maximum_matching(
+            &input.graph,
+            &input.partition,
+        );
 
     to_json_string(&result)
 }
@@ -326,7 +334,8 @@ pub unsafe extern "C" fn rssn_json_graph_topological_sort(
         | None => return std::ptr::null_mut(),
     };
 
-    let result = topological_sort(&graph);
+    let result =
+        topological_sort(&graph);
 
     to_json_string(&result)
 }

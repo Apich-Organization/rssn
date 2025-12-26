@@ -14,7 +14,9 @@ pub struct ExprPair {
 /// Calculates the Lorentz factor.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_lorentz_factor(velocity : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_lorentz_factor(
+    velocity : *const Expr
+) -> *mut Expr {
 
     if velocity.is_null() {
 
@@ -22,7 +24,9 @@ pub unsafe extern "C" fn rssn_lorentz_factor(velocity : *const Expr) -> *mut Exp
     }
 
     Box::into_raw(Box::new(
-        relativity::lorentz_factor(&*velocity),
+        relativity::lorentz_factor(
+            &*velocity,
+        ),
     ))
 }
 
@@ -35,26 +39,37 @@ pub unsafe extern "C" fn rssn_lorentz_transformation_x(
     v : *const Expr,
 ) -> ExprPair {
 
-    if x.is_null() || t.is_null() || v.is_null() {
+    if x.is_null()
+        || t.is_null()
+        || v.is_null()
+    {
 
         return ExprPair {
-            first : std::ptr::null_mut(),
-            second : std::ptr::null_mut(),
+            first : std::ptr::null_mut(
+            ),
+            second : std::ptr::null_mut(
+            ),
         };
     }
 
     let (xp, tp) = relativity::lorentz_transformation_x(&*x, &*t, &*v);
 
     ExprPair {
-        first : Box::into_raw(Box::new(xp)),
-        second : Box::into_raw(Box::new(tp)),
+        first : Box::into_raw(
+            Box::new(xp),
+        ),
+        second : Box::into_raw(
+            Box::new(tp),
+        ),
     }
 }
 
 /// Calculates mass-energy equivalence.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_mass_energy_equivalence(mass : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_mass_energy_equivalence(
+    mass : *const Expr
+) -> *mut Expr {
 
     if mass.is_null() {
 
@@ -69,7 +84,9 @@ pub unsafe extern "C" fn rssn_mass_energy_equivalence(mass : *const Expr) -> *mu
 /// Calculates Schwarzschild radius.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_schwarzschild_radius(mass : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_schwarzschild_radius(
+    mass : *const Expr
+) -> *mut Expr {
 
     if mass.is_null() {
 

@@ -16,7 +16,13 @@ use serde::Serialize;
 use crate::numerical::real_roots;
 
 /// Represents a polynomial with f64 coefficients for numerical operations.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Polynomial {
     pub coeffs : Vec<f64>,
@@ -25,8 +31,11 @@ pub struct Polynomial {
 impl Polynomial {
     /// Creates a new `Polynomial` from coefficients (highest degree first).
 
-    #[must_use] 
-    pub const fn new(coeffs : Vec<f64>) -> Self {
+    #[must_use]
+
+    pub const fn new(
+        coeffs : Vec<f64>
+    ) -> Self {
 
         Self {
             coeffs,
@@ -70,32 +79,48 @@ impl Polynomial {
     /// A `Result` containing a `Vec<f64>` of the real roots found, or an error string
     /// if root isolation or refinement fails.
 
-    pub fn find_roots(&self) -> Result<Vec<f64>, String> {
+    pub fn find_roots(
+        &self
+    ) -> Result<Vec<f64>, String> {
 
-        let derivative = self.derivative();
+        let derivative =
+            self.derivative();
 
         let isolating_intervals = real_roots::isolate_real_roots(self, 1e-9)?;
 
         let mut roots = Vec::new();
 
-        for (a, b) in isolating_intervals {
+        for (a, b) in
+            isolating_intervals
+        {
 
-            let mut guess = f64::midpoint(a, b);
+            let mut guess =
+                f64::midpoint(a, b);
 
             for _ in 0 .. 30 {
 
-                let f_val = self.eval(guess);
+                let f_val =
+                    self.eval(guess);
 
-                let f_prime_val = derivative.eval(guess);
+                let f_prime_val =
+                    derivative
+                        .eval(guess);
 
-                if f_prime_val.abs() < 1e-12 {
+                if f_prime_val.abs()
+                    < 1e-12
+                {
 
                     break;
                 }
 
-                let next_guess = guess - f_val / f_prime_val;
+                let next_guess = guess
+                    - f_val
+                        / f_prime_val;
 
-                if (next_guess - guess).abs() < 1e-12 {
+                if (next_guess - guess)
+                    .abs()
+                    < 1e-12
+                {
 
                     guess = next_guess;
 
@@ -129,9 +154,13 @@ impl Polynomial {
             };
         }
 
-        let mut new_coeffs = Vec::with_capacity(self.coeffs.len() - 1);
+        let mut new_coeffs =
+            Vec::with_capacity(
+                self.coeffs.len() - 1,
+            );
 
-        let n = (self.coeffs.len() - 1) as f64;
+        let n = (self.coeffs.len() - 1)
+            as f64;
 
         for (i, &c) in self
             .coeffs
@@ -140,7 +169,9 @@ impl Polynomial {
             .take(self.coeffs.len() - 1)
         {
 
-            new_coeffs.push(c * (n - i as f64));
+            new_coeffs.push(
+                c * (n - i as f64),
+            );
         }
 
         Self {
@@ -164,23 +195,41 @@ impl Polynomial {
         divisor : &Self,
     ) -> (Self, Self) {
 
-        let mut quotient = vec![0.0; self.coeffs.len()];
+        let mut quotient =
+            vec![
+                0.0;
+                self.coeffs.len()
+            ];
 
-        let divisor_lead = divisor.coeffs[0];
+        let divisor_lead =
+            divisor.coeffs[0];
 
-        while self.coeffs.len() >= divisor.coeffs.len() {
+        while self.coeffs.len()
+            >= divisor.coeffs.len()
+        {
 
-            let lead_coeff = self.coeffs[0];
+            let lead_coeff =
+                self.coeffs[0];
 
-            let q_coeff = lead_coeff / divisor_lead;
+            let q_coeff = lead_coeff
+                / divisor_lead;
 
-            let deg_diff = self.coeffs.len() - divisor.coeffs.len();
+            let deg_diff = self
+                .coeffs
+                .len()
+                - divisor.coeffs.len();
 
-            quotient[deg_diff] = q_coeff;
+            quotient[deg_diff] =
+                q_coeff;
 
-            for i in 0 .. divisor.coeffs.len() {
+            for i in 0 .. divisor
+                .coeffs
+                .len()
+            {
 
-                self.coeffs[i] -= divisor.coeffs[i] * q_coeff;
+                self.coeffs[i] -=
+                    divisor.coeffs[i]
+                        * q_coeff;
             }
 
             self.coeffs
@@ -198,7 +247,9 @@ impl Polynomial {
     /// Returns the degree of the polynomial.
     #[must_use]
 
-    pub const fn degree(&self) -> usize {
+    pub const fn degree(
+        &self
+    ) -> usize {
 
         if self
             .coeffs
@@ -239,7 +290,10 @@ impl Polynomial {
             };
         }
 
-        let mut new_coeffs = Vec::with_capacity(self.coeffs.len() + 1);
+        let mut new_coeffs =
+            Vec::with_capacity(
+                self.coeffs.len() + 1,
+            );
 
         let d = self.degree() as f64;
 
@@ -249,7 +303,10 @@ impl Polynomial {
             .enumerate()
         {
 
-            new_coeffs.push(c / (d - i as f64 + 1.0));
+            new_coeffs.push(
+                c / (d - i as f64
+                    + 1.0),
+            );
         }
 
         new_coeffs.push(0.0);
@@ -273,11 +330,14 @@ impl Add for Polynomial {
             .len()
             .max(rhs.coeffs.len());
 
-        let mut new_coeffs = vec![0.0; max_len];
+        let mut new_coeffs =
+            vec![0.0; max_len];
 
-        let self_pad = max_len - self.coeffs.len();
+        let self_pad =
+            max_len - self.coeffs.len();
 
-        let rhs_pad = max_len - rhs.coeffs.len();
+        let rhs_pad =
+            max_len - rhs.coeffs.len();
 
         for (i, var) in new_coeffs
             .iter_mut()
@@ -287,7 +347,8 @@ impl Add for Polynomial {
 
             let c1 = if i >= self_pad {
 
-                self.coeffs[i - self_pad]
+                self.coeffs
+                    [i - self_pad]
             } else {
 
                 0.0
@@ -323,11 +384,14 @@ impl Sub for Polynomial {
             .len()
             .max(rhs.coeffs.len());
 
-        let mut new_coeffs = vec![0.0; max_len];
+        let mut new_coeffs =
+            vec![0.0; max_len];
 
-        let self_pad = max_len - self.coeffs.len();
+        let self_pad =
+            max_len - self.coeffs.len();
 
-        let rhs_pad = max_len - rhs.coeffs.len();
+        let rhs_pad =
+            max_len - rhs.coeffs.len();
 
         for (i, var) in new_coeffs
             .iter_mut()
@@ -337,7 +401,8 @@ impl Sub for Polynomial {
 
             let c1 = if i >= self_pad {
 
-                self.coeffs[i - self_pad]
+                self.coeffs
+                    [i - self_pad]
             } else {
 
                 0.0
@@ -381,7 +446,13 @@ impl Mul for Polynomial {
             };
         }
 
-        let mut new_coeffs = vec![0.0; self.coeffs.len() + rhs.coeffs.len() - 1];
+        let mut new_coeffs =
+            vec![
+                0.0;
+                self.coeffs.len()
+                    + rhs.coeffs.len()
+                    - 1
+            ];
 
         for (i, &c1) in self
             .coeffs
@@ -395,7 +466,8 @@ impl Mul for Polynomial {
                 .enumerate()
             {
 
-                new_coeffs[i + j] += c1 * c2;
+                new_coeffs[i + j] +=
+                    c1 * c2;
             }
         }
 
@@ -466,7 +538,9 @@ impl Polynomial {
 
         if rhs == 0.0 {
 
-            return Err("Division by zero scalar".to_string());
+            return Err("Division by \
+                        zero scalar"
+                .to_string());
         }
 
         let new_coeffs = self

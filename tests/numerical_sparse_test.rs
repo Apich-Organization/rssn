@@ -50,7 +50,12 @@ fn test_sparse_basic() {
         (2, 2, 3.0),
     ];
 
-    let mat = numerical_csr_from_triplets(3, 3, &triplets);
+    let mat =
+        numerical_csr_from_triplets(
+            3,
+            3,
+            &triplets,
+        );
 
     assert_eq!(mat.rows(), 3);
 
@@ -69,11 +74,19 @@ fn test_sparse_spmv() {
         (1, 1, 3.0),
     ];
 
-    let mat = numerical_csr_from_triplets(3, 3, &triplets);
+    let mat =
+        numerical_csr_from_triplets(
+            3,
+            3,
+            &triplets,
+        );
 
     let v = vec![1.0, 2.0, 3.0];
 
-    let res = numerical_sp_mat_vec_mul(&mat, &v).unwrap();
+    let res = numerical_sp_mat_vec_mul(
+        &mat, &v,
+    )
+    .unwrap();
 
     assert_eq!(
         res,
@@ -92,9 +105,15 @@ fn test_sparse_solve_cg() {
         (1, 1, 3.0),
     ];
 
-    let a = numerical_csr_from_triplets(2, 2, &triplets);
+    let a = numerical_csr_from_triplets(
+        2,
+        2,
+        &triplets,
+    );
 
-    let b = Array1::from_vec(vec![1.0, 2.0]);
+    let b = Array1::from_vec(vec![
+        1.0, 2.0,
+    ]);
 
     let res = numerical_solve_conjugate_gradient(
         &a, &b, None, 100, 1e-10,
@@ -124,7 +143,12 @@ fn test_sparse_trace_norm() {
         (2, 2, 3.0),
     ];
 
-    let mat = numerical_csr_from_triplets(3, 3, &triplets);
+    let mat =
+        numerical_csr_from_triplets(
+            3,
+            3,
+            &triplets,
+        );
 
     assert_eq!(
         numerical_trace(&mat).unwrap(),
@@ -156,19 +180,39 @@ fn test_sparse_predicates() {
         (1, 1, 2.0),
     ];
 
-    let mat = numerical_csr_from_triplets(2, 2, &triplets);
+    let mat =
+        numerical_csr_from_triplets(
+            2,
+            2,
+            &triplets,
+        );
 
-    assert!(numerical_is_symmetric(&mat, 1e-9));
+    assert!(
+        numerical_is_symmetric(
+            &mat, 1e-9
+        )
+    );
 
-    assert!(numerical_is_diagonal(&mat));
+    assert!(
+        numerical_is_diagonal(&mat)
+    );
 
     let t2 = vec![(0, 1, 1.0)];
 
-    let m2 = numerical_csr_from_triplets(2, 2, &t2);
+    let m2 =
+        numerical_csr_from_triplets(
+            2, 2, &t2,
+        );
 
-    assert!(!numerical_is_symmetric(&m2, 1e-9));
+    assert!(
+        !numerical_is_symmetric(
+            &m2, 1e-9
+        )
+    );
 
-    assert!(!numerical_is_diagonal(&m2));
+    assert!(
+        !numerical_is_diagonal(&m2)
+    );
 }
 
 #[test]
@@ -180,11 +224,18 @@ fn test_sparse_data_serde() {
         (1, 2, 2.0),
     ];
 
-    let mat = numerical_csr_from_triplets(3, 3, &triplets);
+    let mat =
+        numerical_csr_from_triplets(
+            3,
+            3,
+            &triplets,
+        );
 
     let data = numerical_SparseMatrixData::from(&mat);
 
-    let json = serde_json::to_string(&data).unwrap();
+    let json =
+        serde_json::to_string(&data)
+            .unwrap();
 
     let decoded : numerical_SparseMatrixData = serde_json::from_str(&json).unwrap();
 

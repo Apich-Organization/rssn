@@ -5,19 +5,33 @@ use vergen_gitcl::GitclBuilder;
 use vergen_gitcl::RustcBuilder;
 use vergen_gitcl::SysinfoBuilder;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<
+    (),
+    Box<dyn std::error::Error>,
+> {
 
-    let mut emitter = Emitter::default();
+    let mut emitter =
+        Emitter::default();
 
-    emitter.add_instructions(&BuildBuilder::all_build()?)?;
+    emitter.add_instructions(
+        &BuildBuilder::all_build()?,
+    )?;
 
-    emitter.add_instructions(&CargoBuilder::all_cargo()?)?;
+    emitter.add_instructions(
+        &CargoBuilder::all_cargo()?,
+    )?;
 
-    emitter.add_instructions(&GitclBuilder::all_git()?)?;
+    emitter.add_instructions(
+        &GitclBuilder::all_git()?,
+    )?;
 
-    emitter.add_instructions(&RustcBuilder::all_rustc()?)?;
+    emitter.add_instructions(
+        &RustcBuilder::all_rustc()?,
+    )?;
 
-    emitter.add_instructions(&SysinfoBuilder::all_sysinfo()?)?;
+    emitter.add_instructions(
+        &SysinfoBuilder::all_sysinfo()?,
+    )?;
 
     emitter.emit()?;
 
@@ -27,22 +41,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
+fn generate_headers() -> Result<
+    (),
+    Box<dyn std::error::Error>,
+> {
 
-    let crate_dir = std::env::var("CARGO_MANIFEST_DIR")?;
+    let crate_dir = std::env::var(
+        "CARGO_MANIFEST_DIR",
+    )?;
 
     // Generate C header using cbindgen.toml
-    match cbindgen::generate(&crate_dir) {
+    match cbindgen::generate(&crate_dir)
+    {
         | Ok(bindings) => {
 
-            bindings.write_to_file("rssn.h");
+            bindings.write_to_file(
+                "rssn.h",
+            );
 
             println!("cargo:warning=Generated rssn.h");
         },
         | Err(e) => {
 
             println!(
-                "cargo:warning=Failed to generate C bindings: {:?}",
+                "cargo:warning=Failed \
+                 to generate C \
+                 bindings: {:?}",
                 e
             );
 
@@ -52,9 +76,15 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
 
     // Generate C++ header with custom config
     let cpp_config = cbindgen::Config {
-        language : cbindgen::Language::Cxx,
-        namespace : Some("rssn".to_string()),
-        ..cbindgen::Config::from_file("cbindgen.toml").unwrap_or_default()
+        language:
+            cbindgen::Language::Cxx,
+        namespace : Some(
+            "rssn".to_string(),
+        ),
+        ..cbindgen::Config::from_file(
+            "cbindgen.toml",
+        )
+        .unwrap_or_default()
     };
 
     match cbindgen::Builder::new()
@@ -64,14 +94,18 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
     {
         | Ok(bindings) => {
 
-            bindings.write_to_file("rssn.hpp");
+            bindings.write_to_file(
+                "rssn.hpp",
+            );
 
             println!("cargo:warning=Generated rssn.hpp");
         },
         | Err(e) => {
 
             println!(
-                "cargo:warning=Failed to generate C++ bindings: {:?}",
+                "cargo:warning=Failed \
+                 to generate C++ \
+                 bindings: {:?}",
                 e
             );
 
@@ -79,7 +113,9 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
         },
     }
 
-    println!("cargo:rerun-if-changed=src/");
+    println!(
+        "cargo:rerun-if-changed=src/"
+    );
 
     println!("cargo:rerun-if-changed=cbindgen.toml");
 

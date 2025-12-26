@@ -154,7 +154,9 @@ pub fn gamma_numerical(x : f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn ln_gamma_numerical(x : f64) -> f64 {
+pub fn ln_gamma_numerical(
+    x : f64
+) -> f64 {
 
     ln_gamma(x)
 }
@@ -185,7 +187,9 @@ pub fn ln_gamma_numerical(x : f64) -> f64 {
 /// ```
 #[must_use]
 
-pub fn digamma_numerical(x : f64) -> f64 {
+pub fn digamma_numerical(
+    x : f64
+) -> f64 {
 
     digamma(x)
 }
@@ -280,7 +284,9 @@ pub fn regularized_incomplete_beta(
     x : f64,
 ) -> f64 {
 
-    statrs::function::beta::beta_reg(a, b, x)
+    statrs::function::beta::beta_reg(
+        a, b, x,
+    )
 }
 
 // ============================================================================
@@ -397,7 +403,9 @@ pub fn inverse_erf(x : f64) -> f64 {
         .ln())
     .abs();
 
-    let term1 = 2.0 / (std::f64::consts::PI * a) + ln_term / 2.0;
+    let term1 = 2.0
+        / (std::f64::consts::PI * a)
+        + ln_term / 2.0;
 
     let sign = if x < 0.0 {
 
@@ -407,12 +415,19 @@ pub fn inverse_erf(x : f64) -> f64 {
         1.0
     };
 
-    let approx =
-        sign * (term1.sqrt() - (2.0 / (std::f64::consts::PI * a) + ln_term / 2.0).sqrt()).sqrt();
+    let approx = sign
+        * (term1.sqrt()
+            - (2.0
+                / (std::f64::consts::PI
+                    * a)
+                + ln_term / 2.0)
+                .sqrt())
+        .sqrt();
 
     // Refine with Newton-Raphson: y_{n+1} = y_n - (erf(y_n) - x) / erf'(y_n)
     // erf'(x) = 2/sqrt(pi) * exp(-x^2)
-    let two_over_sqrt_pi = 2.0 / std::f64::consts::PI.sqrt();
+    let two_over_sqrt_pi = 2.0
+        / std::f64::consts::PI.sqrt();
 
     let mut y = approx;
 
@@ -420,7 +435,9 @@ pub fn inverse_erf(x : f64) -> f64 {
 
         let erf_y = erf(y);
 
-        let derivative = two_over_sqrt_pi * (-y * y).exp();
+        let derivative =
+            two_over_sqrt_pi
+                * (-y * y).exp();
 
         if derivative.abs() < 1e-15 {
 
@@ -532,7 +549,9 @@ pub fn factorial(n : u64) -> u64 {
 /// ```
 #[must_use]
 
-pub const fn double_factorial(n : u64) -> u64 {
+pub const fn double_factorial(
+    n : u64
+) -> u64 {
 
     if n <= 1 {
 
@@ -608,7 +627,8 @@ pub fn binomial(
 
     for i in 0 .. k {
 
-        result = result * (n - i) / (i + 1);
+        result =
+            result * (n - i) / (i + 1);
     }
 
     result
@@ -740,7 +760,14 @@ pub fn bessel_j0(x : f64) -> f64 {
 
         let ans2 = 57568490411.0
             + y * (1029532985.0
-                + y * (9494680.718 + y * y.mul_add(y.mul_add(1.0, 267.8532712), 59272.64853)));
+                + y * (9494680.718
+                    + y * y.mul_add(
+                        y.mul_add(
+                            1.0,
+                            267.8532712,
+                        ),
+                        59272.64853,
+                    )));
 
         ans1 / ans2
     } else {
@@ -805,7 +832,14 @@ pub fn bessel_j1(x : f64) -> f64 {
 
         let ans2 = 144725228442.0
             + y * (2300535178.0
-                + y * (18583304.74 + y * y.mul_add(y.mul_add(1.0, 376.9991397), 99447.43394)));
+                + y * (18583304.74
+                    + y * y.mul_add(
+                        y.mul_add(
+                            1.0,
+                            376.9991397,
+                        ),
+                        99447.43394,
+                    )));
 
         ans1 / ans2
     } else {
@@ -823,7 +857,8 @@ pub fn bessel_j1(x : f64) -> f64 {
             + y * (-0.2002690873e-3
                 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
 
-        let result = (0.636619772 / ax).sqrt()
+        let result = (0.636619772 / ax)
+            .sqrt()
             * xx.cos().mul_add(
                 ans1,
                 -(z * xx.sin() * ans2),
@@ -871,9 +906,20 @@ pub fn bessel_y0(x : f64) -> f64 {
 
         let ans2 = 40076544269.0
             + y * (745249964.8
-                + y * (7189466.438 + y * y.mul_add(y.mul_add(1.0, 226.1030244), 47447.26470)));
+                + y * (7189466.438
+                    + y * y.mul_add(
+                        y.mul_add(
+                            1.0,
+                            226.1030244,
+                        ),
+                        47447.26470,
+                    )));
 
-        (0.636619772 * bessel_j0(x)).mul_add(x.ln(), ans1 / ans2)
+        (0.636619772 * bessel_j0(x))
+            .mul_add(
+                x.ln(),
+                ans1 / ans2,
+            )
     } else {
 
         let z = 8.0 / x;
@@ -932,12 +978,22 @@ pub fn bessel_y1(x : f64) -> f64 {
         let ans2 = 24909857500000.0
             + y * (424441966400.0
                 + y * (3733650367.0
-                    + y * y.mul_add(y.mul_add(
-                            354.9632885 + y,
+                    + y * y.mul_add(
+                        y.mul_add(
+                            354.9632885
+                                + y,
                             102042.605,
-                        ), 22459040.02)));
+                        ),
+                        22459040.02,
+                    )));
 
-        0.636619772f64.mul_add(bessel_j1(x).mul_add(x.ln(), -(1.0 / x)), ans1 / ans2)
+        0.636619772f64.mul_add(
+            bessel_j1(x).mul_add(
+                x.ln(),
+                -(1.0 / x),
+            ),
+            ans1 / ans2,
+        )
     } else {
 
         let z = 8.0 / x;
@@ -1058,7 +1114,8 @@ pub fn bessel_i1(x : f64) -> f64 {
                             + y * (0.02282967
                                 + y * (-0.02895312 + y * (0.01787654 - y * 0.00420059)))))));
 
-        let result = ans * ax.exp() / ax.sqrt();
+        let result =
+            ans * ax.exp() / ax.sqrt();
 
         if x < 0.0 {
 
@@ -1178,7 +1235,8 @@ pub fn sinc(x : f64) -> f64 {
         1.0
     } else {
 
-        let pi_x = std::f64::consts::PI * x;
+        let pi_x =
+            std::f64::consts::PI * x;
 
         pi_x.sin() / pi_x
     }
@@ -1224,7 +1282,8 @@ pub fn zeta(s : f64) -> f64 {
     // Direct summation for first n_terms
     for n in 1 ..= n_terms {
 
-        sum += 1.0 / f64::from(n).powf(s);
+        sum +=
+            1.0 / f64::from(n).powf(s);
     }
 
     // Euler-Maclaurin correction
@@ -1302,7 +1361,9 @@ pub fn regularized_gamma_p(
     x : f64,
 ) -> f64 {
 
-    statrs::function::gamma::gamma_lr(a, x)
+    statrs::function::gamma::gamma_lr(
+        a, x,
+    )
 }
 
 /// Computes the regularized upper incomplete gamma function, Q(a, x).
@@ -1343,5 +1404,7 @@ pub fn regularized_gamma_q(
     x : f64,
 ) -> f64 {
 
-    statrs::function::gamma::gamma_ur(a, x)
+    statrs::function::gamma::gamma_ur(
+        a, x,
+    )
 }

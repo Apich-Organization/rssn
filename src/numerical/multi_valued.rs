@@ -43,17 +43,30 @@ pub fn newton_method_complex(
 
         vars.insert("z".to_string(), z);
 
-        let f_val = match eval_complex_expr(f, &vars) {
-            | Ok(val) => val,
-            | Err(_) => return None,
-        };
+        let f_val =
+            match eval_complex_expr(
+                f, &vars,
+            ) {
+                | Ok(val) => val,
+                | Err(_) => {
+                    return None
+                },
+            };
 
-        let f_prime_val = match eval_complex_expr(f_prime, &vars) {
-            | Ok(val) => val,
-            | Err(_) => return None,
-        };
+        let f_prime_val =
+            match eval_complex_expr(
+                f_prime,
+                &vars,
+            ) {
+                | Ok(val) => val,
+                | Err(_) => {
+                    return None
+                },
+            };
 
-        if f_prime_val.norm_sqr() < 1e-12 {
+        if f_prime_val.norm_sqr()
+            < 1e-12
+        {
 
             return None;
         }
@@ -73,7 +86,8 @@ pub fn newton_method_complex(
 
 /// Computes the k-th branch of the complex logarithm.
 
-#[must_use] 
+#[must_use]
+
 pub fn complex_log_k(
     z : Complex<f64>,
     k : i32,
@@ -81,14 +95,18 @@ pub fn complex_log_k(
 
     let ln_r = z.norm().ln();
 
-    let theta = z.arg() + 2.0 * std::f64::consts::PI * f64::from(k);
+    let theta = z.arg()
+        + 2.0
+            * std::f64::consts::PI
+            * f64::from(k);
 
     Complex::new(ln_r, theta)
 }
 
 /// Computes the k-th branch of the complex square root.
 
-#[must_use] 
+#[must_use]
+
 pub fn complex_sqrt_k(
     z : Complex<f64>,
     k : i32,
@@ -96,7 +114,11 @@ pub fn complex_sqrt_k(
 
     let r_sqrt = z.norm().sqrt();
 
-    let theta = (z.arg() + 2.0 * std::f64::consts::PI * f64::from(k)) / 2.0;
+    let theta = (z.arg()
+        + 2.0
+            * std::f64::consts::PI
+            * f64::from(k))
+        / 2.0;
 
     Complex::new(
         r_sqrt * theta.cos(),
@@ -106,7 +128,8 @@ pub fn complex_sqrt_k(
 
 /// Computes the k-th branch of the complex power z^w.
 
-#[must_use] 
+#[must_use]
+
 pub fn complex_pow_k(
     z : Complex<f64>,
     w : Complex<f64>,
@@ -120,7 +143,8 @@ pub fn complex_pow_k(
 
 /// Computes the k-th branch of the complex n-th root.
 
-#[must_use] 
+#[must_use]
+
 pub fn complex_nth_root_k(
     z : Complex<f64>,
     n : u32,
@@ -131,7 +155,11 @@ pub fn complex_nth_root_k(
         .norm()
         .powf(1.0 / f64::from(n));
 
-    let theta = (z.arg() + 2.0 * std::f64::consts::PI * f64::from(k)) / f64::from(n);
+    let theta = (z.arg()
+        + 2.0
+            * std::f64::consts::PI
+            * f64::from(k))
+        / f64::from(n);
 
     Complex::new(
         r_root * theta.cos(),
@@ -141,7 +169,8 @@ pub fn complex_nth_root_k(
 
 /// Computes the k-th branch of the complex arcsine.
 
-#[must_use] 
+#[must_use]
+
 pub fn complex_arcsin_k(
     z : Complex<f64>,
     k : i32,
@@ -151,7 +180,10 @@ pub fn complex_arcsin_k(
 
     let principal = z.asin();
 
-    let k_pi = Complex::new(f64::from(k) * pi, 0.0);
+    let k_pi = Complex::new(
+        f64::from(k) * pi,
+        0.0,
+    );
 
     if k % 2 == 0 {
 
@@ -165,7 +197,8 @@ pub fn complex_arcsin_k(
 /// Computes the k-th branch of the complex arccosine.
 /// s is +1 or -1.
 
-#[must_use] 
+#[must_use]
+
 pub fn complex_arccos_k(
     z : Complex<f64>,
     k : i32,
@@ -192,7 +225,8 @@ pub fn complex_arccos_k(
 
 /// Computes the k-th branch of the complex arctangent.
 
-#[must_use] 
+#[must_use]
+
 pub fn complex_arctan_k(
     z : Complex<f64>,
     k : i32,
@@ -202,7 +236,10 @@ pub fn complex_arctan_k(
 
     let principal = z.atan();
 
-    let k_pi = Complex::new(f64::from(k) * pi, 0.0);
+    let k_pi = Complex::new(
+        f64::from(k) * pi,
+        0.0,
+    );
 
     k_pi + principal
 }

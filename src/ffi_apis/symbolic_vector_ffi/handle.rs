@@ -62,7 +62,9 @@ pub extern "C" fn rssn_vector_cross_handle(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_vector_normalize_handle(v : *const Vector) -> *mut Vector {
+pub extern "C" fn rssn_vector_normalize_handle(
+    v : *const Vector
+) -> *mut Vector {
 
     let v_ref = unsafe {
 

@@ -15,7 +15,9 @@ pub extern "C" fn rssn_sturm_sequence_handle(
     var_ptr : *const c_char,
 ) -> *mut Vec<Expr> {
 
-    if expr_ptr.is_null() || var_ptr.is_null() {
+    if expr_ptr.is_null()
+        || var_ptr.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -24,7 +26,8 @@ pub extern "C" fn rssn_sturm_sequence_handle(
 
         let expr = &*expr_ptr;
 
-        let var_cstr = CStr::from_ptr(var_ptr);
+        let var_cstr =
+            CStr::from_ptr(var_ptr);
 
         let var_str = match var_cstr.to_str() {
             | Ok(s) => s,
@@ -35,17 +38,27 @@ pub extern "C" fn rssn_sturm_sequence_handle(
         // Note: expr_to_sparse_poly requires a list of variables if we want to be precise,
         // but here we are treating it as a univariate polynomial in `var`.
         // The implementation in integration.rs used `expr_to_sparse_poly(expr, &[var])`.
-        let poly = expr_to_sparse_poly(expr, &[var_str]);
+        let poly = expr_to_sparse_poly(
+            expr,
+            &[var_str],
+        );
 
-        let seq = sturm_sequence(&poly, var_str);
+        let seq = sturm_sequence(
+            &poly,
+            var_str,
+        );
 
         // Convert back to Exprs
         let expr_seq : Vec<Expr> = seq
             .into_iter()
-            .map(|p| sparse_poly_to_expr(&p))
+            .map(|p| {
+                sparse_poly_to_expr(&p)
+            })
             .collect();
 
-        Box::into_raw(Box::new(expr_seq))
+        Box::into_raw(Box::new(
+            expr_seq,
+        ))
     }
 }
 
@@ -59,7 +72,9 @@ pub extern "C" fn rssn_count_real_roots_in_interval_handle(
     b : c_double,
 ) -> i64 {
 
-    if expr_ptr.is_null() || var_ptr.is_null() {
+    if expr_ptr.is_null()
+        || var_ptr.is_null()
+    {
 
         return -1;
     }
@@ -68,14 +83,19 @@ pub extern "C" fn rssn_count_real_roots_in_interval_handle(
 
         let expr = &*expr_ptr;
 
-        let var_cstr = CStr::from_ptr(var_ptr);
+        let var_cstr =
+            CStr::from_ptr(var_ptr);
 
-        let var_str = match var_cstr.to_str() {
-            | Ok(s) => s,
-            | Err(_) => return -1,
-        };
+        let var_str =
+            match var_cstr.to_str() {
+                | Ok(s) => s,
+                | Err(_) => return -1,
+            };
 
-        let poly = expr_to_sparse_poly(expr, &[var_str]);
+        let poly = expr_to_sparse_poly(
+            expr,
+            &[var_str],
+        );
 
         match count_real_roots_in_interval(&poly, var_str, a, b) {
             | Ok(count) => count as i64,
@@ -94,7 +114,9 @@ pub extern "C" fn rssn_isolate_real_roots_handle(
     precision : c_double,
 ) -> *mut Vec<(f64, f64)> {
 
-    if expr_ptr.is_null() || var_ptr.is_null() {
+    if expr_ptr.is_null()
+        || var_ptr.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -103,22 +125,32 @@ pub extern "C" fn rssn_isolate_real_roots_handle(
 
         let expr = &*expr_ptr;
 
-        let var_cstr = CStr::from_ptr(var_ptr);
+        let var_cstr =
+            CStr::from_ptr(var_ptr);
 
         let var_str = match var_cstr.to_str() {
             | Ok(s) => s,
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let poly = expr_to_sparse_poly(expr, &[var_str]);
+        let poly = expr_to_sparse_poly(
+            expr,
+            &[var_str],
+        );
 
         match isolate_real_roots(
             &poly,
             var_str,
             precision,
         ) {
-            | Ok(roots) => Box::into_raw(Box::new(roots)),
-            | Err(_) => std::ptr::null_mut(),
+            | Ok(roots) => {
+                Box::into_raw(Box::new(
+                    roots,
+                ))
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -126,7 +158,9 @@ pub extern "C" fn rssn_isolate_real_roots_handle(
 /// Frees a Vec<Expr> handle
 #[no_mangle]
 
-pub extern "C" fn rssn_free_expr_vec_handle(ptr : *mut Vec<Expr>) {
+pub extern "C" fn rssn_free_expr_vec_handle(
+    ptr : *mut Vec<Expr>
+) {
 
     if !ptr.is_null() {
 
@@ -140,7 +174,9 @@ pub extern "C" fn rssn_free_expr_vec_handle(ptr : *mut Vec<Expr>) {
 /// Frees a Vec<(f64, f64)> handle
 #[no_mangle]
 
-pub extern "C" fn rssn_free_interval_vec_handle(ptr : *mut Vec<(f64, f64)>) {
+pub extern "C" fn rssn_free_interval_vec_handle(
+    ptr : *mut Vec<(f64, f64)>
+) {
 
     if !ptr.is_null() {
 

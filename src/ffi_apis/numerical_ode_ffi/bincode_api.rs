@@ -25,7 +25,9 @@ struct OdeInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ode_solve_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_ode_solve_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : OdeInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,

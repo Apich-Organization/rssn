@@ -34,19 +34,36 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
         return -1;
     }
 
-    let points_x_slice = std::slice::from_raw_parts(points_x, n);
+    let points_x_slice =
+        std::slice::from_raw_parts(
+            points_x,
+            n,
+        );
 
-    let points_y_slice = std::slice::from_raw_parts(points_y, n);
+    let points_y_slice =
+        std::slice::from_raw_parts(
+            points_y,
+            n,
+        );
 
-    let bcs_type_slice = std::slice::from_raw_parts(bcs_type, n);
+    let bcs_type_slice =
+        std::slice::from_raw_parts(
+            bcs_type,
+            n,
+        );
 
-    let bcs_value_slice = std::slice::from_raw_parts(bcs_value, n);
+    let bcs_value_slice =
+        std::slice::from_raw_parts(
+            bcs_value,
+            n,
+        );
 
-    let points : Vec<(f64, f64)> = points_x_slice
-        .iter()
-        .zip(points_y_slice.iter())
-        .map(|(&x, &y)| (x, y))
-        .collect();
+    let points : Vec<(f64, f64)> =
+        points_x_slice
+            .iter()
+            .zip(points_y_slice.iter())
+            .map(|(&x, &y)| (x, y))
+            .collect();
 
     let bcs : Vec<BoundaryCondition<f64>> = bcs_type_slice
         .iter()

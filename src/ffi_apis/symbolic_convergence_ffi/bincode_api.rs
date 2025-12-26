@@ -9,13 +9,18 @@ pub extern "C" fn rssn_bincode_analyze_convergence(
     var_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let term : Option<Expr> = from_bincode_buffer(&term_buf);
+    let term : Option<Expr> =
+        from_bincode_buffer(&term_buf);
 
-    let var : Option<String> = from_bincode_buffer(&var_buf);
+    let var : Option<String> =
+        from_bincode_buffer(&var_buf);
 
-    if let (Some(t), Some(v)) = (term, var) {
+    if let (Some(t), Some(v)) =
+        (term, var)
+    {
 
-        let result = analyze_convergence(&t, &v);
+        let result =
+            analyze_convergence(&t, &v);
 
         to_bincode_buffer(&result)
     } else {

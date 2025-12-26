@@ -27,7 +27,9 @@ struct WaveEquationInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : WaveEquationInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,

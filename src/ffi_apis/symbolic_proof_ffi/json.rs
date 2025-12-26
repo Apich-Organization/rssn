@@ -14,22 +14,33 @@ pub unsafe extern "C" fn rssn_json_verify_equation_solution(
     free_vars_json : *const c_char,
 ) -> bool {
 
-    let equations : Option<Vec<Expr>> = from_json_string(equations_json);
+    let equations : Option<Vec<Expr>> =
+        from_json_string(equations_json);
 
-    let solution : Option<HashMap<String, Expr>> = from_json_string(solution_json);
+    let solution : Option<
+        HashMap<String, Expr>,
+    > = from_json_string(solution_json);
 
-    let free_vars : Option<Vec<String>> = from_json_string(free_vars_json);
+    let free_vars : Option<
+        Vec<String>,
+    > = from_json_string(
+        free_vars_json,
+    );
 
-    if let (Some(eqs), Some(sol), Some(free)) = (
+    if let (
+        Some(eqs),
+        Some(sol),
+        Some(free),
+    ) = (
         equations,
         solution,
         free_vars,
     ) {
 
-        let free_refs : Vec<&str> = free
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+        let free_refs : Vec<&str> =
+            free.iter()
+                .map(|s| s.as_str())
+                .collect();
 
         proof::verify_equation_solution(
             &eqs,
@@ -51,13 +62,24 @@ pub unsafe extern "C" fn rssn_json_verify_indefinite_integral(
     var_json : *const c_char,
 ) -> bool {
 
-    let integrand : Option<Expr> = from_json_string(integrand_json);
+    let integrand : Option<Expr> =
+        from_json_string(
+            integrand_json,
+        );
 
-    let integral_result : Option<Expr> = from_json_string(integral_result_json);
+    let integral_result : Option<Expr> =
+        from_json_string(
+            integral_result_json,
+        );
 
-    let var : Option<String> = from_json_string(var_json);
+    let var : Option<String> =
+        from_json_string(var_json);
 
-    if let (Some(f), Some(int), Some(v)) = (
+    if let (
+        Some(f),
+        Some(int),
+        Some(v),
+    ) = (
         integrand,
         integral_result,
         var,
@@ -78,13 +100,19 @@ pub unsafe extern "C" fn rssn_json_verify_matrix_inverse(
     inverse_json : *const c_char,
 ) -> bool {
 
-    let original : Option<Expr> = from_json_string(original_json);
+    let original : Option<Expr> =
+        from_json_string(original_json);
 
-    let inverse : Option<Expr> = from_json_string(inverse_json);
+    let inverse : Option<Expr> =
+        from_json_string(inverse_json);
 
-    if let (Some(orig), Some(inv)) = (original, inverse) {
+    if let (Some(orig), Some(inv)) =
+        (original, inverse)
+    {
 
-        proof::verify_matrix_inverse(&orig, &inv)
+        proof::verify_matrix_inverse(
+            &orig, &inv,
+        )
     } else {
 
         false

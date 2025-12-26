@@ -76,7 +76,10 @@ fn test_bfs_traversal() {
     assert_eq!(result[0], 0);
 
     // BFS should visit level by level
-    assert!(result[1] == 1 || result[1] == 2);
+    assert!(
+        result[1] == 1
+            || result[1] == 2
+    );
 }
 
 #[test]
@@ -108,7 +111,8 @@ fn test_connected_components() {
     // Isolated node: 5
     g.add_node(5);
 
-    let components = connected_components(&g);
+    let components =
+        connected_components(&g);
 
     assert_eq!(components.len(), 3);
 }
@@ -147,7 +151,8 @@ fn test_is_connected() {
 
 #[test]
 
-fn test_strongly_connected_components() {
+fn test_strongly_connected_components()
+{
 
     let mut g = Graph::new(true);
 
@@ -184,7 +189,10 @@ fn test_strongly_connected_components() {
         Expr::Constant(1.0),
     );
 
-    let sccs = strongly_connected_components(&g);
+    let sccs =
+        strongly_connected_components(
+            &g,
+        );
 
     assert!(sccs.len() >= 2);
 }
@@ -277,7 +285,8 @@ fn test_has_cycle_directed() {
 
 #[test]
 
-fn test_bridges_and_articulation_points() {
+fn test_bridges_and_articulation_points(
+) {
 
     let mut g = Graph::new(false);
 
@@ -349,13 +358,18 @@ fn test_kruskal_mst() {
         .filter_map(|(_, _, w)| {
 
             match w {
-                | Expr::Constant(v) => Some(*v),
+                | Expr::Constant(v) => {
+                    Some(*v)
+                },
                 | _ => None,
             }
         })
         .sum();
 
-    assert!((total_weight - 6.0).abs() < 1e-10);
+    assert!(
+        (total_weight - 6.0).abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -419,7 +433,8 @@ fn test_edmonds_karp_max_flow() {
         Expr::Constant(10.0),
     );
 
-    let flow = edmonds_karp_max_flow(&g, 0, 5);
+    let flow =
+        edmonds_karp_max_flow(&g, 0, 5);
 
     assert!(flow > 0.0);
 }
@@ -456,7 +471,9 @@ fn test_dinic_max_flow() {
 
     let flow = dinic_max_flow(&g, 0, 3);
 
-    assert!((flow - 12.0).abs() < 1e-10);
+    assert!(
+        (flow - 12.0).abs() < 1e-10
+    );
 }
 
 #[test]
@@ -499,7 +516,8 @@ fn test_bellman_ford_symbolic() {
 
     assert!(result.is_ok());
 
-    let (distances, _) = result.unwrap();
+    let (distances, _) =
+        result.unwrap();
 
     assert_eq!(distances.len(), 4);
 
@@ -653,9 +671,14 @@ fn test_bipartite_maximum_matching() {
         Expr::Constant(1.0),
     );
 
-    let partition = vec![0, 0, 0, 1, 1, 1];
+    let partition =
+        vec![0, 0, 0, 1, 1, 1];
 
-    let matching = bipartite_maximum_matching(&g, &partition);
+    let matching =
+        bipartite_maximum_matching(
+            &g,
+            &partition,
+        );
 
     assert!(matching.len() >= 2);
 }
@@ -750,9 +773,11 @@ fn test_symbolic_weights() {
     let mut g = Graph::new(false);
 
     // Use symbolic expressions as weights
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
-    let y = Expr::Variable("y".to_string());
+    let y =
+        Expr::Variable("y".to_string());
 
     g.add_edge(&0, &1, x.clone());
 
@@ -766,7 +791,10 @@ fn test_symbolic_weights() {
     match &edges[0].2 {
         | Expr::Variable(name) => {
 
-            assert!(name == "x" || name == "y")
+            assert!(
+                name == "x"
+                    || name == "y"
+            )
         },
         | _ => {
 
@@ -818,7 +846,8 @@ fn test_min_cost_max_flow() {
         ]),
     );
 
-    let (flow, cost) = min_cost_max_flow(&g, 0, 3);
+    let (flow, cost) =
+        min_cost_max_flow(&g, 0, 3);
 
     assert!(flow > 0.0);
 

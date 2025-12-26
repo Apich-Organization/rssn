@@ -28,14 +28,20 @@ use rustfft::FftPlanner;
 ///
 /// let output = fft(&mut input);
 ///
-/// assert!((output[0].re - 4.0).abs() < 1e-9);
+/// assert!(
+///     (output[0].re - 4.0).abs()
+///         < 1e-9
+/// );
 /// ```
 
-pub fn fft(input : &mut [Complex<f64>]) -> Vec<Complex<f64>> {
+pub fn fft(
+    input : &mut [Complex<f64>]
+) -> Vec<Complex<f64>> {
 
     let mut planner = FftPlanner::new();
 
-    let fft = planner.plan_fft_forward(input.len());
+    let fft = planner
+        .plan_fft_forward(input.len());
 
     let mut buffer = input.to_vec();
 
@@ -145,7 +151,9 @@ pub fn cross_correlation(
 /// * `n` - The number of points in the output window.
 #[must_use]
 
-pub fn hann_window(n : usize) -> Vec<f64> {
+pub fn hann_window(
+    n : usize
+) -> Vec<f64> {
 
     if n == 0 {
 
@@ -158,7 +166,12 @@ pub fn hann_window(n : usize) -> Vec<f64> {
     }
 
     (0 .. n)
-        .map(|i| 0.5 * (1.0 - (2.0 * PI * i as f64 / (n - 1) as f64).cos()))
+        .map(|i| {
+            0.5 * (1.0
+                - (2.0 * PI * i as f64
+                    / (n - 1) as f64)
+                    .cos())
+        })
         .collect()
 }
 
@@ -168,7 +181,9 @@ pub fn hann_window(n : usize) -> Vec<f64> {
 /// * `n` - The number of points in the output window.
 #[must_use]
 
-pub fn hamming_window(n : usize) -> Vec<f64> {
+pub fn hamming_window(
+    n : usize
+) -> Vec<f64> {
 
     if n == 0 {
 
@@ -181,6 +196,13 @@ pub fn hamming_window(n : usize) -> Vec<f64> {
     }
 
     (0 .. n)
-        .map(|i| 0.46f64.mul_add(-(2.0 * PI * i as f64 / (n - 1) as f64).cos(), 0.54))
+        .map(|i| {
+            0.46f64.mul_add(
+                -(2.0 * PI * i as f64
+                    / (n - 1) as f64)
+                    .cos(),
+                0.54,
+            )
+        })
         .collect()
 }

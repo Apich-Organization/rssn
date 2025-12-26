@@ -11,13 +11,16 @@ use rssn::ffi_apis::numerical_transforms_ffi::json;
 
 #[test]
 
-fn test_numerical_transforms_handle_ffi() {
+fn test_numerical_transforms_handle_ffi(
+) {
 
     unsafe {
 
-        let mut re = vec![1.0, 1.0, 0.0, 0.0];
+        let mut re =
+            vec![1.0, 1.0, 0.0, 0.0];
 
-        let mut im = vec![0.0, 0.0, 0.0, 0.0];
+        let mut im =
+            vec![0.0, 0.0, 0.0, 0.0];
 
         // FFT Inplace
         let status = handle::rssn_num_fft_inplace(
@@ -28,11 +31,23 @@ fn test_numerical_transforms_handle_ffi() {
 
         assert_eq!(status, 0);
 
-        assert_approx_eq!(re[0], 2.0f64, 1e-9);
+        assert_approx_eq!(
+            re[0],
+            2.0f64,
+            1e-9
+        );
 
-        assert_approx_eq!(re[1], 1.0f64, 1e-9);
+        assert_approx_eq!(
+            re[1],
+            1.0f64,
+            1e-9
+        );
 
-        assert_approx_eq!(im[1], -1.0f64, 1e-9);
+        assert_approx_eq!(
+            im[1],
+            -1.0f64,
+            1e-9
+        );
 
         // IFFT Inplace
         let status2 = handle::rssn_num_ifft_inplace(
@@ -43,40 +58,67 @@ fn test_numerical_transforms_handle_ffi() {
 
         assert_eq!(status2, 0);
 
-        assert_approx_eq!(re[0], 1.0f64, 1e-9);
+        assert_approx_eq!(
+            re[0],
+            1.0f64,
+            1e-9
+        );
 
-        assert_approx_eq!(re[1], 1.0f64, 1e-9);
+        assert_approx_eq!(
+            re[1],
+            1.0f64,
+            1e-9
+        );
 
-        assert_approx_eq!(re[2], 0.0f64, 1e-9);
+        assert_approx_eq!(
+            re[2],
+            0.0f64,
+            1e-9
+        );
 
-        assert_approx_eq!(re[3], 0.0f64, 1e-9);
+        assert_approx_eq!(
+            re[3],
+            0.0f64,
+            1e-9
+        );
     }
 }
 
 #[test]
 
-fn test_numerical_transforms_json_ffi() {
+fn test_numerical_transforms_json_ffi()
+{
 
     unsafe {
 
         let input_json = r#"{"data": [[1.0, 0.0], [1.0, 0.0], [0.0, 0.0], [0.0, 0.0]]}"#;
 
-        let c_json = CString::new(input_json).unwrap();
+        let c_json =
+            CString::new(input_json)
+                .unwrap();
 
-        let res_ptr = json::rssn_num_fft_json(c_json.as_ptr());
+        let res_ptr =
+            json::rssn_num_fft_json(
+                c_json.as_ptr(),
+            );
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
         println!(
             "JSON Response: {}",
             res_str
         );
 
-        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v : serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         let results = v["ok"]
             .as_array()
@@ -96,7 +138,8 @@ fn test_numerical_transforms_json_ffi() {
 
 #[test]
 
-fn test_numerical_transforms_bincode_ffi() {
+fn test_numerical_transforms_bincode_ffi(
+) {
 
     unsafe {
 
@@ -120,7 +163,8 @@ fn test_numerical_transforms_bincode_ffi() {
             ],
         };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_fft_bincode(buffer);
 
@@ -134,7 +178,13 @@ fn test_numerical_transforms_bincode_ffi() {
             err : Option<E>,
         }
 
-        let res : FfiResult<Vec<Complex<f64>>, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res : FfiResult<
+            Vec<Complex<f64>>,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
         let ok_res = res
             .ok
@@ -147,8 +197,12 @@ fn test_numerical_transforms_bincode_ffi() {
             1e-9
         );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 }

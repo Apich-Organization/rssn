@@ -10,7 +10,8 @@ use crate::compute::state::State;
 /// The caller is responsible for freeing the memory using rssn_state_free.
 #[no_mangle]
 
-pub extern "C" fn rssn_state_new() -> *mut State {
+pub extern "C" fn rssn_state_new(
+) -> *mut State {
 
     Box::into_raw(Box::new(
         State::new(),
@@ -20,7 +21,9 @@ pub extern "C" fn rssn_state_new() -> *mut State {
 /// Frees a State.
 #[no_mangle]
 
-pub extern "C" fn rssn_state_free(state : *mut State) {
+pub extern "C" fn rssn_state_free(
+    state : *mut State
+) {
 
     if state.is_null() {
 
@@ -37,7 +40,9 @@ pub extern "C" fn rssn_state_free(state : *mut State) {
 /// The returned string must be freed by the caller using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_state_get_intermediate_value(state : *const State) -> *mut c_char {
+pub extern "C" fn rssn_state_get_intermediate_value(
+    state : *const State
+) -> *mut c_char {
 
     if state.is_null() {
 
@@ -46,11 +51,16 @@ pub extern "C" fn rssn_state_get_intermediate_value(state : *const State) -> *mu
 
     unsafe {
 
-        let s = &(*state).intermediate_value;
+        let s = &(*state)
+            .intermediate_value;
 
         match CString::new(s.as_str()) {
-            | Ok(c_str) => c_str.into_raw(),
-            | Err(_) => std::ptr::null_mut(),
+            | Ok(c_str) => {
+                c_str.into_raw()
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -63,18 +73,23 @@ pub extern "C" fn rssn_state_set_intermediate_value(
     value : *const c_char,
 ) {
 
-    if state.is_null() || value.is_null() {
+    if state.is_null()
+        || value.is_null()
+    {
 
         return;
     }
 
     unsafe {
 
-        let c_str = CStr::from_ptr(value);
+        let c_str =
+            CStr::from_ptr(value);
 
         if let Ok(s) = c_str.to_str() {
 
-            (*state).intermediate_value = s.to_string();
+            (*state)
+                .intermediate_value =
+                s.to_string();
         }
     }
 }

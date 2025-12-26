@@ -17,7 +17,9 @@ fn test_parse_and_unify_length() {
         "meter".to_string(),
     );
 
-    let unified = unify_expression(&expr).unwrap();
+    let unified =
+        unify_expression(&expr)
+            .unwrap();
 
     if let Expr::Quantity(q) = unified {
 
@@ -52,7 +54,9 @@ fn test_add_same_units() {
 
     let expr = Expr::new_add(q1, q2);
 
-    let unified = unify_expression(&expr).unwrap();
+    let unified =
+        unify_expression(&expr)
+            .unwrap();
 
     if let Expr::Quantity(q) = unified {
 
@@ -87,7 +91,9 @@ fn test_multiply_units() {
 
     let expr = Expr::new_mul(q1, q2);
 
-    let unified = unify_expression(&expr).unwrap();
+    let unified =
+        unify_expression(&expr)
+            .unwrap();
 
     if let Expr::Quantity(q) = unified {
 
@@ -122,7 +128,9 @@ fn test_divide_units() {
 
     let expr = Expr::new_div(q1, q2);
 
-    let unified = unify_expression(&expr).unwrap();
+    let unified =
+        unify_expression(&expr)
+            .unwrap();
 
     if let Expr::Quantity(q) = unified {
 
@@ -141,7 +149,8 @@ fn test_divide_units() {
 fn test_scalar_multiplication() {
 
     // 3 * 4kg = 12kg
-    let scalar = Expr::new_constant(3.0);
+    let scalar =
+        Expr::new_constant(3.0);
 
     let q = Expr::QuantityWithValue(
         Arc::new(Expr::new_constant(
@@ -152,7 +161,9 @@ fn test_scalar_multiplication() {
 
     let expr = Expr::new_mul(scalar, q);
 
-    let unified = unify_expression(&expr).unwrap();
+    let unified =
+        unify_expression(&expr)
+            .unwrap();
 
     if let Expr::Quantity(q) = unified {
 

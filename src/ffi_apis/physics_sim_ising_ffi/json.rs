@@ -22,7 +22,9 @@ struct IsingOutput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let params : IsingParameters = match from_json_string(input) {
         | Some(p) => p,
@@ -47,10 +49,12 @@ pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(input : *const c_char) 
     };
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            IsingOutput,
-            String,
-        >::ok(out))
+        serde_json::to_string(
+            &FfiResult::<
+                IsingOutput,
+                String,
+            >::ok(out),
+        )
         .unwrap(),
     )
 }

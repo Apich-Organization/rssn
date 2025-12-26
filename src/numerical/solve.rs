@@ -15,7 +15,9 @@ use crate::numerical::matrix::Matrix;
 use crate::symbolic::core::Expr;
 
 /// Represents the solution to a system of linear equations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub enum LinearSolution {
     Unique(Vec<f64>),
@@ -46,23 +48,33 @@ pub fn solve_linear_system(
     b : &[f64],
 ) -> Result<LinearSolution, String> {
 
-    let (rows, cols) = (a.rows(), a.cols());
+    let (rows, cols) =
+        (a.rows(), a.cols());
 
     if rows != b.len() {
 
-        return Err("Matrix and vector dimensions are incompatible.".to_string());
+        return Err("Matrix and \
+                    vector dimensions \
+                    are incompatible.\
+                    "
+        .to_string());
     }
 
-    let mut augmented_data = vec![0.0; rows * (cols + 1)];
+    let mut augmented_data =
+        vec![0.0; rows * (cols + 1)];
 
     for i in 0 .. rows {
 
         for j in 0 .. cols {
 
-            augmented_data[i * (cols + 1) + j] = *a.get(i, j);
+            augmented_data
+                [i * (cols + 1) + j] =
+                *a.get(i, j);
         }
 
-        augmented_data[i * (cols + 1) + cols] = b[i];
+        augmented_data
+            [i * (cols + 1) + cols] =
+            b[i];
     }
 
     let mut augmented = Matrix::new(
@@ -96,7 +108,8 @@ pub fn solve_linear_system(
 
     if rank < cols {
 
-        let mut particular = vec![0.0; cols];
+        let mut particular =
+            vec![0.0; cols];
 
         let mut pivot_cols = Vec::new();
 
@@ -120,13 +133,16 @@ pub fn solve_linear_system(
 
                 pivot_cols.push(i);
 
-                particular[i] = *augmented.get(r, cols);
+                particular[i] =
+                    *augmented
+                        .get(r, cols);
 
                 lead = i + 1;
             }
         }
 
-        let null_space = a.null_space()?;
+        let null_space =
+            a.null_space()?;
 
         Ok(
             LinearSolution::Parametric {
@@ -136,7 +152,8 @@ pub fn solve_linear_system(
         )
     } else {
 
-        let mut solution = vec![0.0; cols];
+        let mut solution =
+            vec![0.0; cols];
 
         for (i, var) in solution
             .iter_mut()
@@ -144,10 +161,15 @@ pub fn solve_linear_system(
             .take(rank)
         {
 
-            *var = *augmented.get(i, cols);
+            *var =
+                *augmented.get(i, cols);
         }
 
-        Ok(LinearSolution::Unique(solution))
+        Ok(
+            LinearSolution::Unique(
+                solution,
+            ),
+        )
     }
 }
 
@@ -182,7 +204,8 @@ pub fn solve_nonlinear_system(
 
         for func in funcs {
 
-            let mut vars_map = HashMap::new();
+            let mut vars_map =
+                HashMap::new();
 
             for (i, &var) in vars
                 .iter()
@@ -201,13 +224,16 @@ pub fn solve_nonlinear_system(
             )?);
         }
 
-        let mut jacobian_rows = Vec::new();
+        let mut jacobian_rows =
+            Vec::new();
 
         for func in funcs {
 
-            jacobian_rows.push(gradient(
-                func, vars, &x_n,
-            )?);
+            jacobian_rows.push(
+                gradient(
+                    func, vars, &x_n,
+                )?,
+            );
         }
 
         let jacobian = Matrix::new(
@@ -243,5 +269,9 @@ pub fn solve_nonlinear_system(
         }
     }
 
-    Err("Newton's method did not converge.".to_string())
+    Err(
+        "Newton's method did not \
+         converge."
+            .to_string(),
+    )
 }

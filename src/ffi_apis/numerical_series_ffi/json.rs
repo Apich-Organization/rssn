@@ -50,12 +50,13 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
         },
     };
 
-    let res = series::taylor_coefficients(
-        &input.expr,
-        &input.var,
-        input.at_point,
-        input.order,
-    );
+    let res =
+        series::taylor_coefficients(
+            &input.expr,
+            &input.var,
+            input.at_point,
+            input.order,
+        );
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -72,12 +73,17 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
         },
     };
 
-    to_c_string(serde_json::to_string(&ffi_res).unwrap())
+    to_c_string(
+        serde_json::to_string(&ffi_res)
+            .unwrap(),
+    )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_numerical_sum_series_json(input_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_numerical_sum_series_json(
+    input_json : *const c_char
+) -> *mut c_char {
 
     let input : SumInput = match from_json_string(input_json) {
         | Some(i) => i,
@@ -116,5 +122,8 @@ pub unsafe extern "C" fn rssn_numerical_sum_series_json(input_json : *const c_ch
         },
     };
 
-    to_c_string(serde_json::to_string(&ffi_res).unwrap())
+    to_c_string(
+        serde_json::to_string(&ffi_res)
+            .unwrap(),
+    )
 }

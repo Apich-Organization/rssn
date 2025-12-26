@@ -13,7 +13,12 @@ use crate::symbolic::vector::partial_derivative_vector;
 use crate::symbolic::vector::Vector;
 
 /// Represents a parameterized curve C given by r(t).
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 
 pub struct ParametricCurve {
     /// The vector expression for the curve, e.g., [cos(t), sin(t), t].
@@ -25,7 +30,12 @@ pub struct ParametricCurve {
 }
 
 /// Represents a parameterized surface S given by r(u, v).
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 
 pub struct ParametricSurface {
     /// The vector expression for the surface, e.g., [u*cos(v), u*sin(v), v].
@@ -42,7 +52,12 @@ pub struct ParametricSurface {
 
 /// Represents a volume V for triple integration.
 /// Defines the integration order as dz dy dx.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 
 pub struct Volume {
     /// The bounds for the innermost integral (dz). Can be expressions in terms of x and y.
@@ -76,12 +91,14 @@ pub fn line_integral_scalar(
     curve : &ParametricCurve,
 ) -> Expr {
 
-    let r_prime = partial_derivative_vector(
-        &curve.r,
-        &curve.t_var,
-    );
+    let r_prime =
+        partial_derivative_vector(
+            &curve.r,
+            &curve.t_var,
+        );
 
-    let r_prime_magnitude = r_prime.magnitude();
+    let r_prime_magnitude =
+        r_prime.magnitude();
 
     let sub = |expr : &Expr| {
 
@@ -91,17 +108,23 @@ pub fn line_integral_scalar(
             &curve.r.x,
         );
 
-        let e2 = substitute(&e1, "y", &curve.r.y);
+        let e2 = substitute(
+            &e1,
+            "y",
+            &curve.r.y,
+        );
 
         substitute(&e2, "z", &curve.r.z)
     };
 
-    let field_on_curve = sub(scalar_field);
+    let field_on_curve =
+        sub(scalar_field);
 
-    let integrand = simplify(&Expr::new_mul(
-        field_on_curve,
-        r_prime_magnitude,
-    ));
+    let integrand =
+        simplify(&Expr::new_mul(
+            field_on_curve,
+            r_prime_magnitude,
+        ));
 
     let integral = definite_integrate(
         &integrand,
@@ -130,10 +153,11 @@ pub fn line_integral_vector(
     curve : &ParametricCurve,
 ) -> Expr {
 
-    let r_prime = partial_derivative_vector(
-        &curve.r,
-        &curve.t_var,
-    );
+    let r_prime =
+        partial_derivative_vector(
+            &curve.r,
+            &curve.t_var,
+        );
 
     let sub = |expr : &Expr| {
 
@@ -143,7 +167,11 @@ pub fn line_integral_vector(
             &curve.r.x,
         );
 
-        let e2 = substitute(&e1, "y", &curve.r.y);
+        let e2 = substitute(
+            &e1,
+            "y",
+            &curve.r.y,
+        );
 
         substitute(&e2, "z", &curve.r.z)
     };
@@ -154,7 +182,8 @@ pub fn line_integral_vector(
         sub(&vector_field.z),
     );
 
-    let integrand = field_on_curve.dot(&r_prime);
+    let integrand =
+        field_on_curve.dot(&r_prime);
 
     let integral = definite_integrate(
         &integrand,
@@ -222,21 +251,24 @@ pub fn surface_integral(
         sub(&field.z),
     );
 
-    let integrand = field_on_surface.dot(&normal_vector);
+    let integrand = field_on_surface
+        .dot(&normal_vector);
 
-    let inner_integral = definite_integrate(
-        &integrand,
-        &surface.u_var,
-        &surface.u_bounds.0,
-        &surface.u_bounds.1,
-    );
+    let inner_integral =
+        definite_integrate(
+            &integrand,
+            &surface.u_var,
+            &surface.u_bounds.0,
+            &surface.u_bounds.1,
+        );
 
-    let outer_integral = definite_integrate(
-        &inner_integral,
-        &surface.v_var,
-        &surface.v_bounds.0,
-        &surface.v_bounds.1,
-    );
+    let outer_integral =
+        definite_integrate(
+            &inner_integral,
+            &surface.v_var,
+            &surface.v_bounds.0,
+            &surface.v_bounds.1,
+        );
 
     simplify(&outer_integral)
 }

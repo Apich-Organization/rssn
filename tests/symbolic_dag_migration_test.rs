@@ -7,7 +7,8 @@ use rssn::symbolic::core::Expr;
 fn test_is_dag() {
 
     // DAG expressions
-    let dag_expr = Expr::new_variable("x");
+    let dag_expr =
+        Expr::new_variable("x");
 
     assert!(dag_expr.is_dag());
 
@@ -23,7 +24,8 @@ fn test_is_dag() {
 
     assert!(!ast_const.is_dag());
 
-    let ast_var = Expr::Variable("x".to_string());
+    let ast_var =
+        Expr::Variable("x".to_string());
 
     assert!(!ast_var.is_dag());
 }
@@ -47,7 +49,8 @@ fn test_to_dag_constant() {
 
 fn test_to_dag_variable() {
 
-    let ast = Expr::Variable("x".to_string());
+    let ast =
+        Expr::Variable("x".to_string());
 
     assert!(!ast.is_dag());
 
@@ -118,7 +121,9 @@ fn test_to_dag_form_nested() {
             Arc::new(Expr::Variable(
                 "x".to_string(),
             )),
-            Arc::new(Expr::Constant(2.0)),
+            Arc::new(Expr::Constant(
+                2.0,
+            )),
         )),
         Arc::new(Expr::Constant(1.0)),
     );
@@ -162,7 +167,8 @@ fn test_to_ast_from_ast() {
 
 #[test]
 
-fn test_dag_conversion_preserves_semantics() {
+fn test_dag_conversion_preserves_semantics(
+) {
 
     // Create an AST expression: (x + 1) * 2
     let ast = Expr::Mul(
@@ -170,7 +176,9 @@ fn test_dag_conversion_preserves_semantics() {
             Arc::new(Expr::Variable(
                 "x".to_string(),
             )),
-            Arc::new(Expr::Constant(1.0)),
+            Arc::new(Expr::Constant(
+                1.0,
+            )),
         )),
         Arc::new(Expr::Constant(2.0)),
     );
@@ -199,7 +207,10 @@ fn test_dag_sharing() {
     // Create two references to the same subexpression
     let x = Expr::new_variable("x");
 
-    let expr1 = Expr::new_add(x.clone(), x.clone());
+    let expr1 = Expr::new_add(
+        x.clone(),
+        x.clone(),
+    );
 
     assert!(expr1.is_dag());
 

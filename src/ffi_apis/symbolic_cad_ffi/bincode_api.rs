@@ -17,19 +17,23 @@ struct CadInput {
 /// Input buffer should contain a serialized `CadInput`: `{"polys": [Expr, ...], "vars": ["x", "y", ...]}`.
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_cad(input_buf : BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_cad(
+    input_buf : BincodeBuffer
+) -> BincodeBuffer {
 
-    let input : Option<CadInput> = from_bincode_buffer(&input_buf);
+    let input : Option<CadInput> =
+        from_bincode_buffer(&input_buf);
 
     if let Some(data) = input {
 
-        let vars_refs : Vec<&str> = data
-            .vars
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+        let vars_refs : Vec<&str> =
+            data.vars
+                .iter()
+                .map(|s| s.as_str())
+                .collect();
 
-        let mut sparse_polys = Vec::new();
+        let mut sparse_polys =
+            Vec::new();
 
         for expr in data.polys {
 
@@ -42,8 +46,12 @@ pub extern "C" fn rssn_bincode_cad(input_buf : BincodeBuffer) -> BincodeBuffer {
             &sparse_polys,
             &vars_refs,
         ) {
-            | Ok(c) => to_bincode_buffer(&c),
-            | Err(_) => BincodeBuffer::empty(),
+            | Ok(c) => {
+                to_bincode_buffer(&c)
+            },
+            | Err(_) => {
+                BincodeBuffer::empty()
+            },
         }
     } else {
 

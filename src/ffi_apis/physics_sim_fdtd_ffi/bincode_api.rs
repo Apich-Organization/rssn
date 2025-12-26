@@ -31,13 +31,15 @@ pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_bincode(
 
     let snapshots = fdtd_electrodynamics::run_fdtd_simulation(&params);
 
-    if let Some(final_ez) = snapshots.last() {
+    if let Some(final_ez) =
+        snapshots.last()
+    {
 
         to_bincode_buffer(&FfiResult::<
             Array2<f64>,
             String,
         >::ok(
-            final_ez.clone()
+            final_ez.clone(),
         ))
     } else {
 

@@ -4,7 +4,10 @@ use rssn::symbolic::vector::Vector;
 
 fn main() {
 
-    println!("--- Solid State Physics Demo ---");
+    println!(
+        "--- Solid State Physics Demo \
+         ---"
+    );
 
     // 1. Crystal Lattice and Reciprocal Lattice
     let a1 = Vector::new(
@@ -25,7 +28,8 @@ fn main() {
         Expr::new_variable("a"),
     );
 
-    let simple_cubic = CrystalLattice::new(a1, a2, a3);
+    let simple_cubic =
+        CrystalLattice::new(a1, a2, a3);
 
     println!(
         "Unit Cell Volume: {}",
@@ -38,10 +42,13 @@ fn main() {
 
     println!(
         "a2 x a3: ({}, {}, {})",
-        a2_cross_a3.x, a2_cross_a3.y, a2_cross_a3.z
+        a2_cross_a3.x,
+        a2_cross_a3.y,
+        a2_cross_a3.z
     );
 
-    let (b1, b2, b3) = simple_cubic.reciprocal_lattice_vectors();
+    let (b1, b2, b3) = simple_cubic
+        .reciprocal_lattice_vectors();
 
     println!(
         "Reciprocal b1.x: {}",
@@ -61,9 +68,11 @@ fn main() {
     // 2. Fermi Energy
     let n = Expr::new_variable("n");
 
-    let m_star = Expr::new_variable("m_star");
+    let m_star =
+        Expr::new_variable("m_star");
 
-    let ef = fermi_energy_3d(&n, &m_star);
+    let ef =
+        fermi_energy_3d(&n, &m_star);
 
     println!(
         "Fermi Energy (3D): {}",
@@ -71,9 +80,11 @@ fn main() {
     );
 
     // 3. Density of States
-    let energy = Expr::new_variable("E");
+    let energy =
+        Expr::new_variable("E");
 
-    let volume = Expr::new_variable("V");
+    let volume =
+        Expr::new_variable("V");
 
     let dos = density_of_states_3d(
         &energy,

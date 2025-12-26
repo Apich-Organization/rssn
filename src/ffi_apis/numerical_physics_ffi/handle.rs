@@ -8,42 +8,48 @@ use crate::numerical::physics;
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_speed_of_light() -> f64 {
+pub extern "C" fn rssn_num_physics_speed_of_light(
+) -> f64 {
 
     physics::SPEED_OF_LIGHT
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_planck_constant() -> f64 {
+pub extern "C" fn rssn_num_physics_planck_constant(
+) -> f64 {
 
     physics::PLANCK_CONSTANT
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_gravitational_constant() -> f64 {
+pub extern "C" fn rssn_num_physics_gravitational_constant(
+) -> f64 {
 
     physics::GRAVITATIONAL_CONSTANT
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_boltzmann_constant() -> f64 {
+pub extern "C" fn rssn_num_physics_boltzmann_constant(
+) -> f64 {
 
     physics::BOLTZMANN_CONSTANT
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_elementary_charge() -> f64 {
+pub extern "C" fn rssn_num_physics_elementary_charge(
+) -> f64 {
 
     physics::ELEMENTARY_CHARGE
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_electron_mass() -> f64 {
+pub extern "C" fn rssn_num_physics_electron_mass(
+) -> f64 {
 
     physics::ELECTRON_MASS
 }
@@ -110,7 +116,9 @@ pub extern "C" fn rssn_num_physics_electric_field_point_charge(
     r : f64,
 ) -> f64 {
 
-    physics::electric_field_point_charge(q, r)
+    physics::electric_field_point_charge(
+        q, r,
+    )
 }
 
 #[no_mangle]
@@ -201,7 +209,9 @@ pub extern "C" fn rssn_num_physics_ideal_gas_temperature(
     n : f64,
 ) -> f64 {
 
-    physics::ideal_gas_temperature(p, v, n)
+    physics::ideal_gas_temperature(
+        p, v, n,
+    )
 }
 
 #[no_mangle]
@@ -232,7 +242,10 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_rms_speed(
     temperature : f64,
 ) -> f64 {
 
-    physics::maxwell_boltzmann_rms_speed(mass, temperature)
+    physics::maxwell_boltzmann_rms_speed(
+        mass,
+        temperature,
+    )
 }
 
 #[no_mangle]
@@ -242,12 +255,17 @@ pub extern "C" fn rssn_num_physics_blackbody_power(
     temperature : f64,
 ) -> f64 {
 
-    physics::blackbody_power(area, temperature)
+    physics::blackbody_power(
+        area,
+        temperature,
+    )
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_wien_displacement_wavelength(temperature : f64) -> f64 {
+pub extern "C" fn rssn_num_physics_wien_displacement_wavelength(
+    temperature : f64
+) -> f64 {
 
     physics::wien_displacement_wavelength(temperature)
 }
@@ -258,7 +276,9 @@ pub extern "C" fn rssn_num_physics_wien_displacement_wavelength(temperature : f6
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_lorentz_factor(velocity : f64) -> f64 {
+pub extern "C" fn rssn_num_physics_lorentz_factor(
+    velocity : f64
+) -> f64 {
 
     physics::lorentz_factor(velocity)
 }
@@ -296,7 +316,10 @@ pub extern "C" fn rssn_num_physics_relativistic_momentum(
     velocity : f64,
 ) -> f64 {
 
-    physics::relativistic_momentum(mass, velocity)
+    physics::relativistic_momentum(
+        mass,
+        velocity,
+    )
 }
 
 #[no_mangle]
@@ -306,12 +329,17 @@ pub extern "C" fn rssn_num_physics_relativistic_kinetic_energy(
     velocity : f64,
 ) -> f64 {
 
-    physics::relativistic_kinetic_energy(mass, velocity)
+    physics::relativistic_kinetic_energy(
+        mass,
+        velocity,
+    )
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_mass_energy(mass : f64) -> f64 {
+pub extern "C" fn rssn_num_physics_mass_energy(
+    mass : f64
+) -> f64 {
 
     physics::mass_energy(mass)
 }
@@ -342,35 +370,47 @@ pub extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_hydrogen_energy_level(n : u64) -> f64 {
+pub extern "C" fn rssn_num_physics_hydrogen_energy_level(
+    n : u64
+) -> f64 {
 
     physics::hydrogen_energy_level(n)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_de_broglie_wavelength(momentum : f64) -> f64 {
+pub extern "C" fn rssn_num_physics_de_broglie_wavelength(
+    momentum : f64
+) -> f64 {
 
-    physics::de_broglie_wavelength(momentum)
+    physics::de_broglie_wavelength(
+        momentum,
+    )
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_photon_energy(wavelength : f64) -> f64 {
+pub extern "C" fn rssn_num_physics_photon_energy(
+    wavelength : f64
+) -> f64 {
 
     physics::photon_energy(wavelength)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_photon_wavelength(energy : f64) -> f64 {
+pub extern "C" fn rssn_num_physics_photon_wavelength(
+    energy : f64
+) -> f64 {
 
     physics::photon_wavelength(energy)
 }
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_compton_wavelength(mass : f64) -> f64 {
+pub extern "C" fn rssn_num_physics_compton_wavelength(
+    mass : f64
+) -> f64 {
 
     physics::compton_wavelength(mass)
 }

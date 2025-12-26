@@ -4,7 +4,9 @@ use criterion::criterion_group;
 use criterion::Criterion;
 use rssn::prelude::*;
 
-fn bench_prelude_sin(c : &mut Criterion) {
+fn bench_prelude_sin(
+    c : &mut Criterion
+) {
 
     c.bench_function("prelude_sin", |b| {
 

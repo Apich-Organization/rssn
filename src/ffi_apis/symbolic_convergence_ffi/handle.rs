@@ -26,5 +26,8 @@ pub extern "C" fn rssn_analyze_convergence_handle(
             .into_owned()
     };
 
-    analyze_convergence(term_ref, &var_str)
+    analyze_convergence(
+        term_ref,
+        &var_str,
+    )
 }

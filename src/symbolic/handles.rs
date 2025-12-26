@@ -54,7 +54,8 @@ use crate::symbolic::core::Expr;
 #[derive(Debug)]
 
 pub struct HandleManager {
-    expressions : DashMap<usize, Arc<Expr>>,
+    expressions :
+        DashMap<usize, Arc<Expr>>,
     next_handle : AtomicUsize,
 }
 
@@ -66,8 +67,10 @@ impl HandleManager {
     pub(crate) fn new() -> Self {
 
         Self {
-            expressions : DashMap::new(),
-            next_handle : AtomicUsize::new(1), // Start at 1, reserve 0 for null
+            expressions : DashMap::new(
+            ),
+            next_handle:
+                AtomicUsize::new(1), /* Start at 1, reserve 0 for null */
         }
     }
 
@@ -102,7 +105,10 @@ impl HandleManager {
 
         let handle = self
             .next_handle
-            .fetch_add(1, Ordering::SeqCst);
+            .fetch_add(
+                1,
+                Ordering::SeqCst,
+            );
 
         self.expressions
             .insert(
@@ -153,7 +159,9 @@ impl HandleManager {
 
         self.expressions
             .get(&handle)
-            .map(|arc_expr| arc_expr.clone())
+            .map(|arc_expr| {
+                arc_expr.clone()
+            })
     }
 
     /// Retrieves a deep clone of the expression (not the Arc).
@@ -176,7 +184,9 @@ impl HandleManager {
 
         self.expressions
             .get(&handle)
-            .map(|arc_expr| (**arc_expr).clone())
+            .map(|arc_expr| {
+                (**arc_expr).clone()
+            })
     }
 
     /// Removes an expression from the manager, freeing its memory if this was the last reference.
@@ -220,7 +230,9 @@ impl HandleManager {
 
         self.expressions
             .remove(&handle)
-            .map(|(_, arc_expr)| arc_expr)
+            .map(|(_, arc_expr)| {
+                arc_expr
+            })
     }
 
     /// Checks if a handle exists in the manager.
@@ -354,7 +366,9 @@ impl HandleManager {
     /// assert!(handles.contains(&h2));
     /// ```
 
-    pub fn get_all_handles(&self) -> Vec<usize> {
+    pub fn get_all_handles(
+        &self
+    ) -> Vec<usize> {
 
         self.expressions
             .iter()
@@ -392,5 +406,8 @@ impl Default for HandleManager {
 /// HANDLE_MANAGER.free(handle);
 /// ```
 
-pub static HANDLE_MANAGER : std::sync::LazyLock<HandleManager> =
-    std::sync::LazyLock::new(HandleManager::new);
+pub static HANDLE_MANAGER :
+    std::sync::LazyLock<HandleManager> =
+    std::sync::LazyLock::new(
+        HandleManager::new,
+    );

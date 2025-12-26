@@ -13,7 +13,9 @@ use crate::symbolic::grobner::MonomialOrder;
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_cas_expand(expr : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_cas_expand(
+    expr : *const Expr
+) -> *mut Expr {
 
     if expr.is_null() {
 
@@ -23,7 +25,9 @@ pub unsafe extern "C" fn rssn_cas_expand(expr : *const Expr) -> *mut Expr {
     let expr_ref = &*expr;
 
     Box::into_raw(Box::new(
-        cas_foundations::expand(expr_ref.clone()),
+        cas_foundations::expand(
+            expr_ref.clone(),
+        ),
     ))
 }
 
@@ -33,7 +37,9 @@ pub unsafe extern "C" fn rssn_cas_expand(expr : *const Expr) -> *mut Expr {
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_cas_factorize(expr : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_cas_factorize(
+    expr : *const Expr
+) -> *mut Expr {
 
     if expr.is_null() {
 
@@ -43,7 +49,9 @@ pub unsafe extern "C" fn rssn_cas_factorize(expr : *const Expr) -> *mut Expr {
     let expr_ref = &*expr;
 
     Box::into_raw(Box::new(
-        cas_foundations::factorize(expr_ref.clone()),
+        cas_foundations::factorize(
+            expr_ref.clone(),
+        ),
     ))
 }
 
@@ -53,7 +61,9 @@ pub unsafe extern "C" fn rssn_cas_factorize(expr : *const Expr) -> *mut Expr {
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_cas_normalize(expr : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_cas_normalize(
+    expr : *const Expr
+) -> *mut Expr {
 
     if expr.is_null() {
 
@@ -63,7 +73,9 @@ pub unsafe extern "C" fn rssn_cas_normalize(expr : *const Expr) -> *mut Expr {
     let expr_ref = &*expr;
 
     Box::into_raw(Box::new(
-        cas_foundations::normalize(expr_ref.clone()),
+        cas_foundations::normalize(
+            expr_ref.clone(),
+        ),
     ))
 }
 
@@ -91,8 +103,10 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
 ) -> *mut Expr {
 
     if expr.is_null()
-        || (relations_len > 0 && relations.is_null())
-        || (vars_len > 0 && vars.is_null())
+        || (relations_len > 0
+            && relations.is_null())
+        || (vars_len > 0
+            && vars.is_null())
     {
 
         return std::ptr::null_mut();
@@ -101,32 +115,44 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
     let expr_ref = &*expr;
 
     // Convert relations array
-    let mut relations_vec = Vec::with_capacity(relations_len);
-
-    if relations_len > 0 {
-
-        let relations_slice = std::slice::from_raw_parts(
-            relations,
+    let mut relations_vec =
+        Vec::with_capacity(
             relations_len,
         );
 
-        for &rel_ptr in relations_slice {
+    if relations_len > 0 {
+
+        let relations_slice =
+            std::slice::from_raw_parts(
+                relations,
+                relations_len,
+            );
+
+        for &rel_ptr in relations_slice
+        {
 
             if rel_ptr.is_null() {
 
                 return std::ptr::null_mut();
             }
 
-            relations_vec.push((*rel_ptr).clone());
+            relations_vec.push(
+                (*rel_ptr).clone(),
+            );
         }
     }
 
     // Convert vars array
-    let mut vars_vec = Vec::with_capacity(vars_len);
+    let mut vars_vec =
+        Vec::with_capacity(vars_len);
 
     if vars_len > 0 {
 
-        let vars_slice = std::slice::from_raw_parts(vars, vars_len);
+        let vars_slice =
+            std::slice::from_raw_parts(
+                vars,
+                vars_len,
+            );
 
         for &var_ptr in vars_slice {
 
@@ -137,10 +163,11 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
         }
     }
 
-    let vars_refs : Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
-        .collect();
+    let vars_refs : Vec<&str> =
+        vars_vec
+            .iter()
+            .map(|s| *s)
+            .collect();
 
     // Convert order
     let order = match order_int {

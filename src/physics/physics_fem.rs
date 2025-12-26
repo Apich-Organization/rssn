@@ -7,7 +7,9 @@ use crate::numerical::sparse::csr_from_triplets;
 use crate::numerical::sparse::solve_conjugate_gradient;
 
 #[allow(dead_code)]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct GaussQuadrature {
     points : Vec<f64>,
@@ -53,7 +55,8 @@ where
 
     let n_nodes = n_elements + 1;
 
-    let h = domain_length / n_elements as f64;
+    let h = domain_length
+        / n_elements as f64;
 
     let force_fn = &force_fn;
 
@@ -81,17 +84,20 @@ where
 
             let nodes = [i, i + 1];
 
-            let mut local_triplets = Vec::with_capacity(4);
+            let mut local_triplets =
+                Vec::with_capacity(4);
 
             for r in 0 .. 2 {
 
                 for c in 0 .. 2 {
 
-                    local_triplets.push((
-                        nodes[r],
-                        nodes[c],
-                        k_local[r][c],
-                    ));
+                    local_triplets
+                        .push((
+                            nodes[r],
+                            nodes[c],
+                            k_local[r]
+                                [c],
+                        ));
                 }
             }
 
@@ -102,13 +108,17 @@ where
         })
         .collect();
 
-    let mut triplets = Vec::with_capacity(n_elements * 4);
+    let mut triplets =
+        Vec::with_capacity(
+            n_elements * 4,
+        );
 
     let mut f = vec![0.0; n_nodes];
 
-    for (i, (local_triplets, f_vals)) in element_data
-        .into_iter()
-        .enumerate()
+    for (i, (local_triplets, f_vals)) in
+        element_data
+            .into_iter()
+            .enumerate()
     {
 
         triplets.extend(local_triplets);
@@ -120,7 +130,9 @@ where
 
     let last_node = n_nodes - 1;
 
-    triplets.retain(|(r, _, _)| *r != 0 && *r != last_node);
+    triplets.retain(|(r, _, _)| {
+        *r != 0 && *r != last_node
+    });
 
     triplets.push((0, 0, 1.0));
 
@@ -142,20 +154,22 @@ where
 
     let f_array = Array1::from(f);
 
-    let u_array = solve_conjugate_gradient(
-        &k_sparse,
-        &f_array,
-        None,
-        1000,
-        1e-9,
-    )?;
+    let u_array =
+        solve_conjugate_gradient(
+            &k_sparse,
+            &f_array,
+            None,
+            1000,
+            1e-9,
+        )?;
 
     Ok(u_array.to_vec())
 }
 
 /// Example scenario for the 1D FEM Poisson solver.
 
-pub fn simulate_1d_poisson_scenario() -> Result<Vec<f64>, String> {
+pub fn simulate_1d_poisson_scenario(
+) -> Result<Vec<f64>, String> {
 
     const N_ELEMENTS : usize = 50;
 
@@ -163,7 +177,11 @@ pub fn simulate_1d_poisson_scenario() -> Result<Vec<f64>, String> {
 
     let force = |_x : f64| 2.0;
 
-    solve_poisson_1d(N_ELEMENTS, L, force)
+    solve_poisson_1d(
+        N_ELEMENTS,
+        L,
+        force,
+    )
 }
 
 /// Solves the 2D Poisson equation on a unit square with zero Dirichlet boundaries.
@@ -174,7 +192,9 @@ pub fn solve_poisson_2d<F>(
     force_fn : F,
 ) -> Result<Vec<f64>, String>
 where
-    F : Fn(f64, f64) -> f64 + Send + Sync,
+    F : Fn(f64, f64) -> f64
+        + Send
+        + Sync,
 {
 
     let (nx, ny) = (
@@ -182,7 +202,8 @@ where
         n_elements_y,
     );
 
-    let (n_nodes_x, n_nodes_y) = (nx + 1, ny + 1);
+    let (n_nodes_x, n_nodes_y) =
+        (nx + 1, ny + 1);
 
     let n_nodes = n_nodes_x * n_nodes_y;
 
@@ -298,11 +319,19 @@ where
         })
         .collect();
 
-    let mut triplets = Vec::with_capacity(nx * ny * 16);
+    let mut triplets =
+        Vec::with_capacity(
+            nx * ny * 16,
+        );
 
     let mut f = vec![0.0; n_nodes];
 
-    for (local_triplets, f_vals, nodes) in element_data {
+    for (
+        local_triplets,
+        f_vals,
+        nodes,
+    ) in element_data
+    {
 
         triplets.extend(local_triplets);
 
@@ -312,20 +341,32 @@ where
         }
     }
 
-    let mut boundary_nodes = std::collections::HashSet::new();
+    let mut boundary_nodes =
+        std::collections::HashSet::new(
+        );
 
     for j in 0 .. n_nodes_y {
 
         for i in 0 .. n_nodes_x {
 
-            if i == 0 || i == n_nodes_x - 1 || j == 0 || j == n_nodes_y - 1 {
+            if i == 0
+                || i == n_nodes_x - 1
+                || j == 0
+                || j == n_nodes_y - 1
+            {
 
-                boundary_nodes.insert(j * n_nodes_x + i);
+                boundary_nodes.insert(
+                    j * n_nodes_x + i,
+                );
             }
         }
     }
 
-    triplets.retain(|(r, c, _)| !boundary_nodes.contains(r) && !boundary_nodes.contains(c));
+    triplets.retain(|(r, c, _)| {
+        !boundary_nodes.contains(r)
+            && !boundary_nodes
+                .contains(c)
+    });
 
     for node_idx in &boundary_nodes {
 
@@ -346,13 +387,14 @@ where
 
     let f_array = Array1::from(f);
 
-    let u_array = solve_conjugate_gradient(
-        &k_sparse,
-        &f_array,
-        None,
-        2000,
-        1e-9,
-    )?;
+    let u_array =
+        solve_conjugate_gradient(
+            &k_sparse,
+            &f_array,
+            None,
+            2000,
+            1e-9,
+        )?;
 
     Ok(u_array.to_vec())
 }
@@ -360,15 +402,21 @@ where
 /// Example scenario for the 2D FEM Poisson solver.
 #[allow(clippy::unnecessary_cast)]
 
-pub fn simulate_2d_poisson_scenario() -> Result<Vec<f64>, String> {
+pub fn simulate_2d_poisson_scenario(
+) -> Result<Vec<f64>, String> {
 
     const N_ELEMENTS : usize = 20;
 
     let force = |x, y| {
 
-        2.0 * std::f64::consts::PI.powi(2)
-            * (std::f64::consts::PI * (x as f64)).sin()
-            * (std::f64::consts::PI * (y as f64)).sin()
+        2.0 * std::f64::consts::PI
+            .powi(2)
+            * (std::f64::consts::PI
+                * (x as f64))
+                .sin()
+            * (std::f64::consts::PI
+                * (y as f64))
+                .sin()
     };
 
     solve_poisson_2d(
@@ -385,7 +433,9 @@ pub fn solve_poisson_3d<F>(
     force_fn : F,
 ) -> Result<Vec<f64>, String>
 where
-    F : Fn(f64, f64, f64) -> f64 + Send + Sync,
+    F : Fn(f64, f64, f64) -> f64
+        + Send
+        + Sync,
 {
 
     let (nx, ny, nz) = (
@@ -394,13 +444,19 @@ where
         n_elements,
     );
 
-    let (n_nodes_x, n_nodes_y, n_nodes_z) = (
+    let (
+        n_nodes_x,
+        n_nodes_y,
+        n_nodes_z,
+    ) = (
         nx + 1,
         ny + 1,
         nz + 1,
     );
 
-    let n_nodes = n_nodes_x * n_nodes_y * n_nodes_z;
+    let n_nodes = n_nodes_x
+        * n_nodes_y
+        * n_nodes_z;
 
     let (hx, hy, hz) = (
         1.0 / nx as f64,
@@ -554,11 +610,19 @@ where
         })
         .collect();
 
-    let mut triplets = Vec::with_capacity(nx * ny * nz * 64);
+    let mut triplets =
+        Vec::with_capacity(
+            nx * ny * nz * 64,
+        );
 
     let mut f = vec![0.0; n_nodes];
 
-    for (local_triplets, f_vals, nodes) in element_data {
+    for (
+        local_triplets,
+        f_vals,
+        nodes,
+    ) in element_data
+    {
 
         triplets.extend(local_triplets);
 
@@ -568,7 +632,9 @@ where
         }
     }
 
-    let mut boundary_nodes = std::collections::HashSet::new();
+    let mut boundary_nodes =
+        std::collections::HashSet::new(
+        );
 
     for k in 0 .. n_nodes_z {
 
@@ -576,28 +642,47 @@ where
 
             for i in 0 .. n_nodes_x {
 
-                let idx = (k * n_nodes_y + j) * n_nodes_x + i;
+                let idx =
+                    (k * n_nodes_y + j)
+                        * n_nodes_x
+                        + i;
 
-                let is_boundary = i == 0 || j == 0 || k == 0 || i == nx || j == ny || k == nz;
+                let is_boundary = i
+                    == 0
+                    || j == 0
+                    || k == 0
+                    || i == nx
+                    || j == ny
+                    || k == nz;
 
                 if is_boundary {
 
-                    boundary_nodes.insert(idx);
+                    boundary_nodes
+                        .insert(idx);
                 } else {
 
-                    let x = i as f64 * hx;
+                    let x =
+                        i as f64 * hx;
 
-                    let y = j as f64 * hy;
+                    let y =
+                        j as f64 * hy;
 
-                    let z = k as f64 * hz;
+                    let z =
+                        k as f64 * hz;
 
-                    f[idx] = force_fn(x, y, z);
+                    f[idx] = force_fn(
+                        x, y, z,
+                    );
                 }
             }
         }
     }
 
-    triplets.retain(|(r, c, _)| !boundary_nodes.contains(r) && !boundary_nodes.contains(c));
+    triplets.retain(|(r, c, _)| {
+        !boundary_nodes.contains(r)
+            && !boundary_nodes
+                .contains(c)
+    });
 
     for node_idx in &boundary_nodes {
 
@@ -618,13 +703,14 @@ where
 
     let f_array = Array1::from(f);
 
-    let u_array = solve_conjugate_gradient(
-        &k_sparse,
-        &f_array,
-        None,
-        3000,
-        1e-9,
-    )?;
+    let u_array =
+        solve_conjugate_gradient(
+            &k_sparse,
+            &f_array,
+            None,
+            3000,
+            1e-9,
+        )?;
 
     Ok(u_array.to_vec())
 }
@@ -632,16 +718,24 @@ where
 /// Example scenario for the 3D FEM Poisson solver.
 #[allow(clippy::unnecessary_cast)]
 
-pub fn simulate_3d_poisson_scenario() -> Result<Vec<f64>, String> {
+pub fn simulate_3d_poisson_scenario(
+) -> Result<Vec<f64>, String> {
 
     const N_ELEMENTS : usize = 10;
 
     let force = |x, y, z| {
 
-        3.0 * std::f64::consts::PI.powi(2)
-            * (std::f64::consts::PI * (x as f64)).sin()
-            * (std::f64::consts::PI * (y as f64)).sin()
-            * (std::f64::consts::PI * (z as f64)).sin()
+        3.0 * std::f64::consts::PI
+            .powi(2)
+            * (std::f64::consts::PI
+                * (x as f64))
+                .sin()
+            * (std::f64::consts::PI
+                * (y as f64))
+                .sin()
+            * (std::f64::consts::PI
+                * (z as f64))
+                .sin()
     };
 
     solve_poisson_3d(N_ELEMENTS, force)

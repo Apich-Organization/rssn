@@ -174,10 +174,12 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -210,10 +212,12 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -221,7 +225,9 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
 // Julia set
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : JuliaSetInput = match from_json_string(input) {
         | Some(i) => i,
@@ -248,10 +254,12 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(input : *const c_char) 
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -286,10 +294,12 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -323,10 +333,12 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -362,10 +374,12 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -402,10 +416,12 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -413,7 +429,9 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
 // Henon map
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : HenonInput = match from_json_string(input) {
         | Some(i) => i,
@@ -438,10 +456,12 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(input : *const c_char) 
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -478,10 +498,12 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -489,7 +511,9 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
 // Logistic map
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : LogisticMapInput = match from_json_string(input) {
         | Some(i) => i,
@@ -513,10 +537,12 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(input : *const c_cha
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -524,7 +550,9 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(input : *const c_cha
 // Bifurcation diagram
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : BifurcationInput = match from_json_string(input) {
         | Some(i) => i,
@@ -550,10 +578,12 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(input : *const c_char
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -588,10 +618,12 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -627,10 +659,12 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -663,10 +697,12 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -698,10 +734,12 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }

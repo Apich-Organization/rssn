@@ -14,7 +14,9 @@ struct MatrixOpRequest {
     m2 : Option<Matrix<f64>>,
 }
 
-fn decode<T : for<'de> Deserialize<'de>>(
+fn decode<
+    T : for<'de> Deserialize<'de>,
+>(
     data : *const u8,
     len : usize,
 ) -> Option<T> {
@@ -26,7 +28,9 @@ fn decode<T : for<'de> Deserialize<'de>>(
 
     let slice = unsafe {
 
-        std::slice::from_raw_parts(data, len)
+        std::slice::from_raw_parts(
+            data, len,
+        )
     };
 
     bincode_next::serde::decode_from_slice(
@@ -37,7 +41,9 @@ fn decode<T : for<'de> Deserialize<'de>>(
     .map(|(v, _)| v)
 }
 
-fn encode<T : Serialize>(val : &T) -> BincodeBuffer {
+fn encode<T : Serialize>(
+    val : &T
+) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
         val,
@@ -68,36 +74,49 @@ pub unsafe extern "C" fn rssn_num_matrix_add_bincode(
         },
     };
 
-    let m2 = match req.m2 {
-        | Some(m) => m,
-        | None => {
-            return encode(
-                &FfiResult::<Matrix<f64>, String> {
+    let m2 =
+        match req.m2 {
+            | Some(m) => m,
+            | None => return encode(
+                &FfiResult::<
+                    Matrix<f64>,
+                    String,
+                > {
                     ok : None,
-                    err : Some("m2 required".to_string()),
+                    err : Some(
+                        "m2 required"
+                            .to_string(
+                            ),
+                    ),
                 },
-            )
-        },
-    };
+            ),
+        };
 
-    if req.m1.rows() != m2.rows() || req.m1.cols() != m2.cols() {
+    if req.m1.rows() != m2.rows()
+        || req.m1.cols() != m2.cols()
+    {
 
-        return encode(
-            &FfiResult::<Matrix<f64>, String> {
-                ok : None,
-                err : Some("Dimension mismatch".to_string()),
-            },
-        );
+        return encode(&FfiResult::<
+            Matrix<f64>,
+            String,
+        > {
+            ok : None,
+            err : Some(
+                "Dimension mismatch"
+                    .to_string(),
+            ),
+        });
     }
 
     let result = req.m1 + m2;
 
-    encode(
-        &FfiResult::<Matrix<f64>, String> {
-            ok : Some(result),
-            err : None,
-        },
-    )
+    encode(&FfiResult::<
+        Matrix<f64>,
+        String,
+    > {
+        ok : Some(result),
+        err : None,
+    })
 }
 
 /// Matrix multiplication via Bincode.
@@ -120,34 +139,45 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_bincode(
         },
     };
 
-    let m2 = match req.m2 {
-        | Some(m) => m,
-        | None => {
-            return encode(
-                &FfiResult::<Matrix<f64>, String> {
+    let m2 =
+        match req.m2 {
+            | Some(m) => m,
+            | None => return encode(
+                &FfiResult::<
+                    Matrix<f64>,
+                    String,
+                > {
                     ok : None,
-                    err : Some("m2 required".to_string()),
+                    err : Some(
+                        "m2 required"
+                            .to_string(
+                            ),
+                    ),
                 },
-            )
-        },
-    };
+            ),
+        };
 
     if req.m1.cols() != m2.rows() {
 
-        return encode(
-            &FfiResult::<Matrix<f64>, String> {
-                ok : None,
-                err : Some("Dimension mismatch".to_string()),
-            },
-        );
+        return encode(&FfiResult::<
+            Matrix<f64>,
+            String,
+        > {
+            ok : None,
+            err : Some(
+                "Dimension mismatch"
+                    .to_string(),
+            ),
+        });
     }
 
     let result = req.m1 * m2;
 
-    encode(
-        &FfiResult::<Matrix<f64>, String> {
-            ok : Some(result),
-            err : None,
-        },
-    )
+    encode(&FfiResult::<
+        Matrix<f64>,
+        String,
+    > {
+        ok : Some(result),
+        err : None,
+    })
 }

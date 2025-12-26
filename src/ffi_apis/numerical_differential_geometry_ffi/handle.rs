@@ -21,7 +21,11 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
         return ptr::null_mut();
     }
 
-    let point_slice = std::slice::from_raw_parts(point, n_vars);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point,
+            n_vars,
+        );
 
     match differential_geometry::metric_tensor_at_point(system, point_slice) {
         | Ok(g) => {
@@ -73,7 +77,11 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
         return ptr::null_mut();
     }
 
-    let point_slice = std::slice::from_raw_parts(point, n_vars);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point,
+            n_vars,
+        );
 
     match differential_geometry::christoffel_symbols(system, point_slice) {
         | Ok(c) => {
@@ -109,7 +117,11 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
         return ptr::null_mut();
     }
 
-    let point_slice = std::slice::from_raw_parts(point, n_vars);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point,
+            n_vars,
+        );
 
     match differential_geometry::ricci_tensor(system, point_slice) {
         | Ok(r) => {
@@ -156,12 +168,18 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar(
     result : *mut f64,
 ) -> i32 {
 
-    if point.is_null() || result.is_null() {
+    if point.is_null()
+        || result.is_null()
+    {
 
         return -1;
     }
 
-    let point_slice = std::slice::from_raw_parts(point, n_vars);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point,
+            n_vars,
+        );
 
     match differential_geometry::ricci_scalar(system, point_slice) {
         | Ok(r) => {

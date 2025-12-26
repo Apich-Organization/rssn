@@ -6,7 +6,8 @@ use crate::symbolic::lie_groups_and_algebras::*;
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3() -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3(
+) -> BincodeBuffer {
 
     let algebra = so3();
 
@@ -15,7 +16,8 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3() -> BincodeBuffer {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2() -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2(
+) -> BincodeBuffer {
 
     let algebra = su2();
 
@@ -42,8 +44,12 @@ pub unsafe extern "C" fn rssn_bincode_lie_bracket(
     };
 
     match lie_bracket(&x, &y) {
-        | Ok(result) => to_bincode_buffer(&result),
-        | Err(_) => BincodeBuffer::empty(),
+        | Ok(result) => {
+            to_bincode_buffer(&result)
+        },
+        | Err(_) => {
+            BincodeBuffer::empty()
+        },
     }
 }
 
@@ -62,8 +68,12 @@ pub unsafe extern "C" fn rssn_bincode_exponential_map(
     };
 
     match exponential_map(&x, order) {
-        | Ok(result) => to_bincode_buffer(&result),
-        | Err(_) => BincodeBuffer::empty(),
+        | Ok(result) => {
+            to_bincode_buffer(&result)
+        },
+        | Err(_) => {
+            BincodeBuffer::empty()
+        },
     }
 }
 
@@ -86,9 +96,15 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
         | None => return BincodeBuffer::empty(),
     };
 
-    match adjoint_representation_group(&g, &x) {
-        | Ok(result) => to_bincode_buffer(&result),
-        | Err(_) => BincodeBuffer::empty(),
+    match adjoint_representation_group(
+        &g, &x,
+    ) {
+        | Ok(result) => {
+            to_bincode_buffer(&result)
+        },
+        | Err(_) => {
+            BincodeBuffer::empty()
+        },
     }
 }
 
@@ -109,9 +125,15 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
         | None => return BincodeBuffer::empty(),
     };
 
-    match adjoint_representation_algebra(&x, &y) {
-        | Ok(result) => to_bincode_buffer(&result),
-        | Err(_) => BincodeBuffer::empty(),
+    match adjoint_representation_algebra(
+        &x, &y,
+    ) {
+        | Ok(result) => {
+            to_bincode_buffer(&result)
+        },
+        | Err(_) => {
+            BincodeBuffer::empty()
+        },
     }
 }
 
@@ -129,8 +151,12 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
     };
 
     match commutator_table(&algebra) {
-        | Ok(table) => to_bincode_buffer(&table),
-        | Err(_) => BincodeBuffer::empty(),
+        | Ok(table) => {
+            to_bincode_buffer(&table)
+        },
+        | Err(_) => {
+            BincodeBuffer::empty()
+        },
     }
 }
 
@@ -138,14 +164,21 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(algebra_buf : BincodeBuffer) -> bool {
+pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
+    algebra_buf : BincodeBuffer
+) -> bool {
 
-    let algebra : LieAlgebra = match from_bincode_buffer(&algebra_buf) {
-        | Some(a) => a,
-        | None => return false,
-    };
+    let algebra : LieAlgebra =
+        match from_bincode_buffer(
+            &algebra_buf,
+        ) {
+            | Some(a) => a,
+            | None => return false,
+        };
 
-    match check_jacobi_identity(&algebra) {
+    match check_jacobi_identity(
+        &algebra,
+    ) {
         | Ok(result) => result,
         | Err(_) => false,
     }
@@ -155,7 +188,8 @@ pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(algebra_buf : Bincod
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_so3_generators() -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_so3_generators(
+) -> BincodeBuffer {
 
     let generators = so3_generators();
 
@@ -169,7 +203,8 @@ pub unsafe extern "C" fn rssn_bincode_so3_generators() -> BincodeBuffer {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_su2_generators() -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_su2_generators(
+) -> BincodeBuffer {
 
     let generators = su2_generators();
 

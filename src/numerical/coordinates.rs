@@ -39,11 +39,12 @@ pub fn transform_point(
         .map(|&v| Expr::Constant(v))
         .collect();
 
-    let transformed_expr = coordinates::transform_point(
-        &point_expr,
-        from,
-        to,
-    )?;
+    let transformed_expr =
+        coordinates::transform_point(
+            &point_expr,
+            from,
+            to,
+        )?;
 
     let mut result = Vec::new();
 
@@ -139,9 +140,13 @@ pub fn transform_point_pure(
         return Ok(point.to_vec());
     }
 
-    let cartesian_point = to_cartesian_pure(point, from)?;
+    let cartesian_point =
+        to_cartesian_pure(point, from)?;
 
-    from_cartesian_pure(&cartesian_point, to)
+    from_cartesian_pure(
+        &cartesian_point,
+        to,
+    )
 }
 
 pub(crate) fn to_cartesian_pure(

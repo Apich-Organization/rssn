@@ -105,7 +105,9 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_bincode(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : DgPointInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -146,7 +148,9 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_bincode(buffer : BincodeBuffer
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : DgPointInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,

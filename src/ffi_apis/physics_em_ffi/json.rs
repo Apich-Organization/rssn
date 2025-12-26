@@ -18,17 +18,19 @@ use crate::physics::physics_rkm::LorenzSystem;
 #[derive(Deserialize)]
 
 struct EulerInput {
-    system_type : String, // "lorenz", "oscillator", "orbital"
+    system_type : String, /* "lorenz", "oscillator", "orbital" */
     params : serde_json::Value,
     y0 : Vec<f64>,
     t_span : (f64, f64),
     dt : f64,
-    method : String, // "forward", "midpoint", "heun"
+    method : String, /* "forward", "midpoint", "heun" */
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_em_solve_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_em_solve_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : EulerInput = match from_json_string(input) {
         | Some(i) => i,
@@ -99,24 +101,31 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(input : *const c_char) -> *m
                 &input.method,
             )
         },
-        | _ => {
-            return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<(f64, Vec<f64>)>,
+        | _ => return to_c_string(
+            serde_json::to_string(
+                &FfiResult::<
+                    Vec<(
+                        f64,
+                        Vec<f64>,
+                    )>,
                     String,
                 >::err(
-                    "Unknown system type".to_string(),
-                ))
-                .unwrap(),
+                    "Unknown system \
+                     type"
+                        .to_string(),
+                ),
             )
-        },
+            .unwrap(),
+        ),
     };
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            Vec<(f64, Vec<f64>)>,
-            String,
-        >::ok(res))
+        serde_json::to_string(
+            &FfiResult::<
+                Vec<(f64, Vec<f64>)>,
+                String,
+            >::ok(res),
+        )
         .unwrap(),
     )
 }
@@ -127,7 +136,7 @@ fn solve_with_method<S : crate::physics::physics_rkm::OdeSystem>(
     t_span : (f64, f64),
     dt : f64,
     method : &str,
-) -> Vec<(f64, Vec<f64>)> {
+) -> Vec<(f64, Vec<f64>)>{
 
     match method {
         | "midpoint" => physics_em::solve_midpoint_euler(sys, y0, t_span, dt),

@@ -23,7 +23,11 @@ pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
         | None => return std::ptr::null_mut(),
     };
 
-    let result = are_isomorphic_heuristic(&input.g1, &input.g2);
+    let result =
+        are_isomorphic_heuristic(
+            &input.g1,
+            &input.g2,
+        );
 
     to_json_string(&result)
 }
@@ -42,7 +46,8 @@ pub unsafe extern "C" fn rssn_json_greedy_coloring(
         | None => return std::ptr::null_mut(),
     };
 
-    let result = greedy_coloring(&graph);
+    let result =
+        greedy_coloring(&graph);
 
     to_json_string(&result)
 }
@@ -61,7 +66,8 @@ pub unsafe extern "C" fn rssn_json_chromatic_number_exact(
         | None => return std::ptr::null_mut(),
     };
 
-    let result = chromatic_number_exact(&graph);
+    let result =
+        chromatic_number_exact(&graph);
 
     to_json_string(&result)
 }

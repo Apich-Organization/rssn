@@ -26,12 +26,15 @@ pub(crate) fn free_vars(
             free_vars(
                 &node
                     .to_expr()
-                    .expect("Free Vars"),
+                    .expect(
+                        "Free Vars",
+                    ),
                 free,
                 bound,
             );
         },
         | Expr::Variable(s) => {
+
             if !bound.contains(s) {
 
                 free.insert(s.clone());
@@ -55,11 +58,14 @@ pub(crate) fn free_vars(
 
             free_vars(b, free, bound);
         },
-        | Expr::Neg(a) | Expr::Not(a) => {
+        | Expr::Neg(a)
+        | Expr::Not(a) => {
 
             free_vars(a, free, bound);
         },
-        | Expr::And(v) | Expr::Or(v) => {
+        | Expr::And(v)
+        | Expr::Or(v) => {
+
             for sub_expr in v {
 
                 free_vars(
@@ -69,11 +75,14 @@ pub(crate) fn free_vars(
                 );
             }
         },
-        | Expr::ForAll(var, body) | Expr::Exists(var, body) => {
+        | Expr::ForAll(var, body)
+        | Expr::Exists(var, body) => {
 
             bound.insert(var.clone());
 
-            free_vars(body, free, bound);
+            free_vars(
+                body, free, bound,
+            );
 
             bound.remove(var);
         },
@@ -83,7 +92,9 @@ pub(crate) fn free_vars(
         } => {
             for arg in args {
 
-                free_vars(arg, free, bound);
+                free_vars(
+                    arg, free, bound,
+                );
             }
         },
         | _ => {},
@@ -129,7 +140,9 @@ pub(crate) fn has_free_var(
 /// A new, simplified logical expression.
 #[must_use]
 
-pub fn simplify_logic(expr : &Expr) -> Expr {
+pub fn simplify_logic(
+    expr : &Expr
+) -> Expr {
 
     match expr {
         | Expr::Dag(node) => {
@@ -422,7 +435,9 @@ pub fn simplify_logic(expr : &Expr) -> Expr {
     }
 }
 
-pub(crate) fn to_basic_logic_ops(expr : &Expr) -> Expr {
+pub(crate) fn to_basic_logic_ops(
+    expr : &Expr
+) -> Expr {
 
     match expr {
         | Expr::Dag(node) => {
@@ -493,7 +508,9 @@ pub(crate) fn to_basic_logic_ops(expr : &Expr) -> Expr {
     }
 }
 
-pub(crate) fn move_not_inwards(expr : &Expr) -> Expr {
+pub(crate) fn move_not_inwards(
+    expr : &Expr
+) -> Expr {
 
     match expr {
         | Expr::Dag(node) => {
@@ -567,7 +584,9 @@ pub(crate) fn move_not_inwards(expr : &Expr) -> Expr {
     }
 }
 
-pub(crate) fn distribute_or_over_and(expr : &Expr) -> Expr {
+pub(crate) fn distribute_or_over_and(
+    expr : &Expr
+) -> Expr {
 
     match expr {
         | Expr::Dag(node) => {
@@ -649,13 +668,19 @@ pub(crate) fn distribute_or_over_and(expr : &Expr) -> Expr {
 
 pub fn to_cnf(expr : &Expr) -> Expr {
 
-    let simplified = simplify_logic(expr);
+    let simplified =
+        simplify_logic(expr);
 
-    let basic_ops = to_basic_logic_ops(&simplified);
+    let basic_ops =
+        to_basic_logic_ops(&simplified);
 
-    let not_inwards = move_not_inwards(&basic_ops);
+    let not_inwards =
+        move_not_inwards(&basic_ops);
 
-    let distributed = distribute_or_over_and(&not_inwards);
+    let distributed =
+        distribute_or_over_and(
+            &not_inwards,
+        );
 
     simplify_logic(&distributed)
 }
@@ -679,9 +704,9 @@ pub fn to_cnf(expr : &Expr) -> Expr {
 
 pub fn to_dnf(expr : &Expr) -> Expr {
 
-    let not_expr = simplify_logic(&Expr::new_not(
-        expr.clone(),
-    ));
+    let not_expr = simplify_logic(
+        &Expr::new_not(expr.clone()),
+    );
 
     let cnf_of_not = to_cnf(&not_expr);
 
@@ -712,7 +737,9 @@ pub fn to_dnf(expr : &Expr) -> Expr {
 /// * `None` if the formula contains quantifiers, as this solver does not handle them.
 #[must_use]
 
-pub fn is_satisfiable(expr : &Expr) -> Option<bool> {
+pub fn is_satisfiable(
+    expr : &Expr
+) -> Option<bool> {
 
     if contains_quantifier(expr) {
 
@@ -726,9 +753,11 @@ pub fn is_satisfiable(expr : &Expr) -> Option<bool> {
         return Some(b);
     }
 
-    let mut clauses = extract_clauses(&cnf);
+    let mut clauses =
+        extract_clauses(&cnf);
 
-    let mut assignments = HashMap::new();
+    let mut assignments =
+        HashMap::new();
 
     Some(dpll(
         &mut clauses,
@@ -737,26 +766,44 @@ pub fn is_satisfiable(expr : &Expr) -> Option<bool> {
 }
 
 /// A literal is an atomic proposition (e.g., P(x)) or its negation.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+)]
 
 pub enum Literal {
     Positive(Expr),
     Negative(Expr),
 }
 
-pub(crate) const fn get_atom(literal : &Literal) -> &Expr {
+pub(crate) const fn get_atom(
+    literal : &Literal
+) -> &Expr {
 
     match literal {
-        | Literal::Positive(atom) => atom,
-        | Literal::Negative(atom) => atom,
+        | Literal::Positive(atom) => {
+            atom
+        },
+        | Literal::Negative(atom) => {
+            atom
+        },
     }
 }
 
-pub(crate) fn extract_clauses(cnf_expr : &Expr) -> Vec<HashSet<Literal>> {
+pub(crate) fn extract_clauses(
+    cnf_expr : &Expr
+) -> Vec<HashSet<Literal>> {
 
     let mut clauses = Vec::new();
 
-    if let Expr::And(conjuncts) = cnf_expr {
+    if let Expr::And(conjuncts) =
+        cnf_expr
+    {
 
         for clause_expr in conjuncts {
 
@@ -770,56 +817,88 @@ pub(crate) fn extract_clauses(cnf_expr : &Expr) -> Vec<HashSet<Literal>> {
     clauses
 }
 
-pub(crate) fn extract_literals_from_clause(clause_expr : &Expr) -> HashSet<Literal> {
+pub(crate) fn extract_literals_from_clause(
+    clause_expr : &Expr
+) -> HashSet<Literal> {
 
     let mut literals = HashSet::new();
 
-    if let Expr::Or(disjuncts) = clause_expr {
+    if let Expr::Or(disjuncts) =
+        clause_expr
+    {
 
         for literal_expr in disjuncts {
 
-            if let Expr::Not(atom) = literal_expr {
+            if let Expr::Not(atom) =
+                literal_expr
+            {
 
-                literals.insert(Literal::Negative(
-                    atom.as_ref()
-                        .clone(),
-                ));
+                literals.insert(
+                    Literal::Negative(
+                        atom.as_ref()
+                            .clone(),
+                    ),
+                );
             } else {
 
-                literals.insert(Literal::Positive(
-                    literal_expr.clone(),
-                ));
+                literals.insert(
+                    Literal::Positive(
+                        literal_expr
+                            .clone(),
+                    ),
+                );
             }
         }
-    } else if let Expr::Not(atom) = clause_expr {
+    } else if let Expr::Not(atom) =
+        clause_expr
+    {
 
-        literals.insert(Literal::Negative(
-            atom.as_ref()
-                .clone(),
-        ));
+        literals.insert(
+            Literal::Negative(
+                atom.as_ref()
+                    .clone(),
+            ),
+        );
     } else {
 
-        literals.insert(Literal::Positive(
-            clause_expr.clone(),
-        ));
+        literals.insert(
+            Literal::Positive(
+                clause_expr.clone(),
+            ),
+        );
     }
 
     literals
 }
 
 pub(crate) fn dpll(
-    clauses : &mut Vec<HashSet<Literal>>,
-    assignments : &mut HashMap<Expr, bool>,
+    clauses : &mut Vec<
+        HashSet<Literal>,
+    >,
+    assignments : &mut HashMap<
+        Expr,
+        bool,
+    >,
 ) -> bool {
 
-    while let Some(unit_literal) = find_unit_clause(clauses) {
+    while let Some(unit_literal) =
+        find_unit_clause(clauses)
+    {
 
-        let (atom, value) = match unit_literal {
-            | Literal::Positive(a) => (a, true),
-            | Literal::Negative(a) => (a, false),
-        };
+        let (atom, value) =
+            match unit_literal {
+                | Literal::Positive(
+                    a,
+                ) => (a, true),
+                | Literal::Negative(
+                    a,
+                ) => (a, false),
+            };
 
-        assignments.insert(atom.clone(), value);
+        assignments.insert(
+            atom.clone(),
+            value,
+        );
 
         simplify_clauses(
             clauses,
@@ -846,14 +925,20 @@ pub(crate) fn dpll(
         return true;
     }
 
-    let atom_to_branch = match get_unassigned_atom(clauses, assignments) {
-        | Some(v) => v,
-        | _none => return true,
-    };
+    let atom_to_branch =
+        match get_unassigned_atom(
+            clauses,
+            assignments,
+        ) {
+            | Some(v) => v,
+            | _none => return true,
+        };
 
-    let mut clauses_true = clauses.clone();
+    let mut clauses_true =
+        clauses.clone();
 
-    let mut assignments_true = assignments.clone();
+    let mut assignments_true =
+        assignments.clone();
 
     assignments_true.insert(
         atom_to_branch.clone(),
@@ -874,9 +959,11 @@ pub(crate) fn dpll(
         return true;
     }
 
-    let mut clauses_false = clauses.clone();
+    let mut clauses_false =
+        clauses.clone();
 
-    let mut assignments_false = assignments.clone();
+    let mut assignments_false =
+        assignments.clone();
 
     assignments_false.insert(
         atom_to_branch.clone(),
@@ -900,7 +987,9 @@ pub(crate) fn dpll(
     false
 }
 
-pub(crate) fn find_unit_clause(clauses : &[HashSet<Literal>]) -> Option<Literal> {
+pub(crate) fn find_unit_clause(
+    clauses : &[HashSet<Literal>]
+) -> Option<Literal> {
 
     clauses
         .iter()
@@ -914,7 +1003,9 @@ pub(crate) fn find_unit_clause(clauses : &[HashSet<Literal>]) -> Option<Literal>
 }
 
 pub(crate) fn simplify_clauses(
-    clauses : &mut Vec<HashSet<Literal>>,
+    clauses : &mut Vec<
+        HashSet<Literal>,
+    >,
     atom : &Expr,
     value : bool,
 ) {
@@ -942,7 +1033,8 @@ pub(crate) fn simplify_clauses(
 
     for clause in clauses {
 
-        clause.remove(&opposite_literal);
+        clause
+            .remove(&opposite_literal);
     }
 }
 
@@ -955,11 +1047,16 @@ pub(crate) fn get_unassigned_atom(
 
         for literal in clause {
 
-            let atom = get_atom(literal);
+            let atom =
+                get_atom(literal);
 
-            if !assignments.contains_key(atom) {
+            if !assignments
+                .contains_key(atom)
+            {
 
-                return Some(atom.clone());
+                return Some(
+                    atom.clone(),
+                );
             }
         }
     }
@@ -967,7 +1064,9 @@ pub(crate) fn get_unassigned_atom(
     None
 }
 
-pub(crate) fn contains_quantifier(expr : &Expr) -> bool {
+pub(crate) fn contains_quantifier(
+    expr : &Expr
+) -> bool {
 
     match expr {
         | Expr::Dag(node) => {

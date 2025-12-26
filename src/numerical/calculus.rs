@@ -44,7 +44,8 @@ pub fn partial_derivative(
         x + h,
     );
 
-    let f_plus = eval_expr(f, &vars_plus)?;
+    let f_plus =
+        eval_expr(f, &vars_plus)?;
 
     let mut vars_minus = HashMap::new();
 
@@ -53,7 +54,8 @@ pub fn partial_derivative(
         x - h,
     );
 
-    let f_minus = eval_expr(f, &vars_minus)?;
+    let f_minus =
+        eval_expr(f, &vars_minus)?;
 
     Ok((f_plus - f_minus) / (2.0 * h))
 }
@@ -101,20 +103,28 @@ pub fn gradient(
 
     if vars.len() != point.len() {
 
-        return Err("Number of variables must match number of point dimensions".to_string());
+        return Err(
+            "Number of variables must \
+             match number of point \
+             dimensions"
+                .to_string(),
+        );
     }
 
-    let mut grad = Vec::with_capacity(vars.len());
+    let mut grad =
+        Vec::with_capacity(vars.len());
 
     let h = 1e-6;
 
     for i in 0 .. vars.len() {
 
-        let mut point_plus_h = point.to_vec();
+        let mut point_plus_h =
+            point.to_vec();
 
         point_plus_h[i] += h;
 
-        let mut point_minus_h = point.to_vec();
+        let mut point_minus_h =
+            point.to_vec();
 
         point_minus_h[i] -= h;
 
@@ -130,7 +140,9 @@ pub fn gradient(
             &point_minus_h,
         )?;
 
-        let partial_deriv = (f_plus_h - f_minus_h) / (2.0 * h);
+        let partial_deriv = (f_plus_h
+            - f_minus_h)
+            / (2.0 * h);
 
         grad.push(partial_deriv);
     }
@@ -172,7 +184,8 @@ pub fn jacobian(
     point : &[f64],
 ) -> Result<Vec<Vec<f64>>, String> {
 
-    let mut jac = Vec::with_capacity(funcs.len());
+    let mut jac =
+        Vec::with_capacity(funcs.len());
 
     for f in funcs {
 
@@ -232,13 +245,19 @@ pub fn hessian(
 
     if vars.len() != point.len() {
 
-        return Err("Number of variables must match number of point dimensions".to_string());
+        return Err(
+            "Number of variables must \
+             match number of point \
+             dimensions"
+                .to_string(),
+        );
     }
 
     let n = vars.len();
 
     let h = 1e-4; // Slightly larger h for second derivatives
-    let mut hess = vec![vec![0.0; n]; n];
+    let mut hess =
+        vec![vec![0.0; n]; n];
 
     for i in 0 .. n {
 
@@ -247,57 +266,94 @@ pub fn hessian(
             let val = if i == j {
 
                 // fxx approx (f(x+h) - 2f(x) + f(x-h)) / h^2
-                let mut p_plus = point.to_vec();
+                let mut p_plus =
+                    point.to_vec();
 
                 p_plus[i] += h;
 
-                let mut p_minus = point.to_vec();
+                let mut p_minus =
+                    point.to_vec();
 
                 p_minus[i] -= h;
 
-                let f_plus = eval_at_point(f, vars, &p_plus)?;
+                let f_plus =
+                    eval_at_point(
+                        f,
+                        vars,
+                        &p_plus,
+                    )?;
 
-                let f_center = eval_at_point(f, vars, point)?;
+                let f_center =
+                    eval_at_point(
+                        f, vars, point,
+                    )?;
 
-                let f_minus = eval_at_point(f, vars, &p_minus)?;
+                let f_minus =
+                    eval_at_point(
+                        f,
+                        vars,
+                        &p_minus,
+                    )?;
 
-                (2.0f64.mul_add(-f_center, f_plus) + f_minus) / (h * h)
+                (2.0f64.mul_add(
+                    -f_center,
+                    f_plus,
+                ) + f_minus)
+                    / (h * h)
             } else {
 
                 // fxy approx (f(x+h, y+h) - f(x+h, y-h) - f(x-h, y+h) + f(x-h, y-h)) / (4h^2)
-                let mut p_pp = point.to_vec();
+                let mut p_pp =
+                    point.to_vec();
 
                 p_pp[i] += h;
 
                 p_pp[j] += h;
 
-                let mut p_pm = point.to_vec();
+                let mut p_pm =
+                    point.to_vec();
 
                 p_pm[i] += h;
 
                 p_pm[j] -= h;
 
-                let mut p_mp = point.to_vec();
+                let mut p_mp =
+                    point.to_vec();
 
                 p_mp[i] -= h;
 
                 p_mp[j] += h;
 
-                let mut p_mm = point.to_vec();
+                let mut p_mm =
+                    point.to_vec();
 
                 p_mm[i] -= h;
 
                 p_mm[j] -= h;
 
-                let f_pp = eval_at_point(f, vars, &p_pp)?;
+                let f_pp =
+                    eval_at_point(
+                        f, vars, &p_pp,
+                    )?;
 
-                let f_pm = eval_at_point(f, vars, &p_pm)?;
+                let f_pm =
+                    eval_at_point(
+                        f, vars, &p_pm,
+                    )?;
 
-                let f_mp = eval_at_point(f, vars, &p_mp)?;
+                let f_mp =
+                    eval_at_point(
+                        f, vars, &p_mp,
+                    )?;
 
-                let f_mm = eval_at_point(f, vars, &p_mm)?;
+                let f_mm =
+                    eval_at_point(
+                        f, vars, &p_mm,
+                    )?;
 
-                (f_pp - f_pm - f_mp + f_mm) / (4.0 * h * h)
+                (f_pp - f_pm - f_mp
+                    + f_mm)
+                    / (4.0 * h * h)
             };
 
             hess[i][j] = val;

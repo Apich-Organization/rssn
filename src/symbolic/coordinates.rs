@@ -25,7 +25,16 @@ pub type TransformationRules = (
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+)]
 #[repr(C)]
 
 pub enum CoordinateSystem {
@@ -59,7 +68,8 @@ pub fn transform_point(
         return Ok(point.to_vec());
     }
 
-    let cartesian_point = to_cartesian(point, from)?;
+    let cartesian_point =
+        to_cartesian(point, from)?;
 
     from_cartesian(&cartesian_point, to)
 }
@@ -265,7 +275,8 @@ pub fn transform_expression(
         return Ok(expr.clone());
     }
 
-    let (from_vars, _to_vars, rules) = get_transform_rules(from, to)?;
+    let (from_vars, _to_vars, rules) =
+        get_transform_rules(from, to)?;
 
     let mut current_expr = expr.clone();
 
@@ -304,22 +315,38 @@ pub fn transform_expression(
 pub fn get_transform_rules(
     from : CoordinateSystem,
     to : CoordinateSystem,
-) -> Result<TransformationRules, String> {
+) -> Result<TransformationRules, String>
+{
 
-    let (_to_vars, cartesian_vars, _to_cart_rules) = get_to_cartesian_rules(to)?;
+    let (
+        _to_vars,
+        cartesian_vars,
+        _to_cart_rules,
+    ) = get_to_cartesian_rules(to)?;
 
-    let (from_vars, _, from_cart_rules) = get_to_cartesian_rules(from)?;
+    let (from_vars, _, from_cart_rules) =
+        get_to_cartesian_rules(from)?;
 
-    if from == CoordinateSystem::Cartesian {
+    if from
+        == CoordinateSystem::Cartesian
+    {
 
-        let (res_from, res_to, res_rules) = get_from_cartesian_rules(to);
+        let (
+            res_from,
+            res_to,
+            res_rules,
+        ) = get_from_cartesian_rules(
+            to,
+        );
 
         Ok((
             res_from,
             res_to,
             res_rules,
         ))
-    } else if to == CoordinateSystem::Cartesian {
+    } else if to
+        == CoordinateSystem::Cartesian
+    {
 
         Ok((
             from_vars,
@@ -329,7 +356,10 @@ pub fn get_transform_rules(
     } else {
 
         Err(
-            "Direct transformation between two non-Cartesian systems is not yet supported."
+            "Direct transformation \
+             between two \
+             non-Cartesian systems is \
+             not yet supported."
                 .to_string(),
         )
     }
@@ -346,7 +376,10 @@ pub fn get_transform_rules(
 /// `cartesian_vars` are the variable names of the Cartesian system.
 /// `rules` are the expressions for Cartesian coordinates in terms of `from_vars`.
 
-pub fn get_to_cartesian_rules(from : CoordinateSystem) -> Result<TransformationRules, String> {
+pub fn get_to_cartesian_rules(
+    from : CoordinateSystem
+) -> Result<TransformationRules, String>
+{
 
     let cartesian_vars = vec![
         "x".to_string(),
@@ -465,7 +498,9 @@ pub fn get_to_cartesian_rules(from : CoordinateSystem) -> Result<TransformationR
 /// `to_vars` are the variable names of the target system.
 /// `rules` are the expressions for `to_vars` in terms of Cartesian coordinates.
 
-pub(crate) fn get_from_cartesian_rules(to : CoordinateSystem) -> TransformationRules {
+pub(crate) fn get_from_cartesian_rules(
+    to : CoordinateSystem
+) -> TransformationRules {
 
     let cartesian_vars = vec![
         "x".to_string(),
@@ -473,11 +508,14 @@ pub(crate) fn get_from_cartesian_rules(to : CoordinateSystem) -> TransformationR
         "z".to_string(),
     ];
 
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
-    let y = Expr::Variable("y".to_string());
+    let y =
+        Expr::Variable("y".to_string());
 
-    let z = Expr::Variable("z".to_string());
+    let z =
+        Expr::Variable("z".to_string());
 
     match to {
         | CoordinateSystem::Cartesian => {
@@ -596,19 +634,22 @@ pub fn transform_contravariant_vector(
         return Ok(components.to_vec());
     }
 
-    let (vars_from, _, rules_to) = get_from_cartesian_rules(from);
+    let (vars_from, _, rules_to) =
+        get_from_cartesian_rules(from);
 
     let jacobian = compute_jacobian(
         &rules_to,
         &vars_from,
     );
 
-    let new_comps_old_coords = symbolic_mat_vec_mul(
-        &jacobian,
-        components,
-    )?;
+    let new_comps_old_coords =
+        symbolic_mat_vec_mul(
+            &jacobian,
+            components,
+        )?;
 
-    let (_, _, rules_from) = get_to_cartesian_rules(from)?;
+    let (_, _, rules_from) =
+        get_to_cartesian_rules(from)?;
 
     let mut final_comps = Vec::new();
 
@@ -661,18 +702,22 @@ pub fn transform_covariant_vector(
         return Ok(components.to_vec());
     }
 
-    let (vars_from, _, rules_to) = get_transform_rules(from, to)?;
+    let (vars_from, _, rules_to) =
+        get_transform_rules(from, to)?;
 
     let jacobian_vec = compute_jacobian(
         &rules_to,
         &vars_from,
     );
 
-    let jacobian = Expr::Matrix(jacobian_vec);
+    let jacobian =
+        Expr::Matrix(jacobian_vec);
 
-    let jacobian_inv = inverse_matrix(&jacobian);
+    let jacobian_inv =
+        inverse_matrix(&jacobian);
 
-    let jacobian_inv_t = transpose_matrix(&jacobian_inv);
+    let jacobian_inv_t =
+        transpose_matrix(&jacobian_inv);
 
     let old_vec = Expr::Matrix(
         components
@@ -686,9 +731,11 @@ pub fn transform_covariant_vector(
         &old_vec,
     );
 
-    let (from_vars, _, rules) = get_to_cartesian_rules(from)?;
+    let (from_vars, _, rules) =
+        get_to_cartesian_rules(from)?;
 
-    let mut final_comps_expr = new_vec_expr;
+    let mut final_comps_expr =
+        new_vec_expr;
 
     for (i, var) in from_vars
         .iter()
@@ -702,7 +749,9 @@ pub fn transform_covariant_vector(
         );
     }
 
-    if let Expr::Matrix(rows) = simplify(&final_comps_expr) {
+    if let Expr::Matrix(rows) =
+        simplify(&final_comps_expr)
+    {
 
         Ok(rows
             .into_iter()
@@ -710,7 +759,12 @@ pub fn transform_covariant_vector(
             .collect())
     } else {
 
-        Err("Transformation resulted in a non-vector expression".to_string())
+        Err(
+            "Transformation resulted \
+             in a non-vector \
+             expression"
+                .to_string(),
+        )
     }
 }
 
@@ -747,29 +801,41 @@ pub(crate) fn symbolic_mat_vec_mul(
     vector : &[Expr],
 ) -> Result<Vec<Expr>, String> {
 
-    if matrix.is_empty() || (!matrix.is_empty() && matrix[0].len() != vector.len()) {
+    if matrix.is_empty()
+        || (!matrix.is_empty()
+            && matrix[0].len()
+                != vector.len())
+    {
 
-        return Err("Matrix and vector dimensions are incompatible.".to_string());
+        return Err("Matrix and \
+                    vector dimensions \
+                    are incompatible.\
+                    "
+        .to_string());
     }
 
     let mut result = Vec::new();
 
     for row in matrix {
 
-        let mut sum = Expr::Constant(0.0);
+        let mut sum =
+            Expr::Constant(0.0);
 
         for (i, val) in row
             .iter()
             .enumerate()
         {
 
-            sum = simplify(&Expr::new_add(
-                sum,
-                Expr::new_mul(
-                    val.clone(),
-                    vector[i].clone(),
+            sum = simplify(
+                &Expr::new_add(
+                    sum,
+                    Expr::new_mul(
+                        val.clone(),
+                        vector[i]
+                            .clone(),
+                    ),
                 ),
-            ));
+            );
         }
 
         result.push(sum);
@@ -778,7 +844,14 @@ pub(crate) fn symbolic_mat_vec_mul(
     Ok(result)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+)]
 
 pub enum TensorType {
     Contravariant,
@@ -815,13 +888,19 @@ pub fn transform_tensor2(
         return Ok(tensor.clone());
     }
 
-    let (from_vars, _, rules) = get_transform_rules(from, to)?;
+    let (from_vars, _, rules) =
+        get_transform_rules(from, to)?;
 
-    let jacobian_vec = compute_jacobian(&rules, &from_vars);
+    let jacobian_vec = compute_jacobian(
+        &rules,
+        &from_vars,
+    );
 
-    let jacobian = Expr::Matrix(jacobian_vec);
+    let jacobian =
+        Expr::Matrix(jacobian_vec);
 
-    let jacobian_inv = inverse_matrix(&jacobian);
+    let jacobian_inv =
+        inverse_matrix(&jacobian);
 
     let transformed_tensor = match tensor_type {
         | TensorType::Contravariant => {
@@ -883,10 +962,22 @@ pub fn symbolic_mat_mat_mul(
 
     if m1_cols != m2_rows {
 
-        return Err("Matrix dimensions are incompatible for multiplication.".to_string());
+        return Err(
+            "Matrix dimensions are \
+             incompatible for \
+             multiplication."
+                .to_string(),
+        );
     }
 
-    let mut result = vec![vec![Expr::Constant(0.0); m2_cols]; m1_rows];
+    let mut result =
+        vec![
+            vec![
+                Expr::Constant(0.0);
+                m2_cols
+            ];
+            m1_rows
+        ];
 
     for (i, row) in m1
         .iter()
@@ -895,20 +986,25 @@ pub fn symbolic_mat_mat_mul(
 
         for j in 0 .. m2_cols {
 
-            let mut sum = Expr::Constant(0.0);
+            let mut sum =
+                Expr::Constant(0.0);
 
             for (k, val) in row
                 .iter()
                 .enumerate()
             {
 
-                sum = simplify(&Expr::new_add(
-                    sum,
-                    Expr::new_mul(
-                        val.clone(),
-                        m2[k][j].clone(),
+                sum = simplify(
+                    &Expr::new_add(
+                        sum,
+                        Expr::new_mul(
+                            val.clone(),
+                            m2[k][j]
+                                .clone(
+                                ),
+                        ),
                     ),
-                ));
+                );
             }
 
             result[i][j] = sum;
@@ -931,7 +1027,9 @@ pub fn symbolic_mat_mat_mul(
 /// A `Result` containing an `Expr::Matrix` representing the metric tensor,
 /// or an error string if the system is not supported or computation fails.
 
-pub fn get_metric_tensor(system : CoordinateSystem) -> Result<Expr, String> {
+pub fn get_metric_tensor(
+    system : CoordinateSystem
+) -> Result<Expr, String> {
 
     let rules = match system {
         | CoordinateSystem::Cartesian => return Ok(matrix::identity_matrix(3)),
@@ -958,9 +1056,11 @@ pub fn get_metric_tensor(system : CoordinateSystem) -> Result<Expr, String> {
         | CoordinateSystem::Cartesian => unreachable!(),
     };
 
-    let jacobian_vec = compute_jacobian(&rules, &vars);
+    let jacobian_vec =
+        compute_jacobian(&rules, &vars);
 
-    let jacobian = Expr::Matrix(jacobian_vec);
+    let jacobian =
+        Expr::Matrix(jacobian_vec);
 
     Ok(mul_matrices(
         &transpose_matrix(&jacobian),
@@ -988,32 +1088,40 @@ pub fn transform_divergence(
     from : CoordinateSystem,
 ) -> Result<Expr, String> {
 
-    let g_matrix = get_metric_tensor(from)?;
+    let g_matrix =
+        get_metric_tensor(from)?;
 
-    let g = matrix::determinant(&g_matrix);
+    let g =
+        matrix::determinant(&g_matrix);
 
-    let sqrt_g = simplify(&Expr::new_sqrt(g));
+    let sqrt_g =
+        simplify(&Expr::new_sqrt(g));
 
-    let (vars, _, _) = get_to_cartesian_rules(from)?;
+    let (vars, _, _) =
+        get_to_cartesian_rules(from)?;
 
-    let mut total_divergence = Expr::Constant(0.0);
+    let mut total_divergence =
+        Expr::Constant(0.0);
 
     for i in 0 .. vector_comps.len() {
 
-        let term_to_diff = simplify(&Expr::new_mul(
-            sqrt_g.clone(),
-            vector_comps[i].clone(),
-        ));
+        let term_to_diff =
+            simplify(&Expr::new_mul(
+                sqrt_g.clone(),
+                vector_comps[i].clone(),
+            ));
 
-        let partial_deriv = differentiate(
-            &term_to_diff,
-            &vars[i],
-        );
+        let partial_deriv =
+            differentiate(
+                &term_to_diff,
+                &vars[i],
+            );
 
-        total_divergence = simplify(&Expr::new_add(
-            total_divergence,
-            partial_deriv,
-        ));
+        total_divergence =
+            simplify(&Expr::new_add(
+                total_divergence,
+                partial_deriv,
+            ));
     }
 
     Ok(simplify(
@@ -1045,18 +1153,29 @@ pub fn transform_curl(
 
     if vector_comps.len() != 3 {
 
-        return Err("Curl is only defined for 3D vectors.".to_string());
+        return Err("Curl is only \
+                    defined for 3D \
+                    vectors."
+            .to_string());
     }
 
-    let g_matrix = get_metric_tensor(from)?;
+    let g_matrix =
+        get_metric_tensor(from)?;
 
-    let g_rows = if let Expr::Matrix(rows) = g_matrix {
+    let g_rows =
+        if let Expr::Matrix(rows) =
+            g_matrix
+        {
 
-        rows
-    } else {
+            rows
+        } else {
 
-        return Err("Metric tensor is not a matrix".to_string());
-    };
+            return Err(
+                "Metric tensor is not \
+                 a matrix"
+                    .to_string(),
+            );
+        };
 
     let h1 = simplify(&Expr::new_sqrt(
         g_rows[0][0].clone(),
@@ -1070,7 +1189,8 @@ pub fn transform_curl(
         g_rows[2][2].clone(),
     ));
 
-    let (vars, _, _) = get_to_cartesian_rules(from)?;
+    let (vars, _, _) =
+        get_to_cartesian_rules(from)?;
 
     let u1 = &vars[0];
 
@@ -1084,73 +1204,88 @@ pub fn transform_curl(
 
     let v3 = &vector_comps[2];
 
-    let curl_1 = simplify(&Expr::new_div(
-        Expr::new_sub(
-            differentiate(
-                &simplify(&Expr::new_mul(
-                    h3.clone(),
-                    v3.clone(),
-                )),
-                u2,
+    let curl_1 =
+        simplify(&Expr::new_div(
+            Expr::new_sub(
+                differentiate(
+                    &simplify(
+                        &Expr::new_mul(
+                            h3.clone(),
+                            v3.clone(),
+                        ),
+                    ),
+                    u2,
+                ),
+                differentiate(
+                    &simplify(
+                        &Expr::new_mul(
+                            h2.clone(),
+                            v2.clone(),
+                        ),
+                    ),
+                    u3,
+                ),
             ),
-            differentiate(
-                &simplify(&Expr::new_mul(
-                    h2.clone(),
-                    v2.clone(),
-                )),
-                u3,
-            ),
-        ),
-        simplify(&Expr::new_mul(
-            h2.clone(),
-            h3.clone(),
-        )),
-    ));
+            simplify(&Expr::new_mul(
+                h2.clone(),
+                h3.clone(),
+            )),
+        ));
 
-    let curl_2 = simplify(&Expr::new_div(
-        Expr::new_sub(
-            differentiate(
-                &simplify(&Expr::new_mul(
-                    h1.clone(),
-                    v1.clone(),
-                )),
-                u3,
+    let curl_2 =
+        simplify(&Expr::new_div(
+            Expr::new_sub(
+                differentiate(
+                    &simplify(
+                        &Expr::new_mul(
+                            h1.clone(),
+                            v1.clone(),
+                        ),
+                    ),
+                    u3,
+                ),
+                differentiate(
+                    &simplify(
+                        &Expr::new_mul(
+                            h3.clone(),
+                            v3.clone(),
+                        ),
+                    ),
+                    u1,
+                ),
             ),
-            differentiate(
-                &simplify(&Expr::new_mul(
-                    h3.clone(),
-                    v3.clone(),
-                )),
-                u1,
-            ),
-        ),
-        simplify(&Expr::new_mul(
-            h3,
-            h1.clone(),
-        )),
-    ));
+            simplify(&Expr::new_mul(
+                h3,
+                h1.clone(),
+            )),
+        ));
 
-    let curl_3 = simplify(&Expr::new_div(
-        Expr::new_sub(
-            differentiate(
-                &simplify(&Expr::new_mul(
-                    h2.clone(),
-                    v2.clone(),
-                )),
-                u1,
+    let curl_3 =
+        simplify(&Expr::new_div(
+            Expr::new_sub(
+                differentiate(
+                    &simplify(
+                        &Expr::new_mul(
+                            h2.clone(),
+                            v2.clone(),
+                        ),
+                    ),
+                    u1,
+                ),
+                differentiate(
+                    &simplify(
+                        &Expr::new_mul(
+                            h1.clone(),
+                            v1.clone(),
+                        ),
+                    ),
+                    u2,
+                ),
             ),
-            differentiate(
-                &simplify(&Expr::new_mul(
-                    h1.clone(),
-                    v1.clone(),
-                )),
-                u2,
-            ),
-        ),
-        simplify(&Expr::new_mul(
-            h1, h2,
-        )),
-    ));
+            simplify(&Expr::new_mul(
+                h1, h2,
+            )),
+        ));
 
     Ok(vec![
         curl_1,
@@ -1188,18 +1323,22 @@ pub fn transform_gradient(
 
         for var in from_vars {
 
-            grad_comps.push(differentiate(
-                scalar_field,
-                var,
-            ));
+            grad_comps.push(
+                differentiate(
+                    scalar_field,
+                    var,
+                ),
+            );
         }
 
         return Ok(grad_comps);
     }
 
-    let (_, _, rules) = get_to_cartesian_rules(from)?;
+    let (_, _, rules) =
+        get_to_cartesian_rules(from)?;
 
-    let mut field_cart = scalar_field.clone();
+    let mut field_cart =
+        scalar_field.clone();
 
     for (i, var) in from_vars
         .iter()
@@ -1221,14 +1360,17 @@ pub fn transform_gradient(
         "z".to_string(),
     ];
 
-    let mut grad_cart_comps = Vec::new();
+    let mut grad_cart_comps =
+        Vec::new();
 
     for var in &cartesian_vars {
 
-        grad_cart_comps.push(differentiate(
-            &field_cart,
-            var,
-        ));
+        grad_cart_comps.push(
+            differentiate(
+                &field_cart,
+                var,
+            ),
+        );
     }
 
     transform_covariant_vector(

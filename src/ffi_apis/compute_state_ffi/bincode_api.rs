@@ -9,7 +9,8 @@ use crate::ffi_apis::common::BincodeBuffer;
 /// The caller must free the returned buffer using rssn_free_bincode_buffer.
 #[no_mangle]
 
-pub extern "C" fn rssn_state_new_bincode() -> BincodeBuffer {
+pub extern "C" fn rssn_state_new_bincode(
+) -> BincodeBuffer {
 
     let state = State::new();
 
@@ -25,11 +26,20 @@ pub extern "C" fn rssn_state_get_intermediate_value_bincode(
     state_buffer : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let state : Option<State> = from_bincode_buffer(&state_buffer);
+    let state : Option<State> =
+        from_bincode_buffer(
+            &state_buffer,
+        );
 
     match state {
-        | Some(s) => to_bincode_buffer(&s.intermediate_value),
-        | None => BincodeBuffer::empty(),
+        | Some(s) => {
+            to_bincode_buffer(
+                &s.intermediate_value,
+            )
+        },
+        | None => {
+            BincodeBuffer::empty()
+        },
     }
 }
 
@@ -42,9 +52,15 @@ pub extern "C" fn rssn_state_set_intermediate_value_bincode(
     value_buffer : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let state : Option<State> = from_bincode_buffer(&state_buffer);
+    let state : Option<State> =
+        from_bincode_buffer(
+            &state_buffer,
+        );
 
-    let value : Option<String> = from_bincode_buffer(&value_buffer);
+    let value : Option<String> =
+        from_bincode_buffer(
+            &value_buffer,
+        );
 
     match (state, value) {
         | (Some(mut s), Some(v)) => {

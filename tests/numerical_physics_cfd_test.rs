@@ -37,29 +37,46 @@ fn test_fluid_properties_air() {
 
     let air = FluidProperties::air();
 
-    assert!((air.density - 1.204).abs() < 0.01);
+    assert!(
+        (air.density - 1.204).abs()
+            < 0.01
+    );
 
-    assert!(air.dynamic_viscosity > 1e-5 && air.dynamic_viscosity < 2e-5);
+    assert!(
+        air.dynamic_viscosity > 1e-5
+            && air.dynamic_viscosity
+                < 2e-5
+    );
 }
 
 #[test]
 
 fn test_fluid_properties_water() {
 
-    let water = FluidProperties::water();
+    let water =
+        FluidProperties::water();
 
-    assert!((water.density - 998.2).abs() < 1.0);
+    assert!(
+        (water.density - 998.2).abs()
+            < 1.0
+    );
 
-    assert!(water.dynamic_viscosity > 9e-4 && water.dynamic_viscosity < 1.1e-3);
+    assert!(
+        water.dynamic_viscosity > 9e-4
+            && water.dynamic_viscosity
+                < 1.1e-3
+    );
 }
 
 #[test]
 
 fn test_kinematic_viscosity() {
 
-    let water = FluidProperties::water();
+    let water =
+        FluidProperties::water();
 
-    let nu = water.kinematic_viscosity();
+    let nu =
+        water.kinematic_viscosity();
 
     // ν ≈ 1e-6 m²/s for water
     assert!(nu > 9e-7 && nu < 1.1e-6);
@@ -69,19 +86,24 @@ fn test_kinematic_viscosity() {
 
 fn test_thermal_diffusivity() {
 
-    let water = FluidProperties::water();
+    let water =
+        FluidProperties::water();
 
-    let alpha = water.thermal_diffusivity();
+    let alpha =
+        water.thermal_diffusivity();
 
     // α ≈ 1.4e-7 m²/s for water
-    assert!(alpha > 1e-7 && alpha < 2e-7);
+    assert!(
+        alpha > 1e-7 && alpha < 2e-7
+    );
 }
 
 #[test]
 
 fn test_prandtl_number() {
 
-    let water = FluidProperties::water();
+    let water =
+        FluidProperties::water();
 
     let pr = water.prandtl_number();
 
@@ -98,7 +120,8 @@ fn test_prandtl_number() {
 fn test_reynolds_number() {
 
     // Flow at 1 m/s, length 1 m, water
-    let re = reynolds_number(1.0, 1.0, 1e-6);
+    let re =
+        reynolds_number(1.0, 1.0, 1e-6);
 
     assert!((re - 1e6).abs() < 1.0);
 }
@@ -118,7 +141,8 @@ fn test_mach_number() {
 fn test_froude_number() {
 
     // Ship at 5 m/s, length 10 m
-    let fr = froude_number(5.0, 10.0, 9.81);
+    let fr =
+        froude_number(5.0, 10.0, 9.81);
 
     assert!(fr > 0.4 && fr < 0.6);
 }
@@ -127,7 +151,8 @@ fn test_froude_number() {
 
 fn test_cfl_number() {
 
-    let cfl = cfl_number(1.0, 0.01, 0.1);
+    let cfl =
+        cfl_number(1.0, 0.01, 0.1);
 
     assert!((cfl - 0.1).abs() < 1e-10);
 }
@@ -140,14 +165,20 @@ fn test_check_cfl_stability() {
         1.0, 0.01, 0.1, 1.0
     ));
 
-    assert!(!check_cfl_stability(10.0, 0.1, 0.1, 1.0));
+    assert!(
+        !check_cfl_stability(
+            10.0, 0.1, 0.1, 1.0
+        )
+    );
 }
 
 #[test]
 
 fn test_diffusion_number() {
 
-    let r = diffusion_number(0.01, 0.001, 0.01);
+    let r = diffusion_number(
+        0.01, 0.001, 0.01,
+    );
 
     // r = 0.01 * 0.001 / 0.0001 = 0.1
     assert!((r - 0.1).abs() < 1e-10);
@@ -202,9 +233,14 @@ fn test_solve_diffusion_1d() {
     assert_eq!(results.len(), 11);
 
     // Peak should spread out
-    assert!(results[10][10] < results[0][10]);
+    assert!(
+        results[10][10]
+            < results[0][10]
+    );
 
-    assert!(results[10][9] > results[0][9]);
+    assert!(
+        results[10][9] > results[0][9]
+    );
 }
 
 #[test]
@@ -220,9 +256,11 @@ fn test_solve_advection_diffusion_1d() {
         u0[i] = 1.0;
     }
 
-    let results = solve_advection_diffusion_1d(
-        &u0, 0.5, 0.01, 0.1, 0.01, 10,
-    );
+    let results =
+        solve_advection_diffusion_1d(
+            &u0, 0.5, 0.01, 0.1, 0.01,
+            10,
+        );
 
     assert_eq!(results.len(), 11);
 }
@@ -238,7 +276,9 @@ fn test_solve_burgers_1d() {
 
     for i in 10 .. 30 {
 
-        u0[i] = 1.0 - ((i as f64 - 20.0).abs() / 10.0);
+        u0[i] = 1.0
+            - ((i as f64 - 20.0).abs()
+                / 10.0);
     }
 
     let results = solve_burgers_1d(
@@ -262,9 +302,11 @@ fn test_solve_poisson_2d_jacobi() {
 
     let u0 = Matrix::zeros(n, n);
 
-    let result = solve_poisson_2d_jacobi(
-        &f, &u0, 0.1, 0.1, 100, 1e-6,
-    );
+    let result =
+        solve_poisson_2d_jacobi(
+            &f, &u0, 0.1, 0.1, 100,
+            1e-6,
+        );
 
     assert_eq!(result.rows(), n);
 
@@ -273,7 +315,8 @@ fn test_solve_poisson_2d_jacobi() {
 
 #[test]
 
-fn test_solve_poisson_2d_gauss_seidel() {
+fn test_solve_poisson_2d_gauss_seidel()
+{
 
     let n = 10;
 
@@ -281,9 +324,11 @@ fn test_solve_poisson_2d_gauss_seidel() {
 
     let u0 = Matrix::zeros(n, n);
 
-    let result = solve_poisson_2d_gauss_seidel(
-        &f, &u0, 0.1, 0.1, 100, 1e-6,
-    );
+    let result =
+        solve_poisson_2d_gauss_seidel(
+            &f, &u0, 0.1, 0.1, 100,
+            1e-6,
+        );
 
     assert_eq!(result.rows(), n);
 
@@ -301,7 +346,8 @@ fn test_solve_poisson_2d_sor() {
     let u0 = Matrix::zeros(n, n);
 
     let result = solve_poisson_2d_sor(
-        &f, &u0, 0.1, 0.1, 1.5, 100, 1e-6,
+        &f, &u0, 0.1, 0.1, 1.5, 100,
+        1e-6,
     );
 
     assert_eq!(result.rows(), n);
@@ -323,7 +369,9 @@ fn test_compute_vorticity() {
 
     let v = Matrix::zeros(n, n);
 
-    let omega = compute_vorticity(&u, &v, 0.1, 0.1);
+    let omega = compute_vorticity(
+        &u, &v, 0.1, 0.1,
+    );
 
     assert_eq!(omega.rows(), n);
 
@@ -353,13 +401,17 @@ fn test_compute_stream_function() {
 
 #[test]
 
-fn test_velocity_from_stream_function() {
+fn test_velocity_from_stream_function()
+{
 
     let n = 10;
 
     let psi = Matrix::zeros(n, n);
 
-    let (u, v) = velocity_from_stream_function(&psi, 0.1, 0.1);
+    let (u, v) =
+        velocity_from_stream_function(
+            &psi, 0.1, 0.1,
+        );
 
     assert_eq!(u.rows(), n);
 
@@ -380,7 +432,9 @@ fn test_compute_divergence() {
 
     let v = Matrix::zeros(n, n);
 
-    let div = compute_divergence(&u, &v, 0.1, 0.1);
+    let div = compute_divergence(
+        &u, &v, 0.1, 0.1,
+    );
 
     assert_eq!(div.rows(), n);
 
@@ -389,7 +443,10 @@ fn test_compute_divergence() {
 
         for j in 0 .. n {
 
-            assert!(div.get(i, j).abs() < 1e-10);
+            assert!(
+                div.get(i, j).abs()
+                    < 1e-10
+            );
         }
     }
 }
@@ -402,7 +459,8 @@ fn test_compute_gradient() {
 
     let p = Matrix::zeros(n, n);
 
-    let (dp_dx, dp_dy) = compute_gradient(&p, 0.1, 0.1);
+    let (dp_dx, dp_dy) =
+        compute_gradient(&p, 0.1, 0.1);
 
     assert_eq!(dp_dx.rows(), n);
 
@@ -417,7 +475,8 @@ fn test_compute_laplacian() {
 
     let f = Matrix::zeros(n, n);
 
-    let lap = compute_laplacian(&f, 0.1, 0.1);
+    let lap =
+        compute_laplacian(&f, 0.1, 0.1);
 
     assert_eq!(lap.rows(), n);
 
@@ -482,7 +541,10 @@ fn test_apply_dirichlet_bc() {
     }
 
     // Interior should still be 1
-    assert!((*field.get(2, 2) - 1.0).abs() < 1e-10);
+    assert!(
+        (*field.get(2, 2) - 1.0).abs()
+            < 1e-10
+    );
 }
 
 #[test]
@@ -525,9 +587,12 @@ fn test_max_velocity_magnitude() {
 
     *v.get_mut(2, 2) = 4.0;
 
-    let max_vel = max_velocity_magnitude(&u, &v);
+    let max_vel =
+        max_velocity_magnitude(&u, &v);
 
-    assert!((max_vel - 5.0).abs() < 1e-10);
+    assert!(
+        (max_vel - 5.0).abs() < 1e-10
+    );
 }
 
 #[test]
@@ -565,16 +630,20 @@ fn test_max_abs() {
 
     let max_val = max_abs(&field);
 
-    assert!((max_val - 3.0).abs() < 1e-10);
+    assert!(
+        (max_val - 3.0).abs() < 1e-10
+    );
 }
 
 #[test]
 
 fn test_lid_driven_cavity_simple() {
 
-    let (psi, omega) = lid_driven_cavity_simple(
-        10, 10, 100.0, 1.0, 10, 0.001,
-    );
+    let (psi, omega) =
+        lid_driven_cavity_simple(
+            10, 10, 100.0, 1.0, 10,
+            0.001,
+        );
 
     assert_eq!(psi.rows(), 10);
 

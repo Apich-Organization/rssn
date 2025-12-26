@@ -15,9 +15,11 @@ pub extern "C" fn rssn_json_solve_pde(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let pde_expr : Option<Expr> = from_json_string(pde_json);
+    let pde_expr : Option<Expr> =
+        from_json_string(pde_json);
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
     let func_str = unsafe {
 
@@ -26,13 +28,19 @@ pub extern "C" fn rssn_json_solve_pde(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(pde), Some(f), Some(v)) = (
+    if let (
+        Some(pde),
+        Some(f),
+        Some(v),
+    ) = (
         pde_expr,
         func_str,
         vars,
@@ -66,9 +74,11 @@ pub extern "C" fn rssn_json_solve_pde_by_characteristics(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
     let func_str = unsafe {
 
@@ -77,13 +87,19 @@ pub extern "C" fn rssn_json_solve_pde_by_characteristics(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         vars,
@@ -113,9 +129,11 @@ pub extern "C" fn rssn_json_solve_wave_equation_1d(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
     let func_str = unsafe {
 
@@ -124,13 +142,19 @@ pub extern "C" fn rssn_json_solve_wave_equation_1d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         vars,
@@ -160,9 +184,11 @@ pub extern "C" fn rssn_json_solve_heat_equation_1d(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
     let func_str = unsafe {
 
@@ -171,13 +197,19 @@ pub extern "C" fn rssn_json_solve_heat_equation_1d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         vars,
@@ -207,9 +239,11 @@ pub extern "C" fn rssn_json_solve_laplace_equation_2d(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
     let func_str = unsafe {
 
@@ -218,13 +252,19 @@ pub extern "C" fn rssn_json_solve_laplace_equation_2d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         vars,
@@ -254,9 +294,11 @@ pub extern "C" fn rssn_json_solve_poisson_equation_2d(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
     let func_str = unsafe {
 
@@ -265,13 +307,19 @@ pub extern "C" fn rssn_json_solve_poisson_equation_2d(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         vars,
@@ -301,9 +349,11 @@ pub extern "C" fn rssn_json_classify_pde(
     vars_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
     let func_str = unsafe {
 
@@ -312,13 +362,19 @@ pub extern "C" fn rssn_json_classify_pde(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         vars,
@@ -329,7 +385,12 @@ pub extern "C" fn rssn_json_classify_pde(
             .map(|s| s.as_str())
             .collect();
 
-        let classification = pde::classify_pde_heuristic(&eq, f, &vars_refs);
+        let classification =
+            pde::classify_pde_heuristic(
+                &eq,
+                f,
+                &vars_refs,
+            );
 
         to_json_string(&classification)
     } else {

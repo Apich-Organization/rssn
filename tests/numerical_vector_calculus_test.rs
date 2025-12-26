@@ -59,11 +59,23 @@ fn test_curl_expr() {
     )
     .unwrap();
 
-    assert_approx_eq!(res[0], 0.0, 1e-5);
+    assert_approx_eq!(
+        res[0],
+        0.0,
+        1e-5
+    );
 
-    assert_approx_eq!(res[1], 0.0, 1e-5);
+    assert_approx_eq!(
+        res[1],
+        0.0,
+        1e-5
+    );
 
-    assert_approx_eq!(res[2], -2.0, 1e-5);
+    assert_approx_eq!(
+        res[2],
+        -2.0,
+        1e-5
+    );
 }
 
 #[test]

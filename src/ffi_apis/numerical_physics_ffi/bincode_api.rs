@@ -137,11 +137,12 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
         },
     };
 
-    let result = physics::ideal_gas_pressure(
-        input.n,
-        input.t,
-        input.v,
-    );
+    let result =
+        physics::ideal_gas_pressure(
+            input.n,
+            input.t,
+            input.v,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -167,7 +168,10 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
         },
     };
 
-    let result = physics::lorentz_factor(input.velocity);
+    let result =
+        physics::lorentz_factor(
+            input.velocity,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -193,7 +197,9 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
         },
     };
 
-    let result = physics::mass_energy(input.mass);
+    let result = physics::mass_energy(
+        input.mass,
+    );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -245,7 +251,10 @@ pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_bincode(
         },
     };
 
-    let result = physics::hydrogen_energy_level(input.n);
+    let result =
+        physics::hydrogen_energy_level(
+            input.n,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),

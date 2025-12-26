@@ -13,12 +13,22 @@ use serde::Serialize;
 use crate::symbolic::core::Expr;
 
 /// Represents a group element.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct GroupElement(pub Expr);
 
 /// Represents a group with its multiplication table.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct Group {
     pub elements : Vec<GroupElement>,
@@ -65,7 +75,10 @@ impl Group {
     ) -> Option<GroupElement> {
 
         self.multiplication_table
-            .get(&(a.clone(), b.clone()))
+            .get(&(
+                a.clone(),
+                b.clone(),
+            ))
             .cloned()
     }
 
@@ -79,11 +92,17 @@ impl Group {
 
         for x in &self.elements {
 
-            if let Some(product) = self.multiply(a, x) {
+            if let Some(product) =
+                self.multiply(a, x)
+            {
 
-                if product == self.identity {
+                if product
+                    == self.identity
+                {
 
-                    return Some(x.clone());
+                    return Some(
+                        x.clone(),
+                    );
                 }
             }
         }
@@ -100,9 +119,11 @@ impl Group {
 
             for b in &self.elements {
 
-                let ab = self.multiply(a, b);
+                let ab =
+                    self.multiply(a, b);
 
-                let ba = self.multiply(b, a);
+                let ba =
+                    self.multiply(b, a);
 
                 if ab != ba {
 
@@ -126,14 +147,20 @@ impl Group {
 
         // The order of an element must divide the group order (Lagrange's theorem),
         // so we check up to group size.
-        for k in 1 ..= self.elements.len() {
+        for k in
+            1 ..= self.elements.len()
+        {
 
-            if current == self.identity {
+            if current == self.identity
+            {
 
                 return Some(k);
             }
 
-            current = self.multiply(&current, g)?;
+            current = self.multiply(
+                &current,
+                g,
+            )?;
         }
 
         None
@@ -142,11 +169,17 @@ impl Group {
     /// Finds the conjugacy classes of the group.
     #[must_use]
 
-    pub fn conjugacy_classes(&self) -> Vec<Vec<GroupElement>> {
+    pub fn conjugacy_classes(
+        &self
+    ) -> Vec<Vec<GroupElement>> {
 
-        let mut classes : Vec<Vec<GroupElement>> = Vec::new();
+        let mut classes : Vec<
+            Vec<GroupElement>,
+        > = Vec::new();
 
-        let mut visited : Vec<GroupElement> = Vec::new();
+        let mut visited : Vec<
+            GroupElement,
+        > = Vec::new();
 
         for x in &self.elements {
 
@@ -160,11 +193,24 @@ impl Group {
             for g in &self.elements {
 
                 // g * x * g^-1
-                if let Some(g_inv) = self.inverse(g) {
+                if let Some(g_inv) =
+                    self.inverse(g)
+                {
 
-                    if let Some(gx) = self.multiply(g, x) {
+                    if let Some(gx) =
+                        self.multiply(
+                            g, x,
+                        )
+                    {
 
-                        if let Some(conjugate) = self.multiply(&gx, &g_inv) {
+                        if let Some(
+                            conjugate,
+                        ) = self
+                            .multiply(
+                                &gx,
+                                &g_inv,
+                            )
+                        {
 
                             if !class.contains(&conjugate) {
 
@@ -189,23 +235,30 @@ impl Group {
     /// Finds the center of the group Z(G) = {z in G | zg = gz for all g in G}.
     #[must_use]
 
-    pub fn center(&self) -> Vec<GroupElement> {
+    pub fn center(
+        &self
+    ) -> Vec<GroupElement> {
 
-        let mut center_elements = Vec::new();
+        let mut center_elements =
+            Vec::new();
 
         for z in &self.elements {
 
-            let mut commutes_with_all = true;
+            let mut commutes_with_all =
+                true;
 
             for g in &self.elements {
 
-                let zg = self.multiply(z, g);
+                let zg =
+                    self.multiply(z, g);
 
-                let gz = self.multiply(g, z);
+                let gz =
+                    self.multiply(g, z);
 
                 if zg != gz {
 
-                    commutes_with_all = false;
+                    commutes_with_all =
+                        false;
 
                     break;
                 }
@@ -213,7 +266,8 @@ impl Group {
 
             if commutes_with_all {
 
-                center_elements.push(z.clone());
+                center_elements
+                    .push(z.clone());
             }
         }
 
@@ -222,11 +276,15 @@ impl Group {
 }
 
 /// Represents a group representation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct Representation {
-    pub group_elements : Vec<GroupElement>,
-    pub matrices : HashMap<GroupElement, Expr>,
+    pub group_elements :
+        Vec<GroupElement>,
+    pub matrices :
+        HashMap<GroupElement, Expr>,
 }
 
 impl Representation {
@@ -234,8 +292,13 @@ impl Representation {
     #[must_use]
 
     pub const fn new(
-        group_elements : Vec<GroupElement>,
-        matrices : HashMap<GroupElement, Expr>,
+        group_elements : Vec<
+            GroupElement,
+        >,
+        matrices : HashMap<
+            GroupElement,
+            Expr,
+        >,
     ) -> Self {
 
         Self {
@@ -254,24 +317,36 @@ impl Representation {
 
         for g1 in &self.group_elements {
 
-            for g2 in &self.group_elements {
+            for g2 in
+                &self.group_elements
+            {
 
-                if let (Some(m1), Some(m2), Some(g1g2)) = (
+                if let (
+                    Some(m1),
+                    Some(m2),
+                    Some(g1g2),
+                ) = (
                     self.matrices
                         .get(g1),
                     self.matrices
                         .get(g2),
-                    group.multiply(g1, g2),
+                    group.multiply(
+                        g1, g2,
+                    ),
                 ) {
 
-                    if let Some(m_g1g2) = self
+                    if let Some(
+                        m_g1g2,
+                    ) = self
                         .matrices
                         .get(&g1g2)
                     {
 
                         let m1m2 = crate::symbolic::matrix::mul_matrices(m1, m2);
 
-                        if m1m2 != *m_g1g2 {
+                        if m1m2
+                            != *m_g1g2
+                        {
 
                             return false;
                         }
@@ -289,22 +364,32 @@ use crate::symbolic::simplify_dag::simplify;
 /// Computes the character of a representation.
 #[must_use]
 
-pub fn character(representation : &Representation) -> HashMap<GroupElement, Expr> {
+pub fn character(
+    representation : &Representation
+) -> HashMap<GroupElement, Expr> {
 
     let mut chars = HashMap::new();
 
-    for (element, matrix) in &representation.matrices {
+    for (element, matrix) in
+        &representation.matrices
+    {
 
-        if let Expr::Matrix(rows) = matrix {
+        if let Expr::Matrix(rows) =
+            matrix
+        {
 
-            let mut trace_val = Expr::Constant(0.0);
+            let mut trace_val =
+                Expr::Constant(0.0);
 
             for (i, _item) in rows
                 .iter()
                 .enumerate()
             {
 
-                if let Some(diag_element) = rows[i].get(i) {
+                if let Some(
+                    diag_element,
+                ) = rows[i].get(i)
+                {
 
                     trace_val = simplify(&Expr::new_add(
                         trace_val,

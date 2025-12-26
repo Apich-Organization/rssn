@@ -23,7 +23,9 @@ impl ToExpr for String {
 impl ToExpr for &str {
     fn to_expr(&self) -> Expr {
 
-        Expr::Variable((*self).to_string())
+        Expr::Variable(
+            (*self).to_string(),
+        )
     }
 }
 
@@ -76,17 +78,21 @@ impl ToExpr for i32 {
 /// assert_eq!(sub.node_count(), 2);
 /// ```
 
-pub fn induced_subgraph<V : Eq + Hash + Clone + Debug>(
+pub fn induced_subgraph<
+    V : Eq + Hash + Clone + Debug,
+>(
     graph : &Graph<V>,
     node_labels : &[V],
 ) -> Graph<V> {
 
-    let mut sub = Graph::new(graph.is_directed);
+    let mut sub =
+        Graph::new(graph.is_directed);
 
-    let node_set : HashSet<_> = node_labels
-        .iter()
-        .cloned()
-        .collect();
+    let node_set : HashSet<_> =
+        node_labels
+            .iter()
+            .cloned()
+            .collect();
 
     for label in node_labels {
 
@@ -95,27 +101,46 @@ pub fn induced_subgraph<V : Eq + Hash + Clone + Debug>(
 
     for label in node_labels {
 
-        if let Some(u) = graph.get_node_id(label) {
+        if let Some(u) =
+            graph.get_node_id(label)
+        {
 
-            if let Some(neighbors) = graph.adj.get(u) {
+            if let Some(neighbors) =
+                graph.adj.get(u)
+            {
 
-                for &(v_id, ref weight) in neighbors {
+                for &(
+                    v_id,
+                    ref weight,
+                ) in neighbors
+                {
 
                     // For undirected graphs, we only add if u <= v_id to avoid duplicates,
                     // because add_edge adds both directions.
-                    if !graph.is_directed && u > v_id {
+                    if !graph
+                        .is_directed
+                        && u > v_id
+                    {
 
                         continue;
                     }
 
-                    let v_label = &graph.nodes[v_id];
+                    let v_label =
+                        &graph.nodes
+                            [v_id];
 
-                    if node_set.contains(v_label) {
+                    if node_set
+                        .contains(
+                            v_label,
+                        )
+                    {
 
                         sub.add_edge(
                             label,
                             v_label,
-                            weight.clone(),
+                            weight
+                                .clone(
+                                ),
                         );
                     }
                 }
@@ -158,7 +183,9 @@ pub fn induced_subgraph<V : Eq + Hash + Clone + Debug>(
 /// ```
 #[must_use]
 
-pub fn union<V : Eq + Hash + Clone + Debug>(
+pub fn union<
+    V : Eq + Hash + Clone + Debug,
+>(
     g1 : &Graph<V>,
     g2 : &Graph<V>,
 ) -> Graph<V> {
@@ -167,10 +194,12 @@ pub fn union<V : Eq + Hash + Clone + Debug>(
 
     for label in &g2.nodes {
 
-        new_graph.add_node(label.clone());
+        new_graph
+            .add_node(label.clone());
     }
 
-    for (u, v, weight) in g2.get_edges() {
+    for (u, v, weight) in g2.get_edges()
+    {
 
         new_graph.add_edge(
             &g2.nodes[u],
@@ -222,12 +251,17 @@ pub fn union<V : Eq + Hash + Clone + Debug>(
 /// ```
 #[must_use]
 
-pub fn intersection<V : Eq + Hash + Clone + Debug>(
+pub fn intersection<
+    V : Eq + Hash + Clone + Debug,
+>(
     g1 : &Graph<V>,
     g2 : &Graph<V>,
 ) -> Graph<V> {
 
-    let mut new_graph = Graph::new(g1.is_directed && g2.is_directed);
+    let mut new_graph = Graph::new(
+        g1.is_directed
+            && g2.is_directed,
+    );
 
     let g1_nodes : HashSet<_> = g1
         .nodes
@@ -239,13 +273,18 @@ pub fn intersection<V : Eq + Hash + Clone + Debug>(
         .iter()
         .collect();
 
-    for &node_label in g1_nodes.intersection(&g2_nodes) {
+    for &node_label in
+        g1_nodes.intersection(&g2_nodes)
+    {
 
-        new_graph.add_node((*node_label).clone());
+        new_graph.add_node(
+            (*node_label).clone(),
+        );
     }
 
     // Iterate edges of g1
-    for (u, v, weight) in g1.get_edges() {
+    for (u, v, weight) in g1.get_edges()
+    {
 
         let u_label = &g1.nodes[u];
 
@@ -257,7 +296,9 @@ pub fn intersection<V : Eq + Hash + Clone + Debug>(
             g2.get_node_id(v_label),
         ) {
 
-            let has_edge = if g2.is_directed {
+            let has_edge = if g2
+                .is_directed
+            {
 
                 g2.adj[u2]
                     .iter()
@@ -314,12 +355,17 @@ pub fn intersection<V : Eq + Hash + Clone + Debug>(
 /// ```
 #[must_use]
 
-pub fn cartesian_product<V : Eq + Hash + Clone + Debug + ToExpr>(
+pub fn cartesian_product<
+    V : Eq + Hash + Clone + Debug + ToExpr,
+>(
     g1 : &Graph<V>,
     g2 : &Graph<V>,
 ) -> Graph<Expr> {
 
-    let mut new_graph = Graph::new(g1.is_directed || g2.is_directed);
+    let mut new_graph = Graph::new(
+        g1.is_directed
+            || g2.is_directed,
+    );
 
     let mut node_map = HashMap::new();
 
@@ -336,17 +382,19 @@ pub fn cartesian_product<V : Eq + Hash + Clone + Debug + ToExpr>(
             .enumerate()
         {
 
-            let new_label = Expr::Tuple(vec![
-                u_label.to_expr(),
-                v_label.to_expr(),
-            ]);
+            let new_label =
+                Expr::Tuple(vec![
+                    u_label.to_expr(),
+                    v_label.to_expr(),
+                ]);
 
             node_map.insert(
                 (u_id, v_id),
                 new_label.clone(),
             );
 
-            new_graph.add_node(new_label);
+            new_graph
+                .add_node(new_label);
         }
     }
 
@@ -357,13 +405,21 @@ pub fn cartesian_product<V : Eq + Hash + Clone + Debug + ToExpr>(
         .enumerate()
     {
 
-        for (u1, u2, weight) in g1.get_edges() {
+        for (u1, u2, weight) in
+            g1.get_edges()
+        {
 
-            let n1 = &node_map[&(u1, v_id)];
+            let n1 =
+                &node_map[&(u1, v_id)];
 
-            let n2 = &node_map[&(u2, v_id)];
+            let n2 =
+                &node_map[&(u2, v_id)];
 
-            new_graph.add_edge(n1, n2, weight);
+            new_graph.add_edge(
+                n1,
+                n2,
+                weight,
+            );
         }
     }
 
@@ -374,13 +430,21 @@ pub fn cartesian_product<V : Eq + Hash + Clone + Debug + ToExpr>(
         .enumerate()
     {
 
-        for (v1, v2, weight) in g2.get_edges() {
+        for (v1, v2, weight) in
+            g2.get_edges()
+        {
 
-            let n1 = &node_map[&(u_id, v1)];
+            let n1 =
+                &node_map[&(u_id, v1)];
 
-            let n2 = &node_map[&(u_id, v2)];
+            let n2 =
+                &node_map[&(u_id, v2)];
 
-            new_graph.add_edge(n1, n2, weight);
+            new_graph.add_edge(
+                n1,
+                n2,
+                weight,
+            );
         }
     }
 
@@ -418,12 +482,17 @@ pub fn cartesian_product<V : Eq + Hash + Clone + Debug + ToExpr>(
 /// ```
 #[must_use]
 
-pub fn tensor_product<V : Eq + Hash + Clone + Debug + ToExpr>(
+pub fn tensor_product<
+    V : Eq + Hash + Clone + Debug + ToExpr,
+>(
     g1 : &Graph<V>,
     g2 : &Graph<V>,
 ) -> Graph<Expr> {
 
-    let mut new_graph = Graph::new(g1.is_directed || g2.is_directed);
+    let mut new_graph = Graph::new(
+        g1.is_directed
+            || g2.is_directed,
+    );
 
     let mut node_map = HashMap::new();
 
@@ -439,32 +508,42 @@ pub fn tensor_product<V : Eq + Hash + Clone + Debug + ToExpr>(
             .enumerate()
         {
 
-            let new_label = Expr::Tuple(vec![
-                u_label.to_expr(),
-                v_label.to_expr(),
-            ]);
+            let new_label =
+                Expr::Tuple(vec![
+                    u_label.to_expr(),
+                    v_label.to_expr(),
+                ]);
 
             node_map.insert(
                 (u_id, v_id),
                 new_label.clone(),
             );
 
-            new_graph.add_node(new_label);
+            new_graph
+                .add_node(new_label);
         }
     }
 
     // Edge (u1, v1) ~ (u2, v2) if u1~u2 in G1 AND v1~v2 in G2
     for (u1, u2, w1) in g1.get_edges() {
 
-        for (v1, v2, w2) in g2.get_edges() {
+        for (v1, v2, w2) in
+            g2.get_edges()
+        {
 
-            let n1 = &node_map[&(u1, v1)];
+            let n1 =
+                &node_map[&(u1, v1)];
 
-            let n2 = &node_map[&(u2, v2)];
+            let n2 =
+                &node_map[&(u2, v2)];
 
             let weight = Expr::Mul(
-                std::sync::Arc::new(w1.clone()),
-                std::sync::Arc::new(w2.clone()),
+                std::sync::Arc::new(
+                    w1.clone(),
+                ),
+                std::sync::Arc::new(
+                    w2.clone(),
+                ),
             );
 
             new_graph.add_edge(
@@ -473,11 +552,15 @@ pub fn tensor_product<V : Eq + Hash + Clone + Debug + ToExpr>(
                 weight.clone(),
             );
 
-            if !g1.is_directed && !g2.is_directed {
+            if !g1.is_directed
+                && !g2.is_directed
+            {
 
-                let n3 = &node_map[&(u1, v2)];
+                let n3 = &node_map
+                    [&(u1, v2)];
 
-                let n4 = &node_map[&(u2, v1)];
+                let n4 = &node_map
+                    [&(u2, v1)];
 
                 new_graph.add_edge(
                     n3,
@@ -486,9 +569,11 @@ pub fn tensor_product<V : Eq + Hash + Clone + Debug + ToExpr>(
                 );
             } else if !g1.is_directed {
 
-                let n3 = &node_map[&(u2, v1)];
+                let n3 = &node_map
+                    [&(u2, v1)];
 
-                let n4 = &node_map[&(u1, v2)];
+                let n4 = &node_map
+                    [&(u1, v2)];
 
                 new_graph.add_edge(
                     n3,
@@ -497,9 +582,11 @@ pub fn tensor_product<V : Eq + Hash + Clone + Debug + ToExpr>(
                 );
             } else if !g2.is_directed {
 
-                let n3 = &node_map[&(u1, v2)];
+                let n3 = &node_map
+                    [&(u1, v2)];
 
-                let n4 = &node_map[&(u2, v1)];
+                let n4 = &node_map
+                    [&(u2, v1)];
 
                 new_graph.add_edge(
                     n3,
@@ -552,13 +639,19 @@ pub fn tensor_product<V : Eq + Hash + Clone + Debug + ToExpr>(
 /// ```
 #[must_use]
 
-pub fn complement<V : Eq + Hash + Clone + Debug>(graph : &Graph<V>) -> Graph<V> {
+pub fn complement<
+    V : Eq + Hash + Clone + Debug,
+>(
+    graph : &Graph<V>
+) -> Graph<V> {
 
-    let mut new_graph = Graph::new(graph.is_directed);
+    let mut new_graph =
+        Graph::new(graph.is_directed);
 
     for label in &graph.nodes {
 
-        new_graph.add_node(label.clone());
+        new_graph
+            .add_node(label.clone());
     }
 
     let n = graph.nodes.len();
@@ -572,14 +665,20 @@ pub fn complement<V : Eq + Hash + Clone + Debug>(graph : &Graph<V>) -> Graph<V> 
                 continue;
             }
 
-            if !graph.is_directed && i > j {
+            if !graph.is_directed
+                && i > j
+            {
 
                 continue;
             }
 
             let has_edge = graph.adj[i]
                 .iter()
-                .any(|(neighbor, _)| *neighbor == j);
+                .any(
+                    |(neighbor, _)| {
+                        *neighbor == j
+                    },
+                );
 
             if !has_edge {
 
@@ -618,44 +717,54 @@ pub fn complement<V : Eq + Hash + Clone + Debug>(graph : &Graph<V>) -> Graph<V> 
 /// ```
 #[must_use]
 
-pub fn disjoint_union<V : Eq + Hash + Clone + Debug + ToExpr>(
+pub fn disjoint_union<
+    V : Eq + Hash + Clone + Debug + ToExpr,
+>(
     g1 : &Graph<V>,
     g2 : &Graph<V>,
 ) -> Graph<Expr> {
 
-    let mut new_graph = Graph::new(g1.is_directed && g2.is_directed);
+    let mut new_graph = Graph::new(
+        g1.is_directed
+            && g2.is_directed,
+    );
 
     for label in &g1.nodes {
 
-        let new_label = Expr::Tuple(vec![
-            Expr::Constant(0.0),
-            label.to_expr(),
-        ]);
+        let new_label =
+            Expr::Tuple(vec![
+                Expr::Constant(0.0),
+                label.to_expr(),
+            ]);
 
         new_graph.add_node(new_label);
     }
 
     for label in &g2.nodes {
 
-        let new_label = Expr::Tuple(vec![
-            Expr::Constant(1.0),
-            label.to_expr(),
-        ]);
+        let new_label =
+            Expr::Tuple(vec![
+                Expr::Constant(1.0),
+                label.to_expr(),
+            ]);
 
         new_graph.add_node(new_label);
     }
 
-    for (u, v, weight) in g1.get_edges() {
+    for (u, v, weight) in g1.get_edges()
+    {
 
-        let u_label = Expr::Tuple(vec![
-            Expr::Constant(0.0),
-            g1.nodes[u].to_expr(),
-        ]);
+        let u_label =
+            Expr::Tuple(vec![
+                Expr::Constant(0.0),
+                g1.nodes[u].to_expr(),
+            ]);
 
-        let v_label = Expr::Tuple(vec![
-            Expr::Constant(0.0),
-            g1.nodes[v].to_expr(),
-        ]);
+        let v_label =
+            Expr::Tuple(vec![
+                Expr::Constant(0.0),
+                g1.nodes[v].to_expr(),
+            ]);
 
         new_graph.add_edge(
             &u_label,
@@ -664,17 +773,20 @@ pub fn disjoint_union<V : Eq + Hash + Clone + Debug + ToExpr>(
         );
     }
 
-    for (u, v, weight) in g2.get_edges() {
+    for (u, v, weight) in g2.get_edges()
+    {
 
-        let u_label = Expr::Tuple(vec![
-            Expr::Constant(1.0),
-            g2.nodes[u].to_expr(),
-        ]);
+        let u_label =
+            Expr::Tuple(vec![
+                Expr::Constant(1.0),
+                g2.nodes[u].to_expr(),
+            ]);
 
-        let v_label = Expr::Tuple(vec![
-            Expr::Constant(1.0),
-            g2.nodes[v].to_expr(),
-        ]);
+        let v_label =
+            Expr::Tuple(vec![
+                Expr::Constant(1.0),
+                g2.nodes[v].to_expr(),
+            ]);
 
         new_graph.add_edge(
             &u_label,
@@ -712,12 +824,15 @@ pub fn disjoint_union<V : Eq + Hash + Clone + Debug + ToExpr>(
 /// ```
 #[must_use]
 
-pub fn join<V : Eq + Hash + Clone + Debug + ToExpr>(
+pub fn join<
+    V : Eq + Hash + Clone + Debug + ToExpr,
+>(
     g1 : &Graph<V>,
     g2 : &Graph<V>,
 ) -> Graph<Expr> {
 
-    let mut new_graph = disjoint_union(g1, g2);
+    let mut new_graph =
+        disjoint_union(g1, g2);
 
     let g1_labels : Vec<Expr> = g1
         .nodes

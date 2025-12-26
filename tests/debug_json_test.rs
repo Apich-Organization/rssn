@@ -8,7 +8,8 @@ use serde::Serialize;
 
 struct EvalInput {
     expr : Expr,
-    vars : HashMap<String, Complex<f64>>,
+    vars :
+        HashMap<String, Complex<f64>>,
 }
 
 #[test]
@@ -23,12 +24,17 @@ fn see_json() {
     );
 
     let input = EvalInput {
-        expr : Expr::Variable("z".to_string()),
+        expr : Expr::Variable(
+            "z".to_string(),
+        ),
         vars,
     };
 
     println!(
         "{}",
-        serde_json::to_string_pretty(&input).unwrap()
+        serde_json::to_string_pretty(
+            &input
+        )
+        .unwrap()
     );
 }

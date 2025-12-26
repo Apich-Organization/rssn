@@ -12,9 +12,16 @@ fn test_partial_derivative() {
         x,
         Expr::new_constant(2.0),
     ); // f(x) = x^2
-    let val = partial_derivative(&f, "x", 3.0).unwrap();
+    let val = partial_derivative(
+        &f, "x", 3.0,
+    )
+    .unwrap();
 
-    assert_approx_eq!(val, 6.0, 1e-5f64);
+    assert_approx_eq!(
+        val,
+        6.0,
+        1e-5f64
+    );
 }
 
 #[test]
@@ -67,7 +74,10 @@ fn test_jacobian() {
     let y = Expr::new_variable("y");
 
     // f1 = x*y, f2 = x^2 + y^2
-    let f1 = Expr::new_mul(x.clone(), y.clone());
+    let f1 = Expr::new_mul(
+        x.clone(),
+        y.clone(),
+    );
 
     let f2 = Expr::new_add(
         Expr::new_pow(

@@ -15,7 +15,9 @@ use crate::symbolic::elementary;
 /// JSON-serialized Expr or null on error
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_sin_json(json_expr : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_sin_json(
+    json_expr : *const c_char
+) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
         | Some(e) => e,
@@ -30,7 +32,9 @@ pub unsafe extern "C" fn rssn_sin_json(json_expr : *const c_char) -> *mut c_char
 /// Creates a cosine expression from JSON: cos(expr).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_cos_json(json_expr : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_cos_json(
+    json_expr : *const c_char
+) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
         | Some(e) => e,
@@ -45,7 +49,9 @@ pub unsafe extern "C" fn rssn_cos_json(json_expr : *const c_char) -> *mut c_char
 /// Creates a tangent expression from JSON: tan(expr).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_tan_json(json_expr : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_tan_json(
+    json_expr : *const c_char
+) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
         | Some(e) => e,
@@ -60,7 +66,9 @@ pub unsafe extern "C" fn rssn_tan_json(json_expr : *const c_char) -> *mut c_char
 /// Creates an exponential expression from JSON: e^(expr).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_exp_json(json_expr : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_exp_json(
+    json_expr : *const c_char
+) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
         | Some(e) => e,
@@ -75,7 +83,9 @@ pub unsafe extern "C" fn rssn_exp_json(json_expr : *const c_char) -> *mut c_char
 /// Creates a natural logarithm expression from JSON: ln(expr).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_ln_json(json_expr : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_ln_json(
+    json_expr : *const c_char
+) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
         | Some(e) => e,
@@ -90,7 +100,9 @@ pub unsafe extern "C" fn rssn_ln_json(json_expr : *const c_char) -> *mut c_char 
 /// Creates a square root expression from JSON: sqrt(expr).
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_sqrt_json(json_expr : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_sqrt_json(
+    json_expr : *const c_char
+) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
         | Some(e) => e,
@@ -132,7 +144,8 @@ pub unsafe extern "C" fn rssn_pow_json(
 /// Returns Pi as JSON.
 #[no_mangle]
 
-pub extern "C" fn rssn_pi_json() -> *mut c_char {
+pub extern "C" fn rssn_pi_json(
+) -> *mut c_char {
 
     to_json_string(&elementary::pi())
 }
@@ -140,7 +153,8 @@ pub extern "C" fn rssn_pi_json() -> *mut c_char {
 /// Returns Euler's number (e) as JSON.
 #[no_mangle]
 
-pub extern "C" fn rssn_e_json() -> *mut c_char {
+pub extern "C" fn rssn_e_json(
+) -> *mut c_char {
 
     to_json_string(&elementary::e())
 }
@@ -148,7 +162,9 @@ pub extern "C" fn rssn_e_json() -> *mut c_char {
 /// Expands a symbolic expression from JSON.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_expand_json(json_expr : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_expand_json(
+    json_expr : *const c_char
+) -> *mut c_char {
 
     let expr : Expr = match from_json_string(json_expr) {
         | Some(e) => e,

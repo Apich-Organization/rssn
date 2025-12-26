@@ -102,7 +102,9 @@ struct LogSqrtInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
+    json : *const c_char
+) -> *mut c_char {
 
     let input : LogSqrtInput = match from_json_string(json) {
         | Some(i) => i,
@@ -119,9 +121,16 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(json : *const c_char) ->
         },
     };
 
-    let z = Complex::new(input.re, input.im);
+    let z = Complex::new(
+        input.re,
+        input.im,
+    );
 
-    let res = multi_valued::complex_log_k(z, input.k);
+    let res =
+        multi_valued::complex_log_k(
+            z,
+            input.k,
+        );
 
     let out = ComplexResult {
         re : res.re,
@@ -129,17 +138,21 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(json : *const c_char) ->
     };
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(out),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(out),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(
+    json : *const c_char
+) -> *mut c_char {
 
     let input : LogSqrtInput = match from_json_string(json) {
         | Some(i) => i,
@@ -156,9 +169,16 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(json : *const c_char) -
         },
     };
 
-    let z = Complex::new(input.re, input.im);
+    let z = Complex::new(
+        input.re,
+        input.im,
+    );
 
-    let res = multi_valued::complex_sqrt_k(z, input.k);
+    let res =
+        multi_valued::complex_sqrt_k(
+            z,
+            input.k,
+        );
 
     let out = ComplexResult {
         re : res.re,
@@ -166,10 +186,12 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(json : *const c_char) -
     };
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(out),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(out),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -186,7 +208,9 @@ struct PowInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(
+    json : *const c_char
+) -> *mut c_char {
 
     let input : PowInput = match from_json_string(json) {
         | Some(i) => i,
@@ -213,7 +237,12 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(json : *const c_char) ->
         input.w_im,
     );
 
-    let res = multi_valued::complex_pow_k(z, w, input.k);
+    let res =
+        multi_valued::complex_pow_k(
+            z,
+            w,
+            input.k,
+        );
 
     let out = ComplexResult {
         re : res.re,
@@ -221,10 +250,12 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(json : *const c_char) ->
     };
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(out),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(out),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }

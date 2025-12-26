@@ -83,7 +83,10 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
         },
     };
 
-    to_c_string(serde_json::to_string(&ffi_res).unwrap())
+    to_c_string(
+        serde_json::to_string(&ffi_res)
+            .unwrap(),
+    )
 }
 
 #[no_mangle]
@@ -113,11 +116,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
         .map(|s| s.as_str())
         .collect();
 
-    let res = vector_calculus::curl_expr(
-        &input.funcs,
-        &vars_refs,
-        &input.point,
-    );
+    let res =
+        vector_calculus::curl_expr(
+            &input.funcs,
+            &vars_refs,
+            &input.point,
+        );
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -134,7 +138,10 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
         },
     };
 
-    to_c_string(serde_json::to_string(&ffi_res).unwrap())
+    to_c_string(
+        serde_json::to_string(&ffi_res)
+            .unwrap(),
+    )
 }
 
 #[no_mangle]
@@ -164,11 +171,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
         .map(|s| s.as_str())
         .collect();
 
-    let res = vector_calculus::laplacian(
-        &input.f,
-        &vars_refs,
-        &input.point,
-    );
+    let res =
+        vector_calculus::laplacian(
+            &input.f,
+            &vars_refs,
+            &input.point,
+        );
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -185,5 +193,8 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
         },
     };
 
-    to_c_string(serde_json::to_string(&ffi_res).unwrap())
+    to_c_string(
+        serde_json::to_string(&ffi_res)
+            .unwrap(),
+    )
 }

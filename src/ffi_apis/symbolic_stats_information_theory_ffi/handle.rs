@@ -9,7 +9,8 @@ unsafe fn collect_exprs(
     len : usize,
 ) -> Vec<Expr> {
 
-    let mut exprs = Vec::with_capacity(len);
+    let mut exprs =
+        Vec::with_capacity(len);
 
     for i in 0 .. len {
 
@@ -52,14 +53,18 @@ pub unsafe extern "C" fn rssn_kl_divergence(
     q_len : usize,
 ) -> *mut Expr {
 
-    if p_probs.is_null() || q_probs.is_null() {
+    if p_probs.is_null()
+        || q_probs.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
-    let p = collect_exprs(p_probs, p_len);
+    let p =
+        collect_exprs(p_probs, p_len);
 
-    let q = collect_exprs(q_probs, q_len);
+    let q =
+        collect_exprs(q_probs, q_len);
 
     match stats_information_theory::kl_divergence(&p, &q) {
         | Ok(res) => Box::into_raw(Box::new(res)),
@@ -76,14 +81,18 @@ pub unsafe extern "C" fn rssn_cross_entropy(
     q_len : usize,
 ) -> *mut Expr {
 
-    if p_probs.is_null() || q_probs.is_null() {
+    if p_probs.is_null()
+        || q_probs.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
-    let p = collect_exprs(p_probs, p_len);
+    let p =
+        collect_exprs(p_probs, p_len);
 
-    let q = collect_exprs(q_probs, q_len);
+    let q =
+        collect_exprs(q_probs, q_len);
 
     match stats_information_theory::cross_entropy(&p, &q) {
         | Ok(res) => Box::into_raw(Box::new(res)),
@@ -112,7 +121,9 @@ pub unsafe extern "C" fn rssn_gini_impurity(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_joint_entropy(joint_probs : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_joint_entropy(
+    joint_probs : *const Expr
+) -> *mut Expr {
 
     if joint_probs.is_null() {
 
@@ -127,7 +138,9 @@ pub unsafe extern "C" fn rssn_joint_entropy(joint_probs : *const Expr) -> *mut E
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_conditional_entropy(joint_probs : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_conditional_entropy(
+    joint_probs : *const Expr
+) -> *mut Expr {
 
     if joint_probs.is_null() {
 
@@ -142,7 +155,9 @@ pub unsafe extern "C" fn rssn_conditional_entropy(joint_probs : *const Expr) -> 
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_mutual_information(joint_probs : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_mutual_information(
+    joint_probs : *const Expr
+) -> *mut Expr {
 
     if joint_probs.is_null() {
 

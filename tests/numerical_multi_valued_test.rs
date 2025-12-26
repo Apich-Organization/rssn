@@ -6,9 +6,11 @@ use rssn::symbolic::core::Expr;
 
 #[test]
 
-fn test_newton_method_complex_simple_roots() {
+fn test_newton_method_complex_simple_roots(
+) {
 
-    let z = Expr::Variable("z".to_string());
+    let z =
+        Expr::Variable("z".to_string());
 
     let f = Expr::new_sub(
         Expr::new_pow(
@@ -32,7 +34,9 @@ fn test_newton_method_complex_simple_roots() {
     )
     .unwrap();
 
-    assert!((root1.re - 1.0).abs() < 1e-5);
+    assert!(
+        (root1.re - 1.0).abs() < 1e-5
+    );
 
     let root2 = newton_method_complex(
         &f,
@@ -43,7 +47,9 @@ fn test_newton_method_complex_simple_roots() {
     )
     .unwrap();
 
-    assert!((root2.re + 1.0).abs() < 1e-5);
+    assert!(
+        (root2.re + 1.0).abs() < 1e-5
+    );
 }
 
 #[test]
@@ -64,7 +70,10 @@ fn test_complex_log_k() {
 
     assert!(log1.re.abs() < 1e-9);
 
-    assert!((log1.im - 2.0 * PI).abs() < 1e-9);
+    assert!(
+        (log1.im - 2.0 * PI).abs()
+            < 1e-9
+    );
 }
 
 #[test]
@@ -76,25 +85,33 @@ fn test_complex_sqrt_k() {
 
     let sqrt0 = complex_sqrt_k(z, 0);
 
-    assert!((sqrt0.re - 1.0).abs() < 1e-9);
+    assert!(
+        (sqrt0.re - 1.0).abs() < 1e-9
+    );
 
     assert!(sqrt0.im.abs() < 1e-9);
 
     // sqrt(1) = -1 (k=1)
     let sqrt1 = complex_sqrt_k(z, 1);
 
-    assert!((sqrt1.re + 1.0).abs() < 1e-9);
+    assert!(
+        (sqrt1.re + 1.0).abs() < 1e-9
+    );
 
     assert!(sqrt1.im.abs() < 1e-9);
 
     // sqrt(-1) = i (k=0)
     let z_neg = Complex::new(-1.0, 0.0);
 
-    let sqrt_neg0 = complex_sqrt_k(z_neg, 0);
+    let sqrt_neg0 =
+        complex_sqrt_k(z_neg, 0);
 
     assert!(sqrt_neg0.re.abs() < 1e-9);
 
-    assert!((sqrt_neg0.im - 1.0).abs() < 1e-9);
+    assert!(
+        (sqrt_neg0.im - 1.0).abs()
+            < 1e-9
+    );
 }
 
 #[cfg(test)]

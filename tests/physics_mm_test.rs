@@ -14,18 +14,24 @@ fn test_sph_density_pressure_basic() {
         particles : Vec::new(),
         poly6 : Poly6Kernel::new(h),
         spiky : SpikyKernel::new(h),
-        gravity : Vector2D::new(0.0, 0.0),
+        gravity : Vector2D::new(
+            0.0, 0.0,
+        ),
         viscosity : 0.1,
         gas_const : 1000.0,
         rest_density : 1000.0,
-        bounds : Vector2D::new(10.0, 10.0),
+        bounds : Vector2D::new(
+            10.0, 10.0,
+        ),
     };
 
     // Put two particles very close
     system
         .particles
         .push(Particle {
-            pos : Vector2D::new(0.0, 0.0),
+            pos : Vector2D::new(
+                0.0, 0.0,
+            ),
             vel : Vector2D::default(),
             force : Vector2D::default(),
             density : 0.0,
@@ -36,7 +42,9 @@ fn test_sph_density_pressure_basic() {
     system
         .particles
         .push(Particle {
-            pos : Vector2D::new(0.05, 0.0),
+            pos : Vector2D::new(
+                0.05, 0.0,
+            ),
             vel : Vector2D::default(),
             force : Vector2D::default(),
             density : 0.0,
@@ -46,7 +54,10 @@ fn test_sph_density_pressure_basic() {
 
     system.compute_density_pressure();
 
-    assert!(system.particles[0].density > 0.0);
+    assert!(
+        system.particles[0].density
+            > 0.0
+    );
 
     assert_eq!(
         system.particles[0].density,
@@ -58,7 +69,9 @@ fn test_sph_density_pressure_basic() {
 
 fn test_simulate_dam_break_smoke() {
 
-    let results = simulate_dam_break_2d_scenario();
+    let results =
+        simulate_dam_break_2d_scenario(
+        );
 
     // 20*10 = 200 particles
     assert_eq!(results.len(), 200);

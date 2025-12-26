@@ -2,7 +2,9 @@
 //! Defines the core traits and data structures for the `rssn` plugin architecture.
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
-#![allow(clippy::no_mangle_with_rust_abi)]
+#![allow(
+    clippy::no_mangle_with_rust_abi
+)]
 
 use std::error::Error;
 use std::fmt;
@@ -13,7 +15,9 @@ use abi_stable::std_types::RString;
 use crate::symbolic::core::Expr;
 
 #[repr(C)]
-#[derive(abi_stable::StableAbi, Debug)]
+#[derive(
+    abi_stable::StableAbi, Debug,
+)]
 
 pub enum PluginHealth {
     /// The plugin is operating correctly.
@@ -71,12 +75,16 @@ pub trait Plugin: Send + Sync {
     /// The PluginManager will use this to ensure compatibility.
     /// Example: `"0.1.0"`
 
-    fn api_version(&self) -> &'static str;
+    fn api_version(
+        &self
+    ) -> &'static str;
 
     /// Called once when the plugin is loaded by the `PluginManager`.
     /// Use this for any necessary setup or initialization.
 
-    fn on_load(&self) -> Result<(), PluginError>;
+    fn on_load(
+        &self
+    ) -> Result<(), PluginError>;
 
     /// The primary entry point for executing plugin functionality.
     ///
@@ -96,5 +104,7 @@ pub trait Plugin: Send + Sync {
     /// Performs a health check on the plugin.
     /// This is used by the `PluginManager` for heartbeat monitoring.
 
-    fn health_check(&self) -> PluginHealth;
+    fn health_check(
+        &self
+    ) -> PluginHealth;
 }

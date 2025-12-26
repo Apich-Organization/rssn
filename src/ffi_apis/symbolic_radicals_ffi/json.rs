@@ -7,13 +7,17 @@ use crate::symbolic::radicals::*;
 /// Simplifies radical expressions (JSON)
 #[no_mangle]
 
-pub extern "C" fn rssn_json_simplify_radicals(expr_json : *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_simplify_radicals(
+    expr_json : *const c_char
+) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
     if let Some(e) = expr {
 
-        let result = simplify_radicals(&e);
+        let result =
+            simplify_radicals(&e);
 
         to_json_string(&result)
     } else {
@@ -25,9 +29,12 @@ pub extern "C" fn rssn_json_simplify_radicals(expr_json : *const c_char) -> *mut
 /// Denests a nested square root (JSON)
 #[no_mangle]
 
-pub extern "C" fn rssn_json_denest_sqrt(expr_json : *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_denest_sqrt(
+    expr_json : *const c_char
+) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
     if let Some(e) = expr {
 

@@ -35,9 +35,14 @@ fn test_separable_ode() {
         "x".to_string(),
     );
 
-    let eq = Expr::new_sub(y_prime, y.clone()); // y' - y = 0
+    let eq = Expr::new_sub(
+        y_prime,
+        y.clone(),
+    ); // y' - y = 0
 
-    let sol = solve_separable_ode(&eq, "y", "x");
+    let sol = solve_separable_ode(
+        &eq, "y", "x",
+    );
 
     assert!(sol.is_some());
 
@@ -71,11 +76,17 @@ fn test_first_order_linear() {
     );
 
     let eq = Expr::new_sub(
-        Expr::new_add(y_prime, y.clone()),
+        Expr::new_add(
+            y_prime,
+            y.clone(),
+        ),
         x.clone(),
     );
 
-    let sol = solve_first_order_linear_ode(&eq, "y", "x");
+    let sol =
+        solve_first_order_linear_ode(
+            &eq, "y", "x",
+        );
 
     assert!(sol.is_some());
 
@@ -105,14 +116,21 @@ fn test_riccati_ode() {
     // y' - (1 + y^2) = 0
     let rhs = Expr::new_add(
         c(1.0),
-        Expr::new_pow(y.clone(), c(2.0)),
+        Expr::new_pow(
+            y.clone(),
+            c(2.0),
+        ),
     );
 
-    let eq = Expr::new_sub(y_prime, rhs);
+    let eq =
+        Expr::new_sub(y_prime, rhs);
 
-    let y1 = Expr::Tan(Arc::new(x.clone()));
+    let y1 =
+        Expr::Tan(Arc::new(x.clone()));
 
-    let sol = solve_riccati_ode(&eq, "y", "x", &y1);
+    let sol = solve_riccati_ode(
+        &eq, "y", "x", &y1,
+    );
 
     assert!(sol.is_some());
 
@@ -161,7 +179,11 @@ fn test_ode_system() {
 
     let funcs = vec!["y", "z"];
 
-    let solutions = solve_ode_system(&eqs, &funcs, "x");
+    let solutions = solve_ode_system(
+        &eqs,
+        &funcs,
+        "x",
+    );
 
     assert!(solutions.is_some());
 
@@ -190,9 +212,13 @@ fn test_solve_ode_dispatcher() {
         "x".to_string(),
     );
 
-    let eq = Expr::new_add(y_prime, y.clone());
+    let eq = Expr::new_add(
+        y_prime,
+        y.clone(),
+    );
 
-    let sol = solve_ode(&eq, "y", "x", None);
+    let sol =
+        solve_ode(&eq, "y", "x", None);
 
     println!(
         "Dispatcher Solution: {}",

@@ -32,7 +32,9 @@ use crate::symbolic::simplify_dag::simplify;
 
 /// Represents the analytic continuation of a function along a path.
 /// It is stored as a chain of series expansions, each centered at a point on the path.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct PathContinuation {
     pub var : String,
@@ -52,12 +54,13 @@ impl PathContinuation {
         order : usize,
     ) -> Self {
 
-        let initial_series = taylor_series(
-            func,
-            var,
-            start_point,
-            order,
-        );
+        let initial_series =
+            taylor_series(
+                func,
+                var,
+                start_point,
+                order,
+            );
 
         Self {
             var : var.to_string(),
@@ -128,7 +131,9 @@ impl PathContinuation {
     /// Returns the final expression (Taylor series) after continuation to the last point.
     #[must_use]
 
-    pub fn get_final_expression(&self) -> Option<&Expr> {
+    pub fn get_final_expression(
+        &self
+    ) -> Option<&Expr> {
 
         self.pieces
             .last()
@@ -146,12 +151,13 @@ pub fn estimate_radius_of_convergence(
     order : usize,
 ) -> Option<f64> {
 
-    let coeffs = calculate_taylor_coefficients(
-        series_expr,
-        var,
-        center,
-        order,
-    );
+    let coeffs =
+        calculate_taylor_coefficients(
+            series_expr,
+            var,
+            center,
+            order,
+        );
 
     for n in (1 .. coeffs.len()).rev() {
 
@@ -159,21 +165,34 @@ pub fn estimate_radius_of_convergence(
 
         let cn_minus_1 = &coeffs[n - 1];
 
-        if let (Some(c_n_val), Some(c_n_minus_1_val)) = (
+        if let (
+            Some(c_n_val),
+            Some(c_n_minus_1_val),
+        ) = (
             cn.to_f64(),
             cn_minus_1.to_f64(),
         ) {
 
-            if c_n_val.abs() > f64::EPSILON && c_n_minus_1_val.abs() > f64::EPSILON {
+            if c_n_val.abs()
+                > f64::EPSILON
+                && c_n_minus_1_val.abs()
+                    > f64::EPSILON
+            {
 
                 let limit_ratio = c_n_val.abs() / c_n_minus_1_val.abs();
 
-                if limit_ratio < f64::EPSILON {
+                if limit_ratio
+                    < f64::EPSILON
+                {
 
-                    return Some(f64::INFINITY);
+                    return Some(
+                        f64::INFINITY,
+                    );
                 }
 
-                return Some(1.0 / limit_ratio);
+                return Some(
+                    1.0 / limit_ratio,
+                );
             }
         }
     }
@@ -221,7 +240,14 @@ pub fn complex_distance(
 // ============================================================================
 
 /// Represents a singularity type in complex analysis.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub enum SingularityType {
     /// Removable singularity
@@ -250,32 +276,44 @@ pub fn classify_singularity(
     // Analyze the function structure to detect poles
     // For f(z) = g(z)/(z-a)^n, we have a pole of order n
     // Check if function is a division
-    let _z = Expr::Variable(var.to_string());
+    let _z =
+        Expr::Variable(var.to_string());
 
-    let _factor = simplify(&Expr::new_sub(
-        _z.clone(),
-        singularity.clone(),
-    ));
+    let _factor =
+        simplify(&Expr::new_sub(
+            _z.clone(),
+            singularity.clone(),
+        ));
 
-    let pole_order = count_pole_order(&_z, &_factor);
+    let pole_order =
+        count_pole_order(&_z, &_factor);
 
     if pole_order > 0 {
 
-        return SingularityType::Pole(pole_order);
+        return SingularityType::Pole(
+            pole_order,
+        );
     }
 
     if let Expr::Div(_num, den) = func {
 
         // Check if denominator contains (z - singularity)
-        let z = Expr::Variable(var.to_string());
+        let z = Expr::Variable(
+            var.to_string(),
+        );
 
-        let factor = simplify(&Expr::new_sub(
-            z,
-            singularity.clone(),
-        ));
+        let factor =
+            simplify(&Expr::new_sub(
+                z,
+                singularity.clone(),
+            ));
 
         // Count the pole order by checking denominator structure
-        let pole_order = count_pole_order(den, &factor);
+        let pole_order =
+            count_pole_order(
+                den,
+                &factor,
+            );
 
         if pole_order > 0 {
 
@@ -287,7 +325,9 @@ pub fn classify_singularity(
     // This is a simplified check
     let func_str = format!("{func:?}");
 
-    if func_str.contains("Exp") && func_str.contains("Div") {
+    if func_str.contains("Exp")
+        && func_str.contains("Div")
+    {
 
         return SingularityType::Essential;
     }
@@ -312,7 +352,9 @@ fn count_pole_order(
             if base.as_ref() == factor {
 
                 // Try to extract the exponent as a number
-                if let Some(n) = exp.to_f64() {
+                if let Some(n) =
+                    exp.to_f64()
+                {
 
                     return n as usize;
                 }
@@ -326,9 +368,17 @@ fn count_pole_order(
         // If denominator is a product containing (z-a)
         | Expr::Mul(a, b) => {
 
-            let order_a = count_pole_order(a, factor);
+            let order_a =
+                count_pole_order(
+                    a,
+                    factor,
+                );
 
-            let order_b = count_pole_order(b, factor);
+            let order_b =
+                count_pole_order(
+                    b,
+                    factor,
+                );
 
             order_a + order_b
         },
@@ -372,14 +422,18 @@ pub fn calculate_residue(
 ) -> Expr {
 
     // For a simple pole: Res = lim_{z→z0} (z-z0)f(z)
-    let z = Expr::Variable(var.to_string());
+    let z =
+        Expr::Variable(var.to_string());
 
     let factor = Expr::new_sub(
         z,
         singularity.clone(),
     );
 
-    let product = Expr::new_mul(factor, func.clone());
+    let product = Expr::new_mul(
+        factor,
+        func.clone(),
+    );
 
     // Evaluate limit as z → singularity
     // Substitute and simplify
@@ -412,7 +466,8 @@ pub fn contour_integral_residue_theorem(
             singularity,
         );
 
-        sum = Expr::new_add(sum, residue);
+        sum =
+            Expr::new_add(sum, residue);
     }
 
     // Multiply by 2πi
@@ -421,8 +476,12 @@ pub fn contour_integral_residue_theorem(
         Expr::new_mul(
             Expr::Pi,
             Expr::Complex(
-                Arc::new(Expr::Constant(0.0)),
-                Arc::new(Expr::Constant(1.0)),
+                Arc::new(
+                    Expr::Constant(0.0),
+                ),
+                Arc::new(
+                    Expr::Constant(1.0),
+                ),
             ),
         ),
     );
@@ -438,7 +497,14 @@ pub fn contour_integral_residue_theorem(
 // ============================================================================
 
 /// Represents a Möbius transformation: f(z) = (az + b) / (cz + d)
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct MobiusTransformation {
     pub a : Expr,
@@ -472,10 +538,18 @@ impl MobiusTransformation {
     pub fn identity() -> Self {
 
         Self {
-            a : Expr::BigInt(BigInt::one()),
-            b : Expr::BigInt(BigInt::zero()),
-            c : Expr::BigInt(BigInt::zero()),
-            d : Expr::BigInt(BigInt::one()),
+            a : Expr::BigInt(
+                BigInt::one(),
+            ),
+            b : Expr::BigInt(
+                BigInt::zero(),
+            ),
+            c : Expr::BigInt(
+                BigInt::zero(),
+            ),
+            d : Expr::BigInt(
+                BigInt::one(),
+            ),
         }
     }
 
@@ -519,49 +593,53 @@ impl MobiusTransformation {
 
         // (f ∘ g)(z) where f = self, g = other
         // Result: ((a1*a2 + b1*c2)z + (a1*b2 + b1*d2)) / ((c1*a2 + d1*c2)z + (c1*b2 + d1*d2))
-        let a = simplify(&Expr::new_add(
-            Expr::new_mul(
-                self.a.clone(),
-                other.a.clone(),
-            ),
-            Expr::new_mul(
-                self.b.clone(),
-                other.c.clone(),
-            ),
-        ));
+        let a =
+            simplify(&Expr::new_add(
+                Expr::new_mul(
+                    self.a.clone(),
+                    other.a.clone(),
+                ),
+                Expr::new_mul(
+                    self.b.clone(),
+                    other.c.clone(),
+                ),
+            ));
 
-        let b = simplify(&Expr::new_add(
-            Expr::new_mul(
-                self.a.clone(),
-                other.b.clone(),
-            ),
-            Expr::new_mul(
-                self.b.clone(),
-                other.d.clone(),
-            ),
-        ));
+        let b =
+            simplify(&Expr::new_add(
+                Expr::new_mul(
+                    self.a.clone(),
+                    other.b.clone(),
+                ),
+                Expr::new_mul(
+                    self.b.clone(),
+                    other.d.clone(),
+                ),
+            ));
 
-        let c = simplify(&Expr::new_add(
-            Expr::new_mul(
-                self.c.clone(),
-                other.a.clone(),
-            ),
-            Expr::new_mul(
-                self.d.clone(),
-                other.c.clone(),
-            ),
-        ));
+        let c =
+            simplify(&Expr::new_add(
+                Expr::new_mul(
+                    self.c.clone(),
+                    other.a.clone(),
+                ),
+                Expr::new_mul(
+                    self.d.clone(),
+                    other.c.clone(),
+                ),
+            ));
 
-        let d = simplify(&Expr::new_add(
-            Expr::new_mul(
-                self.c.clone(),
-                other.b.clone(),
-            ),
-            Expr::new_mul(
-                self.d.clone(),
-                other.d.clone(),
-            ),
-        ));
+        let d =
+            simplify(&Expr::new_add(
+                Expr::new_mul(
+                    self.c.clone(),
+                    other.b.clone(),
+                ),
+                Expr::new_mul(
+                    self.d.clone(),
+                    other.d.clone(),
+                ),
+            ));
 
         Self {
             a,
@@ -579,8 +657,12 @@ impl MobiusTransformation {
         // Inverse of (az+b)/(cz+d) is (dz-b)/(-cz+a)
         Self {
             a : self.d.clone(),
-            b : Expr::new_neg(self.b.clone()),
-            c : Expr::new_neg(self.c.clone()),
+            b : Expr::new_neg(
+                self.b.clone(),
+            ),
+            c : Expr::new_neg(
+                self.c.clone(),
+            ),
             d : self.a.clone(),
         }
     }
@@ -604,7 +686,8 @@ pub fn cauchy_integral_formula(
 ) -> Expr {
 
     // Return symbolic representation
-    let z = Expr::Variable(var.to_string());
+    let z =
+        Expr::Variable(var.to_string());
 
     let _integrand = Expr::new_div(
         func.clone(),
@@ -634,7 +717,8 @@ pub fn cauchy_derivative_formula(
 
     for _ in 0 .. n {
 
-        result = differentiate(&result, var);
+        result =
+            differentiate(&result, var);
     }
 
     simplify(&substitute(
@@ -659,7 +743,8 @@ pub fn complex_exp(z : &Expr) -> Expr {
 
     let exp_re = Expr::new_exp(re);
 
-    let cos_im = Expr::new_cos(im.clone());
+    let cos_im =
+        Expr::new_cos(im.clone());
 
     let sin_im = Expr::new_sin(im);
 
@@ -668,7 +753,8 @@ pub fn complex_exp(z : &Expr) -> Expr {
         cos_im,
     );
 
-    let imag_part = Expr::new_mul(exp_re, sin_im);
+    let imag_part =
+        Expr::new_mul(exp_re, sin_im);
 
     Expr::Complex(
         Arc::new(real_part),
@@ -688,19 +774,21 @@ pub fn complex_log(z : &Expr) -> Expr {
     let im = z.im();
 
     // |z| = sqrt(re^2 + im^2)
-    let modulus = Expr::new_sqrt(Expr::new_add(
-        Expr::new_pow(
-            re.clone(),
-            Expr::Constant(2.0),
-        ),
-        Expr::new_pow(
-            im.clone(),
-            Expr::Constant(2.0),
-        ),
-    ));
+    let modulus =
+        Expr::new_sqrt(Expr::new_add(
+            Expr::new_pow(
+                re.clone(),
+                Expr::Constant(2.0),
+            ),
+            Expr::new_pow(
+                im.clone(),
+                Expr::Constant(2.0),
+            ),
+        ));
 
     // arg(z) = atan2(im, re)
-    let argument = Expr::new_atan2(im, re);
+    let argument =
+        Expr::new_atan2(im, re);
 
     Expr::Complex(
         Arc::new(Expr::new_log(
@@ -725,7 +813,9 @@ pub fn complex_arg(z : &Expr) -> Expr {
 /// Computes the modulus (absolute value) of a complex number.
 #[must_use]
 
-pub fn complex_modulus(z : &Expr) -> Expr {
+pub fn complex_modulus(
+    z : &Expr
+) -> Expr {
 
     let re = z.re();
 

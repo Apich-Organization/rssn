@@ -30,7 +30,9 @@ struct GramSchmidtInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fa_l2_norm_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_fa_l2_norm_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : PointsInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -44,7 +46,10 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm_bincode(buffer : BincodeBuffer) -> 
         },
     };
 
-    let res = functional_analysis::l2_norm(&input.points);
+    let res =
+        functional_analysis::l2_norm(
+            &input.points,
+        );
 
     let ffi_res = FfiResult {
         ok : Some(res),
@@ -92,7 +97,9 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product_bincode(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : GramSchmidtInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,

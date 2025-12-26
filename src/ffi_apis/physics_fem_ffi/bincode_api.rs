@@ -39,20 +39,24 @@ pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_bincode(
         |_| 2.0,
     ) {
         | Ok(res) => {
-            to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(
-                res
-            ))
+            to_bincode_buffer(
+                &FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::ok(
+                    res
+                ),
+            )
         },
         | Err(e) => {
-            to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
-                e
-            ))
+            to_bincode_buffer(
+                &FfiResult::<
+                    Vec<f64>,
+                    String,
+                >::err(
+                    e
+                ),
+            )
         },
     }
 }

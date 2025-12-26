@@ -10,13 +10,22 @@ pub extern "C" fn rssn_bincode_general_log(
     k_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> = from_bincode_buffer(&z_buf);
+    let z : Option<Expr> =
+        from_bincode_buffer(&z_buf);
 
-    let k : Option<Expr> = from_bincode_buffer(&k_buf);
+    let k : Option<Expr> =
+        from_bincode_buffer(&k_buf);
 
-    if let (Some(z_expr), Some(k_expr)) = (z, k) {
+    if let (
+        Some(z_expr),
+        Some(k_expr),
+    ) = (z, k)
+    {
 
-        let result = general_log(&z_expr, &k_expr);
+        let result = general_log(
+            &z_expr,
+            &k_expr,
+        );
 
         to_bincode_buffer(&result)
     } else {
@@ -33,13 +42,22 @@ pub extern "C" fn rssn_bincode_general_sqrt(
     k_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> = from_bincode_buffer(&z_buf);
+    let z : Option<Expr> =
+        from_bincode_buffer(&z_buf);
 
-    let k : Option<Expr> = from_bincode_buffer(&k_buf);
+    let k : Option<Expr> =
+        from_bincode_buffer(&k_buf);
 
-    if let (Some(z_expr), Some(k_expr)) = (z, k) {
+    if let (
+        Some(z_expr),
+        Some(k_expr),
+    ) = (z, k)
+    {
 
-        let result = general_sqrt(&z_expr, &k_expr);
+        let result = general_sqrt(
+            &z_expr,
+            &k_expr,
+        );
 
         to_bincode_buffer(&result)
     } else {
@@ -57,13 +75,21 @@ pub extern "C" fn rssn_bincode_general_power(
     k_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> = from_bincode_buffer(&z_buf);
+    let z : Option<Expr> =
+        from_bincode_buffer(&z_buf);
 
-    let w : Option<Expr> = from_bincode_buffer(&w_buf);
+    let w : Option<Expr> =
+        from_bincode_buffer(&w_buf);
 
-    let k : Option<Expr> = from_bincode_buffer(&k_buf);
+    let k : Option<Expr> =
+        from_bincode_buffer(&k_buf);
 
-    if let (Some(z_expr), Some(w_expr), Some(k_expr)) = (z, w, k) {
+    if let (
+        Some(z_expr),
+        Some(w_expr),
+        Some(k_expr),
+    ) = (z, w, k)
+    {
 
         let result = general_power(
             &z_expr,
@@ -87,13 +113,21 @@ pub extern "C" fn rssn_bincode_general_nth_root(
     k_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> = from_bincode_buffer(&z_buf);
+    let z : Option<Expr> =
+        from_bincode_buffer(&z_buf);
 
-    let n : Option<Expr> = from_bincode_buffer(&n_buf);
+    let n : Option<Expr> =
+        from_bincode_buffer(&n_buf);
 
-    let k : Option<Expr> = from_bincode_buffer(&k_buf);
+    let k : Option<Expr> =
+        from_bincode_buffer(&k_buf);
 
-    if let (Some(z_expr), Some(n_expr), Some(k_expr)) = (z, n, k) {
+    if let (
+        Some(z_expr),
+        Some(n_expr),
+        Some(k_expr),
+    ) = (z, n, k)
+    {
 
         let result = general_nth_root(
             &z_expr,
@@ -116,13 +150,22 @@ pub extern "C" fn rssn_bincode_general_arcsin(
     k_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> = from_bincode_buffer(&z_buf);
+    let z : Option<Expr> =
+        from_bincode_buffer(&z_buf);
 
-    let k : Option<Expr> = from_bincode_buffer(&k_buf);
+    let k : Option<Expr> =
+        from_bincode_buffer(&k_buf);
 
-    if let (Some(z_expr), Some(k_expr)) = (z, k) {
+    if let (
+        Some(z_expr),
+        Some(k_expr),
+    ) = (z, k)
+    {
 
-        let result = general_arcsin(&z_expr, &k_expr);
+        let result = general_arcsin(
+            &z_expr,
+            &k_expr,
+        );
 
         to_bincode_buffer(&result)
     } else {
@@ -140,13 +183,21 @@ pub extern "C" fn rssn_bincode_general_arccos(
     s_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> = from_bincode_buffer(&z_buf);
+    let z : Option<Expr> =
+        from_bincode_buffer(&z_buf);
 
-    let k : Option<Expr> = from_bincode_buffer(&k_buf);
+    let k : Option<Expr> =
+        from_bincode_buffer(&k_buf);
 
-    let s : Option<Expr> = from_bincode_buffer(&s_buf);
+    let s : Option<Expr> =
+        from_bincode_buffer(&s_buf);
 
-    if let (Some(z_expr), Some(k_expr), Some(s_expr)) = (z, k, s) {
+    if let (
+        Some(z_expr),
+        Some(k_expr),
+        Some(s_expr),
+    ) = (z, k, s)
+    {
 
         let result = general_arccos(
             &z_expr,
@@ -169,13 +220,22 @@ pub extern "C" fn rssn_bincode_general_arctan(
     k_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let z : Option<Expr> = from_bincode_buffer(&z_buf);
+    let z : Option<Expr> =
+        from_bincode_buffer(&z_buf);
 
-    let k : Option<Expr> = from_bincode_buffer(&k_buf);
+    let k : Option<Expr> =
+        from_bincode_buffer(&k_buf);
 
-    if let (Some(z_expr), Some(k_expr)) = (z, k) {
+    if let (
+        Some(z_expr),
+        Some(k_expr),
+    ) = (z, k)
+    {
 
-        let result = general_arctan(&z_expr, &k_expr);
+        let result = general_arctan(
+            &z_expr,
+            &k_expr,
+        );
 
         to_bincode_buffer(&result)
     } else {
@@ -187,9 +247,12 @@ pub extern "C" fn rssn_bincode_general_arctan(
 /// Computes argument (angle) of complex number (Bincode)
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_arg(z_buf : BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_arg(
+    z_buf : BincodeBuffer
+) -> BincodeBuffer {
 
-    let z : Option<Expr> = from_bincode_buffer(&z_buf);
+    let z : Option<Expr> =
+        from_bincode_buffer(&z_buf);
 
     if let Some(z_expr) = z {
 
@@ -205,9 +268,12 @@ pub extern "C" fn rssn_bincode_arg(z_buf : BincodeBuffer) -> BincodeBuffer {
 /// Computes absolute value (magnitude) of complex number (Bincode)
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_abs(z_buf : BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_abs(
+    z_buf : BincodeBuffer
+) -> BincodeBuffer {
 
-    let z : Option<Expr> = from_bincode_buffer(&z_buf);
+    let z : Option<Expr> =
+        from_bincode_buffer(&z_buf);
 
     if let Some(z_expr) = z {
 

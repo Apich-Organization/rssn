@@ -147,7 +147,8 @@ fn test_geometric_product_scalars() {
         Expr::Constant(3.0),
     );
 
-    let result = mv1.geometric_product(&mv2);
+    let result =
+        mv1.geometric_product(&mv2);
 
     // Scalar * Scalar = Scalar (6.0)
     assert_eq!(
@@ -182,7 +183,8 @@ fn test_geometric_product_vectors() {
         ],
     );
 
-    let result = v1.geometric_product(&v2);
+    let result =
+        v1.geometric_product(&v2);
 
     // e1 * e2 = e12 (bivector)
     // Should have a bivector term
@@ -193,7 +195,8 @@ fn test_geometric_product_vectors() {
 
 #[test]
 
-fn test_geometric_product_same_vector() {
+fn test_geometric_product_same_vector()
+{
 
     let signature = (3, 0, 0);
 
@@ -288,7 +291,8 @@ fn test_grade_projection() {
 
     let signature = (3, 0, 0);
 
-    let mut mv = Multivector::new(signature);
+    let mut mv =
+        Multivector::new(signature);
 
     mv.terms.insert(
         0,
@@ -303,11 +307,14 @@ fn test_grade_projection() {
         Expr::Constant(3.0),
     ); // e12 (bivector)
 
-    let scalar_part = mv.grade_projection(0);
+    let scalar_part =
+        mv.grade_projection(0);
 
-    let vector_part = mv.grade_projection(1);
+    let vector_part =
+        mv.grade_projection(1);
 
-    let bivector_part = mv.grade_projection(2);
+    let bivector_part =
+        mv.grade_projection(2);
 
     assert_eq!(
         scalar_part
@@ -464,7 +471,8 @@ fn test_minkowski_signature() {
 
 #[test]
 
-fn test_geometric_product_associativity() {
+fn test_geometric_product_associativity(
+) {
 
     let signature = (3, 0, 0);
 
@@ -488,7 +496,9 @@ fn test_geometric_product_associativity() {
         .geometric_product(&v2.clone())
         .geometric_product(&v3.clone());
 
-    let result2 = v1.geometric_product(&v2.geometric_product(&v3));
+    let result2 = v1.geometric_product(
+        &v2.geometric_product(&v3),
+    );
 
     // (v1 * v2) * v3 = v1 * (v2 * v3)
     assert_eq!(
@@ -499,7 +509,8 @@ fn test_geometric_product_associativity() {
 
 #[test]
 
-fn test_outer_product_anticommutativity() {
+fn test_outer_product_anticommutativity(
+) {
 
     let signature = (3, 0, 0);
 

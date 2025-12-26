@@ -6,7 +6,9 @@ use crate::symbolic::functional_analysis::*;
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_hilbert_space_create(json_str : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_hilbert_space_create(
+    json_str : *const c_char
+) -> *mut c_char {
 
     let space : HilbertSpace = match from_json_string(json_str) {
         | Some(s) => s,
@@ -39,7 +41,8 @@ pub unsafe extern "C" fn rssn_json_inner_product(
         | None => return std::ptr::null_mut(),
     };
 
-    let result = inner_product(&space, &f, &g);
+    let result =
+        inner_product(&space, &f, &g);
 
     to_json_string(&result)
 }
@@ -83,7 +86,8 @@ pub unsafe extern "C" fn rssn_json_gram_schmidt(
         | None => return std::ptr::null_mut(),
     };
 
-    let result = gram_schmidt(&space, &basis);
+    let result =
+        gram_schmidt(&space, &basis);
 
     to_json_string(&result)
 }

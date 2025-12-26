@@ -4,7 +4,9 @@ use crate::symbolic::functional_analysis::*;
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(buf : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(
+    buf : BincodeBuffer
+) -> BincodeBuffer {
 
     let space : HilbertSpace = match from_bincode_buffer(&buf) {
         | Some(s) => s,
@@ -37,7 +39,8 @@ pub unsafe extern "C" fn rssn_bincode_inner_product(
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = inner_product(&space, &f, &g);
+    let result =
+        inner_product(&space, &f, &g);
 
     to_bincode_buffer(&result)
 }
@@ -81,7 +84,8 @@ pub unsafe extern "C" fn rssn_bincode_gram_schmidt(
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = gram_schmidt(&space, &basis);
+    let result =
+        gram_schmidt(&space, &basis);
 
     to_bincode_buffer(&result)
 }

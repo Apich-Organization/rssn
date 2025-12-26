@@ -6,7 +6,9 @@ use crate::symbolic::quantum_field_theory;
 /// Computes the Dirac adjoint of a fermion field.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dirac_adjoint(psi : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dirac_adjoint(
+    psi : *const Expr
+) -> *mut Expr {
 
     if psi.is_null() {
 
@@ -21,7 +23,9 @@ pub unsafe extern "C" fn rssn_dirac_adjoint(psi : *const Expr) -> *mut Expr {
 /// Computes the Feynman slash notation.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_feynman_slash(v_mu : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_feynman_slash(
+    v_mu : *const Expr
+) -> *mut Expr {
 
     if v_mu.is_null() {
 
@@ -62,7 +66,12 @@ pub unsafe extern "C" fn rssn_qed_lagrangian(
     e : *const Expr,
 ) -> *mut Expr {
 
-    if psi_bar.is_null() || psi.is_null() || a_mu.is_null() || m.is_null() || e.is_null() {
+    if psi_bar.is_null()
+        || psi.is_null()
+        || a_mu.is_null()
+        || m.is_null()
+        || e.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -89,7 +98,12 @@ pub unsafe extern "C" fn rssn_qcd_lagrangian(
     gs : *const Expr,
 ) -> *mut Expr {
 
-    if psi_bar.is_null() || psi.is_null() || g_mu.is_null() || m.is_null() || gs.is_null() {
+    if psi_bar.is_null()
+        || psi.is_null()
+        || g_mu.is_null()
+        || m.is_null()
+        || gs.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -133,7 +147,10 @@ pub unsafe extern "C" fn rssn_qft_scattering_cross_section(
     phase_space : *const Expr,
 ) -> *mut Expr {
 
-    if matrix_element.is_null() || flux.is_null() || phase_space.is_null() {
+    if matrix_element.is_null()
+        || flux.is_null()
+        || phase_space.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -156,7 +173,10 @@ pub unsafe extern "C" fn rssn_feynman_propagator_position_space(
     m : *const Expr,
 ) -> *mut Expr {
 
-    if x.is_null() || y.is_null() || m.is_null() {
+    if x.is_null()
+        || y.is_null()
+        || m.is_null()
+    {
 
         return std::ptr::null_mut();
     }

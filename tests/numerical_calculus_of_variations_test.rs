@@ -5,14 +5,16 @@ use rssn::symbolic::core::Expr;
 
 #[test]
 
-fn test_evaluate_action_free_particle() {
+fn test_evaluate_action_free_particle()
+{
 
     // L = 0.5 * y_dot^2
     let t = Expr::new_variable("t");
 
     let y = Expr::new_variable("y");
 
-    let y_dot = Expr::new_variable("y_dot");
+    let y_dot =
+        Expr::new_variable("y_dot");
 
     let lagrangian = Expr::new_mul(
         Expr::new_constant(0.5),
@@ -39,19 +41,25 @@ fn test_evaluate_action_free_particle() {
     )
     .unwrap();
 
-    assert_approx_eq!(action, 2.0, 1e-5);
+    assert_approx_eq!(
+        action,
+        2.0,
+        1e-5
+    );
 }
 
 #[test]
 
-fn test_evaluate_action_harmonic_oscillator() {
+fn test_evaluate_action_harmonic_oscillator(
+) {
 
     // L = 0.5 * (y_dot^2 - y^2)
     let t = Expr::new_variable("t");
 
     let y = Expr::new_variable("y");
 
-    let y_dot = Expr::new_variable("y_dot");
+    let y_dot =
+        Expr::new_variable("y_dot");
 
     let lagrangian = Expr::new_mul(
         Expr::new_constant(0.5),
@@ -84,7 +92,11 @@ fn test_evaluate_action_harmonic_oscillator() {
     )
     .unwrap();
 
-    assert_approx_eq!(action, 0.0, 1e-5);
+    assert_approx_eq!(
+        action,
+        0.0,
+        1e-5
+    );
 }
 
 #[test]

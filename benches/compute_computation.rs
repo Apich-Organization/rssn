@@ -12,7 +12,9 @@ use rssn::compute::computation::ComputationStatus;
 use rssn::compute::state::State;
 use rssn::symbolic::core::Expr;
 
-fn bench_computation_creation(c : &mut Criterion) {
+fn bench_computation_creation(
+    c : &mut Criterion
+) {
 
     c.bench_function(
         "computation_creation",
@@ -47,27 +49,33 @@ fn bench_computation_creation(c : &mut Criterion) {
     );
 }
 
-fn bench_computation_status_check(c : &mut Criterion) {
+fn bench_computation_status_check(
+    c : &mut Criterion
+) {
 
-    let expr = Arc::new(Expr::Constant(1.0));
+    let expr =
+        Arc::new(Expr::Constant(1.0));
 
     let computation = Computation {
         id : "test_id".to_string(),
         expr : expr.clone(),
-        status : ComputationStatus::Pending,
-        progress : ComputationProgress {
-            percentage : 0.0,
-            description : "Init".to_string(),
-        },
+        status:
+            ComputationStatus::Pending,
+        progress:
+            ComputationProgress {
+                percentage : 0.0,
+                description : "Init"
+                    .to_string(),
+            },
         result : None,
         state : State::new(),
         pause : Arc::new((
             Mutex::new(false),
             Condvar::new(),
         )),
-        cancel_signal : Arc::new(AtomicBool::new(
-            false,
-        )),
+        cancel_signal : Arc::new(
+            AtomicBool::new(false),
+        ),
     };
 
     c.bench_function(

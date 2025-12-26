@@ -22,13 +22,18 @@ pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
         width,
         height,
         time_steps,
-        source_pos : (source_x, source_y),
+        source_pos : (
+            source_x,
+            source_y,
+        ),
         source_freq,
     };
 
     let snapshots = fdtd_electrodynamics::run_fdtd_simulation(&params);
 
-    if let Some(final_ez) = snapshots.last() {
+    if let Some(final_ez) =
+        snapshots.last()
+    {
 
         let rows = final_ez.nrows();
 
@@ -39,7 +44,9 @@ pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
             .into_raw_vec();
 
         Box::into_raw(Box::new(
-            Matrix::new(rows, cols, data),
+            Matrix::new(
+                rows, cols, data,
+            ),
         ))
     } else {
 

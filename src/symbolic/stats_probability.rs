@@ -36,10 +36,12 @@ impl Distribution for Normal {
 
         let term1 = Expr::new_div(
             one,
-            Expr::new_sqrt(Expr::new_mul(
-                two.clone(),
-                pi,
-            )),
+            Expr::new_sqrt(
+                Expr::new_mul(
+                    two.clone(),
+                    pi,
+                ),
+            ),
         );
 
         let term2 = Expr::new_div(
@@ -47,13 +49,15 @@ impl Distribution for Normal {
             self.std_dev.clone(),
         );
 
-        let exp_arg_num = Expr::new_neg(Expr::new_pow(
-            Expr::new_sub(
-                x.clone(),
-                self.mean.clone(),
+        let exp_arg_num = Expr::new_neg(
+            Expr::new_pow(
+                Expr::new_sub(
+                    x.clone(),
+                    self.mean.clone(),
+                ),
+                two.clone(),
             ),
-            two.clone(),
-        ));
+        );
 
         let exp_arg_den = Expr::new_mul(
             two.clone(),
@@ -137,10 +141,14 @@ impl Distribution for Normal {
             Expr::Constant(2.0),
         );
 
-        let half_sigma_sq_t_sq = Expr::new_div(
-            Expr::new_mul(sigma_sq, t_sq),
-            Expr::Constant(2.0),
-        );
+        let half_sigma_sq_t_sq =
+            Expr::new_div(
+                Expr::new_mul(
+                    sigma_sq,
+                    t_sq,
+                ),
+                Expr::Constant(2.0),
+            );
 
         simplify(&Expr::new_exp(
             Expr::new_add(
@@ -150,7 +158,9 @@ impl Distribution for Normal {
         ))
     }
 
-    fn clone_box(&self) -> Arc<dyn Distribution> {
+    fn clone_box(
+        &self
+    ) -> Arc<dyn Distribution> {
 
         Arc::new(self.clone())
     }
@@ -238,31 +248,41 @@ impl Distribution for Uniform {
     ) -> Expr {
 
         // (e^(tb) - e^(ta)) / (t(b-a))
-        let etb = Expr::new_exp(Expr::new_mul(
-            t.clone(),
-            self.max.clone(),
-        ));
+        let etb = Expr::new_exp(
+            Expr::new_mul(
+                t.clone(),
+                self.max.clone(),
+            ),
+        );
 
-        let eta = Expr::new_exp(Expr::new_mul(
-            t.clone(),
-            self.min.clone(),
-        ));
+        let eta = Expr::new_exp(
+            Expr::new_mul(
+                t.clone(),
+                self.min.clone(),
+            ),
+        );
 
-        let num = Expr::new_sub(etb, eta);
+        let num =
+            Expr::new_sub(etb, eta);
 
         let range = Expr::new_sub(
             self.max.clone(),
             self.min.clone(),
         );
 
-        let den = Expr::new_mul(t.clone(), range);
+        let den = Expr::new_mul(
+            t.clone(),
+            range,
+        );
 
         simplify(&Expr::new_div(
             num, den,
         ))
     }
 
-    fn clone_box(&self) -> Arc<dyn Distribution> {
+    fn clone_box(
+        &self
+    ) -> Arc<dyn Distribution> {
 
         Arc::new(self.clone())
     }
@@ -302,14 +322,18 @@ impl Distribution for Binomial {
             k.clone(),
         );
 
-        let one_minus_p_pow = Expr::new_pow(
-            one_minus_p,
-            n_minus_k,
-        );
+        let one_minus_p_pow =
+            Expr::new_pow(
+                one_minus_p,
+                n_minus_k,
+            );
 
         simplify(&Expr::new_mul(
             n_choose_k,
-            Expr::new_mul(p_k, one_minus_p_pow),
+            Expr::new_mul(
+                p_k,
+                one_minus_p_pow,
+            ),
         ))
     }
 
@@ -321,15 +345,17 @@ impl Distribution for Binomial {
         // CDF is related to Regularized Incomplete Beta Function I_{1-p}(n-k, 1+k)
         // For now, let's represent it abstractly or using Summation
         Expr::Sum {
-            body : Arc::new(
-                self.pdf(&Expr::new_variable(
+            body : Arc::new(self.pdf(
+                &Expr::new_variable(
                     "i",
-                )),
-            ), // Use a dummy variable
-            var : Arc::new(Expr::new_variable(
-                "i",
-            )),
-            from : Arc::new(Expr::Constant(0.0)),
+                ),
+            )), // Use a dummy variable
+            var : Arc::new(
+                Expr::new_variable("i"),
+            ),
+            from : Arc::new(
+                Expr::Constant(0.0),
+            ),
             to : Arc::new(k.clone()),
         }
     }
@@ -364,16 +390,23 @@ impl Distribution for Binomial {
     ) -> Expr {
 
         // (1 - p + p e^t)^n
-        let et = Expr::new_exp(t.clone());
+        let et =
+            Expr::new_exp(t.clone());
 
         let one_minus_p = Expr::new_sub(
             Expr::Constant(1.0),
             self.p.clone(),
         );
 
-        let pet = Expr::new_mul(self.p.clone(), et);
+        let pet = Expr::new_mul(
+            self.p.clone(),
+            et,
+        );
 
-        let base = Expr::new_add(one_minus_p, pet);
+        let base = Expr::new_add(
+            one_minus_p,
+            pet,
+        );
 
         simplify(&Expr::new_pow(
             base,
@@ -381,7 +414,9 @@ impl Distribution for Binomial {
         ))
     }
 
-    fn clone_box(&self) -> Arc<dyn Distribution> {
+    fn clone_box(
+        &self
+    ) -> Arc<dyn Distribution> {
 
         Arc::new(self.clone())
     }
@@ -405,11 +440,17 @@ impl Distribution for Poisson {
             k.clone(),
         );
 
-        let exp_neg_lambda = Expr::new_exp(Expr::new_neg(
-            self.rate.clone(),
-        ));
+        let exp_neg_lambda =
+            Expr::new_exp(
+                Expr::new_neg(
+                    self.rate.clone(),
+                ),
+            );
 
-        let k_factorial = Expr::Factorial(Arc::new(k.clone()));
+        let k_factorial =
+            Expr::Factorial(Arc::new(
+                k.clone(),
+            ));
 
         simplify(&Expr::new_div(
             Expr::new_mul(
@@ -428,15 +469,17 @@ impl Distribution for Poisson {
         // Regularized Gamma Q(floor(k+1), lambda)
         // Or Summation
         Expr::Sum {
-            body : Arc::new(
-                self.pdf(&Expr::new_variable(
+            body : Arc::new(self.pdf(
+                &Expr::new_variable(
                     "i",
-                )),
-            ),
-            var : Arc::new(Expr::new_variable(
-                "i",
+                ),
             )),
-            from : Arc::new(Expr::Constant(0.0)),
+            var : Arc::new(
+                Expr::new_variable("i"),
+            ),
+            from : Arc::new(
+                Expr::Constant(0.0),
+            ),
             to : Arc::new(Expr::Floor(
                 Arc::new(k.clone()),
             )),
@@ -472,7 +515,9 @@ impl Distribution for Poisson {
         simplify(&Expr::new_exp(arg))
     }
 
-    fn clone_box(&self) -> Arc<dyn Distribution> {
+    fn clone_box(
+        &self
+    ) -> Arc<dyn Distribution> {
 
         Arc::new(self.clone())
     }
@@ -507,10 +552,11 @@ impl Distribution for Bernoulli {
             k.clone(),
         );
 
-        let one_minus_p_pow = Expr::new_pow(
-            one_minus_p,
-            one_minus_k,
-        );
+        let one_minus_p_pow =
+            Expr::new_pow(
+                one_minus_p,
+                one_minus_k,
+            );
 
         simplify(&Expr::new_mul(
             p_k,
@@ -528,15 +574,17 @@ impl Distribution for Bernoulli {
         // Let's use logic/piecewise/conditions later if available. For now, just return a Sum.
         // Or specific for Bernoulli
         Expr::Sum {
-            body : Arc::new(
-                self.pdf(&Expr::new_variable(
+            body : Arc::new(self.pdf(
+                &Expr::new_variable(
                     "i",
-                )),
-            ),
-            var : Arc::new(Expr::new_variable(
-                "i",
+                ),
             )),
-            from : Arc::new(Expr::Constant(0.0)),
+            var : Arc::new(
+                Expr::new_variable("i"),
+            ),
+            from : Arc::new(
+                Expr::Constant(0.0),
+            ),
             to : Arc::new(Expr::Floor(
                 Arc::new(k.clone()),
             )),
@@ -565,14 +613,18 @@ impl Distribution for Bernoulli {
     ) -> Expr {
 
         // 1 - p + p e^t
-        let et = Expr::new_exp(t.clone());
+        let et =
+            Expr::new_exp(t.clone());
 
         let one_minus_p = Expr::new_sub(
             Expr::Constant(1.0),
             self.p.clone(),
         );
 
-        let pet = Expr::new_mul(self.p.clone(), et);
+        let pet = Expr::new_mul(
+            self.p.clone(),
+            et,
+        );
 
         simplify(&Expr::new_add(
             one_minus_p,
@@ -580,7 +632,9 @@ impl Distribution for Bernoulli {
         ))
     }
 
-    fn clone_box(&self) -> Arc<dyn Distribution> {
+    fn clone_box(
+        &self
+    ) -> Arc<dyn Distribution> {
 
         Arc::new(self.clone())
     }
@@ -601,12 +655,15 @@ impl Distribution for Exponential {
 
         simplify(&Expr::new_mul(
             self.rate.clone(),
-            Expr::new_exp(Expr::new_neg(
-                Expr::new_mul(
-                    self.rate.clone(),
-                    x.clone(),
+            Expr::new_exp(
+                Expr::new_neg(
+                    Expr::new_mul(
+                        self.rate
+                            .clone(),
+                        x.clone(),
+                    ),
                 ),
-            )),
+            ),
         ))
     }
 
@@ -617,12 +674,15 @@ impl Distribution for Exponential {
 
         simplify(&Expr::new_sub(
             Expr::Constant(1.0),
-            Expr::new_exp(Expr::new_neg(
-                Expr::new_mul(
-                    self.rate.clone(),
-                    x.clone(),
+            Expr::new_exp(
+                Expr::new_neg(
+                    Expr::new_mul(
+                        self.rate
+                            .clone(),
+                        x.clone(),
+                    ),
                 ),
-            )),
+            ),
         ))
     }
 
@@ -660,7 +720,9 @@ impl Distribution for Exponential {
         ))
     }
 
-    fn clone_box(&self) -> Arc<dyn Distribution> {
+    fn clone_box(
+        &self
+    ) -> Arc<dyn Distribution> {
 
         Arc::new(self.clone())
     }
@@ -685,9 +747,14 @@ impl Distribution for Gamma {
             self.shape.clone(),
         );
 
-        let term1_den = Expr::new_gamma(self.shape.clone());
+        let term1_den = Expr::new_gamma(
+            self.shape.clone(),
+        );
 
-        let term1 = Expr::new_div(term1_num, term1_den);
+        let term1 = Expr::new_div(
+            term1_num,
+            term1_den,
+        );
 
         let term2 = Expr::new_pow(
             x.clone(),
@@ -697,12 +764,14 @@ impl Distribution for Gamma {
             ),
         );
 
-        let term3 = Expr::new_exp(Expr::new_neg(
-            Expr::new_mul(
-                self.rate.clone(),
-                x.clone(),
+        let term3 = Expr::new_exp(
+            Expr::new_neg(
+                Expr::new_mul(
+                    self.rate.clone(),
+                    x.clone(),
+                ),
             ),
-        ));
+        );
 
         simplify(&Expr::new_mul(
             term1,
@@ -720,15 +789,21 @@ impl Distribution for Gamma {
         // We lack explicit GammaIncLower in basic Expr ops shown so far, maybe extend or use Integral
         Expr::Integral {
             integrand : Arc::new(
-                self.pdf(&Expr::new_variable(
-                    "t",
-                )),
+                self.pdf(
+                    &Expr::new_variable(
+                        "t",
+                    ),
+                ),
             ),
-            var : Arc::new(Expr::new_variable(
-                "t",
-            )),
-            lower_bound : Arc::new(Expr::Constant(0.0)),
-            upper_bound : Arc::new(x.clone()),
+            var : Arc::new(
+                Expr::new_variable("t"),
+            ),
+            lower_bound : Arc::new(
+                Expr::Constant(0.0),
+            ),
+            upper_bound : Arc::new(
+                x.clone(),
+            ),
         }
     }
 
@@ -770,14 +845,18 @@ impl Distribution for Gamma {
             t_over_beta,
         );
 
-        let exp = Expr::new_neg(self.shape.clone());
+        let exp = Expr::new_neg(
+            self.shape.clone(),
+        );
 
         simplify(&Expr::new_pow(
             base, exp,
         ))
     }
 
-    fn clone_box(&self) -> Arc<dyn Distribution> {
+    fn clone_box(
+        &self
+    ) -> Arc<dyn Distribution> {
 
         Arc::new(self.clone())
     }
@@ -837,15 +916,21 @@ impl Distribution for Beta {
         // Regularized Incomplete Beta
         Expr::Integral {
             integrand : Arc::new(
-                self.pdf(&Expr::new_variable(
-                    "t",
-                )),
+                self.pdf(
+                    &Expr::new_variable(
+                        "t",
+                    ),
+                ),
             ),
-            var : Arc::new(Expr::new_variable(
-                "t",
-            )),
-            lower_bound : Arc::new(Expr::Constant(0.0)),
-            upper_bound : Arc::new(x.clone()),
+            var : Arc::new(
+                Expr::new_variable("t"),
+            ),
+            lower_bound : Arc::new(
+                Expr::Constant(0.0),
+            ),
+            upper_bound : Arc::new(
+                x.clone(),
+            ),
         }
     }
 
@@ -881,7 +966,10 @@ impl Distribution for Beta {
             Expr::Constant(1.0),
         );
 
-        let den = Expr::new_mul(sum_sq, sum_plus_1);
+        let den = Expr::new_mul(
+            sum_sq,
+            sum_plus_1,
+        );
 
         let num = Expr::new_mul(
             self.alpha.clone(),
@@ -920,7 +1008,9 @@ impl Distribution for Beta {
         }
     }
 
-    fn clone_box(&self) -> Arc<dyn Distribution> {
+    fn clone_box(
+        &self
+    ) -> Arc<dyn Distribution> {
 
         Arc::new(self.clone())
     }
@@ -939,23 +1029,31 @@ impl Distribution for StudentT {
         t : &Expr,
     ) -> Expr {
 
-        let term1_num = Expr::new_gamma(Expr::new_div(
-            Expr::new_add(
-                self.nu.clone(),
-                Expr::Constant(1.0),
+        let term1_num = Expr::new_gamma(
+            Expr::new_div(
+                Expr::new_add(
+                    self.nu.clone(),
+                    Expr::Constant(1.0),
+                ),
+                Expr::Constant(2.0),
             ),
-            Expr::Constant(2.0),
-        ));
+        );
 
-        let term1_den_sqrt = Expr::new_sqrt(Expr::new_mul(
-            self.nu.clone(),
-            Expr::Pi,
-        ));
+        let term1_den_sqrt =
+            Expr::new_sqrt(
+                Expr::new_mul(
+                    self.nu.clone(),
+                    Expr::Pi,
+                ),
+            );
 
-        let term1_den_gamma = Expr::new_gamma(Expr::new_div(
-            self.nu.clone(),
-            Expr::Constant(2.0),
-        ));
+        let term1_den_gamma =
+            Expr::new_gamma(
+                Expr::new_div(
+                    self.nu.clone(),
+                    Expr::Constant(2.0),
+                ),
+            );
 
         let term1 = Expr::new_div(
             term1_num,
@@ -976,13 +1074,15 @@ impl Distribution for StudentT {
             ),
         );
 
-        let term2_exp = Expr::new_neg(Expr::new_div(
-            Expr::new_add(
-                self.nu.clone(),
-                Expr::Constant(1.0),
+        let term2_exp = Expr::new_neg(
+            Expr::new_div(
+                Expr::new_add(
+                    self.nu.clone(),
+                    Expr::Constant(1.0),
+                ),
+                Expr::Constant(2.0),
             ),
-            Expr::Constant(2.0),
-        ));
+        );
 
         let term2 = Expr::new_pow(
             term2_base,
@@ -1003,15 +1103,21 @@ impl Distribution for StudentT {
         // Use Integral form
         Expr::Integral {
             integrand : Arc::new(
-                self.pdf(&Expr::new_variable(
-                    "x",
-                )),
+                self.pdf(
+                    &Expr::new_variable(
+                        "x",
+                    ),
+                ),
             ),
-            var : Arc::new(Expr::new_variable(
-                "x",
-            )),
-            lower_bound : Arc::new(Expr::NegativeInfinity),
-            upper_bound : Arc::new(t.clone()),
+            var : Arc::new(
+                Expr::new_variable("x"),
+            ),
+            lower_bound : Arc::new(
+                Expr::NegativeInfinity,
+            ),
+            upper_bound : Arc::new(
+                t.clone(),
+            ),
         }
     }
 
@@ -1043,7 +1149,9 @@ impl Distribution for StudentT {
         Expr::NoSolution // Or undefined
     }
 
-    fn clone_box(&self) -> Arc<dyn Distribution> {
+    fn clone_box(
+        &self
+    ) -> Arc<dyn Distribution> {
 
         Arc::new(self.clone())
     }

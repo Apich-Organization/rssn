@@ -6,7 +6,9 @@ use std::os::raw::c_char;
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode;
 
-unsafe fn c_str_to_str<'a>(s : *const c_char) -> Option<&'a str> {
+unsafe fn c_str_to_str<'a>(
+    s : *const c_char
+) -> Option<&'a str> {
 
     if s.is_null() {
 
@@ -31,21 +33,32 @@ pub unsafe extern "C" fn rssn_solve_ode(
     var : *const c_char,
 ) -> *mut Expr {
 
-    if ode_expr.is_null() || func.is_null() || var.is_null() {
+    if ode_expr.is_null()
+        || func.is_null()
+        || var.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let ode_ref = &*ode_expr;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     Box::into_raw(Box::new(
@@ -70,21 +83,32 @@ pub unsafe extern "C" fn rssn_solve_separable_ode(
     var : *const c_char,
 ) -> *mut Expr {
 
-    if equation.is_null() || func.is_null() || var.is_null() {
+    if equation.is_null()
+        || func.is_null()
+        || var.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let eq_ref = &*equation;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match ode::solve_separable_ode(
@@ -92,7 +116,11 @@ pub unsafe extern "C" fn rssn_solve_separable_ode(
         func_str,
         var_str,
     ) {
-        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | Some(solution) => {
+            Box::into_raw(Box::new(
+                solution,
+            ))
+        },
         | None => std::ptr::null_mut(),
     }
 }
@@ -109,21 +137,32 @@ pub unsafe extern "C" fn rssn_solve_first_order_linear_ode(
     var : *const c_char,
 ) -> *mut Expr {
 
-    if equation.is_null() || func.is_null() || var.is_null() {
+    if equation.is_null()
+        || func.is_null()
+        || var.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let eq_ref = &*equation;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match ode::solve_first_order_linear_ode(
@@ -148,21 +187,32 @@ pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
     var : *const c_char,
 ) -> *mut Expr {
 
-    if equation.is_null() || func.is_null() || var.is_null() {
+    if equation.is_null()
+        || func.is_null()
+        || var.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let eq_ref = &*equation;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match ode::solve_bernoulli_ode(
@@ -170,7 +220,11 @@ pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
         func_str,
         var_str,
     ) {
-        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | Some(solution) => {
+            Box::into_raw(Box::new(
+                solution,
+            ))
+        },
         | None => std::ptr::null_mut(),
     }
 }
@@ -188,7 +242,11 @@ pub unsafe extern "C" fn rssn_solve_riccati_ode(
     y1 : *const Expr,
 ) -> *mut Expr {
 
-    if equation.is_null() || func.is_null() || var.is_null() || y1.is_null() {
+    if equation.is_null()
+        || func.is_null()
+        || var.is_null()
+        || y1.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -197,14 +255,22 @@ pub unsafe extern "C" fn rssn_solve_riccati_ode(
 
     let y1_ref = &*y1;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match ode::solve_riccati_ode(
@@ -213,7 +279,11 @@ pub unsafe extern "C" fn rssn_solve_riccati_ode(
         var_str,
         y1_ref,
     ) {
-        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | Some(solution) => {
+            Box::into_raw(Box::new(
+                solution,
+            ))
+        },
         | None => std::ptr::null_mut(),
     }
 }
@@ -230,21 +300,32 @@ pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
     var : *const c_char,
 ) -> *mut Expr {
 
-    if equation.is_null() || func.is_null() || var.is_null() {
+    if equation.is_null()
+        || func.is_null()
+        || var.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let eq_ref = &*equation;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match ode::solve_cauchy_euler_ode(
@@ -252,7 +333,11 @@ pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
         func_str,
         var_str,
     ) {
-        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | Some(solution) => {
+            Box::into_raw(Box::new(
+                solution,
+            ))
+        },
         | None => std::ptr::null_mut(),
     }
 }
@@ -269,21 +354,32 @@ pub unsafe extern "C" fn rssn_solve_exact_ode(
     var : *const c_char,
 ) -> *mut Expr {
 
-    if equation.is_null() || func.is_null() || var.is_null() {
+    if equation.is_null()
+        || func.is_null()
+        || var.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     let eq_ref = &*equation;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match ode::solve_exact_ode(
@@ -291,7 +387,11 @@ pub unsafe extern "C" fn rssn_solve_exact_ode(
         func_str,
         var_str,
     ) {
-        | Some(solution) => Box::into_raw(Box::new(solution)),
+        | Some(solution) => {
+            Box::into_raw(Box::new(
+                solution,
+            ))
+        },
         | None => std::ptr::null_mut(),
     }
 }
@@ -309,7 +409,11 @@ pub unsafe extern "C" fn rssn_solve_by_reduction_of_order(
     y1 : *const Expr,
 ) -> *mut Expr {
 
-    if equation.is_null() || func.is_null() || var.is_null() || y1.is_null() {
+    if equation.is_null()
+        || func.is_null()
+        || var.is_null()
+        || y1.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -318,14 +422,22 @@ pub unsafe extern "C" fn rssn_solve_by_reduction_of_order(
 
     let y1_ref = &*y1;
 
-    let func_str = match c_str_to_str(func) {
+    let func_str = match c_str_to_str(
+        func,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
-    let var_str = match c_str_to_str(var) {
+    let var_str = match c_str_to_str(
+        var,
+    ) {
         | Some(s) => s,
-        | None => return std::ptr::null_mut(),
+        | None => {
+            return std::ptr::null_mut()
+        },
     };
 
     match ode::solve_by_reduction_of_order(

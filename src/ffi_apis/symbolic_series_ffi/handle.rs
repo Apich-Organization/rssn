@@ -31,7 +31,8 @@ pub extern "C" fn rssn_taylor_series_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -72,7 +73,8 @@ pub extern "C" fn rssn_laurent_series_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -113,7 +115,8 @@ pub extern "C" fn rssn_fourier_series_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -159,7 +162,8 @@ pub extern "C" fn rssn_summation_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -205,7 +209,8 @@ pub extern "C" fn rssn_product_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -239,7 +244,8 @@ pub extern "C" fn rssn_series_analyze_convergence_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -275,7 +281,8 @@ pub extern "C" fn rssn_asymptotic_expansion_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)
@@ -322,7 +329,8 @@ pub extern "C" fn rssn_analytic_continuation_handle(
 
         if var.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         std::ffi::CStr::from_ptr(var)

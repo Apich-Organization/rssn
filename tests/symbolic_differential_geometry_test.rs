@@ -12,9 +12,11 @@ fn test_exterior_derivative_0form() {
     // df = 2x dx + dy
     let mut terms = BTreeMap::new();
 
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
-    let y = Expr::Variable("y".to_string());
+    let y =
+        Expr::Variable("y".to_string());
 
     let f = Expr::new_add(
         Expr::new_pow(
@@ -31,7 +33,10 @@ fn test_exterior_derivative_0form() {
         terms,
     };
 
-    let d_form = exterior_derivative(&form, &["x", "y"]);
+    let d_form = exterior_derivative(
+        &form,
+        &["x", "y"],
+    );
 
     // Should have terms for dx (blade 1) and dy (blade 2)
     assert!(d_form
@@ -47,7 +52,8 @@ fn test_exterior_derivative_0form() {
 fn test_wedge_product() {
 
     // dx ^ dy
-    let mut form1_terms = BTreeMap::new();
+    let mut form1_terms =
+        BTreeMap::new();
 
     form1_terms.insert(
         1,
@@ -57,7 +63,8 @@ fn test_wedge_product() {
         terms : form1_terms,
     };
 
-    let mut form2_terms = BTreeMap::new();
+    let mut form2_terms =
+        BTreeMap::new();
 
     form2_terms.insert(
         2,
@@ -67,7 +74,8 @@ fn test_wedge_product() {
         terms : form2_terms,
     };
 
-    let wedge = wedge_product(&form1, &form2);
+    let wedge =
+        wedge_product(&form1, &form2);
 
     // dx ^ dy should give blade 3 (0b11)
     assert!(wedge
@@ -80,7 +88,8 @@ fn test_wedge_product() {
 fn test_wedge_product_antisymmetry() {
 
     // dx ^ dx = 0
-    let mut form_terms = BTreeMap::new();
+    let mut form_terms =
+        BTreeMap::new();
 
     form_terms.insert(
         1,
@@ -90,7 +99,8 @@ fn test_wedge_product_antisymmetry() {
         terms : form_terms,
     };
 
-    let wedge = wedge_product(&form, &form);
+    let wedge =
+        wedge_product(&form, &form);
 
     // Should be empty or zero
     assert!(
@@ -108,17 +118,24 @@ fn test_wedge_product_antisymmetry() {
 
 fn test_boundary() {
 
-    let domain = Expr::Variable("M".to_string());
+    let domain =
+        Expr::Variable("M".to_string());
 
-    let boundary_expr = boundary(&domain);
+    let boundary_expr =
+        boundary(&domain);
 
     // Should create a Boundary expression
-    if let Expr::Boundary(inner) = boundary_expr {
+    if let Expr::Boundary(inner) =
+        boundary_expr
+    {
 
         assert_eq!(*inner, domain);
     } else {
 
-        panic!("Expected Boundary expression");
+        panic!(
+            "Expected Boundary \
+             expression"
+        );
     }
 }
 
@@ -137,20 +154,24 @@ fn test_generalized_stokes_theorem() {
         terms,
     };
 
-    let manifold = Expr::Variable("M".to_string());
+    let manifold =
+        Expr::Variable("M".to_string());
 
-    let theorem = generalized_stokes_theorem(
-        &omega,
-        &manifold,
-        &["x", "y"],
-    );
+    let theorem =
+        generalized_stokes_theorem(
+            &omega,
+            &manifold,
+            &["x", "y"],
+        );
 
     // Should create an equation
     if let Expr::Eq(_, _) = theorem {
         // Success
     } else {
 
-        panic!("Expected Eq expression");
+        panic!(
+            "Expected Eq expression"
+        );
     }
 }
 
@@ -159,12 +180,19 @@ fn test_generalized_stokes_theorem() {
 fn test_gauss_theorem() {
 
     let vector_field = Vector {
-        x : Expr::Variable("Fx".to_string()),
-        y : Expr::Variable("Fy".to_string()),
-        z : Expr::Variable("Fz".to_string()),
+        x : Expr::Variable(
+            "Fx".to_string(),
+        ),
+        y : Expr::Variable(
+            "Fy".to_string(),
+        ),
+        z : Expr::Variable(
+            "Fz".to_string(),
+        ),
     };
 
-    let volume = Expr::Variable("V".to_string());
+    let volume =
+        Expr::Variable("V".to_string());
 
     let theorem = gauss_theorem(
         &vector_field,
@@ -176,7 +204,9 @@ fn test_gauss_theorem() {
         // Success
     } else {
 
-        panic!("Expected Eq expression");
+        panic!(
+            "Expected Eq expression"
+        );
     }
 }
 
@@ -185,12 +215,19 @@ fn test_gauss_theorem() {
 fn test_stokes_theorem() {
 
     let vector_field = Vector {
-        x : Expr::Variable("Fx".to_string()),
-        y : Expr::Variable("Fy".to_string()),
-        z : Expr::Variable("Fz".to_string()),
+        x : Expr::Variable(
+            "Fx".to_string(),
+        ),
+        y : Expr::Variable(
+            "Fy".to_string(),
+        ),
+        z : Expr::Variable(
+            "Fz".to_string(),
+        ),
     };
 
-    let surface = Expr::Variable("S".to_string());
+    let surface =
+        Expr::Variable("S".to_string());
 
     let theorem = stokes_theorem(
         &vector_field,
@@ -202,7 +239,9 @@ fn test_stokes_theorem() {
         // Success
     } else {
 
-        panic!("Expected Eq expression");
+        panic!(
+            "Expected Eq expression"
+        );
     }
 }
 
@@ -210,19 +249,25 @@ fn test_stokes_theorem() {
 
 fn test_greens_theorem() {
 
-    let p = Expr::Variable("P".to_string());
+    let p =
+        Expr::Variable("P".to_string());
 
-    let q = Expr::Variable("Q".to_string());
+    let q =
+        Expr::Variable("Q".to_string());
 
-    let domain = Expr::Variable("D".to_string());
+    let domain =
+        Expr::Variable("D".to_string());
 
-    let theorem = greens_theorem(&p, &q, &domain);
+    let theorem =
+        greens_theorem(&p, &q, &domain);
 
     // Should create an equation
     if let Expr::Eq(_, _) = theorem {
         // Success
     } else {
 
-        panic!("Expected Eq expression");
+        panic!(
+            "Expected Eq expression"
+        );
     }
 }

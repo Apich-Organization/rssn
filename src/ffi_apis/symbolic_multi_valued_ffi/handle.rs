@@ -13,7 +13,8 @@ pub extern "C" fn rssn_general_log_handle(
 
         if z.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*z
@@ -23,13 +24,15 @@ pub extern "C" fn rssn_general_log_handle(
 
         if k.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*k
     };
 
-    let result = general_log(z_ref, k_ref);
+    let result =
+        general_log(z_ref, k_ref);
 
     Box::into_raw(Box::new(result))
 }
@@ -46,7 +49,8 @@ pub extern "C" fn rssn_general_sqrt_handle(
 
         if z.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*z
@@ -56,13 +60,15 @@ pub extern "C" fn rssn_general_sqrt_handle(
 
         if k.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*k
     };
 
-    let result = general_sqrt(z_ref, k_ref);
+    let result =
+        general_sqrt(z_ref, k_ref);
 
     Box::into_raw(Box::new(result))
 }
@@ -80,7 +86,8 @@ pub extern "C" fn rssn_general_power_handle(
 
         if z.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*z
@@ -90,7 +97,8 @@ pub extern "C" fn rssn_general_power_handle(
 
         if w.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*w
@@ -100,13 +108,16 @@ pub extern "C" fn rssn_general_power_handle(
 
         if k.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*k
     };
 
-    let result = general_power(z_ref, w_ref, k_ref);
+    let result = general_power(
+        z_ref, w_ref, k_ref,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -124,7 +135,8 @@ pub extern "C" fn rssn_general_nth_root_handle(
 
         if z.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*z
@@ -134,7 +146,8 @@ pub extern "C" fn rssn_general_nth_root_handle(
 
         if n.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*n
@@ -144,13 +157,16 @@ pub extern "C" fn rssn_general_nth_root_handle(
 
         if k.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*k
     };
 
-    let result = general_nth_root(z_ref, n_ref, k_ref);
+    let result = general_nth_root(
+        z_ref, n_ref, k_ref,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -167,7 +183,8 @@ pub extern "C" fn rssn_general_arcsin_handle(
 
         if z.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*z
@@ -177,13 +194,15 @@ pub extern "C" fn rssn_general_arcsin_handle(
 
         if k.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*k
     };
 
-    let result = general_arcsin(z_ref, k_ref);
+    let result =
+        general_arcsin(z_ref, k_ref);
 
     Box::into_raw(Box::new(result))
 }
@@ -201,7 +220,8 @@ pub extern "C" fn rssn_general_arccos_handle(
 
         if z.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*z
@@ -211,7 +231,8 @@ pub extern "C" fn rssn_general_arccos_handle(
 
         if k.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*k
@@ -221,13 +242,16 @@ pub extern "C" fn rssn_general_arccos_handle(
 
         if s.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*s
     };
 
-    let result = general_arccos(z_ref, k_ref, s_ref);
+    let result = general_arccos(
+        z_ref, k_ref, s_ref,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -244,7 +268,8 @@ pub extern "C" fn rssn_general_arctan_handle(
 
         if z.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*z
@@ -254,13 +279,15 @@ pub extern "C" fn rssn_general_arctan_handle(
 
         if k.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*k
     };
 
-    let result = general_arctan(z_ref, k_ref);
+    let result =
+        general_arctan(z_ref, k_ref);
 
     Box::into_raw(Box::new(result))
 }
@@ -268,13 +295,16 @@ pub extern "C" fn rssn_general_arctan_handle(
 /// Computes argument (angle) of complex number (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_arg_handle(z : *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_arg_handle(
+    z : *const Expr
+) -> *mut Expr {
 
     let z_ref = unsafe {
 
         if z.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*z
@@ -288,13 +318,16 @@ pub extern "C" fn rssn_arg_handle(z : *const Expr) -> *mut Expr {
 /// Computes absolute value (magnitude) of complex number (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_abs_handle(z : *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_abs_handle(
+    z : *const Expr
+) -> *mut Expr {
 
     let z_ref = unsafe {
 
         if z.is_null() {
 
-            return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
         }
 
         &*z

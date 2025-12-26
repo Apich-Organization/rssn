@@ -53,7 +53,9 @@ pub extern "C" fn rssn_num_nt_mod_inverse(
 /// Tests if a number is prime using Miller-Rabin.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_nt_is_prime(n : u64) -> bool {
+pub extern "C" fn rssn_num_nt_is_prime(
+    n : u64
+) -> bool {
 
     nt::is_prime_miller_rabin(n)
 }
@@ -61,7 +63,9 @@ pub extern "C" fn rssn_num_nt_is_prime(n : u64) -> bool {
 /// Computes Euler's totient function φ(n).
 #[no_mangle]
 
-pub extern "C" fn rssn_num_nt_phi(n : u64) -> u64 {
+pub extern "C" fn rssn_num_nt_phi(
+    n : u64
+) -> u64 {
 
     nt::phi(n)
 }

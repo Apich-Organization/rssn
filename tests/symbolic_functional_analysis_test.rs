@@ -3,26 +3,80 @@ use rssn::symbolic::core::Expr;
 use rssn::symbolic::functional_analysis::*;
 use rssn::symbolic::simplify_dag::simplify;
 
-fn eval_expr_to_f64(expr : &Expr) -> Option<f64> {
+fn eval_expr_to_f64(
+    expr : &Expr
+) -> Option<f64> {
 
     // println!("Evaluating: {:?}", expr);
     match expr {
-        | Expr::Constant(val) => Some(*val),
-        | Expr::BigInt(val) => val.to_f64(),
-        | Expr::Rational(val) => val.to_f64(),
-        | Expr::Pi => Some(std::f64::consts::PI),
-        | Expr::E => Some(std::f64::consts::E),
-        | Expr::Add(a, b) => Some(eval_expr_to_f64(a)? + eval_expr_to_f64(b)?),
-        | Expr::Sub(a, b) => Some(eval_expr_to_f64(a)? - eval_expr_to_f64(b)?),
-        | Expr::Mul(a, b) => Some(eval_expr_to_f64(a)? * eval_expr_to_f64(b)?),
-        | Expr::Div(a, b) => Some(eval_expr_to_f64(a)? / eval_expr_to_f64(b)?),
-        | Expr::Power(a, b) => Some(eval_expr_to_f64(a)?.powf(eval_expr_to_f64(b)?)),
+        | Expr::Constant(val) => {
+            Some(*val)
+        },
+        | Expr::BigInt(val) => {
+            val.to_f64()
+        },
+        | Expr::Rational(val) => {
+            val.to_f64()
+        },
+        | Expr::Pi => {
+            Some(std::f64::consts::PI)
+        },
+        | Expr::E => {
+            Some(std::f64::consts::E)
+        },
+        | Expr::Add(a, b) => {
+            Some(
+                eval_expr_to_f64(a)?
+                    + eval_expr_to_f64(
+                        b,
+                    )?,
+            )
+        },
+        | Expr::Sub(a, b) => {
+            Some(
+                eval_expr_to_f64(a)?
+                    - eval_expr_to_f64(
+                        b,
+                    )?,
+            )
+        },
+        | Expr::Mul(a, b) => {
+            Some(
+                eval_expr_to_f64(a)?
+                    * eval_expr_to_f64(
+                        b,
+                    )?,
+            )
+        },
+        | Expr::Div(a, b) => {
+            Some(
+                eval_expr_to_f64(a)?
+                    / eval_expr_to_f64(
+                        b,
+                    )?,
+            )
+        },
+        | Expr::Power(a, b) => {
+            Some(
+                eval_expr_to_f64(a)?
+                    .powf(
+                    eval_expr_to_f64(
+                        b,
+                    )?,
+                ),
+            )
+        },
         | Expr::Neg(a) => {
             Some(-eval_expr_to_f64(
                 a,
             )?)
         },
-        | Expr::Sqrt(a) => Some(eval_expr_to_f64(a)?.sqrt()),
+        | Expr::Sqrt(a) => {
+            Some(
+                eval_expr_to_f64(a)?
+                    .sqrt(),
+            )
+        },
         | Expr::Dag(node) => {
             eval_expr_to_f64(
                 &node
@@ -36,7 +90,10 @@ fn eval_expr_to_f64(expr : &Expr) -> Option<f64> {
 
             for e in list {
 
-                sum += eval_expr_to_f64(e)?;
+                sum +=
+                    eval_expr_to_f64(
+                        e,
+                    )?;
             }
 
             Some(sum)
@@ -47,7 +104,10 @@ fn eval_expr_to_f64(expr : &Expr) -> Option<f64> {
 
             for e in list {
 
-                prod *= eval_expr_to_f64(e)?;
+                prod *=
+                    eval_expr_to_f64(
+                        e,
+                    )?;
             }
 
             Some(prod)
@@ -55,7 +115,8 @@ fn eval_expr_to_f64(expr : &Expr) -> Option<f64> {
         | _ => {
 
             println!(
-                "Failed to evaluate: {:?}",
+                "Failed to evaluate: \
+                 {:?}",
                 expr
             );
 
@@ -69,17 +130,21 @@ fn assert_approx_eq(
     b : f64,
 ) {
 
-    let val = eval_expr_to_f64(a).unwrap_or_else(|| {
+    let val = eval_expr_to_f64(a)
+        .unwrap_or_else(|| {
 
-        panic!(
-            "Expression {:?} should evaluate to f64",
-            a
-        )
-    });
+            panic!(
+                "Expression {:?} \
+                 should evaluate to \
+                 f64",
+                a
+            )
+        });
 
     assert!(
         (val - b).abs() < 1e-9,
-        "Expected {}, got {} for expr {:?}",
+        "Expected {}, got {} for expr \
+         {:?}",
         b,
         val,
         a
@@ -98,7 +163,8 @@ fn test_inner_product() {
     );
 
     // f(x) = x, g(x) = x^2
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let f = x.clone();
 
@@ -108,7 +174,8 @@ fn test_inner_product() {
     );
 
     // <f, g> = int_0^1 x * x^2 dx = int_0^1 x^3 dx = 1/4
-    let result = inner_product(&space, &f, &g);
+    let result =
+        inner_product(&space, &f, &g);
 
     let simplified = simplify(&result);
 
@@ -159,14 +226,16 @@ fn test_orthogonality() {
     );
 
     // f(x) = 1, g(x) = x
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let f = Expr::Constant(1.0);
 
     let g = x.clone();
 
     // <1, x> = int_-1^1 x dx = 0
-    let prod = inner_product(&space, &f, &g);
+    let prod =
+        inner_product(&space, &f, &g);
 
     let simplified = simplify(&prod);
 
@@ -191,7 +260,8 @@ fn test_gram_schmidt() {
     );
 
     // Basis {1, x, x^2}
-    let x = Expr::Variable("x".to_string());
+    let x =
+        Expr::Variable("x".to_string());
 
     let basis = vec![
         Expr::Constant(1.0),
@@ -202,7 +272,8 @@ fn test_gram_schmidt() {
         ),
     ];
 
-    let orthogonal_basis = gram_schmidt(&space, &basis);
+    let orthogonal_basis =
+        gram_schmidt(&space, &basis);
 
     println!(
         "Orthogonal basis: {:?}",

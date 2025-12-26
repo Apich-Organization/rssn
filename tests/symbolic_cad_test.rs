@@ -32,7 +32,8 @@ fn test_cad_simple_1d() {
         terms,
     };
 
-    let result = cad(&[p], &["x"]).unwrap();
+    let result =
+        cad(&[p], &["x"]).unwrap();
 
     // Roots are -1 and 1.
     // Intervals: (-inf, -1), {-1}, (-1, 1), {1}, (1, inf)
@@ -42,15 +43,39 @@ fn test_cad_simple_1d() {
     );
 
     // Check sample points
-    assert!(result.cells[0].sample_point[0] < -1.0);
+    assert!(
+        result.cells[0].sample_point[0]
+            < -1.0
+    );
 
-    assert!((result.cells[1].sample_point[0] - (-1.0)).abs() < 1e-7);
+    assert!(
+        (result.cells[1].sample_point
+            [0]
+            - (-1.0))
+            .abs()
+            < 1e-7
+    );
 
-    assert!(result.cells[2].sample_point[0] > -1.0 && result.cells[2].sample_point[0] < 1.0);
+    assert!(
+        result.cells[2].sample_point[0]
+            > -1.0
+            && result.cells[2]
+                .sample_point[0]
+                < 1.0
+    );
 
-    assert!((result.cells[3].sample_point[0] - 1.0).abs() < 1e-7);
+    assert!(
+        (result.cells[3].sample_point
+            [0]
+            - 1.0)
+            .abs()
+            < 1e-7
+    );
 
-    assert!(result.cells[4].sample_point[0] > 1.0);
+    assert!(
+        result.cells[4].sample_point[0]
+            > 1.0
+    );
 }
 
 #[test]
@@ -90,7 +115,8 @@ fn test_cad_simple_2d() {
         terms,
     };
 
-    let result = cad(&[p], &["x", "y"]).unwrap();
+    let result =
+        cad(&[p], &["x", "y"]).unwrap();
 
     // Projection phase:
     // proj_var = y
@@ -133,11 +159,16 @@ fn test_cad_serialization() {
         terms,
     };
 
-    let result = cad(&[p], &["x"]).unwrap();
+    let result =
+        cad(&[p], &["x"]).unwrap();
 
-    let json = serde_json::to_string(&result).unwrap();
+    let json =
+        serde_json::to_string(&result)
+            .unwrap();
 
-    let deserialized : Cad = serde_json::from_str(&json).unwrap();
+    let deserialized : Cad =
+        serde_json::from_str(&json)
+            .unwrap();
 
     assert_eq!(
         result.cells.len(),
@@ -167,13 +198,15 @@ fn test_cad_ffi_handle() {
 
     let sp = rssn::symbolic::polynomial::expr_to_sparse_poly(&p, &["x"]);
 
-    let p_ptr = Box::into_raw(Box::new(
-        Expr::SparsePolynomial(sp),
-    ));
+    let p_ptr =
+        Box::into_raw(Box::new(
+            Expr::SparsePolynomial(sp),
+        ));
 
     let polys = [p_ptr as *const Expr];
 
-    let x_str = CString::new("x").unwrap();
+    let x_str =
+        CString::new("x").unwrap();
 
     let vars = [x_str.as_ptr()];
 
@@ -186,7 +219,8 @@ fn test_cad_ffi_handle() {
 
     assert!(!handle.is_null());
 
-    let cell_count = rssn_cad_get_cell_count(handle);
+    let cell_count =
+        rssn_cad_get_cell_count(handle);
 
     assert_eq!(cell_count, 5);
 
@@ -230,13 +264,19 @@ fn test_cad_ffi_json() {
         vars : vec!["x".to_string()],
     };
 
-    let input_json = serde_json::to_string(&input).unwrap();
+    let input_json =
+        serde_json::to_string(&input)
+            .unwrap();
 
-    let input_c_str = CString::new(input_json).unwrap();
+    let input_c_str =
+        CString::new(input_json)
+            .unwrap();
 
     let result_ptr = unsafe {
 
-        rssn_json_cad(input_c_str.as_ptr())
+        rssn_json_cad(
+            input_c_str.as_ptr(),
+        )
     };
 
     assert!(!result_ptr.is_null());
@@ -248,7 +288,8 @@ fn test_cad_ffi_json() {
     .to_str()
     .unwrap();
 
-    assert!(result_json.contains("\"cells\""));
+    assert!(result_json
+        .contains("\"cells\""));
 
     assert!(result_json.contains("5"));
 
@@ -288,15 +329,20 @@ fn test_cad_ffi_bincode() {
         vars : vec!["x".to_string()],
     };
 
-    let input_buf = to_bincode_buffer(&input);
+    let input_buf =
+        to_bincode_buffer(&input);
 
     assert!(!input_buf.is_null());
 
-    let result_buf = rssn_bincode_cad(input_buf);
+    let result_buf =
+        rssn_bincode_cad(input_buf);
 
     assert!(!result_buf.is_null());
 
-    let result : Option<Cad> = from_bincode_buffer(&result_buf);
+    let result : Option<Cad> =
+        from_bincode_buffer(
+            &result_buf,
+        );
 
     assert!(result.is_some());
 
@@ -310,5 +356,7 @@ fn test_cad_ffi_bincode() {
 
     rssn_free_bincode_buffer(input_buf);
 
-    rssn_free_bincode_buffer(result_buf);
+    rssn_free_bincode_buffer(
+        result_buf,
+    );
 }

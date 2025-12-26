@@ -17,12 +17,15 @@ use crate::symbolic::core::Expr;
 
 struct EvalInput {
     expr : Expr,
-    vars : HashMap<String, Complex<f64>>,
+    vars :
+        HashMap<String, Complex<f64>>,
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_complex_eval_json(input_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_complex_eval_json(
+    input_json : *const c_char
+) -> *mut c_char {
 
     let input : EvalInput = match from_json_string(input_json) {
         | Some(i) => i,

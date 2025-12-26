@@ -23,12 +23,15 @@ fn test_stats_handle_ffi() {
         ];
 
         // Mean
-        let m = handle::rssn_num_stats_mean(
-            data.as_ptr(),
-            data.len(),
-        );
+        let m =
+            handle::rssn_num_stats_mean(
+                data.as_ptr(),
+                data.len(),
+            );
 
-        assert!((m - 3.0).abs() < 1e-10);
+        assert!(
+            (m - 3.0).abs() < 1e-10
+        );
 
         // Variance
         let v = handle::rssn_num_stats_variance(
@@ -68,13 +71,16 @@ fn test_stats_handle_ffi() {
             data.len(),
         );
 
-        assert!((r - 4.0).abs() < 1e-10);
+        assert!(
+            (r - 4.0).abs() < 1e-10
+        );
 
         // CV
-        let cv = handle::rssn_num_stats_cv(
-            data.as_ptr(),
-            data.len(),
-        );
+        let cv =
+            handle::rssn_num_stats_cv(
+                data.as_ptr(),
+                data.len(),
+            );
 
         assert!(cv > 0.0);
 
@@ -108,7 +114,9 @@ fn test_stats_handle_ffi() {
             data2.len(),
         );
 
-        assert!((corr - 1.0).abs() < 1e-10);
+        assert!(
+            (corr - 1.0).abs() < 1e-10
+        );
 
         // Two-sample t-test
         let mut t = 0.0;
@@ -139,9 +147,11 @@ fn test_stats_handle_ffi() {
         assert!(t.abs() < 1e-10);
 
         // Chi-squared test
-        let obs = vec![10.0, 20.0, 30.0];
+        let obs =
+            vec![10.0, 20.0, 30.0];
 
-        let exp = vec![10.0, 20.0, 30.0];
+        let exp =
+            vec![10.0, 20.0, 30.0];
 
         let mut chi = 0.0;
 
@@ -156,9 +166,11 @@ fn test_stats_handle_ffi() {
         assert!(chi.abs() < 1e-10);
 
         // Linear regression
-        let x = vec![1.0, 2.0, 3.0, 4.0];
+        let x =
+            vec![1.0, 2.0, 3.0, 4.0];
 
-        let y = vec![3.0, 5.0, 7.0, 9.0]; // y = 2x + 1
+        let y =
+            vec![3.0, 5.0, 7.0, 9.0]; // y = 2x + 1
         let mut slope = 0.0;
 
         let mut intercept = 0.0;
@@ -178,7 +190,8 @@ fn test_stats_handle_ffi() {
         );
 
         assert!(
-            (intercept - 1.0).abs() < 1e-10,
+            (intercept - 1.0).abs()
+                < 1e-10,
             "intercept was {}",
             intercept
         );
@@ -217,18 +230,29 @@ fn test_stats_json_ffi() {
             ],
         };
 
-        let json_str = serde_json::to_string(&input).unwrap();
+        let json_str =
+            serde_json::to_string(
+                &input,
+            )
+            .unwrap();
 
-        let c_json = CString::new(json_str).unwrap();
+        let c_json =
+            CString::new(json_str)
+                .unwrap();
 
         // Mean
         let res_ptr = json::rssn_num_stats_mean_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v : serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert!(
             (v["ok"]
@@ -244,11 +268,16 @@ fn test_stats_json_ffi() {
         // Variance
         let res_ptr = json::rssn_num_stats_variance_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v : serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert!(
             v["ok"]
@@ -262,11 +291,16 @@ fn test_stats_json_ffi() {
         // Std Dev
         let res_ptr = json::rssn_num_stats_std_dev_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v : serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert!(
             v["ok"]
@@ -280,11 +314,16 @@ fn test_stats_json_ffi() {
         // Z-scores
         let res_ptr = json::rssn_num_stats_z_scores_json(c_json.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v : serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         let z = v["ok"]
             .as_array()
@@ -300,21 +339,33 @@ fn test_stats_json_ffi() {
                 1.0, 2.0, 3.0, 4.0, 5.0,
             ],
             data2 : vec![
-                2.0, 4.0, 6.0, 8.0, 10.0,
+                2.0, 4.0, 6.0, 8.0,
+                10.0,
             ],
         };
 
-        let json_str = serde_json::to_string(&two_input).unwrap();
+        let json_str =
+            serde_json::to_string(
+                &two_input,
+            )
+            .unwrap();
 
-        let c_json2 = CString::new(json_str).unwrap();
+        let c_json2 =
+            CString::new(json_str)
+                .unwrap();
 
         let res_ptr = json::rssn_num_stats_covariance_json(c_json2.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v : serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert!(
             v["ok"]
@@ -328,11 +379,16 @@ fn test_stats_json_ffi() {
         // Correlation
         let res_ptr = json::rssn_num_stats_correlation_json(c_json2.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v : serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert!(
             (v["ok"]
@@ -346,22 +402,38 @@ fn test_stats_json_ffi() {
         rssn_free_string(res_ptr);
 
         // Linear regression
-        let reg_input = RegressionInput {
-            x : vec![1.0, 2.0, 3.0, 4.0],
-            y : vec![3.0, 5.0, 7.0, 9.0],
-        };
+        let reg_input =
+            RegressionInput {
+                x : vec![
+                    1.0, 2.0, 3.0, 4.0,
+                ],
+                y : vec![
+                    3.0, 5.0, 7.0, 9.0,
+                ],
+            };
 
-        let json_str = serde_json::to_string(&reg_input).unwrap();
+        let json_str =
+            serde_json::to_string(
+                &reg_input,
+            )
+            .unwrap();
 
-        let c_json3 = CString::new(json_str).unwrap();
+        let c_json3 =
+            CString::new(json_str)
+                .unwrap();
 
         let res_ptr = json::rssn_num_stats_linear_regression_json(c_json3.as_ptr());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v : serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         assert!(
             (v["ok"]["slope"]
@@ -403,27 +475,50 @@ fn test_stats_bincode_ffi() {
             ],
         };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         // Mean
         let res_buffer = bincode_api::rssn_num_stats_mean_bincode(buffer);
 
-        let res : FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res : FfiResult<
+            f64,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
-        assert!((res.ok.unwrap() - 3.0).abs() < 1e-10);
+        assert!(
+            (res.ok.unwrap() - 3.0)
+                .abs()
+                < 1e-10
+        );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
         // Variance
         let res_buffer = bincode_api::rssn_num_stats_variance_bincode(buffer);
 
-        let res : FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res : FfiResult<
+            f64,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
         assert!(res.ok.unwrap() > 0.0);
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
 
         // Two data input
         #[derive(Serialize)]
@@ -438,21 +533,38 @@ fn test_stats_bincode_ffi() {
                 1.0, 2.0, 3.0, 4.0, 5.0,
             ],
             data2 : vec![
-                2.0, 4.0, 6.0, 8.0, 10.0,
+                2.0, 4.0, 6.0, 8.0,
+                10.0,
             ],
         };
 
-        let buffer2 = to_bincode_buffer(&two_input);
+        let buffer2 = to_bincode_buffer(
+            &two_input,
+        );
 
         // Correlation
         let res_buffer = bincode_api::rssn_num_stats_correlation_bincode(buffer2);
 
-        let res : FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res : FfiResult<
+            f64,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
-        assert!((res.ok.unwrap() - 1.0).abs() < 1e-10);
+        assert!(
+            (res.ok.unwrap() - 1.0)
+                .abs()
+                < 1e-10
+        );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer2);
+        rssn_free_bincode_buffer(
+            buffer2,
+        );
     }
 }

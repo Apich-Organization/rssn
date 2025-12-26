@@ -7,7 +7,9 @@ use serde::Serialize;
 use crate::output::io::write_npy_file;
 
 /// Parameters for the FDTD simulation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct FdtdParameters {
     pub width : usize,
@@ -26,18 +28,23 @@ pub struct FdtdParameters {
 /// # Returns
 /// A `Vec` containing snapshots of the Ez field at specified intervals.
 
-pub fn run_fdtd_simulation(params : &FdtdParameters) -> Vec<Array2<f64>> {
+pub fn run_fdtd_simulation(
+    params : &FdtdParameters
+) -> Vec<Array2<f64>> {
 
     let (nx, ny) = (
         params.width,
         params.height,
     );
 
-    let mut ez = Array2::<f64>::zeros((nx, ny));
+    let mut ez =
+        Array2::<f64>::zeros((nx, ny));
 
-    let mut hx = Array2::<f64>::zeros((nx, ny));
+    let mut hx =
+        Array2::<f64>::zeros((nx, ny));
 
-    let mut hy = Array2::<f64>::zeros((nx, ny));
+    let mut hy =
+        Array2::<f64>::zeros((nx, ny));
 
     let pml_thickness = 10;
 
@@ -46,11 +53,14 @@ pub fn run_fdtd_simulation(params : &FdtdParameters) -> Vec<Array2<f64>> {
     for t in 0 .. params.time_steps {
 
         // Update Hx and Hy (Magnetic field)
-        let ez_ptr = ez.as_ptr() as usize;
+        let ez_ptr =
+            ez.as_ptr() as usize;
 
-        let hx_ptr = hx.as_mut_ptr() as usize;
+        let hx_ptr =
+            hx.as_mut_ptr() as usize;
 
-        let hy_ptr = hy.as_mut_ptr() as usize;
+        let hy_ptr =
+            hy.as_mut_ptr() as usize;
 
         // Parallel update for Hx
         (0 .. nx)
@@ -101,11 +111,14 @@ pub fn run_fdtd_simulation(params : &FdtdParameters) -> Vec<Array2<f64>> {
             });
 
         // Update Ez (Electric field)
-        let ez_mut_ptr = ez.as_mut_ptr() as usize;
+        let ez_mut_ptr =
+            ez.as_mut_ptr() as usize;
 
-        let hx_const_ptr = hx.as_ptr() as usize;
+        let hx_const_ptr =
+            hx.as_ptr() as usize;
 
-        let hy_const_ptr = hy.as_ptr() as usize;
+        let hy_const_ptr =
+            hy.as_ptr() as usize;
 
         (1 .. nx - 1)
             .into_par_iter()
@@ -134,8 +147,16 @@ pub fn run_fdtd_simulation(params : &FdtdParameters) -> Vec<Array2<f64>> {
             });
 
         // Add soft source
-        let pulse = (-((t as f64 - 30.0).powi(2)) / 100.0).exp()
-            * (2.0 * std::f64::consts::PI * params.source_freq * (t as f64)).sin();
+        let pulse = (-((t as f64
+            - 30.0)
+            .powi(2))
+            / 100.0)
+            .exp()
+            * (2.0
+                * std::f64::consts::PI
+                * params.source_freq
+                * (t as f64))
+                .sin();
 
         ez[[
             params.source_pos.0,
@@ -181,25 +202,33 @@ pub fn simulate_and_save_final_state(
     filename : &str,
 ) -> Result<(), String> {
 
-    let mut ez = Array1::<f64>::zeros(grid_size);
+    let mut ez =
+        Array1::<f64>::zeros(grid_size);
 
-    let mut hy = Array1::<f64>::zeros(grid_size - 1);
+    let mut hy = Array1::<f64>::zeros(
+        grid_size - 1,
+    );
 
     for _ in 0 .. time_steps {
 
         for i in 0 .. grid_size - 1 {
 
-            hy[i] += 0.5 * (ez[i + 1] - ez[i]);
+            hy[i] += 0.5
+                * (ez[i + 1] - ez[i]);
         }
 
         for i in 1 .. grid_size - 1 {
 
-            ez[i] += 0.5 * (hy[i] - hy[i - 1]);
+            ez[i] += 0.5
+                * (hy[i] - hy[i - 1]);
         }
     }
 
     let final_state_2d = ez
-        .into_shape_with_order((grid_size, 1))
+        .into_shape_with_order((
+            grid_size,
+            1,
+        ))
         .map_err(|e| e.to_string())?;
 
     write_npy_file(

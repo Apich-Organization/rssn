@@ -57,7 +57,14 @@ use crate::numerical::matrix::Matrix;
 // ============================================================================
 
 /// Common fluid properties at standard conditions.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct FluidProperties {
     /// Density (kg/m³)
@@ -96,8 +103,10 @@ impl FluidProperties {
 
         Self {
             density : 1.204,
-            dynamic_viscosity : 1.825e-5,
-            thermal_conductivity : 0.0257,
+            dynamic_viscosity:
+                1.825e-5,
+            thermal_conductivity:
+                0.0257,
             specific_heat : 1005.0,
         }
     }
@@ -109,8 +118,10 @@ impl FluidProperties {
 
         Self {
             density : 998.2,
-            dynamic_viscosity : 1.002e-3,
-            thermal_conductivity : 0.598,
+            dynamic_viscosity:
+                1.002e-3,
+            thermal_conductivity:
+                0.598,
             specific_heat : 4182.0,
         }
     }
@@ -118,25 +129,36 @@ impl FluidProperties {
     /// Kinematic viscosity ν = μ/ρ (m²/s)
     #[must_use]
 
-    pub fn kinematic_viscosity(&self) -> f64 {
+    pub fn kinematic_viscosity(
+        &self
+    ) -> f64 {
 
-        self.dynamic_viscosity / self.density
+        self.dynamic_viscosity
+            / self.density
     }
 
     /// Thermal diffusivity α = k/(ρ·Cp) (m²/s)
     #[must_use]
 
-    pub fn thermal_diffusivity(&self) -> f64 {
+    pub fn thermal_diffusivity(
+        &self
+    ) -> f64 {
 
-        self.thermal_conductivity / (self.density * self.specific_heat)
+        self.thermal_conductivity
+            / (self.density
+                * self.specific_heat)
     }
 
     /// Prandtl number Pr = ν/α = μ·Cp/k
     #[must_use]
 
-    pub fn prandtl_number(&self) -> f64 {
+    pub fn prandtl_number(
+        &self
+    ) -> f64 {
 
-        self.dynamic_viscosity * self.specific_heat / self.thermal_conductivity
+        self.dynamic_viscosity
+            * self.specific_heat
+            / self.thermal_conductivity
     }
 }
 
@@ -158,7 +180,8 @@ pub fn reynolds_number(
     kinematic_viscosity : f64,
 ) -> f64 {
 
-    velocity * length / kinematic_viscosity
+    velocity * length
+        / kinematic_viscosity
 }
 
 /// Calculates the Mach number: Ma = V/c
@@ -222,7 +245,8 @@ pub fn check_cfl_stability(
     max_cfl : f64,
 ) -> bool {
 
-    cfl_number(velocity, dt, dx) <= max_cfl
+    cfl_number(velocity, dt, dx)
+        <= max_cfl
 }
 
 /// Calculates the diffusion number for stability analysis.
@@ -269,7 +293,10 @@ pub fn solve_advection_1d(
 
     let mut u = u0.to_vec();
 
-    let mut results = Vec::with_capacity(num_steps + 1);
+    let mut results =
+        Vec::with_capacity(
+            num_steps + 1,
+        );
 
     results.push(u.clone());
 
@@ -333,7 +360,10 @@ pub fn solve_diffusion_1d(
 
     let mut u = u0.to_vec();
 
-    let mut results = Vec::with_capacity(num_steps + 1);
+    let mut results =
+        Vec::with_capacity(
+            num_steps + 1,
+        );
 
     results.push(u.clone());
 
@@ -349,7 +379,13 @@ pub fn solve_diffusion_1d(
 
         for i in 1 .. (n - 1) {
 
-            u_next[i] = r.mul_add(2.0f64.mul_add(-u[i], u[i - 1]) + u[i + 1], u[i]);
+            u_next[i] = r.mul_add(
+                2.0f64.mul_add(
+                    -u[i],
+                    u[i - 1],
+                ) + u[i + 1],
+                u[i],
+            );
         }
 
         u = u_next;
@@ -408,19 +444,35 @@ pub fn solve_poisson_2d_jacobi(
 
                 let val = 0.5
                     * (dy2.mul_add(
-                        u.get(i + 1, j) + u.get(i - 1, j),
-                        dx2 * (u.get(i, j + 1) + u.get(i, j - 1)),
-                    ) - (dx2 * dy2 * f.get(i, j)))
+                        u.get(i + 1, j)
+                            + u.get(
+                                i - 1,
+                                j,
+                            ),
+                        dx2 * (u.get(
+                            i,
+                            j + 1,
+                        ) + u
+                            .get(
+                                i,
+                                j - 1,
+                            )),
+                    ) - (dx2
+                        * dy2
+                        * f.get(i, j)))
                     / (dx2 + dy2);
 
-                let diff = (val - u.get(i, j)).abs();
+                let diff = (val
+                    - u.get(i, j))
+                .abs();
 
                 if diff > max_diff {
 
                     max_diff = diff;
                 }
 
-                *u_new.get_mut(i, j) = val;
+                *u_new.get_mut(i, j) =
+                    val;
             }
         }
 
@@ -468,15 +520,37 @@ pub fn solve_poisson_2d_gauss_seidel(
 
             for j in 1 .. (ny - 1) {
 
-                let old_val = *u.get(i, j);
+                let old_val =
+                    *u.get(i, j);
 
-                let new_val = (dy2.mul_add(*u.get(i + 1, j) + *u.get(i - 1, j), dx2 * (*u.get(i, j + 1) + *u.get(i, j - 1)))
-                    - dx2 * dy2 * *f.get(i, j))
-                    / factor;
+                let new_val =
+                    (dy2.mul_add(
+                        *u.get(
+                            i + 1,
+                            j,
+                        ) + *u.get(
+                            i - 1,
+                            j,
+                        ),
+                        dx2 * (*u.get(
+                            i,
+                            j + 1,
+                        ) + *u
+                            .get(
+                                i,
+                                j - 1,
+                            )),
+                    ) - dx2
+                        * dy2
+                        * *f.get(i, j))
+                        / factor;
 
-                *u.get_mut(i, j) = new_val;
+                *u.get_mut(i, j) =
+                    new_val;
 
-                let diff = (new_val - old_val).abs();
+                let diff = (new_val
+                    - old_val)
+                    .abs();
 
                 if diff > max_diff {
 
@@ -530,17 +604,44 @@ pub fn solve_poisson_2d_sor(
 
             for j in 1 .. (ny - 1) {
 
-                let old_val = *u.get(i, j);
+                let old_val =
+                    *u.get(i, j);
 
-                let gs_val = (dy2.mul_add(*u.get(i + 1, j) + *u.get(i - 1, j), dx2 * (*u.get(i, j + 1) + *u.get(i, j - 1)))
-                    - dx2 * dy2 * *f.get(i, j))
-                    / factor;
+                let gs_val =
+                    (dy2.mul_add(
+                        *u.get(
+                            i + 1,
+                            j,
+                        ) + *u.get(
+                            i - 1,
+                            j,
+                        ),
+                        dx2 * (*u.get(
+                            i,
+                            j + 1,
+                        ) + *u
+                            .get(
+                                i,
+                                j - 1,
+                            )),
+                    ) - dx2
+                        * dy2
+                        * *f.get(i, j))
+                        / factor;
 
-                let new_val = omega.mul_add(gs_val - old_val, old_val);
+                let new_val = omega
+                    .mul_add(
+                        gs_val
+                            - old_val,
+                        old_val,
+                    );
 
-                *u.get_mut(i, j) = new_val;
+                *u.get_mut(i, j) =
+                    new_val;
 
-                let diff = (new_val - old_val).abs();
+                let diff = (new_val
+                    - old_val)
+                    .abs();
 
                 if diff > max_diff {
 
@@ -578,7 +679,10 @@ pub fn solve_advection_diffusion_1d(
 
     let mut u = u0.to_vec();
 
-    let mut results = Vec::with_capacity(num_steps + 1);
+    let mut results =
+        Vec::with_capacity(
+            num_steps + 1,
+        );
 
     results.push(u.clone());
 
@@ -605,9 +709,15 @@ pub fn solve_advection_diffusion_1d(
                 -nu * (u[i + 1] - u[i])
             };
 
-            let diffusion = r * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]);
+            let diffusion = r
+                * (2.0f64.mul_add(
+                    -u[i],
+                    u[i + 1],
+                ) + u[i - 1]);
 
-            u_next[i] = u[i] + advection + diffusion;
+            u_next[i] = u[i]
+                + advection
+                + diffusion;
         }
 
         u = u_next;
@@ -639,7 +749,10 @@ pub fn solve_burgers_1d(
 
     let mut u = u0.to_vec();
 
-    let mut results = Vec::with_capacity(num_steps + 1);
+    let mut results =
+        Vec::with_capacity(
+            num_steps + 1,
+        );
 
     results.push(u.clone());
 
@@ -656,18 +769,29 @@ pub fn solve_burgers_1d(
         for i in 1 .. (n - 1) {
 
             // Nonlinear advection (conservative form with upwinding)
-            let advection = if u[i] > 0.0 {
+            let advection = if u[i]
+                > 0.0
+            {
 
-                u[i] * (u[i] - u[i - 1]) / dx
+                u[i] * (u[i] - u[i - 1])
+                    / dx
             } else {
 
-                u[i] * (u[i + 1] - u[i]) / dx
+                u[i] * (u[i + 1] - u[i])
+                    / dx
             };
 
             // Diffusion
-            let diffusion = r * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]);
+            let diffusion = r
+                * (2.0f64.mul_add(
+                    -u[i],
+                    u[i + 1],
+                ) + u[i - 1]);
 
-            u_next[i] = dt.mul_add(-advection, u[i]) + diffusion;
+            u_next[i] = dt.mul_add(
+                -advection,
+                u[i],
+            ) + diffusion;
         }
 
         u = u_next;
@@ -701,17 +825,25 @@ pub fn compute_vorticity(
 
     let ny = u.cols();
 
-    let mut omega = Matrix::zeros(nx, ny);
+    let mut omega =
+        Matrix::zeros(nx, ny);
 
     for i in 1 .. (nx - 1) {
 
         for j in 1 .. (ny - 1) {
 
-            let dv_dx = (*v.get(i + 1, j) - *v.get(i - 1, j)) / (2.0 * dx);
+            let dv_dx = (*v
+                .get(i + 1, j)
+                - *v.get(i - 1, j))
+                / (2.0 * dx);
 
-            let du_dy = (*u.get(i, j + 1) - *u.get(i, j - 1)) / (2.0 * dy);
+            let du_dy = (*u
+                .get(i, j + 1)
+                - *u.get(i, j - 1))
+                / (2.0 * dy);
 
-            *omega.get_mut(i, j) = dv_dx - du_dy;
+            *omega.get_mut(i, j) =
+                dv_dx - du_dy;
         }
     }
 
@@ -736,13 +868,15 @@ pub fn compute_stream_function(
     let ny = omega.cols();
 
     // Negate vorticity for the Poisson equation
-    let mut neg_omega = Matrix::zeros(nx, ny);
+    let mut neg_omega =
+        Matrix::zeros(nx, ny);
 
     for i in 0 .. nx {
 
         for j in 0 .. ny {
 
-            *neg_omega.get_mut(i, j) = -*omega.get(i, j);
+            *neg_omega.get_mut(i, j) =
+                -*omega.get(i, j);
         }
     }
 
@@ -784,9 +918,15 @@ pub fn velocity_from_stream_function(
 
         for j in 1 .. (ny - 1) {
 
-            *u.get_mut(i, j) = (*psi.get(i, j + 1) - *psi.get(i, j - 1)) / (2.0 * dy);
+            *u.get_mut(i, j) = (*psi
+                .get(i, j + 1)
+                - *psi.get(i, j - 1))
+                / (2.0 * dy);
 
-            *v.get_mut(i, j) = -(*psi.get(i + 1, j) - *psi.get(i - 1, j)) / (2.0 * dx);
+            *v.get_mut(i, j) = -(*psi
+                .get(i + 1, j)
+                - *psi.get(i - 1, j))
+                / (2.0 * dx);
         }
     }
 
@@ -819,11 +959,18 @@ pub fn compute_divergence(
 
         for j in 1 .. (ny - 1) {
 
-            let du_dx = (*u.get(i + 1, j) - *u.get(i - 1, j)) / (2.0 * dx);
+            let du_dx = (*u
+                .get(i + 1, j)
+                - *u.get(i - 1, j))
+                / (2.0 * dx);
 
-            let dv_dy = (*v.get(i, j + 1) - *v.get(i, j - 1)) / (2.0 * dy);
+            let dv_dy = (*v
+                .get(i, j + 1)
+                - *v.get(i, j - 1))
+                / (2.0 * dy);
 
-            *div.get_mut(i, j) = du_dx + dv_dy;
+            *div.get_mut(i, j) =
+                du_dx + dv_dy;
         }
     }
 
@@ -848,17 +995,25 @@ pub fn compute_gradient(
 
     let ny = p.cols();
 
-    let mut dp_dx = Matrix::zeros(nx, ny);
+    let mut dp_dx =
+        Matrix::zeros(nx, ny);
 
-    let mut dp_dy = Matrix::zeros(nx, ny);
+    let mut dp_dy =
+        Matrix::zeros(nx, ny);
 
     for i in 1 .. (nx - 1) {
 
         for j in 1 .. (ny - 1) {
 
-            *dp_dx.get_mut(i, j) = (*p.get(i + 1, j) - *p.get(i - 1, j)) / (2.0 * dx);
+            *dp_dx.get_mut(i, j) = (*p
+                .get(i + 1, j)
+                - *p.get(i - 1, j))
+                / (2.0 * dx);
 
-            *dp_dy.get_mut(i, j) = (*p.get(i, j + 1) - *p.get(i, j - 1)) / (2.0 * dy);
+            *dp_dy.get_mut(i, j) = (*p
+                .get(i, j + 1)
+                - *p.get(i, j - 1))
+                / (2.0 * dy);
         }
     }
 
@@ -890,11 +1045,22 @@ pub fn compute_laplacian(
 
         for j in 1 .. (ny - 1) {
 
-            let d2f_dx2 = (2.0f64.mul_add(-*f.get(i, j), *f.get(i + 1, j)) + *f.get(i - 1, j)) / dx2;
+            let d2f_dx2 =
+                (2.0f64.mul_add(
+                    -*f.get(i, j),
+                    *f.get(i + 1, j),
+                ) + *f.get(i - 1, j))
+                    / dx2;
 
-            let d2f_dy2 = (2.0f64.mul_add(-*f.get(i, j), *f.get(i, j + 1)) + *f.get(i, j - 1)) / dy2;
+            let d2f_dy2 =
+                (2.0f64.mul_add(
+                    -*f.get(i, j),
+                    *f.get(i, j + 1),
+                ) + *f.get(i, j - 1))
+                    / dy2;
 
-            *lap.get_mut(i, j) = d2f_dx2 + d2f_dy2;
+            *lap.get_mut(i, j) =
+                d2f_dx2 + d2f_dy2;
         }
     }
 
@@ -938,13 +1104,16 @@ pub fn lid_driven_cavity_simple(
 
     let mut psi = Matrix::zeros(nx, ny);
 
-    let mut omega = Matrix::zeros(nx, ny);
+    let mut omega =
+        Matrix::zeros(nx, ny);
 
     // Set boundary condition for vorticity at lid
     for i in 0 .. nx {
 
-        *omega.get_mut(i, ny - 1) =
-            -2.0 * *psi.get(i, ny - 2) / (dy * dy) - 2.0 * lid_velocity / dy;
+        *omega.get_mut(i, ny - 1) = -2.0
+            * *psi.get(i, ny - 2)
+            / (dy * dy)
+            - 2.0 * lid_velocity / dy;
     }
 
     for _ in 0 .. num_steps {
@@ -959,29 +1128,62 @@ pub fn lid_driven_cavity_simple(
         );
 
         // Update vorticity
-        let mut omega_new = omega.clone();
+        let mut omega_new =
+            omega.clone();
 
         for i in 1 .. (nx - 1) {
 
             for j in 1 .. (ny - 1) {
 
                 // Advection (using stream function)
-                let u = (*psi.get(i, j + 1) - *psi.get(i, j - 1)) / (2.0 * dy);
+                let u = (*psi
+                    .get(i, j + 1)
+                    - *psi
+                        .get(i, j - 1))
+                    / (2.0 * dy);
 
-                let v = -(*psi.get(i + 1, j) - *psi.get(i - 1, j)) / (2.0 * dx);
+                let v = -(*psi
+                    .get(i + 1, j)
+                    - *psi
+                        .get(i - 1, j))
+                    / (2.0 * dx);
 
-                let domega_dx = (*omega.get(i + 1, j) - *omega.get(i - 1, j)) / (2.0 * dx);
+                let domega_dx = (*omega
+                    .get(i + 1, j)
+                    - *omega
+                        .get(i - 1, j))
+                    / (2.0 * dx);
 
-                let domega_dy = (*omega.get(i, j + 1) - *omega.get(i, j - 1)) / (2.0 * dy);
+                let domega_dy = (*omega
+                    .get(i, j + 1)
+                    - *omega
+                        .get(i, j - 1))
+                    / (2.0 * dy);
 
                 // Diffusion
-                let d2omega_dx2 = (2.0f64.mul_add(-*omega.get(i, j), *omega.get(i + 1, j))
-                    + *omega.get(i - 1, j))
-                    / (dx * dx);
+                let d2omega_dx2 =
+                    (2.0f64.mul_add(
+                        -*omega
+                            .get(i, j),
+                        *omega.get(
+                            i + 1,
+                            j,
+                        ),
+                    ) + *omega
+                        .get(i - 1, j))
+                        / (dx * dx);
 
-                let d2omega_dy2 = (2.0f64.mul_add(-*omega.get(i, j), *omega.get(i, j + 1))
-                    + *omega.get(i, j - 1))
-                    / (dy * dy);
+                let d2omega_dy2 =
+                    (2.0f64.mul_add(
+                        -*omega
+                            .get(i, j),
+                        *omega.get(
+                            i,
+                            j + 1,
+                        ),
+                    ) + *omega
+                        .get(i, j - 1))
+                        / (dy * dy);
 
                 *omega_new.get_mut(i, j) = *omega.get(i, j)
                     + dt * nu.mul_add(d2omega_dx2 + d2omega_dy2, -(u * domega_dx + v * domega_dy));
@@ -994,16 +1196,27 @@ pub fn lid_driven_cavity_simple(
         for i in 0 .. nx {
 
             *omega.get_mut(i, ny - 1) =
-                -2.0 * *psi.get(i, ny - 2) / (dy * dy) - 2.0 * lid_velocity / dy;
+                -2.0 * *psi
+                    .get(i, ny - 2)
+                    / (dy * dy)
+                    - 2.0 * lid_velocity
+                        / dy;
 
-            *omega.get_mut(i, 0) = -2.0 * *psi.get(i, 1) / (dy * dy);
+            *omega.get_mut(i, 0) = -2.0
+                * *psi.get(i, 1)
+                / (dy * dy);
         }
 
         for j in 0 .. ny {
 
-            *omega.get_mut(0, j) = -2.0 * *psi.get(1, j) / (dx * dx);
+            *omega.get_mut(0, j) = -2.0
+                * *psi.get(1, j)
+                / (dx * dx);
 
-            *omega.get_mut(nx - 1, j) = -2.0 * *psi.get(nx - 2, j) / (dx * dx);
+            *omega.get_mut(nx - 1, j) =
+                -2.0 * *psi
+                    .get(nx - 2, j)
+                    / (dx * dx);
         }
     }
 
@@ -1028,23 +1241,29 @@ pub fn apply_dirichlet_bc(
     // Top and bottom
     for i in 0 .. nx {
 
-        *field.get_mut(i, 0) = boundary_value;
+        *field.get_mut(i, 0) =
+            boundary_value;
 
-        *field.get_mut(i, ny - 1) = boundary_value;
+        *field.get_mut(i, ny - 1) =
+            boundary_value;
     }
 
     // Left and right
     for j in 0 .. ny {
 
-        *field.get_mut(0, j) = boundary_value;
+        *field.get_mut(0, j) =
+            boundary_value;
 
-        *field.get_mut(nx - 1, j) = boundary_value;
+        *field.get_mut(nx - 1, j) =
+            boundary_value;
     }
 }
 
 /// Applies Neumann boundary conditions (zero gradient) to a 2D field.
 
-pub fn apply_neumann_bc(field : &mut Matrix<f64>) {
+pub fn apply_neumann_bc(
+    field : &mut Matrix<f64>
+) {
 
     let nx = field.rows();
 
@@ -1053,16 +1272,20 @@ pub fn apply_neumann_bc(field : &mut Matrix<f64>) {
     // Copy from interior to boundaries
     for i in 0 .. nx {
 
-        *field.get_mut(i, 0) = *field.get(i, 1);
+        *field.get_mut(i, 0) =
+            *field.get(i, 1);
 
-        *field.get_mut(i, ny - 1) = *field.get(i, ny - 2);
+        *field.get_mut(i, ny - 1) =
+            *field.get(i, ny - 2);
     }
 
     for j in 0 .. ny {
 
-        *field.get_mut(0, j) = *field.get(1, j);
+        *field.get_mut(0, j) =
+            *field.get(1, j);
 
-        *field.get_mut(nx - 1, j) = *field.get(nx - 2, j);
+        *field.get_mut(nx - 1, j) =
+            *field.get(nx - 2, j);
     }
 }
 
@@ -1084,7 +1307,13 @@ pub fn max_velocity_magnitude(
 
         for j in 0 .. ny {
 
-            let vel = (*u.get(i, j)).mul_add(*u.get(i, j), *v.get(i, j) * *v.get(i, j)).sqrt();
+            let vel = (*u.get(i, j))
+                .mul_add(
+                    *u.get(i, j),
+                    *v.get(i, j)
+                        * *v.get(i, j),
+                )
+                .sqrt();
 
             if vel > max_vel {
 
@@ -1099,7 +1328,9 @@ pub fn max_velocity_magnitude(
 /// Computes the L2 norm of a field for convergence checking.
 #[must_use]
 
-pub fn l2_norm(field : &Matrix<f64>) -> f64 {
+pub fn l2_norm(
+    field : &Matrix<f64>
+) -> f64 {
 
     let nx = field.rows();
 
@@ -1111,7 +1342,8 @@ pub fn l2_norm(field : &Matrix<f64>) -> f64 {
 
         for j in 0 .. ny {
 
-            sum += *field.get(i, j) * *field.get(i, j);
+            sum += *field.get(i, j)
+                * *field.get(i, j);
         }
     }
 
@@ -1121,7 +1353,9 @@ pub fn l2_norm(field : &Matrix<f64>) -> f64 {
 /// Computes the maximum absolute value in a field.
 #[must_use]
 
-pub fn max_abs(field : &Matrix<f64>) -> f64 {
+pub fn max_abs(
+    field : &Matrix<f64>
+) -> f64 {
 
     let nx = field.rows();
 

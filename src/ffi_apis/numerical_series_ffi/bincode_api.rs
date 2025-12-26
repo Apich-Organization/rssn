@@ -46,12 +46,13 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
         },
     };
 
-    let res = series::taylor_coefficients(
-        &input.expr,
-        &input.var,
-        input.at_point,
-        input.order,
-    );
+    let res =
+        series::taylor_coefficients(
+            &input.expr,
+            &input.var,
+            input.at_point,
+            input.order,
+        );
 
     let ffi_res = match res {
         | Ok(v) => {

@@ -126,9 +126,14 @@ fn test_bipartite_matching() {
         Expr::Constant(1.0),
     );
 
-    let partition = vec![0, 0, 0, 1, 1, 1];
+    let partition =
+        vec![0, 0, 0, 1, 1, 1];
 
-    let matching = bipartite_maximum_matching(&g, &partition);
+    let matching =
+        bipartite_maximum_matching(
+            &g,
+            &partition,
+        );
 
     // Max matching size should be 3: (0-4), (1-3), (2-5) or similar
     assert_eq!(matching.len(), 3);
@@ -171,9 +176,12 @@ fn test_max_flow() {
         Expr::Constant(8.0),
     );
 
-    let flow = edmonds_karp_max_flow(&g, 0, 3);
+    let flow =
+        edmonds_karp_max_flow(&g, 0, 3);
 
-    assert!((flow - 12.0).abs() < 1e-10);
+    assert!(
+        (flow - 12.0).abs() < 1e-10
+    );
 }
 
 #[test]
@@ -188,9 +196,15 @@ fn test_serialization() {
         Expr::Constant(1.0),
     );
 
-    let serialized = serde_json::to_string(&g).unwrap();
+    let serialized =
+        serde_json::to_string(&g)
+            .unwrap();
 
-    let deserialized : Graph<String> = serde_json::from_str(&serialized).unwrap();
+    let deserialized : Graph<String> =
+        serde_json::from_str(
+            &serialized,
+        )
+        .unwrap();
 
     assert_eq!(
         deserialized.node_count(),

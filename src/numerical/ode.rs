@@ -7,7 +7,15 @@ use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 
 /// Methods for solving ordinary differential equations.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+)]
 
 pub enum OdeSolverMethod {
     Euler,
@@ -96,7 +104,8 @@ pub fn solve_ode_euler(
 
     let (x0, x_end) = x_range;
 
-    let h = (x_end - x0) / (num_steps as f64);
+    let h = (x_end - x0)
+        / (num_steps as f64);
 
     let mut x = x0;
 
@@ -139,7 +148,8 @@ pub fn solve_ode_heun(
 
     let (x0, x_end) = x_range;
 
-    let h = (x_end - x0) / (num_steps as f64);
+    let h = (x_end - x0)
+        / (num_steps as f64);
 
     let mut x = x0;
 
@@ -199,13 +209,15 @@ pub fn solve_ode_system_rk4(
 
     let (x0, x_end) = x_range;
 
-    let h = (x_end - x0) / (num_steps as f64);
+    let h = (x_end - x0)
+        / (num_steps as f64);
 
     let mut x = x0;
 
     let mut y_vec = y0.to_vec();
 
-    let mut results = vec![y_vec.clone()];
+    let mut results =
+        vec![y_vec.clone()];
 
     let mut vars = HashMap::new();
 
@@ -223,7 +235,10 @@ pub fn solve_ode_system_rk4(
             x + h / 2.0,
             &add_vec(
                 &y_vec,
-                &scale_vec(&k1, h / 2.0),
+                &scale_vec(
+                    &k1,
+                    h / 2.0,
+                ),
             ),
             &mut vars,
         )?;
@@ -233,7 +248,10 @@ pub fn solve_ode_system_rk4(
             x + h / 2.0,
             &add_vec(
                 &y_vec,
-                &scale_vec(&k2, h / 2.0),
+                &scale_vec(
+                    &k2,
+                    h / 2.0,
+                ),
             ),
             &mut vars,
         )?;
@@ -271,10 +289,17 @@ pub fn solve_ode_system_rk4(
 
         if y_vec
             .iter()
-            .any(|&val| !val.is_finite())
+            .any(|&val| {
+                !val.is_finite()
+            })
         {
 
-            return Err("Overflow or invalid value encountered during ODE solving.".to_string());
+            return Err("Overflow or \
+                        invalid value \
+                        encountered \
+                        during ODE \
+                        solving."
+                .to_string());
         }
 
         results.push(y_vec.clone());
@@ -307,7 +332,8 @@ pub(crate) fn eval_f(
 
     for f in funcs {
 
-        results.push(eval_expr(f, vars)?);
+        results
+            .push(eval_expr(f, vars)?);
     }
 
     Ok(results)

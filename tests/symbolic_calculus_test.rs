@@ -36,7 +36,8 @@ fn test_differentiate_basic() {
         Expr::Constant(2.0),
     );
 
-    let diff_x_sq = differentiate(&x_sq, "x");
+    let diff_x_sq =
+        differentiate(&x_sq, "x");
 
     // Result might be 2*x or x*2 or similar, depending on simplification
     // For now, just check it's not zero
@@ -60,9 +61,11 @@ fn test_differentiate_trig() {
     let x = Expr::new_variable("x");
 
     // d/dx(sin(x)) = cos(x)
-    let sin_x = Expr::new_sin(x.clone());
+    let sin_x =
+        Expr::new_sin(x.clone());
 
-    let diff_sin = differentiate(&sin_x, "x");
+    let diff_sin =
+        differentiate(&sin_x, "x");
 
     eprintln!(
         "diff_sin: {}",
@@ -75,9 +78,11 @@ fn test_differentiate_trig() {
     ));
 
     // d/dx(cos(x)) = -sin(x)
-    let cos_x = Expr::new_cos(x.clone());
+    let cos_x =
+        Expr::new_cos(x.clone());
 
-    let diff_cos = differentiate(&cos_x, "x");
+    let diff_cos =
+        differentiate(&cos_x, "x");
 
     eprintln!(
         "diff_cos: {}",
@@ -86,7 +91,9 @@ fn test_differentiate_trig() {
 
     assert!(matches!(
         diff_cos,
-        Expr::Mul(_, _) | Expr::Neg(_) | Expr::Dag(_)
+        Expr::Mul(_, _)
+            | Expr::Neg(_)
+            | Expr::Dag(_)
     ));
 
     assert!(false);
@@ -99,9 +106,11 @@ fn test_differentiate_exp_log() {
     let x = Expr::new_variable("x");
 
     // d/dx(e^x) = e^x
-    let exp_x = Expr::new_exp(x.clone());
+    let exp_x =
+        Expr::new_exp(x.clone());
 
-    let diff_exp = differentiate(&exp_x, "x");
+    let diff_exp =
+        differentiate(&exp_x, "x");
 
     // simplify might return Exp(x) directly
     eprintln!(
@@ -117,7 +126,8 @@ fn test_differentiate_exp_log() {
     // d/dx(ln(x)) = 1/x
     let ln_x = Expr::new_log(x.clone());
 
-    let diff_ln = differentiate(&ln_x, "x");
+    let diff_ln =
+        differentiate(&ln_x, "x");
 
     eprintln!(
         "diff_ln: {}",
@@ -139,13 +149,16 @@ fn test_integrate_basic() {
     let x = Expr::new_variable("x");
 
     // int(x, x) = x^2/2
-    let int_x = integrate(&x, "x", None, None);
+    let int_x =
+        integrate(&x, "x", None, None);
 
     eprintln!("int_x: {}", int_x);
 
     assert!(matches!(
         int_x,
-        Expr::Div(_, _) | Expr::Mul(_, _) | Expr::Dag(_)
+        Expr::Div(_, _)
+            | Expr::Mul(_, _)
+            | Expr::Dag(_)
     ));
 
     // int(1, x) = x
@@ -179,13 +192,20 @@ fn test_definite_integrate() {
     let one = Expr::Constant(1.0);
 
     // int(x, x, 0, 1) = 0.5
-    let def_int = definite_integrate(&x, "x", &zero, &one);
+    let def_int = definite_integrate(
+        &x, "x", &zero, &one,
+    );
 
     // Result should be constant 0.5
-    if let Expr::Constant(val) = def_int {
+    if let Expr::Constant(val) = def_int
+    {
 
-        assert!((val - 0.5).abs() < 1e-9);
-    } else if let Expr::Rational(r) = def_int {
+        assert!(
+            (val - 0.5).abs() < 1e-9
+        );
+    } else if let Expr::Rational(r) =
+        def_int
+    {
 
         assert_eq!(
             r.to_f64().unwrap(),
@@ -254,7 +274,8 @@ fn test_check_analytic() {
     // Removed unused code
 
     // e^z is analytic
-    let exp_z = Expr::new_exp(z.clone());
+    let exp_z =
+        Expr::new_exp(z.clone());
 
     println!("exp_z: {:?}", exp_z);
 
@@ -292,7 +313,8 @@ fn test_check_analytic_new() {
     // Removed unused code
 
     // e^z is analytic
-    let exp_z = Expr::new_exp(z.clone());
+    let exp_z =
+        Expr::new_exp(z.clone());
 
     println!("exp_z: {:?}", exp_z);
 
@@ -332,7 +354,11 @@ fn test_poles_and_residues() {
 
     // pole should be 1
 
-    let res = calculate_residue(&f, "z", &poles[0]);
+    let res = calculate_residue(
+        &f,
+        "z",
+        &poles[0],
+    );
 
     assert_eq!(
         res,

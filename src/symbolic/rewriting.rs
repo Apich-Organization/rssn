@@ -18,7 +18,9 @@ use crate::symbolic::simplify_dag::pattern_match;
 use crate::symbolic::simplify_dag::substitute_patterns;
 
 /// Represents a rewrite rule, e.g., `lhs -> rhs`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct RewriteRule {
     pub lhs : Expr,
@@ -62,7 +64,11 @@ pub fn apply_rules_to_normal_form(
 
         changed = false;
 
-        let (next_expr, applied) = apply_rules_once(&current_expr, rules);
+        let (next_expr, applied) =
+            apply_rules_once(
+                &current_expr,
+                rules,
+            );
 
         if applied {
 
@@ -84,7 +90,12 @@ pub(crate) fn apply_rules_once(
 
     for rule in rules {
 
-        if let Some(assignments) = pattern_match(expr, &rule.lhs) {
+        if let Some(assignments) =
+            pattern_match(
+                expr,
+                &rule.lhs,
+            )
+        {
 
             return (
                 substitute_patterns(
@@ -102,50 +113,77 @@ pub(crate) fn apply_rules_once(
             return apply_rules_once(
                 &node
                     .to_expr()
-                    .expect("Apply rules once"),
+                    .expect(
+                        "Apply rules \
+                         once",
+                    ),
                 rules,
             );
         },
         | Expr::Add(a, b) => {
 
-            let (na, ca) = apply_rules_once(a, rules);
+            let (na, ca) =
+                apply_rules_once(
+                    a, rules,
+                );
 
             if ca {
 
                 return (
-                    Expr::new_add(na, b.clone()),
+                    Expr::new_add(
+                        na,
+                        b.clone(),
+                    ),
                     true,
                 );
             }
 
-            let (nb, cb) = apply_rules_once(b, rules);
+            let (nb, cb) =
+                apply_rules_once(
+                    b, rules,
+                );
 
             if cb {
 
                 return (
-                    Expr::new_add(a.clone(), nb),
+                    Expr::new_add(
+                        a.clone(),
+                        nb,
+                    ),
                     true,
                 );
             }
         },
         | Expr::Mul(a, b) => {
 
-            let (na, ca) = apply_rules_once(a, rules);
+            let (na, ca) =
+                apply_rules_once(
+                    a, rules,
+                );
 
             if ca {
 
                 return (
-                    Expr::new_mul(na, b.clone()),
+                    Expr::new_mul(
+                        na,
+                        b.clone(),
+                    ),
                     true,
                 );
             }
 
-            let (nb, cb) = apply_rules_once(b, rules);
+            let (nb, cb) =
+                apply_rules_once(
+                    b, rules,
+                );
 
             if cb {
 
                 return (
-                    Expr::new_mul(a.clone(), nb),
+                    Expr::new_mul(
+                        a.clone(),
+                        nb,
+                    ),
                     true,
                 );
             }
@@ -170,9 +208,12 @@ pub(crate) fn apply_rules_once(
 /// A `Result` containing a `Vec<RewriteRule>` if the completion is successful,
 /// or an error string if the input is invalid or the algorithm fails to complete.
 
-pub fn knuth_bendix(equations : &[Expr]) -> Result<Vec<RewriteRule>, String> {
+pub fn knuth_bendix(
+    equations : &[Expr]
+) -> Result<Vec<RewriteRule>, String> {
 
-    let mut rules : Vec<RewriteRule> = Vec::new();
+    let mut rules : Vec<RewriteRule> =
+        Vec::new();
 
     for eq in equations {
 
@@ -180,20 +221,39 @@ pub fn knuth_bendix(equations : &[Expr]) -> Result<Vec<RewriteRule>, String> {
 
             if is_greater(lhs, rhs) {
 
-                rules.push(RewriteRule {
-                    lhs : lhs.as_ref().clone(),
-                    rhs : rhs.as_ref().clone(),
-                });
-            } else if is_greater(rhs, lhs) {
+                rules.push(
+                    RewriteRule {
+                        lhs : lhs
+                            .as_ref()
+                            .clone(),
+                        rhs : rhs
+                            .as_ref()
+                            .clone(),
+                    },
+                );
+            } else if is_greater(
+                rhs, lhs,
+            ) {
 
-                rules.push(RewriteRule {
-                    lhs : rhs.as_ref().clone(),
-                    rhs : lhs.as_ref().clone(),
-                });
+                rules.push(
+                    RewriteRule {
+                        lhs : rhs
+                            .as_ref()
+                            .clone(),
+                        rhs : lhs
+                            .as_ref()
+                            .clone(),
+                    },
+                );
             }
         } else {
 
-            return Err("Input must be a list of equations (Expr::Eq).".to_string());
+            return Err(
+                "Input must be a list \
+                 of equations \
+                 (Expr::Eq)."
+                    .to_string(),
+            );
         }
     }
 
@@ -210,9 +270,14 @@ pub fn knuth_bendix(equations : &[Expr]) -> Result<Vec<RewriteRule>, String> {
                 &rules[j].clone(),
             );
 
-            let critical_pairs = find_critical_pairs(rule1, rule2);
+            let critical_pairs =
+                find_critical_pairs(
+                    rule1, rule2,
+                );
 
-            for (t1, t2) in critical_pairs {
+            for (t1, t2) in
+                critical_pairs
+            {
 
                 let n1 = apply_rules_to_normal_form(&t1, &rules);
 
@@ -220,19 +285,22 @@ pub fn knuth_bendix(equations : &[Expr]) -> Result<Vec<RewriteRule>, String> {
 
                 if n1 != n2 {
 
-                    let new_rule = if is_greater(&n1, &n2) {
+                    let new_rule =
+                        if is_greater(
+                            &n1, &n2,
+                        ) {
 
-                        RewriteRule {
+                            RewriteRule {
                             lhs : n1,
                             rhs : n2,
                         }
-                    } else {
+                        } else {
 
-                        RewriteRule {
+                            RewriteRule {
                             lhs : n2,
                             rhs : n1,
                         }
-                    };
+                        };
 
                     if new_rule.lhs != new_rule.rhs
                         && !rules
@@ -267,17 +335,24 @@ pub(crate) fn find_critical_pairs(
 
     let mut pairs = Vec::new();
 
-    let mut sub_expressions = Vec::new();
+    let mut sub_expressions =
+        Vec::new();
 
     r1.lhs
-        .pre_order_walk(&mut |sub_expr| {
+        .pre_order_walk(
+            &mut |sub_expr| {
 
-            sub_expressions.push(sub_expr.clone());
-        });
+                sub_expressions.push(
+                    sub_expr.clone(),
+                );
+            },
+        );
 
     for sub_expr in &sub_expressions {
 
-        if let Some(subst) = unify(sub_expr, &r2.lhs) {
+        if let Some(subst) =
+            unify(sub_expr, &r2.lhs)
+        {
 
             let t1 = substitute(
                 &r1.lhs,
@@ -285,13 +360,24 @@ pub(crate) fn find_critical_pairs(
                 &r2.rhs,
             );
 
-            let t1_subst = substitute_patterns(&t1, &subst);
+            let t1_subst =
+                substitute_patterns(
+                    &t1,
+                    &subst,
+                );
 
-            let t2 = substitute_patterns(&r1.rhs, &subst);
+            let t2 =
+                substitute_patterns(
+                    &r1.rhs,
+                    &subst,
+                );
 
             if t1_subst != t2 {
 
-                pairs.push((t1_subst, t2));
+                pairs.push((
+                    t1_subst,
+                    t2,
+                ));
             }
         }
     }
@@ -309,7 +395,11 @@ pub(crate) fn unify(
 
     let mut subst = HashMap::new();
 
-    if unify_recursive(e1, e2, &mut subst) {
+    if unify_recursive(
+        e1,
+        e2,
+        &mut subst,
+    ) {
 
         Some(subst)
     } else {
@@ -327,7 +417,9 @@ pub(crate) fn unify_recursive(
     match (e1, e2) {
         | (Expr::Pattern(p), _) => {
 
-            if let Some(val) = subst.get(p) {
+            if let Some(val) =
+                subst.get(p)
+            {
 
                 return val == e2;
             }
@@ -346,7 +438,9 @@ pub(crate) fn unify_recursive(
         },
         | (_, Expr::Pattern(p)) => {
 
-            if let Some(val) = subst.get(p) {
+            if let Some(val) =
+                subst.get(p)
+            {
 
                 return val == e1;
             }
@@ -363,59 +457,131 @@ pub(crate) fn unify_recursive(
 
             true
         },
-        | (Expr::Add(a1, b1), Expr::Add(a2, b2)) | (Expr::Mul(a1, b1), Expr::Mul(a2, b2)) => {
+        | (
+            Expr::Add(a1, b1),
+            Expr::Add(a2, b2),
+        )
+        | (
+            Expr::Mul(a1, b1),
+            Expr::Mul(a2, b2),
+        ) => {
 
-            let original_subst = subst.clone();
+            let original_subst =
+                subst.clone();
 
-            if unify_recursive(a1, a2, subst) && unify_recursive(b1, b2, subst) {
+            if unify_recursive(
+                a1, a2, subst,
+            ) && unify_recursive(
+                b1, b2, subst,
+            ) {
 
                 true
             } else {
 
                 *subst = original_subst;
 
-                unify_recursive(a1, b2, subst) && unify_recursive(b1, a2, subst)
+                unify_recursive(
+                    a1, b2, subst,
+                ) && unify_recursive(
+                    b1, a2, subst,
+                )
             }
         },
-        | (Expr::Sub(a1, b1), Expr::Sub(a2, b2))
-        | (Expr::Div(a1, b1), Expr::Div(a2, b2))
-        | (Expr::Power(a1, b1), Expr::Power(a2, b2)) => {
-            unify_recursive(a1, a2, subst) && unify_recursive(b1, b2, subst)
+        | (
+            Expr::Sub(a1, b1),
+            Expr::Sub(a2, b2),
+        )
+        | (
+            Expr::Div(a1, b1),
+            Expr::Div(a2, b2),
+        )
+        | (
+            Expr::Power(a1, b1),
+            Expr::Power(a2, b2),
+        ) => {
+            unify_recursive(
+                a1, a2, subst,
+            ) && unify_recursive(
+                b1, b2, subst,
+            )
         },
-        | (Expr::Sin(a1), Expr::Sin(a2))
-        | (Expr::Cos(a1), Expr::Cos(a2))
-        | (Expr::Tan(a1), Expr::Tan(a2))
-        | (Expr::Log(a1), Expr::Log(a2))
-        | (Expr::Exp(a1), Expr::Exp(a2))
-        | (Expr::Neg(a1), Expr::Neg(a2)) => unify_recursive(a1, a2, subst),
+        | (
+            Expr::Sin(a1),
+            Expr::Sin(a2),
+        )
+        | (
+            Expr::Cos(a1),
+            Expr::Cos(a2),
+        )
+        | (
+            Expr::Tan(a1),
+            Expr::Tan(a2),
+        )
+        | (
+            Expr::Log(a1),
+            Expr::Log(a2),
+        )
+        | (
+            Expr::Exp(a1),
+            Expr::Exp(a2),
+        )
+        | (
+            Expr::Neg(a1),
+            Expr::Neg(a2),
+        ) => {
+            unify_recursive(
+                a1, a2, subst,
+            )
+        },
         | _ => e1 == e2,
     }
 }
 
 /// Calculates a simple complexity measure for an expression.
 
-pub(crate) fn complexity(expr : &Expr) -> usize {
+pub(crate) fn complexity(
+    expr : &Expr
+) -> usize {
 
     match expr {
         | Expr::Dag(node) => {
             complexity(
                 &node
                     .to_expr()
-                    .expect("Complexity"),
+                    .expect(
+                        "Complexity",
+                    ),
             )
         },
-        | Expr::Add(a, b) | Expr::Mul(a, b) | Expr::Sub(a, b) | Expr::Div(a, b) => {
-            complexity(a) + complexity(b) + 1
+        | Expr::Add(a, b)
+        | Expr::Mul(a, b)
+        | Expr::Sub(a, b)
+        | Expr::Div(a, b) => {
+            complexity(a)
+                + complexity(b)
+                + 1
         },
-        | Expr::Power(b, e) => complexity(b) + complexity(e) + 2,
+        | Expr::Power(b, e) => {
+            complexity(b)
+                + complexity(e)
+                + 2
+        },
         | Expr::Sin(a)
         | Expr::Cos(a)
         | Expr::Tan(a)
         | Expr::Log(a)
         | Expr::Exp(a)
-        | Expr::Neg(a) => complexity(a) + 1,
-        | Expr::UnaryList(_, a) => complexity(a) + 1,
-        | Expr::BinaryList(_, a, b) => complexity(a) + complexity(b) + 1,
+        | Expr::Neg(a) => {
+            complexity(a) + 1
+        },
+        | Expr::UnaryList(_, a) => {
+            complexity(a) + 1
+        },
+        | Expr::BinaryList(_, a, b) => {
+            complexity(a)
+                + complexity(b)
+                + 1
+        },
         | Expr::NaryList(_, v) => {
             v.iter()
                 .map(complexity)

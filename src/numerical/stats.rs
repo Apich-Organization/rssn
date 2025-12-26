@@ -58,7 +58,9 @@ pub fn variance(data : &[f64]) -> f64 {
     let mean_val = mean(data);
 
     data.iter()
-        .map(|&val| (val - mean_val).powi(2))
+        .map(|&val| {
+            (val - mean_val).powi(2)
+        })
         .sum::<f64>()
         / (data.len() as f64)
 }
@@ -74,13 +76,17 @@ pub fn variance(data : &[f64]) -> f64 {
 
 pub fn std_dev(data : &[f64]) -> f64 {
 
-    let data_vec : Vec<f64> = data.to_vec();
+    let data_vec : Vec<f64> =
+        data.to_vec();
 
-    let _data_container = Data::new(data_vec);
+    let _data_container =
+        Data::new(data_vec);
 
-    let data_vec : Vec<f64> = data.to_vec();
+    let data_vec : Vec<f64> =
+        data.to_vec();
 
-    let data_container = Data::new(data_vec);
+    let data_container =
+        Data::new(data_vec);
 
     data_container
         .std_dev()
@@ -95,9 +101,12 @@ pub fn std_dev(data : &[f64]) -> f64 {
 /// # Returns
 /// The median of the data as an `f64`.
 
-pub fn median(data : &mut [f64]) -> f64 {
+pub fn median(
+    data : &mut [f64]
+) -> f64 {
 
-    let mut data_container = Data::new(data);
+    let mut data_container =
+        Data::new(data);
 
     data_container.median()
 }
@@ -116,9 +125,11 @@ pub fn percentile(
     p : f64,
 ) -> f64 {
 
-    let mut data_container = Data::new(data);
+    let mut data_container =
+        Data::new(data);
 
-    data_container.percentile(p as usize)
+    data_container
+        .percentile(p as usize)
 }
 
 /// Computes the covariance of two slices of data.
@@ -149,7 +160,9 @@ pub fn covariance(
     data1
         .iter()
         .zip(data2.iter())
-        .map(|(&x, &y)| (x - mean1) * (y - mean2))
+        .map(|(&x, &y)| {
+            (x - mean1) * (y - mean2)
+        })
         .sum::<f64>()
         / (n - 1.0)
 }
@@ -311,17 +324,19 @@ impl BinomialDist {
 /// Returns the slope (b1) and intercept (b0) of the best-fit line y = b0 + b1*x.
 #[must_use]
 
-pub fn simple_linear_regression(data : &[(f64, f64)]) -> (f64, f64) {
+pub fn simple_linear_regression(
+    data : &[(f64, f64)]
+) -> (f64, f64) {
 
     if data.is_empty() {
 
         return (f64::NAN, f64::NAN);
     }
 
-    let (xs, ys) : (Vec<_>, Vec<_>) = data
-        .iter()
-        .copied()
-        .unzip();
+    let (xs, ys) : (Vec<_>, Vec<_>) =
+        data.iter()
+            .copied()
+            .unzip();
 
     let mean_x = mean(&xs);
 
@@ -331,7 +346,9 @@ pub fn simple_linear_regression(data : &[(f64, f64)]) -> (f64, f64) {
     let numerator : f64 = xs
         .iter()
         .zip(ys.iter())
-        .map(|(&x, &y)| (x - mean_x) * (y - mean_y))
+        .map(|(&x, &y)| {
+            (x - mean_x) * (y - mean_y)
+        })
         .sum();
 
     let denominator : f64 = xs
@@ -346,7 +363,8 @@ pub fn simple_linear_regression(data : &[(f64, f64)]) -> (f64, f64) {
 
     let b1 = numerator / denominator;
 
-    let b0 = b1.mul_add(-mean_x, mean_y);
+    let b0 =
+        b1.mul_add(-mean_x, mean_y);
 
     (b1, b0)
 }
@@ -355,7 +373,8 @@ pub fn simple_linear_regression(data : &[(f64, f64)]) -> (f64, f64) {
 
 pub fn min(data : &mut [f64]) -> f64 {
 
-    let data_container = Data::new(data);
+    let data_container =
+        Data::new(data);
 
     data_container.min()
 }
@@ -364,16 +383,20 @@ pub fn min(data : &mut [f64]) -> f64 {
 
 pub fn max(data : &mut [f64]) -> f64 {
 
-    let data_container = Data::new(data);
+    let data_container =
+        Data::new(data);
 
     data_container.max()
 }
 
 /// Computes the skewness of a slice of data.
 
-pub fn skewness(data : &mut [f64]) -> f64 {
+pub fn skewness(
+    data : &mut [f64]
+) -> f64 {
 
-    let data_container = Data::new(data);
+    let data_container =
+        Data::new(data);
 
     data_container
         .skewness()
@@ -382,7 +405,9 @@ pub fn skewness(data : &mut [f64]) -> f64 {
 
 /// Computes the sample kurtosis (Fisher's g2) of a slice of data.
 
-pub fn kurtosis(data : &mut [f64]) -> f64 {
+pub fn kurtosis(
+    data : &mut [f64]
+) -> f64 {
 
     let n = data.len() as f64;
 
@@ -412,19 +437,26 @@ pub fn kurtosis(data : &mut [f64]) -> f64 {
 
     let g2 = m4 / m2.powi(2) - 3.0;
 
-    let term1 = n.mul_add(n, -1.0) / ((n - 2.0) * (n - 3.0));
+    let term1 = n.mul_add(n, -1.0)
+        / ((n - 2.0) * (n - 3.0));
 
-    let term2 = (g2 + 3.0) - 3.0 * (n - 1.0).powi(2) / ((n - 2.0) * (n - 3.0));
+    let term2 = (g2 + 3.0)
+        - 3.0 * (n - 1.0).powi(2)
+            / ((n - 2.0) * (n - 3.0));
 
     term1 * term2
 }
 
 /// Represents a Poisson distribution.
 
-pub struct PoissonDist(statrs::distribution::Poisson);
+pub struct PoissonDist(
+    statrs::distribution::Poisson,
+);
 
 impl PoissonDist {
-    pub fn new(rate : f64) -> Result<Self, String> {
+    pub fn new(
+        rate : f64
+    ) -> Result<Self, String> {
 
         statrs::distribution::Poisson::new(rate)
             .map(PoissonDist)
@@ -454,14 +486,20 @@ impl PoissonDist {
 
 /// Represents an Exponential distribution.
 
-pub struct ExponentialDist(statrs::distribution::Exp);
+pub struct ExponentialDist(
+    statrs::distribution::Exp,
+);
 
 impl ExponentialDist {
-    pub fn new(rate : f64) -> Result<Self, String> {
+    pub fn new(
+        rate : f64
+    ) -> Result<Self, String> {
 
-        statrs::distribution::Exp::new(rate)
-            .map(ExponentialDist)
-            .map_err(|e| e.to_string())
+        statrs::distribution::Exp::new(
+            rate,
+        )
+        .map(ExponentialDist)
+        .map_err(|e| e.to_string())
     }
 
     #[must_use]
@@ -487,7 +525,9 @@ impl ExponentialDist {
 
 /// Represents a Gamma distribution.
 
-pub struct GammaDist(statrs::distribution::Gamma);
+pub struct GammaDist(
+    statrs::distribution::Gamma,
+);
 
 impl GammaDist {
     pub fn new(
@@ -530,7 +570,9 @@ impl GammaDist {
 /// # Returns
 /// A tuple containing the F-statistic and the p-value.
 
-pub fn one_way_anova(groups : &mut [&mut [f64]]) -> (f64, f64) {
+pub fn one_way_anova(
+    groups : &mut [&mut [f64]]
+) -> (f64, f64) {
 
     let k = groups.len() as f64;
 
@@ -553,16 +595,20 @@ pub fn one_way_anova(groups : &mut [&mut [f64]]) -> (f64, f64) {
 
     for group in groups.iter_mut() {
 
-        let n_group = group.len() as f64;
+        let n_group =
+            group.len() as f64;
 
         let mean_group = mean(group);
 
-        ss_between += n_group * (mean_group - grand_mean).powi(2);
+        ss_between += n_group
+            * (mean_group - grand_mean)
+                .powi(2);
     }
 
     let df_between = k - 1.0;
 
-    let ms_between = ss_between / df_between;
+    let ms_between =
+        ss_between / df_between;
 
     let mut ss_within = 0.0;
 
@@ -572,13 +618,16 @@ pub fn one_way_anova(groups : &mut [&mut [f64]]) -> (f64, f64) {
 
         ss_within += group
             .iter()
-            .map(|&x| (x - mean_group).powi(2))
+            .map(|&x| {
+                (x - mean_group).powi(2)
+            })
             .sum::<f64>();
     }
 
     let df_within = n_total - k;
 
-    let ms_within = ss_within / df_within;
+    let ms_within =
+        ss_within / df_within;
 
     if ms_within == 0.0 {
 
@@ -595,7 +644,8 @@ pub fn one_way_anova(groups : &mut [&mut [f64]]) -> (f64, f64) {
         | Err(_) => return (f64::NAN, f64::NAN),
     };
 
-    let p_value = 1.0 - f_dist.cdf(f_stat);
+    let p_value =
+        1.0 - f_dist.cdf(f_stat);
 
     (f_stat, p_value)
 }
@@ -632,7 +682,10 @@ pub fn two_sample_t_test(
         (n2 - 1.0) * var2,
     ) / (n1 + n2 - 2.0);
 
-    let t_stat = (mean1 - mean2) / (s_p_sq * (1.0 / n1 + 1.0 / n2)).sqrt();
+    let t_stat = (mean1 - mean2)
+        / (s_p_sq
+            * (1.0 / n1 + 1.0 / n2))
+            .sqrt();
 
     let df = n1 + n2 - 2.0;
 
@@ -641,7 +694,9 @@ pub fn two_sample_t_test(
         | Err(_) => return (f64::NAN, f64::NAN),
     };
 
-    let p_value = 2.0 * (1.0 - t_dist.cdf(t_stat.abs()));
+    let p_value = 2.0
+        * (1.0
+            - t_dist.cdf(t_stat.abs()));
 
     (t_stat, p_value)
 }
@@ -650,7 +705,9 @@ pub fn two_sample_t_test(
 /// H(X) = -Σ p(x) * log2(p(x))
 #[must_use]
 
-pub fn shannon_entropy(probabilities : &[f64]) -> f64 {
+pub fn shannon_entropy(
+    probabilities : &[f64]
+) -> f64 {
 
     probabilities
         .iter()
@@ -663,7 +720,9 @@ pub fn shannon_entropy(probabilities : &[f64]) -> f64 {
 /// GM = (x1 * x2 * ... * xn)^(1/n)
 #[must_use]
 
-pub fn geometric_mean(data : &[f64]) -> f64 {
+pub fn geometric_mean(
+    data : &[f64]
+) -> f64 {
 
     if data.is_empty() {
 
@@ -683,7 +742,9 @@ pub fn geometric_mean(data : &[f64]) -> f64 {
 /// HM = n / (1/x1 + 1/x2 + ... + 1/xn)
 #[must_use]
 
-pub fn harmonic_mean(data : &[f64]) -> f64 {
+pub fn harmonic_mean(
+    data : &[f64]
+) -> f64 {
 
     if data.is_empty() {
 
@@ -736,11 +797,14 @@ pub fn iqr(data : &mut [f64]) -> f64 {
         return f64::NAN;
     }
 
-    let mut data_container = Data::new(data);
+    let mut data_container =
+        Data::new(data);
 
-    let q1 = data_container.percentile(25);
+    let q1 =
+        data_container.percentile(25);
 
-    let q3 = data_container.percentile(75);
+    let q3 =
+        data_container.percentile(75);
 
     q3 - q1
 }
@@ -749,7 +813,9 @@ pub fn iqr(data : &mut [f64]) -> f64 {
 /// z = (x - mean) / `std_dev`
 #[must_use]
 
-pub fn z_scores(data : &[f64]) -> Vec<f64> {
+pub fn z_scores(
+    data : &[f64]
+) -> Vec<f64> {
 
     if data.is_empty() {
 
@@ -785,13 +851,18 @@ pub fn mode(
         return None;
     }
 
-    let factor = 10_f64.powi(decimal_places as i32);
+    let factor = 10_f64
+        .powi(decimal_places as i32);
 
-    let mut counts = std::collections::HashMap::new();
+    let mut counts =
+        std::collections::HashMap::new(
+        );
 
     for &val in data {
 
-        let rounded = (val * factor).round() as i64;
+        let rounded = (val * factor)
+            .round()
+            as i64;
 
         *counts
             .entry(rounded)
@@ -846,7 +917,8 @@ pub fn welch_t_test(
 
     let s2_sq = var2 * n2 / (n2 - 1.0);
 
-    let se = (s1_sq / n1 + s2_sq / n2).sqrt();
+    let se = (s1_sq / n1 + s2_sq / n2)
+        .sqrt();
 
     if se == 0.0 {
 
@@ -856,9 +928,13 @@ pub fn welch_t_test(
     let t_stat = (mean1 - mean2) / se;
 
     // Welch-Satterthwaite degrees of freedom
-    let num = (s1_sq / n1 + s2_sq / n2).powi(2);
+    let num = (s1_sq / n1 + s2_sq / n2)
+        .powi(2);
 
-    let denom = (s1_sq / n1).powi(2) / (n1 - 1.0) + (s2_sq / n2).powi(2) / (n2 - 1.0);
+    let denom = (s1_sq / n1).powi(2)
+        / (n1 - 1.0)
+        + (s2_sq / n2).powi(2)
+            / (n2 - 1.0);
 
     let df = num / denom;
 
@@ -867,7 +943,9 @@ pub fn welch_t_test(
         | Err(_) => return (f64::NAN, f64::NAN),
     };
 
-    let p_value = 2.0 * (1.0 - t_dist.cdf(t_stat.abs()));
+    let p_value = 2.0
+        * (1.0
+            - t_dist.cdf(t_stat.abs()));
 
     (t_stat, p_value)
 }
@@ -882,7 +960,9 @@ pub fn chi_squared_test(
     expected : &[f64],
 ) -> (f64, f64) {
 
-    if observed.len() != expected.len() || observed.is_empty() {
+    if observed.len() != expected.len()
+        || observed.is_empty()
+    {
 
         return (f64::NAN, f64::NAN);
     }
@@ -901,7 +981,8 @@ pub fn chi_squared_test(
         })
         .sum();
 
-    let df = (observed.len() - 1) as f64;
+    let df =
+        (observed.len() - 1) as f64;
 
     if df <= 0.0 {
 
@@ -913,7 +994,8 @@ pub fn chi_squared_test(
         | Err(_) => return (chi_sq, f64::NAN),
     };
 
-    let p_value = 1.0 - chi_dist.cdf(chi_sq);
+    let p_value =
+        1.0 - chi_dist.cdf(chi_sq);
 
     (chi_sq, p_value)
 }
@@ -922,7 +1004,9 @@ pub fn chi_squared_test(
 /// Useful for comparing variability across datasets with different means.
 #[must_use]
 
-pub fn coefficient_of_variation(data : &[f64]) -> f64 {
+pub fn coefficient_of_variation(
+    data : &[f64]
+) -> f64 {
 
     let m = mean(data);
 
@@ -937,12 +1021,15 @@ pub fn coefficient_of_variation(data : &[f64]) -> f64 {
 /// Computes the sample standard error of the mean (SEM = `std_dev` / sqrt(n)).
 #[must_use]
 
-pub fn standard_error(data : &[f64]) -> f64 {
+pub fn standard_error(
+    data : &[f64]
+) -> f64 {
 
     if data.is_empty() {
 
         return f64::NAN;
     }
 
-    std_dev(data) / (data.len() as f64).sqrt()
+    std_dev(data)
+        / (data.len() as f64).sqrt()
 }

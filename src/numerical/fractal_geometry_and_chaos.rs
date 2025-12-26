@@ -85,7 +85,9 @@ pub type Point2D = (f64, f64);
 pub type Point3D = (f64, f64, f64);
 
 /// Result of a fractal computation with escape time data
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct FractalData {
     /// Width of the image
@@ -111,7 +113,10 @@ impl FractalData {
         Self {
             width,
             height,
-            data : vec![0; width * height],
+            data : vec![
+                0;
+                width * height
+            ],
             max_iter,
         }
     }
@@ -125,9 +130,15 @@ impl FractalData {
         y : usize,
     ) -> Option<u32> {
 
-        if x < self.width && y < self.height {
+        if x < self.width
+            && y < self.height
+        {
 
-            Some(self.data[y * self.width + x])
+            Some(
+                self.data[y * self
+                    .width
+                    + x],
+            )
         } else {
 
             None
@@ -143,9 +154,13 @@ impl FractalData {
         value : u32,
     ) {
 
-        if x < self.width && y < self.height {
+        if x < self.width
+            && y < self.height
+        {
 
-            self.data[y * self.width + x] = value;
+            self.data
+                [y * self.width + x] =
+                value;
         }
     }
 }
@@ -193,11 +208,16 @@ pub fn generate_mandelbrot_set(
     max_iter : u32,
 ) -> Vec<Vec<u32>> {
 
-    let mut data = vec![vec![0; width]; height];
+    let mut data =
+        vec![vec![0; width]; height];
 
-    let x_scale = (x_range.1 - x_range.0) / width as f64;
+    let x_scale = (x_range.1
+        - x_range.0)
+        / width as f64;
 
-    let y_scale = (y_range.1 - y_range.0) / height as f64;
+    let y_scale = (y_range.1
+        - y_range.0)
+        / height as f64;
 
     for (r, row) in data
         .iter_mut()
@@ -209,17 +229,29 @@ pub fn generate_mandelbrot_set(
             .enumerate()
         {
 
-            let x0 = (c as f64).mul_add(x_scale, x_range.0);
+            let x0 = (c as f64)
+                .mul_add(
+                    x_scale,
+                    x_range.0,
+                );
 
-            let y0 = (r as f64).mul_add(y_scale, y_range.0);
+            let y0 = (r as f64)
+                .mul_add(
+                    y_scale,
+                    y_range.0,
+                );
 
-            let mut z = Complex::new(0.0, 0.0);
+            let mut z =
+                Complex::new(0.0, 0.0);
 
-            let c_val = Complex::new(x0, y0);
+            let c_val =
+                Complex::new(x0, y0);
 
             let mut iter = 0;
 
-            while z.norm_sqr() <= 4.0 && iter < max_iter {
+            while z.norm_sqr() <= 4.0
+                && iter < max_iter
+            {
 
                 z = z * z + c_val;
 
@@ -250,13 +282,16 @@ pub fn mandelbrot_escape_time(
     max_iter : u32,
 ) -> u32 {
 
-    let c = Complex::new(c_real, c_imag);
+    let c =
+        Complex::new(c_real, c_imag);
 
     let mut z = Complex::new(0.0, 0.0);
 
     let mut iter = 0;
 
-    while z.norm_sqr() <= 4.0 && iter < max_iter {
+    while z.norm_sqr() <= 4.0
+        && iter < max_iter
+    {
 
         z = z * z + c;
 
@@ -312,13 +347,18 @@ pub fn generate_julia_set(
     max_iter : u32,
 ) -> Vec<Vec<u32>> {
 
-    let mut data = vec![vec![0; width]; height];
+    let mut data =
+        vec![vec![0; width]; height];
 
     let c_val = Complex::new(c.0, c.1);
 
-    let x_scale = (x_range.1 - x_range.0) / width as f64;
+    let x_scale = (x_range.1
+        - x_range.0)
+        / width as f64;
 
-    let y_scale = (y_range.1 - y_range.0) / height as f64;
+    let y_scale = (y_range.1
+        - y_range.0)
+        / height as f64;
 
     for (r, row) in data
         .iter_mut()
@@ -330,15 +370,26 @@ pub fn generate_julia_set(
             .enumerate()
         {
 
-            let x0 = (col as f64).mul_add(x_scale, x_range.0);
+            let x0 = (col as f64)
+                .mul_add(
+                    x_scale,
+                    x_range.0,
+                );
 
-            let y0 = (r as f64).mul_add(y_scale, y_range.0);
+            let y0 = (r as f64)
+                .mul_add(
+                    y_scale,
+                    y_range.0,
+                );
 
-            let mut z = Complex::new(x0, y0);
+            let mut z =
+                Complex::new(x0, y0);
 
             let mut iter = 0;
 
-            while z.norm_sqr() <= 4.0 && iter < max_iter {
+            while z.norm_sqr() <= 4.0
+                && iter < max_iter
+            {
 
                 z = z * z + c_val;
 
@@ -363,13 +414,17 @@ pub fn julia_escape_time(
     max_iter : u32,
 ) -> u32 {
 
-    let c = Complex::new(c_real, c_imag);
+    let c =
+        Complex::new(c_real, c_imag);
 
-    let mut z = Complex::new(z_real, z_imag);
+    let mut z =
+        Complex::new(z_real, z_imag);
 
     let mut iter = 0;
 
-    while z.norm_sqr() <= 4.0 && iter < max_iter {
+    while z.norm_sqr() <= 4.0
+        && iter < max_iter
+    {
 
         z = z * z + c;
 
@@ -407,11 +462,16 @@ pub fn generate_burning_ship(
     max_iter : u32,
 ) -> Vec<Vec<u32>> {
 
-    let mut data = vec![vec![0; width]; height];
+    let mut data =
+        vec![vec![0; width]; height];
 
-    let x_scale = (x_range.1 - x_range.0) / width as f64;
+    let x_scale = (x_range.1
+        - x_range.0)
+        / width as f64;
 
-    let y_scale = (y_range.1 - y_range.0) / height as f64;
+    let y_scale = (y_range.1
+        - y_range.0)
+        / height as f64;
 
     for (r, row) in data
         .iter_mut()
@@ -423,9 +483,17 @@ pub fn generate_burning_ship(
             .enumerate()
         {
 
-            let cx = (col as f64).mul_add(x_scale, x_range.0);
+            let cx = (col as f64)
+                .mul_add(
+                    x_scale,
+                    x_range.0,
+                );
 
-            let cy = (r as f64).mul_add(y_scale, y_range.0);
+            let cy = (r as f64)
+                .mul_add(
+                    y_scale,
+                    y_range.0,
+                );
 
             let mut zx = 0.0;
 
@@ -433,11 +501,20 @@ pub fn generate_burning_ship(
 
             let mut iter = 0;
 
-            while zx * zx + zy * zy <= 4.0 && iter < max_iter {
+            while zx * zx + zy * zy
+                <= 4.0
+                && iter < max_iter
+            {
 
-                let xtemp = zx * zx - zy * zy + cx;
+                let xtemp = zx * zx
+                    - zy * zy
+                    + cx;
 
-                zy = (2.0 * zx.abs()).mul_add(zy.abs(), cy);
+                zy = (2.0 * zx.abs())
+                    .mul_add(
+                        zy.abs(),
+                        cy,
+                    );
 
                 zx = xtemp;
 
@@ -479,11 +556,16 @@ pub fn generate_multibrot(
     max_iter : u32,
 ) -> Vec<Vec<u32>> {
 
-    let mut data = vec![vec![0; width]; height];
+    let mut data =
+        vec![vec![0; width]; height];
 
-    let x_scale = (x_range.1 - x_range.0) / width as f64;
+    let x_scale = (x_range.1
+        - x_range.0)
+        / width as f64;
 
-    let y_scale = (y_range.1 - y_range.0) / height as f64;
+    let y_scale = (y_range.1
+        - y_range.0)
+        / height as f64;
 
     for (r, row) in data
         .iter_mut()
@@ -495,24 +577,38 @@ pub fn generate_multibrot(
             .enumerate()
         {
 
-            let x0 = (col as f64).mul_add(x_scale, x_range.0);
+            let x0 = (col as f64)
+                .mul_add(
+                    x_scale,
+                    x_range.0,
+                );
 
-            let y0 = (r as f64).mul_add(y_scale, y_range.0);
+            let y0 = (r as f64)
+                .mul_add(
+                    y_scale,
+                    y_range.0,
+                );
 
-            let mut z = Complex::new(0.0, 0.0);
+            let mut z =
+                Complex::new(0.0, 0.0);
 
-            let c_val = Complex::new(x0, y0);
+            let c_val =
+                Complex::new(x0, y0);
 
             let mut iter = 0;
 
             // Escape radius depends on d
-            let escape_radius = 2.0_f64.max(
-                c_val
-                    .norm()
-                    .powf(1.0 / (d - 1.0)),
-            );
+            let escape_radius = 2.0_f64
+                .max(
+                    c_val.norm().powf(
+                        1.0 / (d - 1.0),
+                    ),
+                );
 
-            while z.norm() <= escape_radius && iter < max_iter {
+            while z.norm()
+                <= escape_radius
+                && iter < max_iter
+            {
 
                 z = z.powf(d) + c_val;
 
@@ -555,7 +651,8 @@ pub fn generate_newton_fractal(
     tolerance : f64,
 ) -> Vec<Vec<u32>> {
 
-    let mut data = vec![vec![0; width]; height];
+    let mut data =
+        vec![vec![0; width]; height];
 
     // Roots of z^3 - 1 = 0
     let roots = [
@@ -570,9 +667,13 @@ pub fn generate_newton_fractal(
         ),
     ];
 
-    let x_scale = (x_range.1 - x_range.0) / width as f64;
+    let x_scale = (x_range.1
+        - x_range.0)
+        / width as f64;
 
-    let y_scale = (y_range.1 - y_range.0) / height as f64;
+    let y_scale = (y_range.1
+        - y_range.0)
+        / height as f64;
 
     for (r, row) in data
         .iter_mut()
@@ -584,11 +685,20 @@ pub fn generate_newton_fractal(
             .enumerate()
         {
 
-            let x0 = (col as f64).mul_add(x_scale, x_range.0);
+            let x0 = (col as f64)
+                .mul_add(
+                    x_scale,
+                    x_range.0,
+                );
 
-            let y0 = (r as f64).mul_add(y_scale, y_range.0);
+            let y0 = (r as f64)
+                .mul_add(
+                    y_scale,
+                    y_range.0,
+                );
 
-            let mut z = Complex::new(x0, y0);
+            let mut z =
+                Complex::new(x0, y0);
 
             let mut root_index = 3u32; // No root found
             for _ in 0 .. max_iter {
@@ -599,9 +709,14 @@ pub fn generate_newton_fractal(
 
                 let z3 = z2 * z;
 
-                let f = z3 - Complex::new(1.0, 0.0);
+                let f = z3
+                    - Complex::new(
+                        1.0, 0.0,
+                    );
 
-                let df = Complex::new(3.0, 0.0) * z2;
+                let df = Complex::new(
+                    3.0, 0.0,
+                ) * z2;
 
                 if df.norm() < 1e-10 {
 
@@ -616,9 +731,12 @@ pub fn generate_newton_fractal(
                     .enumerate()
                 {
 
-                    if (z - root).norm() < tolerance {
+                    if (z - root).norm()
+                        < tolerance
+                    {
 
-                        root_index = i as u32;
+                        root_index =
+                            i as u32;
 
                         break;
                     }
@@ -714,9 +832,11 @@ pub fn generate_lorenz_attractor_custom(
     beta : f64,
 ) -> Vec<(f64, f64, f64)> {
 
-    let mut points = Vec::with_capacity(num_steps);
+    let mut points =
+        Vec::with_capacity(num_steps);
 
-    let (mut x, mut y, mut z) = start_point;
+    let (mut x, mut y, mut z) =
+        start_point;
 
     for _ in 0 .. num_steps {
 
@@ -724,7 +844,8 @@ pub fn generate_lorenz_attractor_custom(
 
         let dy = x.mul_add(rho - z, -y);
 
-        let dz = x.mul_add(y, -(beta * z));
+        let dz =
+            x.mul_add(y, -(beta * z));
 
         x += dx * dt;
 
@@ -773,9 +894,11 @@ pub fn generate_rossler_attractor(
     c : f64,
 ) -> Vec<(f64, f64, f64)> {
 
-    let mut points = Vec::with_capacity(num_steps);
+    let mut points =
+        Vec::with_capacity(num_steps);
 
-    let (mut x, mut y, mut z) = start_point;
+    let (mut x, mut y, mut z) =
+        start_point;
 
     for _ in 0 .. num_steps {
 
@@ -827,13 +950,16 @@ pub fn generate_henon_map(
     b : f64,
 ) -> Vec<(f64, f64)> {
 
-    let mut points = Vec::with_capacity(num_steps);
+    let mut points =
+        Vec::with_capacity(num_steps);
 
     let (mut x, mut y) = start_point;
 
     for _ in 0 .. num_steps {
 
-        let x_new = (a * x).mul_add(-x, 1.0) + y;
+        let x_new = (a * x)
+            .mul_add(-x, 1.0)
+            + y;
 
         let y_new = b * x;
 
@@ -877,15 +1003,21 @@ pub fn generate_tinkerbell_map(
     d : f64,
 ) -> Vec<(f64, f64)> {
 
-    let mut points = Vec::with_capacity(num_steps);
+    let mut points =
+        Vec::with_capacity(num_steps);
 
     let (mut x, mut y) = start_point;
 
     for _ in 0 .. num_steps {
 
-        let x_new = x.mul_add(x, -(y * y)) + a * x + b * y;
+        let x_new = x
+            .mul_add(x, -(y * y))
+            + a * x
+            + b * y;
 
-        let y_new = (2.0 * x).mul_add(y, c * x) + d * y;
+        let y_new = (2.0 * x)
+            .mul_add(y, c * x)
+            + d * y;
 
         x = x_new;
 
@@ -924,7 +1056,9 @@ pub fn logistic_map_iterate(
     num_steps : usize,
 ) -> Vec<f64> {
 
-    let mut orbit = Vec::with_capacity(num_steps + 1);
+    let mut orbit = Vec::with_capacity(
+        num_steps + 1,
+    );
 
     let mut x = x0;
 
@@ -964,13 +1098,18 @@ pub fn logistic_bifurcation(
     x0 : f64,
 ) -> Vec<(f64, f64)> {
 
-    let mut data = Vec::with_capacity(num_r_values * num_points);
+    let mut data = Vec::with_capacity(
+        num_r_values * num_points,
+    );
 
-    let r_step = (r_range.1 - r_range.0) / (num_r_values as f64 - 1.0);
+    let r_step = (r_range.1
+        - r_range.0)
+        / (num_r_values as f64 - 1.0);
 
     for i in 0 .. num_r_values {
 
-        let r = (i as f64).mul_add(r_step, r_range.0);
+        let r = (i as f64)
+            .mul_add(r_step, r_range.0);
 
         let mut x = x0;
 
@@ -1035,7 +1174,8 @@ pub fn lyapunov_exponent_logistic(
     for _ in 0 .. num_iterations {
 
         // Derivative of f(x) = rx(1-x) is f'(x) = r(1-2x)
-        let deriv = r * 2.0f64.mul_add(-x, 1.0);
+        let deriv =
+            r * 2.0f64.mul_add(-x, 1.0);
 
         if deriv.abs() > 0.0 {
 
@@ -1071,7 +1211,8 @@ pub fn lyapunov_exponent_lorenz(
     beta : f64,
 ) -> f64 {
 
-    let (mut x, mut y, mut z) = start_point;
+    let (mut x, mut y, mut z) =
+        start_point;
 
     let mut sum = 0.0;
 
@@ -1089,9 +1230,11 @@ pub fn lyapunov_exponent_lorenz(
         // Evolve the main trajectory
         let dx_main = sigma * (y - x);
 
-        let dy_main = x.mul_add(rho - z, -y);
+        let dy_main =
+            x.mul_add(rho - z, -y);
 
-        let dz_main = x.mul_add(y, -(beta * z));
+        let dz_main =
+            x.mul_add(y, -(beta * z));
 
         x += dx_main * dt;
 
@@ -1102,9 +1245,14 @@ pub fn lyapunov_exponent_lorenz(
         // Evolve the perturbation using linearized equations
         let ddx = sigma * (dy - dx);
 
-        let ddy = dx * (rho - z) - x * dz - dy;
+        let ddy = dx * (rho - z)
+            - x * dz
+            - dy;
 
-        let ddz = beta.mul_add(-dz, dx * y + x * dy);
+        let ddz = beta.mul_add(
+            -dz,
+            dx * y + x * dy,
+        );
 
         dx += ddx * dt;
 
@@ -1113,7 +1261,10 @@ pub fn lyapunov_exponent_lorenz(
         dz += ddz * dt;
 
         // Compute and accumulate the growth rate
-        let norm = (dx * dx + dy * dy + dz * dz).sqrt();
+        let norm = (dx * dx
+            + dy * dy
+            + dz * dz)
+            .sqrt();
 
         if norm > 0.0 {
 
@@ -1134,7 +1285,8 @@ pub fn lyapunov_exponent_lorenz(
         }
     }
 
-    sum / (num_steps as f64 * dt) - eps.ln() / dt
+    sum / (num_steps as f64 * dt)
+        - eps.ln() / dt
 }
 
 // ============================================================================
@@ -1161,7 +1313,9 @@ pub fn box_counting_dimension(
     num_scales : usize,
 ) -> f64 {
 
-    if points.is_empty() || num_scales < 2 {
+    if points.is_empty()
+        || num_scales < 2
+    {
 
         return 0.0;
     }
@@ -1186,7 +1340,8 @@ pub fn box_counting_dimension(
         y_max = y_max.max(y);
     }
 
-    let extent = (x_max - x_min).max(y_max - y_min);
+    let extent = (x_max - x_min)
+        .max(y_max - y_min);
 
     if extent <= 0.0 {
 
@@ -1194,25 +1349,34 @@ pub fn box_counting_dimension(
     }
 
     // Collect (log(1/eps), log(N)) pairs
-    let mut log_inv_eps = Vec::with_capacity(num_scales);
+    let mut log_inv_eps =
+        Vec::with_capacity(num_scales);
 
-    let mut log_n = Vec::with_capacity(num_scales);
+    let mut log_n =
+        Vec::with_capacity(num_scales);
 
     for scale_idx in 0 .. num_scales {
 
-        let num_boxes = 1 << (scale_idx + 1); // 2, 4, 8, 16, ...
-        let eps = extent / f64::from(num_boxes);
+        let num_boxes =
+            1 << (scale_idx + 1); // 2, 4, 8, 16, ...
+        let eps = extent
+            / f64::from(num_boxes);
 
         // Count occupied boxes using a hash set
         use std::collections::HashSet;
 
-        let mut occupied = HashSet::new();
+        let mut occupied =
+            HashSet::new();
 
         for &(x, y) in points {
 
-            let bx = ((x - x_min) / eps).floor() as i64;
+            let bx = ((x - x_min) / eps)
+                .floor()
+                as i64;
 
-            let by = ((y - y_min) / eps).floor() as i64;
+            let by = ((y - y_min) / eps)
+                .floor()
+                as i64;
 
             occupied.insert((bx, by));
         }
@@ -1221,7 +1385,8 @@ pub fn box_counting_dimension(
 
         if n > 0 && eps > 0.0 {
 
-            log_inv_eps.push((1.0 / eps).ln());
+            log_inv_eps
+                .push((1.0 / eps).ln());
 
             log_n.push((n as f64).ln());
         }
@@ -1233,7 +1398,10 @@ pub fn box_counting_dimension(
         return 0.0;
     }
 
-    linear_regression_slope(&log_inv_eps, &log_n)
+    linear_regression_slope(
+        &log_inv_eps,
+        &log_n,
+    )
 }
 
 /// Estimates the correlation dimension from a set of points.
@@ -1254,7 +1422,8 @@ pub fn correlation_dimension(
     num_radii : usize,
 ) -> f64 {
 
-    if points.len() < 2 || num_radii < 2 {
+    if points.len() < 2 || num_radii < 2
+    {
 
         return 0.0;
     }
@@ -1262,17 +1431,23 @@ pub fn correlation_dimension(
     // Compute all pairwise distances
     let n = points.len();
 
-    let mut distances : Vec<f64> = Vec::with_capacity(n * (n - 1) / 2);
+    let mut distances : Vec<f64> =
+        Vec::with_capacity(
+            n * (n - 1) / 2,
+        );
 
     for i in 0 .. n {
 
         for j in (i + 1) .. n {
 
-            let dx = points[i].0 - points[j].0;
+            let dx = points[i].0
+                - points[j].0;
 
-            let dy = points[i].1 - points[j].1;
+            let dy = points[i].1
+                - points[j].1;
 
-            distances.push(dx.hypot(dy));
+            distances
+                .push(dx.hypot(dy));
         }
     }
 
@@ -1289,7 +1464,8 @@ pub fn correlation_dimension(
 
     let r_min = distances[0].max(1e-10);
 
-    let r_max = distances[distances.len() - 1];
+    let r_max =
+        distances[distances.len() - 1];
 
     if r_max <= r_min {
 
@@ -1297,21 +1473,30 @@ pub fn correlation_dimension(
     }
 
     // Sample radii logarithmically
-    let mut log_r = Vec::with_capacity(num_radii);
+    let mut log_r =
+        Vec::with_capacity(num_radii);
 
-    let mut log_c = Vec::with_capacity(num_radii);
+    let mut log_c =
+        Vec::with_capacity(num_radii);
 
     for i in 0 .. num_radii {
 
-        let log_r_val =
-            r_min.ln() + (r_max.ln() - r_min.ln()) * (i as f64) / (num_radii as f64 - 1.0);
+        let log_r_val = r_min.ln()
+            + (r_max.ln() - r_min.ln())
+                * (i as f64)
+                / (num_radii as f64
+                    - 1.0);
 
         let r = log_r_val.exp();
 
         // Count pairs with distance < r
-        let count = distances.partition_point(|&d| d < r);
+        let count = distances
+            .partition_point(|&d| {
+                d < r
+            });
 
-        let c_r = (2.0 * count as f64) / ((n * (n - 1)) as f64);
+        let c_r = (2.0 * count as f64)
+            / ((n * (n - 1)) as f64);
 
         if c_r > 0.0 {
 
@@ -1326,7 +1511,10 @@ pub fn correlation_dimension(
         return 0.0;
     }
 
-    linear_regression_slope(&log_r, &log_c)
+    linear_regression_slope(
+        &log_r,
+        &log_c,
+    )
 }
 
 /// Helper function for linear regression slope estimation.
@@ -1353,14 +1541,20 @@ fn linear_regression_slope(
         .map(|xi| xi * xi)
         .sum();
 
-    let denom = n.mul_add(sum_xx, -(sum_x * sum_x));
+    let denom = n.mul_add(
+        sum_xx,
+        -(sum_x * sum_x),
+    );
 
     if denom.abs() < 1e-10 {
 
         return 0.0;
     }
 
-    n.mul_add(sum_xy, -(sum_x * sum_y)) / denom
+    n.mul_add(
+        sum_xy,
+        -(sum_x * sum_y),
+    ) / denom
 }
 
 // ============================================================================
@@ -1388,21 +1582,39 @@ pub fn orbit_density(
     y_range : (f64, f64),
 ) -> Vec<Vec<usize>> {
 
-    let mut density = vec![vec![0usize; x_bins]; y_bins];
+    let mut density =
+        vec![
+            vec![0usize; x_bins];
+            y_bins
+        ];
 
-    let x_scale = (x_range.1 - x_range.0) / x_bins as f64;
+    let x_scale = (x_range.1
+        - x_range.0)
+        / x_bins as f64;
 
-    let y_scale = (y_range.1 - y_range.0) / y_bins as f64;
+    let y_scale = (y_range.1
+        - y_range.0)
+        / y_bins as f64;
 
     for &(x, y) in points {
 
-        if x >= x_range.0 && x < x_range.1 && y >= y_range.0 && y < y_range.1 {
+        if x >= x_range.0
+            && x < x_range.1
+            && y >= y_range.0
+            && y < y_range.1
+        {
 
-            let xi = ((x - x_range.0) / x_scale) as usize;
+            let xi = ((x - x_range.0)
+                / x_scale)
+                as usize;
 
-            let yi = ((y - y_range.0) / y_scale) as usize;
+            let yi = ((y - y_range.0)
+                / y_scale)
+                as usize;
 
-            if xi < x_bins && yi < y_bins {
+            if xi < x_bins
+                && yi < y_bins
+            {
 
                 density[yi][xi] += 1;
             }
@@ -1423,7 +1635,9 @@ pub fn orbit_density(
 /// The Shannon entropy of the distribution.
 #[must_use]
 
-pub fn orbit_entropy(density : &[Vec<usize>]) -> f64 {
+pub fn orbit_entropy(
+    density : &[Vec<usize>]
+) -> f64 {
 
     let total : usize = density
         .iter()
@@ -1445,7 +1659,8 @@ pub fn orbit_entropy(density : &[Vec<usize>]) -> f64 {
 
             if count > 0 {
 
-                let p = count as f64 / total_f;
+                let p = count as f64
+                    / total_f;
 
                 entropy -= p * p.ln();
             }
@@ -1462,7 +1677,13 @@ pub fn orbit_entropy(density : &[Vec<usize>]) -> f64 {
 /// Represents an affine transformation in 2D.
 ///
 /// The transformation is: (x', y') = (ax + by + e, cx + dy + f)
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct AffineTransform2D {
     /// Coefficients of the transformation
@@ -1508,8 +1729,12 @@ impl AffineTransform2D {
         let (x, y) = point;
 
         (
-            self.a.mul_add(x, self.b * y) + self.e,
-            self.c.mul_add(x, self.d * y) + self.f,
+            self.a
+                .mul_add(x, self.b * y)
+                + self.e,
+            self.c
+                .mul_add(x, self.d * y)
+                + self.f,
         )
     }
 }
@@ -1535,13 +1760,19 @@ pub fn generate_ifs_fractal(
     skip : usize,
 ) -> Vec<(f64, f64)> {
 
-    if transforms.is_empty() || transforms.len() != probabilities.len() {
+    if transforms.is_empty()
+        || transforms.len()
+            != probabilities.len()
+    {
 
         return vec![];
     }
 
     // Build cumulative probabilities
-    let mut cumulative = Vec::with_capacity(probabilities.len());
+    let mut cumulative =
+        Vec::with_capacity(
+            probabilities.len(),
+        );
 
     let mut sum = 0.0;
 
@@ -1558,32 +1789,39 @@ pub fn generate_ifs_fractal(
         *c /= sum;
     }
 
-    let mut points = Vec::with_capacity(num_points);
+    let mut points =
+        Vec::with_capacity(num_points);
 
     let mut current = start_point;
 
     // Simple LCG random number generator for reproducibility
     let mut rng_state = 12345u64;
 
-    let lcg_next = |state : &mut u64| -> f64 {
+    let lcg_next =
+        |state : &mut u64| -> f64 {
 
-        *state = state
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1);
+            *state = state
+                .wrapping_mul(
+                    6364136223846793005,
+                )
+                .wrapping_add(1);
 
-        (*state >> 33) as f64 / f64::from(u32::MAX)
-    };
+            (*state >> 33) as f64
+                / f64::from(u32::MAX)
+        };
 
     for i in 0 .. (num_points + skip) {
 
-        let r = lcg_next(&mut rng_state);
+        let r =
+            lcg_next(&mut rng_state);
 
         let idx = cumulative
             .iter()
             .position(|&c| r <= c)
             .unwrap_or(0);
 
-        current = transforms[idx].apply(current);
+        current = transforms[idx]
+            .apply(current);
 
         if i >= skip {
 
@@ -1604,13 +1842,16 @@ pub fn sierpinski_triangle_ifs() -> (
 
     let transforms = vec![
         AffineTransform2D::new(
-            0.5, 0.0, 0.0, 0.5, 0.0, 0.0,
+            0.5, 0.0, 0.0, 0.5, 0.0,
+            0.0,
         ),
         AffineTransform2D::new(
-            0.5, 0.0, 0.0, 0.5, 0.5, 0.0,
+            0.5, 0.0, 0.0, 0.5, 0.5,
+            0.0,
         ),
         AffineTransform2D::new(
-            0.5, 0.0, 0.0, 0.5, 0.25, 0.5,
+            0.5, 0.0, 0.0, 0.5, 0.25,
+            0.5,
         ),
     ];
 
@@ -1636,16 +1877,20 @@ pub fn barnsley_fern_ifs() -> (
 
     let transforms = vec![
         AffineTransform2D::new(
-            0.0, 0.0, 0.0, 0.16, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.16, 0.0,
+            0.0,
         ),
         AffineTransform2D::new(
-            0.85, 0.04, -0.04, 0.85, 0.0, 1.6,
+            0.85, 0.04, -0.04, 0.85,
+            0.0, 1.6,
         ),
         AffineTransform2D::new(
-            0.2, -0.26, 0.23, 0.22, 0.0, 1.6,
+            0.2, -0.26, 0.23, 0.22,
+            0.0, 1.6,
         ),
         AffineTransform2D::new(
-            -0.15, 0.28, 0.26, 0.24, 0.0, 0.44,
+            -0.15, 0.28, 0.26, 0.24,
+            0.0, 0.44,
         ),
     ];
 

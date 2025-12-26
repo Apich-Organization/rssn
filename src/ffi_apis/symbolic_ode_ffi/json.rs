@@ -15,7 +15,8 @@ pub extern "C" fn rssn_json_solve_ode(
     var : *const c_char,
 ) -> *mut c_char {
 
-    let ode_expr : Option<Expr> = from_json_string(ode_json);
+    let ode_expr : Option<Expr> =
+        from_json_string(ode_json);
 
     let func_str = unsafe {
 
@@ -24,9 +25,11 @@ pub extern "C" fn rssn_json_solve_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -37,19 +40,27 @@ pub extern "C" fn rssn_json_solve_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(ode), Some(f), Some(v)) = (
+    if let (
+        Some(ode),
+        Some(f),
+        Some(v),
+    ) = (
         ode_expr,
         func_str,
         var_str,
     ) {
 
-        let result = ode::solve_ode(&ode, f, v, None);
+        let result = ode::solve_ode(
+            &ode, f, v, None,
+        );
 
         to_json_string(&result)
     } else {
@@ -67,7 +78,8 @@ pub extern "C" fn rssn_json_solve_separable_ode(
     var : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
     let func_str = unsafe {
 
@@ -76,9 +88,11 @@ pub extern "C" fn rssn_json_solve_separable_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -89,21 +103,33 @@ pub extern "C" fn rssn_json_solve_separable_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         var_str,
     ) {
 
-        match ode::solve_separable_ode(&eq, f, v) {
-            | Some(result) => to_json_string(&result),
-            | None => std::ptr::null_mut(),
+        match ode::solve_separable_ode(
+            &eq, f, v,
+        ) {
+            | Some(result) => {
+                to_json_string(&result)
+            },
+            | None => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 
@@ -120,7 +146,8 @@ pub extern "C" fn rssn_json_solve_first_order_linear_ode(
     var : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
     let func_str = unsafe {
 
@@ -129,9 +156,11 @@ pub extern "C" fn rssn_json_solve_first_order_linear_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -142,13 +171,19 @@ pub extern "C" fn rssn_json_solve_first_order_linear_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         var_str,
@@ -173,7 +208,8 @@ pub extern "C" fn rssn_json_solve_bernoulli_ode(
     var : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
     let func_str = unsafe {
 
@@ -182,9 +218,11 @@ pub extern "C" fn rssn_json_solve_bernoulli_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -195,21 +233,33 @@ pub extern "C" fn rssn_json_solve_bernoulli_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         var_str,
     ) {
 
-        match ode::solve_bernoulli_ode(&eq, f, v) {
-            | Some(result) => to_json_string(&result),
-            | None => std::ptr::null_mut(),
+        match ode::solve_bernoulli_ode(
+            &eq, f, v,
+        ) {
+            | Some(result) => {
+                to_json_string(&result)
+            },
+            | None => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 
@@ -227,9 +277,11 @@ pub extern "C" fn rssn_json_solve_riccati_ode(
     y1_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
-    let y1 : Option<Expr> = from_json_string(y1_json);
+    let y1 : Option<Expr> =
+        from_json_string(y1_json);
 
     let func_str = unsafe {
 
@@ -238,9 +290,11 @@ pub extern "C" fn rssn_json_solve_riccati_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -251,22 +305,35 @@ pub extern "C" fn rssn_json_solve_riccati_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v), Some(y)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+        Some(y),
+    ) = (
         equation,
         func_str,
         var_str,
         y1,
     ) {
 
-        match ode::solve_riccati_ode(&eq, f, v, &y) {
-            | Some(result) => to_json_string(&result),
-            | None => std::ptr::null_mut(),
+        match ode::solve_riccati_ode(
+            &eq, f, v, &y,
+        ) {
+            | Some(result) => {
+                to_json_string(&result)
+            },
+            | None => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 
@@ -283,7 +350,8 @@ pub extern "C" fn rssn_json_solve_cauchy_euler_ode(
     var : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
     let func_str = unsafe {
 
@@ -292,9 +360,11 @@ pub extern "C" fn rssn_json_solve_cauchy_euler_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -305,13 +375,19 @@ pub extern "C" fn rssn_json_solve_cauchy_euler_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         var_str,
@@ -336,7 +412,8 @@ pub extern "C" fn rssn_json_solve_exact_ode(
     var : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
     let func_str = unsafe {
 
@@ -345,9 +422,11 @@ pub extern "C" fn rssn_json_solve_exact_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -358,21 +437,33 @@ pub extern "C" fn rssn_json_solve_exact_ode(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) = (
         equation,
         func_str,
         var_str,
     ) {
 
-        match ode::solve_exact_ode(&eq, f, v) {
-            | Some(result) => to_json_string(&result),
-            | None => std::ptr::null_mut(),
+        match ode::solve_exact_ode(
+            &eq, f, v,
+        ) {
+            | Some(result) => {
+                to_json_string(&result)
+            },
+            | None => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 
@@ -390,9 +481,11 @@ pub extern "C" fn rssn_json_solve_by_reduction_of_order(
     y1_json : *const c_char,
 ) -> *mut c_char {
 
-    let equation : Option<Expr> = from_json_string(equation_json);
+    let equation : Option<Expr> =
+        from_json_string(equation_json);
 
-    let y1 : Option<Expr> = from_json_string(y1_json);
+    let y1 : Option<Expr> =
+        from_json_string(y1_json);
 
     let func_str = unsafe {
 
@@ -401,9 +494,11 @@ pub extern "C" fn rssn_json_solve_by_reduction_of_order(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(func)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                func,
+            )
+            .to_str()
+            .ok()
         }
     };
 
@@ -414,13 +509,20 @@ pub extern "C" fn rssn_json_solve_by_reduction_of_order(
             None
         } else {
 
-            std::ffi::CStr::from_ptr(var)
-                .to_str()
-                .ok()
+            std::ffi::CStr::from_ptr(
+                var,
+            )
+            .to_str()
+            .ok()
         }
     };
 
-    if let (Some(eq), Some(f), Some(v), Some(y)) = (
+    if let (
+        Some(eq),
+        Some(f),
+        Some(v),
+        Some(y),
+    ) = (
         equation,
         func_str,
         var_str,

@@ -21,7 +21,8 @@ fn test_lorenz_handle_ffi() {
 
         assert_eq!(matrix.cols(), 4); // time, x, y, z
                                       // Clean up
-        let _ = Box::from_raw(matrix_ptr);
+        let _ =
+            Box::from_raw(matrix_ptr);
     }
 }
 
@@ -39,7 +40,8 @@ fn test_lorenz_json_ffi() {
         "tol": [1e-6, 1e-6]
     }"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -48,12 +50,22 @@ fn test_lorenz_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = std::ffi::CStr::from_ptr(res_ptr).to_string_lossy();
+        let res_str =
+            std::ffi::CStr::from_ptr(
+                res_ptr,
+            )
+            .to_string_lossy();
 
-        let _res : serde_json::Value = serde_json::from_str(&res_str).unwrap();
+        let _res : serde_json::Value =
+            serde_json::from_str(
+                &res_str,
+            )
+            .unwrap();
 
         // Check if OK
-        assert!(res_str.contains("\"ok\":"));
+        assert!(
+            res_str.contains("\"ok\":")
+        );
     }
 }
 
@@ -69,7 +81,8 @@ fn test_damped_oscillator_json_ffi() {
         "dt": 0.1
     }"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -80,8 +93,14 @@ fn test_damped_oscillator_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = std::ffi::CStr::from_ptr(res_ptr).to_string_lossy();
+        let res_str =
+            std::ffi::CStr::from_ptr(
+                res_ptr,
+            )
+            .to_string_lossy();
 
-        assert!(res_str.contains("\"ok\":"));
+        assert!(
+            res_str.contains("\"ok\":")
+        );
     }
 }

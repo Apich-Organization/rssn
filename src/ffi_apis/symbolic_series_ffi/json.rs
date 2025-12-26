@@ -20,22 +20,33 @@ pub extern "C" fn rssn_json_taylor_series(
     order_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
-    let var : Option<String> = from_json_string(var_json);
+    let var : Option<String> =
+        from_json_string(var_json);
 
-    let center : Option<Expr> = from_json_string(center_json);
+    let center : Option<Expr> =
+        from_json_string(center_json);
 
-    let order : Option<usize> = from_json_string(order_json);
+    let order : Option<usize> =
+        from_json_string(order_json);
 
-    if let (Some(e), Some(v), Some(c), Some(o)) = (
+    if let (
+        Some(e),
+        Some(v),
+        Some(c),
+        Some(o),
+    ) = (
         expr,
         var,
         center,
         order,
     ) {
 
-        let result = taylor_series(&e, &v, &c, o);
+        let result = taylor_series(
+            &e, &v, &c, o,
+        );
 
         to_json_string(&result)
     } else {
@@ -53,22 +64,33 @@ pub extern "C" fn rssn_json_laurent_series(
     order_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
-    let var : Option<String> = from_json_string(var_json);
+    let var : Option<String> =
+        from_json_string(var_json);
 
-    let center : Option<Expr> = from_json_string(center_json);
+    let center : Option<Expr> =
+        from_json_string(center_json);
 
-    let order : Option<usize> = from_json_string(order_json);
+    let order : Option<usize> =
+        from_json_string(order_json);
 
-    if let (Some(e), Some(v), Some(c), Some(o)) = (
+    if let (
+        Some(e),
+        Some(v),
+        Some(c),
+        Some(o),
+    ) = (
         expr,
         var,
         center,
         order,
     ) {
 
-        let result = laurent_series(&e, &v, &c, o);
+        let result = laurent_series(
+            &e, &v, &c, o,
+        );
 
         to_json_string(&result)
     } else {
@@ -86,22 +108,33 @@ pub extern "C" fn rssn_json_fourier_series(
     order_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
-    let var : Option<String> = from_json_string(var_json);
+    let var : Option<String> =
+        from_json_string(var_json);
 
-    let period : Option<Expr> = from_json_string(period_json);
+    let period : Option<Expr> =
+        from_json_string(period_json);
 
-    let order : Option<usize> = from_json_string(order_json);
+    let order : Option<usize> =
+        from_json_string(order_json);
 
-    if let (Some(e), Some(v), Some(p), Some(o)) = (
+    if let (
+        Some(e),
+        Some(v),
+        Some(p),
+        Some(o),
+    ) = (
         expr,
         var,
         period,
         order,
     ) {
 
-        let result = fourier_series(&e, &v, &p, o);
+        let result = fourier_series(
+            &e, &v, &p, o,
+        );
 
         to_json_string(&result)
     } else {
@@ -119,19 +152,29 @@ pub extern "C" fn rssn_json_summation(
     upper_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
-    let var : Option<String> = from_json_string(var_json);
+    let var : Option<String> =
+        from_json_string(var_json);
 
-    let lower : Option<Expr> = from_json_string(lower_json);
+    let lower : Option<Expr> =
+        from_json_string(lower_json);
 
-    let upper : Option<Expr> = from_json_string(upper_json);
+    let upper : Option<Expr> =
+        from_json_string(upper_json);
 
-    if let (Some(e), Some(v), Some(l), Some(u)) = (
+    if let (
+        Some(e),
+        Some(v),
+        Some(l),
+        Some(u),
+    ) = (
         expr, var, lower, upper,
     ) {
 
-        let result = summation(&e, &v, &l, &u);
+        let result =
+            summation(&e, &v, &l, &u);
 
         to_json_string(&result)
     } else {
@@ -149,19 +192,29 @@ pub extern "C" fn rssn_json_product(
     upper_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
-    let var : Option<String> = from_json_string(var_json);
+    let var : Option<String> =
+        from_json_string(var_json);
 
-    let lower : Option<Expr> = from_json_string(lower_json);
+    let lower : Option<Expr> =
+        from_json_string(lower_json);
 
-    let upper : Option<Expr> = from_json_string(upper_json);
+    let upper : Option<Expr> =
+        from_json_string(upper_json);
 
-    if let (Some(e), Some(v), Some(l), Some(u)) = (
+    if let (
+        Some(e),
+        Some(v),
+        Some(l),
+        Some(u),
+    ) = (
         expr, var, lower, upper,
     ) {
 
-        let result = product(&e, &v, &l, &u);
+        let result =
+            product(&e, &v, &l, &u);
 
         to_json_string(&result)
     } else {
@@ -177,13 +230,18 @@ pub extern "C" fn rssn_series_json_analyze_convergence(
     var_json : *const c_char,
 ) -> *mut c_char {
 
-    let series : Option<Expr> = from_json_string(series_json);
+    let series : Option<Expr> =
+        from_json_string(series_json);
 
-    let var : Option<String> = from_json_string(var_json);
+    let var : Option<String> =
+        from_json_string(var_json);
 
-    if let (Some(s), Some(v)) = (series, var) {
+    if let (Some(s), Some(v)) =
+        (series, var)
+    {
 
-        let result = analyze_convergence(&s, &v);
+        let result =
+            analyze_convergence(&s, &v);
 
         to_json_string(&result)
     } else {
@@ -201,19 +259,31 @@ pub extern "C" fn rssn_json_asymptotic_expansion(
     order_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
-    let var : Option<String> = from_json_string(var_json);
+    let var : Option<String> =
+        from_json_string(var_json);
 
-    let point : Option<Expr> = from_json_string(point_json);
+    let point : Option<Expr> =
+        from_json_string(point_json);
 
-    let order : Option<usize> = from_json_string(order_json);
+    let order : Option<usize> =
+        from_json_string(order_json);
 
-    if let (Some(e), Some(v), Some(p), Some(o)) = (
+    if let (
+        Some(e),
+        Some(v),
+        Some(p),
+        Some(o),
+    ) = (
         expr, var, point, order,
     ) {
 
-        let result = asymptotic_expansion(&e, &v, &p, o);
+        let result =
+            asymptotic_expansion(
+                &e, &v, &p, o,
+            );
 
         to_json_string(&result)
     } else {
@@ -232,17 +302,32 @@ pub extern "C" fn rssn_json_analytic_continuation(
     order_json : *const c_char,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
-    let var : Option<String> = from_json_string(var_json);
+    let var : Option<String> =
+        from_json_string(var_json);
 
-    let orig_center : Option<Expr> = from_json_string(orig_center_json);
+    let orig_center : Option<Expr> =
+        from_json_string(
+            orig_center_json,
+        );
 
-    let new_center : Option<Expr> = from_json_string(new_center_json);
+    let new_center : Option<Expr> =
+        from_json_string(
+            new_center_json,
+        );
 
-    let order : Option<usize> = from_json_string(order_json);
+    let order : Option<usize> =
+        from_json_string(order_json);
 
-    if let (Some(e), Some(v), Some(oc), Some(nc), Some(o)) = (
+    if let (
+        Some(e),
+        Some(v),
+        Some(oc),
+        Some(nc),
+        Some(o),
+    ) = (
         expr,
         var,
         orig_center,
@@ -250,7 +335,10 @@ pub extern "C" fn rssn_json_analytic_continuation(
         order,
     ) {
 
-        let result = analytic_continuation(&e, &v, &oc, &nc, o);
+        let result =
+            analytic_continuation(
+                &e, &v, &oc, &nc, o,
+            );
 
         to_json_string(&result)
     } else {

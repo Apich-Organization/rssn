@@ -156,7 +156,8 @@ fn test_differentiate_poly() {
         terms,
     };
 
-    let derivative = differentiate_poly(&poly, "x");
+    let derivative =
+        differentiate_poly(&poly, "x");
 
     // Should have 3 terms
     assert_eq!(
@@ -211,9 +212,9 @@ fn test_is_polynomial() {
     ));
 
     // sin(x) is not a polynomial in x
-    let non_poly = Expr::new_sin(Expr::new_variable(
-        "x",
-    ));
+    let non_poly = Expr::new_sin(
+        Expr::new_variable("x"),
+    );
 
     assert!(!is_polynomial(
         &non_poly,
@@ -254,8 +255,12 @@ fn test_leading_coefficient() {
             Expr::new_mul(
                 Expr::new_constant(5.0),
                 Expr::new_pow(
-                    Expr::new_variable("x"),
-                    Expr::new_constant(2.0),
+                    Expr::new_variable(
+                        "x",
+                    ),
+                    Expr::new_constant(
+                        2.0,
+                    ),
                 ),
             ),
             Expr::new_mul(
@@ -267,21 +272,30 @@ fn test_leading_coefficient() {
     );
 
     // leading_coefficient handles DAG nodes internally
-    let lc = leading_coefficient(&poly, "x");
+    let lc =
+        leading_coefficient(&poly, "x");
 
     // Leading coefficient should be close to 5
     // The result might be in DAG form, so we check the value
     match lc {
         | Expr::Constant(c) => {
 
-            assert!((c - 5.0).abs() < 1e-10)
+            assert!(
+                (c - 5.0).abs() < 1e-10
+            )
         },
         | Expr::Dag(_) => {
 
             // If it's a DAG, convert and check
-            if let Ok(Expr::Constant(c)) = lc.to_ast() {
+            if let Ok(Expr::Constant(
+                c,
+            )) = lc.to_ast()
+            {
 
-                assert!((c - 5.0).abs() < 1e-10);
+                assert!(
+                    (c - 5.0).abs()
+                        < 1e-10
+                );
             } else {
 
                 // Just check that we got a result
@@ -298,7 +312,8 @@ fn test_leading_coefficient() {
 
 #[test]
 
-fn test_polynomial_long_division_simple() {
+fn test_polynomial_long_division_simple(
+) {
 
     // (x^2 + 3x + 2) / (x + 1) = x + 2 with remainder 0
     let dividend = Expr::new_add(
@@ -320,15 +335,19 @@ fn test_polynomial_long_division_simple() {
         Expr::new_constant(1.0),
     );
 
-    let (quotient, _remainder) = polynomial_long_division(
-        &dividend,
-        &divisor,
-        "x",
-    );
+    let (quotient, _remainder) =
+        polynomial_long_division(
+            &dividend,
+            &divisor,
+            "x",
+        );
 
     // Quotient should be x + 2
     assert_eq!(
-        polynomial_degree(&quotient, "x"),
+        polynomial_degree(
+            &quotient,
+            "x"
+        ),
         1
     );
 }
@@ -352,7 +371,10 @@ fn test_to_polynomial_coeffs_vec() {
         Expr::new_constant(3.0),
     );
 
-    let coeffs = to_polynomial_coeffs_vec(&poly, "x");
+    let coeffs =
+        to_polynomial_coeffs_vec(
+            &poly, "x",
+        );
 
     // Should have at least 1 coefficient
     assert!(coeffs.len() >= 1);
@@ -369,7 +391,10 @@ fn test_from_coeffs_to_expr() {
         Expr::Constant(3.0),
     ];
 
-    let expr = from_coeffs_to_expr(&coeffs, "x");
+    let expr = from_coeffs_to_expr(
+        &coeffs,
+        "x",
+    );
 
     // polynomial_degree handles both AST and DAG forms
     assert_eq!(
@@ -397,7 +422,10 @@ fn test_expr_to_sparse_poly() {
         Expr::new_constant(3.0),
     );
 
-    let sparse = expr_to_sparse_poly(&expr, &["x", "y"]);
+    let sparse = expr_to_sparse_poly(
+        &expr,
+        &["x", "y"],
+    );
 
     // Should have 3 terms
     assert!(sparse.terms.len() >= 1);
@@ -445,11 +473,18 @@ fn test_gcd_simple() {
         Expr::new_constant(1.0),
     );
 
-    let poly1 = expr_to_sparse_poly(&expr1, &["x"]);
+    let poly1 = expr_to_sparse_poly(
+        &expr1,
+        &["x"],
+    );
 
-    let poly2 = expr_to_sparse_poly(&expr2, &["x"]);
+    let poly2 = expr_to_sparse_poly(
+        &expr2,
+        &["x"],
+    );
 
-    let gcd_poly = gcd(poly1, poly2, "x");
+    let gcd_poly =
+        gcd(poly1, poly2, "x");
 
     // GCD should have degree 1
     assert_eq!(
@@ -479,7 +514,10 @@ fn test_poly_mul_scalar() {
 
     let scalar = Expr::Constant(3.0);
 
-    let result = poly_mul_scalar_expr(&poly, &scalar);
+    let result = poly_mul_scalar_expr(
+        &poly,
+        &scalar,
+    );
 
     // Coefficient should be 6.0
     assert_eq!(

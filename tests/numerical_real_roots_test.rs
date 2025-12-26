@@ -7,9 +7,15 @@ use rssn::prelude::numerical::*;
 fn test_find_roots_quadratic() {
 
     // x^2 - 4 = 0 => roots -2, 2
-    let poly = numerical_Polynomial::new(vec![1.0, 0.0, -4.0]);
+    let poly =
+        numerical_Polynomial::new(
+            vec![1.0, 0.0, -4.0],
+        );
 
-    let roots = numerical_find_roots(&poly, 1e-9).unwrap();
+    let roots = numerical_find_roots(
+        &poly, 1e-9,
+    )
+    .unwrap();
 
     assert_eq!(roots.len(), 2);
 
@@ -23,11 +29,17 @@ fn test_find_roots_quadratic() {
 fn test_find_roots_cubic() {
 
     // (x-1)(x-2)(x-3) = x^3 - 6x^2 + 11x - 6
-    let poly = numerical_Polynomial::new(vec![
-        1.0, -6.0, 11.0, -6.0,
-    ]);
+    let poly =
+        numerical_Polynomial::new(
+            vec![
+                1.0, -6.0, 11.0, -6.0,
+            ],
+        );
 
-    let roots = numerical_find_roots(&poly, 1e-9).unwrap();
+    let roots = numerical_find_roots(
+        &poly, 1e-9,
+    )
+    .unwrap();
 
     assert_eq!(roots.len(), 3);
 
@@ -44,17 +56,23 @@ fn test_find_roots_close() {
 
     // Roots at 1.0 and 1.001
     // (x-1)(x-1.001) = x^2 - 2.001x + 1.001
-    let poly = numerical_Polynomial::new(vec![
-        1.0,
-        -2.001,
-        1.001,
-    ]);
+    let poly =
+        numerical_Polynomial::new(
+            vec![1.0, -2.001, 1.001],
+        );
 
-    let roots = numerical_find_roots(&poly, 1e-9).unwrap();
+    let roots = numerical_find_roots(
+        &poly, 1e-9,
+    )
+    .unwrap();
 
     assert_eq!(roots.len(), 2);
 
-    assert_approx_eq!(roots[0], 1.0, 1e-6);
+    assert_approx_eq!(
+        roots[0],
+        1.0,
+        1e-6
+    );
 
     assert_approx_eq!(
         roots[1],

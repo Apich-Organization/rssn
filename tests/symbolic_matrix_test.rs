@@ -256,7 +256,9 @@ fn test_solve_linear_system() {
         )],
     ]);
 
-    let sol = solve_linear_system(&a, &b).unwrap();
+    let sol =
+        solve_linear_system(&a, &b)
+            .unwrap();
 
     if let Expr::Matrix(rows) = sol {
 
@@ -280,16 +282,27 @@ fn test_solve_linear_system() {
         // Check x approx 4.4
         if let Expr::Constant(val) = x {
 
-            assert!((val - 4.4).abs() < 1e-10);
-        } else if let Expr::Rational(r) = x {
+            assert!(
+                (val - 4.4).abs()
+                    < 1e-10
+            );
+        } else if let Expr::Rational(
+            r,
+        ) = x
+        {
 
-            let val = r.to_f64().unwrap();
+            let val =
+                r.to_f64().unwrap();
 
-            assert!((val - 4.4).abs() < 1e-10);
+            assert!(
+                (val - 4.4).abs()
+                    < 1e-10
+            );
         } else {
 
             panic!(
-                "Expected constant for x, got {:?}",
+                "Expected constant \
+                 for x, got {:?}",
                 x
             );
         }
@@ -297,21 +310,34 @@ fn test_solve_linear_system() {
         // Check y approx -1.8
         if let Expr::Constant(val) = y {
 
-            assert!((val - (-1.8)).abs() < 1e-10);
-        } else if let Expr::Rational(r) = y {
+            assert!(
+                (val - (-1.8)).abs()
+                    < 1e-10
+            );
+        } else if let Expr::Rational(
+            r,
+        ) = y
+        {
 
-            let val = r.to_f64().unwrap();
+            let val =
+                r.to_f64().unwrap();
 
-            assert!((val - (-1.8)).abs() < 1e-10);
+            assert!(
+                (val - (-1.8)).abs()
+                    < 1e-10
+            );
         } else {
 
             panic!(
-                "Expected constant for y, got {:?}",
+                "Expected constant \
+                 for y, got {:?}",
                 y
             );
         }
     } else {
 
-        panic!("Expected matrix solution");
+        panic!(
+            "Expected matrix solution"
+        );
     }
 }

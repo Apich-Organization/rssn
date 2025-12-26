@@ -5,7 +5,9 @@ use crate::symbolic::core::Expr;
 
 /// Converts an expression to a LaTeX string.
 
-pub fn to_latex(expr : &Expr) -> String {
+pub fn to_latex(
+    expr : &Expr
+) -> String {
 
     to_latex_prec(expr, 0)
 }
@@ -27,15 +29,22 @@ pub(crate) fn to_latex_prec(
     root_precedence : u8,
 ) -> String {
 
-    let mut results : HashMap<*const Expr, LatexResult> = HashMap::new();
+    let mut results : HashMap<
+        *const Expr,
+        LatexResult,
+    > = HashMap::new();
 
-    let mut stack : Vec<Expr> = vec![root_expr.clone()];
+    let mut stack : Vec<Expr> =
+        vec![root_expr.clone()];
 
     while let Some(expr) = stack.pop() {
 
-        let expr_ptr = &expr as *const Expr;
+        let expr_ptr =
+            &expr as *const Expr;
 
-        if results.contains_key(&expr_ptr) {
+        if results
+            .contains_key(&expr_ptr)
+        {
 
             stack.pop();
 
@@ -50,11 +59,14 @@ pub(crate) fn to_latex_prec(
 
         if all_children_processed {
 
-            let current_expr = stack
-                .pop()
-                .expect("Value is valid");
+            let current_expr =
+                stack.pop().expect(
+                    "Value is valid",
+                );
 
-            let current_expr_ptr = &current_expr as *const Expr;
+            let current_expr_ptr =
+                &current_expr
+                    as *const Expr;
 
             let get_child_res = |i : usize| -> &LatexResult {
 
@@ -398,7 +410,8 @@ pub(crate) fn to_latex_prec(
             results.insert(
                 current_expr_ptr,
                 LatexResult {
-                    precedence : op_prec,
+                    precedence:
+                        op_prec,
                     content : s,
                 },
             );
@@ -409,16 +422,21 @@ pub(crate) fn to_latex_prec(
                 .rev()
             {
 
-                let cloned_child = child.clone();
+                let cloned_child =
+                    child.clone();
 
-                stack.push(cloned_child);
+                stack
+                    .push(cloned_child);
             }
         }
     }
 
-    let final_result = &results[&(root_expr as *const Expr)];
+    let final_result = &results
+        [&(root_expr as *const Expr)];
 
-    if final_result.precedence < root_precedence {
+    if final_result.precedence
+        < root_precedence
+    {
 
         format!(
             r"\left( {} \right)",
@@ -447,7 +465,8 @@ pub fn to_latex_prec_with_parens(
         | _ => 10,
     };
 
-    let s = to_latex_prec(expr, precedence);
+    let s =
+        to_latex_prec(expr, precedence);
 
     if op_prec < precedence {
 
@@ -466,29 +485,55 @@ pub fn to_latex_prec_with_parens(
 pub fn to_greek(s : &str) -> String {
 
     match s {
-        | "alpha" => r"\alpha".to_string(),
-        | "beta" => r"\beta".to_string(),
-        | "gamma" => r"\gamma".to_string(),
-        | "delta" => r"\delta".to_string(),
-        | "epsilon" => r"\epsilon".to_string(),
-        | "zeta" => r"\zeta".to_string(),
+        | "alpha" => {
+            r"\alpha".to_string()
+        },
+        | "beta" => {
+            r"\beta".to_string()
+        },
+        | "gamma" => {
+            r"\gamma".to_string()
+        },
+        | "delta" => {
+            r"\delta".to_string()
+        },
+        | "epsilon" => {
+            r"\epsilon".to_string()
+        },
+        | "zeta" => {
+            r"\zeta".to_string()
+        },
         | "eta" => r"\eta".to_string(),
-        | "theta" => r"\theta".to_string(),
-        | "iota" => r"\iota".to_string(),
-        | "kappa" => r"\kappa".to_string(),
-        | "lambda" => r"\lambda".to_string(),
+        | "theta" => {
+            r"\theta".to_string()
+        },
+        | "iota" => {
+            r"\iota".to_string()
+        },
+        | "kappa" => {
+            r"\kappa".to_string()
+        },
+        | "lambda" => {
+            r"\lambda".to_string()
+        },
         | "mu" => r"\mu".to_string(),
         | "nu" => r"\nu".to_string(),
         | "xi" => r"\xi".to_string(),
         | "pi" => r"\pi".to_string(),
         | "rho" => r"\rho".to_string(),
-        | "sigma" => r"\sigma".to_string(),
+        | "sigma" => {
+            r"\sigma".to_string()
+        },
         | "tau" => r"\tau".to_string(),
-        | "upsilon" => r"\upsilon".to_string(),
+        | "upsilon" => {
+            r"\upsilon".to_string()
+        },
         | "phi" => r"\phi".to_string(),
         | "chi" => r"\chi".to_string(),
         | "psi" => r"\psi".to_string(),
-        | "omega" => r"\omega".to_string(),
+        | "omega" => {
+            r"\omega".to_string()
+        },
         | _ => s.to_string(),
     }
 }

@@ -16,16 +16,19 @@ fn test_numerical_signal_handle_ffi() {
 
     unsafe {
 
-        let re = vec![1.0, 1.0, 1.0, 1.0];
+        let re =
+            vec![1.0, 1.0, 1.0, 1.0];
 
-        let im = vec![0.0, 0.0, 0.0, 0.0];
+        let im =
+            vec![0.0, 0.0, 0.0, 0.0];
 
         // FFT
-        let matrix_ptr = handle::rssn_num_signal_fft(
-            re.as_ptr(),
-            im.as_ptr(),
-            4,
-        );
+        let matrix_ptr =
+            handle::rssn_num_signal_fft(
+                re.as_ptr(),
+                im.as_ptr(),
+                4,
+            );
 
         assert!(!matrix_ptr.is_null());
 
@@ -41,7 +44,8 @@ fn test_numerical_signal_handle_ffi() {
             0.0,
             1e-9
         ); // Imag part of DC
-        let _ = Box::from_raw(matrix_ptr);
+        let _ =
+            Box::from_raw(matrix_ptr);
 
         // Convolve
         let a = vec![1.0, 2.0, 3.0];
@@ -61,7 +65,9 @@ fn test_numerical_signal_handle_ffi() {
 
         assert_eq!(
             res_matrix.data(),
-            &vec![0.0, 1.0, 2.5, 4.0, 1.5]
+            &vec![
+                0.0, 1.0, 2.5, 4.0, 1.5
+            ]
         );
 
         let _ = Box::from_raw(res_ptr);
@@ -76,17 +82,24 @@ fn test_numerical_signal_json_ffi() {
 
         let input_json = r#"{"a": [1.0, 2.0], "v": [1.0, 0.5]}"#;
 
-        let c_json = CString::new(input_json).unwrap();
+        let c_json =
+            CString::new(input_json)
+                .unwrap();
 
         let res_ptr = json::rssn_num_signal_convolve_json(c_json.as_ptr());
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr)
-            .to_str()
-            .unwrap();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_str()
+                .unwrap();
 
-        let v : serde_json::Value = serde_json::from_str(res_str).unwrap();
+        let v : serde_json::Value =
+            serde_json::from_str(
+                res_str,
+            )
+            .unwrap();
 
         let results = v["ok"]
             .as_array()
@@ -143,7 +156,8 @@ fn test_numerical_signal_bincode_ffi() {
             v : vec![1.0, 0.5],
         };
 
-        let buffer = to_bincode_buffer(&input);
+        let buffer =
+            to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_signal_convolve_bincode(buffer);
 
@@ -157,17 +171,31 @@ fn test_numerical_signal_bincode_ffi() {
             err : Option<E>,
         }
 
-        let res : FfiResult<Vec<f64>, String> = from_bincode_buffer(&res_buffer).unwrap();
+        let res : FfiResult<
+            Vec<f64>,
+            String,
+        > = from_bincode_buffer(
+            &res_buffer,
+        )
+        .unwrap();
 
         let ok_res = res
             .ok
             .as_ref()
             .unwrap();
 
-        assert_approx_eq!(ok_res[0], 1.0, 1e-9);
+        assert_approx_eq!(
+            ok_res[0],
+            1.0,
+            1e-9
+        );
 
-        rssn_free_bincode_buffer(res_buffer);
+        rssn_free_bincode_buffer(
+            res_buffer,
+        );
 
-        rssn_free_bincode_buffer(buffer);
+        rssn_free_bincode_buffer(
+            buffer,
+        );
     }
 }

@@ -38,7 +38,10 @@ pub fn divergence<F>(
     point : &[f64],
 ) -> Result<f64, String>
 where
-    F : Fn(&[f64]) -> Result<Vec<f64>, String>,
+    F : Fn(
+        &[f64],
+    )
+        -> Result<Vec<f64>, String>,
 {
 
     let dim = point.len();
@@ -49,19 +52,28 @@ where
 
     for i in 0 .. dim {
 
-        let mut point_plus_h = point.to_vec();
+        let mut point_plus_h =
+            point.to_vec();
 
         point_plus_h[i] += h;
 
-        let mut point_minus_h = point.to_vec();
+        let mut point_minus_h =
+            point.to_vec();
 
         point_minus_h[i] -= h;
 
-        let f_plus_h = vector_field(&point_plus_h)?;
+        let f_plus_h = vector_field(
+            &point_plus_h,
+        )?;
 
-        let f_minus_h = vector_field(&point_minus_h)?;
+        let f_minus_h = vector_field(
+            &point_minus_h,
+        )?;
 
-        let partial_deriv = (f_plus_h[i] - f_minus_h[i]) / (2.0 * h);
+        let partial_deriv = (f_plus_h
+            [i]
+            - f_minus_h[i])
+            / (2.0 * h);
 
         div += partial_deriv;
     }
@@ -115,22 +127,35 @@ pub fn divergence_expr(
 
     if funcs.len() != vars.len() {
 
-        return Err("Number of functions must match number of variables".to_string());
+        return Err(
+            "Number of functions must \
+             match number of variables"
+                .to_string(),
+        );
     }
 
-    let vector_field = |p : &[f64]| -> Result<Vec<f64>, String> {
+    let vector_field =
+        |p : &[f64]| -> Result<
+            Vec<f64>,
+            String,
+        > {
 
-        let mut res = Vec::with_capacity(funcs.len());
+            let mut res =
+                Vec::with_capacity(
+                    funcs.len(),
+                );
 
-        for f in funcs {
+            for f in funcs {
 
-            res.push(eval_at_point(
-                f, vars, p,
-            )?);
-        }
+                res.push(
+                    eval_at_point(
+                        f, vars, p,
+                    )?,
+                );
+            }
 
-        Ok(res)
-    };
+            Ok(res)
+        };
 
     divergence(vector_field, point)
 }
@@ -146,12 +171,18 @@ pub fn curl<F>(
     point : &[f64],
 ) -> Result<Vec<f64>, String>
 where
-    F : Fn(&[f64]) -> Result<Vec<f64>, String>,
+    F : Fn(
+        &[f64],
+    )
+        -> Result<Vec<f64>, String>,
 {
 
     if point.len() != 3 {
 
-        return Err("Curl is only defined for 3D vector fields.".to_string());
+        return Err("Curl is only \
+                    defined for 3D \
+                    vector fields."
+            .to_string());
     }
 
     let h = 1e-6;
@@ -165,7 +196,12 @@ where
 
     p_minus_h[1] -= h;
 
-    let dvz_dy = (vector_field(&p_plus_h)?[2] - vector_field(&p_minus_h)?[2]) / (2.0 * h);
+    let dvz_dy =
+        (vector_field(&p_plus_h)?[2]
+            - vector_field(
+                &p_minus_h,
+            )?[2])
+            / (2.0 * h);
 
     p_plus_h[1] = point[1];
 
@@ -175,7 +211,12 @@ where
 
     p_minus_h[2] -= h;
 
-    let dvy_dz = (vector_field(&p_plus_h)?[1] - vector_field(&p_minus_h)?[1]) / (2.0 * h);
+    let dvy_dz =
+        (vector_field(&p_plus_h)?[1]
+            - vector_field(
+                &p_minus_h,
+            )?[1])
+            / (2.0 * h);
 
     p_plus_h[2] = point[2];
 
@@ -186,7 +227,12 @@ where
 
     p_minus_h[2] -= h;
 
-    let dvx_dz = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
+    let dvx_dz =
+        (vector_field(&p_plus_h)?[0]
+            - vector_field(
+                &p_minus_h,
+            )?[0])
+            / (2.0 * h);
 
     p_plus_h[2] = point[2];
 
@@ -196,7 +242,12 @@ where
 
     p_minus_h[0] -= h;
 
-    let dvz_dx = (vector_field(&p_plus_h)?[2] - vector_field(&p_minus_h)?[2]) / (2.0 * h);
+    let dvz_dx =
+        (vector_field(&p_plus_h)?[2]
+            - vector_field(
+                &p_minus_h,
+            )?[2])
+            / (2.0 * h);
 
     p_plus_h[0] = point[0];
 
@@ -207,7 +258,12 @@ where
 
     p_minus_h[0] -= h;
 
-    let dvy_dx = (vector_field(&p_plus_h)?[1] - vector_field(&p_minus_h)?[1]) / (2.0 * h);
+    let dvy_dx =
+        (vector_field(&p_plus_h)?[1]
+            - vector_field(
+                &p_minus_h,
+            )?[1])
+            / (2.0 * h);
 
     p_plus_h[0] = point[0];
 
@@ -217,7 +273,12 @@ where
 
     p_minus_h[1] -= h;
 
-    let dvx_dy = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
+    let dvx_dy =
+        (vector_field(&p_plus_h)?[0]
+            - vector_field(
+                &p_minus_h,
+            )?[0])
+            / (2.0 * h);
 
     Ok(vec![
         dvz_dy - dvy_dz,
@@ -234,24 +295,36 @@ pub fn curl_expr(
     point : &[f64],
 ) -> Result<Vec<f64>, String> {
 
-    if funcs.len() != 3 || vars.len() != 3 {
+    if funcs.len() != 3
+        || vars.len() != 3
+    {
 
-        return Err("Curl is only defined for 3D vector fields.".to_string());
+        return Err("Curl is only \
+                    defined for 3D \
+                    vector fields."
+            .to_string());
     }
 
-    let vector_field = |p : &[f64]| -> Result<Vec<f64>, String> {
+    let vector_field =
+        |p : &[f64]| -> Result<
+            Vec<f64>,
+            String,
+        > {
 
-        let mut res = Vec::with_capacity(3);
+            let mut res =
+                Vec::with_capacity(3);
 
-        for f in funcs {
+            for f in funcs {
 
-            res.push(eval_at_point(
-                f, vars, p,
-            )?);
-        }
+                res.push(
+                    eval_at_point(
+                        f, vars, p,
+                    )?,
+                );
+            }
 
-        Ok(res)
-    };
+            Ok(res)
+        };
 
     curl(vector_field, point)
 }
@@ -306,17 +379,32 @@ pub fn laplacian(
 
         p_plus[i] += h;
 
-        let mut p_minus = point.to_vec();
+        let mut p_minus =
+            point.to_vec();
 
         p_minus[i] -= h;
 
-        let f_plus = eval_at_point(f, vars, &p_plus)?;
+        let f_plus = eval_at_point(
+            f,
+            vars,
+            &p_plus,
+        )?;
 
-        let f_center = eval_at_point(f, vars, point)?;
+        let f_center = eval_at_point(
+            f, vars, point,
+        )?;
 
-        let f_minus = eval_at_point(f, vars, &p_minus)?;
+        let f_minus = eval_at_point(
+            f,
+            vars,
+            &p_minus,
+        )?;
 
-        lap += (2.0f64.mul_add(-f_center, f_plus) + f_minus) / (h * h);
+        lap += (2.0f64.mul_add(
+            -f_center,
+            f_plus,
+        ) + f_minus)
+            / (h * h);
     }
 
     Ok(lap)
@@ -331,11 +419,17 @@ pub fn directional_derivative(
     direction : &[f64],
 ) -> Result<f64, String> {
 
-    let grad = gradient(f, vars, point)?;
+    let grad =
+        gradient(f, vars, point)?;
 
     if grad.len() != direction.len() {
 
-        return Err("Direction vector dimension must match point dimension".to_string());
+        return Err(
+            "Direction vector \
+             dimension must match \
+             point dimension"
+                .to_string(),
+        );
     }
 
     let mut dot = 0.0;
@@ -346,12 +440,17 @@ pub fn directional_derivative(
 
         dot += grad[i] * direction[i];
 
-        mag_sq += direction[i] * direction[i];
+        mag_sq +=
+            direction[i] * direction[i];
     }
 
     if mag_sq == 0.0 {
 
-        return Err("Direction vector cannot be zero".to_string());
+        return Err(
+            "Direction vector cannot \
+             be zero"
+                .to_string(),
+        );
     }
 
     Ok(dot / mag_sq.sqrt())

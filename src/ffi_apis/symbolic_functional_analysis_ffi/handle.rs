@@ -29,7 +29,9 @@ pub unsafe extern "C" fn rssn_hilbert_space_create(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_hilbert_space_free(ptr : *mut HilbertSpace) {
+pub unsafe extern "C" fn rssn_hilbert_space_free(
+    ptr : *mut HilbertSpace
+) {
 
     if !ptr.is_null() {
 
@@ -64,7 +66,9 @@ pub unsafe extern "C" fn rssn_banach_space_create(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_banach_space_free(ptr : *mut BanachSpace) {
+pub unsafe extern "C" fn rssn_banach_space_free(
+    ptr : *mut BanachSpace
+) {
 
     if !ptr.is_null() {
 
@@ -84,7 +88,9 @@ pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
         .to_str()
         .unwrap();
 
-    let op = LinearOperator::Derivative(var_str.to_string());
+    let op = LinearOperator::Derivative(
+        var_str.to_string(),
+    );
 
     Box::into_raw(Box::new(op))
 }
@@ -122,7 +128,9 @@ pub unsafe extern "C" fn rssn_linear_operator_apply(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_linear_operator_free(ptr : *mut LinearOperator) {
+pub unsafe extern "C" fn rssn_linear_operator_free(
+    ptr : *mut LinearOperator
+) {
 
     if !ptr.is_null() {
 
@@ -140,7 +148,11 @@ pub unsafe extern "C" fn rssn_inner_product(
     g : *const Expr,
 ) -> *mut Expr {
 
-    let result = inner_product(&*space, &*f, &*g);
+    let result = inner_product(
+        &*space,
+        &*f,
+        &*g,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -164,7 +176,8 @@ pub unsafe extern "C" fn rssn_banach_norm(
     f : *const Expr,
 ) -> *mut Expr {
 
-    let result = banach_norm(&*space, &*f);
+    let result =
+        banach_norm(&*space, &*f);
 
     Box::into_raw(Box::new(result))
 }
@@ -188,7 +201,8 @@ pub unsafe extern "C" fn rssn_project(
     g : *const Expr,
 ) -> *mut Expr {
 
-    let result = project(&*space, &*f, &*g);
+    let result =
+        project(&*space, &*f, &*g);
 
     Box::into_raw(Box::new(result))
 }
@@ -202,18 +216,26 @@ pub unsafe extern "C" fn rssn_gram_schmidt(
     out_len : *mut usize,
 ) -> *mut *mut Expr {
 
-    let basis_slice = std::slice::from_raw_parts(basis_ptr, basis_len);
+    let basis_slice =
+        std::slice::from_raw_parts(
+            basis_ptr,
+            basis_len,
+        );
 
     let basis : Vec<Expr> = basis_slice
         .iter()
         .map(|&p| (*p).clone())
         .collect();
 
-    let orthogonal_basis = gram_schmidt(&*space, &basis);
+    let orthogonal_basis =
+        gram_schmidt(&*space, &basis);
 
     *out_len = orthogonal_basis.len();
 
-    let mut out_ptrs = Vec::with_capacity(orthogonal_basis.len());
+    let mut out_ptrs =
+        Vec::with_capacity(
+            orthogonal_basis.len(),
+        );
 
     for expr in orthogonal_basis {
 

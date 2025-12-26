@@ -30,7 +30,8 @@ fn assert_approx_eq_rel(
 
     assert!(
         diff / max_val < rel_tol,
-        "Expected {}, got {}, rel diff = {}",
+        "Expected {}, got {}, rel \
+         diff = {}",
         b,
         a,
         diff / max_val
@@ -86,7 +87,8 @@ fn test_ln_gamma_numerical() {
 fn test_digamma_numerical() {
 
     // ψ(1) = -γ (Euler-Mascheroni constant)
-    let euler_mascheroni = 0.5772156649015329;
+    let euler_mascheroni =
+        0.5772156649015329;
 
     assert_approx_eq(
         digamma_numerical(1.0),
@@ -141,19 +143,25 @@ fn test_regularized_incomplete_beta() {
 
     // I_0(a, b) = 0
     assert_approx_eq(
-        regularized_incomplete_beta(2.0, 3.0, 0.0),
+        regularized_incomplete_beta(
+            2.0, 3.0, 0.0,
+        ),
         0.0,
     );
 
     // I_1(a, b) = 1
     assert_approx_eq(
-        regularized_incomplete_beta(2.0, 3.0, 1.0),
+        regularized_incomplete_beta(
+            2.0, 3.0, 1.0,
+        ),
         1.0,
     );
 
     // I_0.5(1, 1) = 0.5 (uniform distribution)
     assert_approx_eq(
-        regularized_incomplete_beta(1.0, 1.0, 0.5),
+        regularized_incomplete_beta(
+            1.0, 1.0, 0.5,
+        ),
         0.5,
     );
 }
@@ -205,7 +213,8 @@ fn test_erfc_numerical() {
     let x = 1.5;
 
     assert_approx_eq(
-        erf_numerical(x) + erfc_numerical(x),
+        erf_numerical(x)
+            + erfc_numerical(x),
         1.0,
     );
 }
@@ -237,7 +246,10 @@ fn test_inverse_erfc() {
 
     let y = erfc_numerical(x);
 
-    assert_approx_eq(inverse_erfc(y), x);
+    assert_approx_eq(
+        inverse_erfc(y),
+        x,
+    );
 
     // inverse_erfc(1) = 0
     assert_approx_eq(
@@ -392,9 +404,15 @@ fn test_falling_factorial() {
 
 fn test_ln_factorial() {
 
-    assert_approx_eq(ln_factorial(0), 0.0);
+    assert_approx_eq(
+        ln_factorial(0),
+        0.0,
+    );
 
-    assert_approx_eq(ln_factorial(1), 0.0);
+    assert_approx_eq(
+        ln_factorial(1),
+        0.0,
+    );
 
     assert_approx_eq(
         ln_factorial(5),
@@ -416,10 +434,15 @@ fn test_ln_factorial() {
 fn test_bessel_j0() {
 
     // J_0(0) = 1
-    assert_approx_eq(bessel_j0(0.0), 1.0);
+    assert_approx_eq(
+        bessel_j0(0.0),
+        1.0,
+    );
 
     // J_0 has a zero near 2.405
-    assert!(bessel_j0(2.405).abs() < 0.01);
+    assert!(
+        bessel_j0(2.405).abs() < 0.01
+    );
 }
 
 #[test]
@@ -427,7 +450,10 @@ fn test_bessel_j0() {
 fn test_bessel_j1() {
 
     // J_1(0) = 0
-    assert_approx_eq(bessel_j1(0.0), 0.0);
+    assert_approx_eq(
+        bessel_j1(0.0),
+        0.0,
+    );
 
     // J_1 has a maximum near 1.84
     assert!(bessel_j1(1.84) > 0.5);
@@ -441,7 +467,9 @@ fn test_bessel_y0() {
     assert!(bessel_y0(0.1) < 0.0);
 
     // Y_0 has a zero near 0.894
-    assert!(bessel_y0(0.894).abs() < 0.01);
+    assert!(
+        bessel_y0(0.894).abs() < 0.01
+    );
 }
 
 #[test]
@@ -457,7 +485,10 @@ fn test_bessel_y1() {
 fn test_bessel_i0() {
 
     // I_0(0) = 1
-    assert_approx_eq(bessel_i0(0.0), 1.0);
+    assert_approx_eq(
+        bessel_i0(0.0),
+        1.0,
+    );
 
     // I_0(x) > 0 for all x
     assert!(bessel_i0(1.0) > 0.0);
@@ -470,7 +501,10 @@ fn test_bessel_i0() {
 fn test_bessel_i1() {
 
     // I_1(0) = 0
-    assert_approx_eq(bessel_i1(0.0), 0.0);
+    assert_approx_eq(
+        bessel_i1(0.0),
+        0.0,
+    );
 
     // I_1(x) is odd: I_1(-x) = -I_1(x)
     assert_approx_eq(
@@ -487,7 +521,9 @@ fn test_bessel_k0() {
     assert!(bessel_k0(1.0) > 0.0);
 
     // K_0 decreases as x increases
-    assert!(bessel_k0(1.0) > bessel_k0(2.0));
+    assert!(
+        bessel_k0(1.0) > bessel_k0(2.0)
+    );
 }
 
 #[test]
@@ -498,7 +534,9 @@ fn test_bessel_k1() {
     assert!(bessel_k1(1.0) > 0.0);
 
     // K_1 decreases as x increases
-    assert!(bessel_k1(1.0) > bessel_k1(2.0));
+    assert!(
+        bessel_k1(1.0) > bessel_k1(2.0)
+    );
 }
 
 // ============================================================================
@@ -531,7 +569,9 @@ fn test_sinc() {
 fn test_zeta() {
 
     // ζ(2) = π²/6
-    let expected = std::f64::consts::PI.powi(2) / 6.0;
+    let expected = std::f64::consts::PI
+        .powi(2)
+        / 6.0;
 
     assert_approx_eq_rel(
         zeta(2.0),
@@ -539,7 +579,9 @@ fn test_zeta() {
         1e-4,
     ); // Numerical approximation tolerance
        // ζ(4) = π⁴/90
-    let expected4 = std::f64::consts::PI.powi(4) / 90.0;
+    let expected4 = std::f64::consts::PI
+        .powi(4)
+        / 90.0;
 
     assert_approx_eq_rel(
         zeta(4.0),
@@ -563,9 +605,14 @@ fn test_regularized_gamma_p() {
     // P(a, x) for small x should be small
     let small_x = 0.1;
 
-    let result = regularized_gamma_p(2.0, small_x);
+    let result = regularized_gamma_p(
+        2.0,
+        small_x,
+    );
 
-    assert!(result > 0.0 && result < 0.1); // Should be small but positive
+    assert!(
+        result > 0.0 && result < 0.1
+    ); // Should be small but positive
 }
 
 #[test]
@@ -578,7 +625,8 @@ fn test_regularized_gamma_q() {
     let x = 1.5;
 
     assert_approx_eq(
-        regularized_gamma_p(a, x) + regularized_gamma_q(a, x),
+        regularized_gamma_p(a, x)
+            + regularized_gamma_q(a, x),
         1.0,
     );
 
@@ -602,9 +650,13 @@ fn test_gamma_beta_relationship() {
 
     let b = 4.0;
 
-    let beta_direct = beta_numerical(a, b);
+    let beta_direct =
+        beta_numerical(a, b);
 
-    let beta_from_gamma = gamma_numerical(a) * gamma_numerical(b) / gamma_numerical(a + b);
+    let beta_from_gamma =
+        gamma_numerical(a)
+            * gamma_numerical(b)
+            / gamma_numerical(a + b);
 
     assert_approx_eq(
         beta_direct,
@@ -619,17 +671,24 @@ fn test_factorial_gamma_relationship() {
     // Γ(n+1) = n! for non-negative integers
     for n in 0 ..= 10 {
 
-        let gamma_val = gamma_numerical((n + 1) as f64);
+        let gamma_val = gamma_numerical(
+            (n + 1) as f64,
+        );
 
-        let fact_val = factorial(n as u64) as f64;
+        let fact_val =
+            factorial(n as u64) as f64;
 
-        assert_approx_eq(gamma_val, fact_val);
+        assert_approx_eq(
+            gamma_val,
+            fact_val,
+        );
     }
 }
 
 #[test]
 
-fn test_binomial_factorial_relationship() {
+fn test_binomial_factorial_relationship(
+) {
 
     // C(n, k) = n! / (k! * (n-k)!)
     let n = 10u64;
@@ -638,7 +697,9 @@ fn test_binomial_factorial_relationship() {
 
     let binomial_val = binomial(n, k);
 
-    let factorial_val = factorial(n) / (factorial(k) * factorial(n - k));
+    let factorial_val = factorial(n)
+        / (factorial(k)
+            * factorial(n - k));
 
     assert_eq!(
         binomial_val,
@@ -652,11 +713,13 @@ fn test_erf_erfc_relationship() {
 
     // erf(x) + erfc(x) = 1 for various x
     for x in [
-        0.0, 0.5, 1.0, 1.5, 2.0, -0.5, -1.0,
+        0.0, 0.5, 1.0, 1.5, 2.0, -0.5,
+        -1.0,
     ] {
 
         assert_approx_eq(
-            erf_numerical(x) + erfc_numerical(x),
+            erf_numerical(x)
+                + erfc_numerical(x),
             1.0,
         );
     }
@@ -674,8 +737,13 @@ fn test_bessel_recurrence() {
 
     let j1 = bessel_j1(x);
 
-    let j2_from_recurrence = (2.0 / x) * j1 - j0;
+    let j2_from_recurrence =
+        (2.0 / x) * j1 - j0;
 
     // J_2(2) ≈ 0.3528
-    assert!((j2_from_recurrence - 0.3528).abs() < 0.01);
+    assert!(
+        (j2_from_recurrence - 0.3528)
+            .abs()
+            < 0.01
+    );
 }

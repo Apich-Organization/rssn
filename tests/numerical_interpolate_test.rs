@@ -12,7 +12,9 @@ fn test_lagrange_basic() {
         (2.0, 4.0),
     ];
 
-    let poly = lagrange_interpolation(&points).unwrap();
+    let poly =
+        lagrange_interpolation(&points)
+            .unwrap();
 
     assert_approx_eq!(
         poly.eval(1.5),
@@ -31,7 +33,11 @@ fn test_cubic_spline_basic() {
         (2.0, 0.0),
     ];
 
-    let spline = cubic_spline_interpolation(&points).unwrap();
+    let spline =
+        cubic_spline_interpolation(
+            &points,
+        )
+        .unwrap();
 
     assert_approx_eq!(
         spline(0.5),
@@ -56,7 +62,10 @@ fn test_bezier_basic() {
         vec![2.0, 0.0],
     ];
 
-    let p = bezier_curve(&control_points, 0.5);
+    let p = bezier_curve(
+        &control_points,
+        0.5,
+    );
 
     assert_approx_eq!(p[0], 1.0, 1e-9);
 

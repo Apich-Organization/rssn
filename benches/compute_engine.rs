@@ -6,18 +6,28 @@ use criterion::Criterion;
 use rssn::compute::engine::ComputeEngine;
 use rssn::symbolic::core::Expr;
 
-fn bench_engine_creation(c : &mut Criterion) {
+fn bench_engine_creation(
+    c : &mut Criterion
+) {
 
-    c.bench_function("engine_new", |b| {
+    c.bench_function(
+        "engine_new",
+        |b| {
 
-        b.iter(|| {
+            b.iter(|| {
 
-            black_box(ComputeEngine::new());
-        });
-    });
+                black_box(
+                    ComputeEngine::new(
+                    ),
+                );
+            });
+        },
+    );
 }
 
-fn bench_parse_and_submit(c : &mut Criterion) {
+fn bench_parse_and_submit(
+    c : &mut Criterion
+) {
 
     let engine = ComputeEngine::new();
 
@@ -27,7 +37,12 @@ fn bench_parse_and_submit(c : &mut Criterion) {
 
             b.iter(|| {
 
-                let _ = engine.parse_and_submit(black_box("2 + 2"));
+                let _ = engine
+                    .parse_and_submit(
+                        black_box(
+                            "2 + 2",
+                        ),
+                    );
             });
         },
     );
@@ -38,19 +53,26 @@ fn bench_parse_and_submit(c : &mut Criterion) {
 
             b.iter(|| {
 
-                let _ = engine.parse_and_submit(black_box(
-                    "(x + y) * (a - b) / c",
-                ));
+                let _ = engine
+                    .parse_and_submit(
+                    black_box(
+                        "(x + y) * (a \
+                         - b) / c",
+                    ),
+                );
             });
         },
     );
 }
 
-fn bench_submit_direct(c : &mut Criterion) {
+fn bench_submit_direct(
+    c : &mut Criterion
+) {
 
     let engine = ComputeEngine::new();
 
-    let expr = Arc::new(Expr::Constant(42.0));
+    let expr =
+        Arc::new(Expr::Constant(42.0));
 
     c.bench_function(
         "submit_direct",
@@ -59,16 +81,21 @@ fn bench_submit_direct(c : &mut Criterion) {
             b.iter(|| {
 
                 black_box(
-                    engine.submit(black_box(
-                        expr.clone(),
-                    )),
+                    engine.submit(
+                        black_box(
+                            expr.clone(
+                            ),
+                        ),
+                    ),
                 );
             });
         },
     );
 }
 
-fn bench_get_status(c : &mut Criterion) {
+fn bench_get_status(
+    c : &mut Criterion
+) {
 
     let engine = ComputeEngine::new();
 
@@ -76,16 +103,25 @@ fn bench_get_status(c : &mut Criterion) {
         .parse_and_submit("2 + 2")
         .unwrap();
 
-    c.bench_function("get_status", |b| {
+    c.bench_function(
+        "get_status",
+        |b| {
 
-        b.iter(|| {
+            b.iter(|| {
 
-            black_box(engine.get_status(black_box(&id)));
-        });
-    });
+                black_box(
+                    engine.get_status(
+                        black_box(&id),
+                    ),
+                );
+            });
+        },
+    );
 }
 
-fn bench_get_progress(c : &mut Criterion) {
+fn bench_get_progress(
+    c : &mut Criterion
+) {
 
     let engine = ComputeEngine::new();
 
@@ -99,13 +135,22 @@ fn bench_get_progress(c : &mut Criterion) {
 
             b.iter(|| {
 
-                black_box(engine.get_progress(black_box(&id)));
+                black_box(
+                    engine
+                        .get_progress(
+                            black_box(
+                                &id,
+                            ),
+                        ),
+                );
             });
         },
     );
 }
 
-fn bench_pause_resume(c : &mut Criterion) {
+fn bench_pause_resume(
+    c : &mut Criterion
+) {
 
     let engine = ComputeEngine::new();
 
@@ -117,7 +162,8 @@ fn bench_pause_resume(c : &mut Criterion) {
 
         b.iter(|| {
 
-            engine.pause(black_box(&id));
+            engine
+                .pause(black_box(&id));
         });
     });
 
@@ -125,7 +171,8 @@ fn bench_pause_resume(c : &mut Criterion) {
 
         b.iter(|| {
 
-            engine.resume(black_box(&id));
+            engine
+                .resume(black_box(&id));
         });
     });
 }

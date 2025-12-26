@@ -31,7 +31,8 @@ struct GraphDef {
 impl GraphDef {
     fn to_graph(&self) -> Graph {
 
-        let mut g = Graph::new(self.num_nodes);
+        let mut g =
+            Graph::new(self.num_nodes);
 
         for edge in &self.edges {
 
@@ -71,7 +72,9 @@ struct PageRankInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : DijkstraInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -89,7 +92,8 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(buffer : BincodeBuffer)
         .graph
         .to_graph();
 
-    let (dist, prev) = dijkstra(&g, input.start_node);
+    let (dist, prev) =
+        dijkstra(&g, input.start_node);
 
     to_bincode_buffer(&FfiResult {
         ok : Some(DijkstraOutput {
@@ -102,7 +106,9 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(buffer : BincodeBuffer)
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : DijkstraInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -120,7 +126,8 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(buffer : BincodeBuffer) -> B
         .graph
         .to_graph();
 
-    let dist = bfs(&g, input.start_node);
+    let dist =
+        bfs(&g, input.start_node);
 
     to_bincode_buffer(&FfiResult {
         ok : Some(dist),
@@ -130,7 +137,9 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(buffer : BincodeBuffer) -> B
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_graph_page_rank_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_graph_page_rank_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : PageRankInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -205,15 +214,19 @@ struct GraphDefOut {
 }
 
 impl GraphDefOut {
-    fn from_graph(graph : &Graph) -> Self {
+    fn from_graph(
+        graph : &Graph
+    ) -> Self {
 
-        let num_nodes = graph.num_nodes();
+        let num_nodes =
+            graph.num_nodes();
 
         let mut edges = Vec::new();
 
         for u in 0 .. num_nodes {
 
-            for &(v, w) in graph.adj(u) {
+            for &(v, w) in graph.adj(u)
+            {
 
                 edges.push(EdgeOut {
                     u,
@@ -280,7 +293,8 @@ pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_bincode(
 
     let mst = crate::numerical::graph::minimum_spanning_tree(&g);
 
-    let mst_def = GraphDefOut::from_graph(&mst);
+    let mst_def =
+        GraphDefOut::from_graph(&mst);
 
     to_bincode_buffer(&FfiResult {
         ok : Some(mst_def),

@@ -16,7 +16,8 @@ unsafe fn parse_c_str_array(
         return None;
     }
 
-    let mut vars = Vec::with_capacity(len);
+    let mut vars =
+        Vec::with_capacity(len);
 
     for i in 0 .. len {
 
@@ -30,7 +31,9 @@ unsafe fn parse_c_str_array(
         let c_str = CStr::from_ptr(ptr);
 
         match c_str.to_str() {
-            | Ok(s) => vars.push(s.to_string()),
+            | Ok(s) => {
+                vars.push(s.to_string())
+            },
             | Err(_) => return None,
         }
     }
@@ -64,12 +67,17 @@ pub extern "C" fn rssn_exterior_derivative_handle(
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs : Vec<&str> = vars_strings
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+        let vars_refs : Vec<&str> =
+            vars_strings
+                .iter()
+                .map(|s| s.as_str())
+                .collect();
 
-        let result = exterior_derivative(form, &vars_refs);
+        let result =
+            exterior_derivative(
+                form,
+                &vars_refs,
+            );
 
         Box::into_raw(Box::new(result))
     }
@@ -83,7 +91,9 @@ pub extern "C" fn rssn_wedge_product_handle(
     form2_ptr : *const DifferentialForm,
 ) -> *mut DifferentialForm {
 
-    if form1_ptr.is_null() || form2_ptr.is_null() {
+    if form1_ptr.is_null()
+        || form2_ptr.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -94,7 +104,8 @@ pub extern "C" fn rssn_wedge_product_handle(
 
         let form2 = &*form2_ptr;
 
-        let result = wedge_product(form1, form2);
+        let result =
+            wedge_product(form1, form2);
 
         Box::into_raw(Box::new(result))
     }
@@ -103,7 +114,9 @@ pub extern "C" fn rssn_wedge_product_handle(
 /// Computes the boundary of a domain (Handle)
 #[no_mangle]
 
-pub extern "C" fn rssn_boundary_handle(domain_ptr : *const Expr) -> *mut Expr {
+pub extern "C" fn rssn_boundary_handle(
+    domain_ptr : *const Expr
+) -> *mut Expr {
 
     if domain_ptr.is_null() {
 
@@ -130,7 +143,9 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
     vars_len : c_int,
 ) -> *mut Expr {
 
-    if omega_ptr.is_null() || manifold_ptr.is_null() {
+    if omega_ptr.is_null()
+        || manifold_ptr.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -149,16 +164,18 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs : Vec<&str> = vars_strings
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+        let vars_refs : Vec<&str> =
+            vars_strings
+                .iter()
+                .map(|s| s.as_str())
+                .collect();
 
-        let result = generalized_stokes_theorem(
-            omega,
-            manifold,
-            &vars_refs,
-        );
+        let result =
+            generalized_stokes_theorem(
+                omega,
+                manifold,
+                &vars_refs,
+            );
 
         Box::into_raw(Box::new(result))
     }
@@ -172,18 +189,24 @@ pub extern "C" fn rssn_gauss_theorem_handle(
     volume_ptr : *const Expr,
 ) -> *mut Expr {
 
-    if vector_field_ptr.is_null() || volume_ptr.is_null() {
+    if vector_field_ptr.is_null()
+        || volume_ptr.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     unsafe {
 
-        let vector_field = &*vector_field_ptr;
+        let vector_field =
+            &*vector_field_ptr;
 
         let volume = &*volume_ptr;
 
-        let result = gauss_theorem(vector_field, volume);
+        let result = gauss_theorem(
+            vector_field,
+            volume,
+        );
 
         Box::into_raw(Box::new(result))
     }
@@ -197,14 +220,17 @@ pub extern "C" fn rssn_stokes_theorem_handle(
     surface_ptr : *const Expr,
 ) -> *mut Expr {
 
-    if vector_field_ptr.is_null() || surface_ptr.is_null() {
+    if vector_field_ptr.is_null()
+        || surface_ptr.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     unsafe {
 
-        let vector_field = &*vector_field_ptr;
+        let vector_field =
+            &*vector_field_ptr;
 
         let surface = &*surface_ptr;
 
@@ -226,7 +252,10 @@ pub extern "C" fn rssn_greens_theorem_handle(
     domain_ptr : *const Expr,
 ) -> *mut Expr {
 
-    if p_ptr.is_null() || q_ptr.is_null() || domain_ptr.is_null() {
+    if p_ptr.is_null()
+        || q_ptr.is_null()
+        || domain_ptr.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -239,7 +268,11 @@ pub extern "C" fn rssn_greens_theorem_handle(
 
         let domain = &*domain_ptr;
 
-        let result = greens_theorem(p, q, domain);
+        let result = greens_theorem(
+            p,
+            q,
+            domain,
+        );
 
         Box::into_raw(Box::new(result))
     }
@@ -248,7 +281,9 @@ pub extern "C" fn rssn_greens_theorem_handle(
 /// Frees a DifferentialForm handle
 #[no_mangle]
 
-pub extern "C" fn rssn_free_differential_form_handle(ptr : *mut DifferentialForm) {
+pub extern "C" fn rssn_free_differential_form_handle(
+    ptr : *mut DifferentialForm
+) {
 
     if !ptr.is_null() {
 

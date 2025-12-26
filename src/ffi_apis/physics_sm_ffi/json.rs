@@ -62,10 +62,12 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::ok(res))
+        serde_json::to_string(
+            &FfiResult::<
+                Vec<f64>,
+                String,
+            >::ok(res),
+        )
         .unwrap(),
     )
 }
@@ -97,10 +99,12 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::ok(res))
+        serde_json::to_string(
+            &FfiResult::<
+                Vec<f64>,
+                String,
+            >::ok(res),
+        )
         .unwrap(),
     )
 }

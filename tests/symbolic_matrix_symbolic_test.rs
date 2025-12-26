@@ -72,9 +72,11 @@ fn test_symbolic_rref() {
         ],
     ]);
 
-    let rref_res = rref(&matrix).unwrap();
+    let rref_res =
+        rref(&matrix).unwrap();
 
-    if let Expr::Matrix(rows) = rref_res {
+    if let Expr::Matrix(rows) = rref_res
+    {
 
         println!(
             "RREF Result: {:?}",
@@ -90,7 +92,9 @@ fn test_symbolic_rref() {
         // It might be a DAG, so let's convert to AST first
         let val_0_0 = rows[0][0]
             .to_ast()
-            .unwrap_or(rows[0][0].clone());
+            .unwrap_or(
+                rows[0][0].clone(),
+            );
 
         assert!(
             matches!(val_0_0, Expr::Constant(v) if (v - 1.0).abs() < 1e-9)
@@ -117,7 +121,9 @@ fn test_symbolic_rref() {
             // If it's not structurally zero, maybe it's "a - a"
             // Let's see what it is.
             println!(
-                "Warning: Symbolic cancellation might have failed: {:?}",
+                "Warning: Symbolic \
+                 cancellation might \
+                 have failed: {:?}",
                 val_0_1
             );
         }
@@ -137,14 +143,16 @@ fn test_symbolic_linear_system() {
     let b_var = Expr::new_variable("b");
 
     let A = Expr::Matrix(vec![vec![
-        a_var.clone()
+        a_var.clone(),
     ]]);
 
     let B = Expr::Matrix(vec![vec![
-        b_var.clone()
+        b_var.clone(),
     ]]);
 
-    let sol = solve_linear_system(&A, &B).unwrap();
+    let sol =
+        solve_linear_system(&A, &B)
+            .unwrap();
 
     if let Expr::Matrix(rows) = sol {
 
@@ -158,10 +166,13 @@ fn test_symbolic_linear_system() {
         // Expected: b/a
 
         // Construct b/a
-        let expected = Expr::new_div(b_var, a_var);
+        let expected =
+            Expr::new_div(b_var, a_var);
         // Again, exact match might be tricky depending on simplification
     } else {
 
-        panic!("Expected matrix solution");
+        panic!(
+            "Expected matrix solution"
+        );
     }
 }

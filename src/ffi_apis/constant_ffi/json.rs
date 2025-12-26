@@ -10,7 +10,9 @@ use serde::Serialize;
 use crate::ffi_apis::common::to_c_string;
 
 /// Build information structure for JSON serialization.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct BuildInfo {
     pub build_date : String,
@@ -24,7 +26,8 @@ pub struct BuildInfo {
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_build_info_json() -> *mut c_char {
+pub extern "C" fn rssn_get_build_info_json(
+) -> *mut c_char {
 
     let info = BuildInfo {
         build_date : crate::constant::get_build_date().to_string(),
@@ -36,7 +39,9 @@ pub extern "C" fn rssn_get_build_info_json() -> *mut c_char {
 
     match serde_json::to_string(&info) {
         | Ok(json) => to_c_string(json),
-        | Err(_) => std::ptr::null_mut(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -44,13 +49,18 @@ pub extern "C" fn rssn_get_build_info_json() -> *mut c_char {
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_build_date_json() -> *mut c_char {
+pub extern "C" fn rssn_get_build_date_json(
+) -> *mut c_char {
 
-    let date = crate::constant::get_build_date();
+    let date =
+        crate::constant::get_build_date(
+        );
 
     match serde_json::to_string(&date) {
         | Ok(json) => to_c_string(json),
-        | Err(_) => std::ptr::null_mut(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -58,12 +68,17 @@ pub extern "C" fn rssn_get_build_date_json() -> *mut c_char {
 /// The caller must free the returned string using rssn_free_string.
 #[no_mangle]
 
-pub extern "C" fn rssn_get_commit_sha_json() -> *mut c_char {
+pub extern "C" fn rssn_get_commit_sha_json(
+) -> *mut c_char {
 
-    let sha = crate::constant::get_commit_sha();
+    let sha =
+        crate::constant::get_commit_sha(
+        );
 
     match serde_json::to_string(&sha) {
         | Ok(json) => to_c_string(json),
-        | Err(_) => std::ptr::null_mut(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }

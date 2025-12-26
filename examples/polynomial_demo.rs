@@ -16,12 +16,17 @@ use rssn::symbolic::polynomial::*;
 
 fn main() {
 
-    println!("=== Polynomial Manipulation Examples ===\n");
+    println!(
+        "=== Polynomial Manipulation \
+         Examples ===\n"
+    );
 
     // Example 1: Creating polynomials
     println!("1. Creating Polynomials");
 
-    println!("   ---------------------");
+    println!(
+        "   ---------------------"
+    );
 
     // Create x^2 + 2x + 1 using expression form
     let poly1 = Expr::new_add(
@@ -38,7 +43,9 @@ fn main() {
         Expr::new_constant(1.0),
     );
 
-    println!("   Polynomial 1: x^2 + 2x + 1");
+    println!(
+        "   Polynomial 1: x^2 + 2x + 1"
+    );
 
     println!(
         "   Degree: {}",
@@ -51,9 +58,13 @@ fn main() {
     );
 
     // Example 2: Polynomial long division
-    println!("2. Polynomial Long Division");
+    println!(
+        "2. Polynomial Long Division"
+    );
 
-    println!("   -------------------------");
+    println!(
+        "   -------------------------"
+    );
 
     // Divide x^2 + 3x + 2 by x + 1
     let dividend = Expr::new_add(
@@ -75,15 +86,18 @@ fn main() {
         Expr::new_constant(1.0),
     );
 
-    println!("   Dividend: x^2 + 3x + 2");
+    println!(
+        "   Dividend: x^2 + 3x + 2"
+    );
 
     println!("   Divisor: x + 1");
 
-    let (quotient, remainder) = polynomial_long_division(
-        &dividend,
-        &divisor,
-        "x",
-    );
+    let (quotient, remainder) =
+        polynomial_long_division(
+            &dividend,
+            &divisor,
+            "x",
+        );
 
     println!(
         "   Quotient: {}",
@@ -96,7 +110,9 @@ fn main() {
     );
 
     // Example 3: Differentiation
-    println!("3. Polynomial Differentiation");
+    println!(
+        "3. Polynomial Differentiation"
+    );
 
     println!("   ---------------------------");
 
@@ -110,15 +126,21 @@ fn main() {
             Expr::new_mul(
                 Expr::new_constant(2.0),
                 Expr::new_pow(
-                    Expr::new_variable("x"),
-                    Expr::new_constant(2.0),
+                    Expr::new_variable(
+                        "x",
+                    ),
+                    Expr::new_constant(
+                        2.0,
+                    ),
                 ),
             ),
         ),
         Expr::new_variable("x"),
     );
 
-    println!("   Original: x^3 + 2x^2 + x");
+    println!(
+        "   Original: x^3 + 2x^2 + x"
+    );
 
     // Convert to sparse form for differentiation
     let sparse = expr_to_sparse_poly(
@@ -126,9 +148,15 @@ fn main() {
         &["x"],
     );
 
-    let derivative = differentiate_poly(&sparse, "x");
+    let derivative = differentiate_poly(
+        &sparse,
+        "x",
+    );
 
-    let derivative_expr = sparse_poly_to_expr(&derivative);
+    let derivative_expr =
+        sparse_poly_to_expr(
+            &derivative,
+        );
 
     println!(
         "   Derivative: {}\n",
@@ -136,7 +164,10 @@ fn main() {
     );
 
     // Example 4: Sparse polynomial operations
-    println!("4. Sparse Polynomial Operations");
+    println!(
+        "4. Sparse Polynomial \
+         Operations"
+    );
 
     println!("   -----------------------------");
 
@@ -200,21 +231,33 @@ fn main() {
     );
 
     // Example 5: Multivariate polynomials
-    println!("5. Multivariate Polynomials");
+    println!(
+        "5. Multivariate Polynomials"
+    );
 
-    println!("   -------------------------");
+    println!(
+        "   -------------------------"
+    );
 
     // Create x*y + 2x + 3y + 4
     let multivar = Expr::new_add(
         Expr::new_add(
             Expr::new_add(
                 Expr::new_mul(
-                    Expr::new_variable("x"),
-                    Expr::new_variable("y"),
+                    Expr::new_variable(
+                        "x",
+                    ),
+                    Expr::new_variable(
+                        "y",
+                    ),
                 ),
                 Expr::new_mul(
-                    Expr::new_constant(2.0),
-                    Expr::new_variable("x"),
+                    Expr::new_constant(
+                        2.0,
+                    ),
+                    Expr::new_variable(
+                        "x",
+                    ),
                 ),
             ),
             Expr::new_mul(
@@ -225,12 +268,16 @@ fn main() {
         Expr::new_constant(4.0),
     );
 
-    println!("   Polynomial: x*y + 2x + 3y + 4");
-
-    let sparse_multi = expr_to_sparse_poly(
-        &multivar,
-        &["x", "y"],
+    println!(
+        "   Polynomial: x*y + 2x + 3y \
+         + 4"
     );
+
+    let sparse_multi =
+        expr_to_sparse_poly(
+            &multivar,
+            &["x", "y"],
+        );
 
     println!(
         "   Number of terms: {}",
@@ -250,17 +297,25 @@ fn main() {
     );
 
     // Example 6: Coefficient extraction
-    println!("6. Coefficient Extraction");
+    println!(
+        "6. Coefficient Extraction"
+    );
 
-    println!("   -----------------------");
+    println!(
+        "   -----------------------"
+    );
 
     let poly_coeffs = Expr::new_add(
         Expr::new_add(
             Expr::new_mul(
                 Expr::new_constant(3.0),
                 Expr::new_pow(
-                    Expr::new_variable("x"),
-                    Expr::new_constant(2.0),
+                    Expr::new_variable(
+                        "x",
+                    ),
+                    Expr::new_constant(
+                        2.0,
+                    ),
                 ),
             ),
             Expr::new_mul(
@@ -271,17 +326,28 @@ fn main() {
         Expr::new_constant(1.0),
     );
 
-    println!("   Polynomial: 3x^2 + 2x + 1");
+    println!(
+        "   Polynomial: 3x^2 + 2x + 1"
+    );
 
-    let coeffs = to_polynomial_coeffs_vec(&poly_coeffs, "x");
+    let coeffs =
+        to_polynomial_coeffs_vec(
+            &poly_coeffs,
+            "x",
+        );
 
     println!(
-        "   Coefficients [c0, c1, c2]: {:?}",
+        "   Coefficients [c0, c1, \
+         c2]: {:?}",
         coeffs
     );
 
     // Reconstruct from coefficients
-    let reconstructed = from_coeffs_to_expr(&coeffs, "x");
+    let reconstructed =
+        from_coeffs_to_expr(
+            &coeffs,
+            "x",
+        );
 
     println!(
         "   Reconstructed: {}\n",
@@ -320,9 +386,15 @@ fn main() {
 
     println!("   p2: x^2 - 2x + 1");
 
-    let sparse1 = expr_to_sparse_poly(&gcd_poly1, &["x"]);
+    let sparse1 = expr_to_sparse_poly(
+        &gcd_poly1,
+        &["x"],
+    );
 
-    let sparse2 = expr_to_sparse_poly(&gcd_poly2, &["x"]);
+    let sparse2 = expr_to_sparse_poly(
+        &gcd_poly2,
+        &["x"],
+    );
 
     let gcd_result = gcd(
         sparse1,
@@ -332,8 +404,12 @@ fn main() {
 
     println!(
         "   GCD: {}\n",
-        sparse_poly_to_expr(&gcd_result)
+        sparse_poly_to_expr(
+            &gcd_result
+        )
     );
 
-    println!("=== Examples Complete ===");
+    println!(
+        "=== Examples Complete ==="
+    );
 }

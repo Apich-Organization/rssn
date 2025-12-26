@@ -18,21 +18,23 @@ pub unsafe extern "C" fn path_continuation_new_json(
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
     let start_point : Expr = match from_json_string(start_point_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let path_continuation = PathContinuation::new(
-        &func,
-        var_str,
-        &start_point,
-        order,
-    );
+    let path_continuation =
+        PathContinuation::new(
+            &func,
+            var_str,
+            &start_point,
+            order,
+        );
 
     to_json_string(&path_continuation)
 }
@@ -54,8 +56,14 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_json(
         | None => return std::ptr::null_mut(),
     };
 
-    match pc.continue_along_path(&path_points) {
-        | Ok(_) => to_c_string("OK".to_string()),
+    match pc.continue_along_path(
+        &path_points,
+    ) {
+        | Ok(_) => {
+            to_c_string(
+                "OK".to_string(),
+            )
+        },
         | Err(e) => to_c_string(e),
     }
 }
@@ -71,7 +79,9 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_json(
         | None => return std::ptr::null_mut(),
     };
 
-    to_json_string(&pc.get_final_expression())
+    to_json_string(
+        &pc.get_final_expression(),
+    )
 }
 
 #[no_mangle]
@@ -83,19 +93,26 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_json(
     order : usize,
 ) -> f64 {
 
-    let series_expr : Expr = match from_json_string(series_expr_json) {
-        | Some(e) => e,
-        | None => return 0.0,
-    };
+    let series_expr : Expr =
+        match from_json_string(
+            series_expr_json,
+        ) {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
-    let center : Expr = match from_json_string(center_json) {
-        | Some(e) => e,
-        | None => return 0.0,
-    };
+    let center : Expr =
+        match from_json_string(
+            center_json,
+        ) {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
     crate::symbolic::complex_analysis::estimate_radius_of_convergence(
         &series_expr,
@@ -113,15 +130,19 @@ pub unsafe extern "C" fn complex_distance_json(
     p2_json : *const c_char,
 ) -> f64 {
 
-    let p1 : Expr = match from_json_string(p1_json) {
-        | Some(e) => e,
-        | None => return 0.0,
-    };
+    let p1 : Expr =
+        match from_json_string(p1_json)
+        {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
-    let p2 : Expr = match from_json_string(p2_json) {
-        | Some(e) => e,
-        | None => return 0.0,
-    };
+    let p2 : Expr =
+        match from_json_string(p2_json)
+        {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
     crate::symbolic::complex_analysis::complex_distance(&p1, &p2).unwrap_or(0.0)
 }
@@ -140,9 +161,10 @@ pub unsafe extern "C" fn classify_singularity_json(
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
     let singularity : Expr = match from_json_string(singularity_json) {
         | Some(e) => e,
@@ -173,9 +195,10 @@ pub unsafe extern "C" fn laurent_series_json(
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
     let center : Expr = match from_json_string(center_json) {
         | Some(e) => e,
@@ -205,9 +228,10 @@ pub unsafe extern "C" fn calculate_residue_json(
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
     let singularity : Expr = match from_json_string(singularity_json) {
         | Some(e) => e,
@@ -236,9 +260,10 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_json(
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
     let singularities : Vec<Expr> = match from_json_string(singularities_json) {
         | Some(e) => e,
@@ -283,16 +308,22 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
         | None => return std::ptr::null_mut(),
     };
 
-    let mobius = MobiusTransformation::new(a, b, c, d);
+    let mobius =
+        MobiusTransformation::new(
+            a, b, c, d,
+        );
 
     to_json_string(&mobius)
 }
 
 #[no_mangle]
 
-pub extern "C" fn mobius_transformation_identity_json() -> *mut c_char {
+pub extern "C" fn mobius_transformation_identity_json(
+) -> *mut c_char {
 
-    let mobius = MobiusTransformation::identity();
+    let mobius =
+        MobiusTransformation::identity(
+        );
 
     to_json_string(&mobius)
 }
@@ -336,7 +367,8 @@ pub unsafe extern "C" fn mobius_transformation_compose_json(
         | None => return std::ptr::null_mut(),
     };
 
-    let result = mobius1.compose(&mobius2);
+    let result =
+        mobius1.compose(&mobius2);
 
     to_json_string(&result)
 }
@@ -370,9 +402,10 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
     let z0 : Expr = match from_json_string(z0_json) {
         | Some(e) => e,
@@ -398,9 +431,10 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str = std::ffi::CStr::from_ptr(var)
-        .to_str()
-        .unwrap();
+    let var_str =
+        std::ffi::CStr::from_ptr(var)
+            .to_str()
+            .unwrap();
 
     let z0 : Expr = match from_json_string(z0_json) {
         | Some(e) => e,
@@ -419,7 +453,9 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_exp_json(z_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn complex_exp_json(
+    z_json : *const c_char
+) -> *mut c_char {
 
     let z : Expr = match from_json_string(z_json) {
         | Some(e) => e,
@@ -433,7 +469,9 @@ pub unsafe extern "C" fn complex_exp_json(z_json : *const c_char) -> *mut c_char
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_log_json(z_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn complex_log_json(
+    z_json : *const c_char
+) -> *mut c_char {
 
     let z : Expr = match from_json_string(z_json) {
         | Some(e) => e,
@@ -447,7 +485,9 @@ pub unsafe extern "C" fn complex_log_json(z_json : *const c_char) -> *mut c_char
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_arg_json(z_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn complex_arg_json(
+    z_json : *const c_char
+) -> *mut c_char {
 
     let z : Expr = match from_json_string(z_json) {
         | Some(e) => e,
@@ -461,7 +501,9 @@ pub unsafe extern "C" fn complex_arg_json(z_json : *const c_char) -> *mut c_char
 
 #[no_mangle]
 
-pub unsafe extern "C" fn complex_modulus_json(z_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn complex_modulus_json(
+    z_json : *const c_char
+) -> *mut c_char {
 
     let z : Expr = match from_json_string(z_json) {
         | Some(e) => e,

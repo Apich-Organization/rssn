@@ -17,7 +17,14 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::inverse_matrix;
 use crate::symbolic::simplify_dag::simplify;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Tensor {
     pub components : Vec<Expr>,
@@ -40,14 +47,19 @@ impl Tensor {
         shape : Vec<usize>,
     ) -> Result<Self, String> {
 
-        let expected_len : usize = shape
-            .iter()
-            .product();
+        let expected_len : usize =
+            shape
+                .iter()
+                .product();
 
-        if components.len() != expected_len {
+        if components.len()
+            != expected_len
+        {
 
             return Err(format!(
-                "Number of components ({}) does not match shape ({:?})",
+                "Number of components \
+                 ({}) does not match \
+                 shape ({:?})",
                 components.len(),
                 shape
             ));
@@ -87,9 +99,15 @@ impl Tensor {
         indices : &[usize],
     ) -> Result<&Expr, String> {
 
-        if indices.len() != self.rank() {
+        if indices.len() != self.rank()
+        {
 
-            return Err("Incorrect number of indices for tensor rank".to_string());
+            return Err(
+                "Incorrect number of \
+                 indices for tensor \
+                 rank"
+                    .to_string(),
+            );
         }
 
         let mut flat_index = 0;
@@ -106,17 +124,23 @@ impl Tensor {
             if indices[i] >= dim {
 
                 return Err(format!(
-                    "Index {} out of bounds for dimension {}",
+                    "Index {} out of \
+                     bounds for \
+                     dimension {}",
                     indices[i], i
                 ));
             }
 
-            flat_index += indices[i] * stride;
+            flat_index +=
+                indices[i] * stride;
 
             stride *= dim;
         }
 
-        Ok(&self.components[flat_index])
+        Ok(
+            &self.components
+                [flat_index],
+        )
     }
 
     pub(crate) fn get_mut(
@@ -124,9 +148,15 @@ impl Tensor {
         indices : &[usize],
     ) -> Result<&mut Expr, String> {
 
-        if indices.len() != self.rank() {
+        if indices.len() != self.rank()
+        {
 
-            return Err("Incorrect number of indices for tensor rank".to_string());
+            return Err(
+                "Incorrect number of \
+                 indices for tensor \
+                 rank"
+                    .to_string(),
+            );
         }
 
         let mut flat_index = 0;
@@ -143,17 +173,21 @@ impl Tensor {
             if indices[i] >= dim {
 
                 return Err(format!(
-                    "Index {} out of bounds for dimension {}",
+                    "Index {} out of \
+                     bounds for \
+                     dimension {}",
                     indices[i], i
                 ));
             }
 
-            flat_index += indices[i] * stride;
+            flat_index +=
+                indices[i] * stride;
 
             stride *= dim;
         }
 
-        Ok(&mut self.components[flat_index])
+        Ok(&mut self.components
+            [flat_index])
     }
 
     /// Performs tensor addition with another tensor.
@@ -172,7 +206,12 @@ impl Tensor {
 
         if self.shape != other.shape {
 
-            return Err("Tensors must have the same shape for addition".to_string());
+            return Err(
+                "Tensors must have \
+                 the same shape for \
+                 addition"
+                    .to_string(),
+            );
         }
 
         let new_components = self
@@ -185,10 +224,12 @@ impl Tensor {
             )
             .map(|(a, b)| {
 
-                simplify(&Expr::new_add(
-                    a.clone(),
-                    b.clone(),
-                ))
+                simplify(
+                    &Expr::new_add(
+                        a.clone(),
+                        b.clone(),
+                    ),
+                )
             })
             .collect();
 
@@ -214,7 +255,12 @@ impl Tensor {
 
         if self.shape != other.shape {
 
-            return Err("Tensors must have the same shape for subtraction".to_string());
+            return Err(
+                "Tensors must have \
+                 the same shape for \
+                 subtraction"
+                    .to_string(),
+            );
         }
 
         let new_components = self
@@ -227,10 +273,12 @@ impl Tensor {
             )
             .map(|(a, b)| {
 
-                simplify(&Expr::new_sub(
-                    a.clone(),
-                    b.clone(),
-                ))
+                simplify(
+                    &Expr::new_sub(
+                        a.clone(),
+                        b.clone(),
+                    ),
+                )
             })
             .collect();
 
@@ -260,10 +308,12 @@ impl Tensor {
             .iter()
             .map(|c| {
 
-                simplify(&Expr::new_mul(
-                    scalar.clone(),
-                    c.clone(),
-                ))
+                simplify(
+                    &Expr::new_mul(
+                        scalar.clone(),
+                        c.clone(),
+                    ),
+                )
             })
             .collect();
 
@@ -290,31 +340,37 @@ impl Tensor {
         other : &Self,
     ) -> Result<Self, String> {
 
-        let new_shape : Vec<usize> = self
-            .shape
-            .iter()
-            .chain(other.shape.iter())
-            .copied()
-            .collect();
+        let new_shape : Vec<usize> =
+            self.shape
+                .iter()
+                .chain(
+                    other.shape.iter(),
+                )
+                .copied()
+                .collect();
 
-        let mut new_components = Vec::with_capacity(
-            self.components
-                .len()
-                * other
-                    .components
-                    .len(),
-        );
+        let mut new_components =
+            Vec::with_capacity(
+                self.components
+                    .len()
+                    * other
+                        .components
+                        .len(),
+            );
 
         for c1 in &self.components {
 
-            for c2 in &other.components {
+            for c2 in &other.components
+            {
 
-                new_components.push(simplify(
-                    &Expr::new_mul(
-                        c1.clone(),
-                        c2.clone(),
+                new_components.push(
+                    simplify(
+                        &Expr::new_mul(
+                            c1.clone(),
+                            c2.clone(),
+                        ),
                     ),
-                ));
+                );
             }
         }
 
@@ -344,57 +400,87 @@ impl Tensor {
         axis2 : usize,
     ) -> Result<Self, String> {
 
-        if axis1 >= self.rank() || axis2 >= self.rank() {
+        if axis1 >= self.rank()
+            || axis2 >= self.rank()
+        {
 
-            return Err("Axis out of bounds".to_string());
+            return Err("Axis out of \
+                        bounds"
+                .to_string());
         }
 
-        if self.shape[axis1] != self.shape[axis2] {
+        if self.shape[axis1]
+            != self.shape[axis2]
+        {
 
-            return Err("Dimensions of contracted axes must be equal".to_string());
+            return Err("Dimensions \
+                        of contracted \
+                        axes must be \
+                        equal"
+                .to_string());
         }
 
         if axis1 == axis2 {
 
-            return Err("Cannot contract an axis with itself".to_string());
+            return Err(
+                "Cannot contract an \
+                 axis with itself"
+                    .to_string(),
+            );
         }
 
-        let mut new_shape = self.shape.clone();
+        let mut new_shape =
+            self.shape.clone();
 
         let dim = self.shape[axis1];
 
-        new_shape.remove(axis1.max(axis2));
+        new_shape
+            .remove(axis1.max(axis2));
 
-        new_shape.remove(axis1.min(axis2));
+        new_shape
+            .remove(axis1.min(axis2));
 
-        let new_len : usize = if new_shape.is_empty() {
+        let new_len : usize =
+            if new_shape.is_empty() {
 
-            1
-        } else {
+                1
+            } else {
 
-            new_shape
-                .iter()
-                .product()
-        };
+                new_shape
+                    .iter()
+                    .product()
+            };
 
-        let new_components = vec![Expr::BigInt(BigInt::zero()); new_len];
+        let new_components =
+            vec![
+                Expr::BigInt(
+                    BigInt::zero()
+                );
+                new_len
+            ];
 
         let mut new_tensor = Self::new(
             new_components,
             new_shape.clone(),
         )?;
 
-        let mut current_indices = vec![0; self.rank()];
+        let mut current_indices =
+            vec![0; self.rank()];
 
         loop {
 
-            let mut sum_val = Expr::BigInt(BigInt::zero());
+            let mut sum_val =
+                Expr::BigInt(
+                    BigInt::zero(),
+                );
 
             for i in 0 .. dim {
 
-                current_indices[axis1] = i;
+                current_indices
+                    [axis1] = i;
 
-                current_indices[axis2] = i;
+                current_indices
+                    [axis2] = i;
 
                 sum_val = simplify(&Expr::new_add(
                     sum_val,
@@ -403,41 +489,57 @@ impl Tensor {
                 ));
             }
 
-            let new_indices : Vec<usize> = current_indices
+            let new_indices : Vec<
+                usize,
+            > = current_indices
                 .iter()
                 .enumerate()
-                .filter(|(idx, _)| *idx != axis1 && *idx != axis2)
+                .filter(|(idx, _)| {
+                    *idx != axis1
+                        && *idx != axis2
+                })
                 .map(|(_, &val)| val)
                 .collect();
 
             if new_tensor.rank() > 0 {
 
-                *new_tensor.get_mut(&new_indices)? = sum_val;
+                *new_tensor.get_mut(
+                    &new_indices,
+                )? = sum_val;
             } else {
 
-                new_tensor.components[0] = sum_val;
+                new_tensor.components
+                    [0] = sum_val;
             }
 
             // Increment indices (skip contracted axes)
             let mut done = true;
 
-            for idx in (0 .. self.rank()).rev() {
+            for idx in
+                (0 .. self.rank()).rev()
+            {
 
-                if idx == axis1 || idx == axis2 {
+                if idx == axis1
+                    || idx == axis2
+                {
 
                     continue; // Skip contracted axes
                 }
 
-                current_indices[idx] += 1;
+                current_indices[idx] +=
+                    1;
 
-                if current_indices[idx] < self.shape[idx] {
+                if current_indices[idx]
+                    < self.shape[idx]
+                {
 
                     done = false;
 
                     break;
                 }
 
-                current_indices[idx] = 0;
+                current_indices[idx] =
+                    0;
             }
 
             if done {
@@ -456,11 +558,18 @@ impl Tensor {
     /// # Returns
     /// A `Result` containing an `Expr::Matrix` or an error string if the tensor is not rank-2.
 
-    pub fn to_matrix_expr(&self) -> Result<Expr, String> {
+    pub fn to_matrix_expr(
+        &self
+    ) -> Result<Expr, String> {
 
         if self.rank() != 2 {
 
-            return Err("Can only convert a rank-2 tensor to a matrix expression.".to_string());
+            return Err(
+                "Can only convert a \
+                 rank-2 tensor to a \
+                 matrix expression."
+                    .to_string(),
+            );
         }
 
         Ok(Expr::Matrix(
@@ -472,7 +581,9 @@ impl Tensor {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(
+    Clone, Debug, PartialEq, Eq,
+)]
 
 pub struct MetricTensor {
     pub g : Tensor,
@@ -492,11 +603,20 @@ impl MetricTensor {
     /// A `Result` containing the new `MetricTensor` or an error string if `g` is not
     /// a square rank-2 tensor or cannot be inverted.
 
-    pub fn new(g : Tensor) -> Result<Self, String> {
+    pub fn new(
+        g : Tensor
+    ) -> Result<Self, String> {
 
-        if g.rank() != 2 || g.shape[0] != g.shape[1] {
+        if g.rank() != 2
+            || g.shape[0] != g.shape[1]
+        {
 
-            return Err("Metric tensor must be a square rank-2 tensor.".to_string());
+            return Err(
+                "Metric tensor must \
+                 be a square rank-2 \
+                 tensor."
+                    .to_string(),
+            );
         }
 
         let g_matrix = Expr::Matrix(
@@ -506,20 +626,28 @@ impl MetricTensor {
                 .collect(),
         );
 
-        let g_inv_matrix = inverse_matrix(&g_matrix);
+        let g_inv_matrix =
+            inverse_matrix(&g_matrix);
 
-        let g_inv = if let Expr::Matrix(rows) = g_inv_matrix {
+        let g_inv =
+            if let Expr::Matrix(rows) =
+                g_inv_matrix
+            {
 
-            Tensor::new(
-                rows.into_iter()
-                    .flatten()
-                    .collect(),
-                g.shape.clone(),
-            )?
-        } else {
+                Tensor::new(
+                    rows.into_iter()
+                        .flatten()
+                        .collect(),
+                    g.shape.clone(),
+                )?
+            } else {
 
-            return Err("Failed to invert metric tensor".to_string());
-        };
+                return Err(
+                    "Failed to invert \
+                     metric tensor"
+                        .to_string(),
+                );
+            };
 
         Ok(Self {
             g,
@@ -546,7 +674,12 @@ impl MetricTensor {
 
         if covector.rank() != 1 {
 
-            return Err("Can only raise index of a rank-1 tensor (covector).".to_string());
+            return Err(
+                "Can only raise index \
+                 of a rank-1 tensor \
+                 (covector)."
+                    .to_string(),
+            );
         }
 
         let product = self
@@ -575,7 +708,12 @@ impl MetricTensor {
 
         if vector.rank() != 1 {
 
-            return Err("Can only lower index of a rank-1 tensor (vector).".to_string());
+            return Err(
+                "Can only lower index \
+                 of a rank-1 tensor \
+                 (vector)."
+                    .to_string(),
+            );
         }
 
         let product = self
@@ -610,7 +748,11 @@ pub fn christoffel_symbols_first_kind(
 
     if vars.len() != dim {
 
-        return Err("Number of variables must match metric dimension".to_string());
+        return Err(
+            "Number of variables must \
+             match metric dimension"
+                .to_string(),
+        );
     }
 
     let mut components = Vec::new();
@@ -633,21 +775,37 @@ pub fn christoffel_symbols_first_kind(
                     .g
                     .get(&[i, j])?;
 
-                let d_g_ik_dj = differentiate(g_ik, vars[j]);
+                let d_g_ik_dj =
+                    differentiate(
+                        g_ik,
+                        vars[j],
+                    );
 
-                let d_g_jk_di = differentiate(g_jk, vars[i]);
+                let d_g_jk_di =
+                    differentiate(
+                        g_jk,
+                        vars[i],
+                    );
 
-                let d_g_ij_dk = differentiate(g_ij, vars[k]);
+                let d_g_ij_dk =
+                    differentiate(
+                        g_ij,
+                        vars[k],
+                    );
 
-                let term1 = simplify(&Expr::new_add(
-                    d_g_ik_dj,
-                    d_g_jk_di,
-                ));
+                let term1 = simplify(
+                    &Expr::new_add(
+                        d_g_ik_dj,
+                        d_g_jk_di,
+                    ),
+                );
 
-                let term2 = simplify(&Expr::new_sub(
-                    term1,
-                    d_g_ij_dk,
-                ));
+                let term2 = simplify(
+                    &Expr::new_sub(
+                        term1,
+                        d_g_ij_dk,
+                    ),
+                );
 
                 let christoffel = simplify(&Expr::new_mul(
                     Expr::Rational(BigRational::new(
@@ -657,7 +815,8 @@ pub fn christoffel_symbols_first_kind(
                     term2,
                 ));
 
-                components.push(christoffel);
+                components
+                    .push(christoffel);
             }
         }
     }
@@ -687,11 +846,17 @@ pub fn christoffel_symbols_second_kind(
     vars : &[&str],
 ) -> Result<Tensor, String> {
 
-    let christoffel_1st = christoffel_symbols_first_kind(metric, vars)?;
+    let christoffel_1st =
+        christoffel_symbols_first_kind(
+            metric,
+            vars,
+        )?;
 
     let product = metric
         .g_inv
-        .outer_product(&christoffel_1st)?;
+        .outer_product(
+            &christoffel_1st,
+        )?;
 
     product.contract(1, 2)
 }
@@ -783,7 +948,8 @@ pub fn riemann_curvature_tensor(
                         )),
                     ));
 
-                    components.push(r_ijkl);
+                    components
+                        .push(r_ijkl);
                 }
             }
         }
@@ -818,7 +984,10 @@ pub fn covariant_derivative_vector(
 
     if vector_field.rank() != 1 {
 
-        return Err("Input must be a vector field (rank-1 tensor)".to_string());
+        return Err("Input must be a \
+                    vector field \
+                    (rank-1 tensor)"
+            .to_string());
     }
 
     let dim = vector_field.shape[0];
@@ -835,18 +1004,28 @@ pub fn covariant_derivative_vector(
             .take(dim)
         {
 
-            let partial_deriv = differentiate(
-                vector_field.get(&[i])?,
-                vars[k],
-            );
+            let partial_deriv =
+                differentiate(
+                    vector_field
+                        .get(&[i])?,
+                    vars[k],
+                );
 
-            let mut christoffel_term = Expr::BigInt(BigInt::zero());
+            let mut christoffel_term =
+                Expr::BigInt(
+                    BigInt::zero(),
+                );
 
             for j in 0 .. dim {
 
-                let g_ijk = christoffel_2nd.get(&[i, j, k])?;
+                let g_ijk =
+                    christoffel_2nd
+                        .get(&[
+                            i, j, k,
+                        ])?;
 
-                let v_j = vector_field.get(&[j])?;
+                let v_j = vector_field
+                    .get(&[j])?;
 
                 christoffel_term = simplify(&Expr::new_add(
                     christoffel_term,
@@ -857,10 +1036,12 @@ pub fn covariant_derivative_vector(
                 ));
             }
 
-            let nabla_v = simplify(&Expr::new_add(
-                partial_deriv,
-                christoffel_term,
-            ));
+            let nabla_v = simplify(
+                &Expr::new_add(
+                    partial_deriv,
+                    christoffel_term,
+                ),
+            );
 
             components.push(nabla_v);
         }

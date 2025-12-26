@@ -14,7 +14,9 @@ use crate::symbolic::handles::HANDLE_MANAGER;
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_handle_insert(expr : *const Expr) -> usize {
+pub unsafe extern "C" fn rssn_handle_insert(
+    expr : *const Expr
+) -> usize {
 
     if expr.is_null() {
 
@@ -23,7 +25,8 @@ pub unsafe extern "C" fn rssn_handle_insert(expr : *const Expr) -> usize {
 
     let expr_ref = &*expr;
 
-    HANDLE_MANAGER.insert(expr_ref.clone())
+    HANDLE_MANAGER
+        .insert(expr_ref.clone())
 }
 
 /// Retrieves an expression from the handle manager.
@@ -34,7 +37,9 @@ pub unsafe extern "C" fn rssn_handle_insert(expr : *const Expr) -> usize {
 /// The caller must ensure the returned pointer is freed using `rssn_free_expr`.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_handle_get(handle : usize) -> *mut Expr {
+pub unsafe extern "C" fn rssn_handle_get(
+    handle : usize
+) -> *mut Expr {
 
     match HANDLE_MANAGER.get(handle) {
         | Some(arc_expr) => {
@@ -52,7 +57,9 @@ pub unsafe extern "C" fn rssn_handle_get(handle : usize) -> *mut Expr {
 /// This function is safe to call with any handle value.
 #[no_mangle]
 
-pub extern "C" fn rssn_handle_exists(handle : usize) -> bool {
+pub extern "C" fn rssn_handle_exists(
+    handle : usize
+) -> bool {
 
     HANDLE_MANAGER.exists(handle)
 }
@@ -65,7 +72,9 @@ pub extern "C" fn rssn_handle_exists(handle : usize) -> bool {
 /// This function is safe to call with any handle value.
 #[no_mangle]
 
-pub extern "C" fn rssn_handle_free(handle : usize) -> bool {
+pub extern "C" fn rssn_handle_free(
+    handle : usize
+) -> bool {
 
     HANDLE_MANAGER
         .free(handle)
@@ -78,7 +87,8 @@ pub extern "C" fn rssn_handle_free(handle : usize) -> bool {
 /// This function is always safe to call.
 #[no_mangle]
 
-pub extern "C" fn rssn_handle_count() -> usize {
+pub extern "C" fn rssn_handle_count(
+) -> usize {
 
     HANDLE_MANAGER.count()
 }
@@ -104,9 +114,11 @@ pub extern "C" fn rssn_handle_clear() {
 /// The caller must free the returned string.
 #[no_mangle]
 
-pub extern "C" fn rssn_handle_get_all() -> *mut c_char {
+pub extern "C" fn rssn_handle_get_all(
+) -> *mut c_char {
 
-    let handles = HANDLE_MANAGER.get_all_handles();
+    let handles = HANDLE_MANAGER
+        .get_all_handles();
 
     to_json_string(&handles)
 }
@@ -119,10 +131,16 @@ pub extern "C" fn rssn_handle_get_all() -> *mut c_char {
 /// This function is safe to call with any handle value.
 #[no_mangle]
 
-pub extern "C" fn rssn_handle_clone(handle : usize) -> usize {
+pub extern "C" fn rssn_handle_clone(
+    handle : usize
+) -> usize {
 
-    match HANDLE_MANAGER.clone_expr(handle) {
-        | Some(expr) => HANDLE_MANAGER.insert(expr),
+    match HANDLE_MANAGER
+        .clone_expr(handle)
+    {
+        | Some(expr) => {
+            HANDLE_MANAGER.insert(expr)
+        },
         | None => 0,
     }
 }
@@ -135,7 +153,9 @@ pub extern "C" fn rssn_handle_clone(handle : usize) -> usize {
 /// The caller must free the returned string.
 #[no_mangle]
 
-pub extern "C" fn rssn_handle_to_string(handle : usize) -> *mut c_char {
+pub extern "C" fn rssn_handle_to_string(
+    handle : usize
+) -> *mut c_char {
 
     match HANDLE_MANAGER.get(handle) {
         | Some(arc_expr) => {

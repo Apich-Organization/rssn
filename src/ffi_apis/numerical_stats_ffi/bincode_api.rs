@@ -45,7 +45,9 @@ struct TestOutput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_mean_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_stats_mean_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : DataInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -59,7 +61,8 @@ pub unsafe extern "C" fn rssn_num_stats_mean_bincode(buffer : BincodeBuffer) -> 
         },
     };
 
-    let result = stats::mean(&input.data);
+    let result =
+        stats::mean(&input.data);
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -69,7 +72,9 @@ pub unsafe extern "C" fn rssn_num_stats_mean_bincode(buffer : BincodeBuffer) -> 
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_variance_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_stats_variance_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : DataInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -83,7 +88,8 @@ pub unsafe extern "C" fn rssn_num_stats_variance_bincode(buffer : BincodeBuffer)
         },
     };
 
-    let result = stats::variance(&input.data);
+    let result =
+        stats::variance(&input.data);
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -93,7 +99,9 @@ pub unsafe extern "C" fn rssn_num_stats_variance_bincode(buffer : BincodeBuffer)
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_std_dev_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_stats_std_dev_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : DataInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -107,7 +115,8 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev_bincode(buffer : BincodeBuffer) 
         },
     };
 
-    let result = stats::std_dev(&input.data);
+    let result =
+        stats::std_dev(&input.data);
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -191,10 +200,11 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_bincode(
         },
     };
 
-    let (t, p) = stats::two_sample_t_test(
-        &input.data1,
-        &input.data2,
-    );
+    let (t, p) =
+        stats::two_sample_t_test(
+            &input.data1,
+            &input.data2,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(TestOutput {
@@ -255,10 +265,11 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_bincode(
         },
     };
 
-    let (chi, p) = stats::chi_squared_test(
-        &input.data1,
-        &input.data2,
-    );
+    let (chi, p) =
+        stats::chi_squared_test(
+            &input.data1,
+            &input.data2,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(TestOutput {
@@ -294,7 +305,10 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_bincode(
         .map(|(&a, &b)| (a, b))
         .collect();
 
-    let (slope, intercept) = stats::simple_linear_regression(&data);
+    let (slope, intercept) =
+        stats::simple_linear_regression(
+            &data,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(RegressionOutput {
@@ -307,7 +321,9 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_bincode(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_stats_z_scores_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_stats_z_scores_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : DataInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -321,7 +337,8 @@ pub unsafe extern "C" fn rssn_num_stats_z_scores_bincode(buffer : BincodeBuffer)
         },
     };
 
-    let result = stats::z_scores(&input.data);
+    let result =
+        stats::z_scores(&input.data);
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -347,7 +364,9 @@ pub unsafe extern "C" fn rssn_num_stats_shannon_entropy_bincode(
         },
     };
 
-    let result = stats::shannon_entropy(&input.data);
+    let result = stats::shannon_entropy(
+        &input.data,
+    );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),

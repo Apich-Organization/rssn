@@ -15,7 +15,8 @@ use crate::symbolic::core::Expr;
 /// The caller is responsible for freeing the memory using rssn_parsing_cache_free.
 #[no_mangle]
 
-pub extern "C" fn rssn_parsing_cache_new() -> *mut ParsingCache {
+pub extern "C" fn rssn_parsing_cache_new(
+) -> *mut ParsingCache {
 
     Box::into_raw(Box::new(
         ParsingCache::new(),
@@ -25,7 +26,9 @@ pub extern "C" fn rssn_parsing_cache_new() -> *mut ParsingCache {
 /// Frees a ParsingCache.
 #[no_mangle]
 
-pub extern "C" fn rssn_parsing_cache_free(cache : *mut ParsingCache) {
+pub extern "C" fn rssn_parsing_cache_free(
+    cache : *mut ParsingCache
+) {
 
     if cache.is_null() {
 
@@ -41,7 +44,9 @@ pub extern "C" fn rssn_parsing_cache_free(cache : *mut ParsingCache) {
 /// Clears a ParsingCache.
 #[no_mangle]
 
-pub extern "C" fn rssn_parsing_cache_clear(cache : *mut ParsingCache) {
+pub extern "C" fn rssn_parsing_cache_clear(
+    cache : *mut ParsingCache
+) {
 
     if cache.is_null() {
 
@@ -64,7 +69,9 @@ pub extern "C" fn rssn_parsing_cache_get(
     input : *const c_char,
 ) -> *mut Expr {
 
-    if cache.is_null() || input.is_null() {
+    if cache.is_null()
+        || input.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -95,7 +102,9 @@ pub extern "C" fn rssn_parsing_cache_get(
                     (*expr).clone(),
                 ))
             },
-            | None => std::ptr::null_mut(),
+            | None => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -110,21 +119,31 @@ pub extern "C" fn rssn_parsing_cache_set(
     expr : *const Expr,
 ) {
 
-    if cache.is_null() || input.is_null() || expr.is_null() {
+    if cache.is_null()
+        || input.is_null()
+        || expr.is_null()
+    {
 
         return;
     }
 
     unsafe {
 
-        let input_str = match CStr::from_ptr(input).to_str() {
-            | Ok(s) => s.to_string(),
-            | Err(_) => return,
-        };
+        let input_str =
+            match CStr::from_ptr(input)
+                .to_str()
+            {
+                | Ok(s) => {
+                    s.to_string()
+                },
+                | Err(_) => return,
+            };
 
-        let expr_arc = Arc::new((*expr).clone());
+        let expr_arc =
+            Arc::new((*expr).clone());
 
-        (*cache).set(input_str, expr_arc);
+        (*cache)
+            .set(input_str, expr_arc);
     }
 }
 
@@ -134,7 +153,8 @@ pub extern "C" fn rssn_parsing_cache_set(
 /// The caller is responsible for freeing the memory using rssn_computation_result_cache_free.
 #[no_mangle]
 
-pub extern "C" fn rssn_computation_result_cache_new() -> *mut ComputationResultCache {
+pub extern "C" fn rssn_computation_result_cache_new(
+) -> *mut ComputationResultCache {
 
     Box::into_raw(Box::new(
         ComputationResultCache::new(),
@@ -144,7 +164,9 @@ pub extern "C" fn rssn_computation_result_cache_new() -> *mut ComputationResultC
 /// Frees a ComputationResultCache.
 #[no_mangle]
 
-pub extern "C" fn rssn_computation_result_cache_free(cache : *mut ComputationResultCache) {
+pub extern "C" fn rssn_computation_result_cache_free(
+    cache : *mut ComputationResultCache
+) {
 
     if cache.is_null() {
 
@@ -160,7 +182,9 @@ pub extern "C" fn rssn_computation_result_cache_free(cache : *mut ComputationRes
 /// Clears a ComputationResultCache.
 #[no_mangle]
 
-pub extern "C" fn rssn_computation_result_cache_clear(cache : *mut ComputationResultCache) {
+pub extern "C" fn rssn_computation_result_cache_clear(
+    cache : *mut ComputationResultCache
+) {
 
     if cache.is_null() {
 
@@ -183,7 +207,8 @@ pub extern "C" fn rssn_computation_result_cache_get(
     expr : *const Expr,
 ) -> *mut c_char {
 
-    if cache.is_null() || expr.is_null() {
+    if cache.is_null() || expr.is_null()
+    {
 
         return std::ptr::null_mut();
     }
@@ -193,7 +218,8 @@ pub extern "C" fn rssn_computation_result_cache_get(
         // We need to construct an Arc<Expr> to query the cache, but we only have a raw pointer.
         // The cache key is Arc<Expr>.
         // We can create a temporary Arc for the lookup if we clone the Expr.
-        let expr_arc = Arc::new((*expr).clone());
+        let expr_arc =
+            Arc::new((*expr).clone());
 
         match (*cache).get(&expr_arc) {
             | Some(value) => {
@@ -216,20 +242,30 @@ pub extern "C" fn rssn_computation_result_cache_set(
     value : *const c_char,
 ) {
 
-    if cache.is_null() || expr.is_null() || value.is_null() {
+    if cache.is_null()
+        || expr.is_null()
+        || value.is_null()
+    {
 
         return;
     }
 
     unsafe {
 
-        let value_str = match CStr::from_ptr(value).to_str() {
-            | Ok(s) => s.to_string(),
-            | Err(_) => return,
-        };
+        let value_str =
+            match CStr::from_ptr(value)
+                .to_str()
+            {
+                | Ok(s) => {
+                    s.to_string()
+                },
+                | Err(_) => return,
+            };
 
-        let expr_arc = Arc::new((*expr).clone());
+        let expr_arc =
+            Arc::new((*expr).clone());
 
-        (*cache).set(expr_arc, value_str);
+        (*cache)
+            .set(expr_arc, value_str);
     }
 }

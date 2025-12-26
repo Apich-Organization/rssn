@@ -36,7 +36,9 @@ struct HessianInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_numerical_gradient_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_numerical_gradient_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : GradientInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -82,7 +84,9 @@ pub unsafe extern "C" fn rssn_numerical_gradient_bincode(buffer : BincodeBuffer)
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : JacobianInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -128,7 +132,9 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(buffer : BincodeBuffer)
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_numerical_hessian_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_numerical_hessian_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : HessianInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,

@@ -39,7 +39,9 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
         },
     };
 
-    let mut initial_psi : Vec<Complex<f64>> = input
+    let mut initial_psi : Vec<
+        Complex<f64>,
+    > = input
         .initial_psi_re
         .iter()
         .zip(
@@ -47,7 +49,9 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
                 .initial_psi_im
                 .iter(),
         )
-        .map(|(&r, &i)| Complex::new(r, i))
+        .map(|(&r, &i)| {
+            Complex::new(r, i)
+        })
         .collect();
 
     match schrodinger_quantum::run_schrodinger_simulation(

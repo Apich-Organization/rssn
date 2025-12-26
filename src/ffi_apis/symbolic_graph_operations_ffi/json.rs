@@ -9,7 +9,9 @@ use crate::symbolic::graph_operations::*;
 /// Input JSON: {"graph": <graph>, "nodes": ["label1", "label2"]}
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_induced_subgraph(json : *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_induced_subgraph(
+    json : *const c_char
+) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -35,7 +37,9 @@ pub extern "C" fn rssn_json_graph_induced_subgraph(json : *const c_char) -> *mut
 /// Input JSON: {"g1": <graph>, "g2": <graph>}
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_union(json : *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_union(
+    json : *const c_char
+) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -49,7 +53,8 @@ pub extern "C" fn rssn_json_graph_union(json : *const c_char) -> *mut c_char {
         | None => return std::ptr::null_mut(),
     };
 
-    let result = union(&input.g1, &input.g2);
+    let result =
+        union(&input.g1, &input.g2);
 
     to_json_string(&result)
 }
@@ -57,7 +62,9 @@ pub extern "C" fn rssn_json_graph_union(json : *const c_char) -> *mut c_char {
 /// Computes the intersection of two graphs.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_intersection(json : *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_intersection(
+    json : *const c_char
+) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -71,7 +78,10 @@ pub extern "C" fn rssn_json_graph_intersection(json : *const c_char) -> *mut c_c
         | None => return std::ptr::null_mut(),
     };
 
-    let result = intersection(&input.g1, &input.g2);
+    let result = intersection(
+        &input.g1,
+        &input.g2,
+    );
 
     to_json_string(&result)
 }
@@ -79,7 +89,9 @@ pub extern "C" fn rssn_json_graph_intersection(json : *const c_char) -> *mut c_c
 /// Computes the Cartesian product of two graphs.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_cartesian_product(json : *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_cartesian_product(
+    json : *const c_char
+) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -93,7 +105,10 @@ pub extern "C" fn rssn_json_graph_cartesian_product(json : *const c_char) -> *mu
         | None => return std::ptr::null_mut(),
     };
 
-    let result_expr = cartesian_product(&input.g1, &input.g2);
+    let result_expr = cartesian_product(
+        &input.g1,
+        &input.g2,
+    );
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
@@ -103,7 +118,9 @@ pub extern "C" fn rssn_json_graph_cartesian_product(json : *const c_char) -> *mu
 /// Computes the Tensor product of two graphs.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_tensor_product(json : *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_tensor_product(
+    json : *const c_char
+) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -117,7 +134,10 @@ pub extern "C" fn rssn_json_graph_tensor_product(json : *const c_char) -> *mut c
         | None => return std::ptr::null_mut(),
     };
 
-    let result_expr = tensor_product(&input.g1, &input.g2);
+    let result_expr = tensor_product(
+        &input.g1,
+        &input.g2,
+    );
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
@@ -127,7 +147,9 @@ pub extern "C" fn rssn_json_graph_tensor_product(json : *const c_char) -> *mut c
 /// Computes the complement of a graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_complement(json : *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_complement(
+    json : *const c_char
+) -> *mut c_char {
 
     let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
@@ -142,7 +164,9 @@ pub extern "C" fn rssn_json_graph_complement(json : *const c_char) -> *mut c_cha
 /// Computes the disjoint union of two graphs.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_disjoint_union(json : *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_disjoint_union(
+    json : *const c_char
+) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -156,7 +180,10 @@ pub extern "C" fn rssn_json_graph_disjoint_union(json : *const c_char) -> *mut c
         | None => return std::ptr::null_mut(),
     };
 
-    let result_expr = disjoint_union(&input.g1, &input.g2);
+    let result_expr = disjoint_union(
+        &input.g1,
+        &input.g2,
+    );
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
@@ -166,7 +193,9 @@ pub extern "C" fn rssn_json_graph_disjoint_union(json : *const c_char) -> *mut c
 /// Computes the join of two graphs.
 #[no_mangle]
 
-pub extern "C" fn rssn_json_graph_join(json : *const c_char) -> *mut c_char {
+pub extern "C" fn rssn_json_graph_join(
+    json : *const c_char
+) -> *mut c_char {
 
     #[derive(serde::Deserialize)]
 
@@ -180,7 +209,8 @@ pub extern "C" fn rssn_json_graph_join(json : *const c_char) -> *mut c_char {
         | None => return std::ptr::null_mut(),
     };
 
-    let result_expr = join(&input.g1, &input.g2);
+    let result_expr =
+        join(&input.g1, &input.g2);
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 

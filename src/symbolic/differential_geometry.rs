@@ -29,11 +29,22 @@ use crate::symbolic::vector::Vector;
 /// Here, the basis wedge products (e.g., `dx^dy`) are represented by a bitmask (`blade`).
 /// If `vars = ["x", "y", "z"]`, then `dx` is `1<<0`, `dy` is `1<<1`, `dz` is `1<<2`.
 /// The wedge product `dx^dy` corresponds to the bitmask `(1<<0) | (1<<1) = 3`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct DifferentialForm {
     /// A map from the basis wedge product (represented by a bitmask) to its coefficient expression.
-    pub terms : std::collections::BTreeMap<u32, Expr>,
+    pub terms :
+        std::collections::BTreeMap<
+            u32,
+            Expr,
+        >,
 }
 
 /// Computes the exterior derivative of a k-form, resulting in a (k+1)-form.
@@ -55,7 +66,9 @@ pub fn exterior_derivative(
     vars : &[&str],
 ) -> DifferentialForm {
 
-    let mut result_terms = std::collections::BTreeMap::new();
+    let mut result_terms =
+        std::collections::BTreeMap::new(
+        );
 
     for (blade, coeff) in &form.terms {
 
@@ -64,45 +77,60 @@ pub fn exterior_derivative(
             .enumerate()
         {
 
-            let new_blade = (1 << i) | blade;
+            let new_blade =
+                (1 << i) | blade;
 
-            if new_blade.count_ones() != blade.count_ones() + 1 {
+            if new_blade.count_ones()
+                != blade.count_ones()
+                    + 1
+            {
 
                 continue;
             }
 
-            let d_coeff = differentiate(coeff, vars[i]);
+            let d_coeff = differentiate(
+                coeff,
+                vars[i],
+            );
 
             let mut sign = 1i64;
 
             for j in 0 .. i {
 
-                if (blade >> j) & 1 == 1 {
+                if (blade >> j) & 1 == 1
+                {
 
                     sign *= -1;
                 }
             }
 
-            let signed_coeff = if sign == 1 {
+            let signed_coeff =
+                if sign == 1 {
 
-                d_coeff
-            } else {
+                    d_coeff
+                } else {
 
-                simplify(&Expr::new_neg(
-                    d_coeff,
-                ))
-            };
+                    simplify(
+                        &Expr::new_neg(
+                            d_coeff,
+                        ),
+                    )
+                };
 
             let entry = result_terms
                 .entry(new_blade)
-                .or_insert(Expr::BigInt(
-                    BigInt::zero(),
-                ));
+                .or_insert(
+                    Expr::BigInt(
+                        BigInt::zero(),
+                    ),
+                );
 
-            *entry = simplify(&Expr::new_add(
-                entry.clone(),
-                signed_coeff,
-            ));
+            *entry = simplify(
+                &Expr::new_add(
+                    entry.clone(),
+                    signed_coeff,
+                ),
+            );
         }
     }
 
@@ -129,62 +157,82 @@ pub fn wedge_product(
     form2 : &DifferentialForm,
 ) -> DifferentialForm {
 
-    let mut result_terms = std::collections::BTreeMap::new();
+    let mut result_terms =
+        std::collections::BTreeMap::new(
+        );
 
-    for (blade1, coeff1) in &form1.terms {
+    for (blade1, coeff1) in &form1.terms
+    {
 
-        for (blade2, coeff2) in &form2.terms {
+        for (blade2, coeff2) in
+            &form2.terms
+        {
 
             if (blade1 & blade2) != 0 {
 
                 continue;
             }
 
-            let new_blade = blade1 | blade2;
+            let new_blade =
+                blade1 | blade2;
 
             let mut sign = 1i64;
 
-            let mut temp_blade2 = *blade2;
+            let mut temp_blade2 =
+                *blade2;
 
             while temp_blade2 > 0 {
 
-                let i = temp_blade2.trailing_zeros();
+                let i = temp_blade2
+                    .trailing_zeros();
 
-                let swaps = (blade1 >> (i + 1)).count_ones();
+                let swaps = (blade1
+                    >> (i + 1))
+                    .count_ones();
 
                 if swaps % 2 != 0 {
 
                     sign *= -1;
                 }
 
-                temp_blade2 &= !(1 << i);
+                temp_blade2 &=
+                    !(1 << i);
             }
 
-            let new_coeff = simplify(&Expr::new_mul(
-                coeff1.clone(),
-                coeff2.clone(),
-            ));
+            let new_coeff = simplify(
+                &Expr::new_mul(
+                    coeff1.clone(),
+                    coeff2.clone(),
+                ),
+            );
 
-            let signed_coeff = if sign == 1 {
+            let signed_coeff =
+                if sign == 1 {
 
-                new_coeff
-            } else {
+                    new_coeff
+                } else {
 
-                simplify(&Expr::new_neg(
-                    new_coeff,
-                ))
-            };
+                    simplify(
+                        &Expr::new_neg(
+                            new_coeff,
+                        ),
+                    )
+                };
 
             let entry = result_terms
                 .entry(new_blade)
-                .or_insert(Expr::BigInt(
-                    BigInt::zero(),
-                ));
+                .or_insert(
+                    Expr::BigInt(
+                        BigInt::zero(),
+                    ),
+                );
 
-            *entry = simplify(&Expr::new_add(
-                entry.clone(),
-                signed_coeff,
-            ));
+            *entry = simplify(
+                &Expr::new_add(
+                    entry.clone(),
+                    signed_coeff,
+                ),
+            );
         }
     }
 
@@ -197,7 +245,9 @@ pub fn wedge_product(
 /// This is a symbolic representation used in the integral theorems.
 #[must_use]
 
-pub fn boundary(domain : &Expr) -> Expr {
+pub fn boundary(
+    domain : &Expr
+) -> Expr {
 
     Expr::Boundary(Arc::new(
         domain.clone(),
@@ -218,35 +268,61 @@ pub fn generalized_stokes_theorem(
     vars : &[&str],
 ) -> Expr {
 
-    let d_omega = exterior_derivative(omega, vars);
+    let d_omega = exterior_derivative(
+        omega, vars,
+    );
 
-    let integral_d_omega = Expr::Integral {
-        integrand : Arc::new(Expr::Variable(
-            format!("{d_omega:?}"),
-        )),
-        var : Arc::new(Expr::Variable(
-            manifold.to_string(),
-        )),
-        lower_bound : Arc::new(Expr::Variable(
-            "M".to_string(),
-        )),
-        upper_bound : Arc::new(Expr::BigInt(
-            BigInt::zero(),
-        )),
-    };
+    let integral_d_omega =
+        Expr::Integral {
+            integrand : Arc::new(
+                Expr::Variable(
+                    format!(
+                        "{d_omega:?}"
+                    ),
+                ),
+            ),
+            var : Arc::new(
+                Expr::Variable(
+                    manifold
+                        .to_string(),
+                ),
+            ),
+            lower_bound : Arc::new(
+                Expr::Variable(
+                    "M".to_string(),
+                ),
+            ),
+            upper_bound : Arc::new(
+                Expr::BigInt(
+                    BigInt::zero(),
+                ),
+            ),
+        };
 
-    let integral_omega = Expr::Integral {
-        integrand : Arc::new(Expr::Variable(
-            format!("{omega:?}"),
-        )),
-        var : Arc::new(Expr::Variable(
-            manifold.to_string(),
-        )),
-        lower_bound : Arc::new(boundary(manifold)),
-        upper_bound : Arc::new(Expr::BigInt(
-            BigInt::zero(),
-        )),
-    };
+    let integral_omega =
+        Expr::Integral {
+            integrand : Arc::new(
+                Expr::Variable(
+                    format!(
+                        "{omega:?}"
+                    ),
+                ),
+            ),
+            var : Arc::new(
+                Expr::Variable(
+                    manifold
+                        .to_string(),
+                ),
+            ),
+            lower_bound : Arc::new(
+                boundary(manifold),
+            ),
+            upper_bound : Arc::new(
+                Expr::BigInt(
+                    BigInt::zero(),
+                ),
+            ),
+        };
 
     Expr::Eq(
         Arc::new(integral_d_omega),
@@ -267,22 +343,33 @@ pub fn gauss_theorem(
     volume : &Expr,
 ) -> Expr {
 
-    let div_f = super::vector::divergence(
-        vector_field,
-        ("x", "y", "z"),
-    );
+    let div_f =
+        super::vector::divergence(
+            vector_field,
+            ("x", "y", "z"),
+        );
 
-    let integral_div = Expr::VolumeIntegral {
-        scalar_field : Arc::new(div_f),
-        volume : Arc::new(volume.clone()),
-    };
+    let integral_div =
+        Expr::VolumeIntegral {
+            scalar_field : Arc::new(
+                div_f,
+            ),
+            volume : Arc::new(
+                volume.clone(),
+            ),
+        };
 
-    let surface_integral = Expr::SurfaceIntegral {
-        vector_field : Arc::new(Expr::Variable(
-            "F".to_string(),
-        )),
-        surface : Arc::new(boundary(volume)),
-    };
+    let surface_integral =
+        Expr::SurfaceIntegral {
+            vector_field : Arc::new(
+                Expr::Variable(
+                    "F".to_string(),
+                ),
+            ),
+            surface : Arc::new(
+                boundary(volume),
+            ),
+        };
 
     Expr::Eq(
         Arc::new(integral_div),
@@ -308,23 +395,38 @@ pub fn stokes_theorem(
         ("x", "y", "z"),
     );
 
-    let integral_curl = Expr::SurfaceIntegral {
-        vector_field : Arc::new(curl_f.to_expr()),
-        surface : Arc::new(surface.clone()),
-    };
+    let integral_curl =
+        Expr::SurfaceIntegral {
+            vector_field : Arc::new(
+                curl_f.to_expr(),
+            ),
+            surface : Arc::new(
+                surface.clone(),
+            ),
+        };
 
-    let line_integral = Expr::Integral {
-        integrand : Arc::new(Expr::Variable(
-            "F · dr".to_string(),
-        )),
-        var : Arc::new(Expr::Variable(
-            "t".to_string(),
-        )),
-        lower_bound : Arc::new(boundary(surface)),
-        upper_bound : Arc::new(Expr::BigInt(
-            BigInt::zero(),
-        )),
-    };
+    let line_integral =
+        Expr::Integral {
+            integrand : Arc::new(
+                Expr::Variable(
+                    "F · dr"
+                        .to_string(),
+                ),
+            ),
+            var : Arc::new(
+                Expr::Variable(
+                    "t".to_string(),
+                ),
+            ),
+            lower_bound : Arc::new(
+                boundary(surface),
+            ),
+            upper_bound : Arc::new(
+                Expr::BigInt(
+                    BigInt::zero(),
+                ),
+            ),
+        };
 
     Expr::Eq(
         Arc::new(integral_curl),
@@ -350,38 +452,56 @@ pub fn greens_theorem(
 
     let dp_dy = differentiate(p, "y");
 
-    let integrand_da = simplify(&Expr::new_sub(
-        dq_dx, dp_dy,
-    ));
-
-    let integral_da = definite_integrate(
-        &integrand_da,
-        "A",
-        &Expr::Domain(format!("{domain}")),
-        &Expr::BigInt(BigInt::zero()),
+    let integrand_da = simplify(
+        &Expr::new_sub(dq_dx, dp_dy),
     );
+
+    let integral_da =
+        definite_integrate(
+            &integrand_da,
+            "A",
+            &Expr::Domain(format!(
+                "{domain}"
+            )),
+            &Expr::BigInt(
+                BigInt::zero(),
+            ),
+        );
 
     let integrand_line = Expr::new_add(
         Expr::new_mul(
             p.clone(),
-            Expr::Variable("dx".to_string()),
+            Expr::Variable(
+                "dx".to_string(),
+            ),
         ),
         Expr::new_mul(
             q.clone(),
-            Expr::Variable("dy".to_string()),
+            Expr::Variable(
+                "dy".to_string(),
+            ),
         ),
     );
 
-    let line_integral = Expr::Integral {
-        integrand : Arc::new(integrand_line),
-        var : Arc::new(Expr::Variable(
-            "t".to_string(),
-        )),
-        lower_bound : Arc::new(boundary(domain)),
-        upper_bound : Arc::new(Expr::BigInt(
-            BigInt::zero(),
-        )),
-    };
+    let line_integral =
+        Expr::Integral {
+            integrand : Arc::new(
+                integrand_line,
+            ),
+            var : Arc::new(
+                Expr::Variable(
+                    "t".to_string(),
+                ),
+            ),
+            lower_bound : Arc::new(
+                boundary(domain),
+            ),
+            upper_bound : Arc::new(
+                Expr::BigInt(
+                    BigInt::zero(),
+                ),
+            ),
+        };
 
     Expr::Eq(
         Arc::new(integral_da),

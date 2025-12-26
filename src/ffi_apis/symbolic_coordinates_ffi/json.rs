@@ -12,13 +12,20 @@ pub extern "C" fn rssn_json_transform_point(
     to : CoordinateSystem,
 ) -> *mut c_char {
 
-    let point : Option<Vec<Expr>> = from_json_string(point_json);
+    let point : Option<Vec<Expr>> =
+        from_json_string(point_json);
 
     if let Some(p) = point {
 
-        match transform_point(&p, from, to) {
-            | Ok(result) => to_json_string(&result),
-            | Err(_) => std::ptr::null_mut(),
+        match transform_point(
+            &p, from, to,
+        ) {
+            | Ok(result) => {
+                to_json_string(&result)
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 
@@ -34,13 +41,20 @@ pub extern "C" fn rssn_json_transform_expression(
     to : CoordinateSystem,
 ) -> *mut c_char {
 
-    let expr : Option<Expr> = from_json_string(expr_json);
+    let expr : Option<Expr> =
+        from_json_string(expr_json);
 
     if let Some(e) = expr {
 
-        match transform_expression(&e, from, to) {
-            | Ok(result) => to_json_string(&result),
-            | Err(_) => std::ptr::null_mut(),
+        match transform_expression(
+            &e, from, to,
+        ) {
+            | Ok(result) => {
+                to_json_string(&result)
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 
@@ -55,8 +69,12 @@ pub extern "C" fn rssn_json_coordinates_get_metric_tensor(
 ) -> *mut c_char {
 
     match get_metric_tensor(system) {
-        | Ok(result) => to_json_string(&result),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            to_json_string(&result)
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -68,7 +86,8 @@ pub extern "C" fn rssn_json_transform_contravariant_vector(
     to : CoordinateSystem,
 ) -> *mut c_char {
 
-    let comps : Option<Vec<Expr>> = from_json_string(comps_json);
+    let comps : Option<Vec<Expr>> =
+        from_json_string(comps_json);
 
     if let Some(c) = comps {
 
@@ -90,13 +109,20 @@ pub extern "C" fn rssn_json_transform_covariant_vector(
     to : CoordinateSystem,
 ) -> *mut c_char {
 
-    let comps : Option<Vec<Expr>> = from_json_string(comps_json);
+    let comps : Option<Vec<Expr>> =
+        from_json_string(comps_json);
 
     if let Some(c) = comps {
 
-        match transform_covariant_vector(&c, from, to) {
-            | Ok(result) => to_json_string(&result),
-            | Err(_) => std::ptr::null_mut(),
+        match transform_covariant_vector(
+            &c, from, to,
+        ) {
+            | Ok(result) => {
+                to_json_string(&result)
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 
@@ -111,13 +137,20 @@ pub extern "C" fn rssn_json_transform_divergence(
     from : CoordinateSystem,
 ) -> *mut c_char {
 
-    let comps : Option<Vec<Expr>> = from_json_string(comps_json);
+    let comps : Option<Vec<Expr>> =
+        from_json_string(comps_json);
 
     if let Some(c) = comps {
 
-        match transform_divergence(&c, from) {
-            | Ok(result) => to_json_string(&result),
-            | Err(_) => std::ptr::null_mut(),
+        match transform_divergence(
+            &c, from,
+        ) {
+            | Ok(result) => {
+                to_json_string(&result)
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 
@@ -132,13 +165,18 @@ pub extern "C" fn rssn_json_transform_curl(
     from : CoordinateSystem,
 ) -> *mut c_char {
 
-    let comps : Option<Vec<Expr>> = from_json_string(comps_json);
+    let comps : Option<Vec<Expr>> =
+        from_json_string(comps_json);
 
     if let Some(c) = comps {
 
         match transform_curl(&c, from) {
-            | Ok(result) => to_json_string(&result),
-            | Err(_) => std::ptr::null_mut(),
+            | Ok(result) => {
+                to_json_string(&result)
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 
@@ -155,15 +193,25 @@ pub extern "C" fn rssn_json_transform_gradient(
     to : CoordinateSystem,
 ) -> *mut c_char {
 
-    let scalar : Option<Expr> = from_json_string(scalar_json);
+    let scalar : Option<Expr> =
+        from_json_string(scalar_json);
 
-    let vars : Option<Vec<String>> = from_json_string(vars_json);
+    let vars : Option<Vec<String>> =
+        from_json_string(vars_json);
 
-    if let (Some(s), Some(v)) = (scalar, vars) {
+    if let (Some(s), Some(v)) =
+        (scalar, vars)
+    {
 
-        match transform_gradient(&s, &v, from, to) {
-            | Ok(result) => to_json_string(&result),
-            | Err(_) => std::ptr::null_mut(),
+        match transform_gradient(
+            &s, &v, from, to,
+        ) {
+            | Ok(result) => {
+                to_json_string(&result)
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
         }
     } else {
 

@@ -426,7 +426,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_bincode(
         },
     };
 
-    let result = error_correction::crc16_compute(&input.data);
+    let result =
+        error_correction::crc16_compute(
+            &input.data,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -452,7 +455,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_bincode(
         },
     };
 
-    let result = error_correction::crc8_compute(&input.data);
+    let result =
+        error_correction::crc8_compute(
+            &input.data,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -479,10 +485,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_bincode(
         },
     };
 
-    let result = error_correction::interleave(
-        &input.data,
-        input.depth,
-    );
+    let result =
+        error_correction::interleave(
+            &input.data,
+            input.depth,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -508,10 +515,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_bincode(
         },
     };
 
-    let result = error_correction::deinterleave(
-        &input.data,
-        input.depth,
-    );
+    let result =
+        error_correction::deinterleave(
+            &input.data,
+            input.depth,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),
@@ -538,7 +546,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_bincode(
         },
     };
 
-    let result = error_correction::code_rate(input.k, input.n);
+    let result =
+        error_correction::code_rate(
+            input.k,
+            input.n,
+        );
 
     to_bincode_buffer(&FfiResult {
         ok : Some(result),

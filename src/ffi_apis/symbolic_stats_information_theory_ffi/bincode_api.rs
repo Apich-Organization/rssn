@@ -4,9 +4,12 @@ use crate::symbolic::stats_information_theory;
 
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_shannon_entropy(probs_buf : BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_shannon_entropy(
+    probs_buf : BincodeBuffer
+) -> BincodeBuffer {
 
-    let probs : Option<Vec<Expr>> = from_bincode_buffer(&probs_buf);
+    let probs : Option<Vec<Expr>> =
+        from_bincode_buffer(&probs_buf);
 
     if let Some(p) = probs {
 
@@ -26,11 +29,19 @@ pub extern "C" fn rssn_bincode_kl_divergence(
     q_probs_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let p_probs : Option<Vec<Expr>> = from_bincode_buffer(&p_probs_buf);
+    let p_probs : Option<Vec<Expr>> =
+        from_bincode_buffer(
+            &p_probs_buf,
+        );
 
-    let q_probs : Option<Vec<Expr>> = from_bincode_buffer(&q_probs_buf);
+    let q_probs : Option<Vec<Expr>> =
+        from_bincode_buffer(
+            &q_probs_buf,
+        );
 
-    if let (Some(p), Some(q)) = (p_probs, q_probs) {
+    if let (Some(p), Some(q)) =
+        (p_probs, q_probs)
+    {
 
         match stats_information_theory::kl_divergence(&p, &q) {
             | Ok(res) => to_bincode_buffer(&res),
@@ -49,11 +60,19 @@ pub extern "C" fn rssn_bincode_cross_entropy(
     q_probs_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let p_probs : Option<Vec<Expr>> = from_bincode_buffer(&p_probs_buf);
+    let p_probs : Option<Vec<Expr>> =
+        from_bincode_buffer(
+            &p_probs_buf,
+        );
 
-    let q_probs : Option<Vec<Expr>> = from_bincode_buffer(&q_probs_buf);
+    let q_probs : Option<Vec<Expr>> =
+        from_bincode_buffer(
+            &q_probs_buf,
+        );
 
-    if let (Some(p), Some(q)) = (p_probs, q_probs) {
+    if let (Some(p), Some(q)) =
+        (p_probs, q_probs)
+    {
 
         match stats_information_theory::cross_entropy(&p, &q) {
             | Ok(res) => to_bincode_buffer(&res),
@@ -67,9 +86,12 @@ pub extern "C" fn rssn_bincode_cross_entropy(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_gini_impurity(probs_buf : BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_gini_impurity(
+    probs_buf : BincodeBuffer
+) -> BincodeBuffer {
 
-    let probs : Option<Vec<Expr>> = from_bincode_buffer(&probs_buf);
+    let probs : Option<Vec<Expr>> =
+        from_bincode_buffer(&probs_buf);
 
     if let Some(p) = probs {
 
@@ -84,9 +106,14 @@ pub extern "C" fn rssn_bincode_gini_impurity(probs_buf : BincodeBuffer) -> Binco
 
 #[no_mangle]
 
-pub extern "C" fn rssn_bincode_joint_entropy(joint_probs_buf : BincodeBuffer) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_joint_entropy(
+    joint_probs_buf : BincodeBuffer
+) -> BincodeBuffer {
 
-    let joint : Option<Expr> = from_bincode_buffer(&joint_probs_buf);
+    let joint : Option<Expr> =
+        from_bincode_buffer(
+            &joint_probs_buf,
+        );
 
     if let Some(j) = joint {
 
@@ -106,7 +133,10 @@ pub extern "C" fn rssn_bincode_conditional_entropy(
     joint_probs_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let joint : Option<Expr> = from_bincode_buffer(&joint_probs_buf);
+    let joint : Option<Expr> =
+        from_bincode_buffer(
+            &joint_probs_buf,
+        );
 
     if let Some(j) = joint {
 
@@ -126,7 +156,10 @@ pub extern "C" fn rssn_bincode_mutual_information(
     joint_probs_buf : BincodeBuffer
 ) -> BincodeBuffer {
 
-    let joint : Option<Expr> = from_bincode_buffer(&joint_probs_buf);
+    let joint : Option<Expr> =
+        from_bincode_buffer(
+            &joint_probs_buf,
+        );
 
     if let Some(j) = joint {
 

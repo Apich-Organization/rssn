@@ -19,7 +19,9 @@ struct TransformInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fft_json(input_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_fft_json(
+    input_json : *const c_char
+) -> *mut c_char {
 
     let mut input : TransformInput = match from_json_string(input_json) {
         | Some(i) => i,
@@ -43,12 +45,17 @@ pub unsafe extern "C" fn rssn_num_fft_json(input_json : *const c_char) -> *mut c
         err : None::<String>,
     };
 
-    to_c_string(serde_json::to_string(&ffi_res).unwrap())
+    to_c_string(
+        serde_json::to_string(&ffi_res)
+            .unwrap(),
+    )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ifft_json(input_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_ifft_json(
+    input_json : *const c_char
+) -> *mut c_char {
 
     let mut input : TransformInput = match from_json_string(input_json) {
         | Some(i) => i,
@@ -72,5 +79,8 @@ pub unsafe extern "C" fn rssn_num_ifft_json(input_json : *const c_char) -> *mut 
         err : None::<String>,
     };
 
-    to_c_string(serde_json::to_string(&ffi_res).unwrap())
+    to_c_string(
+        serde_json::to_string(&ffi_res)
+            .unwrap(),
+    )
 }

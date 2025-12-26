@@ -26,7 +26,9 @@ pub extern "C" fn rssn_physics_fvm_mesh_new(
 /// Frees a Mesh handle.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fvm_mesh_free(mesh : *mut Mesh) {
+pub unsafe extern "C" fn rssn_physics_fvm_mesh_free(
+    mesh : *mut Mesh
+) {
 
     if !mesh.is_null() {
 
@@ -37,7 +39,9 @@ pub unsafe extern "C" fn rssn_physics_fvm_mesh_free(mesh : *mut Mesh) {
 /// Returns a pointer to the mesh data.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fvm_mesh_data(mesh : *mut Mesh) -> *mut f64 {
+pub unsafe extern "C" fn rssn_physics_fvm_mesh_data(
+    mesh : *mut Mesh
+) -> *mut f64 {
 
     if mesh.is_null() {
 
@@ -52,11 +56,13 @@ pub unsafe extern "C" fn rssn_physics_fvm_mesh_data(mesh : *mut Mesh) -> *mut f6
 /// Simulates 1D advection and returns the final values in a new buffer.
 #[no_mangle]
 
-pub extern "C" fn rssn_physics_fvm_simulate_advection_1d() -> *mut f64 {
+pub extern "C" fn rssn_physics_fvm_simulate_advection_1d(
+) -> *mut f64 {
 
     let result = physics_fvm::simulate_1d_advection_scenario();
 
-    let mut result = result.into_boxed_slice();
+    let mut result =
+        result.into_boxed_slice();
 
     let ptr = result.as_mut_ptr();
 

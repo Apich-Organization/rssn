@@ -26,7 +26,9 @@ use crate::symbolic::real_roots::isolate_real_roots;
 use crate::symbolic::simplify::is_zero;
 
 /// Represents a cell in the Cylindrical Algebraic Decomposition.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct CadCell {
     /// A sample point that lies within the cell.
@@ -38,7 +40,9 @@ pub struct CadCell {
 }
 
 /// Represents the full Cylindrical Algebraic Decomposition of R^n.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
 
 pub struct Cad {
     /// The collection of cells in the decomposition.
@@ -63,12 +67,18 @@ pub fn cad(
 
     if vars.is_empty() {
 
-        return Err("Variable list cannot be empty.".to_string());
+        return Err("Variable list \
+                    cannot be empty."
+            .to_string());
     }
 
-    let projections = projection_phase(polys, vars)?;
+    let projections =
+        projection_phase(polys, vars)?;
 
-    let cells = lifting_phase(&projections, vars)?;
+    let cells = lifting_phase(
+        &projections,
+        vars,
+    )?;
 
     Ok(Cad {
         cells,
@@ -81,13 +91,19 @@ pub fn cad(
 pub(crate) fn projection_phase(
     polys : &[SparsePolynomial],
     vars : &[&str],
-) -> Result<Vec<Vec<SparsePolynomial>>, String> {
+) -> Result<
+    Vec<Vec<SparsePolynomial>>,
+    String,
+> {
 
-    let mut projection_sets = vec![polys.to_vec()];
+    let mut projection_sets =
+        vec![polys.to_vec()];
 
-    let mut current_polys = polys.to_vec();
+    let mut current_polys =
+        polys.to_vec();
 
-    let mut current_vars = vars.to_vec();
+    let mut current_vars =
+        vars.to_vec();
 
     while current_vars.len() > 1 {
 
@@ -95,12 +111,17 @@ pub(crate) fn projection_phase(
             .last()
             .unwrap();
 
-        let mut next_set = HashSet::new();
+        let mut next_set =
+            HashSet::new();
 
         // Discriminants (resultant(p, p_prime))
         for p in &current_polys {
 
-            let p_prime = differentiate_poly(p, proj_var);
+            let p_prime =
+                differentiate_poly(
+                    p,
+                    proj_var,
+                );
 
             if !p_prime
                 .terms
@@ -128,9 +149,13 @@ pub(crate) fn projection_phase(
         }
 
         // Cross-resultants
-        for i in 0 .. current_polys.len() {
+        for i in
+            0 .. current_polys.len()
+        {
 
-            for j in (i + 1) .. current_polys.len() {
+            for j in (i + 1)
+                .. current_polys.len()
+            {
 
                 let res = resultant(
                     &current_polys[i],
@@ -156,7 +181,9 @@ pub(crate) fn projection_phase(
             .into_iter()
             .collect();
 
-        projection_sets.push(current_polys.clone());
+        projection_sets.push(
+            current_polys.clone(),
+        );
     }
 
     projection_sets.reverse();
@@ -167,7 +194,9 @@ pub(crate) fn projection_phase(
 /// Performs the lifting phase of CAD.
 
 pub(crate) fn lifting_phase(
-    projections : &[Vec<SparsePolynomial>],
+    projections : &[Vec<
+        SparsePolynomial,
+    >],
     vars : &[&str],
 ) -> Result<Vec<CadCell>, String> {
 
@@ -177,21 +206,31 @@ pub(crate) fn lifting_phase(
 
     for p in base_polys {
 
-        let roots = isolate_real_roots(p, vars[0], 1e-9)?;
+        let roots = isolate_real_roots(
+            p,
+            vars[0],
+            1e-9,
+        )?;
 
         for (a, b) in roots {
 
-            all_roots.push(f64::midpoint(a, b));
+            all_roots.push(
+                f64::midpoint(a, b),
+            );
         }
     }
 
     all_roots.sort_by(|a, b| {
 
         a.partial_cmp(b)
-            .unwrap_or(std::cmp::Ordering::Equal)
+            .unwrap_or(
+            std::cmp::Ordering::Equal,
+        )
     });
 
-    all_roots.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
+    all_roots.dedup_by(|a, b| {
+        (*a - *b).abs() < 1e-9
+    });
 
     let mut current_cells = Vec::new();
 
@@ -207,7 +246,9 @@ pub(crate) fn lifting_phase(
 
         // Interval (-inf, first_root)
         current_cells.push(CadCell {
-            sample_point : vec![all_roots[0] - 1.0],
+            sample_point : vec![
+                all_roots[0] - 1.0,
+            ],
             dim : 1,
             index : vec![0],
         });
@@ -218,22 +259,34 @@ pub(crate) fn lifting_phase(
         {
 
             // Point {root}
-            current_cells.push(CadCell {
-                sample_point : vec![*root],
-                dim : 0,
-                index : vec![2 * i + 1],
-            });
+            current_cells.push(
+                CadCell {
+                    sample_point : vec![
+                        *root,
+                    ],
+                    dim : 0,
+                    index : vec![
+                        2 * i + 1,
+                    ],
+                },
+            );
 
             // Interval (root, next_root) or (root, inf)
             if i + 1 < all_roots.len() {
 
-                current_cells.push(CadCell {
-                    sample_point : vec![f64::midpoint(
-                        *root,
-                        all_roots[i + 1],
-                    )],
+                current_cells
+                    .push(CadCell {
+                    sample_point : vec![
+                        f64::midpoint(
+                            *root,
+                            all_roots
+                                [i + 1],
+                        ),
+                    ],
                     dim : 1,
-                    index : vec![2 * i + 2],
+                    index : vec![
+                        2 * i + 2,
+                    ],
                 });
             } else {
 
@@ -250,11 +303,13 @@ pub(crate) fn lifting_phase(
 
         let polys_k = &projections[k];
 
-        let mut next_level_cells = Vec::new();
+        let mut next_level_cells =
+            Vec::new();
 
         for cell in &current_cells {
 
-            let mut sample_map = HashMap::new();
+            let mut sample_map =
+                HashMap::new();
 
             for (i, v) in vars
                 .iter()
@@ -264,17 +319,26 @@ pub(crate) fn lifting_phase(
 
                 sample_map.insert(
                     (*v).to_string(),
-                    cell.sample_point[i],
+                    cell.sample_point
+                        [i],
                 );
             }
 
-            let mut roots_at_sample = Vec::new();
+            let mut roots_at_sample =
+                Vec::new();
 
             for p in polys_k {
 
-                let p_expr = sparse_poly_to_expr(p);
+                let p_expr =
+                    sparse_poly_to_expr(
+                        p,
+                    );
 
-                let p_substituted_expr = substitute_map(&p_expr, &sample_map);
+                let p_substituted_expr =
+                    substitute_map(
+                        &p_expr,
+                        &sample_map,
+                    );
 
                 let p_substituted = expr_to_sparse_poly(
                     &p_substituted_expr,
@@ -289,22 +353,33 @@ pub(crate) fn lifting_phase(
                     continue;
                 }
 
-                let is_constant = p_substituted.degree(vars[k]) == 0;
+                let is_constant =
+                    p_substituted
+                        .degree(
+                            vars[k],
+                        )
+                        == 0;
 
                 if is_constant {
 
                     continue;
                 }
 
-                let roots = isolate_real_roots(
-                    &p_substituted,
-                    vars[k],
-                    1e-9,
-                )?;
+                let roots =
+                    isolate_real_roots(
+                        &p_substituted,
+                        vars[k],
+                        1e-9,
+                    )?;
 
                 for (a, b) in roots {
 
-                    roots_at_sample.push(f64::midpoint(a, b));
+                    roots_at_sample
+                        .push(
+                        f64::midpoint(
+                            a, b,
+                        ),
+                    );
                 }
             }
 
@@ -314,59 +389,89 @@ pub(crate) fn lifting_phase(
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
 
-            roots_at_sample.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
+            roots_at_sample.dedup_by(
+                |a, b| {
+                    (*a - *b).abs()
+                        < 1e-9
+                },
+            );
 
-            if roots_at_sample.is_empty() {
+            if roots_at_sample
+                .is_empty()
+            {
 
-                let mut new_sample = cell
-                    .sample_point
-                    .clone();
+                let mut new_sample =
+                    cell.sample_point
+                        .clone();
 
                 new_sample.push(0.0);
 
-                let mut new_index = cell.index.clone();
+                let mut new_index =
+                    cell.index.clone();
 
                 new_index.push(0);
 
-                next_level_cells.push(CadCell {
-                    sample_point : new_sample,
-                    dim : cell.dim + 1,
-                    index : new_index,
-                });
+                next_level_cells.push(
+                    CadCell {
+                        sample_point:
+                            new_sample,
+                        dim : cell.dim
+                            + 1,
+                        index:
+                            new_index,
+                    },
+                );
             } else {
 
                 // Interval (-inf, first_root)
-                let mut new_sample = cell
-                    .sample_point
-                    .clone();
+                let mut new_sample =
+                    cell.sample_point
+                        .clone();
 
-                new_sample.push(roots_at_sample[0] - 1.0);
+                new_sample.push(
+                    roots_at_sample[0]
+                        - 1.0,
+                );
 
-                let mut new_index = cell.index.clone();
+                let mut new_index =
+                    cell.index.clone();
 
                 new_index.push(0);
 
-                next_level_cells.push(CadCell {
-                    sample_point : new_sample,
-                    dim : cell.dim + 1,
-                    index : new_index,
-                });
+                next_level_cells.push(
+                    CadCell {
+                        sample_point:
+                            new_sample,
+                        dim : cell.dim
+                            + 1,
+                        index:
+                            new_index,
+                    },
+                );
 
-                for (i, root_val) in roots_at_sample
-                    .iter()
-                    .enumerate()
+                for (i, root_val) in
+                    roots_at_sample
+                        .iter()
+                        .enumerate()
                 {
 
                     // Point {root}
-                    let mut point_sample = cell
+                    let mut
+                    point_sample = cell
                         .sample_point
                         .clone();
 
-                    point_sample.push(*root_val);
+                    point_sample.push(
+                        *root_val,
+                    );
 
-                    let mut point_index = cell.index.clone();
+                    let mut point_index =
+                        cell.index
+                            .clone();
 
-                    point_index.push(2 * i + 1);
+                    point_index.push(
+                        2 * i + 1,
+                    );
 
                     next_level_cells.push(CadCell {
                         sample_point : point_sample,
@@ -390,9 +495,15 @@ pub(crate) fn lifting_phase(
                         interval_sample.push(*root_val + 1.0);
                     }
 
-                    let mut interval_index = cell.index.clone();
+                    let mut
+                    interval_index =
+                        cell.index
+                            .clone();
 
-                    interval_index.push(2 * i + 2);
+                    interval_index
+                        .push(
+                            2 * i + 2,
+                        );
 
                     next_level_cells.push(CadCell {
                         sample_point : interval_sample,
@@ -403,7 +514,8 @@ pub(crate) fn lifting_phase(
             }
         }
 
-        current_cells = next_level_cells;
+        current_cells =
+            next_level_cells;
     }
 
     Ok(current_cells)
@@ -445,16 +557,25 @@ pub(crate) fn sylvester_matrix(
 
     if n == 0 && m == 0 {
 
-        return Expr::Matrix(vec![vec![
-            Expr::Constant(0.0),
-        ]]);
+        return Expr::Matrix(vec![
+            vec![Expr::Constant(0.0)],
+        ]);
     }
 
-    let mut matrix_rows = vec![vec![Expr::Constant(0.0); n + m]; n + m];
+    let mut matrix_rows =
+        vec![
+            vec![
+                Expr::Constant(0.0);
+                n + m
+            ];
+            n + m
+        ];
 
-    let p_coeffs_rev = p.get_coeffs_as_vec(var);
+    let p_coeffs_rev =
+        p.get_coeffs_as_vec(var);
 
-    let q_coeffs_rev = q.get_coeffs_as_vec(var);
+    let q_coeffs_rev =
+        q.get_coeffs_as_vec(var);
 
     for i in 0 .. m {
 
@@ -495,16 +616,20 @@ pub(crate) fn resultant(
     var : &str,
 ) -> Expr {
 
-    let sylvester = sylvester_matrix(p, q, var);
+    let sylvester =
+        sylvester_matrix(p, q, var);
 
-    if let Expr::Matrix(m) = &sylvester {
+    if let Expr::Matrix(m) = &sylvester
+    {
 
         if m.is_empty() {
 
             return Expr::Constant(0.0);
         }
 
-        if m.len() == 1 && m[0].len() == 1 {
+        if m.len() == 1
+            && m[0].len() == 1
+        {
 
             return m[0][0].clone();
         }
@@ -529,16 +654,19 @@ mod tests {
         // p(x) = x^2 - 1
         let mut terms = BTreeMap::new();
 
-        let mut vars_map = BTreeMap::new();
+        let mut vars_map =
+            BTreeMap::new();
 
-        vars_map.insert("x".to_string(), 2);
+        vars_map
+            .insert("x".to_string(), 2);
 
         terms.insert(
             Monomial(vars_map),
             Expr::Constant(1.0),
         );
 
-        let vars_map_0 = BTreeMap::new();
+        let vars_map_0 =
+            BTreeMap::new();
 
         terms.insert(
             Monomial(vars_map_0),
@@ -549,7 +677,8 @@ mod tests {
             terms,
         };
 
-        let result = cad(&[p], &["x"]).unwrap();
+        let result =
+            cad(&[p], &["x"]).unwrap();
 
         // Roots are -1 and 1.
         // Intervals: (-inf, -1), {-1}, (-1, 1), {1}, (1, inf)

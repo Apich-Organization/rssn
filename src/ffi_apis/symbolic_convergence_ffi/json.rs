@@ -11,13 +11,18 @@ pub extern "C" fn rssn_json_analyze_convergence(
     var_json : *const c_char,
 ) -> *mut c_char {
 
-    let term : Option<Expr> = from_json_string(term_json);
+    let term : Option<Expr> =
+        from_json_string(term_json);
 
-    let var : Option<String> = from_json_string(var_json);
+    let var : Option<String> =
+        from_json_string(var_json);
 
-    if let (Some(t), Some(v)) = (term, var) {
+    if let (Some(t), Some(v)) =
+        (term, var)
+    {
 
-        let result = analyze_convergence(&t, &v);
+        let result =
+            analyze_convergence(&t, &v);
 
         to_json_string(&result)
     } else {

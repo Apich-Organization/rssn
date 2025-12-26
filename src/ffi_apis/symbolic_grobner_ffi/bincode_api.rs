@@ -11,15 +11,26 @@ pub extern "C" fn rssn_bincode_buchberger(
     order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let basis : Option<Vec<SparsePolynomial>> = from_bincode_buffer(&basis_buf);
+    let basis : Option<
+        Vec<SparsePolynomial>,
+    > = from_bincode_buffer(&basis_buf);
 
-    let order : Option<MonomialOrder> = from_bincode_buffer(&order_buf);
+    let order : Option<MonomialOrder> =
+        from_bincode_buffer(&order_buf);
 
-    if let (Some(b), Some(o)) = (basis, order) {
+    if let (Some(b), Some(o)) =
+        (basis, order)
+    {
 
         match buchberger(&b, o) {
-            | Ok(result) => to_bincode_buffer(&result),
-            | Err(_) => BincodeBuffer::empty(),
+            | Ok(result) => {
+                to_bincode_buffer(
+                    &result,
+                )
+            },
+            | Err(_) => {
+                BincodeBuffer::empty()
+            },
         }
     } else {
 
@@ -35,21 +46,42 @@ pub extern "C" fn rssn_bincode_poly_division_multivariate(
     order_buf : BincodeBuffer,
 ) -> BincodeBuffer {
 
-    let dividend : Option<SparsePolynomial> = from_bincode_buffer(&dividend_buf);
+    let dividend : Option<
+        SparsePolynomial,
+    > = from_bincode_buffer(
+        &dividend_buf,
+    );
 
-    let divisors : Option<Vec<SparsePolynomial>> = from_bincode_buffer(&divisors_buf);
+    let divisors : Option<
+        Vec<SparsePolynomial>,
+    > = from_bincode_buffer(
+        &divisors_buf,
+    );
 
-    let order : Option<MonomialOrder> = from_bincode_buffer(&order_buf);
+    let order : Option<MonomialOrder> =
+        from_bincode_buffer(&order_buf);
 
-    if let (Some(d), Some(divs), Some(o)) = (
+    if let (
+        Some(d),
+        Some(divs),
+        Some(o),
+    ) = (
         dividend,
         divisors,
         order,
     ) {
 
-        match poly_division_multivariate(&d, &divs, o) {
-            | Ok(result) => to_bincode_buffer(&result),
-            | Err(_) => BincodeBuffer::empty(),
+        match poly_division_multivariate(
+            &d, &divs, o,
+        ) {
+            | Ok(result) => {
+                to_bincode_buffer(
+                    &result,
+                )
+            },
+            | Err(_) => {
+                BincodeBuffer::empty()
+            },
         }
     } else {
 

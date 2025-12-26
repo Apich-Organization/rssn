@@ -70,7 +70,9 @@ struct OdeResult {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : LorenzInput = match from_json_string(input) {
         | Some(i) => i,
@@ -87,11 +89,12 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input : *const c_char) -> 
         },
     };
 
-    let system = physics_rkm::LorenzSystem {
-        sigma : input.sigma,
-        rho : input.rho,
-        beta : input.beta,
-    };
+    let system =
+        physics_rkm::LorenzSystem {
+            sigma : input.sigma,
+            rho : input.rho,
+            beta : input.beta,
+        };
 
     let solver = DormandPrince54::new();
 
@@ -103,9 +106,13 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input : *const c_char) -> 
         input.tol,
     );
 
-    let mut time = Vec::with_capacity(results.len());
+    let mut time = Vec::with_capacity(
+        results.len(),
+    );
 
-    let mut states = Vec::with_capacity(results.len());
+    let mut states = Vec::with_capacity(
+        results.len(),
+    );
 
     for (t, y) in results {
 
@@ -115,15 +122,17 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(input : *const c_char) -> 
     }
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            OdeResult,
-            String,
-        >::ok(
-            OdeResult {
-                time,
-                states,
-            },
-        ))
+        serde_json::to_string(
+            &FfiResult::<
+                OdeResult,
+                String,
+            >::ok(
+                OdeResult {
+                    time,
+                    states,
+                },
+            ),
+        )
         .unwrap(),
     )
 }
@@ -154,16 +163,21 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
         zeta : input.zeta,
     };
 
-    let results = physics_rkm::solve_rk4(
-        &system,
-        &input.y0,
-        input.t_span,
-        input.dt,
+    let results =
+        physics_rkm::solve_rk4(
+            &system,
+            &input.y0,
+            input.t_span,
+            input.dt,
+        );
+
+    let mut time = Vec::with_capacity(
+        results.len(),
     );
 
-    let mut time = Vec::with_capacity(results.len());
-
-    let mut states = Vec::with_capacity(results.len());
+    let mut states = Vec::with_capacity(
+        results.len(),
+    );
 
     for (t, y) in results {
 
@@ -173,22 +187,26 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
     }
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            OdeResult,
-            String,
-        >::ok(
-            OdeResult {
-                time,
-                states,
-            },
-        ))
+        serde_json::to_string(
+            &FfiResult::<
+                OdeResult,
+                String,
+            >::ok(
+                OdeResult {
+                    time,
+                    states,
+                },
+            ),
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : VanDerPolInput = match from_json_string(input) {
         | Some(i) => i,
@@ -205,9 +223,10 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input : *const c_char) 
         },
     };
 
-    let system = physics_rkm::VanDerPolSystem {
-        mu : input.mu,
-    };
+    let system =
+        physics_rkm::VanDerPolSystem {
+            mu : input.mu,
+        };
 
     let solver = CashKarp45::default();
 
@@ -219,9 +238,13 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input : *const c_char) 
         input.tol,
     );
 
-    let mut time = Vec::with_capacity(results.len());
+    let mut time = Vec::with_capacity(
+        results.len(),
+    );
 
-    let mut states = Vec::with_capacity(results.len());
+    let mut states = Vec::with_capacity(
+        results.len(),
+    );
 
     for (t, y) in results {
 
@@ -231,15 +254,17 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(input : *const c_char) 
     }
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            OdeResult,
-            String,
-        >::ok(
-            OdeResult {
-                time,
-                states,
-            },
-        ))
+        serde_json::to_string(
+            &FfiResult::<
+                OdeResult,
+                String,
+            >::ok(
+                OdeResult {
+                    time,
+                    states,
+                },
+            ),
+        )
         .unwrap(),
     )
 }
@@ -272,7 +297,8 @@ pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(
         gamma : input.gamma,
     };
 
-    let solver = BogackiShampine23::default();
+    let solver =
+        BogackiShampine23::default();
 
     let results = solver.solve(
         &system,
@@ -282,9 +308,13 @@ pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(
         input.tol,
     );
 
-    let mut time = Vec::with_capacity(results.len());
+    let mut time = Vec::with_capacity(
+        results.len(),
+    );
 
-    let mut states = Vec::with_capacity(results.len());
+    let mut states = Vec::with_capacity(
+        results.len(),
+    );
 
     for (t, y) in results {
 
@@ -294,15 +324,17 @@ pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(
     }
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            OdeResult,
-            String,
-        >::ok(
-            OdeResult {
-                time,
-                states,
-            },
-        ))
+        serde_json::to_string(
+            &FfiResult::<
+                OdeResult,
+                String,
+            >::ok(
+                OdeResult {
+                    time,
+                    states,
+                },
+            ),
+        )
         .unwrap(),
     )
 }

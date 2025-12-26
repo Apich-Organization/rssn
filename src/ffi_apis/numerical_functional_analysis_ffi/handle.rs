@@ -13,9 +13,15 @@ unsafe fn to_points(
     len : usize,
 ) -> Vec<(f64, f64)> {
 
-    let x_slice = std::slice::from_raw_parts(x, len);
+    let x_slice =
+        std::slice::from_raw_parts(
+            x, len,
+        );
 
-    let y_slice = std::slice::from_raw_parts(y, len);
+    let y_slice =
+        std::slice::from_raw_parts(
+            y, len,
+        );
 
     x_slice
         .iter()
@@ -40,7 +46,9 @@ pub unsafe extern "C" fn rssn_num_fa_l1_norm(
 
     let points = to_points(x, y, len);
 
-    functional_analysis::l1_norm(&points)
+    functional_analysis::l1_norm(
+        &points,
+    )
 }
 
 /// Calculates the L2 norm.
@@ -59,7 +67,9 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm(
 
     let points = to_points(x, y, len);
 
-    functional_analysis::l2_norm(&points)
+    functional_analysis::l2_norm(
+        &points,
+    )
 }
 
 /// Calculates the L-infinity norm.
@@ -78,7 +88,9 @@ pub unsafe extern "C" fn rssn_num_fa_infinity_norm(
 
     let points = to_points(x, y, len);
 
-    functional_analysis::infinity_norm(&points)
+    functional_analysis::infinity_norm(
+        &points,
+    )
 }
 
 /// Calculates the inner product.
@@ -94,7 +106,12 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product(
     result : *mut f64,
 ) -> i32 {
 
-    if x1.is_null() || y1.is_null() || x2.is_null() || y2.is_null() || result.is_null() {
+    if x1.is_null()
+        || y1.is_null()
+        || x2.is_null()
+        || y2.is_null()
+        || result.is_null()
+    {
 
         return -1;
     }

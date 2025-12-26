@@ -18,8 +18,14 @@ pub extern "C" fn rssn_tensor_add_handle(
     };
 
     match t1_ref.add(t2_ref) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -41,8 +47,14 @@ pub extern "C" fn rssn_tensor_scalar_mul_handle(
     };
 
     match t_ref.scalar_mul(scalar_ref) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -64,8 +76,14 @@ pub extern "C" fn rssn_tensor_outer_product_handle(
     };
 
     match t1_ref.outer_product(t2_ref) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -83,7 +101,13 @@ pub extern "C" fn rssn_tensor_contract_handle(
     };
 
     match t_ref.contract(axis1, axis2) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }

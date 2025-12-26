@@ -19,11 +19,14 @@ fn test_p_series_convergent() {
             Arc::new(Expr::Variable(
                 "n".to_string(),
             )),
-            Arc::new(Expr::Constant(2.0)),
+            Arc::new(Expr::Constant(
+                2.0,
+            )),
         )),
     );
 
-    let result = analyze_convergence(&term, "n");
+    let result =
+        analyze_convergence(&term, "n");
 
     assert_eq!(
         result,
@@ -44,11 +47,14 @@ fn test_p_series_divergent() {
             Arc::new(Expr::Variable(
                 "n".to_string(),
             )),
-            Arc::new(Expr::Constant(1.0)),
+            Arc::new(Expr::Constant(
+                1.0,
+            )),
         )),
     );
 
-    let result = analyze_convergence(&term, "n");
+    let result =
+        analyze_convergence(&term, "n");
 
     assert_eq!(
         result,
@@ -69,11 +75,14 @@ fn test_p_series_half() {
             Arc::new(Expr::Variable(
                 "n".to_string(),
             )),
-            Arc::new(Expr::Constant(0.5)),
+            Arc::new(Expr::Constant(
+                0.5,
+            )),
         )),
     );
 
-    let result = analyze_convergence(&term, "n");
+    let result =
+        analyze_convergence(&term, "n");
 
     assert_eq!(
         result,
@@ -94,11 +103,14 @@ fn test_p_series_three() {
             Arc::new(Expr::Variable(
                 "n".to_string(),
             )),
-            Arc::new(Expr::Constant(3.0)),
+            Arc::new(Expr::Constant(
+                3.0,
+            )),
         )),
     );
 
-    let result = analyze_convergence(&term, "n");
+    let result =
+        analyze_convergence(&term, "n");
 
     assert_eq!(
         result,
@@ -113,7 +125,8 @@ fn test_convergence_result_types() {
     // Test that the function returns valid ConvergenceResult types
     let term = Expr::new_variable("n");
 
-    let result = analyze_convergence(&term, "n");
+    let result =
+        analyze_convergence(&term, "n");
 
     // Should be one of the three possible results
     assert!(matches!(

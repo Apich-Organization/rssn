@@ -16,14 +16,20 @@ pub unsafe extern "C" fn rssn_num_vec_create(
 
     if data.is_null() {
 
-        update_last_error("Null pointer passed to rssn_num_vec_create".to_string());
+        update_last_error(
+            "Null pointer passed to \
+             rssn_num_vec_create"
+                .to_string(),
+        );
 
         return std::ptr::null_mut();
     }
 
     let v = unsafe {
 
-        std::slice::from_raw_parts(data, len)
+        std::slice::from_raw_parts(
+            data, len,
+        )
     }
     .to_vec();
 
@@ -33,7 +39,9 @@ pub unsafe extern "C" fn rssn_num_vec_create(
 /// Frees a numerical vector allocated by the library.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_vec_free(v : *mut Vec<f64>) {
+pub unsafe extern "C" fn rssn_num_vec_free(
+    v : *mut Vec<f64>
+) {
 
     if !v.is_null() {
 
@@ -47,7 +55,9 @@ pub unsafe extern "C" fn rssn_num_vec_free(v : *mut Vec<f64>) {
 /// Returns the length of a numerical vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_vec_len(v : *const Vec<f64>) -> usize {
+pub unsafe extern "C" fn rssn_num_vec_len(
+    v : *const Vec<f64>
+) -> usize {
 
     if v.is_null() {
 
@@ -63,7 +73,9 @@ pub unsafe extern "C" fn rssn_num_vec_len(v : *const Vec<f64>) -> usize {
 /// Returns a pointer to the underlying data of a numerical vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_vec_data(v : *const Vec<f64>) -> *const f64 {
+pub unsafe extern "C" fn rssn_num_vec_data(
+    v : *const Vec<f64>
+) -> *const f64 {
 
     if v.is_null() {
 
@@ -101,7 +113,9 @@ pub unsafe extern "C" fn rssn_num_vec_add(
     );
 
     match res {
-        | Ok(v) => Box::into_raw(Box::new(v)),
+        | Ok(v) => {
+            Box::into_raw(Box::new(v))
+        },
         | Err(e) => {
 
             update_last_error(e);
@@ -136,7 +150,9 @@ pub unsafe extern "C" fn rssn_num_vec_sub(
     );
 
     match res {
-        | Ok(v) => Box::into_raw(Box::new(v)),
+        | Ok(v) => {
+            Box::into_raw(Box::new(v))
+        },
         | Err(e) => {
 
             update_last_error(e);
@@ -179,7 +195,10 @@ pub unsafe extern "C" fn rssn_num_vec_dot_product(
     result : *mut f64,
 ) -> i32 {
 
-    if v1.is_null() || v2.is_null() || result.is_null() {
+    if v1.is_null()
+        || v2.is_null()
+        || result.is_null()
+    {
 
         return -1;
     }
@@ -249,7 +268,8 @@ pub unsafe extern "C" fn rssn_num_vec_lp_norm(
 
     unsafe {
 
-        *result = vector::lp_norm(&*v, p);
+        *result =
+            vector::lp_norm(&*v, p);
     }
 
     0
@@ -258,7 +278,9 @@ pub unsafe extern "C" fn rssn_num_vec_lp_norm(
 /// Normalizes a vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_vec_normalize(v : *const Vec<f64>) -> *mut Vec<f64> {
+pub unsafe extern "C" fn rssn_num_vec_normalize(
+    v : *const Vec<f64>
+) -> *mut Vec<f64> {
 
     if v.is_null() {
 
@@ -269,7 +291,9 @@ pub unsafe extern "C" fn rssn_num_vec_normalize(v : *const Vec<f64>) -> *mut Vec
 
         &*v
     }) {
-        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Ok(res) => {
+            Box::into_raw(Box::new(res))
+        },
         | Err(e) => {
 
             update_last_error(e);
@@ -302,7 +326,9 @@ pub unsafe extern "C" fn rssn_num_vec_cross_product(
             &*v2
         },
     ) {
-        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Ok(res) => {
+            Box::into_raw(Box::new(res))
+        },
         | Err(e) => {
 
             update_last_error(e);
@@ -321,7 +347,10 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
     result : *mut f64,
 ) -> i32 {
 
-    if v1.is_null() || v2.is_null() || result.is_null() {
+    if v1.is_null()
+        || v2.is_null()
+        || result.is_null()
+    {
 
         return -1;
     }
@@ -377,7 +406,9 @@ pub unsafe extern "C" fn rssn_num_vec_project(
             &*v2
         },
     ) {
-        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Ok(res) => {
+            Box::into_raw(Box::new(res))
+        },
         | Err(e) => {
 
             update_last_error(e);
@@ -410,7 +441,9 @@ pub unsafe extern "C" fn rssn_num_vec_reflect(
             &*n
         },
     ) {
-        | Ok(res) => Box::into_raw(Box::new(res)),
+        | Ok(res) => {
+            Box::into_raw(Box::new(res))
+        },
         | Err(e) => {
 
             update_last_error(e);

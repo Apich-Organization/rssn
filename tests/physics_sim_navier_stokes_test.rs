@@ -6,9 +6,11 @@ use rssn::physics::physics_sim::navier_stokes_fluid::*;
 
 #[test]
 
-fn test_simulate_lid_driven_cavity_scenario() {
+fn test_simulate_lid_driven_cavity_scenario(
+) {
 
-    simulate_lid_driven_cavity_scenario();
+    simulate_lid_driven_cavity_scenario(
+    );
 }
 
 #[test]
@@ -17,17 +19,21 @@ fn test_lid_driven_cavity_basic() {
 
     const K : usize = 4;
 
-    const N : usize = 2_usize.pow(K as u32) + 1; // 17
-    let params = NavierStokesParameters {
-        nx : N,
-        ny : N,
-        re : 10.0,
-        dt : 0.001,
-        n_iter : 10,
-        lid_velocity : 1.0,
-    };
+    const N : usize =
+        2_usize.pow(K as u32) + 1; // 17
+    let params =
+        NavierStokesParameters {
+            nx : N,
+            ny : N,
+            re : 10.0,
+            dt : 0.001,
+            n_iter : 10,
+            lid_velocity : 1.0,
+        };
 
-    let res = run_lid_driven_cavity(&params).unwrap();
+    let res =
+        run_lid_driven_cavity(&params)
+            .unwrap();
 
     let (u, v, p) = res;
 
@@ -40,7 +46,8 @@ fn test_lid_driven_cavity_basic() {
     // Check if lid velocity is reflected in top row of U
     // Top row indices in centered U are [N-1, :]
     // Since lid velocity is 1.0, we expect some positive value in the top row
-    let top_row_avg = u.row(N - 1).sum() / N as f64;
+    let top_row_avg =
+        u.row(N - 1).sum() / N as f64;
 
     assert!(top_row_avg > 0.0);
 }

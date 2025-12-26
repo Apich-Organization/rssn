@@ -22,12 +22,15 @@ use crate::prelude::Expr;
 /// # Panics
 /// Panics if the write fails.
 
-pub fn write_npy_file<P : AsRef<Path>>(
+pub fn write_npy_file<
+    P : AsRef<Path>,
+>(
     filename : P,
     arr : &Array2<f64>,
 ) -> Result<(), String> {
 
-    write_npy(filename, arr).map_err(|e| e.to_string())
+    write_npy(filename, arr)
+        .map_err(|e| e.to_string())
 }
 
 /// Reads a 2D `ndarray::Array` from a `.npy` file.
@@ -41,9 +44,14 @@ pub fn write_npy_file<P : AsRef<Path>>(
 /// # Panics
 /// Panics if the read fails.
 
-pub fn read_npy_file<P : AsRef<Path>>(filename : P) -> Result<Array2<f64>, String> {
+pub fn read_npy_file<
+    P : AsRef<Path>,
+>(
+    filename : P
+) -> Result<Array2<f64>, String> {
 
-    read_npy(filename).map_err(|e| e.to_string())
+    read_npy(filename)
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -59,7 +67,11 @@ mod tests {
 
     #[test]
 
-    pub(crate) fn test_write_read_npy() -> Result<(), Arc<dyn std::error::Error>> {
+    pub(crate) fn test_write_read_npy(
+    ) -> Result<
+        (),
+        Arc<dyn std::error::Error>,
+    > {
 
         let arr = array![
             [1.0, 2.0],
@@ -68,16 +80,24 @@ mod tests {
 
         let filename = "test_array.npy";
 
-        let _ = write_npy_file(filename, &arr);
+        let _ = write_npy_file(
+            filename,
+            &arr,
+        );
 
-        let read_arr = read_npy_file(filename);
+        let read_arr =
+            read_npy_file(filename);
 
         assert_eq!(
             arr,
-            read_arr.expect("Failed to read the array for comparison")
+            read_arr.expect(
+                "Failed to read the \
+                 array for comparison"
+            )
         );
 
-        let _ = fs::remove_file(filename);
+        let _ =
+            fs::remove_file(filename);
 
         Ok(())
     }
@@ -95,16 +115,21 @@ mod tests {
 /// A `Result` indicating success or an error string if the input is not a matrix
 /// or contains non-numerical elements.
 
-pub fn save_expr_as_npy<P : AsRef<Path>>(
+pub fn save_expr_as_npy<
+    P : AsRef<Path>,
+>(
     path : P,
     matrix_expr : &Expr,
 ) -> Result<(), String> {
 
-    if let Expr::Matrix(rows) = matrix_expr {
+    if let Expr::Matrix(rows) =
+        matrix_expr
+    {
 
         if rows.is_empty() {
 
-            let arr : Array2<f64> = Array2::zeros((0, 0));
+            let arr : Array2<f64> =
+                Array2::zeros((0, 0));
 
             write_npy_file(path, &arr)?;
 
@@ -115,7 +140,10 @@ pub fn save_expr_as_npy<P : AsRef<Path>>(
 
         let num_cols = rows[0].len();
 
-        let mut arr = Array2::zeros((num_rows, num_cols));
+        let mut arr = Array2::zeros((
+            num_rows,
+            num_cols,
+        ));
 
         for (i, row) in rows
             .iter()
@@ -124,7 +152,12 @@ pub fn save_expr_as_npy<P : AsRef<Path>>(
 
             if row.len() != num_cols {
 
-                return Err("All rows must have the same number of columns".to_string());
+                return Err(
+                    "All rows must \
+                     have the same \
+                     number of columns"
+                        .to_string(),
+                );
             }
 
             for (j, elem) in row
@@ -151,7 +184,11 @@ pub fn save_expr_as_npy<P : AsRef<Path>>(
         Ok(())
     } else {
 
-        Err("Input expression is not a matrix".to_string())
+        Err(
+            "Input expression is not \
+             a matrix"
+                .to_string(),
+        )
     }
 }
 
@@ -164,7 +201,11 @@ pub fn save_expr_as_npy<P : AsRef<Path>>(
 /// A `Result` containing the `Expr::Matrix` representation of the loaded array,
 /// or an error string if the read fails.
 
-pub fn load_npy_as_expr<P : AsRef<Path>>(path : P) -> Result<Expr, String> {
+pub fn load_npy_as_expr<
+    P : AsRef<Path>,
+>(
+    path : P
+) -> Result<Expr, String> {
 
     let arr = read_npy_file(path)?;
 
@@ -176,7 +217,9 @@ pub fn load_npy_as_expr<P : AsRef<Path>>(path : P) -> Result<Expr, String> {
 
         for val in row {
 
-            expr_row.push(Expr::Constant(*val));
+            expr_row.push(
+                Expr::Constant(*val),
+            );
         }
 
         rows.push(expr_row);

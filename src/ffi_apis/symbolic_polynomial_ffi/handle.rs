@@ -80,17 +80,22 @@ pub extern "C" fn polynomial_long_division_handle(
             .unwrap()
     };
 
-    let (quotient, remainder) = polynomial_long_division(
-        dividend,
-        divisor,
-        var_str,
-    );
+    let (quotient, remainder) =
+        polynomial_long_division(
+            dividend,
+            divisor,
+            var_str,
+        );
 
     unsafe {
 
-        *quotient_out = Box::into_raw(Box::new(quotient));
+        *quotient_out = Box::into_raw(
+            Box::new(quotient),
+        );
 
-        *remainder_out = Box::into_raw(Box::new(remainder));
+        *remainder_out = Box::into_raw(
+            Box::new(remainder),
+        );
     }
 }
 
@@ -114,7 +119,10 @@ pub extern "C" fn polynomial_leading_coefficient_handle(
             .unwrap()
     };
 
-    let result = leading_coefficient(expr, var_str);
+    let result = leading_coefficient(
+        expr,
+        var_str,
+    );
 
     Box::into_raw(Box::new(result))
 }
@@ -145,13 +153,17 @@ pub extern "C" fn polynomial_contains_var_handle(
 /// Frees an Expr handle
 #[no_mangle]
 
-pub extern "C" fn polynomial_free_expr_handle(expr_handle : *mut Expr) {
+pub extern "C" fn polynomial_free_expr_handle(
+    expr_handle : *mut Expr
+) {
 
     if !expr_handle.is_null() {
 
         unsafe {
 
-            let _ = Box::from_raw(expr_handle);
+            let _ = Box::from_raw(
+                expr_handle,
+            );
         }
     }
 }

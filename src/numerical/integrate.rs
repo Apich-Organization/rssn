@@ -22,7 +22,15 @@ use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 
 /// Enum to select the numerical integration method.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
 
 pub enum QuadratureMethod {
     /// Trapezoidal rule.
@@ -91,7 +99,8 @@ where
 
     for i in 1 .. n_steps {
 
-        let x = (i as f64).mul_add(h, a);
+        let x =
+            (i as f64).mul_add(h, a);
 
         sum += f(x);
     }
@@ -146,13 +155,14 @@ where
 
     // Simpson's rule requires even number of intervals for the strict global formula.
     // If odd, we can warn or adjust. For now, enforce even.
-    let steps = if !n_steps.is_multiple_of(2) {
+    let steps =
+        if !n_steps.is_multiple_of(2) {
 
-        n_steps + 1
-    } else {
+            n_steps + 1
+        } else {
 
-        n_steps
-    };
+            n_steps
+        };
 
     let h = (b - a) / (steps as f64);
 
@@ -160,7 +170,8 @@ where
 
     for i in 1 .. steps {
 
-        let x = (i as f64).mul_add(h, a);
+        let x =
+            (i as f64).mul_add(h, a);
 
         let weight = if i % 2 == 0 {
 
@@ -234,9 +245,11 @@ where
 
         let mid = f64::midpoint(a, b);
 
-        let sub_mid_left = f64::midpoint(a, mid);
+        let sub_mid_left =
+            f64::midpoint(a, mid);
 
-        let sub_mid_right = f64::midpoint(mid, b);
+        let sub_mid_right =
+            f64::midpoint(mid, b);
 
         let fa = f(a);
 
@@ -249,19 +262,32 @@ where
         let fmr = f(sub_mid_right);
 
         // Simp(a, b) = (b-a)/6 * (f(a) + 4f(m) + f(b))
-        let left_simpson = (mid - a) / 6.0 * (4.0f64.mul_add(fml, fa) + fm);
+        let left_simpson = (mid - a)
+            / 6.0
+            * (4.0f64.mul_add(fml, fa)
+                + fm);
 
-        let right_simpson = (b - mid) / 6.0 * (4.0f64.mul_add(fmr, fm) + fb);
+        let right_simpson = (b - mid)
+            / 6.0
+            * (4.0f64.mul_add(fmr, fm)
+                + fb);
 
-        let sum_halves = left_simpson + right_simpson;
+        let sum_halves = left_simpson
+            + right_simpson;
 
         // Error estimate (1/15 rule)
-        let error = (sum_halves - whole_simpson).abs() / 15.0;
+        let error = (sum_halves
+            - whole_simpson)
+            .abs()
+            / 15.0;
 
         if error <= eps {
 
             // Richardson extrapolation: S + (S - S_whole)/15
-            sum_halves + (sum_halves - whole_simpson) / 15.0
+            sum_halves
+                + (sum_halves
+                    - whole_simpson)
+                    / 15.0
         } else {
 
             adaptive_recursive(
@@ -294,7 +320,9 @@ where
 
     let fm = f(mid);
 
-    let initial_simpson = (b - a) / 6.0 * (4.0f64.mul_add(fm, f(a)) + f(b));
+    let initial_simpson = (b - a) / 6.0
+        * (4.0f64.mul_add(fm, f(a))
+            + f(b));
 
     adaptive_recursive(
         &f,
@@ -350,7 +378,11 @@ where
         return 0.0;
     }
 
-    let mut r = vec![vec![0.0; max_steps]; max_steps];
+    let mut r =
+        vec![
+            vec![0.0; max_steps];
+            max_steps
+        ];
 
     // R[0][0]
     let h = b - a;
@@ -369,19 +401,28 @@ where
 
         for k in 1 ..= steps_prev {
 
-            let x = a + f64::from(2 * k - 1) * h_i;
+            let x = a + f64::from(
+                2 * k - 1,
+            ) * h_i;
 
             sum += f(x);
         }
 
-        r[i][0] = 0.5f64.mul_add(r[i - 1][0], h_i * sum);
+        r[i][0] = 0.5f64.mul_add(
+            r[i - 1][0],
+            h_i * sum,
+        );
 
         // Richardson extrapolation
         for j in 1 ..= i {
 
-            let k = 4.0_f64.powi(j as i32);
+            let k =
+                4.0_f64.powi(j as i32);
 
-            r[i][j] = k.mul_add(r[i][j - 1], -r[i - 1][j - 1]) / (k - 1.0);
+            r[i][j] = k.mul_add(
+                r[i][j - 1],
+                -r[i - 1][j - 1],
+            ) / (k - 1.0);
         }
     }
 
@@ -447,7 +488,8 @@ where
     for i in 0 .. 5 {
 
         // Transform x from [-1, 1] to [a, b]
-        let x = mid + half_len * nodes[i];
+        let x =
+            mid + half_len * nodes[i];
 
         sum += weights[i] * f(x);
     }
@@ -481,7 +523,8 @@ pub fn quadrature(
 
         vars.insert(var.to_string(), x);
 
-        eval_expr(f, &vars).unwrap_or(f64::NAN)
+        eval_expr(f, &vars)
+            .unwrap_or(f64::NAN)
     };
 
     let result = match method {
@@ -494,7 +537,12 @@ pub fn quadrature(
 
     if result.is_nan() {
 
-        return Err("Integration resulted in NaN, likely due to evaluation error.".to_string());
+        return Err("Integration \
+                    resulted in \
+                    NaN, likely due \
+                    to evaluation \
+                    error."
+            .to_string());
     }
 
     Ok(result)

@@ -15,13 +15,20 @@ use crate::symbolic::special;
 /// Computes the gamma function Γ(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_gamma_numerical(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_gamma_numerical(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::gamma_numerical(val))
+        to_json_string(
+            &special::gamma_numerical(
+                val,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -31,9 +38,12 @@ pub unsafe extern "C" fn rssn_json_gamma_numerical(x_json : *const c_char) -> *m
 /// Computes ln(Γ(x)) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_ln_gamma_numerical(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_ln_gamma_numerical(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
@@ -47,13 +57,20 @@ pub unsafe extern "C" fn rssn_json_ln_gamma_numerical(x_json : *const c_char) ->
 /// Computes the digamma function ψ(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_digamma_numerical(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_digamma_numerical(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::digamma_numerical(val))
+        to_json_string(
+            &special::digamma_numerical(
+                val,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -68,13 +85,21 @@ pub unsafe extern "C" fn rssn_json_beta_numerical(
     b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<f64> = from_json_string(a_json);
+    let a : Option<f64> =
+        from_json_string(a_json);
 
-    let b : Option<f64> = from_json_string(b_json);
+    let b : Option<f64> =
+        from_json_string(b_json);
 
-    if let (Some(val_a), Some(val_b)) = (a, b) {
+    if let (Some(val_a), Some(val_b)) =
+        (a, b)
+    {
 
-        to_json_string(&special::beta_numerical(val_a, val_b))
+        to_json_string(
+            &special::beta_numerical(
+                val_a, val_b,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -89,13 +114,21 @@ pub unsafe extern "C" fn rssn_json_ln_beta_numerical(
     b_json : *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<f64> = from_json_string(a_json);
+    let a : Option<f64> =
+        from_json_string(a_json);
 
-    let b : Option<f64> = from_json_string(b_json);
+    let b : Option<f64> =
+        from_json_string(b_json);
 
-    if let (Some(val_a), Some(val_b)) = (a, b) {
+    if let (Some(val_a), Some(val_b)) =
+        (a, b)
+    {
 
-        to_json_string(&special::ln_beta_numerical(val_a, val_b))
+        to_json_string(
+            &special::ln_beta_numerical(
+                val_a, val_b,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -111,13 +144,21 @@ pub unsafe extern "C" fn rssn_json_regularized_incomplete_beta(
     x_json : *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<f64> = from_json_string(a_json);
+    let a : Option<f64> =
+        from_json_string(a_json);
 
-    let b : Option<f64> = from_json_string(b_json);
+    let b : Option<f64> =
+        from_json_string(b_json);
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
-    if let (Some(va), Some(vb), Some(vx)) = (a, b, x) {
+    if let (
+        Some(va),
+        Some(vb),
+        Some(vx),
+    ) = (a, b, x)
+    {
 
         to_json_string(&special::regularized_incomplete_beta(va, vb, vx))
     } else {
@@ -134,11 +175,14 @@ pub unsafe extern "C" fn rssn_json_regularized_gamma_p(
     x_json : *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<f64> = from_json_string(a_json);
+    let a : Option<f64> =
+        from_json_string(a_json);
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
-    if let (Some(va), Some(vx)) = (a, x) {
+    if let (Some(va), Some(vx)) = (a, x)
+    {
 
         to_json_string(&special::regularized_gamma_p(va, vx))
     } else {
@@ -155,11 +199,14 @@ pub unsafe extern "C" fn rssn_json_regularized_gamma_q(
     x_json : *const c_char,
 ) -> *mut c_char {
 
-    let a : Option<f64> = from_json_string(a_json);
+    let a : Option<f64> =
+        from_json_string(a_json);
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
-    if let (Some(va), Some(vx)) = (a, x) {
+    if let (Some(va), Some(vx)) = (a, x)
+    {
 
         to_json_string(&special::regularized_gamma_q(va, vx))
     } else {
@@ -175,13 +222,20 @@ pub unsafe extern "C" fn rssn_json_regularized_gamma_q(
 /// Computes erf(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_erf_numerical(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_erf_numerical(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::erf_numerical(val))
+        to_json_string(
+            &special::erf_numerical(
+                val,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -191,13 +245,20 @@ pub unsafe extern "C" fn rssn_json_erf_numerical(x_json : *const c_char) -> *mut
 /// Computes erfc(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_erfc_numerical(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_erfc_numerical(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::erfc_numerical(val))
+        to_json_string(
+            &special::erfc_numerical(
+                val,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -207,13 +268,18 @@ pub unsafe extern "C" fn rssn_json_erfc_numerical(x_json : *const c_char) -> *mu
 /// Computes erf⁻¹(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_inverse_erf(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_inverse_erf(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::inverse_erf(val))
+        to_json_string(
+            &special::inverse_erf(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -223,13 +289,18 @@ pub unsafe extern "C" fn rssn_json_inverse_erf(x_json : *const c_char) -> *mut c
 /// Computes erfc⁻¹(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_inverse_erfc(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_inverse_erfc(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::inverse_erfc(val))
+        to_json_string(
+            &special::inverse_erfc(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -243,15 +314,18 @@ pub unsafe extern "C" fn rssn_json_inverse_erfc(x_json : *const c_char) -> *mut 
 /// Computes n! via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_factorial(n_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_factorial(
+    n_json : *const c_char
+) -> *mut c_char {
 
-    let n : Option<u64> = from_json_string(n_json);
+    let n : Option<u64> =
+        from_json_string(n_json);
 
     if let Some(val) = n {
 
-        to_json_string(&special::factorial(
-            val,
-        ))
+        to_json_string(
+            &special::factorial(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -261,13 +335,20 @@ pub unsafe extern "C" fn rssn_json_factorial(n_json : *const c_char) -> *mut c_c
 /// Computes n!! via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_double_factorial(n_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_double_factorial(
+    n_json : *const c_char
+) -> *mut c_char {
 
-    let n : Option<u64> = from_json_string(n_json);
+    let n : Option<u64> =
+        from_json_string(n_json);
 
     if let Some(val) = n {
 
-        to_json_string(&special::double_factorial(val))
+        to_json_string(
+            &special::double_factorial(
+                val,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -282,15 +363,18 @@ pub unsafe extern "C" fn rssn_json_binomial(
     k_json : *const c_char,
 ) -> *mut c_char {
 
-    let n : Option<u64> = from_json_string(n_json);
+    let n : Option<u64> =
+        from_json_string(n_json);
 
-    let k : Option<u64> = from_json_string(k_json);
+    let k : Option<u64> =
+        from_json_string(k_json);
 
-    if let (Some(vn), Some(vk)) = (n, k) {
+    if let (Some(vn), Some(vk)) = (n, k)
+    {
 
-        to_json_string(&special::binomial(
-            vn, vk,
-        ))
+        to_json_string(
+            &special::binomial(vn, vk),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -305,13 +389,20 @@ pub unsafe extern "C" fn rssn_json_rising_factorial(
     n_json : *const c_char,
 ) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
-    let n : Option<u32> = from_json_string(n_json);
+    let n : Option<u32> =
+        from_json_string(n_json);
 
-    if let (Some(vx), Some(vn)) = (x, n) {
+    if let (Some(vx), Some(vn)) = (x, n)
+    {
 
-        to_json_string(&special::rising_factorial(vx, vn))
+        to_json_string(
+            &special::rising_factorial(
+                vx, vn,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -326,13 +417,20 @@ pub unsafe extern "C" fn rssn_json_falling_factorial(
     n_json : *const c_char,
 ) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
-    let n : Option<u32> = from_json_string(n_json);
+    let n : Option<u32> =
+        from_json_string(n_json);
 
-    if let (Some(vx), Some(vn)) = (x, n) {
+    if let (Some(vx), Some(vn)) = (x, n)
+    {
 
-        to_json_string(&special::falling_factorial(vx, vn))
+        to_json_string(
+            &special::falling_factorial(
+                vx, vn,
+            ),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -342,13 +440,18 @@ pub unsafe extern "C" fn rssn_json_falling_factorial(
 /// Computes ln(n!) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_ln_factorial(n_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_ln_factorial(
+    n_json : *const c_char
+) -> *mut c_char {
 
-    let n : Option<u64> = from_json_string(n_json);
+    let n : Option<u64> =
+        from_json_string(n_json);
 
     if let Some(val) = n {
 
-        to_json_string(&special::ln_factorial(val))
+        to_json_string(
+            &special::ln_factorial(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -362,15 +465,18 @@ pub unsafe extern "C" fn rssn_json_ln_factorial(n_json : *const c_char) -> *mut 
 /// Computes J₀(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_bessel_j0(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_bessel_j0(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_j0(
-            val,
-        ))
+        to_json_string(
+            &special::bessel_j0(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -380,15 +486,18 @@ pub unsafe extern "C" fn rssn_json_bessel_j0(x_json : *const c_char) -> *mut c_c
 /// Computes J₁(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_bessel_j1(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_bessel_j1(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_j1(
-            val,
-        ))
+        to_json_string(
+            &special::bessel_j1(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -398,15 +507,18 @@ pub unsafe extern "C" fn rssn_json_bessel_j1(x_json : *const c_char) -> *mut c_c
 /// Computes Y₀(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_bessel_y0(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_bessel_y0(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_y0(
-            val,
-        ))
+        to_json_string(
+            &special::bessel_y0(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -416,15 +528,18 @@ pub unsafe extern "C" fn rssn_json_bessel_y0(x_json : *const c_char) -> *mut c_c
 /// Computes Y₁(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_bessel_y1(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_bessel_y1(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_y1(
-            val,
-        ))
+        to_json_string(
+            &special::bessel_y1(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -434,15 +549,18 @@ pub unsafe extern "C" fn rssn_json_bessel_y1(x_json : *const c_char) -> *mut c_c
 /// Computes I₀(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_bessel_i0(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_bessel_i0(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_i0(
-            val,
-        ))
+        to_json_string(
+            &special::bessel_i0(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -452,15 +570,18 @@ pub unsafe extern "C" fn rssn_json_bessel_i0(x_json : *const c_char) -> *mut c_c
 /// Computes I₁(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_bessel_i1(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_bessel_i1(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_i1(
-            val,
-        ))
+        to_json_string(
+            &special::bessel_i1(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -470,15 +591,18 @@ pub unsafe extern "C" fn rssn_json_bessel_i1(x_json : *const c_char) -> *mut c_c
 /// Computes K₀(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_bessel_k0(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_bessel_k0(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_k0(
-            val,
-        ))
+        to_json_string(
+            &special::bessel_k0(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -488,15 +612,18 @@ pub unsafe extern "C" fn rssn_json_bessel_k0(x_json : *const c_char) -> *mut c_c
 /// Computes K₁(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_bessel_k1(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_bessel_k1(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::bessel_k1(
-            val,
-        ))
+        to_json_string(
+            &special::bessel_k1(val),
+        )
     } else {
 
         std::ptr::null_mut()
@@ -510,13 +637,18 @@ pub unsafe extern "C" fn rssn_json_bessel_k1(x_json : *const c_char) -> *mut c_c
 /// Computes sinc(x) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_sinc(x_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_sinc(
+    x_json : *const c_char
+) -> *mut c_char {
 
-    let x : Option<f64> = from_json_string(x_json);
+    let x : Option<f64> =
+        from_json_string(x_json);
 
     if let Some(val) = x {
 
-        to_json_string(&special::sinc(val))
+        to_json_string(&special::sinc(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()
@@ -526,13 +658,18 @@ pub unsafe extern "C" fn rssn_json_sinc(x_json : *const c_char) -> *mut c_char {
 /// Computes ζ(s) via JSON interface.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_zeta_numerical(s_json : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_zeta_numerical(
+    s_json : *const c_char
+) -> *mut c_char {
 
-    let s : Option<f64> = from_json_string(s_json);
+    let s : Option<f64> =
+        from_json_string(s_json);
 
     if let Some(val) = s {
 
-        to_json_string(&special::zeta(val))
+        to_json_string(&special::zeta(
+            val,
+        ))
     } else {
 
         std::ptr::null_mut()

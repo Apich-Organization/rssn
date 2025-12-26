@@ -17,12 +17,15 @@ use crate::symbolic::core::Expr;
 
 struct EvalInput {
     expr : Expr,
-    vars : HashMap<String, Complex<f64>>,
+    vars :
+        HashMap<String, Complex<f64>>,
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_complex_eval_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_complex_eval_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : EvalInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,

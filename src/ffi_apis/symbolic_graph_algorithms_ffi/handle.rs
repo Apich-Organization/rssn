@@ -22,11 +22,16 @@ pub extern "C" fn rssn_graph_dfs_api(
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
         let result = dfs(g, start_node);
 
-        let json = serde_json::to_string(&result).unwrap_or_default();
+        let json =
+            serde_json::to_string(
+                &result,
+            )
+            .unwrap_or_default();
 
         std::ffi::CString::new(json)
             .unwrap()
@@ -50,11 +55,16 @@ pub extern "C" fn rssn_graph_bfs_api(
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
         let result = bfs(g, start_node);
 
-        let json = serde_json::to_string(&result).unwrap_or_default();
+        let json =
+            serde_json::to_string(
+                &result,
+            )
+            .unwrap_or_default();
 
         std::ffi::CString::new(json)
             .unwrap()
@@ -66,7 +76,9 @@ pub extern "C" fn rssn_graph_bfs_api(
 /// Returns a JSON array of arrays, where each inner array is a component.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_connected_components_api(graph : *const RssnGraph) -> *mut c_char {
+pub extern "C" fn rssn_graph_connected_components_api(
+    graph : *const RssnGraph
+) -> *mut c_char {
 
     if graph.is_null() {
 
@@ -75,11 +87,17 @@ pub extern "C" fn rssn_graph_connected_components_api(graph : *const RssnGraph) 
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
-        let result = connected_components(g);
+        let result =
+            connected_components(g);
 
-        let json = serde_json::to_string(&result).unwrap_or_default();
+        let json =
+            serde_json::to_string(
+                &result,
+            )
+            .unwrap_or_default();
 
         std::ffi::CString::new(json)
             .unwrap()
@@ -90,7 +108,9 @@ pub extern "C" fn rssn_graph_connected_components_api(graph : *const RssnGraph) 
 /// Checks if the graph is connected.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_is_connected(graph : *const RssnGraph) -> c_int {
+pub extern "C" fn rssn_graph_is_connected(
+    graph : *const RssnGraph
+) -> c_int {
 
     if graph.is_null() {
 
@@ -99,7 +119,8 @@ pub extern "C" fn rssn_graph_is_connected(graph : *const RssnGraph) -> c_int {
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
         if is_connected(g) {
 
@@ -126,11 +147,16 @@ pub extern "C" fn rssn_graph_strongly_connected_components(
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
         let result = strongly_connected_components(g);
 
-        let json = serde_json::to_string(&result).unwrap_or_default();
+        let json =
+            serde_json::to_string(
+                &result,
+            )
+            .unwrap_or_default();
 
         std::ffi::CString::new(json)
             .unwrap()
@@ -141,7 +167,9 @@ pub extern "C" fn rssn_graph_strongly_connected_components(
 /// Checks if the graph has a cycle.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_has_cycle_api(graph : *const RssnGraph) -> c_int {
+pub extern "C" fn rssn_graph_has_cycle_api(
+    graph : *const RssnGraph
+) -> c_int {
 
     if graph.is_null() {
 
@@ -150,7 +178,8 @@ pub extern "C" fn rssn_graph_has_cycle_api(graph : *const RssnGraph) -> c_int {
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
         if has_cycle(g) {
 
@@ -177,15 +206,18 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
         let (bridges, aps) = find_bridges_and_articulation_points(g);
 
         #[derive(serde::Serialize)]
 
         struct Result {
-            bridges : Vec<(usize, usize)>,
-            articulation_points : Vec<usize>,
+            bridges :
+                Vec<(usize, usize)>,
+            articulation_points :
+                Vec<usize>,
         }
 
         let result = Result {
@@ -193,7 +225,11 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
             articulation_points : aps,
         };
 
-        let json = serde_json::to_string(&result).unwrap_or_default();
+        let json =
+            serde_json::to_string(
+                &result,
+            )
+            .unwrap_or_default();
 
         std::ffi::CString::new(json)
             .unwrap()
@@ -205,7 +241,9 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
 /// Returns a new graph containing only the MST edges.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_kruskal_mst_api(graph : *const RssnGraph) -> *mut RssnGraph {
+pub extern "C" fn rssn_graph_kruskal_mst_api(
+    graph : *const RssnGraph
+) -> *mut RssnGraph {
 
     if graph.is_null() {
 
@@ -214,19 +252,23 @@ pub extern "C" fn rssn_graph_kruskal_mst_api(graph : *const RssnGraph) -> *mut R
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
         let mst_edges = kruskal_mst(g);
 
         // Create a new graph with the MST edges
-        let mut mst_graph = Graph::new(g.is_directed);
+        let mut mst_graph =
+            Graph::new(g.is_directed);
 
         for node in &g.nodes {
 
-            mst_graph.add_node(node.clone());
+            mst_graph
+                .add_node(node.clone());
         }
 
-        for (u, v, weight) in mst_edges {
+        for (u, v, weight) in mst_edges
+        {
 
             mst_graph.add_edge(
                 &g.nodes[u],
@@ -235,7 +277,9 @@ pub extern "C" fn rssn_graph_kruskal_mst_api(graph : *const RssnGraph) -> *mut R
             );
         }
 
-        Box::into_raw(Box::new(mst_graph)) as *mut RssnGraph
+        Box::into_raw(Box::new(
+            mst_graph,
+        )) as *mut RssnGraph
     }
 }
 
@@ -255,9 +299,14 @@ pub extern "C" fn rssn_graph_edmonds_karp_max_flow(
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
-        edmonds_karp_max_flow(g, source, sink)
+        edmonds_karp_max_flow(
+            g,
+            source,
+            sink,
+        )
     }
 }
 
@@ -277,7 +326,8 @@ pub extern "C" fn rssn_graph_dinic_max_flow(
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
         dinic_max_flow(g, source, sink)
     }
@@ -287,7 +337,9 @@ pub extern "C" fn rssn_graph_dinic_max_flow(
 /// Returns a JSON array of partition assignments (0 or 1 for each node), or null if not bipartite.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_is_bipartite_api(graph : *const RssnGraph) -> *mut c_char {
+pub extern "C" fn rssn_graph_is_bipartite_api(
+    graph : *const RssnGraph
+) -> *mut c_char {
 
     if graph.is_null() {
 
@@ -296,18 +348,23 @@ pub extern "C" fn rssn_graph_is_bipartite_api(graph : *const RssnGraph) -> *mut 
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
         match is_bipartite(g) {
             | Some(partition) => {
 
                 let json = serde_json::to_string(&partition).unwrap_or_default();
 
-                std::ffi::CString::new(json)
-                    .unwrap()
-                    .into_raw()
+                std::ffi::CString::new(
+                    json,
+                )
+                .unwrap()
+                .into_raw()
             },
-            | None => std::ptr::null_mut(),
+            | None => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -322,16 +379,22 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
     partition_json : *const c_char,
 ) -> *mut c_char {
 
-    if graph.is_null() || partition_json.is_null() {
+    if graph.is_null()
+        || partition_json.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
-        let partition_str = CStr::from_ptr(partition_json)
+        let partition_str =
+            CStr::from_ptr(
+                partition_json,
+            )
             .to_str()
             .unwrap_or("");
 
@@ -340,9 +403,17 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let matching = bipartite_maximum_matching(g, &partition);
+        let matching =
+            bipartite_maximum_matching(
+                g,
+                &partition,
+            );
 
-        let json = serde_json::to_string(&matching).unwrap_or_default();
+        let json =
+            serde_json::to_string(
+                &matching,
+            )
+            .unwrap_or_default();
 
         std::ffi::CString::new(json)
             .unwrap()
@@ -354,7 +425,9 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
 /// Returns a JSON array of node indices in topological order, or null if the graph has a cycle.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_topological_sort(graph : *const RssnGraph) -> *mut c_char {
+pub extern "C" fn rssn_graph_topological_sort(
+    graph : *const RssnGraph
+) -> *mut c_char {
 
     if graph.is_null() {
 
@@ -363,18 +436,23 @@ pub extern "C" fn rssn_graph_topological_sort(graph : *const RssnGraph) -> *mut 
 
     unsafe {
 
-        let g = &*(graph as *const Graph<String>);
+        let g = &*(graph
+            as *const Graph<String>);
 
         match topological_sort(g) {
             | Some(order) => {
 
                 let json = serde_json::to_string(&order).unwrap_or_default();
 
-                std::ffi::CString::new(json)
-                    .unwrap()
-                    .into_raw()
+                std::ffi::CString::new(
+                    json,
+                )
+                .unwrap()
+                .into_raw()
             },
-            | None => std::ptr::null_mut(),
+            | None => {
+                std::ptr::null_mut()
+            },
         }
     }
 }
@@ -382,7 +460,9 @@ pub extern "C" fn rssn_graph_topological_sort(graph : *const RssnGraph) -> *mut 
 /// Frees a C string returned by other functions.
 #[no_mangle]
 
-pub extern "C" fn rssn_free_string_api(ptr : *mut c_char) {
+pub extern "C" fn rssn_free_string_api(
+    ptr : *mut c_char
+) {
 
     if !ptr.is_null() {
 

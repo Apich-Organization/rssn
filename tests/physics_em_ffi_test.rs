@@ -3,7 +3,8 @@ use std::ffi::CString;
 
 #[test]
 
-fn test_em_simulate_oscillator_handle_ffi() {
+fn test_em_simulate_oscillator_handle_ffi(
+) {
 
     unsafe {
 
@@ -37,7 +38,8 @@ fn test_em_solve_json_ffi() {
         "method": "heun"
     }"#;
 
-    let c_input = CString::new(input).unwrap();
+    let c_input =
+        CString::new(input).unwrap();
 
     unsafe {
 
@@ -46,9 +48,13 @@ fn test_em_solve_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str = CStr::from_ptr(res_ptr).to_string_lossy();
+        let res_str =
+            CStr::from_ptr(res_ptr)
+                .to_string_lossy();
 
-        assert!(res_str.contains("\"ok\":"));
+        assert!(
+            res_str.contains("\"ok\":")
+        );
 
         rssn::ffi_apis::ffi_api::free_string(res_ptr);
     }

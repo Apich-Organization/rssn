@@ -7,7 +7,8 @@ use rssn::physics::physics_cnm::*;
 
 #[test]
 
-fn test_solve_heat_1d_cn_conservation() {
+fn test_solve_heat_1d_cn_conservation()
+{
 
     let n = 20;
 
@@ -33,22 +34,27 @@ fn test_solve_heat_1d_cn_conservation() {
 
 #[test]
 
-fn test_solve_schrodinger_1d_norm_conservation() {
+fn test_solve_schrodinger_1d_norm_conservation(
+) {
 
     let n = 100;
 
     let dx = 0.1;
 
-    let mut psi0 = vec![Complex::new(0.0, 0.0); n];
+    let mut psi0 =
+        vec![Complex::new(0.0, 0.0); n];
 
     // Gaussian wave packet centered at the middle
     for i in 0 .. n {
 
-        let x = (i as f64 - (n as f64 / 2.0)) * dx;
+        let x = (i as f64
+            - (n as f64 / 2.0))
+            * dx;
 
         let val = (-x * x).exp();
 
-        psi0[i] = Complex::new(val, 0.0);
+        psi0[i] =
+            Complex::new(val, 0.0);
     }
 
     // Normalize

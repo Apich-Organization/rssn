@@ -59,7 +59,10 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
         err : None::<String>,
     };
 
-    to_c_string(serde_json::to_string(&ffi_res).unwrap())
+    to_c_string(
+        serde_json::to_string(&ffi_res)
+            .unwrap(),
+    )
 }
 
 #[derive(Deserialize)]
@@ -92,17 +95,21 @@ pub unsafe extern "C" fn rssn_num_topology_persistence_json(
         },
     };
 
-    let res = topology::compute_persistence(
-        &input.points,
-        input.max_epsilon,
-        input.steps,
-        input.max_dim,
-    );
+    let res =
+        topology::compute_persistence(
+            &input.points,
+            input.max_epsilon,
+            input.steps,
+            input.max_dim,
+        );
 
     let ffi_res = FfiResult {
         ok : Some(res),
         err : None::<String>,
     };
 
-    to_c_string(serde_json::to_string(&ffi_res).unwrap())
+    to_c_string(
+        serde_json::to_string(&ffi_res)
+            .unwrap(),
+    )
 }

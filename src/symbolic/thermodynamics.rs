@@ -51,10 +51,16 @@ pub fn ideal_gas_law(
 ) -> Expr {
 
     simplify(&Expr::new_sub(
-        Expr::new_mul(p.clone(), v.clone()),
+        Expr::new_mul(
+            p.clone(),
+            v.clone(),
+        ),
         Expr::new_mul(
             n.clone(),
-            Expr::new_mul(r.clone(), t.clone()),
+            Expr::new_mul(
+                r.clone(),
+                t.clone(),
+            ),
         ),
     ))
 }
@@ -116,7 +122,9 @@ pub fn gibbs_free_energy(
 /// Calculates Entropy via Boltzmann's formula: $S = `k_B` \ln(\Omega)$.
 #[must_use]
 
-pub fn boltzmann_entropy(omega : &Expr) -> Expr {
+pub fn boltzmann_entropy(
+    omega : &Expr
+) -> Expr {
 
     let k_b = Expr::new_variable("k_B");
 
@@ -154,15 +162,15 @@ pub fn boltzmann_distribution(
 
     let k_b = Expr::new_variable("k_B");
 
-    let exponent = Expr::new_neg(Arc::new(
-        Expr::new_div(
+    let exponent = Expr::new_neg(
+        Arc::new(Expr::new_div(
             energy.clone(),
             Expr::new_mul(
                 k_b,
                 temperature.clone(),
             ),
-        ),
-    ));
+        )),
+    );
 
     simplify(&Expr::new_div(
         Expr::new_exp(exponent),
@@ -184,15 +192,15 @@ pub fn partition_function(
 
     for e in energies {
 
-        let exponent = Expr::new_neg(Arc::new(
-            Expr::new_div(
+        let exponent = Expr::new_neg(
+            Arc::new(Expr::new_div(
                 e.clone(),
                 Expr::new_mul(
                     k_b.clone(),
                     temperature.clone(),
                 ),
-            ),
-        ));
+            )),
+        );
 
         z = Expr::new_add(
             z,
@@ -283,7 +291,10 @@ pub fn work_isothermal_expansion(
     simplify(&Expr::new_mul(
         Expr::new_mul(
             n.clone(),
-            Expr::new_mul(r.clone(), t.clone()),
+            Expr::new_mul(
+                r.clone(),
+                t.clone(),
+            ),
         ),
         Expr::new_log(Expr::new_div(
             v2.clone(),
@@ -307,11 +318,13 @@ pub fn verify_maxwell_relation_helmholtz(
     // d2A / (dT dV) should equal d2A / (dV dT)
     let da_dt = differentiate(a, t_var);
 
-    let d2a_dt_dv = differentiate(&da_dt, v_var);
+    let d2a_dt_dv =
+        differentiate(&da_dt, v_var);
 
     let da_dv = differentiate(a, v_var);
 
-    let d2a_dv_dt = differentiate(&da_dv, t_var);
+    let d2a_dv_dt =
+        differentiate(&da_dv, t_var);
 
     simplify(&Expr::new_sub(
         d2a_dt_dv,

@@ -7,15 +7,16 @@ use rssn::physics::physics_fvm::*;
 
 fn test_advection_1d_stability() {
 
-    let mut mesh = Mesh::new(100, 1.0, |x| {
-        if x > 0.4 && x < 0.6 {
+    let mut mesh =
+        Mesh::new(100, 1.0, |x| {
+            if x > 0.4 && x < 0.6 {
 
-            1.0
-        } else {
+                1.0
+            } else {
 
-            0.0
-        }
-    });
+                0.0
+            }
+        });
 
     let velocity = 1.0;
 
@@ -44,21 +45,26 @@ fn test_advection_1d_stability() {
 
 fn test_burgers_1d_shock() {
 
-    let mut mesh = Mesh::new(100, 1.0, |x| {
-        if x < 0.5 {
+    let mut mesh =
+        Mesh::new(100, 1.0, |x| {
+            if x < 0.5 {
 
-            1.0
-        } else {
+                1.0
+            } else {
 
-            0.0
-        }
-    });
+                0.0
+            }
+        });
 
     let dx = 1.0 / 100.0;
 
     let dt = 0.001;
 
-    let result = solve_burgers_1d(&mut mesh, dt, 50);
+    let result = solve_burgers_1d(
+        &mut mesh,
+        dt,
+        50,
+    );
 
     // Shock should have moved to the right and stayed sharp-ish but slightly smoothed by LF
     assert!(result[60] > 0.0);

@@ -37,12 +37,13 @@ fn test_coord_transform_spherical() {
     // Cartesian to Spherical: (1, 1, 1) -> (sqrt(3), theta=45°, phi=acos(1/sqrt(3)))
     let p = vec![1.0, 1.0, 1.0];
 
-    let res = numerical_transform_point_pure(
-        &p,
-        CoordinateSystem::Cartesian,
-        CoordinateSystem::Spherical,
-    )
-    .unwrap();
+    let res =
+        numerical_transform_point_pure(
+            &p,
+            CoordinateSystem::Cartesian,
+            CoordinateSystem::Spherical,
+        )
+        .unwrap();
 
     assert_approx_eq!(
         res[0],
@@ -86,28 +87,42 @@ fn test_coord_jacobian() {
     // [[1, 0, 0],
     //  [0, 1, 0],
     //  [0, 0, 1]]
-    assert_approx_eq!(jac.get(0, 0), 1.0);
+    assert_approx_eq!(
+        jac.get(0, 0),
+        1.0
+    );
 
-    assert_approx_eq!(jac.get(0, 1), 0.0);
+    assert_approx_eq!(
+        jac.get(0, 1),
+        0.0
+    );
 
-    assert_approx_eq!(jac.get(1, 0), 0.0);
+    assert_approx_eq!(
+        jac.get(1, 0),
+        0.0
+    );
 
-    assert_approx_eq!(jac.get(1, 1), 1.0);
+    assert_approx_eq!(
+        jac.get(1, 1),
+        1.0
+    );
 }
 
 #[test]
 
-fn test_coord_transform_symbolic_assisted() {
+fn test_coord_transform_symbolic_assisted(
+) {
 
     // Test the non-pure version that uses symbolic rules.
     let p = vec![1.0, 0.0, 0.0];
 
-    let res = numerical_transform_point(
-        &p,
-        CoordinateSystem::Cartesian,
-        CoordinateSystem::Spherical,
-    )
-    .unwrap();
+    let res =
+        numerical_transform_point(
+            &p,
+            CoordinateSystem::Cartesian,
+            CoordinateSystem::Spherical,
+        )
+        .unwrap();
 
     // (1, 0, 0) -> rho=1, theta=0, phi=acos(0)=pi/2
     assert_approx_eq!(res[0], 1.0);

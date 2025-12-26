@@ -18,7 +18,9 @@ struct TransformInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_fft_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_fft_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let mut input : TransformInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
@@ -44,7 +46,9 @@ pub unsafe extern "C" fn rssn_num_fft_bincode(buffer : BincodeBuffer) -> Bincode
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_ifft_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_ifft_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let mut input : TransformInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,

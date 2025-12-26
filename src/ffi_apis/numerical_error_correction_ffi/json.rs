@@ -203,10 +203,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -331,10 +333,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
     let result = error_correction::hamming_check_numerical(&input.data);
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -408,10 +412,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
     let result = error_correction::hamming_weight_numerical(&input.data);
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -441,10 +447,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
     let result = error_correction::crc32_compute_numerical(&input.data);
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -476,10 +484,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -505,20 +515,27 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
         },
     };
 
-    let result = error_correction::crc16_compute(&input.data);
+    let result =
+        error_correction::crc16_compute(
+            &input.data,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : CrcInput = match from_json_string(input) {
         | Some(i) => i,
@@ -535,13 +552,18 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(input : *const c_ch
         },
     };
 
-    let result = error_correction::crc8_compute(&input.data);
+    let result =
+        error_correction::crc8_compute(
+            &input.data,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -568,16 +590,19 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
         },
     };
 
-    let result = error_correction::interleave(
-        &input.data,
-        input.depth,
-    );
+    let result =
+        error_correction::interleave(
+            &input.data,
+            input.depth,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -603,16 +628,19 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
         },
     };
 
-    let result = error_correction::deinterleave(
-        &input.data,
-        input.depth,
-    );
+    let result =
+        error_correction::deinterleave(
+            &input.data,
+            input.depth,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -639,13 +667,19 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
         },
     };
 
-    let result = error_correction::code_rate(input.k, input.n);
+    let result =
+        error_correction::code_rate(
+            input.k,
+            input.n,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }
@@ -674,10 +708,12 @@ pub unsafe extern "C" fn rssn_num_error_correction_capability_json(
     let result = error_correction::error_correction_capability(input.min_distance);
 
     to_c_string(
-        serde_json::to_string(&FfiResult {
-            ok : Some(result),
-            err : None::<String>,
-        })
+        serde_json::to_string(
+            &FfiResult {
+                ok : Some(result),
+                err : None::<String>,
+            },
+        )
         .unwrap(),
     )
 }

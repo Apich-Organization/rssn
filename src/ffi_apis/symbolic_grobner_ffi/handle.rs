@@ -6,7 +6,9 @@ use crate::symbolic::grobner::MonomialOrder;
 #[no_mangle]
 
 pub extern "C" fn rssn_buchberger_handle(
-    basis : *const Vec<SparsePolynomial>,
+    basis : *const Vec<
+        SparsePolynomial,
+    >,
     order : MonomialOrder,
 ) -> *mut Vec<SparsePolynomial> {
 
@@ -16,8 +18,14 @@ pub extern "C" fn rssn_buchberger_handle(
     };
 
     match buchberger(basis_ref, order) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -25,7 +33,9 @@ pub extern "C" fn rssn_buchberger_handle(
 
 pub extern "C" fn rssn_poly_division_multivariate_handle(
     dividend : *const SparsePolynomial,
-    divisors : *const Vec<SparsePolynomial>,
+    divisors : *const Vec<
+        SparsePolynomial,
+    >,
     order : MonomialOrder,
 ) -> *mut (
     Vec<SparsePolynomial>,
@@ -47,7 +57,13 @@ pub extern "C" fn rssn_poly_division_multivariate_handle(
         divisors_ref,
         order,
     ) {
-        | Ok(result) => Box::into_raw(Box::new(result)),
-        | Err(_) => std::ptr::null_mut(),
+        | Ok(result) => {
+            Box::into_raw(Box::new(
+                result,
+            ))
+        },
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }

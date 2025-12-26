@@ -12,7 +12,8 @@ unsafe fn collect_exprs(
     len : usize,
 ) -> Vec<Expr> {
 
-    let mut exprs = Vec::with_capacity(len);
+    let mut exprs =
+        Vec::with_capacity(len);
 
     for i in 0 .. len {
 
@@ -66,15 +67,17 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
         return std::ptr::null_mut();
     }
 
-    let sample = collect_exprs(data, len);
+    let sample =
+        collect_exprs(data, len);
 
-    let target = if target_mean.is_null() {
+    let target =
+        if target_mean.is_null() {
 
-        Expr::Constant(0.0)
-    } else {
+            Expr::Constant(0.0)
+        } else {
 
-        (*target_mean).clone()
-    };
+            (*target_mean).clone()
+        };
 
     let result = stats_inference::one_sample_t_test_symbolic(&sample, &target);
 
@@ -101,14 +104,18 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
     mu_diff : *const Expr,
 ) -> *mut Expr {
 
-    if data1.is_null() || data2.is_null() {
+    if data1.is_null()
+        || data2.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
-    let sample1 = collect_exprs(data1, len1);
+    let sample1 =
+        collect_exprs(data1, len1);
 
-    let sample2 = collect_exprs(data2, len2);
+    let sample2 =
+        collect_exprs(data2, len2);
 
     let diff = if mu_diff.is_null() {
 
@@ -146,20 +153,24 @@ pub unsafe extern "C" fn rssn_z_test(
     pop_std_dev : *const Expr,
 ) -> *mut Expr {
 
-    if data.is_null() || pop_std_dev.is_null() {
+    if data.is_null()
+        || pop_std_dev.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
-    let sample = collect_exprs(data, len);
+    let sample =
+        collect_exprs(data, len);
 
-    let target = if target_mean.is_null() {
+    let target =
+        if target_mean.is_null() {
 
-        Expr::Constant(0.0)
-    } else {
+            Expr::Constant(0.0)
+        } else {
 
-        (*target_mean).clone()
-    };
+            (*target_mean).clone()
+        };
 
     let sigma = (*pop_std_dev).clone();
 
@@ -174,7 +185,7 @@ pub unsafe extern "C" fn rssn_z_test(
         Expr::Tuple(vec![
             result.test_statistic,
             result.p_value_formula,
-            Expr::NoSolution, // Placeholder for None
+            Expr::NoSolution, /* Placeholder for None */
         ]),
     ))
 }

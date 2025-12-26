@@ -95,7 +95,9 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(buffer : BincodeBuffer) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(
+    buffer : BincodeBuffer
+) -> BincodeBuffer {
 
     let input : PbcInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,

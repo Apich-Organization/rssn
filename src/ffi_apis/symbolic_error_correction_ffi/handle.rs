@@ -34,7 +34,10 @@ pub unsafe extern "C" fn rssn_hamming_encode(
         return -1;
     }
 
-    let slice = std::slice::from_raw_parts(data, 4);
+    let slice =
+        std::slice::from_raw_parts(
+            data, 4,
+        );
 
     match hamming_encode(slice) {
         | Some(codeword) => {
@@ -66,12 +69,19 @@ pub unsafe extern "C" fn rssn_hamming_decode(
     error_pos : *mut u8,
 ) -> i32 {
 
-    if codeword.is_null() || data_out.is_null() || error_pos.is_null() {
+    if codeword.is_null()
+        || data_out.is_null()
+        || error_pos.is_null()
+    {
 
         return -1;
     }
 
-    let slice = std::slice::from_raw_parts(codeword, 7);
+    let slice =
+        std::slice::from_raw_parts(
+            codeword,
+            7,
+        );
 
     match hamming_decode(slice) {
         | Ok((data, pos)) => {
@@ -84,7 +94,8 @@ pub unsafe extern "C" fn rssn_hamming_decode(
                 *data_out.add(i) = b;
             }
 
-            *error_pos = pos.unwrap_or(0) as u8;
+            *error_pos =
+                pos.unwrap_or(0) as u8;
 
             0
         },
@@ -105,23 +116,33 @@ pub unsafe extern "C" fn rssn_rs_encode(
     out_len : *mut usize,
 ) -> *mut u8 {
 
-    if data.is_null() || out_len.is_null() {
+    if data.is_null()
+        || out_len.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
-    let slice = std::slice::from_raw_parts(data, data_len);
+    let slice =
+        std::slice::from_raw_parts(
+            data,
+            data_len,
+        );
 
     match rs_encode(slice, n_sym) {
         | Ok(codeword) => {
 
             *out_len = codeword.len();
 
-            let boxed = codeword.into_boxed_slice();
+            let boxed = codeword
+                .into_boxed_slice();
 
-            Box::into_raw(boxed) as *mut u8
+            Box::into_raw(boxed)
+                as *mut u8
         },
-        | Err(_) => std::ptr::null_mut(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -138,26 +159,33 @@ pub unsafe extern "C" fn rssn_rs_decode(
     out_len : *mut usize,
 ) -> *mut u8 {
 
-    if codeword.is_null() || out_len.is_null() {
+    if codeword.is_null()
+        || out_len.is_null()
+    {
 
         return std::ptr::null_mut();
     }
 
-    let slice = std::slice::from_raw_parts(
-        codeword,
-        codeword_len,
-    );
+    let slice =
+        std::slice::from_raw_parts(
+            codeword,
+            codeword_len,
+        );
 
     match rs_decode(slice, n_sym) {
         | Ok(data) => {
 
             *out_len = data.len();
 
-            let boxed = data.into_boxed_slice();
+            let boxed =
+                data.into_boxed_slice();
 
-            Box::into_raw(boxed) as *mut u8
+            Box::into_raw(boxed)
+                as *mut u8
         },
-        | Err(_) => std::ptr::null_mut(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
     }
 }
 
@@ -206,11 +234,20 @@ pub unsafe extern "C" fn rssn_hamming_distance(
         return -1;
     }
 
-    let slice_a = std::slice::from_raw_parts(a, a_len);
+    let slice_a =
+        std::slice::from_raw_parts(
+            a, a_len,
+        );
 
-    let slice_b = std::slice::from_raw_parts(b, b_len);
+    let slice_b =
+        std::slice::from_raw_parts(
+            b, b_len,
+        );
 
-    match hamming_distance(slice_a, slice_b) {
+    match hamming_distance(
+        slice_a,
+        slice_b,
+    ) {
         | Some(dist) => dist as i32,
         | None => -1,
     }
@@ -232,7 +269,10 @@ pub unsafe extern "C" fn rssn_hamming_weight(
         return -1;
     }
 
-    let slice = std::slice::from_raw_parts(data, len);
+    let slice =
+        std::slice::from_raw_parts(
+            data, len,
+        );
 
     hamming_weight(slice) as i32
 }
@@ -244,14 +284,20 @@ pub unsafe extern "C" fn rssn_hamming_weight(
 /// Returns 1 if valid, 0 if invalid, -1 on error.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_hamming_check(codeword : *const u8) -> i32 {
+pub unsafe extern "C" fn rssn_hamming_check(
+    codeword : *const u8
+) -> i32 {
 
     if codeword.is_null() {
 
         return -1;
     }
 
-    let slice = std::slice::from_raw_parts(codeword, 7);
+    let slice =
+        std::slice::from_raw_parts(
+            codeword,
+            7,
+        );
 
     if hamming_check(slice) {
 
@@ -284,10 +330,11 @@ pub unsafe extern "C" fn rssn_rs_check(
         return -1;
     }
 
-    let slice = std::slice::from_raw_parts(
-        codeword,
-        codeword_len,
-    );
+    let slice =
+        std::slice::from_raw_parts(
+            codeword,
+            codeword_len,
+        );
 
     if rs_check(slice, n_sym) {
 
@@ -316,10 +363,11 @@ pub unsafe extern "C" fn rssn_rs_error_count(
         return -1;
     }
 
-    let slice = std::slice::from_raw_parts(
-        codeword,
-        codeword_len,
-    );
+    let slice =
+        std::slice::from_raw_parts(
+            codeword,
+            codeword_len,
+        );
 
     rs_error_count(slice, n_sym) as i32
 }
@@ -344,7 +392,10 @@ pub unsafe extern "C" fn rssn_crc32_compute(
         return 0;
     }
 
-    let slice = std::slice::from_raw_parts(data, len);
+    let slice =
+        std::slice::from_raw_parts(
+            data, len,
+        );
 
     crc32_compute(slice)
 }
@@ -367,9 +418,13 @@ pub unsafe extern "C" fn rssn_crc32_verify(
         return 0;
     }
 
-    let slice = std::slice::from_raw_parts(data, len);
+    let slice =
+        std::slice::from_raw_parts(
+            data, len,
+        );
 
-    if crc32_verify(slice, expected_crc) {
+    if crc32_verify(slice, expected_crc)
+    {
 
         1
     } else {
@@ -396,7 +451,10 @@ pub unsafe extern "C" fn rssn_crc32_update(
         return crc;
     }
 
-    let slice = std::slice::from_raw_parts(data, len);
+    let slice =
+        std::slice::from_raw_parts(
+            data, len,
+        );
 
     crc32_update(crc, slice)
 }
@@ -404,7 +462,9 @@ pub unsafe extern "C" fn rssn_crc32_update(
 /// Finalizes a CRC-32 computation started with crc32_update.
 #[no_mangle]
 
-pub extern "C" fn rssn_crc32_finalize(crc : u32) -> u32 {
+pub extern "C" fn rssn_crc32_finalize(
+    crc : u32
+) -> u32 {
 
     crc32_finalize(crc)
 }

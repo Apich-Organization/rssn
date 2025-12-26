@@ -19,7 +19,9 @@ struct TensordotRequest {
     axes_b : Vec<usize>,
 }
 
-fn decode<T : for<'de> Deserialize<'de>>(
+fn decode<
+    T : for<'de> Deserialize<'de>,
+>(
     data : *const u8,
     len : usize,
 ) -> Option<T> {
@@ -31,7 +33,9 @@ fn decode<T : for<'de> Deserialize<'de>>(
 
     let slice = unsafe {
 
-        std::slice::from_raw_parts(data, len)
+        std::slice::from_raw_parts(
+            data, len,
+        )
     };
 
     bincode_next::serde::decode_from_slice(
@@ -42,7 +46,9 @@ fn decode<T : for<'de> Deserialize<'de>>(
     .map(|(v, _)| v)
 }
 
-fn encode<T : Serialize>(val : &T) -> BincodeBuffer {
+fn encode<T : Serialize>(
+    val : &T
+) -> BincodeBuffer {
 
     match bincode_next::serde::encode_to_vec(
         val,
@@ -77,7 +83,10 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
         | Ok(arr) => arr,
         | Err(e) => {
             return encode(
-                &FfiResult::<TensorData, String> {
+                &FfiResult::<
+                    TensorData,
+                    String,
+                > {
                     ok : None,
                     err : Some(e),
                 },
@@ -89,7 +98,10 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
         | Ok(arr) => arr,
         | Err(e) => {
             return encode(
-                &FfiResult::<TensorData, String> {
+                &FfiResult::<
+                    TensorData,
+                    String,
+                > {
                     ok : None,
                     err : Some(e),
                 },
@@ -104,22 +116,26 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
         &req.axes_b,
     ) {
         | Ok(res) => {
-            encode(
-                &FfiResult::<TensorData, String> {
-                    ok : Some(TensorData::from(
+            encode(&FfiResult::<
+                TensorData,
+                String,
+            > {
+                ok : Some(
+                    TensorData::from(
                         &res,
-                    )),
-                    err : None,
-                },
-            )
+                    ),
+                ),
+                err : None,
+            })
         },
         | Err(e) => {
-            encode(
-                &FfiResult::<TensorData, String> {
-                    ok : None,
-                    err : Some(e),
-                },
-            )
+            encode(&FfiResult::<
+                TensorData,
+                String,
+            > {
+                ok : None,
+                err : Some(e),
+            })
         },
     }
 }

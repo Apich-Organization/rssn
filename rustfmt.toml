@@ -31,3 +31,5 @@ spaces_around_ranges = true
 struct_lit_single_line = false
 struct_lit_width = 0
 use_small_heuristics = "Off"
+max_width = 40
+wrap_comments = false

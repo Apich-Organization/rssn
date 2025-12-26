@@ -17,7 +17,9 @@ use crate::symbolic::stats_probability::StudentT;
 use crate::symbolic::stats_probability::Uniform;
 
 // --- Helper to convert a raw pointer to a boxed Expr ---
-unsafe fn ptr_to_expr(ptr : *const Expr) -> Option<Expr> {
+unsafe fn ptr_to_expr(
+    ptr : *const Expr
+) -> Option<Expr> {
 
     if ptr.is_null() {
 
@@ -29,10 +31,16 @@ unsafe fn ptr_to_expr(ptr : *const Expr) -> Option<Expr> {
 }
 
 // --- Generic Helper to wrap a Distribution in Expr ---
-fn wrap_dist<D : Distribution + 'static>(dist : D) -> *mut Expr {
+fn wrap_dist<
+    D : Distribution + 'static,
+>(
+    dist : D
+) -> *mut Expr {
 
     Box::into_raw(Box::new(
-        Expr::Distribution(Arc::new(dist)),
+        Expr::Distribution(Arc::new(
+            dist,
+        )),
     ))
 }
 
@@ -45,9 +53,11 @@ pub unsafe extern "C" fn rssn_dist_normal(
     std_dev : *const Expr,
 ) -> *mut Expr {
 
-    let mean = ptr_to_expr(mean).unwrap_or(Expr::Constant(0.0));
+    let mean = ptr_to_expr(mean)
+        .unwrap_or(Expr::Constant(0.0));
 
-    let std_dev = ptr_to_expr(std_dev).unwrap_or(Expr::Constant(1.0));
+    let std_dev = ptr_to_expr(std_dev)
+        .unwrap_or(Expr::Constant(1.0));
 
     wrap_dist(Normal {
         mean,
@@ -62,9 +72,11 @@ pub unsafe extern "C" fn rssn_dist_uniform(
     max : *const Expr,
 ) -> *mut Expr {
 
-    let min = ptr_to_expr(min).unwrap_or(Expr::Constant(0.0));
+    let min = ptr_to_expr(min)
+        .unwrap_or(Expr::Constant(0.0));
 
-    let max = ptr_to_expr(max).unwrap_or(Expr::Constant(1.0));
+    let max = ptr_to_expr(max)
+        .unwrap_or(Expr::Constant(1.0));
 
     wrap_dist(Uniform {
         min,
@@ -79,9 +91,11 @@ pub unsafe extern "C" fn rssn_dist_binomial(
     p : *const Expr,
 ) -> *mut Expr {
 
-    let n = ptr_to_expr(n).unwrap_or(Expr::Constant(1.0));
+    let n = ptr_to_expr(n)
+        .unwrap_or(Expr::Constant(1.0));
 
-    let p = ptr_to_expr(p).unwrap_or(Expr::Constant(0.5));
+    let p = ptr_to_expr(p)
+        .unwrap_or(Expr::Constant(0.5));
 
     wrap_dist(Binomial {
         n,
@@ -91,9 +105,12 @@ pub unsafe extern "C" fn rssn_dist_binomial(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_poisson(rate : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_poisson(
+    rate : *const Expr
+) -> *mut Expr {
 
-    let rate = ptr_to_expr(rate).unwrap_or(Expr::Constant(1.0));
+    let rate = ptr_to_expr(rate)
+        .unwrap_or(Expr::Constant(1.0));
 
     wrap_dist(Poisson {
         rate,
@@ -102,9 +119,12 @@ pub unsafe extern "C" fn rssn_dist_poisson(rate : *const Expr) -> *mut Expr {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_bernoulli(p : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_bernoulli(
+    p : *const Expr
+) -> *mut Expr {
 
-    let p = ptr_to_expr(p).unwrap_or(Expr::Constant(0.5));
+    let p = ptr_to_expr(p)
+        .unwrap_or(Expr::Constant(0.5));
 
     wrap_dist(Bernoulli {
         p,
@@ -113,9 +133,12 @@ pub unsafe extern "C" fn rssn_dist_bernoulli(p : *const Expr) -> *mut Expr {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_exponential(rate : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_exponential(
+    rate : *const Expr
+) -> *mut Expr {
 
-    let rate = ptr_to_expr(rate).unwrap_or(Expr::Constant(1.0));
+    let rate = ptr_to_expr(rate)
+        .unwrap_or(Expr::Constant(1.0));
 
     wrap_dist(Exponential {
         rate,
@@ -129,9 +152,11 @@ pub unsafe extern "C" fn rssn_dist_gamma(
     rate : *const Expr,
 ) -> *mut Expr {
 
-    let shape = ptr_to_expr(shape).unwrap_or(Expr::Constant(1.0));
+    let shape = ptr_to_expr(shape)
+        .unwrap_or(Expr::Constant(1.0));
 
-    let rate = ptr_to_expr(rate).unwrap_or(Expr::Constant(1.0));
+    let rate = ptr_to_expr(rate)
+        .unwrap_or(Expr::Constant(1.0));
 
     wrap_dist(Gamma {
         shape,
@@ -146,9 +171,11 @@ pub unsafe extern "C" fn rssn_dist_beta(
     beta : *const Expr,
 ) -> *mut Expr {
 
-    let alpha = ptr_to_expr(alpha).unwrap_or(Expr::Constant(1.0));
+    let alpha = ptr_to_expr(alpha)
+        .unwrap_or(Expr::Constant(1.0));
 
-    let beta = ptr_to_expr(beta).unwrap_or(Expr::Constant(1.0));
+    let beta = ptr_to_expr(beta)
+        .unwrap_or(Expr::Constant(1.0));
 
     wrap_dist(Beta {
         alpha,
@@ -158,9 +185,12 @@ pub unsafe extern "C" fn rssn_dist_beta(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_student_t(nu : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_student_t(
+    nu : *const Expr
+) -> *mut Expr {
 
-    let nu = ptr_to_expr(nu).unwrap_or(Expr::Constant(1.0));
+    let nu = ptr_to_expr(nu)
+        .unwrap_or(Expr::Constant(1.0));
 
     wrap_dist(StudentT {
         nu,
@@ -178,9 +208,12 @@ pub unsafe extern "C" fn rssn_dist_pdf(
 
     let dist_expr = ptr_to_expr(dist);
 
-    let x_expr = ptr_to_expr(x).unwrap_or(Expr::Constant(0.0));
+    let x_expr = ptr_to_expr(x)
+        .unwrap_or(Expr::Constant(0.0));
 
-    if let Some(Expr::Distribution(d)) = dist_expr {
+    if let Some(Expr::Distribution(d)) =
+        dist_expr
+    {
 
         Box::into_raw(Box::new(
             d.pdf(&x_expr),
@@ -200,9 +233,12 @@ pub unsafe extern "C" fn rssn_dist_cdf(
 
     let dist_expr = ptr_to_expr(dist);
 
-    let x_expr = ptr_to_expr(x).unwrap_or(Expr::Constant(0.0));
+    let x_expr = ptr_to_expr(x)
+        .unwrap_or(Expr::Constant(0.0));
 
-    if let Some(Expr::Distribution(d)) = dist_expr {
+    if let Some(Expr::Distribution(d)) =
+        dist_expr
+    {
 
         Box::into_raw(Box::new(
             d.cdf(&x_expr),
@@ -215,11 +251,15 @@ pub unsafe extern "C" fn rssn_dist_cdf(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_expectation(dist : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_expectation(
+    dist : *const Expr
+) -> *mut Expr {
 
     let dist_expr = ptr_to_expr(dist);
 
-    if let Some(Expr::Distribution(d)) = dist_expr {
+    if let Some(Expr::Distribution(d)) =
+        dist_expr
+    {
 
         Box::into_raw(Box::new(
             d.expectation(),
@@ -232,11 +272,15 @@ pub unsafe extern "C" fn rssn_dist_expectation(dist : *const Expr) -> *mut Expr 
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_dist_variance(dist : *const Expr) -> *mut Expr {
+pub unsafe extern "C" fn rssn_dist_variance(
+    dist : *const Expr
+) -> *mut Expr {
 
     let dist_expr = ptr_to_expr(dist);
 
-    if let Some(Expr::Distribution(d)) = dist_expr {
+    if let Some(Expr::Distribution(d)) =
+        dist_expr
+    {
 
         Box::into_raw(Box::new(
             d.variance(),
@@ -256,9 +300,12 @@ pub unsafe extern "C" fn rssn_dist_mgf(
 
     let dist_expr = ptr_to_expr(dist);
 
-    let t_expr = ptr_to_expr(t).unwrap_or(Expr::Constant(0.0));
+    let t_expr = ptr_to_expr(t)
+        .unwrap_or(Expr::Constant(0.0));
 
-    if let Some(Expr::Distribution(d)) = dist_expr {
+    if let Some(Expr::Distribution(d)) =
+        dist_expr
+    {
 
         Box::into_raw(Box::new(
             d.mgf(&t_expr),

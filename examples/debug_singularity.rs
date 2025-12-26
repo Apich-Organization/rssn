@@ -3,7 +3,8 @@ use rssn::symbolic::simplify_dag::simplify;
 
 fn main() {
 
-    let z = Expr::Variable("z".to_string());
+    let z =
+        Expr::Variable("z".to_string());
 
     let func = Expr::new_div(
         Expr::Constant(1.0),
@@ -15,14 +16,16 @@ fn main() {
         func
     );
 
-    let singularity = Expr::Constant(0.0);
+    let singularity =
+        Expr::Constant(0.0);
 
     let factor = Expr::new_sub(
         z.clone(),
         singularity.clone(),
     );
 
-    let factor_simplified = simplify(&factor);
+    let factor_simplified =
+        simplify(&factor);
 
     println!(
         "Factor (z - 0): {:?}",

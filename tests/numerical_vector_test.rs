@@ -11,7 +11,9 @@ fn test_vec_add() {
 
     let v2 = vec![4.0, 5.0, 6.0];
 
-    let res = numerical_vec_add(&v1, &v2).unwrap();
+    let res =
+        numerical_vec_add(&v1, &v2)
+            .unwrap();
 
     assert_eq!(
         res,
@@ -27,7 +29,9 @@ fn test_vec_sub() {
 
     let v2 = vec![4.0, 5.0, 6.0];
 
-    let res = numerical_vec_sub(&v1, &v2).unwrap();
+    let res =
+        numerical_vec_sub(&v1, &v2)
+            .unwrap();
 
     assert_eq!(
         res,
@@ -41,7 +45,8 @@ fn test_scalar_mul() {
 
     let v = vec![1.0, 2.0, 3.0];
 
-    let res = numerical_scalar_mul(&v, 2.0);
+    let res =
+        numerical_scalar_mul(&v, 2.0);
 
     assert_eq!(
         res,
@@ -57,7 +62,9 @@ fn test_dot_product() {
 
     let v2 = vec![4.0, 5.0, 6.0];
 
-    let res = numerical_dot_product(&v1, &v2).unwrap();
+    let res =
+        numerical_dot_product(&v1, &v2)
+            .unwrap();
 
     assert_eq!(res, 32.0); // 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
 }
@@ -81,7 +88,10 @@ fn test_cross_product() {
 
     let v2 = vec![0.0, 1.0, 0.0];
 
-    let res = numerical_cross_product(&v1, &v2).unwrap();
+    let res = numerical_cross_product(
+        &v1, &v2,
+    )
+    .unwrap();
 
     assert_eq!(
         res,
@@ -95,7 +105,8 @@ fn test_normalize() {
 
     let v = vec![3.0, 4.0];
 
-    let res = numerical_normalize(&v).unwrap();
+    let res = numerical_normalize(&v)
+        .unwrap();
 
     assert_approx_eq!(res[0], 0.6);
 
@@ -115,7 +126,9 @@ fn test_project() {
 
     let v2 = vec![1.0, 0.0];
 
-    let res = numerical_project(&v1, &v2).unwrap();
+    let res =
+        numerical_project(&v1, &v2)
+            .unwrap();
 
     assert_eq!(res, vec![3.0, 0.0]);
 }
@@ -127,7 +140,8 @@ fn test_reflect() {
     let v = vec![1.0, -1.0];
 
     let n = vec![0.0, 1.0]; // Normal pointing up
-    let res = numerical_reflect(&v, &n).unwrap();
+    let res = numerical_reflect(&v, &n)
+        .unwrap();
 
     assert_approx_eq!(res[0], 1.0);
 
@@ -142,7 +156,8 @@ fn test_angle() {
 
     let v2 = vec![0.0, 1.0];
 
-    let res = numerical_angle(&v1, &v2).unwrap();
+    let res = numerical_angle(&v1, &v2)
+        .unwrap();
 
     assert_approx_eq!(
         res,

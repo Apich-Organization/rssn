@@ -73,7 +73,13 @@ use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 
 /// Defines the monomial ordering to be used in polynomial division.
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 #[repr(C)]
 
 pub enum MonomialOrder {
@@ -136,21 +142,26 @@ pub fn poly_division_multivariate(
         divisors.len()
     ];
 
-    let mut remainder = SparsePolynomial {
-        terms : BTreeMap::new(),
-    };
+    let mut remainder =
+        SparsePolynomial {
+            terms : BTreeMap::new(),
+        };
 
     let mut p = f.clone();
 
     while !p.terms.is_empty() {
 
-        let mut division_occurred = false;
+        let mut division_occurred =
+            false;
 
         let lead_term_p = match p
             .terms
             .keys()
-            .max_by(|a, b| compare_monomials(a, b, order))
-        {
+            .max_by(|a, b| {
+                compare_monomials(
+                    a, b, order,
+                )
+            }) {
             | Some(lt) => lt.clone(),
             | None => continue,
         };
@@ -193,47 +204,68 @@ pub fn poly_division_multivariate(
                     },
                 };
 
-                let coeff_g = match divisor
-                    .terms
-                    .get(&lead_term_g)
-                {
-                    | Some(c) => c,
-                    | None => {
+                let coeff_g =
+                    match divisor
+                        .terms
+                        .get(
+                        &lead_term_g,
+                    ) {
+                        | Some(c) => c,
+                        | None => {
 
-                        return Err(
+                            return Err(
                             "Logic error: lead term not found in divisor terms".to_string(),
                         );
-                    },
-                };
+                        },
+                    };
 
-                let coeff_ratio = simplify(&Expr::new_div(
-                    coeff_p.clone(),
-                    coeff_g.clone(),
-                ));
+                let coeff_ratio =
+                    simplify(
+                        &Expr::new_div(
+                            coeff_p
+                                .clone(
+                                ),
+                            coeff_g
+                                .clone(
+                                ),
+                        ),
+                    );
 
-                let mono_ratio = subtract_monomials(
-                    &lead_term_p,
-                    &lead_term_g,
-                );
+                let mono_ratio =
+                    subtract_monomials(
+                        &lead_term_p,
+                        &lead_term_g,
+                    );
 
-                let mut t_terms = BTreeMap::new();
+                let mut t_terms =
+                    BTreeMap::new();
 
                 t_terms.insert(
                     mono_ratio,
                     coeff_ratio,
                 );
 
-                let t = SparsePolynomial {
-                    terms : t_terms,
-                };
+                let t =
+                    SparsePolynomial {
+                        terms : t_terms,
+                    };
 
-                quotients[i] = add_poly(&quotients[i], &t);
+                quotients[i] = add_poly(
+                    &quotients[i],
+                    &t,
+                );
 
-                let t_g = mul_poly(&t, divisor);
+                let t_g = mul_poly(
+                    &t,
+                    divisor,
+                );
 
-                p = subtract_poly(&p, &t_g);
+                p = subtract_poly(
+                    &p, &t_g,
+                );
 
-                division_occurred = true;
+                division_occurred =
+                    true;
 
                 break;
             }
@@ -254,7 +286,10 @@ pub fn poly_division_multivariate(
 
             remainder
                 .terms
-                .insert(lead_term_p, coeff);
+                .insert(
+                    lead_term_p,
+                    coeff,
+                );
         }
     }
 
@@ -270,7 +305,9 @@ pub(crate) fn is_divisible(
         .all(|(var, exp2)| {
 
             m1.0.get(var)
-                .is_some_and(|exp1| exp1 >= exp2)
+                .is_some_and(|exp1| {
+                    exp1 >= exp2
+                })
         })
 }
 
@@ -305,21 +342,26 @@ pub fn subtract_poly(
     p2 : &SparsePolynomial,
 ) -> SparsePolynomial {
 
-    let mut result_terms = p1.terms.clone();
+    let mut result_terms =
+        p1.terms.clone();
 
     for (mono, coeff) in &p2.terms {
 
         let entry = result_terms
             .entry(mono.clone())
-            .or_insert_with(|| Expr::Constant(0.0));
+            .or_insert_with(|| {
+                Expr::Constant(0.0)
+            });
 
-        *entry = simplify(&Expr::new_sub(
-            entry.clone(),
-            coeff.clone(),
-        ));
+        *entry =
+            simplify(&Expr::new_sub(
+                entry.clone(),
+                coeff.clone(),
+            ));
     }
 
-    result_terms.retain(|_, v| !is_zero(v));
+    result_terms
+        .retain(|_, v| !is_zero(v));
 
     SparsePolynomial {
         terms : result_terms,
@@ -335,8 +377,14 @@ pub(crate) fn leading_term(
 
     p.terms
         .iter()
-        .max_by(|(m1, _), (m2, _)| compare_monomials(m1, m2, order))
-        .map(|(m, c)| (m.clone(), c.clone()))
+        .max_by(|(m1, _), (m2, _)| {
+            compare_monomials(
+                m1, m2, order,
+            )
+        })
+        .map(|(m, c)| {
+            (m.clone(), c.clone())
+        })
 }
 
 /// Computes the least common multiple (LCM) of two monomials.
@@ -354,7 +402,8 @@ pub(crate) fn lcm_monomial(
             .entry(var.clone())
             .or_insert(0);
 
-        *exp1 = std::cmp::max(*exp1, exp2);
+        *exp1 =
+            std::cmp::max(*exp1, exp2);
     }
 
     Monomial(lcm_map)
@@ -369,18 +418,22 @@ pub(crate) fn s_polynomial(
     order : MonomialOrder,
 ) -> Option<SparsePolynomial> {
 
-    let (lm1, lc1) = leading_term(p1, order)?;
+    let (lm1, lc1) =
+        leading_term(p1, order)?;
 
-    let (lm2, lc2) = leading_term(p2, order)?;
+    let (lm2, lc2) =
+        leading_term(p2, order)?;
 
     let lcm = lcm_monomial(&lm1, &lm2);
 
-    let t1_mono = subtract_monomials(&lcm, &lm1);
+    let t1_mono =
+        subtract_monomials(&lcm, &lm1);
 
-    let t1_coeff = simplify(&Expr::new_div(
-        Expr::Constant(1.0),
-        lc1,
-    ));
+    let t1_coeff =
+        simplify(&Expr::new_div(
+            Expr::Constant(1.0),
+            lc1,
+        ));
 
     let mut t1_terms = BTreeMap::new();
 
@@ -390,12 +443,14 @@ pub(crate) fn s_polynomial(
         terms : t1_terms,
     };
 
-    let t2_mono = subtract_monomials(&lcm, &lm2);
+    let t2_mono =
+        subtract_monomials(&lcm, &lm2);
 
-    let t2_coeff = simplify(&Expr::new_div(
-        Expr::Constant(1.0),
-        lc2,
-    ));
+    let t2_coeff =
+        simplify(&Expr::new_div(
+            Expr::Constant(1.0),
+            lc2,
+        ));
 
     let mut t2_terms = BTreeMap::new();
 
@@ -432,7 +487,8 @@ pub(crate) fn s_polynomial(
 pub fn buchberger(
     basis : &[SparsePolynomial],
     order : MonomialOrder,
-) -> Result<Vec<SparsePolynomial>, String> {
+) -> Result<Vec<SparsePolynomial>, String>
+{
 
     if basis.is_empty() {
 
@@ -441,13 +497,24 @@ pub fn buchberger(
 
     let mut g = basis.to_vec();
 
-    let mut pairs : Vec<(usize, usize)> = (0 .. g.len())
-        .flat_map(|i| (i + 1 .. g.len()).map(move |j| (i, j)))
+    let mut pairs : Vec<(
+        usize,
+        usize,
+    )> = (0 .. g.len())
+        .flat_map(|i| {
+            (i + 1 .. g.len())
+                .map(move |j| (i, j))
+        })
         .collect();
 
-    while let Some((i, j)) = pairs.pop() {
+    while let Some((i, j)) = pairs.pop()
+    {
 
-        if let Some(s_poly) = s_polynomial(&g[i], &g[j], order) {
+        if let Some(s_poly) =
+            s_polynomial(
+                &g[i], &g[j], order,
+            )
+        {
 
             let (_, remainder) = poly_division_multivariate(&s_poly, &g, order)?;
 
@@ -456,11 +523,17 @@ pub fn buchberger(
                 .is_empty()
             {
 
-                let new_poly_idx = g.len();
+                let new_poly_idx =
+                    g.len();
 
-                for k in 0 .. new_poly_idx {
+                for k in
+                    0 .. new_poly_idx
+                {
 
-                    pairs.push((k, new_poly_idx));
+                    pairs.push((
+                        k,
+                        new_poly_idx,
+                    ));
                 }
 
                 g.push(remainder);

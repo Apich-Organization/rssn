@@ -10,7 +10,13 @@ use serde::Deserialize;
 use serde::Serialize;
 
 /// Represents a single cell or control volume in the mesh.
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Default,
+    Debug,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct Cell {
     /// The average value of the conserved quantity (e.g., density, concentration) in this cell.
@@ -18,7 +24,9 @@ pub struct Cell {
 }
 
 /// Represents a 1D simulation domain, composed of a series of cells.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct Mesh {
     /// A vector of cells that make up the mesh.
@@ -44,7 +52,8 @@ impl Mesh {
         F : Fn(f64) -> f64,
     {
 
-        let dx = domain_size / num_cells as f64;
+        let dx = domain_size
+            / num_cells as f64;
 
         let cells = (0 .. num_cells)
             .map(|i| {
@@ -104,7 +113,11 @@ where
     F : Fn(f64) -> f64,
 {
 
-    0.5 * (flux_fn(u_left) + flux_fn(u_right)) - 0.5 * (dx / dt) * (u_right - u_left)
+    0.5 * (flux_fn(u_left)
+        + flux_fn(u_right))
+        - 0.5
+            * (dx / dt)
+            * (u_right - u_left)
 }
 
 /// Minmod limiter for MUSCL reconstruction.
@@ -161,13 +174,14 @@ where
 
     let dx = mesh.dx;
 
-    let mut current_values : Vec<f64> = mesh
-        .cells
-        .iter()
-        .map(|c| c.value)
-        .collect();
+    let mut current_values : Vec<f64> =
+        mesh.cells
+            .iter()
+            .map(|c| c.value)
+            .collect();
 
-    let mut next_values = vec![0.0; num_cells];
+    let mut next_values =
+        vec![0.0; num_cells];
 
     for _ in 0 .. steps {
 
@@ -211,7 +225,9 @@ where
                 *next_val = u_i - (dt / dx) * (flux_right - flux_left);
             });
 
-        current_values.copy_from_slice(&next_values);
+        current_values.copy_from_slice(
+            &next_values,
+        );
     }
 
     current_values
@@ -219,7 +235,8 @@ where
 
 /// Example scenario: Simulates the advection of a square wave (top-hat profile).
 
-pub fn simulate_1d_advection_scenario() -> Vec<f64> {
+pub fn simulate_1d_advection_scenario(
+) -> Vec<f64> {
 
     const NUM_CELLS : usize = 200;
 
@@ -229,13 +246,15 @@ pub fn simulate_1d_advection_scenario() -> Vec<f64> {
 
     const CFL : f64 = 0.5;
 
-    let dx = DOMAIN_SIZE / NUM_CELLS as f64;
+    let dx =
+        DOMAIN_SIZE / NUM_CELLS as f64;
 
     let dt = CFL * dx / VELOCITY.abs();
 
     let total_time = 0.5;
 
-    let steps = (total_time / dt).ceil() as usize;
+    let steps = (total_time / dt).ceil()
+        as usize;
 
     let mut mesh = Mesh::new(
         NUM_CELLS,
@@ -251,7 +270,8 @@ pub fn simulate_1d_advection_scenario() -> Vec<f64> {
         },
     );
 
-    let boundary_conditions = || (0.0, 0.0);
+    let boundary_conditions =
+        || (0.0, 0.0);
 
     solve_advection_1d(
         &mut mesh,
@@ -274,13 +294,14 @@ pub fn solve_burgers_1d(
 
     let dx = mesh.dx;
 
-    let mut current_values : Vec<f64> = mesh
-        .cells
-        .iter()
-        .map(|c| c.value)
-        .collect();
+    let mut current_values : Vec<f64> =
+        mesh.cells
+            .iter()
+            .map(|c| c.value)
+            .collect();
 
-    let mut next_values = vec![0.0; num_cells];
+    let mut next_values =
+        vec![0.0; num_cells];
 
     let flux_fn = |u : f64| 0.5 * u * u;
 
@@ -328,14 +349,22 @@ pub fn solve_burgers_1d(
                 *next_val = u_i - (dt / dx) * (f_right - f_left);
             });
 
-        current_values.copy_from_slice(&next_values);
+        current_values.copy_from_slice(
+            &next_values,
+        );
     }
 
     current_values
 }
 
 /// State for 1D Shallow Water Equations: (h, hu)
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Serialize,
+    Deserialize,
+)]
 
 pub struct SweState {
     pub h : f64,
@@ -355,17 +384,18 @@ pub fn solve_shallow_water_1d(
 
     let n = initial_h.len();
 
-    let mut current : Vec<SweState> = initial_h
-        .into_iter()
-        .zip(initial_hu)
-        .map(|(h, hu)| {
+    let mut current : Vec<SweState> =
+        initial_h
+            .into_iter()
+            .zip(initial_hu)
+            .map(|(h, hu)| {
 
-            SweState {
-                h,
-                hu,
-            }
-        })
-        .collect();
+                SweState {
+                    h,
+                    hu,
+                }
+            })
+            .collect();
 
     let mut next = current.clone();
 
@@ -381,7 +411,8 @@ pub fn solve_shallow_water_1d(
 
         (
             s.hu,
-            s.hu * u + 0.5 * g * s.h * s.h,
+            s.hu * u
+                + 0.5 * g * s.h * s.h,
         )
     };
 
@@ -445,7 +476,9 @@ pub fn solve_shallow_water_1d(
 }
 
 /// Represents a 2D simulation domain as a grid of cells.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct Mesh2D {
     /// A flattened vector of cells representing the 2D grid.
@@ -473,19 +506,28 @@ impl Mesh2D {
         F : Fn(f64, f64) -> f64,
     {
 
-        let dx = domain_size.0 / width as f64;
+        let dx = domain_size.0
+            / width as f64;
 
-        let dy = domain_size.1 / height as f64;
+        let dy = domain_size.1
+            / height as f64;
 
-        let mut cells = Vec::with_capacity(width * height);
+        let mut cells =
+            Vec::with_capacity(
+                width * height,
+            );
 
         for j in 0 .. height {
 
             for i in 0 .. width {
 
-                let center_x = (i as f64 + 0.5) * dx;
+                let center_x =
+                    (i as f64 + 0.5)
+                        * dx;
 
-                let center_y = (j as f64 + 0.5) * dy;
+                let center_y =
+                    (j as f64 + 0.5)
+                        * dy;
 
                 cells.push(Cell {
                     value : initial_conditions(center_x, center_y),
@@ -513,7 +555,13 @@ pub fn solve_advection_2d<F>(
     boundary_conditions : F,
 ) -> Vec<f64>
 where
-    F : Fn(usize, usize, usize, usize) -> bool + Sync,
+    F : Fn(
+            usize,
+            usize,
+            usize,
+            usize,
+        ) -> bool
+        + Sync,
 {
 
     let (width, height) = (
@@ -523,13 +571,14 @@ where
 
     let (dx, dy) = (mesh.dx, mesh.dy);
 
-    let mut current_values : Vec<f64> = mesh
-        .cells
-        .iter()
-        .map(|c| c.value)
-        .collect();
+    let mut current_values : Vec<f64> =
+        mesh.cells
+            .iter()
+            .map(|c| c.value)
+            .collect();
 
-    let mut next_values = vec![0.0; width * height];
+    let mut next_values =
+        vec![0.0; width * height];
 
     for _ in 0 .. steps {
 
@@ -588,7 +637,9 @@ where
                     - (dt / dy) * (flux_north - flux_south);
             });
 
-        current_values.copy_from_slice(&next_values);
+        current_values.copy_from_slice(
+            &next_values,
+        );
     }
 
     current_values
@@ -596,27 +647,35 @@ where
 
 /// Example scenario: Simulates the advection of a 2D Gaussian blob.
 
-pub fn simulate_2d_advection_scenario() -> Vec<f64> {
+pub fn simulate_2d_advection_scenario(
+) -> Vec<f64> {
 
     const WIDTH : usize = 100;
 
     const HEIGHT : usize = 100;
 
-    const DOMAIN_SIZE : (f64, f64) = (1.0, 1.0);
+    const DOMAIN_SIZE : (f64, f64) =
+        (1.0, 1.0);
 
     const CFL : f64 = 0.4;
 
     let velocity = (0.5, 0.3);
 
-    let dx = DOMAIN_SIZE.0 / WIDTH as f64;
+    let dx =
+        DOMAIN_SIZE.0 / WIDTH as f64;
 
-    let dy = DOMAIN_SIZE.1 / HEIGHT as f64;
+    let dy =
+        DOMAIN_SIZE.1 / HEIGHT as f64;
 
-    let dt = CFL * (dx.min(dy)) / (f64::abs(velocity.0) + f64::abs(velocity.1)).max(1e-6_f64);
+    let dt = CFL * (dx.min(dy))
+        / (f64::abs(velocity.0)
+            + f64::abs(velocity.1))
+        .max(1e-6_f64);
 
     let total_time = 0.6;
 
-    let steps = (total_time / dt).ceil() as usize;
+    let steps = (total_time / dt).ceil()
+        as usize;
 
     let mut mesh = Mesh2D::new(
         WIDTH,
@@ -628,16 +687,28 @@ pub fn simulate_2d_advection_scenario() -> Vec<f64> {
 
             let sigma_sq = 0.005;
 
-            let dist_sq = (x - cx).powi(2) + (y - cy).powi(2);
+            let dist_sq = (x - cx)
+                .powi(2)
+                + (y - cy).powi(2);
 
-            (-dist_sq / (2.0 * sigma_sq)).exp()
+            (-dist_sq
+                / (2.0 * sigma_sq))
+                .exp()
         },
     );
 
-    let boundary_conditions = |i : usize, j : usize, width : usize, height : usize| -> bool {
+    let boundary_conditions =
+        |i : usize,
+         j : usize,
+         width : usize,
+         height : usize|
+         -> bool {
 
-        i == 0 || i == width - 1 || j == 0 || j == height - 1
-    };
+            i == 0
+                || i == width - 1
+                || j == 0
+                || j == height - 1
+        };
 
     solve_advection_2d(
         &mut mesh,
@@ -649,7 +720,9 @@ pub fn simulate_2d_advection_scenario() -> Vec<f64> {
 }
 
 /// Represents a 3D simulation domain as a grid of cells.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
 
 pub struct Mesh3D {
     /// A flattened vector of cells representing the 3D grid.
@@ -682,13 +755,19 @@ impl Mesh3D {
         F : Fn(f64, f64, f64) -> f64,
     {
 
-        let dx = domain_size.0 / width as f64;
+        let dx = domain_size.0
+            / width as f64;
 
-        let dy = domain_size.1 / height as f64;
+        let dy = domain_size.1
+            / height as f64;
 
-        let dz = domain_size.2 / depth as f64;
+        let dz = domain_size.2
+            / depth as f64;
 
-        let mut cells = Vec::with_capacity(width * height * depth);
+        let mut cells =
+            Vec::with_capacity(
+                width * height * depth,
+            );
 
         for k in 0 .. depth {
 
@@ -696,11 +775,20 @@ impl Mesh3D {
 
                 for i in 0 .. width {
 
-                    let center_x = (i as f64 + 0.5) * dx;
+                    let center_x = (i
+                        as f64
+                        + 0.5)
+                        * dx;
 
-                    let center_y = (j as f64 + 0.5) * dy;
+                    let center_y = (j
+                        as f64
+                        + 0.5)
+                        * dy;
 
-                    let center_z = (k as f64 + 0.5) * dz;
+                    let center_z = (k
+                        as f64
+                        + 0.5)
+                        * dz;
 
                     cells.push(Cell {
                         value : initial_conditions(
@@ -735,7 +823,15 @@ pub fn solve_advection_3d<F>(
     boundary_conditions : F,
 ) -> Vec<f64>
 where
-    F : Fn(usize, usize, usize, usize, usize, usize) -> bool + Sync,
+    F : Fn(
+            usize,
+            usize,
+            usize,
+            usize,
+            usize,
+            usize,
+        ) -> bool
+        + Sync,
 {
 
     let (width, height, depth) = (
@@ -750,13 +846,17 @@ where
         mesh.dz,
     );
 
-    let mut current_values : Vec<f64> = mesh
-        .cells
-        .iter()
-        .map(|c| c.value)
-        .collect();
+    let mut current_values : Vec<f64> =
+        mesh.cells
+            .iter()
+            .map(|c| c.value)
+            .collect();
 
-    let mut next_values = vec![0.0; width * height * depth];
+    let mut next_values =
+        vec![
+            0.0;
+            width * height * depth
+        ];
 
     let plane_size = width * height;
 
@@ -843,7 +943,9 @@ where
                     - (dt / dz) * (flux_front - flux_back);
             });
 
-        current_values.copy_from_slice(&next_values);
+        current_values.copy_from_slice(
+            &next_values,
+        );
     }
 
     current_values
@@ -851,7 +953,8 @@ where
 
 /// Example scenario: Simulates the advection of a 3D Gaussian blob.
 
-pub fn simulate_3d_advection_scenario() -> Vec<f64> {
+pub fn simulate_3d_advection_scenario(
+) -> Vec<f64> {
 
     const WIDTH : usize = 30;
 
@@ -859,28 +962,39 @@ pub fn simulate_3d_advection_scenario() -> Vec<f64> {
 
     const DEPTH : usize = 30;
 
-    const DOMAIN_SIZE : (f64, f64, f64) = (1.0, 1.0, 1.0);
+    const DOMAIN_SIZE : (
+        f64,
+        f64,
+        f64,
+    ) = (1.0, 1.0, 1.0);
 
     const CFL : f64 = 0.3;
 
     let velocity = (0.5, 0.3, 0.1);
 
-    let dx = DOMAIN_SIZE.0 / WIDTH as f64;
+    let dx =
+        DOMAIN_SIZE.0 / WIDTH as f64;
 
-    let dy = DOMAIN_SIZE.1 / HEIGHT as f64;
+    let dy =
+        DOMAIN_SIZE.1 / HEIGHT as f64;
 
-    let dz = DOMAIN_SIZE.2 / DEPTH as f64;
+    let dz =
+        DOMAIN_SIZE.2 / DEPTH as f64;
 
     let min_dim = dx.min(dy).min(dz);
 
     let vel_mag =
-        (f64::abs(velocity.0) + f64::abs(velocity.1) + f64::abs(velocity.2)).max(1e-6_f64);
+        (f64::abs(velocity.0)
+            + f64::abs(velocity.1)
+            + f64::abs(velocity.2))
+        .max(1e-6_f64);
 
     let dt = CFL * min_dim / vel_mag;
 
     let total_time = 0.7;
 
-    let steps = (total_time / dt).ceil() as usize;
+    let steps = (total_time / dt).ceil()
+        as usize;
 
     let mut mesh = Mesh3D::new(
         WIDTH,
@@ -889,18 +1003,31 @@ pub fn simulate_3d_advection_scenario() -> Vec<f64> {
         DOMAIN_SIZE,
         |x, y, z| {
 
-            let (cx, cy, cz) = (0.3, 0.5, 0.5);
+            let (cx, cy, cz) =
+                (0.3, 0.5, 0.5);
 
             let sigma_sq = 0.01;
 
-            let dist_sq = (x - cx).powi(2) + (y - cy).powi(2) + (z - cz).powi(2);
+            let dist_sq = (x - cx)
+                .powi(2)
+                + (y - cy).powi(2)
+                + (z - cz).powi(2);
 
-            (-dist_sq / (2.0 * sigma_sq)).exp()
+            (-dist_sq
+                / (2.0 * sigma_sq))
+                .exp()
         },
     );
 
     let boundary_conditions =
-        |i, j, k, w, h, d| i == 0 || i == w - 1 || j == 0 || j == h - 1 || k == 0 || k == d - 1;
+        |i, j, k, w, h, d| {
+            i == 0
+                || i == w - 1
+                || j == 0
+                || j == h - 1
+                || k == 0
+                || k == d - 1
+        };
 
     solve_advection_3d(
         &mut mesh,

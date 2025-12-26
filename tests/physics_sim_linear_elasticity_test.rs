@@ -27,23 +27,33 @@ fn test_stiffness_matrix_symmetry() {
 
         for j in 0 .. 8 {
 
-            assert!((k[[i, j]] - k[[j, i]]).abs() < 1e-10);
+            assert!(
+                (k[[i, j]] - k[[j, i]])
+                    .abs()
+                    < 1e-10
+            );
         }
     }
 }
 
 #[test]
 
-fn test_simulate_cantilever_beam_scenario() {
+fn test_simulate_cantilever_beam_scenario(
+) {
 
-    println!("Running 2D Cantilever Beam simulation...");
+    println!(
+        "Running 2D Cantilever Beam \
+         simulation..."
+    );
 
-    simulate_cantilever_beam_scenario().unwrap();
+    simulate_cantilever_beam_scenario()
+        .unwrap();
 }
 
 #[test]
 
-fn test_run_elasticity_simulation_basic() {
+fn test_run_elasticity_simulation_basic(
+) {
 
     let nodes = vec![
         (0.0, 0.0),
@@ -70,7 +80,11 @@ fn test_run_elasticity_simulation_basic() {
         loads,
     };
 
-    let res = run_elasticity_simulation(&params).unwrap();
+    let res =
+        run_elasticity_simulation(
+            &params,
+        )
+        .unwrap();
 
     assert_eq!(res.len(), 8);
 

@@ -24,7 +24,7 @@ struct HeatEquationInput {
     dy : f64,
     dt : f64,
     steps : usize,
-    initial_temp : f64, // simplified for JSON: constant initial temp except source
+    initial_temp : f64, /* simplified for JSON: constant initial temp except source */
 }
 
 #[derive(Deserialize)]
@@ -64,7 +64,9 @@ struct BurgersInput {
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fdm_heat_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_fdm_heat_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : HeatEquationInput = match from_json_string(input) {
         | Some(i) => i,
@@ -105,19 +107,21 @@ pub unsafe extern "C" fn rssn_physics_fdm_heat_json(input : *const c_char) -> *m
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            FdmGrid<f64>,
-            String,
-        >::ok(
-            result
-        ))
+        serde_json::to_string(
+            &FfiResult::<
+                FdmGrid<f64>,
+                String,
+            >::ok(result),
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fdm_wave_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_fdm_wave_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : WaveEquationInput = match from_json_string(input) {
         | Some(i) => i,
@@ -155,19 +159,21 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_json(input : *const c_char) -> *m
     );
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            FdmGrid<f64>,
-            String,
-        >::ok(
-            result
-        ))
+        serde_json::to_string(
+            &FfiResult::<
+                FdmGrid<f64>,
+                String,
+            >::ok(result),
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : PoissonInput = match from_json_string(input) {
         | Some(i) => i,
@@ -184,39 +190,43 @@ pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(input : *const c_char) ->
         },
     };
 
-    let source_grid = FdmGrid::from_data(
-        input.source,
-        Dimensions::D2(
+    let source_grid =
+        FdmGrid::from_data(
+            input.source,
+            Dimensions::D2(
+                input.width,
+                input.height,
+            ),
+        );
+
+    let result =
+        physics_fdm::solve_poisson_2d(
             input.width,
             input.height,
-        ),
-    );
-
-    let result = physics_fdm::solve_poisson_2d(
-        input.width,
-        input.height,
-        &source_grid,
-        input.dx,
-        input.dy,
-        input.omega,
-        input.max_iter,
-        input.tolerance,
-    );
+            &source_grid,
+            input.dx,
+            input.dy,
+            input.omega,
+            input.max_iter,
+            input.tolerance,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            FdmGrid<f64>,
-            String,
-        >::ok(
-            result
-        ))
+        serde_json::to_string(
+            &FfiResult::<
+                FdmGrid<f64>,
+                String,
+            >::ok(result),
+        )
         .unwrap(),
     )
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_fdm_burgers_json(input : *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_fdm_burgers_json(
+    input : *const c_char
+) -> *mut c_char {
 
     let input : BurgersInput = match from_json_string(input) {
         | Some(i) => i,
@@ -233,21 +243,22 @@ pub unsafe extern "C" fn rssn_physics_fdm_burgers_json(input : *const c_char) ->
         },
     };
 
-    let result = physics_fdm::solve_burgers_1d(
-        &input.initial_u,
-        input.dx,
-        input.nu,
-        input.dt,
-        input.steps,
-    );
+    let result =
+        physics_fdm::solve_burgers_1d(
+            &input.initial_u,
+            input.dx,
+            input.nu,
+            input.dt,
+            input.steps,
+        );
 
     to_c_string(
-        serde_json::to_string(&FfiResult::<
-            Vec<f64>,
-            String,
-        >::ok(
-            result
-        ))
+        serde_json::to_string(
+            &FfiResult::<
+                Vec<f64>,
+                String,
+            >::ok(result),
+        )
         .unwrap(),
     )
 }

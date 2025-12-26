@@ -17,13 +17,15 @@ fn assert_is_value(
     expected : f64,
 ) {
 
-    let val = evaluate_numerical(expr).unwrap_or_else(|| {
+    let val = evaluate_numerical(expr)
+        .unwrap_or_else(|| {
 
-        panic!(
-            "Failed to evaluate expression: {:?}",
-            expr
-        )
-    });
+            panic!(
+                "Failed to evaluate \
+                 expression: {:?}",
+                expr
+            )
+        });
 
     assert!(
         (val - expected).abs() < 1e-5,
@@ -42,7 +44,8 @@ fn test_taylor_series_exp() {
 
     let expr = Expr::new_exp(x.clone());
 
-    let center = Expr::new_constant(0.0);
+    let center =
+        Expr::new_constant(0.0);
 
     let series = taylor_series(
         &expr,
@@ -76,7 +79,8 @@ fn test_taylor_series_sin() {
 
     let expr = Expr::new_sin(x.clone());
 
-    let center = Expr::new_constant(0.0);
+    let center =
+        Expr::new_constant(0.0);
 
     let series = taylor_series(
         &expr,
@@ -173,5 +177,8 @@ fn test_asymptotic_expansion() {
         &Expr::new_constant(100.0),
     );
 
-    assert_is_value(&val_at_100, 1.0202);
+    assert_is_value(
+        &val_at_100,
+        1.0202,
+    );
 }

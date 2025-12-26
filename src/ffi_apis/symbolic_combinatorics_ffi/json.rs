@@ -50,7 +50,9 @@ pub unsafe extern "C" fn rssn_json_combinations(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_catalan_number(n : usize) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_catalan_number(
+    n : usize
+) -> *mut c_char {
 
     let result = catalan_number(n);
 
@@ -64,14 +66,19 @@ pub unsafe extern "C" fn rssn_json_stirling_number_second_kind(
     k : usize,
 ) -> *mut c_char {
 
-    let result = stirling_number_second_kind(n, k);
+    let result =
+        stirling_number_second_kind(
+            n, k,
+        );
 
     to_json_string(&result)
 }
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_json_bell_number(n : usize) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_bell_number(
+    n : usize
+) -> *mut c_char {
 
     let result = bell_number(n);
 

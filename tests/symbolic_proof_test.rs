@@ -106,7 +106,9 @@ fn test_verify_matrix_inverse() {
         ],
     ]);
 
-    assert!(verify_matrix_inverse(&a, &inv));
+    assert!(
+        verify_matrix_inverse(&a, &inv)
+    );
 }
 
 #[test]
@@ -115,9 +117,9 @@ fn test_verify_limit() {
 
     // lim_{x->0} sin(x)/x = 1
     let f = Expr::new_div(
-        Expr::new_sin(Expr::new_variable(
-            "x",
-        )),
+        Expr::new_sin(
+            Expr::new_variable("x"),
+        ),
         Expr::new_variable("x"),
     );
 

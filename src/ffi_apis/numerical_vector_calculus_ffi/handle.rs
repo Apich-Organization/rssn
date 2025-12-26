@@ -21,26 +21,38 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
     result : *mut f64,
 ) -> i32 {
 
-    if funcs.is_null() || vars.is_null() || point.is_null() || result.is_null() {
+    if funcs.is_null()
+        || vars.is_null()
+        || point.is_null()
+        || result.is_null()
+    {
 
         return -1;
     }
 
-    let mut funcs_list = Vec::with_capacity(n_funcs);
+    let mut funcs_list =
+        Vec::with_capacity(n_funcs);
 
     for i in 0 .. n_funcs {
 
-        funcs_list.push((*(*funcs.add(i))).clone());
+        funcs_list.push(
+            (*(*funcs.add(i))).clone(),
+        );
     }
 
-    let mut vars_list = Vec::with_capacity(n_vars);
+    let mut vars_list =
+        Vec::with_capacity(n_vars);
 
     for i in 0 .. n_vars {
 
         let v_ptr = *vars.add(i);
 
-        match CStr::from_ptr(v_ptr).to_str() {
-            | Ok(s) => vars_list.push(s),
+        match CStr::from_ptr(v_ptr)
+            .to_str()
+        {
+            | Ok(s) => {
+                vars_list.push(s)
+            },
             | Err(_) => {
 
                 update_last_error(format!(
@@ -53,7 +65,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
         }
     }
 
-    let point_slice = std::slice::from_raw_parts(point, n_vars);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point,
+            n_vars,
+        );
 
     match vector_calculus::divergence_expr(
         &funcs_list,
@@ -84,26 +100,37 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
     point : *const f64,
 ) -> *mut Vec<f64> {
 
-    if funcs.is_null() || vars.is_null() || point.is_null() {
+    if funcs.is_null()
+        || vars.is_null()
+        || point.is_null()
+    {
 
         return ptr::null_mut();
     }
 
-    let mut funcs_list = Vec::with_capacity(3);
+    let mut funcs_list =
+        Vec::with_capacity(3);
 
     for i in 0 .. 3 {
 
-        funcs_list.push((*(*funcs.add(i))).clone());
+        funcs_list.push(
+            (*(*funcs.add(i))).clone(),
+        );
     }
 
-    let mut vars_list = Vec::with_capacity(3);
+    let mut vars_list =
+        Vec::with_capacity(3);
 
     for i in 0 .. 3 {
 
         let v_ptr = *vars.add(i);
 
-        match CStr::from_ptr(v_ptr).to_str() {
-            | Ok(s) => vars_list.push(s),
+        match CStr::from_ptr(v_ptr)
+            .to_str()
+        {
+            | Ok(s) => {
+                vars_list.push(s)
+            },
             | Err(_) => {
 
                 update_last_error(format!(
@@ -116,14 +143,19 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
         }
     }
 
-    let point_slice = std::slice::from_raw_parts(point, 3);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point, 3,
+        );
 
     match vector_calculus::curl_expr(
         &funcs_list,
         &vars_list,
         point_slice,
     ) {
-        | Ok(v) => Box::into_raw(Box::new(v)),
+        | Ok(v) => {
+            Box::into_raw(Box::new(v))
+        },
         | Err(e) => {
 
             update_last_error(e);
@@ -144,19 +176,28 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
     result : *mut f64,
 ) -> i32 {
 
-    if f.is_null() || vars.is_null() || point.is_null() || result.is_null() {
+    if f.is_null()
+        || vars.is_null()
+        || point.is_null()
+        || result.is_null()
+    {
 
         return -1;
     }
 
-    let mut vars_list = Vec::with_capacity(n_vars);
+    let mut vars_list =
+        Vec::with_capacity(n_vars);
 
     for i in 0 .. n_vars {
 
         let v_ptr = *vars.add(i);
 
-        match CStr::from_ptr(v_ptr).to_str() {
-            | Ok(s) => vars_list.push(s),
+        match CStr::from_ptr(v_ptr)
+            .to_str()
+        {
+            | Ok(s) => {
+                vars_list.push(s)
+            },
             | Err(_) => {
 
                 update_last_error(format!(
@@ -169,7 +210,11 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
         }
     }
 
-    let point_slice = std::slice::from_raw_parts(point, n_vars);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point,
+            n_vars,
+        );
 
     match vector_calculus::laplacian(
         &*f,
@@ -203,19 +248,29 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
     result : *mut f64,
 ) -> i32 {
 
-    if f.is_null() || vars.is_null() || point.is_null() || direction.is_null() || result.is_null() {
+    if f.is_null()
+        || vars.is_null()
+        || point.is_null()
+        || direction.is_null()
+        || result.is_null()
+    {
 
         return -1;
     }
 
-    let mut vars_list = Vec::with_capacity(n_vars);
+    let mut vars_list =
+        Vec::with_capacity(n_vars);
 
     for i in 0 .. n_vars {
 
         let v_ptr = *vars.add(i);
 
-        match CStr::from_ptr(v_ptr).to_str() {
-            | Ok(s) => vars_list.push(s),
+        match CStr::from_ptr(v_ptr)
+            .to_str()
+        {
+            | Ok(s) => {
+                vars_list.push(s)
+            },
             | Err(_) => {
 
                 update_last_error(format!(
@@ -228,9 +283,17 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
         }
     }
 
-    let point_slice = std::slice::from_raw_parts(point, n_vars);
+    let point_slice =
+        std::slice::from_raw_parts(
+            point,
+            n_vars,
+        );
 
-    let direction_slice = std::slice::from_raw_parts(direction, n_vars);
+    let direction_slice =
+        std::slice::from_raw_parts(
+            direction,
+            n_vars,
+        );
 
     match vector_calculus::directional_derivative(
         &*f,
