@@ -1363,168 +1363,285 @@ pub fn get_dynamic_op_properties(
 impl Expr {
     /// Returns the sine of the expression.
     #[must_use]
+
     pub fn sin(&self) -> Self {
+
         Self::new_sin(self)
     }
 
     /// Returns the cosine of the expression.
     #[must_use]
+
     pub fn cos(&self) -> Self {
+
         Self::new_cos(self)
     }
 
     /// Returns the tangent of the expression.
     #[must_use]
+
     pub fn tan(&self) -> Self {
+
         Self::new_tan(self)
     }
 
     /// Returns the natural exponential of the expression (e^x).
     #[must_use]
+
     pub fn exp(&self) -> Self {
+
         Self::new_exp(self)
     }
 
     /// Returns the natural logarithm of the expression.
     #[must_use]
+
     pub fn ln(&self) -> Self {
+
         Self::new_log(self)
     }
 
     /// Returns the logarithm of the expression with a specified base.
     #[must_use]
-    pub fn log<B: AsRef<Expr>>(&self, base: B) -> Self {
+
+    pub fn log<B: AsRef<Expr>>(
+        &self,
+        base: B,
+    ) -> Self {
+
         Self::new_log_base(base, self)
     }
 
     /// Returns the absolute value of the expression.
     #[must_use]
+
     pub fn abs(&self) -> Self {
+
         Self::new_abs(self)
     }
 
     /// Returns the square root of the expression.
     #[must_use]
+
     pub fn sqrt(&self) -> Self {
+
         Self::new_sqrt(self)
     }
 
     /// Returns the expression raised to the power of another expression.
     #[must_use]
-    pub fn pow<E: AsRef<Expr>>(&self, exponent: E) -> Self {
+
+    pub fn pow<E: AsRef<Expr>>(
+        &self,
+        exponent: E,
+    ) -> Self {
+
         Self::new_pow(self, exponent)
     }
 
     /// Returns the arcsine of the expression.
     #[must_use]
+
     pub fn asin(&self) -> Self {
+
         Self::new_arcsin(self)
     }
 
     /// Returns the arccosine of the expression.
     #[must_use]
+
     pub fn acos(&self) -> Self {
+
         Self::new_arccos(self)
     }
 
     /// Returns the arctangent of the expression.
     #[must_use]
+
     pub fn atan(&self) -> Self {
+
         Self::new_arctan(self)
     }
 
     /// Returns the hyperbolic sine of the expression.
     #[must_use]
+
     pub fn sinh(&self) -> Self {
+
         Self::new_sinh(self)
     }
 
     /// Returns the hyperbolic cosine of the expression.
     #[must_use]
+
     pub fn cosh(&self) -> Self {
+
         Self::new_cosh(self)
     }
 
     /// Returns the hyperbolic tangent of the expression.
     #[must_use]
+
     pub fn tanh(&self) -> Self {
+
         Self::new_tanh(self)
     }
 }
 
 // --- Operator Overloading ---
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Neg;
+use std::ops::Sub;
 
 // Macro for implementing binary operators for Expr and &Expr
 macro_rules! impl_binary_op {
-    ($trait:ident, $func:ident, $constructor:ident) => {
+    (
+        $trait:ident,
+        $func:ident,
+        $constructor:ident
+    ) => {
         impl $trait<Expr> for Expr {
             type Output = Expr;
-            fn $func(self, rhs: Expr) -> Self::Output {
-                Expr::$constructor(&self, &rhs)
+
+            fn $func(
+                self,
+                rhs: Expr,
+            ) -> Self::Output {
+
+                Expr::$constructor(
+                    &self, &rhs,
+                )
             }
         }
 
         impl $trait<&Expr> for Expr {
             type Output = Expr;
-            fn $func(self, rhs: &Expr) -> Self::Output {
-                Expr::$constructor(&self, rhs)
+
+            fn $func(
+                self,
+                rhs: &Expr,
+            ) -> Self::Output {
+
+                Expr::$constructor(
+                    &self, rhs,
+                )
             }
         }
 
         impl $trait<Expr> for &Expr {
             type Output = Expr;
-            fn $func(self, rhs: Expr) -> Self::Output {
-                Expr::$constructor(self, &rhs)
+
+            fn $func(
+                self,
+                rhs: Expr,
+            ) -> Self::Output {
+
+                Expr::$constructor(
+                    self, &rhs,
+                )
             }
         }
 
         impl $trait<&Expr> for &Expr {
             type Output = Expr;
-            fn $func(self, rhs: &Expr) -> Self::Output {
-                Expr::$constructor(self, rhs)
+
+            fn $func(
+                self,
+                rhs: &Expr,
+            ) -> Self::Output {
+
+                Expr::$constructor(
+                    self, rhs,
+                )
             }
         }
 
         // F64 support
         impl $trait<f64> for Expr {
             type Output = Expr;
-            fn $func(self, rhs: f64) -> Self::Output {
-                Expr::$constructor(&self, &Expr::new_constant(rhs))
+
+            fn $func(
+                self,
+                rhs: f64,
+            ) -> Self::Output {
+
+                Expr::$constructor(
+                    &self,
+                    &Expr::new_constant(
+                        rhs,
+                    ),
+                )
             }
         }
 
         impl $trait<f64> for &Expr {
             type Output = Expr;
-            fn $func(self, rhs: f64) -> Self::Output {
-                Expr::$constructor(self, &Expr::new_constant(rhs))
+
+            fn $func(
+                self,
+                rhs: f64,
+            ) -> Self::Output {
+
+                Expr::$constructor(
+                    self,
+                    &Expr::new_constant(
+                        rhs,
+                    ),
+                )
             }
         }
 
         impl $trait<Expr> for f64 {
             type Output = Expr;
-            fn $func(self, rhs: Expr) -> Self::Output {
-                Expr::$constructor(&Expr::new_constant(self), &rhs)
+
+            fn $func(
+                self,
+                rhs: Expr,
+            ) -> Self::Output {
+
+                Expr::$constructor(
+                    &Expr::new_constant(
+                        self,
+                    ),
+                    &rhs,
+                )
             }
         }
 
         impl $trait<&Expr> for f64 {
             type Output = Expr;
-            fn $func(self, rhs: &Expr) -> Self::Output {
-                Expr::$constructor(&Expr::new_constant(self), rhs)
+
+            fn $func(
+                self,
+                rhs: &Expr,
+            ) -> Self::Output {
+
+                Expr::$constructor(
+                    &Expr::new_constant(
+                        self,
+                    ),
+                    rhs,
+                )
             }
         }
     };
 }
 
 impl_binary_op!(Add, add, new_add);
+
 impl_binary_op!(Sub, sub, new_sub);
+
 impl_binary_op!(Mul, mul, new_mul);
+
 impl_binary_op!(Div, div, new_div);
 
 impl Neg for Expr {
     type Output = Expr;
+
     fn neg(self) -> Self::Output {
+
         Expr::new_neg(&self)
     }
 }
@@ -1532,7 +1649,9 @@ impl Neg for Expr {
 
 impl Neg for &Expr {
     type Output = Expr;
+
     fn neg(self) -> Self::Output {
+
         Expr::new_neg(self)
     }
 }
@@ -1542,31 +1661,37 @@ impl Neg for &Expr {
 /// This allows for a more fluent syntax when creating expressions with constants.
 /// Note: user requested `.const()`, but `const` is a reserved keyword in Rust,
 /// so we use `.constant()` instead.
+
 pub trait ToConstant {
     /// Converts the value to a symbolic Constant expression.
+
     fn constant(&self) -> Expr;
 }
 
 impl ToConstant for f64 {
     fn constant(&self) -> Expr {
+
         Expr::new_constant(*self)
     }
 }
 
 impl ToConstant for f32 {
     fn constant(&self) -> Expr {
+
         Expr::new_constant(*self as f64)
     }
 }
 
 impl ToConstant for i32 {
     fn constant(&self) -> Expr {
+
         Expr::new_constant(*self as f64)
     }
 }
 
 impl ToConstant for i64 {
     fn constant(&self) -> Expr {
+
         Expr::new_constant(*self as f64)
     }
 }
