@@ -1310,6 +1310,7 @@ pub(crate) fn solve_cubic(
         a.clone(),
     ));
 
+    // Reduced cubic: y^3 + py + q = 0, where x = y - b/3
     let p = simplify(&Expr::new_sub(
         c.clone(),
         Expr::new_div(
@@ -1321,20 +1322,28 @@ pub(crate) fn solve_cubic(
         ),
     ));
 
+    // q = d - bc/3 + 2b^3/27
     let q = simplify(&Expr::new_add(
-        Expr::new_mul(
-            Expr::Constant(2.0 / 27.0),
-            Expr::new_pow(
-                b.clone(),
-                Expr::Constant(3.0),
+        d.clone(),
+        Expr::new_add(
+            Expr::new_neg(
+                Expr::new_div(
+                    Expr::new_mul(
+                        b.clone(),
+                        c.clone(),
+                    ),
+                    Expr::Constant(3.0),
+                ),
             ),
-        ),
-        Expr::new_sub(
             Expr::new_mul(
-                b.clone(),
-                c.clone(),
+                Expr::Constant(
+                    2.0 / 27.0,
+                ),
+                Expr::new_pow(
+                    b.clone(),
+                    Expr::Constant(3.0),
+                ),
             ),
-            d.clone(),
         ),
     ));
 
@@ -1349,40 +1358,67 @@ pub(crate) fn solve_cubic(
             ),
             Expr::new_pow(
                 Expr::new_div(
-                    p,
+                    p.clone(),
                     Expr::Constant(3.0),
                 ),
                 Expr::Constant(3.0),
             ),
         ));
 
-    let u = simplify(&Expr::new_pow(
-        Expr::new_add(
+    let sqrt_inner =
+        Expr::new_sqrt(inner_sqrt);
+
+    let u_term =
+        simplify(&Expr::new_add(
             Expr::new_neg(
                 Expr::new_div(
                     q.clone(),
                     Expr::Constant(2.0),
                 ),
             ),
-            Expr::new_sqrt(
-                inner_sqrt.clone(),
+            sqrt_inner.clone(),
+        ));
+
+    let v_term =
+        simplify(&Expr::new_sub(
+            Expr::new_neg(
+                Expr::new_div(
+                    q.clone(),
+                    Expr::Constant(2.0),
+                ),
             ),
-        ),
+            sqrt_inner,
+        ));
+
+    let u = simplify(&Expr::new_pow(
+        u_term,
         Expr::Constant(1.0 / 3.0),
     ));
 
     let v = simplify(&Expr::new_pow(
-        Expr::new_sub(
-            Expr::new_neg(
-                Expr::new_div(
-                    q,
-                    Expr::Constant(2.0),
-                ),
-            ),
-            Expr::new_sqrt(inner_sqrt),
-        ),
+        v_term,
         Expr::Constant(1.0 / 3.0),
     ));
+
+    let omega = Expr::new_complex(
+        Expr::Constant(-0.5),
+        Expr::new_div(
+            Expr::new_sqrt(
+                Expr::Constant(3.0),
+            ),
+            Expr::Constant(2.0),
+        ),
+    );
+
+    let omega2 = Expr::new_complex(
+        Expr::Constant(-0.5),
+        Expr::new_neg(Expr::new_div(
+            Expr::new_sqrt(
+                Expr::Constant(3.0),
+            ),
+            Expr::Constant(2.0),
+        )),
+    );
 
     let sub_term =
         simplify(&Expr::new_div(
@@ -1392,45 +1428,346 @@ pub(crate) fn solve_cubic(
 
     let root1 =
         simplify(&Expr::new_sub(
-            Expr::new_add(u, v),
+            Expr::new_add(
+                u.clone(),
+                v.clone(),
+            ),
+            sub_term.clone(),
+        ));
+
+    let root2 =
+        simplify(&Expr::new_sub(
+            Expr::new_add(
+                Expr::new_mul(
+                    omega.clone(),
+                    u.clone(),
+                ),
+                Expr::new_mul(
+                    omega2.clone(),
+                    v.clone(),
+                ),
+            ),
+            sub_term.clone(),
+        ));
+
+    let root3 =
+        simplify(&Expr::new_sub(
+            Expr::new_add(
+                Expr::new_mul(
+                    omega2,
+                    u.clone(),
+                ),
+                Expr::new_mul(
+                    omega,
+                    v.clone(),
+                ),
+            ),
             sub_term,
         ));
 
-    vec![root1]
+    vec![root1, root2, root3]
 }
 
 pub(crate) fn solve_quartic(
-    _coeffs: &[Expr]
+    coeffs: &[Expr]
 ) -> Vec<Expr> {
 
-    let poly_expr = Expr::Variable(
-        "QuarticPoly".to_string(),
+    if coeffs.len() < 5 {
+
+        return vec![];
+    }
+
+    let a = &coeffs[0];
+
+    let b = &simplify(&Expr::new_div(
+        coeffs[1].clone(),
+        a.clone(),
+    ));
+
+    let c = &simplify(&Expr::new_div(
+        coeffs[2].clone(),
+        a.clone(),
+    ));
+
+    let d = &simplify(&Expr::new_div(
+        coeffs[3].clone(),
+        a.clone(),
+    ));
+
+    let e = &simplify(&Expr::new_div(
+        coeffs[4].clone(),
+        a.clone(),
+    ));
+
+    // Reduced quartic: y^4 + py^2 + qy + r = 0, where x = y - b/4
+    let b2 = Expr::new_pow(
+        b.clone(),
+        Expr::Constant(2.0),
     );
 
-    vec![
-        Expr::RootOf {
-            poly: Arc::new(
-                poly_expr.clone(),
+    let b3 = Expr::new_pow(
+        b.clone(),
+        Expr::Constant(3.0),
+    );
+
+    let b4 = Expr::new_pow(
+        b.clone(),
+        Expr::Constant(4.0),
+    );
+
+    let p = simplify(&Expr::new_sub(
+        c.clone(),
+        Expr::new_mul(
+            Expr::Constant(3.0 / 8.0),
+            b2.clone(),
+        ),
+    ));
+
+    let q = simplify(&Expr::new_add(
+        d.clone(),
+        Expr::new_add(
+            Expr::new_neg(
+                Expr::new_mul(
+                    Expr::Constant(0.5),
+                    Expr::new_mul(
+                        b.clone(),
+                        c.clone(),
+                    ),
+                ),
             ),
-            index: 0,
-        },
-        Expr::RootOf {
-            poly: Arc::new(
-                poly_expr.clone(),
+            Expr::new_mul(
+                Expr::Constant(0.125),
+                b3,
             ),
-            index: 1,
-        },
-        Expr::RootOf {
-            poly: Arc::new(
-                poly_expr.clone(),
+        ),
+    ));
+
+    let r = simplify(&Expr::new_add(
+        e.clone(),
+        Expr::new_add(
+            Expr::new_neg(
+                Expr::new_mul(
+                    Expr::Constant(
+                        0.25,
+                    ),
+                    Expr::new_mul(
+                        b.clone(),
+                        d.clone(),
+                    ),
+                ),
             ),
-            index: 2,
-        },
-        Expr::RootOf {
-            poly: Arc::new(poly_expr),
-            index: 3,
-        },
-    ]
+            Expr::new_add(
+                Expr::new_mul(
+                    Expr::Constant(
+                        1.0 / 16.0,
+                    ),
+                    Expr::new_mul(
+                        b2,
+                        c.clone(),
+                    ),
+                ),
+                Expr::new_neg(
+                    Expr::new_mul(
+                        Expr::Constant(
+                            3.0 / 256.0,
+                        ),
+                        b4,
+                    ),
+                ),
+            ),
+        ),
+    ));
+
+    if is_zero(&q) {
+
+        // Biquadratic case: y^4 + py^2 + r = 0
+        let discriminant =
+            simplify(&Expr::new_sub(
+                Expr::new_pow(
+                    p.clone(),
+                    Expr::Constant(2.0),
+                ),
+                Expr::new_mul(
+                    Expr::Constant(4.0),
+                    r.clone(),
+                ),
+            ));
+
+        let sqrt_disc = Expr::new_sqrt(
+            discriminant,
+        );
+
+        let two = Expr::Constant(2.0);
+
+        let y2_1 =
+            simplify(&Expr::new_div(
+                Expr::new_add(
+                    Expr::new_neg(
+                        p.clone(),
+                    ),
+                    sqrt_disc.clone(),
+                ),
+                two.clone(),
+            ));
+
+        let y2_2 =
+            simplify(&Expr::new_div(
+                Expr::new_sub(
+                    Expr::new_neg(
+                        p.clone(),
+                    ),
+                    sqrt_disc,
+                ),
+                two,
+            ));
+
+        let y1 = Expr::new_sqrt(
+            y2_1.clone(),
+        );
+
+        let y2 = Expr::new_neg(
+            Expr::new_sqrt(y2_1),
+        );
+
+        let y3 = Expr::new_sqrt(
+            y2_2.clone(),
+        );
+
+        let y4 = Expr::new_neg(
+            Expr::new_sqrt(y2_2),
+        );
+
+        let b_over_4 =
+            simplify(&Expr::new_div(
+                b.clone(),
+                Expr::Constant(4.0),
+            ));
+
+        return vec![
+            simplify(&Expr::new_sub(
+                y1,
+                b_over_4.clone(),
+            )),
+            simplify(&Expr::new_sub(
+                y2,
+                b_over_4.clone(),
+            )),
+            simplify(&Expr::new_sub(
+                y3,
+                b_over_4.clone(),
+            )),
+            simplify(&Expr::new_sub(
+                y4,
+                b_over_4,
+            )),
+        ];
+    }
+
+    // Resolvent cubic: 8m^3 + 8pm^2 + (2p^2 - 8r)m - q^2 = 0
+    let cubic_coeffs = [
+        Expr::Constant(8.0),
+        Expr::new_mul(
+            Expr::Constant(8.0),
+            p.clone(),
+        ),
+        Expr::new_sub(
+            Expr::new_mul(
+                Expr::Constant(2.0),
+                Expr::new_pow(
+                    p.clone(),
+                    Expr::Constant(2.0),
+                ),
+            ),
+            Expr::new_mul(
+                Expr::Constant(8.0),
+                r.clone(),
+            ),
+        ),
+        Expr::new_neg(Expr::new_pow(
+            q.clone(),
+            Expr::Constant(2.0),
+        )),
+    ];
+
+    let m_roots =
+        solve_cubic(&cubic_coeffs);
+
+    let m = m_roots[0].clone(); // Just pick one root
+
+    let sqrt_2m =
+        Expr::new_sqrt(Expr::new_mul(
+            Expr::Constant(2.0),
+            m.clone(),
+        ));
+
+    let q_over_2sqrt_2m = Expr::new_div(
+        q.clone(),
+        Expr::new_mul(
+            Expr::Constant(2.0),
+            sqrt_2m.clone(),
+        ),
+    );
+
+    // Quadratic 1: y^2 - sqrt(2m)y + (p/2 + m + q/(2sqrt(2m))) = 0
+    let quad1_coeffs = [
+        Expr::Constant(1.0),
+        Expr::new_neg(sqrt_2m.clone()),
+        Expr::new_add(
+            Expr::new_mul(
+                Expr::Constant(0.5),
+                p.clone(),
+            ),
+            Expr::new_add(
+                m.clone(),
+                q_over_2sqrt_2m.clone(),
+            ),
+        ),
+    ];
+
+    // Quadratic 2: y^2 + sqrt(2m)y + (p/2 + m - q/(2sqrt(2m))) = 0
+    let quad2_coeffs = [
+        Expr::Constant(1.0),
+        sqrt_2m,
+        Expr::new_sub(
+            Expr::new_add(
+                Expr::new_mul(
+                    Expr::Constant(0.5),
+                    p,
+                ),
+                m,
+            ),
+            q_over_2sqrt_2m,
+        ),
+    ];
+
+    let y_roots1 =
+        solve_quadratic(&quad1_coeffs);
+
+    let y_roots2 =
+        solve_quadratic(&quad2_coeffs);
+
+    let b_over_4 =
+        simplify(&Expr::new_div(
+            b.clone(),
+            Expr::Constant(4.0),
+        ));
+
+    let mut solutions = Vec::new();
+
+    for y in y_roots1
+        .into_iter()
+        .chain(y_roots2.into_iter())
+    {
+
+        solutions.push(simplify(
+            &Expr::new_sub(
+                y,
+                b_over_4.clone(),
+            ),
+        ));
+    }
+
+    solutions
 }
 
 pub(crate) fn solve_transcendental(

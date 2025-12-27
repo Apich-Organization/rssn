@@ -207,3 +207,249 @@ fn test_solve_system_substitution() {
         3.0,
     );
 }
+
+#[test]
+
+fn test_solve_cubic() {
+
+    // x^3 - 6x^2 + 11x - 6 = 0 => x = 1, 2, 3
+    let x = Expr::new_variable("x");
+
+    let eq = Expr::new_add(
+        Expr::new_sub(
+            Expr::new_add(
+                Expr::new_pow(
+                    x.clone(),
+                    Expr::new_constant(3.0),
+                ),
+                Expr::new_mul(
+                    Expr::new_constant(-6.0),
+                    Expr::new_pow(
+                        x.clone(),
+                        Expr::new_constant(2.0),
+                    ),
+                ),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(-11.0),
+                x.clone(),
+            ),
+        ),
+        Expr::new_constant(-6.0),
+    );
+
+    // Wait, x^3 - 6x^2 + 11x - 6 = 0
+    // + 11x, not -11x.
+    let eq = Expr::new_add(
+        Expr::new_add(
+            Expr::new_add(
+                Expr::new_pow(
+                    x.clone(),
+                    Expr::new_constant(3.0),
+                ),
+                Expr::new_mul(
+                    Expr::new_constant(-6.0),
+                    Expr::new_pow(
+                        x.clone(),
+                        Expr::new_constant(2.0),
+                    ),
+                ),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(11.0),
+                x.clone(),
+            ),
+        ),
+        Expr::new_constant(-6.0),
+    );
+
+    let solutions = solve(&eq, "x");
+
+    assert_eq!(solutions.len(), 3);
+
+    eprintln!(
+        "Solutions: {:?}",
+        solutions
+    );
+
+    // Solutions might be in any order
+    let mut vals: Vec<f64> = solutions
+        .iter()
+        .map(|s| {
+
+            evaluate_numerical(s)
+                .expect(
+                "Failed to evaluate",
+            )
+        })
+        .collect();
+
+    vals.sort_by(|a, b| {
+
+        a.partial_cmp(b)
+            .unwrap()
+    });
+
+    assert!(
+        (vals[0] - 1.0).abs() < 1e-7
+    );
+
+    assert!(
+        (vals[1] - 2.0).abs() < 1e-7
+    );
+
+    assert!(
+        (vals[2] - 3.0).abs() < 1e-7
+    );
+}
+
+#[test]
+
+fn test_solve_quartic_biquadratic() {
+
+    // x^4 - 5x^2 + 4 = 0 => x = 1, -1, 2, -2
+    let x = Expr::new_variable("x");
+
+    let eq = Expr::new_add(
+        Expr::new_add(
+            Expr::new_pow(
+                x.clone(),
+                Expr::new_constant(4.0),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(
+                    -5.0,
+                ),
+                Expr::new_pow(
+                    x,
+                    Expr::new_constant(
+                        2.0,
+                    ),
+                ),
+            ),
+        ),
+        Expr::new_constant(4.0),
+    );
+
+    let solutions = solve(&eq, "x");
+
+    assert_eq!(solutions.len(), 4);
+
+    let mut vals: Vec<f64> = solutions
+        .iter()
+        .map(|s| {
+
+            evaluate_numerical(s)
+                .expect(
+                "Failed to evaluate",
+            )
+        })
+        .collect();
+
+    vals.sort_by(|a, b| {
+
+        a.partial_cmp(b)
+            .unwrap()
+    });
+
+    assert!(
+        (vals[0] - -2.0).abs() < 1e-7
+    );
+
+    assert!(
+        (vals[1] - -1.0).abs() < 1e-7
+    );
+
+    assert!(
+        (vals[2] - 1.0).abs() < 1e-7
+    );
+
+    assert!(
+        (vals[3] - 2.0).abs() < 1e-7
+    );
+}
+
+#[test]
+
+fn test_solve_quartic_general() {
+
+    // x^4 - 10x^3 + 35x^2 - 50x + 24 = 0 => x = 1, 2, 3, 4
+    let x = Expr::new_variable("x");
+
+    let eq = Expr::new_add(
+        Expr::new_add(
+            Expr::new_add(
+                Expr::new_add(
+                    Expr::new_pow(
+                        x.clone(),
+                        Expr::new_constant(
+                            4.0,
+                        ),
+                    ),
+                    Expr::new_mul(
+                        Expr::new_constant(
+                            -10.0,
+                        ),
+                        Expr::new_pow(
+                            x.clone(),
+                            Expr::new_constant(
+                                3.0,
+                            ),
+                        ),
+                    ),
+                ),
+                Expr::new_mul(
+                    Expr::new_constant(35.0),
+                    Expr::new_pow(
+                        x.clone(),
+                        Expr::new_constant(
+                            2.0,
+                        ),
+                    ),
+                ),
+            ),
+            Expr::new_mul(
+                Expr::new_constant(-50.0),
+                x,
+            ),
+        ),
+        Expr::new_constant(24.0),
+    );
+
+    let solutions = solve(&eq, "x");
+
+    assert_eq!(solutions.len(), 4);
+
+    let mut vals: Vec<f64> = solutions
+        .iter()
+        .map(|s| {
+
+            evaluate_numerical(s)
+                .expect(
+                "Failed to evaluate",
+            )
+        })
+        .collect();
+
+    vals.sort_by(|a, b| {
+
+        a.partial_cmp(b)
+            .unwrap()
+    });
+
+    assert!(
+        (vals[0] - 1.0).abs() < 1e-7
+    );
+
+    assert!(
+        (vals[1] - 2.0).abs() < 1e-7
+    );
+
+    assert!(
+        (vals[2] - 3.0).abs() < 1e-7
+    );
+
+    assert!(
+        (vals[3] - 4.0).abs() < 1e-7
+    );
+}

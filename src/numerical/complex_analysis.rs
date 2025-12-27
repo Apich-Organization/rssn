@@ -225,7 +225,8 @@ impl MobiusTransformation {
     /// Composes two Möbius transformations.
 
     #[must_use]
-#[allow(clippy::suspicious_operation_groupings)]
+    #[allow(clippy::suspicious_operation_groupings)]
+
     pub fn compose(
         &self,
         other: &Self,
