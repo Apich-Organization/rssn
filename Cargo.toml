@@ -104,6 +104,7 @@ plotters = { version = "0.3", features = [
 ], optional = true }
 ahash = { version = "0.8.12", features = ["serde"] }
 abi_stable = { version = "0.11.3", optional = true }
+instability = "0.3.10"
 
 [build-dependencies]
 cbindgen = "0.29.2"
@@ -135,7 +136,17 @@ plugins = ["dep:libloading", "dep:abi_stable"]
 ffi_api = []
 # Will be available at v0.3.0 release.
 ffi_blinding = ["dep:libc"]
-full = ["default", "output", "physics", "plugins", "ffi_api", "ffi_blinding"]
+# Experimental features
+experimental = ["ffi_blinding"]
+full = [
+    "default",
+    "output",
+    "physics",
+    "plugins",
+    "ffi_api",
+    "ffi_blinding",
+    "experimental",
+]
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports"] }

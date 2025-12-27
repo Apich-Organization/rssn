@@ -4946,6 +4946,8 @@ rssn_ void rssn_free_solution_vec_handle(rssn_Vec<rssn_HashMap<rssn_Expr, rssn_E
  */
 rssn_ void rssn_free_string(char *aS) ;
 
+rssn_ void rssn_free_string(char *aPtr) ;
+
 /*
  Frees a C string returned by other functions.
  */
