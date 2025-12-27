@@ -300,6 +300,7 @@ pub mod compute;
 pub mod constant;
 #[cfg(feature = "ffi_api")]
 pub mod ffi_apis;
+
 // [instability::unstable(feature = "experimental")]
 // Disabled because it only works on nightly rust
 #[cfg(feature = "ffi_blinding")]
