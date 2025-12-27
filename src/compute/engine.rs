@@ -159,6 +159,7 @@ impl ComputeEngine {
     ///
     /// # Errors
     /// Returns an error string if the parsing fails.
+
     pub fn parse_and_submit(
         &self,
         input: &str,
@@ -423,6 +424,7 @@ impl ComputeEngine {
     /// Panics if the internal cache lock is poisoned.
     #[must_use]
     #[allow(clippy::too_many_lines)]
+
     pub fn submit(
         &self,
         expr: Arc<Expr>,
@@ -514,7 +516,7 @@ impl ComputeEngine {
 
                     paused = cvar
                         .wait(paused)
-                        .expect("Condition variable wait failed");                       
+                        .expect("Condition variable wait failed");
                 }
 
                 drop(paused);
@@ -667,6 +669,7 @@ impl ComputeEngine {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
+
     pub fn resume(
         &self,
         id: &str,
@@ -732,6 +735,7 @@ impl ComputeEngine {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
+
     pub fn cancel(
         &self,
         id: &str,

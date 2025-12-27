@@ -88,6 +88,7 @@ impl ParsingCache {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
+
     pub fn clear(&self) {
 
         let mut cache = self
@@ -189,6 +190,7 @@ impl ComputationResultCache {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
+
     pub fn clear(&self) {
 
         let mut cache = self

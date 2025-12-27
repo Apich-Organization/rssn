@@ -924,6 +924,7 @@ impl<T: Field> Matrix<T> {
     /// Computes the determinant using block matrix decomposition (Schur complement).
     /// This is efficient for large matrices.
     #[allow(clippy::suspicious_operation_groupings)]
+
     pub fn determinant_block(
         &self
     ) -> Result<T, String> {

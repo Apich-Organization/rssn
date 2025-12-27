@@ -21,6 +21,7 @@ scc
 *.exp
 *.d
 *.rlib
+/vendor
 
 **/*.exe
 **/*.a

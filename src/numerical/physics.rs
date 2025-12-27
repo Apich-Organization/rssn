@@ -895,6 +895,7 @@ pub fn solve_3d_schrodinger(
 /// A `Result` containing a `Vec<Vec<f64>>` where each inner `Vec` is the solution `u`
 /// at a given time step, or an error string if input dimensions are invalid.
 #[allow(clippy::suspicious_operation_groupings)]
+
 pub fn solve_heat_equation_1d_crank_nicolson(
     init_func: &dyn Fn(f64) -> f64,
     alpha: f64,
@@ -1964,8 +1965,8 @@ pub fn mass_energy(mass: f64) -> f64 {
 
 /// Relativistic velocity addition: u = (v + w) / (1 + vw/c²)
 #[must_use]
-
 #[allow(clippy::suspicious_operation_groupings)]
+
 pub fn relativistic_velocity_addition(
     v: f64,
     w: f64,

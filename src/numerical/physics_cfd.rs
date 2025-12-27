@@ -249,8 +249,8 @@ pub fn check_cfl_stability(
 /// Calculates the diffusion number for stability analysis.
 /// For stability, typically r ≤ 0.5 for 1D explicit diffusion.
 #[must_use]
-
 #[allow(clippy::suspicious_operation_groupings)]
+
 pub fn diffusion_number(
     alpha: f64,
     dt: f64,
@@ -345,8 +345,8 @@ pub fn solve_advection_1d(
 /// # Returns
 /// A `Vec<Vec<f64>>` where each inner `Vec` is the solution `u` at a given time step.
 #[must_use]
-
 #[allow(clippy::suspicious_operation_groupings)]
+
 pub fn solve_diffusion_1d(
     u0: &[f64],
     alpha: f64,
@@ -664,8 +664,8 @@ pub fn solve_poisson_2d_sor(
 
 /// Solves the 1D advection-diffusion equation: `∂u/∂t + c·∂u/∂x = α·∂²u/∂x²`
 #[must_use]
-
 #[allow(clippy::suspicious_operation_groupings)]
+
 pub fn solve_advection_diffusion_1d(
     u0: &[f64],
     c: f64,
@@ -736,8 +736,8 @@ pub fn solve_advection_diffusion_1d(
 ///
 /// This nonlinear equation models shock formation and viscous dissipation.
 #[must_use]
-
 #[allow(clippy::suspicious_operation_groupings)]
+
 pub fn solve_burgers_1d(
     u0: &[f64],
     nu: f64,
