@@ -156,7 +156,9 @@ impl ComputeEngine {
     ///     | Err(e) => eprintln!("Parse error: {}", e),
     /// }
     /// ```
-
+    ///
+    /// # Errors
+    /// Returns an error string if the parsing fails.
     pub fn parse_and_submit(
         &self,
         input: &str,
@@ -220,6 +222,9 @@ impl ComputeEngine {
     ///     );
     /// }
     /// ```
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
     #[must_use]
 
     pub fn get_status(
@@ -281,6 +286,9 @@ impl ComputeEngine {
     ///     );
     /// }
     /// ```
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
     #[must_use]
 
     pub fn get_progress(
@@ -343,6 +351,9 @@ impl ComputeEngine {
     ///     println!("Result: {}", result);
     /// }
     /// ```
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
     #[must_use]
 
     pub fn get_result(
@@ -407,8 +418,11 @@ impl ComputeEngine {
     ///     id
     /// );
     /// ```
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
     #[must_use]
-
+    #[allow(clippy::too_many_lines)]
     pub fn submit(
         &self,
         expr: Arc<Expr>,
@@ -500,8 +514,10 @@ impl ComputeEngine {
 
                     paused = cvar
                         .wait(paused)
-                        .expect("Condition variable wait failed");
+                        .expect("Condition variable wait failed");                       
                 }
+
+                drop(paused);
 
                 comp_guard.status = ComputationStatus::Running;
 
@@ -583,6 +599,9 @@ impl ComputeEngine {
     /// // Pause the computation
     /// engine.pause(&id);
     /// ```
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
 
     pub fn pause(
         &self,
@@ -645,7 +664,9 @@ impl ComputeEngine {
     /// // ... later ...
     /// engine.resume(&id);
     /// ```
-
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
     pub fn resume(
         &self,
         id: &str,
@@ -708,7 +729,9 @@ impl ComputeEngine {
     /// // Cancel the computation
     /// engine.cancel(&id);
     /// ```
-
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
     pub fn cancel(
         &self,
         id: &str,

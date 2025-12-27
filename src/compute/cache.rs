@@ -36,6 +36,9 @@ impl ParsingCache {
     ///
     /// # Returns
     /// * `Option<Arc<Expr>>` - The cached expression, or `None` if not found.
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
 
     pub fn get(
         &self,
@@ -60,6 +63,9 @@ impl ParsingCache {
     /// # Arguments
     /// * `input` - The input string.
     /// * `expr` - The parsed expression.
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
 
     pub fn set(
         &self,
@@ -79,7 +85,9 @@ impl ParsingCache {
     }
 
     /// Clears the cache.
-
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
     pub fn clear(&self) {
 
         let mut cache = self
@@ -132,6 +140,9 @@ impl ComputationResultCache {
     ///
     /// # Returns
     /// * `Option<Value>` - The cached value, or `None` if not found.
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
 
     pub fn get(
         &self,
@@ -156,6 +167,9 @@ impl ComputationResultCache {
     /// # Arguments
     /// * `expr` - The expression.
     /// * `value` - The computed value.
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
 
     pub fn set(
         &self,
@@ -172,7 +186,9 @@ impl ComputationResultCache {
     }
 
     /// Clears the cache.
-
+    ///
+    /// # Panics
+    /// Panics if the internal cache lock is poisoned.
     pub fn clear(&self) {
 
         let mut cache = self

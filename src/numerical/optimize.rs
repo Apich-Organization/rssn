@@ -296,6 +296,7 @@ pub struct LinearRegression {
 }
 
 impl LinearRegression {
+    #[allow(clippy::suspicious_operation_groupings)]
     pub fn new(
         x: Array2<f64>,
         y: Array1<f64>,

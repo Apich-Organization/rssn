@@ -1,3 +1,6 @@
+# rustfmt.toml
+# rssn (Scientific Computing Library) -- version 1
+# 
 array_width = 20
 attr_fn_like_width = 30
 blank_lines_lower_bound = 1

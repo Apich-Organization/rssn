@@ -1,0 +1,5 @@
+# clippy.toml
+# rssn (Scientific Computing Library) -- version 1
+# 
+# Config to 200 lines as threshold for too many lines because we heavily use vertical formatting for our code
+too-many-lines-threshold = 200
