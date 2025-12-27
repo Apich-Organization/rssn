@@ -140,30 +140,30 @@ typedef enum rssn_ConvergenceResult {
     /*
      The series is determined to converge.
      */
-    Converges,
+    RssnConvergenceResultConverges,
     /*
      The series is determined to diverge.
      */
-    Diverges,
+    RssnConvergenceResultDiverges,
     /*
      The convergence could not be determined with the available tests.
      */
-    Inconclusive,
+    RssnConvergenceResultInconclusive,
 } rssn_ConvergenceResult;
 
 /*
  Defines the monomial ordering to be used in polynomial division.
  */
 typedef enum rssn_MonomialOrder {
-    Lexicographical,
-    GradedLexicographical,
-    GradedReverseLexicographical,
+    RssnMonomialOrderLexicographical,
+    RssnMonomialOrderGradedLexicographical,
+    RssnMonomialOrderGradedReverseLexicographical,
 } rssn_MonomialOrder;
 
 typedef enum rssn_CoordinateSystem {
-    Cartesian,
-    Cylindrical,
-    Spherical,
+    RssnCoordinateSystemCartesian,
+    RssnCoordinateSystemCylindrical,
+    RssnCoordinateSystemSpherical,
 } rssn_CoordinateSystem;
 
 typedef struct rssn_Arc_FiniteField rssn_Arc_FiniteField;
@@ -5158,12 +5158,12 @@ rssn_ void rssn_free_solution_vec_handle(struct rssn_Vec_HashMap_Expr__Expr *aPt
  */
 rssn_ void rssn_free_string(char *aS) ;
 
-rssn_ void rssn_free_string(char *aPtr) ;
-
 /*
  Frees a C string returned by other functions.
  */
 rssn_ void rssn_free_string_api(char *aPtr) ;
+
+rssn_ void rssn_free_string_constant(char *aPtr) ;
 
 /*
  Computes the symbolic Gamma function Γ(z).

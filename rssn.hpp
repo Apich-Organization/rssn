@@ -17,120 +17,120 @@ namespace rssn {
 /*
  Atomic mass unit (kg)
  */
-static const double rssn_ATOMIC_MASS_UNIT = 1.660539067e-27;
+constexpr static const double rssn_ATOMIC_MASS_UNIT = 1.660539067e-27;
 
 /*
  Avogadro's number (mol⁻¹)
  */
-static const double rssn_AVOGADRO_NUMBER = 6.02214076e23;
+constexpr static const double rssn_AVOGADRO_NUMBER = 6.02214076e23;
 
 /*
  Bohr radius (m)
  */
-static const double rssn_BOHR_RADIUS = 5.291772109e-11;
+constexpr static const double rssn_BOHR_RADIUS = 5.291772109e-11;
 
 /*
  Boltzmann constant (J/K)
  */
-static const double rssn_BOLTZMANN_CONSTANT = 1.380649e-23;
+constexpr static const double rssn_BOLTZMANN_CONSTANT = 1.380649e-23;
 
 /*
  Boltzmann constant in SI units (J/K)
  */
-static const double rssn_BOLTZMANN_CONSTANT_SI = 1.380649e-23;
+constexpr static const double rssn_BOLTZMANN_CONSTANT_SI = 1.380649e-23;
 
 /*
  Coulomb constant k = 1/(4πε₀) (N·m²/C²)
  */
-static const double rssn_COULOMB_CONSTANT = 8.987551787e9;
+constexpr static const double rssn_COULOMB_CONSTANT = 8.987551787e9;
 
 /*
  Electron mass (kg)
  */
-static const double rssn_ELECTRON_MASS = 9.10938356e-31;
+constexpr static const double rssn_ELECTRON_MASS = 9.10938356e-31;
 
 /*
  Elementary charge (C)
  */
-static const double rssn_ELEMENTARY_CHARGE = 1.602176634e-19;
+constexpr static const double rssn_ELEMENTARY_CHARGE = 1.602176634e-19;
 
 /*
  Reduced unit for energy (using argon as reference)
  1 reduced energy = ε ≈ 1.65e-21 J for argon
  */
-static const double rssn_ENERGY_UNIT_ARGON = 1.65e-21;
+constexpr static const double rssn_ENERGY_UNIT_ARGON = 1.65e-21;
 
 /*
  Fine structure constant
  */
-static const double rssn_FINE_STRUCTURE_CONSTANT = 7.297352566e-3;
+constexpr static const double rssn_FINE_STRUCTURE_CONSTANT = 7.297352566e-3;
 
 /*
  Gas constant R = NA × kB (J/(mol·K))
  */
-static const double rssn_GAS_CONSTANT = 8.314462618;
+constexpr static const double rssn_GAS_CONSTANT = 8.314462618;
 
 /*
  Gravitational constant (m³/(kg·s²))
  */
-static const double rssn_GRAVITATIONAL_CONSTANT = 6.67430e-11;
+constexpr static const double rssn_GRAVITATIONAL_CONSTANT = 6.67430e-11;
 
 /*
  Reduced Planck's constant ħ = h/(2π) (J·s)
  */
-static const double rssn_HBAR = 1.054571817e-34;
+constexpr static const double rssn_HBAR = 1.054571817e-34;
 
 /*
  Reduced unit for length (using argon as reference)
  1 reduced length = σ ≈ 3.4 Å for argon
  */
-static const double rssn_LENGTH_UNIT_ARGON = 3.4e-10;
+constexpr static const double rssn_LENGTH_UNIT_ARGON = 3.4e-10;
 
 /*
  Neutron mass (kg)
  */
-static const double rssn_NEUTRON_MASS = 1.674927351e-27;
+constexpr static const double rssn_NEUTRON_MASS = 1.674927351e-27;
 
 /*
  Planck's constant (J·s)
  */
-static const double rssn_PLANCK_CONSTANT = 6.62607015e-34;
+constexpr static const double rssn_PLANCK_CONSTANT = 6.62607015e-34;
 
 /*
  Proton mass (kg)
  */
-static const double rssn_PROTON_MASS = 1.672621898e-27;
+constexpr static const double rssn_PROTON_MASS = 1.672621898e-27;
 
 /*
  Speed of light in vacuum (m/s)
  */
-static const double rssn_SPEED_OF_LIGHT = 299792458.0;
+constexpr static const double rssn_SPEED_OF_LIGHT = 299792458.0;
 
 /*
  Standard Earth gravity (m/s²)
  */
-static const double rssn_STANDARD_GRAVITY = 9.80665;
+constexpr static const double rssn_STANDARD_GRAVITY = 9.80665;
 
 /*
  Stefan-Boltzmann constant (W/(m²·K⁴))
  */
-static const double rssn_STEFAN_BOLTZMANN = 5.670374419e-8;
+constexpr static const double rssn_STEFAN_BOLTZMANN = 5.670374419e-8;
 
 /*
  Reduced unit for temperature (using argon as reference)
  1 reduced temperature = `ε/k_B` ≈ 120 K for argon
  */
-static const double rssn_TEMPERATURE_UNIT_ARGON = 119.8;
+constexpr static const double rssn_TEMPERATURE_UNIT_ARGON = 119.8;
 
 /*
  Vacuum permeability μ₀ (H/m)
  */
-static const double rssn_VACUUM_PERMEABILITY = 1.256637061e-6;
+constexpr static const double rssn_VACUUM_PERMEABILITY = 1.256637061e-6;
 
 /*
  Vacuum permittivity ε₀ (F/m)
  */
-static const double rssn_VACUUM_PERMITTIVITY = 8.854187817e-12;
+constexpr static const double rssn_VACUUM_PERMITTIVITY = 8.854187817e-12;
 
 /*
  Represents the result of a convergence test.
@@ -139,30 +139,30 @@ enum class rssn_ConvergenceResult {
     /*
      The series is determined to converge.
      */
-    Converges,
+    RssnConvergenceResultConverges,
     /*
      The series is determined to diverge.
      */
-    Diverges,
+    RssnConvergenceResultDiverges,
     /*
      The convergence could not be determined with the available tests.
      */
-    Inconclusive,
+    RssnConvergenceResultInconclusive,
 };
 
 /*
  Defines the monomial ordering to be used in polynomial division.
  */
 enum class rssn_MonomialOrder {
-    Lexicographical,
-    GradedLexicographical,
-    GradedReverseLexicographical,
+    RssnMonomialOrderLexicographical,
+    RssnMonomialOrderGradedLexicographical,
+    RssnMonomialOrderGradedReverseLexicographical,
 };
 
 enum class rssn_CoordinateSystem {
-    Cartesian,
-    Cylindrical,
-    Spherical,
+    RssnCoordinateSystemCartesian,
+    RssnCoordinateSystemCylindrical,
+    RssnCoordinateSystemSpherical,
 };
 
 template<typename T = void>
@@ -514,6 +514,21 @@ struct rssn_BincodeBuffer {
      Length of the binary data in bytes.
      */
     size_t mLen;
+
+    rssn_BincodeBuffer(uint8_t *const& aMData,
+                       size_t const& aMLen)
+      : mData(aMData),
+        mLen(aMLen)
+    {}
+
+    bool operator==(const rssn_BincodeBuffer& aOther) const {
+        return mData == aOther.mData &&
+               mLen == aOther.mLen;
+    }
+    bool operator!=(const rssn_BincodeBuffer& aOther) const {
+        return mData != aOther.mData ||
+               mLen != aOther.mLen;
+    }
 };
 
 /*
@@ -521,11 +536,31 @@ struct rssn_BincodeBuffer {
  */
 struct rssn_RssnGraph {
     uint8_t mPrivate[0];
+
+    rssn_RssnGraph(uint8_t const& aMPrivate[0])
+      : mPrivate(aMPrivate)
+    {}
+
 };
 
 struct rssn_FfiPoint {
     double mX;
     double mY;
+
+    rssn_FfiPoint(double const& aMX,
+                  double const& aMY)
+      : mX(aMX),
+        mY(aMY)
+    {}
+
+    bool operator==(const rssn_FfiPoint& aOther) const {
+        return mX == aOther.mX &&
+               mY == aOther.mY;
+    }
+    bool operator!=(const rssn_FfiPoint& aOther) const {
+        return mX != aOther.mX ||
+               mY != aOther.mY;
+    }
 };
 
 /*
@@ -534,17 +569,66 @@ struct rssn_FfiPoint {
 struct rssn_ExprPair {
     rssn_Expr *mFirst;
     rssn_Expr *mSecond;
+
+    rssn_ExprPair(rssn_Expr *const& aMFirst,
+                  rssn_Expr *const& aMSecond)
+      : mFirst(aMFirst),
+        mSecond(aMSecond)
+    {}
+
+    bool operator==(const rssn_ExprPair& aOther) const {
+        return mFirst == aOther.mFirst &&
+               mSecond == aOther.mSecond;
+    }
+    bool operator!=(const rssn_ExprPair& aOther) const {
+        return mFirst != aOther.mFirst ||
+               mSecond != aOther.mSecond;
+    }
 };
 
 struct rssn_IsingResultHandle {
     rssn_Matrix<double> *mGrid;
     double mMagnetization;
+
+    rssn_IsingResultHandle(rssn_Matrix<double> *const& aMGrid,
+                           double const& aMMagnetization)
+      : mGrid(aMGrid),
+        mMagnetization(aMMagnetization)
+    {}
+
+    bool operator==(const rssn_IsingResultHandle& aOther) const {
+        return mGrid == aOther.mGrid &&
+               mMagnetization == aOther.mMagnetization;
+    }
+    bool operator!=(const rssn_IsingResultHandle& aOther) const {
+        return mGrid != aOther.mGrid ||
+               mMagnetization != aOther.mMagnetization;
+    }
 };
 
 struct rssn_NavierStokesResultHandles {
     rssn_Matrix<double> *mU;
     rssn_Matrix<double> *mV;
     rssn_Matrix<double> *mP;
+
+    rssn_NavierStokesResultHandles(rssn_Matrix<double> *const& aMU,
+                                   rssn_Matrix<double> *const& aMV,
+                                   rssn_Matrix<double> *const& aMP)
+      : mU(aMU),
+        mV(aMV),
+        mP(aMP)
+    {}
+
+    bool operator==(const rssn_NavierStokesResultHandles& aOther) const {
+        return mU == aOther.mU &&
+               mV == aOther.mV &&
+               mP == aOther.mP;
+    }
+    bool operator!=(const rssn_NavierStokesResultHandles& aOther) const {
+        return mU != aOther.mU ||
+               mV != aOther.mV ||
+               mP != aOther.mP;
+    }
 };
 
 
@@ -4946,12 +5030,12 @@ rssn_ void rssn_free_solution_vec_handle(rssn_Vec<rssn_HashMap<rssn_Expr, rssn_E
  */
 rssn_ void rssn_free_string(char *aS) ;
 
-rssn_ void rssn_free_string(char *aPtr) ;
-
 /*
  Frees a C string returned by other functions.
  */
 rssn_ void rssn_free_string_api(char *aPtr) ;
+
+rssn_ void rssn_free_string_constant(char *aPtr) ;
 
 /*
  Computes the symbolic Gamma function Γ(z).

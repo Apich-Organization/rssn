@@ -55,46 +55,50 @@ rename_fields = "GeckoCase"
 must_use = "MUST_USE_STRUCT"
 deprecated = "DEPRECATED"
 deprecated_with_note = "DEPRECATED_WITH_NOTE"
-derive_constructor = false
-derive_eq = false
-derive_neq = false
-derive_lt = false
-derive_lte = false
-derive_gt = false
-derive_gte = false
+derive_constructor = true
+derive_eq = true
+derive_neq = true
+derive_lt = true
+derive_lte = true
+derive_gt = true
+derive_gte = true
 
 [enum]
 rename_variants = "GeckoCase"
 must_use = "MUST_USE_ENUM"
 deprecated = "DEPRECATED"
 deprecated_with_note = "DEPRECATED_WITH_NOTE"
-prefix_with_name = false
-derive_helper_methods = false
-derive_const_casts = false
-derive_mut_casts = false
+prefix_with_name = true
+derive_helper_methods = true
+derive_const_casts = true
+derive_mut_casts = true
 cast_assert_name = "ASSERT"
-derive_tagged_enum_destructor = false
-derive_tagged_enum_copy_constructor = false
-derive_tagged_enum_copy_assignment = false
-private_default_tagged_enum_constructor = false
+derive_tagged_enum_destructor = true
+derive_tagged_enum_copy_constructor = true
+derive_tagged_enum_copy_assignment = true
+private_default_tagged_enum_constructor = true
 
 [const]
 allow_static_const = true
-allow_constexpr = false
+allow_constexpr = true
 sort_by = "Name"
 
 [macro_expansion]
 bitflags = true
 
 [parse]
-parse_deps = false
+parse_deps = true
 include = []
-exclude = ["physics::physics_mm", "numerical::physics_md", "physics::physics_fdm"]
+exclude = [
+    "physics::physics_mm",
+    "numerical::physics_md",
+    "physics::physics_fdm",
+]
 clean = false
 extra_bindings = []
 
 [parse.expand]
 crates = []
-all_features = false
+all_features = true
 default_features = true
-features = []
+features = ["full"]
