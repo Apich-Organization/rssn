@@ -721,38 +721,68 @@ char *classify_singularity_json(const char *aFuncJson,
                                 size_t aOrder)
 ;
 
-rssn_ rssn_Expr *complex_arg(const rssn_Expr *aZ) ;
+rssn_
+rssn_Expr *complex_arg(const rssn_Expr *aZ)
+;
 
-rssn_ rssn_BincodeBuffer complex_arg_bincode(rssn_BincodeBuffer aZBincode) ;
+rssn_
+rssn_BincodeBuffer complex_arg_bincode(rssn_BincodeBuffer aZBincode)
+;
 
-rssn_ char *complex_arg_json(const char *aZJson) ;
+rssn_
+char *complex_arg_json(const char *aZJson)
+;
 
-rssn_ double complex_distance(const rssn_Expr *aP1, const rssn_Expr *aP2) ;
+rssn_
+double complex_distance(const rssn_Expr *aP1,
+                        const rssn_Expr *aP2)
+;
 
 rssn_
 double complex_distance_bincode(rssn_BincodeBuffer aP1Bincode,
                                 rssn_BincodeBuffer aP2Bincode)
 ;
 
-rssn_ double complex_distance_json(const char *aP1Json, const char *aP2Json) ;
+rssn_
+double complex_distance_json(const char *aP1Json,
+                             const char *aP2Json)
+;
 
-rssn_ rssn_Expr *complex_exp(const rssn_Expr *aZ) ;
+rssn_
+rssn_Expr *complex_exp(const rssn_Expr *aZ)
+;
 
-rssn_ rssn_BincodeBuffer complex_exp_bincode(rssn_BincodeBuffer aZBincode) ;
+rssn_
+rssn_BincodeBuffer complex_exp_bincode(rssn_BincodeBuffer aZBincode)
+;
 
-rssn_ char *complex_exp_json(const char *aZJson) ;
+rssn_
+char *complex_exp_json(const char *aZJson)
+;
 
-rssn_ rssn_Expr *complex_log(const rssn_Expr *aZ) ;
+rssn_
+rssn_Expr *complex_log(const rssn_Expr *aZ)
+;
 
-rssn_ rssn_BincodeBuffer complex_log_bincode(rssn_BincodeBuffer aZBincode) ;
+rssn_
+rssn_BincodeBuffer complex_log_bincode(rssn_BincodeBuffer aZBincode)
+;
 
-rssn_ char *complex_log_json(const char *aZJson) ;
+rssn_
+char *complex_log_json(const char *aZJson)
+;
 
-rssn_ rssn_Expr *complex_modulus(const rssn_Expr *aZ) ;
+rssn_
+rssn_Expr *complex_modulus(const rssn_Expr *aZ)
+;
 
-rssn_ rssn_BincodeBuffer complex_modulus_bincode(rssn_BincodeBuffer aZBincode) ;
+rssn_
+rssn_BincodeBuffer complex_modulus_bincode(rssn_BincodeBuffer aZBincode)
+;
 
-rssn_ char *complex_modulus_json(const char *aZJson) ;
+rssn_
+char *complex_modulus_json(const char *aZJson)
+;
 
 rssn_
 rssn_Expr *contour_integral_residue_theorem(const rssn_Expr *aFunc,
@@ -808,12 +838,20 @@ rssn_Expr *expr_definite_integrate(rssn_Expr *aHandle,
 /*
  Differentiates an `Expr` and returns a handle to the new, derivative expression.
  */
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *expr_differentiate(rssn_Expr *aHandle, const char *aVarPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *expr_differentiate(rssn_Expr *aHandle,
+                              const char *aVarPtr)
+;
 
 /*
  Computes the indefinite integral of an `Expr` and returns a handle to the new expression.
  */
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *expr_integrate(rssn_Expr *aHandle, const char *aVarPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *expr_integrate(rssn_Expr *aHandle,
+                          const char *aVarPtr)
+;
 
 /*
  Computes the limit of an `Expr` and returns a handle to the new expression.
@@ -830,12 +868,19 @@ rssn_Expr *expr_limit(rssn_Expr *aHandle,
 
  The caller is responsible for freeing the returned handle using `expr_free`.
  */
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *expr_simplify(rssn_Expr *aHandle) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *expr_simplify(rssn_Expr *aHandle)
+;
 
 /*
  Solves an equation for a given variable and returns the solutions as a JSON string.
  */
-rssn_ DEPRECATED_WITH_NOTE char *expr_solve(rssn_Expr *aHandle, const char *aVarPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *expr_solve(rssn_Expr *aHandle,
+                 const char *aVarPtr)
+;
 
 /*
  Substitutes a variable in an `Expr` with another `Expr` and returns a handle to the new expression.
@@ -852,21 +897,27 @@ rssn_Expr *expr_substitute(rssn_Expr *aHandle,
 
  The caller is responsible for freeing the returned string using `free_string`.
  */
-rssn_ char *expr_to_latex(rssn_Expr *aHandle) ;
+rssn_
+char *expr_to_latex(rssn_Expr *aHandle)
+;
 
 /*
  Converts an expression to a formatted, pretty-printed string.
 
  The caller is responsible for freeing the returned string using `free_string`.
  */
-rssn_ char *expr_to_pretty_string(rssn_Expr *aHandle) ;
+rssn_
+char *expr_to_pretty_string(rssn_Expr *aHandle)
+;
 
 /*
  Returns the string representation of an `Expr` handle.
 
  The caller is responsible for freeing the returned string using `free_string`.
  */
-rssn_ char *expr_to_string(rssn_Expr *aHandle) ;
+rssn_
+char *expr_to_string(rssn_Expr *aHandle)
+;
 
 /*
  Attempts to unify the units within an expression.
@@ -876,22 +927,30 @@ rssn_ char *expr_to_string(rssn_Expr *aHandle) ;
  The caller can then use `expr_from_json` to get a handle to the new expression.
  The caller is responsible for freeing the returned string using `free_string`.
  */
-rssn_ char *expr_unify_expression(rssn_Expr *aHandle) ;
+rssn_
+char *expr_unify_expression(rssn_Expr *aHandle)
+;
 
 /*
  Frees a C string that was allocated by this library.
  */
-rssn_ void free_string(char *aS) ;
+rssn_
+void free_string(char *aS)
+;
 
 /*
  Evaluates a point on a Bézier curve and returns the coordinates as a JSON string.
  */
-rssn_ char *interpolate_bezier_curve(const char *aJsonPtr) ;
+rssn_
+char *interpolate_bezier_curve(const char *aJsonPtr)
+;
 
 /*
  Computes a Lagrange interpolating polynomial and returns its coefficients as a JSON string.
  */
-rssn_ char *interpolate_lagrange(const char *aJsonPtr) ;
+rssn_
+char *interpolate_lagrange(const char *aJsonPtr)
+;
 
 rssn_
 rssn_Expr *laurent_series(const rssn_Expr *aFunc,
@@ -917,7 +976,11 @@ char *laurent_series_json(const char *aFuncJson,
 /*
  Adds two matrices and returns a handle to the new matrix expression.
  */
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *matrix_add(rssn_Expr *aH1, rssn_Expr *aH2) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *matrix_add(rssn_Expr *aH1,
+                      rssn_Expr *aH2)
+;
 
 /*
  Computes the characteristic polynomial of a matrix and returns the result as a JSON string.
@@ -931,7 +994,10 @@ char *matrix_characteristic_polynomial(rssn_Expr *aHandle,
 /*
  Computes the determinant of a matrix and returns a handle to the resulting expression.
  */
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *matrix_determinant(rssn_Expr *aHandle) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *matrix_determinant(rssn_Expr *aHandle)
+;
 
 /*
  Computes the eigenvalue decomposition of a matrix and returns the eigenvalues and eigenvectors as a JSON string.
@@ -944,32 +1010,51 @@ char *matrix_eigen_decomposition(rssn_Expr *aHandle)
 /*
  Creates an identity matrix of a given size and returns a handle to it.
  */
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *matrix_identity(size_t aSize) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *matrix_identity(size_t aSize)
+;
 
 /*
  Inverts a matrix and returns a handle to the new matrix expression.
  */
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *matrix_inverse(rssn_Expr *aHandle) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *matrix_inverse(rssn_Expr *aHandle)
+;
 
 /*
  Computes the LU decomposition of a matrix and returns the L and U matrices as a JSON string.
  */
-rssn_ DEPRECATED_WITH_NOTE char *matrix_lu_decomposition(rssn_Expr *aHandle) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *matrix_lu_decomposition(rssn_Expr *aHandle)
+;
 
 /*
  Multiplies two matrices and returns a handle to the new matrix expression.
  */
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *matrix_mul(rssn_Expr *aH1, rssn_Expr *aH2) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *matrix_mul(rssn_Expr *aH1,
+                      rssn_Expr *aH2)
+;
 
 /*
  Computes the null space of a matrix and returns the result as a JSON string.
  */
-rssn_ DEPRECATED_WITH_NOTE char *matrix_null_space(rssn_Expr *aHandle) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *matrix_null_space(rssn_Expr *aHandle)
+;
 
 /*
  Computes the Reduced Row Echelon Form (RREF) of a matrix and returns the result as a JSON string.
  */
-rssn_ DEPRECATED_WITH_NOTE char *matrix_rref(rssn_Expr *aHandle) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *matrix_rref(rssn_Expr *aHandle)
+;
 
 /*
  Multiplies a matrix by a scalar and returns a handle to the new matrix expression.
@@ -983,17 +1068,27 @@ rssn_Expr *matrix_scalar_mul(rssn_Expr *aScalarHandle,
 /*
  Subtracts the second matrix from the first and returns a handle to the new matrix expression.
  */
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *matrix_sub(rssn_Expr *aH1, rssn_Expr *aH2) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *matrix_sub(rssn_Expr *aH1,
+                      rssn_Expr *aH2)
+;
 
 /*
  Computes the trace of a matrix and returns the result as a JSON string.
  */
-rssn_ DEPRECATED_WITH_NOTE char *matrix_trace(rssn_Expr *aHandle) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *matrix_trace(rssn_Expr *aHandle)
+;
 
 /*
  Transposes a matrix and returns a handle to the new matrix expression.
  */
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *matrix_transpose(rssn_Expr *aHandle) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *matrix_transpose(rssn_Expr *aHandle)
+;
 
 rssn_
 rssn_Expr *mobius_transformation_apply(const rssn_MobiusTransformation *aMobius,
@@ -1005,7 +1100,10 @@ rssn_BincodeBuffer mobius_transformation_apply_bincode(rssn_BincodeBuffer aMobiu
                                                        rssn_BincodeBuffer aZBincode)
 ;
 
-rssn_ char *mobius_transformation_apply_json(const char *aMobiusJson, const char *aZJson) ;
+rssn_
+char *mobius_transformation_apply_json(const char *aMobiusJson,
+                                       const char *aZJson)
+;
 
 rssn_
 rssn_MobiusTransformation *mobius_transformation_compose(const rssn_MobiusTransformation *aMobius1,
@@ -1017,21 +1115,34 @@ rssn_BincodeBuffer mobius_transformation_compose_bincode(rssn_BincodeBuffer aMob
                                                          rssn_BincodeBuffer aMobius2Bincode)
 ;
 
-rssn_ char *mobius_transformation_compose_json(const char *aMobius1Json, const char *aMobius2Json) ;
+rssn_
+char *mobius_transformation_compose_json(const char *aMobius1Json,
+                                         const char *aMobius2Json)
+;
 
-rssn_ rssn_MobiusTransformation *mobius_transformation_identity() ;
+rssn_
+rssn_MobiusTransformation *mobius_transformation_identity()
+;
 
-rssn_ rssn_BincodeBuffer mobius_transformation_identity_bincode() ;
+rssn_
+rssn_BincodeBuffer mobius_transformation_identity_bincode()
+;
 
-rssn_ char *mobius_transformation_identity_json() ;
+rssn_
+char *mobius_transformation_identity_json()
+;
 
 rssn_
 rssn_MobiusTransformation *mobius_transformation_inverse(const rssn_MobiusTransformation *aMobius)
 ;
 
-rssn_ rssn_BincodeBuffer mobius_transformation_inverse_bincode(rssn_BincodeBuffer aMobiusBincode) ;
+rssn_
+rssn_BincodeBuffer mobius_transformation_inverse_bincode(rssn_BincodeBuffer aMobiusBincode)
+;
 
-rssn_ char *mobius_transformation_inverse_json(const char *aMobiusJson) ;
+rssn_
+char *mobius_transformation_inverse_json(const char *aMobiusJson)
+;
 
 rssn_
 rssn_MobiusTransformation *mobius_transformation_new(const rssn_Expr *aA,
@@ -1054,19 +1165,37 @@ char *mobius_transformation_new_json(const char *aAJson,
                                      const char *aDJson)
 ;
 
-rssn_ DEPRECATED_WITH_NOTE char *nt_mod_inverse(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *nt_mod_inverse(const char *aJsonPtr)
+;
 
-rssn_ DEPRECATED_WITH_NOTE char *nt_mod_pow(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *nt_mod_pow(const char *aJsonPtr)
+;
 
-rssn_ DEPRECATED_WITH_NOTE char *numerical_gradient(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *numerical_gradient(const char *aJsonPtr)
+;
 
-rssn_ DEPRECATED_WITH_NOTE char *numerical_integrate(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *numerical_integrate(const char *aJsonPtr)
+;
 
-rssn_ void numerical_optimize_drop_result_handle(rssn_FfiOptimizationResult *aHandle) ;
+rssn_
+void numerical_optimize_drop_result_handle(rssn_FfiOptimizationResult *aHandle)
+;
 
-rssn_ void numerical_optimize_free_json(char *aPtr) ;
+rssn_
+void numerical_optimize_free_json(char *aPtr)
+;
 
-rssn_ double numerical_optimize_get_result_cost_handle(const rssn_FfiOptimizationResult *aHandle) ;
+rssn_
+double numerical_optimize_get_result_cost_handle(const rssn_FfiOptimizationResult *aHandle)
+;
 
 rssn_
 uint64_t numerical_optimize_get_result_iterations_handle(const rssn_FfiOptimizationResult *aHandle)
@@ -1099,9 +1228,13 @@ rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_gd_handle(double aA,
                                                                     double aTolerance)
 ;
 
-rssn_ rssn_BincodeBuffer numerical_optimize_solve_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer numerical_optimize_solve_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *numerical_optimize_solve_json(const char *aJsonPtr) ;
+rssn_
+char *numerical_optimize_solve_json(const char *aJsonPtr)
+;
 
 rssn_
 rssn_FfiOptimizationResult *numerical_optimize_sphere_gd_handle(const double *aInitParamPtr,
@@ -1126,13 +1259,17 @@ char *path_continuation_continue_along_path_json(const char *aPcJson,
                                                  const char *aPathPointsJson)
 ;
 
-rssn_ rssn_Expr *path_continuation_get_final_expression(const rssn_PathContinuation *aPc) ;
+rssn_
+rssn_Expr *path_continuation_get_final_expression(const rssn_PathContinuation *aPc)
+;
 
 rssn_
 rssn_BincodeBuffer path_continuation_get_final_expression_bincode(rssn_BincodeBuffer aPcBincode)
 ;
 
-rssn_ char *path_continuation_get_final_expression_json(const char *aPcJson) ;
+rssn_
+char *path_continuation_get_final_expression_json(const char *aPcJson)
+;
 
 rssn_
 rssn_PathContinuation *path_continuation_new(const rssn_Expr *aFunc,
@@ -1155,13 +1292,25 @@ char *path_continuation_new_json(const char *aFuncJson,
                                  size_t aOrder)
 ;
 
-rssn_ DEPRECATED_WITH_NOTE char *physics_solve_advection_diffusion_1d(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *physics_solve_advection_diffusion_1d(const char *aJsonPtr)
+;
 
-rssn_ DEPRECATED_WITH_NOTE int64_t poly_degree(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+int64_t poly_degree(const char *aJsonPtr)
+;
 
-rssn_ DEPRECATED_WITH_NOTE rssn_Expr *poly_from_coeffs_vec(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+rssn_Expr *poly_from_coeffs_vec(const char *aJsonPtr)
+;
 
-rssn_ DEPRECATED_WITH_NOTE bool poly_is_polynomial(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+bool poly_is_polynomial(const char *aJsonPtr)
+;
 
 rssn_
 DEPRECATED_WITH_NOTE
@@ -1169,29 +1318,46 @@ rssn_Expr *poly_leading_coefficient(rssn_Expr *aHandle,
                                     const char *aVarPtr)
 ;
 
-rssn_ DEPRECATED_WITH_NOTE char *poly_long_division(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *poly_long_division(const char *aJsonPtr)
+;
 
-rssn_ DEPRECATED_WITH_NOTE char *poly_to_coeffs_vec(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *poly_to_coeffs_vec(const char *aJsonPtr)
+;
 
 /*
  Checks if an expression contains a variable (handle-based)
  */
-rssn_ bool polynomial_contains_var_handle(const rssn_Expr *aExprHandle, const char *aVar) ;
+rssn_
+bool polynomial_contains_var_handle(const rssn_Expr *aExprHandle,
+                                    const char *aVar)
+;
 
 /*
  Computes the degree of a polynomial (handle-based)
  */
-rssn_ int64_t polynomial_degree_handle(const rssn_Expr *aExprHandle, const char *aVar) ;
+rssn_
+int64_t polynomial_degree_handle(const rssn_Expr *aExprHandle,
+                                 const char *aVar)
+;
 
 /*
  Frees an Expr handle
  */
-rssn_ void polynomial_free_expr_handle(rssn_Expr *aExprHandle) ;
+rssn_
+void polynomial_free_expr_handle(rssn_Expr *aExprHandle)
+;
 
 /*
  Checks if an expression is a polynomial in the given variable (handle-based)
  */
-rssn_ bool polynomial_is_polynomial_handle(const rssn_Expr *aExprHandle, const char *aVar) ;
+rssn_
+bool polynomial_is_polynomial_handle(const rssn_Expr *aExprHandle,
+                                     const char *aVar)
+;
 
 /*
  Finds the leading coefficient of a polynomial (handle-based)
@@ -1215,11 +1381,19 @@ void polynomial_long_division_handle(const rssn_Expr *aDividendHandle,
 /*
  Computes absolute value (magnitude) of complex number (Handle)
  */
-rssn_ rssn_Expr *rssn_abs_handle(const rssn_Expr *aZ) ;
+rssn_
+rssn_Expr *rssn_abs_handle(const rssn_Expr *aZ)
+;
 
-rssn_ rssn_Expr *rssn_adjoint_representation_algebra(const rssn_Expr *aX, const rssn_Expr *aY) ;
+rssn_
+rssn_Expr *rssn_adjoint_representation_algebra(const rssn_Expr *aX,
+                                               const rssn_Expr *aY)
+;
 
-rssn_ rssn_Expr *rssn_adjoint_representation_group(const rssn_Expr *aG, const rssn_Expr *aX) ;
+rssn_
+rssn_Expr *rssn_adjoint_representation_group(const rssn_Expr *aG,
+                                             const rssn_Expr *aX)
+;
 
 rssn_
 rssn_Expr *rssn_analytic_continuation_handle(const rssn_Expr *aExpr,
@@ -1258,7 +1432,9 @@ rssn_Expr *rssn_apply_rules_to_normal_form(const rssn_Expr *aExpr,
 /*
  Applies rewrite rules to an expression (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_apply_rules_to_normal_form_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_apply_rules_to_normal_form_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Applies rewrite rules to an expression (JSON).
@@ -1266,12 +1442,17 @@ rssn_ rssn_BincodeBuffer rssn_apply_rules_to_normal_form_bincode(rssn_BincodeBuf
  Input: JSON object with "expr" and "rules" fields
  Output: JSON-serialized Expr (the normal form)
  */
-rssn_ char *rssn_apply_rules_to_normal_form_json(const char *aJsonStr) ;
+rssn_
+char *rssn_apply_rules_to_normal_form_json(const char *aJsonStr)
+;
 
 /*
  Checks if two graphs are potentially isomorphic using WL test.
  */
-rssn_ int rssn_are_isomorphic_heuristic(const rssn_RssnGraph *aG1, const rssn_RssnGraph *aG2) ;
+rssn_
+int rssn_are_isomorphic_heuristic(const rssn_RssnGraph *aG1,
+                                  const rssn_RssnGraph *aG2)
+;
 
 rssn_
 bool rssn_are_orthogonal(const rssn_HilbertSpace *aSpace,
@@ -1282,7 +1463,9 @@ bool rssn_are_orthogonal(const rssn_HilbertSpace *aSpace,
 /*
  Computes argument (angle) of complex number (Handle)
  */
-rssn_ rssn_Expr *rssn_arg_handle(const rssn_Expr *aZ) ;
+rssn_
+rssn_Expr *rssn_arg_handle(const rssn_Expr *aZ)
+;
 
 rssn_
 rssn_Expr *rssn_asymptotic_expansion_handle(const rssn_Expr *aExpr,
@@ -1291,7 +1474,10 @@ rssn_Expr *rssn_asymptotic_expansion_handle(const rssn_Expr *aExpr,
                                             size_t aOrder)
 ;
 
-rssn_ rssn_Expr *rssn_banach_norm(const rssn_BanachSpace *aSpace, const rssn_Expr *aF) ;
+rssn_
+rssn_Expr *rssn_banach_norm(const rssn_BanachSpace *aSpace,
+                            const rssn_Expr *aF)
+;
 
 rssn_
 rssn_BanachSpace *rssn_banach_space_create(const char *aVar,
@@ -1300,9 +1486,13 @@ rssn_BanachSpace *rssn_banach_space_create(const char *aVar,
                                            const rssn_Expr *aP)
 ;
 
-rssn_ void rssn_banach_space_free(rssn_BanachSpace *aPtr) ;
+rssn_
+void rssn_banach_space_free(rssn_BanachSpace *aPtr)
+;
 
-rssn_ rssn_Expr *rssn_bell_number(size_t aN) ;
+rssn_
+rssn_Expr *rssn_bell_number(size_t aN)
+;
 
 /*
  Constructs Bessel's differential equation: x²y'' + xy' + (x² - n²)y = 0.
@@ -1316,72 +1506,106 @@ rssn_Expr *rssn_bessel_differential_equation(const rssn_Expr *aY,
 /*
  Computes the symbolic modified Bessel function of the first kind I_n(x).
  */
-rssn_ rssn_Expr *rssn_bessel_i(const rssn_Expr *aOrder, const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_bessel_i(const rssn_Expr *aOrder,
+                         const rssn_Expr *aArg)
+;
 
 /*
  Computes the modified Bessel function of the first kind I₀(x).
  */
-rssn_ double rssn_bessel_i0(double aX) ;
+rssn_
+double rssn_bessel_i0(double aX)
+;
 
 /*
  Computes the modified Bessel function of the first kind I₁(x).
  */
-rssn_ double rssn_bessel_i1(double aX) ;
+rssn_
+double rssn_bessel_i1(double aX)
+;
 
 /*
  Computes the symbolic Bessel function of the first kind J_n(x).
  */
-rssn_ rssn_Expr *rssn_bessel_j(const rssn_Expr *aOrder, const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_bessel_j(const rssn_Expr *aOrder,
+                         const rssn_Expr *aArg)
+;
 
 /*
  Computes the Bessel function of the first kind J₀(x).
  */
-rssn_ double rssn_bessel_j0(double aX) ;
+rssn_
+double rssn_bessel_j0(double aX)
+;
 
 /*
  Computes the Bessel function of the first kind J₁(x).
  */
-rssn_ double rssn_bessel_j1(double aX) ;
+rssn_
+double rssn_bessel_j1(double aX)
+;
 
 /*
  Computes the symbolic modified Bessel function of the second kind K_n(x).
  */
-rssn_ rssn_Expr *rssn_bessel_k(const rssn_Expr *aOrder, const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_bessel_k(const rssn_Expr *aOrder,
+                         const rssn_Expr *aArg)
+;
 
 /*
  Computes the modified Bessel function of the second kind K₀(x).
  */
-rssn_ double rssn_bessel_k0(double aX) ;
+rssn_
+double rssn_bessel_k0(double aX)
+;
 
 /*
  Computes the modified Bessel function of the second kind K₁(x).
  */
-rssn_ double rssn_bessel_k1(double aX) ;
+rssn_
+double rssn_bessel_k1(double aX)
+;
 
 /*
  Computes the symbolic Bessel function of the second kind Y_n(x).
  */
-rssn_ rssn_Expr *rssn_bessel_y(const rssn_Expr *aOrder, const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_bessel_y(const rssn_Expr *aOrder,
+                         const rssn_Expr *aArg)
+;
 
 /*
  Computes the Bessel function of the second kind Y₀(x).
  */
-rssn_ double rssn_bessel_y0(double aX) ;
+rssn_
+double rssn_bessel_y0(double aX)
+;
 
 /*
  Computes the Bessel function of the second kind Y₁(x).
  */
-rssn_ double rssn_bessel_y1(double aX) ;
+rssn_
+double rssn_bessel_y1(double aX)
+;
 
 /*
  Computes the symbolic Beta function B(a, b).
  */
-rssn_ rssn_Expr *rssn_beta(const rssn_Expr *aA, const rssn_Expr *aB) ;
+rssn_
+rssn_Expr *rssn_beta(const rssn_Expr *aA,
+                     const rssn_Expr *aB)
+;
 
 /*
  Computes the beta function B(a, b).
  */
-rssn_ double rssn_beta_numerical(double aA, double aB) ;
+rssn_
+double rssn_beta_numerical(double aA,
+                           double aB)
+;
 
 /*
  Computes the derivative (tangent) of a Bezier curve at parameter t.
@@ -1394,17 +1618,25 @@ rssn_Vector *rssn_bezier_curve_derivative(const rssn_BezierCurve *aCurve,
 /*
  Evaluates a Bezier curve at parameter t.
  */
-rssn_ rssn_Vector *rssn_bezier_curve_evaluate(const rssn_BezierCurve *aCurve, const rssn_Expr *aT) ;
+rssn_
+rssn_Vector *rssn_bezier_curve_evaluate(const rssn_BezierCurve *aCurve,
+                                        const rssn_Expr *aT)
+;
 
 /*
  Frees a Bezier curve.
  */
-rssn_ void rssn_bezier_curve_free(rssn_BezierCurve *aCurve) ;
+rssn_
+void rssn_bezier_curve_free(rssn_BezierCurve *aCurve)
+;
 
 /*
  Creates a new Bezier curve from control points.
  */
-rssn_ rssn_BezierCurve *rssn_bezier_curve_new(const rssn_Vector *aPoints, size_t aCount) ;
+rssn_
+rssn_BezierCurve *rssn_bezier_curve_new(const rssn_Vector *aPoints,
+                                        size_t aCount)
+;
 
 /*
  Splits a Bezier curve at parameter t into two curves.
@@ -1427,7 +1659,9 @@ rssn_BezierCurve *rssn_bezier_curve_split_right(const rssn_BezierCurve *aCurve,
 /*
  Computes absolute value (magnitude) of complex number (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_abs(rssn_BincodeBuffer aZBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_abs(rssn_BincodeBuffer aZBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_adjoint_representation_algebra(rssn_BincodeBuffer aXBuf,
@@ -1464,12 +1698,16 @@ rssn_BincodeBuffer rssn_bincode_analyze_stability(rssn_BincodeBuffer aMapBuf,
 /*
  Checks if two graphs are isomorphic.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_are_isomorphic_heuristic(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_are_isomorphic_heuristic(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Computes argument (angle) of complex number (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_arg(rssn_BincodeBuffer aZBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_arg(rssn_BincodeBuffer aZBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(rssn_BincodeBuffer aExprBuf,
@@ -1478,7 +1716,9 @@ rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(rssn_BincodeBuffer aExprBuf
                                                      rssn_BincodeBuffer aOrderBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_bell_number(size_t aN) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_bell_number(size_t aN)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_bessel_differential_equation(rssn_BincodeBuffer aYBuf,
@@ -1494,12 +1734,16 @@ rssn_BincodeBuffer rssn_bincode_bessel_i(rssn_BincodeBuffer aOrderBuf,
 /*
  Computes I₀(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_bessel_i0(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_i0(rssn_BincodeBuffer aValBuf)
+;
 
 /*
  Computes I₁(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_bessel_i1(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_i1(rssn_BincodeBuffer aValBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_bessel_j(rssn_BincodeBuffer aOrderBuf,
@@ -1509,12 +1753,16 @@ rssn_BincodeBuffer rssn_bincode_bessel_j(rssn_BincodeBuffer aOrderBuf,
 /*
  Computes J₀(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_bessel_j0(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_j0(rssn_BincodeBuffer aValBuf)
+;
 
 /*
  Computes J₁(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_bessel_j1(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_j1(rssn_BincodeBuffer aValBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_bessel_k(rssn_BincodeBuffer aOrderBuf,
@@ -1524,12 +1772,16 @@ rssn_BincodeBuffer rssn_bincode_bessel_k(rssn_BincodeBuffer aOrderBuf,
 /*
  Computes K₀(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_bessel_k0(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_k0(rssn_BincodeBuffer aValBuf)
+;
 
 /*
  Computes K₁(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_bessel_k1(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_k1(rssn_BincodeBuffer aValBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_bessel_y(rssn_BincodeBuffer aOrderBuf,
@@ -1539,14 +1791,21 @@ rssn_BincodeBuffer rssn_bincode_bessel_y(rssn_BincodeBuffer aOrderBuf,
 /*
  Computes Y₀(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_bessel_y0(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_y0(rssn_BincodeBuffer aValBuf)
+;
 
 /*
  Computes Y₁(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_bessel_y1(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_bessel_y1(rssn_BincodeBuffer aValBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_beta(rssn_BincodeBuffer aABuf, rssn_BincodeBuffer aBBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_beta(rssn_BincodeBuffer aABuf,
+                                     rssn_BincodeBuffer aBBuf)
+;
 
 /*
  Computes B(a, b) via Bincode interface.
@@ -1559,12 +1818,17 @@ rssn_BincodeBuffer rssn_bincode_beta_numerical(rssn_BincodeBuffer aABuf,
 /*
  Computes C(n, k) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_binomial(rssn_BincodeBuffer aNBuf, rssn_BincodeBuffer aKBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_binomial(rssn_BincodeBuffer aNBuf,
+                                         rssn_BincodeBuffer aKBuf)
+;
 
 /*
  Computes the boundary of a domain (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_boundary(rssn_BincodeBuffer aDomainBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_boundary(rssn_BincodeBuffer aDomainBuf)
+;
 
 /*
  Computes the inner product <Bra|Ket> using Bincode.
@@ -1597,9 +1861,13 @@ rssn_BincodeBuffer rssn_bincode_calculate_residue(rssn_BincodeBuffer aExprBuf,
                                                   rssn_BincodeBuffer aPoleBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_catalan_number(size_t aN) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_catalan_number(size_t aN)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_character(rssn_BincodeBuffer aRepBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_character(rssn_BincodeBuffer aRepBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_chebyshev_differential_equation(rssn_BincodeBuffer aYBuf,
@@ -1620,16 +1888,25 @@ rssn_BincodeBuffer rssn_bincode_chebyshev_u(rssn_BincodeBuffer aNBuf,
 /*
  Checks analytic using Bincode.
  */
-rssn_ bool rssn_bincode_check_analytic(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
+rssn_
+bool rssn_bincode_check_analytic(rssn_BincodeBuffer aExprBuf,
+                                 const char *aVar)
+;
 
-rssn_ bool rssn_bincode_check_jacobi_identity(rssn_BincodeBuffer aAlgebraBuf) ;
+rssn_
+bool rssn_bincode_check_jacobi_identity(rssn_BincodeBuffer aAlgebraBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_chinese_remainder(rssn_BincodeBuffer aCongruencesBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_chinese_remainder(rssn_BincodeBuffer aCongruencesBuf)
+;
 
 /*
  Exact chromatic number.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_chromatic_number_exact(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_chromatic_number_exact(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Classifies a PDE (Bincode).
@@ -1645,12 +1922,16 @@ rssn_BincodeBuffer rssn_bincode_combinations(rssn_BincodeBuffer aNBuf,
                                              rssn_BincodeBuffer aKBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_commutator_table(rssn_BincodeBuffer aAlgebraBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_commutator_table(rssn_BincodeBuffer aAlgebraBuf)
+;
 
 /*
  Finds fixed points (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_complex_system_fixed_points(rssn_BincodeBuffer aSystemBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_complex_system_fixed_points(rssn_BincodeBuffer aSystemBuf)
+;
 
 /*
  Iterates the system once (Bincode)
@@ -1663,9 +1944,13 @@ rssn_BincodeBuffer rssn_bincode_complex_system_iterate(rssn_BincodeBuffer aSyste
 /*
  Creates a new Mandelbrot family system (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_complex_system_new_mandelbrot(rssn_BincodeBuffer aCBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_complex_system_new_mandelbrot(rssn_BincodeBuffer aCBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_conditional_entropy(rssn_BincodeBuffer aJointProbsBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_conditional_entropy(rssn_BincodeBuffer aJointProbsBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_convolution_fourier(rssn_BincodeBuffer aFBuf,
@@ -1681,7 +1966,9 @@ rssn_BincodeBuffer rssn_bincode_convolution_laplace(rssn_BincodeBuffer aFBuf,
                                                     rssn_BincodeBuffer aOutVarBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_coordinates_get_metric_tensor(rssn_BincodeBuffer aSystemBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_coordinates_get_metric_tensor(rssn_BincodeBuffer aSystemBuf)
+;
 
 /*
  Computes the symbolic Pearson correlation coefficient using Bincode.
@@ -1714,14 +2001,18 @@ rssn_BincodeBuffer rssn_bincode_covariance(rssn_BincodeBuffer aData1Buf,
  Input: Vec<u8>
  Returns: u32
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_crc32_compute(rssn_BincodeBuffer aDataBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_crc32_compute(rssn_BincodeBuffer aDataBuf)
+;
 
 /*
  Finalizes CRC-32 computation via Bincode interface.
  Input: u32 (running crc)
  Returns: u32 (final crc)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_crc32_finalize(rssn_BincodeBuffer aCrcBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_crc32_finalize(rssn_BincodeBuffer aCrcBuf)
+;
 
 /*
  Updates CRC-32 incrementally via Bincode interface.
@@ -1793,7 +2084,9 @@ rssn_BincodeBuffer rssn_bincode_curve_point_affine(rssn_BincodeBuffer aXBuf,
 /*
  Creates a point at infinity via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_curve_point_infinity() ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_curve_point_infinity()
+;
 
 /*
  Scalar multiplication.
@@ -1804,7 +2097,9 @@ rssn_BincodeBuffer rssn_bincode_curve_scalar_mult(rssn_BincodeBuffer aCurveBuf,
                                                   rssn_BincodeBuffer aPBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_cyclic_group_create(size_t aN) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_cyclic_group_create(size_t aN)
+;
 
 /*
  Computes definite integral using Bincode.
@@ -1819,7 +2114,9 @@ rssn_BincodeBuffer rssn_bincode_definite_integrate(rssn_BincodeBuffer aExprBuf,
 /*
  Denests a nested square root (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_denest_sqrt(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_denest_sqrt(rssn_BincodeBuffer aExprBuf)
+;
 
 /*
  Computes the density of states for a 3D electron gas using Bincode.
@@ -1833,18 +2130,29 @@ rssn_BincodeBuffer rssn_bincode_density_of_states_3d(rssn_BincodeBuffer aEnergyB
 /*
  Differentiates an expression using Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_differentiate(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_differentiate(rssn_BincodeBuffer aExprBuf,
+                                              const char *aVar)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_digamma(rssn_BincodeBuffer aArgBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_digamma(rssn_BincodeBuffer aArgBuf)
+;
 
 /*
  Computes ψ(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_digamma_numerical(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_digamma_numerical(rssn_BincodeBuffer aValBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_dihedral_group_create(size_t aN) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_dihedral_group_create(size_t aN)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_dist_bernoulli(rssn_BincodeBuffer aPBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_dist_bernoulli(rssn_BincodeBuffer aPBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_dist_beta(rssn_BincodeBuffer aAlphaBuf,
@@ -1861,9 +2169,13 @@ rssn_BincodeBuffer rssn_bincode_dist_cdf(rssn_BincodeBuffer aDistBuf,
                                          rssn_BincodeBuffer aXBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_dist_expectation(rssn_BincodeBuffer aDistBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_dist_expectation(rssn_BincodeBuffer aDistBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_dist_exponential(rssn_BincodeBuffer aRateBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_dist_exponential(rssn_BincodeBuffer aRateBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_dist_gamma(rssn_BincodeBuffer aShapeBuf,
@@ -1885,21 +2197,29 @@ rssn_BincodeBuffer rssn_bincode_dist_pdf(rssn_BincodeBuffer aDistBuf,
                                          rssn_BincodeBuffer aXBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_dist_poisson(rssn_BincodeBuffer aRateBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_dist_poisson(rssn_BincodeBuffer aRateBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_dist_student_t(rssn_BincodeBuffer aNuBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_dist_student_t(rssn_BincodeBuffer aNuBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_dist_uniform(rssn_BincodeBuffer aMinBuf,
                                              rssn_BincodeBuffer aMaxBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_dist_variance(rssn_BincodeBuffer aDistBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_dist_variance(rssn_BincodeBuffer aDistBuf)
+;
 
 /*
  Computes n!! via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_double_factorial(rssn_BincodeBuffer aNBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_double_factorial(rssn_BincodeBuffer aNBuf)
+;
 
 /*
  Computes Drude conductivity using Bincode.
@@ -1951,21 +2271,31 @@ rssn_BincodeBuffer rssn_bincode_elliptic_curve_new(rssn_BincodeBuffer aABuf,
                                                    rssn_BincodeBuffer aModulusBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_erf(rssn_BincodeBuffer aArgBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_erf(rssn_BincodeBuffer aArgBuf)
+;
 
 /*
  Computes erf(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_erf_numerical(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_erf_numerical(rssn_BincodeBuffer aValBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_erfc(rssn_BincodeBuffer aArgBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_erfc(rssn_BincodeBuffer aArgBuf)
+;
 
 /*
  Computes erfc(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_erfc_numerical(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_erfc_numerical(rssn_BincodeBuffer aValBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_erfi(rssn_BincodeBuffer aArgBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_erfi(rssn_BincodeBuffer aArgBuf)
+;
 
 /*
  Computes the Euler-Lagrange equation using Bincode.
@@ -1995,7 +2325,9 @@ rssn_BincodeBuffer rssn_bincode_evaluate_at_point(rssn_BincodeBuffer aExprBuf,
                                                   rssn_BincodeBuffer aValueBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_evaluate_numerical(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_evaluate_numerical(rssn_BincodeBuffer aExprBuf)
+;
 
 /*
  Computes the expectation value using Bincode.
@@ -2005,7 +2337,10 @@ rssn_BincodeBuffer rssn_bincode_expectation_value(rssn_BincodeBuffer aOpBuf,
                                                   rssn_BincodeBuffer aPsiBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_exponential_map(rssn_BincodeBuffer aXBuf, size_t aOrder) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_exponential_map(rssn_BincodeBuffer aXBuf,
+                                                size_t aOrder)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_extended_gcd(rssn_BincodeBuffer aABuf,
@@ -2023,12 +2358,16 @@ rssn_BincodeBuffer rssn_bincode_exterior_derivative(rssn_BincodeBuffer aFormBuf,
 /*
  Factors a polynomial over a finite field (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_factor_gf(rssn_BincodeBuffer aPolyBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_factor_gf(rssn_BincodeBuffer aPolyBuf)
+;
 
 /*
  Computes n! via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_factorial(rssn_BincodeBuffer aNBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_factorial(rssn_BincodeBuffer aNBuf)
+;
 
 /*
  Computes (x)₍ₙ₎ via Bincode interface.
@@ -2083,12 +2422,17 @@ size_t rssn_bincode_find_pole_order(rssn_BincodeBuffer aExprBuf,
 /*
  Finds poles using Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_find_poles(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_find_poles(rssn_BincodeBuffer aExprBuf,
+                                           const char *aVar)
+;
 
 /*
  Gets the degree of a finite field polynomial (Bincode)
  */
-rssn_ int64_t rssn_bincode_finite_field_polynomial_degree(rssn_BincodeBuffer aPolyBuf) ;
+rssn_
+int64_t rssn_bincode_finite_field_polynomial_degree(rssn_BincodeBuffer aPolyBuf)
+;
 
 /*
  Performs polynomial long division (Bincode)
@@ -2142,12 +2486,16 @@ rssn_BincodeBuffer rssn_bincode_fourier_transform(rssn_BincodeBuffer aExprBuf,
                                                   rssn_BincodeBuffer aOutVarBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_gamma(rssn_BincodeBuffer aArgBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_gamma(rssn_BincodeBuffer aArgBuf)
+;
 
 /*
  Computes Γ(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_gamma_numerical(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_gamma_numerical(rssn_BincodeBuffer aValBuf)
+;
 
 /*
  Represents Gauss's theorem (Bincode)
@@ -2251,7 +2599,9 @@ rssn_BincodeBuffer rssn_bincode_generate_shared_secret(rssn_BincodeBuffer aCurve
 /*
  Gets real and imaginary parts using Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_get_real_imag_parts(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_get_real_imag_parts(rssn_BincodeBuffer aExprBuf)
+;
 
 /*
  Performs addition in GF(2^8) via Bincode interface.
@@ -2264,7 +2614,9 @@ rssn_BincodeBuffer rssn_bincode_gf256_add(rssn_BincodeBuffer aABuf,
 /*
  Computes inverse in GF(2^8) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_gf256_inv(rssn_BincodeBuffer aABuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_gf256_inv(rssn_BincodeBuffer aABuf)
+;
 
 /*
  Performs multiplication in GF(2^8) via Bincode interface.
@@ -2283,7 +2635,9 @@ rssn_BincodeBuffer rssn_bincode_gibbs_free_energy(rssn_BincodeBuffer aHBuf,
                                                   rssn_BincodeBuffer aSBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_gini_impurity(rssn_BincodeBuffer aProbsBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_gini_impurity(rssn_BincodeBuffer aProbsBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_gram_schmidt(rssn_BincodeBuffer aSpaceBuf,
@@ -2293,27 +2647,37 @@ rssn_BincodeBuffer rssn_bincode_gram_schmidt(rssn_BincodeBuffer aSpaceBuf,
 /*
  Adds an edge to the graph.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_add_edge(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_add_edge(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Adds a node to the graph.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_add_node(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_add_node(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Gets the adjacency matrix.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_adjacency_matrix(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_adjacency_matrix(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Performs BFS traversal.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_bfs(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_bfs(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Performs BFS traversal.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_bfs_api(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_bfs_api(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Finds maximum matching in bipartite graph.
@@ -2332,112 +2696,156 @@ rssn_BincodeBuffer rssn_bincode_graph_bridges_and_articulation_points(rssn_Binco
 /*
  Computes the Cartesian product of two graphs.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_cartesian_product(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_cartesian_product(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Computes the complement of a graph.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_complement(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_complement(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Finds connected components.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_connected_components(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_connected_components(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Finds connected components.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_connected_components_api(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_connected_components_api(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Performs DFS traversal.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_dfs(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_dfs(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Performs DFS traversal.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_dfs_api(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_dfs_api(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Computes maximum flow using Dinic's algorithm.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_dinic_max_flow(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_dinic_max_flow(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Computes the disjoint union of two graphs.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_disjoint_union(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_disjoint_union(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Computes maximum flow using Edmonds-Karp.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_edmonds_karp_max_flow(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_edmonds_karp_max_flow(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Checks if graph has a cycle.
  */
-rssn_ bool rssn_bincode_graph_has_cycle(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+bool rssn_bincode_graph_has_cycle(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Checks if graph has a cycle.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_has_cycle_api(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_has_cycle_api(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Creates an induced subgraph.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_induced_subgraph(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_induced_subgraph(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Computes the intersection of two graphs.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_intersection(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_intersection(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Checks if graph is bipartite.
  */
-rssn_ bool rssn_bincode_graph_is_bipartite(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+bool rssn_bincode_graph_is_bipartite(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Checks if graph is bipartite.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_is_bipartite_api(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_is_bipartite_api(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Checks if graph is connected.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_is_connected(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_is_connected(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Computes the join of two graphs.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_join(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_join(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Computes MST using Kruskal's algorithm.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Computes MST using Kruskal's algorithm.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst_api(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst_api(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Gets the Laplacian matrix.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_laplacian_matrix(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_laplacian_matrix(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Computes maximum flow.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_max_flow(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_max_flow(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Creates a new graph from bincode specification.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_new(rssn_BincodeBuffer aSpecBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_new(rssn_BincodeBuffer aSpecBuf)
+;
 
 /*
  Finds strongly connected components.
@@ -2449,22 +2857,30 @@ rssn_BincodeBuffer rssn_bincode_graph_strongly_connected_components(rssn_Bincode
 /*
  Computes the Tensor product of two graphs.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_tensor_product(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_tensor_product(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Performs topological sort.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_topological_sort(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_topological_sort(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Computes the union of two graphs.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_graph_union(rssn_BincodeBuffer aInputBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_graph_union(rssn_BincodeBuffer aInputBuf)
+;
 
 /*
  Greedy coloring.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_greedy_coloring(rssn_BincodeBuffer aGraphBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_greedy_coloring(rssn_BincodeBuffer aGraphBuf)
+;
 
 /*
  Represents Green's theorem (Bincode)
@@ -2475,11 +2891,17 @@ rssn_BincodeBuffer rssn_bincode_greens_theorem(rssn_BincodeBuffer aPBuf,
                                                rssn_BincodeBuffer aDomainBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_group_center(rssn_BincodeBuffer aGroupBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_group_center(rssn_BincodeBuffer aGroupBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_group_conjugacy_classes(rssn_BincodeBuffer aGroupBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_group_conjugacy_classes(rssn_BincodeBuffer aGroupBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_group_create(rssn_BincodeBuffer aBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_group_create(rssn_BincodeBuffer aBuf)
+;
 
 rssn_
 size_t rssn_bincode_group_element_order(rssn_BincodeBuffer aGroupBuf,
@@ -2491,7 +2913,9 @@ rssn_BincodeBuffer rssn_bincode_group_inverse(rssn_BincodeBuffer aGroupBuf,
                                               rssn_BincodeBuffer aABuf)
 ;
 
-rssn_ bool rssn_bincode_group_is_abelian(rssn_BincodeBuffer aGroupBuf) ;
+rssn_
+bool rssn_bincode_group_is_abelian(rssn_BincodeBuffer aGroupBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_group_multiply(rssn_BincodeBuffer aGroupBuf,
@@ -2513,13 +2937,17 @@ rssn_BincodeBuffer rssn_bincode_hamiltons_principle(rssn_BincodeBuffer aLagrangi
  Input: Vec<u8> (7 bytes)
  Returns: bool
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_hamming_check(rssn_BincodeBuffer aCodewordBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_hamming_check(rssn_BincodeBuffer aCodewordBuf)
+;
 
 /*
  Decodes a 7-bit Hamming(7,4) codeword via Bincode interface.
  Returns tuple of (data, error_pos).
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_hamming_decode(rssn_BincodeBuffer aCodewordBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_hamming_decode(rssn_BincodeBuffer aCodewordBuf)
+;
 
 /*
  Computes Hamming distance between two byte slices via Bincode interface.
@@ -2534,14 +2962,18 @@ rssn_BincodeBuffer rssn_bincode_hamming_distance(rssn_BincodeBuffer aABuf,
 /*
  Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_hamming_encode(rssn_BincodeBuffer aDataBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_hamming_encode(rssn_BincodeBuffer aDataBuf)
+;
 
 /*
  Computes Hamming weight of a byte slice via Bincode interface.
  Input: Vec<u8>
  Returns: usize
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_hamming_weight(rssn_BincodeBuffer aDataBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_hamming_weight(rssn_BincodeBuffer aDataBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_hermite_differential_equation(rssn_BincodeBuffer aYBuf,
@@ -2570,9 +3002,13 @@ rssn_BincodeBuffer rssn_bincode_hessian_matrix(rssn_BincodeBuffer aExprBuf,
 /*
  Simplifies an expression using the heuristic simplifier (Bincode input/output).
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_heuristic_simplify(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_heuristic_simplify(rssn_BincodeBuffer aExprBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_hilbert_space_create(rssn_BincodeBuffer aBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_hilbert_space_create(rssn_BincodeBuffer aBuf)
+;
 
 /*
  Calculates ideal gas Law using Bincode.
@@ -2610,7 +3046,10 @@ rssn_BincodeBuffer rssn_bincode_inner_product(rssn_BincodeBuffer aSpaceBuf,
 /*
  Integrates an expression using Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_integrate(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_integrate(rssn_BincodeBuffer aExprBuf,
+                                          const char *aVar)
+;
 
 /*
  Integrates a rational function (Bincode)
@@ -2623,12 +3062,16 @@ rssn_BincodeBuffer rssn_bincode_integrate_rational_function(rssn_BincodeBuffer a
 /*
  Computes erf⁻¹(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_inverse_erf(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_inverse_erf(rssn_BincodeBuffer aValBuf)
+;
 
 /*
  Computes erfc⁻¹(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_inverse_erfc(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_inverse_erfc(rssn_BincodeBuffer aValBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_inverse_fourier_transform(rssn_BincodeBuffer aExprBuf,
@@ -2648,7 +3091,9 @@ rssn_BincodeBuffer rssn_bincode_inverse_z_transform(rssn_BincodeBuffer aExprBuf,
                                                     rssn_BincodeBuffer aOutVarBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_is_prime(rssn_BincodeBuffer aNBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_is_prime(rssn_BincodeBuffer aNBuf)
+;
 
 /*
  Checks if a logical expression is satisfiable using bincode-based FFI.
@@ -2658,7 +3103,9 @@ rssn_ rssn_BincodeBuffer rssn_bincode_is_prime(rssn_BincodeBuffer aNBuf) ;
  - `Some(false)` if unsatisfiable
  - `None` if the expression contains quantifiers (undecidable)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_is_satisfiable(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_is_satisfiable(rssn_BincodeBuffer aExprBuf)
+;
 
 /*
  Isolates real roots in an interval (Bincode)
@@ -2669,7 +3116,9 @@ rssn_BincodeBuffer rssn_bincode_isolate_real_roots(rssn_BincodeBuffer aExprBuf,
                                                    double aPrecision)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_joint_entropy(rssn_BincodeBuffer aJointProbsBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_joint_entropy(rssn_BincodeBuffer aJointProbsBuf)
+;
 
 /*
  Calculates kinetic energy using Bincode.
@@ -2684,7 +3133,9 @@ rssn_BincodeBuffer rssn_bincode_kl_divergence(rssn_BincodeBuffer aPProbsBuf,
                                               rssn_BincodeBuffer aQProbsBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_klein_four_group_create() ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_klein_four_group_create()
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_laguerre_differential_equation(rssn_BincodeBuffer aYBuf,
@@ -2755,9 +3206,13 @@ rssn_BincodeBuffer rssn_bincode_legendre_rodrigues_formula(rssn_BincodeBuffer aN
                                                            rssn_BincodeBuffer aXBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_lie_algebra_so3() ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_lie_algebra_so3()
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_lie_algebra_su2() ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_lie_algebra_su2()
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_lie_bracket(rssn_BincodeBuffer aXBuf,
@@ -2784,19 +3239,27 @@ rssn_BincodeBuffer rssn_bincode_ln_beta_numerical(rssn_BincodeBuffer aABuf,
 /*
  Computes ln(n!) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_ln_factorial(rssn_BincodeBuffer aNBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_ln_factorial(rssn_BincodeBuffer aNBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_ln_gamma(rssn_BincodeBuffer aArgBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_ln_gamma(rssn_BincodeBuffer aArgBuf)
+;
 
 /*
  Computes ln(Γ(x)) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_ln_gamma_numerical(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_ln_gamma_numerical(rssn_BincodeBuffer aValBuf)
+;
 
 /*
  Calculates Lorentz factor using Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_lorentz_factor(rssn_BincodeBuffer aVelocityBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_lorentz_factor(rssn_BincodeBuffer aVelocityBuf)
+;
 
 /*
  Calculates Lorentz force using Bincode.
@@ -2811,7 +3274,9 @@ rssn_BincodeBuffer rssn_bincode_lorentz_force(rssn_BincodeBuffer aChargeBuf,
 /*
  Returns Lorenz system equations (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_lorenz_system() ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_lorenz_system()
+;
 
 /*
  Calculates Lyapunov exponent (Bincode)
@@ -2826,16 +3291,22 @@ rssn_BincodeBuffer rssn_bincode_lyapunov_exponent(rssn_BincodeBuffer aMapBuf,
 /*
  Calculates mass-energy equivalence using Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_mass_energy_equivalence(rssn_BincodeBuffer aMassBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_mass_energy_equivalence(rssn_BincodeBuffer aMassBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_matrix_add(rssn_BincodeBuffer aM1Buf,
                                            rssn_BincodeBuffer aM2Buf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_matrix_determinant(rssn_BincodeBuffer aMatrixBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_matrix_determinant(rssn_BincodeBuffer aMatrixBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_matrix_inverse(rssn_BincodeBuffer aMatrixBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_matrix_inverse(rssn_BincodeBuffer aMatrixBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_matrix_mul(rssn_BincodeBuffer aM1Buf,
@@ -2847,12 +3318,16 @@ rssn_BincodeBuffer rssn_bincode_matrix_solve_linear_system(rssn_BincodeBuffer aA
                                                            rssn_BincodeBuffer aBBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_matrix_transpose(rssn_BincodeBuffer aMatrixBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_matrix_transpose(rssn_BincodeBuffer aMatrixBuf)
+;
 
 /*
  Computes the symbolic mean of a set of expressions using Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_mean(rssn_BincodeBuffer aDataBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_mean(rssn_BincodeBuffer aDataBuf)
+;
 
 /*
  Computes geometric product (Bincode)
@@ -2881,7 +3356,9 @@ rssn_BincodeBuffer rssn_bincode_multivector_inner_product(rssn_BincodeBuffer aAB
 /*
  Computes magnitude (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_multivector_magnitude(rssn_BincodeBuffer aMvBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_multivector_magnitude(rssn_BincodeBuffer aMvBuf)
+;
 
 /*
  Computes outer product (Bincode)
@@ -2894,7 +3371,9 @@ rssn_BincodeBuffer rssn_bincode_multivector_outer_product(rssn_BincodeBuffer aAB
 /*
  Computes reverse (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_multivector_reverse(rssn_BincodeBuffer aMvBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_multivector_reverse(rssn_BincodeBuffer aMvBuf)
+;
 
 /*
  Creates a new scalar multivector (Bincode)
@@ -2906,7 +3385,9 @@ rssn_BincodeBuffer rssn_bincode_multivector_scalar(uint32_t aP,
                                                    rssn_BincodeBuffer aValueBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_mutual_information(rssn_BincodeBuffer aJointProbsBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_mutual_information(rssn_BincodeBuffer aJointProbsBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_nonlinear_regression(rssn_BincodeBuffer aDataBuf,
@@ -2915,7 +3396,10 @@ rssn_BincodeBuffer rssn_bincode_nonlinear_regression(rssn_BincodeBuffer aDataBuf
                                                      rssn_BincodeBuffer aParamsBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_norm(rssn_BincodeBuffer aSpaceBuf, rssn_BincodeBuffer aFBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_norm(rssn_BincodeBuffer aSpaceBuf,
+                                     rssn_BincodeBuffer aFBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_one_sample_t_test(rssn_BincodeBuffer aDataBuf,
@@ -2944,7 +3428,9 @@ rssn_BincodeBuffer rssn_bincode_permutations(rssn_BincodeBuffer aNBuf,
 /*
  Compresses a point.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_point_compress(rssn_BincodeBuffer aPointBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_point_compress(rssn_BincodeBuffer aPointBuf)
+;
 
 /*
  Decompresses a point.
@@ -2975,7 +3461,9 @@ rssn_BincodeBuffer rssn_bincode_poly_add_gf256(rssn_BincodeBuffer aP1Buf,
 /*
  Computes polynomial derivative over finite field (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_poly_derivative_gf(rssn_BincodeBuffer aPolyBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_poly_derivative_gf(rssn_BincodeBuffer aPolyBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_poly_division_multivariate(rssn_BincodeBuffer aDividendBuf,
@@ -3024,17 +3512,26 @@ rssn_BincodeBuffer rssn_bincode_polygamma(rssn_BincodeBuffer aNBuf,
 /*
  Checks if an expression contains a variable (bincode)
  */
-rssn_ bool rssn_bincode_polynomial_contains_var(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
+rssn_
+bool rssn_bincode_polynomial_contains_var(rssn_BincodeBuffer aExprBuf,
+                                          const char *aVar)
+;
 
 /*
  Computes the degree of a polynomial (bincode)
  */
-rssn_ int64_t rssn_bincode_polynomial_degree(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
+rssn_
+int64_t rssn_bincode_polynomial_degree(rssn_BincodeBuffer aExprBuf,
+                                       const char *aVar)
+;
 
 /*
  Checks if an expression is a polynomial in the given variable (bincode)
  */
-rssn_ bool rssn_bincode_polynomial_is_polynomial(rssn_BincodeBuffer aExprBuf, const char *aVar) ;
+rssn_
+bool rssn_bincode_polynomial_is_polynomial(rssn_BincodeBuffer aExprBuf,
+                                           const char *aVar)
+;
 
 /*
  Finds the leading coefficient of a polynomial (bincode)
@@ -3085,7 +3582,9 @@ rssn_BincodeBuffer rssn_bincode_prime_field_element_div(rssn_BincodeBuffer aABuf
 /*
  Computes the inverse of a prime field element (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_prime_field_element_inverse(rssn_BincodeBuffer aElemBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_prime_field_element_inverse(rssn_BincodeBuffer aElemBuf)
+;
 
 /*
  Multiplies two prime field elements (Bincode)
@@ -3130,7 +3629,9 @@ rssn_BincodeBuffer rssn_bincode_qft_propagator(rssn_BincodeBuffer aPBuf,
 /*
  Generates a 3x3 2D reflection matrix via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_reflection_2d(rssn_BincodeBuffer aAngleBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_reflection_2d(rssn_BincodeBuffer aAngleBuf)
+;
 
 /*
  Generates a 4x4 3D reflection matrix via Bincode interface.
@@ -3166,7 +3667,9 @@ rssn_BincodeBuffer rssn_bincode_regularized_incomplete_beta(rssn_BincodeBuffer a
                                                             rssn_BincodeBuffer aXBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_representation_create(rssn_BincodeBuffer aBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_representation_create(rssn_BincodeBuffer aBuf)
+;
 
 rssn_
 bool rssn_bincode_representation_is_valid(rssn_BincodeBuffer aRepBuf,
@@ -3192,22 +3695,30 @@ rssn_BincodeBuffer rssn_bincode_rising_factorial(rssn_BincodeBuffer aXBuf,
 /*
  Generates a 3x3 2D rotation matrix via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_rotation_2d(rssn_BincodeBuffer aAngleBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_rotation_2d(rssn_BincodeBuffer aAngleBuf)
+;
 
 /*
  Generates a 4x4 3D rotation matrix around X-axis via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_rotation_3d_x(rssn_BincodeBuffer aAngleBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_rotation_3d_x(rssn_BincodeBuffer aAngleBuf)
+;
 
 /*
  Generates a 4x4 3D rotation matrix around Y-axis via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_rotation_3d_y(rssn_BincodeBuffer aAngleBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_rotation_3d_y(rssn_BincodeBuffer aAngleBuf)
+;
 
 /*
  Generates a 4x4 3D rotation matrix around Z-axis via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_rotation_3d_z(rssn_BincodeBuffer aAngleBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_rotation_3d_z(rssn_BincodeBuffer aAngleBuf)
+;
 
 /*
  Generates a 4x4 3D rotation around arbitrary axis via Bincode interface.
@@ -3283,9 +3794,13 @@ rssn_BincodeBuffer rssn_bincode_scaling_3d(rssn_BincodeBuffer aSxBuf,
 /*
  Calculates Schwarzschild radius using Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_schwarzschild_radius(rssn_BincodeBuffer aMassBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_schwarzschild_radius(rssn_BincodeBuffer aMassBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_shannon_entropy(rssn_BincodeBuffer aProbsBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_shannon_entropy(rssn_BincodeBuffer aProbsBuf)
+;
 
 /*
  Generates a 3x3 2D shear matrix via Bincode interface.
@@ -3295,17 +3810,23 @@ rssn_BincodeBuffer rssn_bincode_shear_2d(rssn_BincodeBuffer aShxBuf,
                                          rssn_BincodeBuffer aShyBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_simple_linear_regression(rssn_BincodeBuffer aDataBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_simple_linear_regression(rssn_BincodeBuffer aDataBuf)
+;
 
 /*
  Creates a new Simplex (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_simplex_create(rssn_BincodeBuffer aVerticesBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_simplex_create(rssn_BincodeBuffer aVerticesBuf)
+;
 
 /*
  Gets the dimension of a Simplex (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_simplex_dimension(rssn_BincodeBuffer aSimplexBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_simplex_dimension(rssn_BincodeBuffer aSimplexBuf)
+;
 
 /*
  Adds a simplex to a SimplicialComplex (Bincode)
@@ -3326,7 +3847,9 @@ rssn_BincodeBuffer rssn_bincode_simplicial_complex_apply_symbolic_boundary_opera
 /*
  Creates a new SimplicialComplex (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_simplicial_complex_create() ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_simplicial_complex_create()
+;
 
 /*
  Gets the symbolic boundary matrix for dimension k (Bincode)
@@ -3339,29 +3862,41 @@ rssn_BincodeBuffer rssn_bincode_simplicial_complex_get_symbolic_boundary_matrix(
 /*
  Simplifies an expression using the legacy simplifier (Bincode input/output).
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_simplify(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_simplify(rssn_BincodeBuffer aExprBuf)
+;
 
 /*
  Simplifies an expression using the DAG-based simplifier (Bincode input/output).
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_simplify_dag(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_simplify_dag(rssn_BincodeBuffer aExprBuf)
+;
 
 /*
  Simplifies a logical expression using bincode-based FFI.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_simplify_logic(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_simplify_logic(rssn_BincodeBuffer aExprBuf)
+;
 
 /*
  Simplifies radical expressions (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_simplify_radicals(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_simplify_radicals(rssn_BincodeBuffer aExprBuf)
+;
 
 /*
  Computes sinc(x) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_sinc(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_sinc(rssn_BincodeBuffer aValBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_so3_generators() ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_so3_generators()
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_solve(rssn_BincodeBuffer aExprBuf,
@@ -3514,14 +4049,21 @@ rssn_BincodeBuffer rssn_bincode_solve_wave_equation_1d(rssn_BincodeBuffer aEquat
 /*
  Computes square-free factorization (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_square_free_factorization_gf(rssn_BincodeBuffer aPolyBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_square_free_factorization_gf(rssn_BincodeBuffer aPolyBuf)
+;
 
 /*
  Computes the symbolic standard deviation of a set of expressions using Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_std_dev(rssn_BincodeBuffer aDataBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_std_dev(rssn_BincodeBuffer aDataBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_stirling_number_second_kind(size_t aN, size_t aK) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_stirling_number_second_kind(size_t aN,
+                                                            size_t aK)
+;
 
 /*
  Represents Stokes' theorem (Bincode)
@@ -3539,7 +4081,9 @@ rssn_BincodeBuffer rssn_bincode_sturm_sequence(rssn_BincodeBuffer aExprBuf,
                                                const char *aVarPtr)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_su2_generators() ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_su2_generators()
+;
 
 /*
  Substitutes using Bincode.
@@ -3569,9 +4113,13 @@ rssn_BincodeBuffer rssn_bincode_symbolic_chain_add_term(rssn_BincodeBuffer aChai
 /*
  Creates a new SymbolicChain (Bincode)
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_symbolic_chain_create(size_t aDimension) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_symbolic_chain_create(size_t aDimension)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_symmetric_group_create(size_t aN) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_symmetric_group_create(size_t aN)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_taylor_series(rssn_BincodeBuffer aExprBuf,
@@ -3598,12 +4146,16 @@ rssn_BincodeBuffer rssn_bincode_tensor_scalar_mul(rssn_BincodeBuffer aTBuf,
 /*
  Converts a logical expression to Conjunctive Normal Form (CNF) using bincode-based FFI.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_to_cnf(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_to_cnf(rssn_BincodeBuffer aExprBuf)
+;
 
 /*
  Converts a logical expression to Disjunctive Normal Form (DNF) using bincode-based FFI.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_to_dnf(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_to_dnf(rssn_BincodeBuffer aExprBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_transform_contravariant_vector(rssn_BincodeBuffer aCompsBuf,
@@ -3677,12 +4229,16 @@ rssn_BincodeBuffer rssn_bincode_uncertainty(rssn_BincodeBuffer aOpBuf,
                                             rssn_BincodeBuffer aPsiBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_unify_expression(rssn_BincodeBuffer aExprBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_unify_expression(rssn_BincodeBuffer aExprBuf)
+;
 
 /*
  Computes the symbolic variance of a set of expressions using Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_variance(rssn_BincodeBuffer aDataBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_variance(rssn_BincodeBuffer aDataBuf)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_bincode_vector_cross(rssn_BincodeBuffer aV1Buf,
@@ -3694,9 +4250,13 @@ rssn_BincodeBuffer rssn_bincode_vector_dot(rssn_BincodeBuffer aV1Buf,
                                            rssn_BincodeBuffer aV2Buf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_vector_magnitude(rssn_BincodeBuffer aVBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_vector_magnitude(rssn_BincodeBuffer aVBuf)
+;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_vector_normalize(rssn_BincodeBuffer aVBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_vector_normalize(rssn_BincodeBuffer aVBuf)
+;
 
 /*
  Verifies an equation solution using Bincode.
@@ -3753,27 +4313,40 @@ rssn_BincodeBuffer rssn_bincode_z_transform(rssn_BincodeBuffer aExprBuf,
                                             rssn_BincodeBuffer aOutVarBuf)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_bincode_zeta(rssn_BincodeBuffer aArgBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_zeta(rssn_BincodeBuffer aArgBuf)
+;
 
 /*
  Computes ζ(s) via Bincode interface.
  */
-rssn_ rssn_BincodeBuffer rssn_bincode_zeta_numerical(rssn_BincodeBuffer aValBuf) ;
+rssn_
+rssn_BincodeBuffer rssn_bincode_zeta_numerical(rssn_BincodeBuffer aValBuf)
+;
 
 /*
  Computes the binomial coefficient C(n, k).
  */
-rssn_ uint64_t rssn_binomial(uint64_t aN, uint64_t aK) ;
+rssn_
+uint64_t rssn_binomial(uint64_t aN,
+                       uint64_t aK)
+;
 
 /*
  Computes binomial coefficient C(n, k).
  */
-rssn_ char *rssn_binomial_coefficient(size_t aN, size_t aK) ;
+rssn_
+char *rssn_binomial_coefficient(size_t aN,
+                                size_t aK)
+;
 
 /*
  Computes binomial coefficient C(n, k) and returns as JSON string.
  */
-rssn_ char *rssn_binomial_coefficient_json(size_t aN, size_t aK) ;
+rssn_
+char *rssn_binomial_coefficient_json(size_t aN,
+                                     size_t aK)
+;
 
 /*
  Calculates Boltzmann Distribution.
@@ -3787,22 +4360,31 @@ rssn_Expr *rssn_boltzmann_distribution(const rssn_Expr *aEnergy,
 /*
  Computes the boundary of a domain (Handle)
  */
-rssn_ rssn_Expr *rssn_boundary_handle(const rssn_Expr *aDomainPtr) ;
+rssn_
+rssn_Expr *rssn_boundary_handle(const rssn_Expr *aDomainPtr)
+;
 
 /*
  Frees a Bra.
  */
-rssn_ void rssn_bra_free(rssn_Bra *aBra) ;
+rssn_
+void rssn_bra_free(rssn_Bra *aBra)
+;
 
 /*
  Computes the inner product <Bra|Ket>.
  */
-rssn_ rssn_Expr *rssn_bra_ket(const rssn_Bra *aBra, const rssn_Ket *aKet) ;
+rssn_
+rssn_Expr *rssn_bra_ket(const rssn_Bra *aBra,
+                        const rssn_Ket *aKet)
+;
 
 /*
  Creates a new Bra from a state expression.
  */
-rssn_ rssn_Bra *rssn_bra_new(const rssn_Expr *aState) ;
+rssn_
+rssn_Bra *rssn_bra_new(const rssn_Expr *aState)
+;
 
 rssn_
 rssn_Vec<rssn_SparsePolynomial> *rssn_buchberger_handle(const rssn_Vec<rssn_SparsePolynomial> *aBasis,
@@ -3812,7 +4394,9 @@ rssn_Vec<rssn_SparsePolynomial> *rssn_buchberger_handle(const rssn_Vec<rssn_Spar
 /*
  Gets the number of cells in a CAD.
  */
-rssn_ size_t rssn_cad_get_cell_count(const rssn_Cad *aPtr) ;
+rssn_
+size_t rssn_cad_get_cell_count(const rssn_Cad *aPtr)
+;
 
 /*
  Computes CAD for a set of polynomials (Handle).
@@ -3844,11 +4428,24 @@ int32_t rssn_calculus_definite_integrate(size_t aExprH,
                                          size_t *aResultH)
 ;
 
-rssn_ int32_t rssn_calculus_differentiate(size_t aExprH, const char *aVar, size_t *aResultH) ;
+rssn_
+int32_t rssn_calculus_differentiate(size_t aExprH,
+                                    const char *aVar,
+                                    size_t *aResultH)
+;
 
-rssn_ int32_t rssn_calculus_integrate(size_t aExprH, const char *aVar, size_t *aResultH) ;
+rssn_
+int32_t rssn_calculus_integrate(size_t aExprH,
+                                const char *aVar,
+                                size_t *aResultH)
+;
 
-rssn_ int32_t rssn_calculus_limit(size_t aExprH, const char *aVar, size_t aToH, size_t *aResultH) ;
+rssn_
+int32_t rssn_calculus_limit(size_t aExprH,
+                            const char *aVar,
+                            size_t aToH,
+                            size_t *aResultH)
+;
 
 rssn_
 int32_t rssn_calculus_substitute(size_t aExprH,
@@ -3860,7 +4457,10 @@ int32_t rssn_calculus_substitute(size_t aExprH,
 /*
  Calculates Carnot Efficiency: 1 - Tc/Th.
  */
-rssn_ rssn_Expr *rssn_carnot_efficiency(const rssn_Expr *aTc, const rssn_Expr *aTh) ;
+rssn_
+rssn_Expr *rssn_carnot_efficiency(const rssn_Expr *aTc,
+                                  const rssn_Expr *aTh)
+;
 
 /*
  Expands an expression using algebraic rules.
@@ -3868,17 +4468,23 @@ rssn_ rssn_Expr *rssn_carnot_efficiency(const rssn_Expr *aTc, const rssn_Expr *a
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
  */
-rssn_ rssn_Expr *rssn_cas_expand(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_cas_expand(const rssn_Expr *aExpr)
+;
 
 /*
  Expands an expression using algebraic rules (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_cas_expand_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_cas_expand_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Expands an expression using algebraic rules (JSON).
  */
-rssn_ char *rssn_cas_expand_json(const char *aJsonStr) ;
+rssn_
+char *rssn_cas_expand_json(const char *aJsonStr)
+;
 
 /*
  Factorizes an expression.
@@ -3886,17 +4492,23 @@ rssn_ char *rssn_cas_expand_json(const char *aJsonStr) ;
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
  */
-rssn_ rssn_Expr *rssn_cas_factorize(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_cas_factorize(const rssn_Expr *aExpr)
+;
 
 /*
  Factorizes an expression (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_cas_factorize_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_cas_factorize_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Factorizes an expression (JSON).
  */
-rssn_ char *rssn_cas_factorize_json(const char *aJsonStr) ;
+rssn_
+char *rssn_cas_factorize_json(const char *aJsonStr)
+;
 
 /*
  Normalizes an expression to a canonical form.
@@ -3904,17 +4516,23 @@ rssn_ char *rssn_cas_factorize_json(const char *aJsonStr) ;
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
  */
-rssn_ rssn_Expr *rssn_cas_normalize(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_cas_normalize(const rssn_Expr *aExpr)
+;
 
 /*
  Normalizes an expression to a canonical form (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_cas_normalize_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_cas_normalize_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Normalizes an expression to a canonical form (JSON).
  */
-rssn_ char *rssn_cas_normalize_json(const char *aJsonStr) ;
+rssn_
+char *rssn_cas_normalize_json(const char *aJsonStr)
+;
 
 /*
  Simplifies an expression using a set of polynomial side-relations.
@@ -3942,14 +4560,20 @@ rssn_Expr *rssn_cas_simplify_with_relations(const rssn_Expr *aExpr,
 /*
  Simplifies an expression using a set of polynomial side-relations (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_cas_simplify_with_relations_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_cas_simplify_with_relations_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Simplifies an expression using a set of polynomial side-relations (JSON).
  */
-rssn_ char *rssn_cas_simplify_with_relations_json(const char *aJsonStr) ;
+rssn_
+char *rssn_cas_simplify_with_relations_json(const char *aJsonStr)
+;
 
-rssn_ rssn_Expr *rssn_catalan_number(size_t aN) ;
+rssn_
+rssn_Expr *rssn_catalan_number(size_t aN)
+;
 
 rssn_
 void rssn_character(const rssn_Representation *aRep,
@@ -3970,12 +4594,18 @@ rssn_Expr *rssn_chebyshev_differential_equation(const rssn_Expr *aY,
 /*
  Computes the symbolic Chebyshev polynomial of the first kind T_n(x).
  */
-rssn_ rssn_Expr *rssn_chebyshev_t(const rssn_Expr *aN, const rssn_Expr *aX) ;
+rssn_
+rssn_Expr *rssn_chebyshev_t(const rssn_Expr *aN,
+                            const rssn_Expr *aX)
+;
 
 /*
  Computes the symbolic Chebyshev polynomial of the second kind U_n(x).
  */
-rssn_ rssn_Expr *rssn_chebyshev_u(const rssn_Expr *aN, const rssn_Expr *aX) ;
+rssn_
+rssn_Expr *rssn_chebyshev_u(const rssn_Expr *aN,
+                            const rssn_Expr *aX)
+;
 
 /*
  Checks if an expression is analytic with respect to a variable.
@@ -3983,9 +4613,14 @@ rssn_ rssn_Expr *rssn_chebyshev_u(const rssn_Expr *aN, const rssn_Expr *aX) ;
  # Safety
  The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
  */
-rssn_ bool rssn_check_analytic(const rssn_Expr *aExpr, const char *aVar) ;
+rssn_
+bool rssn_check_analytic(const rssn_Expr *aExpr,
+                         const char *aVar)
+;
 
-rssn_ bool rssn_check_jacobi_identity(const rssn_LieAlgebra *aAlgebra) ;
+rssn_
+bool rssn_check_jacobi_identity(const rssn_LieAlgebra *aAlgebra)
+;
 
 /*
  Solves a system of congruences using the Chinese Remainder Theorem.
@@ -4002,24 +4637,40 @@ rssn_Expr *rssn_chinese_remainder_handle(const rssn_Expr *const *aRemainders,
 /*
  Finds the chromatic number exactly (NP-hard).
  */
-rssn_ size_t rssn_chromatic_number_exact(const rssn_RssnGraph *aGraph) ;
+rssn_
+size_t rssn_chromatic_number_exact(const rssn_RssnGraph *aGraph)
+;
 
 /*
  Computes the number of combinations (nCk).
  */
-rssn_ int32_t rssn_comb_combinations(uint64_t aN, uint64_t aK, double *aResult) ;
+rssn_
+int32_t rssn_comb_combinations(uint64_t aN,
+                               uint64_t aK,
+                               double *aResult)
+;
 
 /*
  Computes the factorial of a number.
  */
-rssn_ int32_t rssn_comb_factorial(uint64_t aN, double *aResult) ;
+rssn_
+int32_t rssn_comb_factorial(uint64_t aN,
+                            double *aResult)
+;
 
 /*
  Computes the number of permutations (nPk).
  */
-rssn_ int32_t rssn_comb_permutations(uint64_t aN, uint64_t aK, double *aResult) ;
+rssn_
+int32_t rssn_comb_permutations(uint64_t aN,
+                               uint64_t aK,
+                               double *aResult)
+;
 
-rssn_ rssn_Expr *rssn_combinations(const rssn_Expr *aN, const rssn_Expr *aK) ;
+rssn_
+rssn_Expr *rssn_combinations(const rssn_Expr *aN,
+                             const rssn_Expr *aK)
+;
 
 /*
  Computes the commutator [A, B] acting on a Ket.
@@ -4047,7 +4698,9 @@ rssn_Expr **rssn_complex_system_fixed_points(const rssn_ComplexDynamicalSystem *
 /*
  Frees a ComplexDynamicalSystem handle
  */
-rssn_ void rssn_complex_system_free(rssn_ComplexDynamicalSystem *aPtr) ;
+rssn_
+void rssn_complex_system_free(rssn_ComplexDynamicalSystem *aPtr)
+;
 
 /*
  Iterates the system once (Handle)
@@ -4060,17 +4713,23 @@ rssn_Expr *rssn_complex_system_iterate(const rssn_ComplexDynamicalSystem *aSyste
 /*
  Creates a new Mandelbrot family system (Handle)
  */
-rssn_ rssn_ComplexDynamicalSystem *rssn_complex_system_new_mandelbrot(const rssn_Expr *aCPtr) ;
+rssn_
+rssn_ComplexDynamicalSystem *rssn_complex_system_new_mandelbrot(const rssn_Expr *aCPtr)
+;
 
 /*
  Clears a ComputationResultCache.
  */
-rssn_ void rssn_computation_result_cache_clear(rssn_ComputationResultCache *aCache) ;
+rssn_
+void rssn_computation_result_cache_clear(rssn_ComputationResultCache *aCache)
+;
 
 /*
  Frees a ComputationResultCache.
  */
-rssn_ void rssn_computation_result_cache_free(rssn_ComputationResultCache *aCache) ;
+rssn_
+void rssn_computation_result_cache_free(rssn_ComputationResultCache *aCache)
+;
 
 /*
  Retrieves a value from the ComputationResultCache.
@@ -4103,7 +4762,9 @@ char *rssn_computation_result_cache_get_json(rssn_ComputationResultCache *aCache
  Creates a new ComputationResultCache.
  The caller is responsible for freeing the memory using rssn_computation_result_cache_free.
  */
-rssn_ rssn_ComputationResultCache *rssn_computation_result_cache_new() ;
+rssn_
+rssn_ComputationResultCache *rssn_computation_result_cache_new()
+;
 
 /*
  Stores a value in the ComputationResultCache.
@@ -4132,7 +4793,9 @@ void rssn_computation_result_cache_set_json(rssn_ComputationResultCache *aCache,
                                             const char *aJsonValue)
 ;
 
-rssn_ rssn_Expr *rssn_conditional_entropy(const rssn_Expr *aJointProbs) ;
+rssn_
+rssn_Expr *rssn_conditional_entropy(const rssn_Expr *aJointProbs)
+;
 
 /*
  Applies Aitken's acceleration to the input sequence.
@@ -4144,33 +4807,47 @@ rssn_ rssn_Expr *rssn_conditional_entropy(const rssn_Expr *aJointProbs) ;
  # Returns
  A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
  */
-rssn_ rssn_Vec<double> *rssn_convergence_aitken(const double *aData, size_t aLen) ;
+rssn_
+rssn_Vec<double> *rssn_convergence_aitken(const double *aData,
+                                          size_t aLen)
+;
 
 /*
  Bincode FFI for Aitken acceleration.
  */
-rssn_ rssn_BincodeBuffer rssn_convergence_aitken_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_convergence_aitken_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for Aitken acceleration.
  */
-rssn_ char *rssn_convergence_aitken_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_convergence_aitken_json(const char *aJsonPtr)
+;
 
 /*
  Frees a generic `Vec<f64>` pointer created by convergence functions.
  */
-rssn_ void rssn_convergence_free_vec(rssn_Vec<double> *aVec) ;
+rssn_
+void rssn_convergence_free_vec(rssn_Vec<double> *aVec)
+;
 
 /*
  Copies the vector data into a provided buffer.
  buffer must have size at least `len * sizeof(f64)`.
  */
-rssn_ void rssn_convergence_get_vec_data(const rssn_Vec<double> *aVec, double *aBuffer) ;
+rssn_
+void rssn_convergence_get_vec_data(const rssn_Vec<double> *aVec,
+                                   double *aBuffer)
+;
 
 /*
  Returns the length of the vector.
  */
-rssn_ size_t rssn_convergence_get_vec_len(const rssn_Vec<double> *aVec) ;
+rssn_
+size_t rssn_convergence_get_vec_len(const rssn_Vec<double> *aVec)
+;
 
 /*
  Applies Richardson extrapolation to the input sequence.
@@ -4182,17 +4859,24 @@ rssn_ size_t rssn_convergence_get_vec_len(const rssn_Vec<double> *aVec) ;
  # Returns
  A pointer to a new `Vec<f64>` containing the extrapolated sequence, or null on error.
  */
-rssn_ rssn_Vec<double> *rssn_convergence_richardson(const double *aData, size_t aLen) ;
+rssn_
+rssn_Vec<double> *rssn_convergence_richardson(const double *aData,
+                                              size_t aLen)
+;
 
 /*
  Bincode FFI for Richardson extrapolation.
  */
-rssn_ rssn_BincodeBuffer rssn_convergence_richardson_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_convergence_richardson_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for Richardson extrapolation.
  */
-rssn_ char *rssn_convergence_richardson_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_convergence_richardson_json(const char *aJsonPtr)
+;
 
 /*
  Applies Wynn's epsilon algorithm to the input sequence.
@@ -4204,17 +4888,24 @@ rssn_ char *rssn_convergence_richardson_json(const char *aJsonPtr) ;
  # Returns
  A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
  */
-rssn_ rssn_Vec<double> *rssn_convergence_wynn(const double *aData, size_t aLen) ;
+rssn_
+rssn_Vec<double> *rssn_convergence_wynn(const double *aData,
+                                        size_t aLen)
+;
 
 /*
  Bincode FFI for Wynn's epsilon algorithm.
  */
-rssn_ rssn_BincodeBuffer rssn_convergence_wynn_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_convergence_wynn_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for Wynn's epsilon algorithm.
  */
-rssn_ char *rssn_convergence_wynn_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_convergence_wynn_json(const char *aJsonPtr)
+;
 
 rssn_
 rssn_Expr *rssn_convolution_fourier(const rssn_Expr *aF,
@@ -4230,7 +4921,9 @@ rssn_Expr *rssn_convolution_laplace(const rssn_Expr *aF,
                                     const char *aOutVar)
 ;
 
-rssn_ rssn_Expr *rssn_coordinates_get_metric_tensor_handle(rssn_CoordinateSystem aSystem) ;
+rssn_
+rssn_Expr *rssn_coordinates_get_metric_tensor_handle(rssn_CoordinateSystem aSystem)
+;
 
 /*
  Computes the symbolic Pearson correlation coefficient.
@@ -4248,22 +4941,31 @@ rssn_Expr *rssn_correlation(const rssn_Expr *const *aData1,
 /*
  Creates a cosine expression: cos(expr).
  */
-rssn_ rssn_Expr *rssn_cos(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_cos(const rssn_Expr *aExpr)
+;
 
 /*
  Creates a cosine expression from bincode: cos(expr).
  */
-rssn_ rssn_BincodeBuffer rssn_cos_bincode(rssn_BincodeBuffer aExprBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_cos_bincode(rssn_BincodeBuffer aExprBuffer)
+;
 
 /*
  Creates a cosine expression from JSON: cos(expr).
  */
-rssn_ char *rssn_cos_json(const char *aJsonExpr) ;
+rssn_
+char *rssn_cos_json(const char *aJsonExpr)
+;
 
 /*
  Calculates Coulomb's Law field.
  */
-rssn_ rssn_Vector *rssn_coulombs_law(const rssn_Expr *aCharge, const rssn_Vector *aR) ;
+rssn_
+rssn_Vector *rssn_coulombs_law(const rssn_Expr *aCharge,
+                               const rssn_Vector *aR)
+;
 
 /*
  Counts the number of distinct real roots in an interval (Handle)
@@ -4294,12 +4996,17 @@ rssn_Expr *rssn_covariance(const rssn_Expr *const *aData1,
  # Safety
  Caller must ensure `data` points to `len` bytes.
  */
-rssn_ uint32_t rssn_crc32_compute(const uint8_t *aData, size_t aLen) ;
+rssn_
+uint32_t rssn_crc32_compute(const uint8_t *aData,
+                            size_t aLen)
+;
 
 /*
  Finalizes a CRC-32 computation started with crc32_update.
  */
-rssn_ uint32_t rssn_crc32_finalize(uint32_t aCrc) ;
+rssn_
+uint32_t rssn_crc32_finalize(uint32_t aCrc)
+;
 
 /*
  Updates an existing CRC-32 with additional data (for incremental computation).
@@ -4308,7 +5015,11 @@ rssn_ uint32_t rssn_crc32_finalize(uint32_t aCrc) ;
  Caller must ensure `data` points to `len` bytes.
  Use 0xFFFFFFFF as initial crc for first call.
  */
-rssn_ uint32_t rssn_crc32_update(uint32_t aCrc, const uint8_t *aData, size_t aLen) ;
+rssn_
+uint32_t rssn_crc32_update(uint32_t aCrc,
+                           const uint8_t *aData,
+                           size_t aLen)
+;
 
 /*
  Verifies CRC-32 checksum of data.
@@ -4317,17 +5028,27 @@ rssn_ uint32_t rssn_crc32_update(uint32_t aCrc, const uint8_t *aData, size_t aLe
  Caller must ensure `data` points to `len` bytes.
  Returns 1 if valid, 0 if invalid.
  */
-rssn_ int32_t rssn_crc32_verify(const uint8_t *aData, size_t aLen, uint32_t aExpectedCrc) ;
+rssn_
+int32_t rssn_crc32_verify(const uint8_t *aData,
+                          size_t aLen,
+                          uint32_t aExpectedCrc)
+;
 
 /*
  Creates a grid complex
  */
-rssn_ rssn_SimplicialComplex *rssn_create_grid_complex(size_t aWidth, size_t aHeight) ;
+rssn_
+rssn_SimplicialComplex *rssn_create_grid_complex(size_t aWidth,
+                                                 size_t aHeight)
+;
 
 /*
  Creates a torus complex
  */
-rssn_ rssn_SimplicialComplex *rssn_create_torus_complex(size_t aM, size_t aN) ;
+rssn_
+rssn_SimplicialComplex *rssn_create_torus_complex(size_t aM,
+                                                  size_t aN)
+;
 
 rssn_
 rssn_Expr *rssn_cross_entropy(const rssn_Expr *const *aPProbs,
@@ -4339,7 +5060,9 @@ rssn_Expr *rssn_cross_entropy(const rssn_Expr *const *aPProbs,
 /*
  Frees a CrystalLattice.
  */
-rssn_ void rssn_crystal_lattice_free(rssn_CrystalLattice *aPtr) ;
+rssn_
+void rssn_crystal_lattice_free(rssn_CrystalLattice *aPtr)
+;
 
 /*
  Creates a new CrystalLattice.
@@ -4363,7 +5086,9 @@ void rssn_crystal_lattice_reciprocal_vectors(const rssn_CrystalLattice *aPtr,
 /*
  Computes the volume of the unit cell.
  */
-rssn_ rssn_Expr *rssn_crystal_lattice_volume(const rssn_CrystalLattice *aPtr) ;
+rssn_
+rssn_Expr *rssn_crystal_lattice_volume(const rssn_CrystalLattice *aPtr)
+;
 
 rssn_
 rssn_CurvePoint *rssn_curve_add(const rssn_EllipticCurve *aCurve,
@@ -4376,7 +5101,10 @@ rssn_CurvePoint *rssn_curve_double(const rssn_EllipticCurve *aCurve,
                                    const rssn_CurvePoint *aPoint)
 ;
 
-rssn_ bool rssn_curve_is_on_curve(const rssn_EllipticCurve *aCurve, const rssn_CurvePoint *aPoint) ;
+rssn_
+bool rssn_curve_is_on_curve(const rssn_EllipticCurve *aCurve,
+                            const rssn_CurvePoint *aPoint)
+;
 
 rssn_
 rssn_CurvePoint *rssn_curve_negate(const rssn_EllipticCurve *aCurve,
@@ -4395,27 +5123,37 @@ rssn_CurvePoint *rssn_curve_point_affine(const char *aXStr,
 /*
  Frees a curve point handle.
  */
-rssn_ void rssn_curve_point_free(rssn_CurvePoint *aPoint) ;
+rssn_
+void rssn_curve_point_free(rssn_CurvePoint *aPoint)
+;
 
 /*
  Gets the x-coordinate of an affine point as a string. Returns NULL if infinity.
  */
-rssn_ char *rssn_curve_point_get_x(const rssn_CurvePoint *aPoint) ;
+rssn_
+char *rssn_curve_point_get_x(const rssn_CurvePoint *aPoint)
+;
 
 /*
  Gets the y-coordinate of an affine point as a string. Returns NULL if infinity.
  */
-rssn_ char *rssn_curve_point_get_y(const rssn_CurvePoint *aPoint) ;
+rssn_
+char *rssn_curve_point_get_y(const rssn_CurvePoint *aPoint)
+;
 
 /*
  Creates the point at infinity.
  */
-rssn_ rssn_CurvePoint *rssn_curve_point_infinity() ;
+rssn_
+rssn_CurvePoint *rssn_curve_point_infinity()
+;
 
 /*
  Checks if a point is the point at infinity.
  */
-rssn_ bool rssn_curve_point_is_infinity(const rssn_CurvePoint *aPoint) ;
+rssn_
+bool rssn_curve_point_is_infinity(const rssn_CurvePoint *aPoint)
+;
 
 /*
  Scalar multiplication. k is a string.
@@ -4426,7 +5164,9 @@ rssn_CurvePoint *rssn_curve_scalar_mult(const rssn_EllipticCurve *aCurve,
                                         const rssn_CurvePoint *aP)
 ;
 
-rssn_ rssn_Group *rssn_cyclic_group_create(size_t aN) ;
+rssn_
+rssn_Group *rssn_cyclic_group_create(size_t aN)
+;
 
 /*
  Computes the definite integral of an expression.
@@ -4441,7 +5181,9 @@ rssn_Expr *rssn_definite_integrate(const rssn_Expr *aExpr,
 /*
  Denests a nested square root (Handle)
  */
-rssn_ rssn_Expr *rssn_denest_sqrt_handle(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_denest_sqrt_handle(const rssn_Expr *aExpr)
+;
 
 /*
  Computes the density of states for a 3D electron gas.
@@ -4458,62 +5200,114 @@ rssn_Expr *rssn_density_of_states_3d(const rssn_Expr *aEnergy,
  # Safety
  The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
  */
-rssn_ rssn_Expr *rssn_differentiate(const rssn_Expr *aExpr, const char *aVar) ;
+rssn_
+rssn_Expr *rssn_differentiate(const rssn_Expr *aExpr,
+                              const char *aVar)
+;
 
 /*
  Computes the symbolic Digamma function ψ(z).
  */
-rssn_ rssn_Expr *rssn_digamma(const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_digamma(const rssn_Expr *aArg)
+;
 
 /*
  Computes the digamma function ψ(x) = d/dx ln(Γ(x)).
  */
-rssn_ double rssn_digamma_numerical(double aX) ;
+rssn_
+double rssn_digamma_numerical(double aX)
+;
 
-rssn_ rssn_Group *rssn_dihedral_group_create(size_t aN) ;
+rssn_
+rssn_Group *rssn_dihedral_group_create(size_t aN)
+;
 
 /*
  Computes the Dirac adjoint of a fermion field.
  */
-rssn_ rssn_Expr *rssn_dirac_adjoint(const rssn_Expr *aPsi) ;
+rssn_
+rssn_Expr *rssn_dirac_adjoint(const rssn_Expr *aPsi)
+;
 
 /*
  Dirac equation for a free particle.
  */
-rssn_ rssn_Expr *rssn_dirac_equation(const rssn_Expr *aPsi, const rssn_Expr *aM) ;
+rssn_
+rssn_Expr *rssn_dirac_equation(const rssn_Expr *aPsi,
+                               const rssn_Expr *aM)
+;
 
-rssn_ rssn_Expr *rssn_dist_bernoulli(const rssn_Expr *aP) ;
+rssn_
+rssn_Expr *rssn_dist_bernoulli(const rssn_Expr *aP)
+;
 
-rssn_ rssn_Expr *rssn_dist_beta(const rssn_Expr *aAlpha, const rssn_Expr *aBeta) ;
+rssn_
+rssn_Expr *rssn_dist_beta(const rssn_Expr *aAlpha,
+                          const rssn_Expr *aBeta)
+;
 
-rssn_ rssn_Expr *rssn_dist_binomial(const rssn_Expr *aN, const rssn_Expr *aP) ;
+rssn_
+rssn_Expr *rssn_dist_binomial(const rssn_Expr *aN,
+                              const rssn_Expr *aP)
+;
 
-rssn_ rssn_Expr *rssn_dist_cdf(const rssn_Expr *aDist, const rssn_Expr *aX) ;
+rssn_
+rssn_Expr *rssn_dist_cdf(const rssn_Expr *aDist,
+                         const rssn_Expr *aX)
+;
 
-rssn_ rssn_Expr *rssn_dist_expectation(const rssn_Expr *aDist) ;
+rssn_
+rssn_Expr *rssn_dist_expectation(const rssn_Expr *aDist)
+;
 
-rssn_ rssn_Expr *rssn_dist_exponential(const rssn_Expr *aRate) ;
+rssn_
+rssn_Expr *rssn_dist_exponential(const rssn_Expr *aRate)
+;
 
-rssn_ rssn_Expr *rssn_dist_gamma(const rssn_Expr *aShape, const rssn_Expr *aRate) ;
+rssn_
+rssn_Expr *rssn_dist_gamma(const rssn_Expr *aShape,
+                           const rssn_Expr *aRate)
+;
 
-rssn_ rssn_Expr *rssn_dist_mgf(const rssn_Expr *aDist, const rssn_Expr *aT) ;
+rssn_
+rssn_Expr *rssn_dist_mgf(const rssn_Expr *aDist,
+                         const rssn_Expr *aT)
+;
 
-rssn_ rssn_Expr *rssn_dist_normal(const rssn_Expr *aMean, const rssn_Expr *aStdDev) ;
+rssn_
+rssn_Expr *rssn_dist_normal(const rssn_Expr *aMean,
+                            const rssn_Expr *aStdDev)
+;
 
-rssn_ rssn_Expr *rssn_dist_pdf(const rssn_Expr *aDist, const rssn_Expr *aX) ;
+rssn_
+rssn_Expr *rssn_dist_pdf(const rssn_Expr *aDist,
+                         const rssn_Expr *aX)
+;
 
-rssn_ rssn_Expr *rssn_dist_poisson(const rssn_Expr *aRate) ;
+rssn_
+rssn_Expr *rssn_dist_poisson(const rssn_Expr *aRate)
+;
 
-rssn_ rssn_Expr *rssn_dist_student_t(const rssn_Expr *aNu) ;
+rssn_
+rssn_Expr *rssn_dist_student_t(const rssn_Expr *aNu)
+;
 
-rssn_ rssn_Expr *rssn_dist_uniform(const rssn_Expr *aMin, const rssn_Expr *aMax) ;
+rssn_
+rssn_Expr *rssn_dist_uniform(const rssn_Expr *aMin,
+                             const rssn_Expr *aMax)
+;
 
-rssn_ rssn_Expr *rssn_dist_variance(const rssn_Expr *aDist) ;
+rssn_
+rssn_Expr *rssn_dist_variance(const rssn_Expr *aDist)
+;
 
 /*
  Computes the double factorial n!!.
  */
-rssn_ uint64_t rssn_double_factorial(uint64_t aN) ;
+rssn_
+uint64_t rssn_double_factorial(uint64_t aN)
+;
 
 /*
  Computes Drude conductivity.
@@ -4528,12 +5322,16 @@ rssn_Expr *rssn_drude_conductivity(const rssn_Expr *aN,
 /*
  Returns the symbolic representation of Euler's number (e).
  */
-rssn_ rssn_Expr *rssn_e() ;
+rssn_
+rssn_Expr *rssn_e()
+;
 
 /*
  Returns Euler's number (e) as bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_e_bincode() ;
+rssn_
+rssn_BincodeBuffer rssn_e_bincode()
+;
 
 /*
  Returns Euler's number (e) as JSON.
@@ -4548,11 +5346,17 @@ rssn_EcdsaSignature *rssn_ecdsa_sign(const char *aMessageHashStr,
                                      const char *aOrderStr)
 ;
 
-rssn_ void rssn_ecdsa_signature_free(rssn_EcdsaSignature *aSig) ;
+rssn_
+void rssn_ecdsa_signature_free(rssn_EcdsaSignature *aSig)
+;
 
-rssn_ char *rssn_ecdsa_signature_get_r(const rssn_EcdsaSignature *aSig) ;
+rssn_
+char *rssn_ecdsa_signature_get_r(const rssn_EcdsaSignature *aSig)
+;
 
-rssn_ char *rssn_ecdsa_signature_get_s(const rssn_EcdsaSignature *aSig) ;
+rssn_
+char *rssn_ecdsa_signature_get_s(const rssn_EcdsaSignature *aSig)
+;
 
 rssn_
 bool rssn_ecdsa_verify(const char *aMessageHashStr,
@@ -4586,7 +5390,9 @@ rssn_Expr *rssn_electromagnetic_energy_density(const rssn_Vector *aEField,
 /*
  Frees an elliptic curve handle.
  */
-rssn_ void rssn_elliptic_curve_free(rssn_EllipticCurve *aCurve) ;
+rssn_
+void rssn_elliptic_curve_free(rssn_EllipticCurve *aCurve)
+;
 
 /*
  Creates a new elliptic curve from decimal strings.
@@ -4600,32 +5406,46 @@ rssn_EllipticCurve *rssn_elliptic_curve_new(const char *aAStr,
 /*
  Calculates enthalpy: U + PV.
  */
-rssn_ rssn_Expr *rssn_enthalpy(const rssn_Expr *aU, const rssn_Expr *aP, const rssn_Expr *aV) ;
+rssn_
+rssn_Expr *rssn_enthalpy(const rssn_Expr *aU,
+                         const rssn_Expr *aP,
+                         const rssn_Expr *aV)
+;
 
 /*
  Computes the symbolic error function erf(z).
  */
-rssn_ rssn_Expr *rssn_erf(const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_erf(const rssn_Expr *aArg)
+;
 
 /*
  Computes the error function erf(x).
  */
-rssn_ double rssn_erf_numerical(double aX) ;
+rssn_
+double rssn_erf_numerical(double aX)
+;
 
 /*
  Computes the symbolic complementary error function erfc(z).
  */
-rssn_ rssn_Expr *rssn_erfc(const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_erfc(const rssn_Expr *aArg)
+;
 
 /*
  Computes the complementary error function erfc(x).
  */
-rssn_ double rssn_erfc_numerical(double aX) ;
+rssn_
+double rssn_erfc_numerical(double aX)
+;
 
 /*
  Computes the symbolic imaginary error function erfi(z).
  */
-rssn_ rssn_Expr *rssn_erfi(const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_erfi(const rssn_Expr *aArg)
+;
 
 /*
  Computes the Euler-Lagrange equation for a given Lagrangian.
@@ -4658,22 +5478,30 @@ rssn_Expr *rssn_evaluate_at_point(const rssn_Expr *aExpr,
                                   const rssn_Expr *aValue)
 ;
 
-rssn_ double rssn_evaluate_numerical_handle(const rssn_Expr *aExpr) ;
+rssn_
+double rssn_evaluate_numerical_handle(const rssn_Expr *aExpr)
+;
 
 /*
  Creates an exponential expression: e^(expr).
  */
-rssn_ rssn_Expr *rssn_exp(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_exp(const rssn_Expr *aExpr)
+;
 
 /*
  Creates an exponential expression from bincode: e^(expr).
  */
-rssn_ rssn_BincodeBuffer rssn_exp_bincode(rssn_BincodeBuffer aExprBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_exp_bincode(rssn_BincodeBuffer aExprBuffer)
+;
 
 /*
  Creates an exponential expression from JSON: e^(expr).
  */
-rssn_ char *rssn_exp_json(const char *aJsonExpr) ;
+rssn_
+char *rssn_exp_json(const char *aJsonExpr)
+;
 
 /*
  Expands a symbolic expression.
@@ -4681,49 +5509,74 @@ rssn_ char *rssn_exp_json(const char *aJsonExpr) ;
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
  */
-rssn_ rssn_Expr *rssn_expand(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_expand(const rssn_Expr *aExpr)
+;
 
 /*
  Expands a symbolic expression from bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_expand_bincode(rssn_BincodeBuffer aExprBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_expand_bincode(rssn_BincodeBuffer aExprBuffer)
+;
 
 /*
  Expands a symbolic expression from JSON.
  */
-rssn_ char *rssn_expand_json(const char *aJsonExpr) ;
+rssn_
+char *rssn_expand_json(const char *aJsonExpr)
+;
 
 /*
  Computes the expectation value <A>.
  */
-rssn_ rssn_Expr *rssn_expectation_value(const rssn_Operator *aOp, const rssn_Ket *aPsi) ;
+rssn_
+rssn_Expr *rssn_expectation_value(const rssn_Operator *aOp,
+                                  const rssn_Ket *aPsi)
+;
 
-rssn_ rssn_Expr *rssn_exponential_map(const rssn_Expr *aX, size_t aOrder) ;
+rssn_
+rssn_Expr *rssn_exponential_map(const rssn_Expr *aX,
+                                size_t aOrder)
+;
 
 /*
  Creates an expression from a JSON string and returns a thread-safe handle.
 
  Returns 0 if the JSON is invalid.
  */
-rssn_ size_t rssn_expr_create(const char *aJsonPtr) ;
+rssn_
+size_t rssn_expr_create(const char *aJsonPtr)
+;
 
 /*
  Frees the memory associated with an expression handle.
  */
-rssn_ void rssn_expr_free(size_t aHandle) ;
+rssn_
+void rssn_expr_free(size_t aHandle)
+;
 
-rssn_ void rssn_expr_list_free(rssn_ExprList *aList) ;
+rssn_
+void rssn_expr_list_free(rssn_ExprList *aList)
+;
 
-rssn_ rssn_Expr *rssn_expr_list_get(const rssn_ExprList *aList, size_t aIndex) ;
+rssn_
+rssn_Expr *rssn_expr_list_get(const rssn_ExprList *aList,
+                              size_t aIndex)
+;
 
-rssn_ size_t rssn_expr_list_len(const rssn_ExprList *aList) ;
+rssn_
+size_t rssn_expr_list_len(const rssn_ExprList *aList)
+;
 
 /*
  Simplifies an expression handle and returns a handle to the new, simplified expression.
 
  Returns 0 on error (e.g., invalid handle).
  */
-rssn_ size_t rssn_expr_simplify(const size_t *aHandle) ;
+rssn_
+size_t rssn_expr_simplify(const size_t *aHandle)
+;
 
 /*
  Computes the Extended GCD of two expressions.
@@ -4731,7 +5584,10 @@ rssn_ size_t rssn_expr_simplify(const size_t *aHandle) ;
  # Safety
  `a` and `b` must be valid pointers to `Expr`.
  */
-rssn_ rssn_Expr *rssn_extended_gcd_handle(const rssn_Expr *aA, const rssn_Expr *aB) ;
+rssn_
+rssn_Expr *rssn_extended_gcd_handle(const rssn_Expr *aA,
+                                    const rssn_Expr *aB)
+;
 
 /*
  Computes the exterior derivative of a differential form (Handle)
@@ -4752,12 +5608,17 @@ rssn_Vec<rssn_FiniteFieldPolynomial> *rssn_factor_gf_handle(const rssn_FiniteFie
 /*
  Computes the factorial n!.
  */
-rssn_ uint64_t rssn_factorial(uint64_t aN) ;
+rssn_
+uint64_t rssn_factorial(uint64_t aN)
+;
 
 /*
  Computes the falling factorial (x)₍ₙ₎.
  */
-rssn_ double rssn_falling_factorial(double aX, uint32_t aN) ;
+rssn_
+double rssn_falling_factorial(double aX,
+                              uint32_t aN)
+;
 
 /*
  Computes Fermi energy for a 3D electron gas.
@@ -4779,12 +5640,17 @@ rssn_Expr *rssn_feynman_propagator_position_space(const rssn_Expr *aX,
 /*
  Computes the Feynman slash notation.
  */
-rssn_ rssn_Expr *rssn_feynman_slash(const rssn_Expr *aVMu) ;
+rssn_
+rssn_Expr *rssn_feynman_slash(const rssn_Expr *aVMu)
+;
 
 /*
  Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
  */
-rssn_ int32_t rssn_fft(rssn_Complex<double> *aData, size_t aLen) ;
+rssn_
+int32_t rssn_fft(rssn_Complex<double> *aData,
+                 size_t aLen)
+;
 
 /*
  Finds constrained extrema (Handle)
@@ -4826,7 +5692,10 @@ size_t rssn_find_pole_order(const rssn_Expr *aExpr,
 /*
  Finds poles of an expression.
  */
-rssn_ rssn_Vec<rssn_Expr> *rssn_find_poles(const rssn_Expr *aExpr, const char *aVar) ;
+rssn_
+rssn_Vec<rssn_Expr> *rssn_find_poles(const rssn_Expr *aExpr,
+                                     const char *aVar)
+;
 
 /*
  Frees a finite field handle.
@@ -4834,14 +5703,18 @@ rssn_ rssn_Vec<rssn_Expr> *rssn_find_poles(const rssn_Expr *aExpr, const char *a
  # Safety
  Caller must ensure `field` is a valid pointer returned by `rssn_finite_field_new`.
  */
-rssn_ void rssn_finite_field_free(rssn_Arc<rssn_FiniteField> *aField) ;
+rssn_
+void rssn_finite_field_free(rssn_Arc<rssn_FiniteField> *aField)
+;
 
 /*
  Creates a new finite field GF(modulus).
 
  Returns an opaque handle to the field.
  */
-rssn_ rssn_Arc<rssn_FiniteField> *rssn_finite_field_new(int64_t aModulus) ;
+rssn_
+rssn_Arc<rssn_FiniteField> *rssn_finite_field_new(int64_t aModulus)
+;
 
 /*
  First-order energy correction.
@@ -4851,7 +5724,10 @@ rssn_Expr *rssn_first_order_energy_correction(const rssn_Operator *aPerturbation
                                               const rssn_Ket *aUnperturbedState)
 ;
 
-rssn_ rssn_Expr *rssn_fourier_differentiation(const rssn_Expr *aFOmega, const char *aOutVar) ;
+rssn_
+rssn_Expr *rssn_fourier_differentiation(const rssn_Expr *aFOmega,
+                                        const char *aOutVar)
+;
 
 rssn_
 rssn_Expr *rssn_fourier_frequency_shift(const rssn_Expr *aFOmega,
@@ -4894,7 +5770,9 @@ rssn_Expr *rssn_fourier_transform(const rssn_Expr *aExpr,
 /*
  Frees a Fredholm integral equation.
  */
-rssn_ void rssn_fredholm_free(rssn_FredholmEquation *aPtr) ;
+rssn_
+void rssn_fredholm_free(rssn_FredholmEquation *aPtr)
+;
 
 /*
  Creates a new Fredholm integral equation.
@@ -4913,7 +5791,10 @@ rssn_FredholmEquation *rssn_fredholm_new(const rssn_Expr *aYX,
 /*
  Solves a Fredholm equation using the Neumann series method.
  */
-rssn_ rssn_Expr *rssn_fredholm_solve_neumann(const rssn_FredholmEquation *aEq, size_t aIterations) ;
+rssn_
+rssn_Expr *rssn_fredholm_solve_neumann(const rssn_FredholmEquation *aEq,
+                                       size_t aIterations)
+;
 
 /*
  Solves a Fredholm equation using the Neumann series method (Bincode).
@@ -4926,7 +5807,9 @@ rssn_BincodeBuffer rssn_fredholm_solve_neumann_bincode(const uint8_t *aInputPtr,
 /*
  Solves a Fredholm equation using the Neumann series method (JSON).
  */
-rssn_ char *rssn_fredholm_solve_neumann_json(const char *aInputJson) ;
+rssn_
+char *rssn_fredholm_solve_neumann_json(const char *aInputJson)
+;
 
 /*
  Solves a Fredholm equation with a separable kernel.
@@ -4950,7 +5833,9 @@ rssn_BincodeBuffer rssn_fredholm_solve_separable_bincode(const uint8_t *aInputPt
 /*
  Solves a Fredholm equation with a separable kernel (JSON).
  */
-rssn_ char *rssn_fredholm_solve_separable_json(const char *aInputJson) ;
+rssn_
+char *rssn_fredholm_solve_separable_json(const char *aInputJson)
+;
 
 /*
  Frees a bincode buffer allocated by an FFI function.
@@ -4959,22 +5844,30 @@ rssn_ char *rssn_fredholm_solve_separable_json(const char *aInputJson) ;
  The buffer must have been allocated by an FFI function that returns `BincodeBuffer`.
  This function should only be called once per buffer.
  */
-rssn_ void rssn_free_bincode_buffer(rssn_BincodeBuffer aBuffer) ;
+rssn_
+void rssn_free_bincode_buffer(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  Frees a CAD handle.
  */
-rssn_ void rssn_free_cad_handle(rssn_Cad *aPtr) ;
+rssn_
+void rssn_free_cad_handle(rssn_Cad *aPtr)
+;
 
 /*
  Frees a Vec<CriticalPoint> handle
  */
-rssn_ void rssn_free_critical_point_vec_handle(rssn_Vec<rssn_CriticalPoint> *aPtr) ;
+rssn_
+void rssn_free_critical_point_vec_handle(rssn_Vec<rssn_CriticalPoint> *aPtr)
+;
 
 /*
  Frees a DifferentialForm handle
  */
-rssn_ void rssn_free_differential_form_handle(rssn_DifferentialForm *aPtr) ;
+rssn_
+void rssn_free_differential_form_handle(rssn_DifferentialForm *aPtr)
+;
 
 /*
  Frees an Expr pointer created by this module.
@@ -4982,44 +5875,65 @@ rssn_ void rssn_free_differential_form_handle(rssn_DifferentialForm *aPtr) ;
  # Safety
  The caller must ensure `expr` was created by this module and hasn't been freed yet.
  */
-rssn_ void rssn_free_expr(rssn_Expr *aExpr) ;
+rssn_
+void rssn_free_expr(rssn_Expr *aExpr)
+;
 
 /*
  Frees a Vec<Expr> handle
  */
-rssn_ void rssn_free_expr_vec_handle(rssn_Vec<rssn_Expr> *aPtr) ;
+rssn_
+void rssn_free_expr_vec_handle(rssn_Vec<rssn_Expr> *aPtr)
+;
 
 /*
  Frees a float64 array allocated by the FEM FFI.
  */
-rssn_ void rssn_free_f64_array(double *aPtr, size_t aSize) ;
+rssn_
+void rssn_free_f64_array(double *aPtr,
+                         size_t aSize)
+;
 
 /*
  Frees a float64 array allocated by the CNM FFI.
  */
-rssn_ void rssn_free_f64_cnm_array(double *aPtr, size_t aSize) ;
+rssn_
+void rssn_free_f64_cnm_array(double *aPtr,
+                             size_t aSize)
+;
 
 /*
  Frees a float64 array allocated by the MTM FFI.
  */
-rssn_ void rssn_free_f64_mtm_array(double *aPtr, size_t aSize) ;
+rssn_
+void rssn_free_f64_mtm_array(double *aPtr,
+                             size_t aSize)
+;
 
 /*
  Frees a multivector (Handle)
  */
-rssn_ void rssn_free_multivector_handle(rssn_Multivector *aPtr) ;
+rssn_
+void rssn_free_multivector_handle(rssn_Multivector *aPtr)
+;
 
-rssn_ void rssn_free_poles(rssn_Vec<rssn_Expr> *aPoles) ;
+rssn_
+void rssn_free_poles(rssn_Vec<rssn_Expr> *aPoles)
+;
 
 /*
  Frees a vector of polynomials (Handle)
  */
-rssn_ void rssn_free_poly_vec_handle(rssn_Vec<rssn_FiniteFieldPolynomial> *aPtr) ;
+rssn_
+void rssn_free_poly_vec_handle(rssn_Vec<rssn_FiniteFieldPolynomial> *aPtr)
+;
 
 /*
  Frees a Vec<HashMap<Expr, Expr>> handle
  */
-rssn_ void rssn_free_solution_vec_handle(rssn_Vec<rssn_HashMap<rssn_Expr, rssn_Expr>> *aPtr) ;
+rssn_
+void rssn_free_solution_vec_handle(rssn_Vec<rssn_HashMap<rssn_Expr, rssn_Expr>> *aPtr)
+;
 
 /*
  Frees a string allocated by an FFI function.
@@ -5028,24 +5942,34 @@ rssn_ void rssn_free_solution_vec_handle(rssn_Vec<rssn_HashMap<rssn_Expr, rssn_E
  The string must have been allocated by an FFI function that returns `*mut c_char`.
  This function should only be called once per string.
  */
-rssn_ void rssn_free_string(char *aS) ;
+rssn_
+void rssn_free_string(char *aS)
+;
 
 /*
  Frees a C string returned by other functions.
  */
-rssn_ void rssn_free_string_api(char *aPtr) ;
+rssn_
+void rssn_free_string_api(char *aPtr)
+;
 
-rssn_ void rssn_free_string_constant(char *aPtr) ;
+rssn_
+void rssn_free_string_constant(char *aPtr)
+;
 
 /*
  Computes the symbolic Gamma function Γ(z).
  */
-rssn_ rssn_Expr *rssn_gamma(const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_gamma(const rssn_Expr *aArg)
+;
 
 /*
  Computes the gamma function Γ(x).
  */
-rssn_ double rssn_gamma_numerical(double aX) ;
+rssn_
+double rssn_gamma_numerical(double aX)
+;
 
 /*
  Represents Gauss's theorem (Handle)
@@ -5067,17 +5991,26 @@ rssn_Expr *rssn_general_arccos_handle(const rssn_Expr *aZ,
 /*
  Computes general multi-valued arcsin (Handle)
  */
-rssn_ rssn_Expr *rssn_general_arcsin_handle(const rssn_Expr *aZ, const rssn_Expr *aK) ;
+rssn_
+rssn_Expr *rssn_general_arcsin_handle(const rssn_Expr *aZ,
+                                      const rssn_Expr *aK)
+;
 
 /*
  Computes general multi-valued arctan (Handle)
  */
-rssn_ rssn_Expr *rssn_general_arctan_handle(const rssn_Expr *aZ, const rssn_Expr *aK) ;
+rssn_
+rssn_Expr *rssn_general_arctan_handle(const rssn_Expr *aZ,
+                                      const rssn_Expr *aK)
+;
 
 /*
  Computes general multi-valued logarithm (Handle)
  */
-rssn_ rssn_Expr *rssn_general_log_handle(const rssn_Expr *aZ, const rssn_Expr *aK) ;
+rssn_
+rssn_Expr *rssn_general_log_handle(const rssn_Expr *aZ,
+                                   const rssn_Expr *aK)
+;
 
 /*
  Computes general multi-valued n-th root (Handle)
@@ -5100,7 +6033,10 @@ rssn_Expr *rssn_general_power_handle(const rssn_Expr *aZ,
 /*
  Computes general multi-valued square root (Handle)
  */
-rssn_ rssn_Expr *rssn_general_sqrt_handle(const rssn_Expr *aZ, const rssn_Expr *aK) ;
+rssn_
+rssn_Expr *rssn_general_sqrt_handle(const rssn_Expr *aZ,
+                                    const rssn_Expr *aK)
+;
 
 /*
  Computes the symbolic Generalized Laguerre polynomial L_n^α(x).
@@ -5136,55 +6072,73 @@ rssn_CurvePoint *rssn_generate_shared_secret(const rssn_EllipticCurve *aCurve,
  Returns the build date as a C string.
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_get_build_date() ;
+rssn_
+char *rssn_get_build_date()
+;
 
 /*
  Returns the build date as a bincode_next buffer.
  The caller must free the returned buffer using rssn_free_bincode_buffer.
  */
-rssn_ rssn_BincodeBuffer rssn_get_build_date_bincode() ;
+rssn_
+rssn_BincodeBuffer rssn_get_build_date_bincode()
+;
 
 /*
  Returns the build date as a JSON string.
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_get_build_date_json() ;
+rssn_
+char *rssn_get_build_date_json()
+;
 
 /*
  Returns all build information as a bincode_next buffer.
  The caller must free the returned buffer using rssn_free_bincode_buffer.
  */
-rssn_ rssn_BincodeBuffer rssn_get_build_info_bincode() ;
+rssn_
+rssn_BincodeBuffer rssn_get_build_info_bincode()
+;
 
 /*
  Returns all build information as a JSON string.
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_get_build_info_json() ;
+rssn_
+char *rssn_get_build_info_json()
+;
 
 /*
  Returns the cargo target triple as a C string.
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_get_cargo_target_triple() ;
+rssn_
+char *rssn_get_cargo_target_triple()
+;
 
 /*
  Returns the commit SHA as a C string.
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_get_commit_sha() ;
+rssn_
+char *rssn_get_commit_sha()
+;
 
 /*
  Returns the commit SHA as a bincode_next buffer.
  The caller must free the returned buffer using rssn_free_bincode_buffer.
  */
-rssn_ rssn_BincodeBuffer rssn_get_commit_sha_bincode() ;
+rssn_
+rssn_BincodeBuffer rssn_get_commit_sha_bincode()
+;
 
 /*
  Returns the commit SHA as a JSON string.
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_get_commit_sha_json() ;
+rssn_
+char *rssn_get_commit_sha_json()
+;
 
 /*
  Retrieves the last error message set by an FFI function on the current thread.
@@ -5192,7 +6146,9 @@ rssn_ char *rssn_get_commit_sha_json() ;
  The returned pointer is valid until the next call to an FFI function on the same thread.
  The caller should not free this pointer.
  */
-rssn_ const char *rssn_get_last_error() ;
+rssn_
+const char *rssn_get_last_error()
+;
 
 /*
  Gets real and imaginary parts of an expression.
@@ -5200,57 +6156,81 @@ rssn_ const char *rssn_get_last_error() ;
  Or return two out pointers?
  I'll return a Vec<Expr> of size 2.
  */
-rssn_ rssn_Vec<rssn_Expr> *rssn_get_real_imag_parts(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Vec<rssn_Expr> *rssn_get_real_imag_parts(const rssn_Expr *aExpr)
+;
 
 /*
  Returns the rustc version as a C string.
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_get_rustc_version() ;
+rssn_
+char *rssn_get_rustc_version()
+;
 
 /*
  Returns the system info as a C string.
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_get_system_info() ;
+rssn_
+char *rssn_get_system_info()
+;
 
 /*
  Performs addition in GF(2^8) (XOR operation).
  */
-rssn_ uint8_t rssn_gf256_add(uint8_t aA, uint8_t aB) ;
+rssn_
+uint8_t rssn_gf256_add(uint8_t aA,
+                       uint8_t aB)
+;
 
 /*
  Performs division in GF(2^8).
  Returns 0 if divisor is 0 (error case).
  */
-rssn_ uint8_t rssn_gf256_div(uint8_t aA, uint8_t aB) ;
+rssn_
+uint8_t rssn_gf256_div(uint8_t aA,
+                       uint8_t aB)
+;
 
 /*
  Computes the exponentiation (anti-logarithm) in GF(2^8).
  */
-rssn_ uint8_t rssn_gf256_exp(uint8_t aLogVal) ;
+rssn_
+uint8_t rssn_gf256_exp(uint8_t aLogVal)
+;
 
 /*
  Computes the multiplicative inverse in GF(2^8).
  Returns 0 if input is 0 (error case).
  */
-rssn_ uint8_t rssn_gf256_inv(uint8_t aA) ;
+rssn_
+uint8_t rssn_gf256_inv(uint8_t aA)
+;
 
 /*
  Computes the discrete logarithm in GF(2^8).
  Returns 0 if input is 0 (error case, as log(0) is undefined).
  */
-rssn_ uint8_t rssn_gf256_log(uint8_t aA) ;
+rssn_
+uint8_t rssn_gf256_log(uint8_t aA)
+;
 
 /*
  Performs multiplication in GF(2^8).
  */
-rssn_ uint8_t rssn_gf256_mul(uint8_t aA, uint8_t aB) ;
+rssn_
+uint8_t rssn_gf256_mul(uint8_t aA,
+                       uint8_t aB)
+;
 
 /*
  Computes a^exp in GF(2^8).
  */
-rssn_ uint8_t rssn_gf256_pow(uint8_t aA, uint8_t aExp) ;
+rssn_
+uint8_t rssn_gf256_pow(uint8_t aA,
+                       uint8_t aExp)
+;
 
 /*
  Calculates Gibbs Free Energy: H - TS.
@@ -5261,7 +6241,10 @@ rssn_Expr *rssn_gibbs_free_energy(const rssn_Expr *aH,
                                   const rssn_Expr *aS)
 ;
 
-rssn_ rssn_Expr *rssn_gini_impurity(const rssn_Expr *const *aProbs, size_t aLen) ;
+rssn_
+rssn_Expr *rssn_gini_impurity(const rssn_Expr *const *aProbs,
+                              size_t aLen)
+;
 
 rssn_
 rssn_Expr **rssn_gram_schmidt(const rssn_HilbertSpace *aSpace,
@@ -5283,24 +6266,35 @@ void rssn_graph_add_edge(rssn_RssnGraph *aPtr,
 /*
  Adds a node to the graph.
  */
-rssn_ size_t rssn_graph_add_node(rssn_RssnGraph *aPtr, const char *aLabel) ;
+rssn_
+size_t rssn_graph_add_node(rssn_RssnGraph *aPtr,
+                           const char *aLabel)
+;
 
 /*
  Gets the adjacency matrix of the graph.
  */
-rssn_ rssn_Expr *rssn_graph_adjacency_matrix(const rssn_RssnGraph *aPtr) ;
+rssn_
+rssn_Expr *rssn_graph_adjacency_matrix(const rssn_RssnGraph *aPtr)
+;
 
 /*
  Performs BFS traversal from a start node.
  Returns a JSON string containing the node IDs in visit order.
  */
-rssn_ char *rssn_graph_bfs(const rssn_RssnGraph *aPtr, size_t aStartNode) ;
+rssn_
+char *rssn_graph_bfs(const rssn_RssnGraph *aPtr,
+                     size_t aStartNode)
+;
 
 /*
  Performs BFS traversal starting from a given node.
  Returns a JSON array of node indices in visit order.
  */
-rssn_ char *rssn_graph_bfs_api(const rssn_RssnGraph *aGraph, size_t aStartNode) ;
+rssn_
+char *rssn_graph_bfs_api(const rssn_RssnGraph *aGraph,
+                         size_t aStartNode)
+;
 
 /*
  Finds maximum matching in a bipartite graph.
@@ -5316,7 +6310,9 @@ char *rssn_graph_bipartite_maximum_matching(const rssn_RssnGraph *aGraph,
  Finds bridges and articulation points.
  Returns a JSON object with "bridges" and "articulation_points" fields.
  */
-rssn_ char *rssn_graph_bridges_and_articulation_points_api(const rssn_RssnGraph *aGraph) ;
+rssn_
+char *rssn_graph_bridges_and_articulation_points_api(const rssn_RssnGraph *aGraph)
+;
 
 /*
  Computes the Cartesian product of two graphs.
@@ -5329,36 +6325,52 @@ rssn_RssnGraph *rssn_graph_cartesian_product(const rssn_RssnGraph *aPtr1,
 /*
  Computes the complement of a graph.
  */
-rssn_ rssn_RssnGraph *rssn_graph_complement(const rssn_RssnGraph *aPtr) ;
+rssn_
+rssn_RssnGraph *rssn_graph_complement(const rssn_RssnGraph *aPtr)
+;
 
 /*
  Finds connected components.
  Returns a JSON string containing the components.
  */
-rssn_ char *rssn_graph_connected_components(const rssn_RssnGraph *aPtr) ;
+rssn_
+char *rssn_graph_connected_components(const rssn_RssnGraph *aPtr)
+;
 
 /*
  Finds all connected components in an undirected graph.
  Returns a JSON array of arrays, where each inner array is a component.
  */
-rssn_ char *rssn_graph_connected_components_api(const rssn_RssnGraph *aGraph) ;
+rssn_
+char *rssn_graph_connected_components_api(const rssn_RssnGraph *aGraph)
+;
 
 /*
  Performs DFS traversal from a start node.
  Returns a JSON string containing the node IDs in visit order.
  */
-rssn_ char *rssn_graph_dfs(const rssn_RssnGraph *aPtr, size_t aStartNode) ;
+rssn_
+char *rssn_graph_dfs(const rssn_RssnGraph *aPtr,
+                     size_t aStartNode)
+;
 
 /*
  Performs DFS traversal starting from a given node.
  Returns a JSON array of node indices in visit order.
  */
-rssn_ char *rssn_graph_dfs_api(const rssn_RssnGraph *aGraph, size_t aStartNode) ;
+rssn_
+char *rssn_graph_dfs_api(const rssn_RssnGraph *aGraph,
+                         size_t aStartNode)
+;
 
 /*
  Computes maximum flow using Dinic's algorithm.
  */
-rssn_ double rssn_graph_dinic_max_flow(const rssn_RssnGraph *aGraph, size_t aSource, size_t aSink) ;
+rssn_
+double rssn_graph_dinic_max_flow(const rssn_RssnGraph *aGraph,
+                                 size_t aSource,
+                                 size_t aSink)
+;
 
 /*
  Computes the disjoint union of two graphs.
@@ -5380,22 +6392,30 @@ double rssn_graph_edmonds_karp_max_flow(const rssn_RssnGraph *aGraph,
 /*
  Frees a graph.
  */
-rssn_ void rssn_graph_free(rssn_RssnGraph *aPtr) ;
+rssn_
+void rssn_graph_free(rssn_RssnGraph *aPtr)
+;
 
 /*
  Checks if the graph has a cycle.
  */
-rssn_ int rssn_graph_has_cycle(const rssn_RssnGraph *aPtr) ;
+rssn_
+int rssn_graph_has_cycle(const rssn_RssnGraph *aPtr)
+;
 
 /*
  Checks if the graph has a cycle.
  */
-rssn_ int rssn_graph_has_cycle_api(const rssn_RssnGraph *aGraph) ;
+rssn_
+int rssn_graph_has_cycle_api(const rssn_RssnGraph *aGraph)
+;
 
 /*
  Gets the incidence matrix of the graph.
  */
-rssn_ rssn_Expr *rssn_graph_incidence_matrix(const rssn_RssnGraph *aPtr) ;
+rssn_
+rssn_Expr *rssn_graph_incidence_matrix(const rssn_RssnGraph *aPtr)
+;
 
 /*
  Creates an induced subgraph.
@@ -5418,61 +6438,86 @@ rssn_RssnGraph *rssn_graph_intersection(const rssn_RssnGraph *aPtr1,
  Checks if the graph is bipartite.
  Returns 1 if bipartite, 0 otherwise.
  */
-rssn_ int rssn_graph_is_bipartite(const rssn_RssnGraph *aPtr) ;
+rssn_
+int rssn_graph_is_bipartite(const rssn_RssnGraph *aPtr)
+;
 
 /*
  Checks if a graph is bipartite.
  Returns a JSON array of partition assignments (0 or 1 for each node), or null if not bipartite.
  */
-rssn_ char *rssn_graph_is_bipartite_api(const rssn_RssnGraph *aGraph) ;
+rssn_
+char *rssn_graph_is_bipartite_api(const rssn_RssnGraph *aGraph)
+;
 
 /*
  Checks if the graph is connected.
  */
-rssn_ int rssn_graph_is_connected(const rssn_RssnGraph *aGraph) ;
+rssn_
+int rssn_graph_is_connected(const rssn_RssnGraph *aGraph)
+;
 
 /*
  Computes the join of two graphs.
  */
-rssn_ rssn_RssnGraph *rssn_graph_join(const rssn_RssnGraph *aPtr1, const rssn_RssnGraph *aPtr2) ;
+rssn_
+rssn_RssnGraph *rssn_graph_join(const rssn_RssnGraph *aPtr1,
+                                const rssn_RssnGraph *aPtr2)
+;
 
 /*
  Computes minimum spanning tree using Kruskal's algorithm.
  Returns a JSON string containing the MST edges.
  */
-rssn_ char *rssn_graph_kruskal_mst(const rssn_RssnGraph *aPtr) ;
+rssn_
+char *rssn_graph_kruskal_mst(const rssn_RssnGraph *aPtr)
+;
 
 /*
  Computes the minimum spanning tree using Kruskal's algorithm.
  Returns a new graph containing only the MST edges.
  */
-rssn_ rssn_RssnGraph *rssn_graph_kruskal_mst_api(const rssn_RssnGraph *aGraph) ;
+rssn_
+rssn_RssnGraph *rssn_graph_kruskal_mst_api(const rssn_RssnGraph *aGraph)
+;
 
 /*
  Gets the Laplacian matrix of the graph.
  */
-rssn_ rssn_Expr *rssn_graph_laplacian_matrix(const rssn_RssnGraph *aPtr) ;
+rssn_
+rssn_Expr *rssn_graph_laplacian_matrix(const rssn_RssnGraph *aPtr)
+;
 
 /*
  Computes maximum flow using Edmonds-Karp algorithm.
  */
-rssn_ double rssn_graph_max_flow(const rssn_RssnGraph *aPtr, size_t aSource, size_t aSink) ;
+rssn_
+double rssn_graph_max_flow(const rssn_RssnGraph *aPtr,
+                           size_t aSource,
+                           size_t aSink)
+;
 
 /*
  Creates a new graph.
  */
-rssn_ rssn_RssnGraph *rssn_graph_new(int aIsDirected) ;
+rssn_
+rssn_RssnGraph *rssn_graph_new(int aIsDirected)
+;
 
 /*
  Gets the number of nodes in the graph.
  */
-rssn_ size_t rssn_graph_node_count(const rssn_RssnGraph *aPtr) ;
+rssn_
+size_t rssn_graph_node_count(const rssn_RssnGraph *aPtr)
+;
 
 /*
  Finds all strongly connected components in a directed graph.
  Returns a JSON array of arrays.
  */
-rssn_ char *rssn_graph_strongly_connected_components(const rssn_RssnGraph *aGraph) ;
+rssn_
+char *rssn_graph_strongly_connected_components(const rssn_RssnGraph *aGraph)
+;
 
 /*
  Computes the Tensor product of two graphs.
@@ -5486,18 +6531,25 @@ rssn_RssnGraph *rssn_graph_tensor_product(const rssn_RssnGraph *aPtr1,
  Performs topological sort on a DAG.
  Returns a JSON array of node indices in topological order, or null if the graph has a cycle.
  */
-rssn_ char *rssn_graph_topological_sort(const rssn_RssnGraph *aGraph) ;
+rssn_
+char *rssn_graph_topological_sort(const rssn_RssnGraph *aGraph)
+;
 
 /*
  Computes the union of two graphs.
  */
-rssn_ rssn_RssnGraph *rssn_graph_union(const rssn_RssnGraph *aPtr1, const rssn_RssnGraph *aPtr2) ;
+rssn_
+rssn_RssnGraph *rssn_graph_union(const rssn_RssnGraph *aPtr1,
+                                 const rssn_RssnGraph *aPtr2)
+;
 
 /*
  Finds a valid vertex coloring using greedy heuristic.
  Returns a JSON object mapping node IDs to colors.
  */
-rssn_ char *rssn_greedy_coloring(const rssn_RssnGraph *aGraph) ;
+rssn_
+char *rssn_greedy_coloring(const rssn_RssnGraph *aGraph)
+;
 
 /*
  Represents Green's theorem (Handle)
@@ -5508,7 +6560,10 @@ rssn_Expr *rssn_greens_theorem_handle(const rssn_Expr *aPPtr,
                                       const rssn_Expr *aDomainPtr)
 ;
 
-rssn_ rssn_Expr **rssn_group_center(const rssn_Group *aGroup, size_t *aOutLen) ;
+rssn_
+rssn_Expr **rssn_group_center(const rssn_Group *aGroup,
+                              size_t *aOutLen)
+;
 
 rssn_
 rssn_Group *rssn_group_create(const rssn_Expr *const *aElementsPtr,
@@ -5520,13 +6575,23 @@ rssn_Group *rssn_group_create(const rssn_Expr *const *aElementsPtr,
                               const rssn_Expr *aIdentityPtr)
 ;
 
-rssn_ size_t rssn_group_element_order(const rssn_Group *aGroup, const rssn_Expr *aA) ;
+rssn_
+size_t rssn_group_element_order(const rssn_Group *aGroup,
+                                const rssn_Expr *aA)
+;
 
-rssn_ void rssn_group_free(rssn_Group *aPtr) ;
+rssn_
+void rssn_group_free(rssn_Group *aPtr)
+;
 
-rssn_ rssn_Expr *rssn_group_inverse(const rssn_Group *aGroup, const rssn_Expr *aA) ;
+rssn_
+rssn_Expr *rssn_group_inverse(const rssn_Group *aGroup,
+                              const rssn_Expr *aA)
+;
 
-rssn_ bool rssn_group_is_abelian(const rssn_Group *aGroup) ;
+rssn_
+bool rssn_group_is_abelian(const rssn_Group *aGroup)
+;
 
 rssn_
 rssn_Expr *rssn_group_multiply(const rssn_Group *aGroup,
@@ -5537,17 +6602,25 @@ rssn_Expr *rssn_group_multiply(const rssn_Group *aGroup,
 /*
  Computes Hall coefficient.
  */
-rssn_ rssn_Expr *rssn_hall_coefficient(const rssn_Expr *aN, const rssn_Expr *aQ) ;
+rssn_
+rssn_Expr *rssn_hall_coefficient(const rssn_Expr *aN,
+                                 const rssn_Expr *aQ)
+;
 
 /*
  Calculates Hamiltonian: T + V.
  */
-rssn_ rssn_Expr *rssn_hamiltonian(const rssn_Expr *aT, const rssn_Expr *aV) ;
+rssn_
+rssn_Expr *rssn_hamiltonian(const rssn_Expr *aT,
+                            const rssn_Expr *aV)
+;
 
 /*
  Hamiltonian for a free particle.
  */
-rssn_ rssn_Operator *rssn_hamiltonian_free_particle(const rssn_Expr *aM) ;
+rssn_
+rssn_Operator *rssn_hamiltonian_free_particle(const rssn_Expr *aM)
+;
 
 /*
  Hamiltonian for a harmonic oscillator.
@@ -5576,7 +6649,9 @@ rssn_Expr *rssn_hamiltons_principle(const rssn_Expr *aLagrangian,
  Caller must ensure `codeword` points to 7 bytes.
  Returns 1 if valid, 0 if invalid, -1 on error.
  */
-rssn_ int32_t rssn_hamming_check(const uint8_t *aCodeword) ;
+rssn_
+int32_t rssn_hamming_check(const uint8_t *aCodeword)
+;
 
 /*
  Decodes a 7-bit Hamming(7,4) codeword, correcting single-bit errors.
@@ -5585,7 +6660,11 @@ rssn_ int32_t rssn_hamming_check(const uint8_t *aCodeword) ;
  Caller must ensure `codeword` points to 7 bytes and `data_out` points to 4 bytes.
  `error_pos` will receive the 1-based error position or 0 if no error.
  */
-rssn_ int32_t rssn_hamming_decode(const uint8_t *aCodeword, uint8_t *aDataOut, uint8_t *aErrorPos) ;
+rssn_
+int32_t rssn_hamming_decode(const uint8_t *aCodeword,
+                            uint8_t *aDataOut,
+                            uint8_t *aErrorPos)
+;
 
 /*
  Computes Hamming distance between two byte slices.
@@ -5607,7 +6686,10 @@ int32_t rssn_hamming_distance(const uint8_t *aA,
  # Safety
  Caller must ensure `data` points to 4 bytes and `out` points to 7 bytes of allocated memory.
  */
-rssn_ int32_t rssn_hamming_encode(const uint8_t *aData, uint8_t *aOut) ;
+rssn_
+int32_t rssn_hamming_encode(const uint8_t *aData,
+                            uint8_t *aOut)
+;
 
 /*
  Computes Hamming weight (number of 1s) of a byte slice.
@@ -5615,7 +6697,10 @@ rssn_ int32_t rssn_hamming_encode(const uint8_t *aData, uint8_t *aOut) ;
  # Safety
  Caller must ensure `data` points to `len` bytes.
  */
-rssn_ int32_t rssn_hamming_weight(const uint8_t *aData, size_t aLen) ;
+rssn_
+int32_t rssn_hamming_weight(const uint8_t *aData,
+                            size_t aLen)
+;
 
 /*
  Clears all expressions from the handle manager.
@@ -5625,19 +6710,25 @@ rssn_ int32_t rssn_hamming_weight(const uint8_t *aData, size_t aLen) ;
  # Safety
  This function is always safe to call, but will invalidate all handles.
  */
-rssn_ void rssn_handle_clear() ;
+rssn_
+void rssn_handle_clear()
+;
 
 /*
  Clears all handles (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_handle_clear_bincode() ;
+rssn_
+rssn_BincodeBuffer rssn_handle_clear_bincode()
+;
 
 /*
  Clears all handles (JSON).
 
  Output: JSON object with "cleared" boolean field
  */
-rssn_ char *rssn_handle_clear_json() ;
+rssn_
+char *rssn_handle_clear_json()
+;
 
 /*
  Clones an expression handle, creating a new handle pointing to the same expression.
@@ -5647,12 +6738,16 @@ rssn_ char *rssn_handle_clear_json() ;
  # Safety
  This function is safe to call with any handle value.
  */
-rssn_ size_t rssn_handle_clone(size_t aHandle) ;
+rssn_
+size_t rssn_handle_clone(size_t aHandle)
+;
 
 /*
  Clones a handle (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_handle_clone_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_handle_clone_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Clones a handle (JSON).
@@ -5660,7 +6755,9 @@ rssn_ rssn_BincodeBuffer rssn_handle_clone_bincode(rssn_BincodeBuffer aInput) ;
  Input: JSON object with "handle" field
  Output: JSON object with "new_handle" field
  */
-rssn_ char *rssn_handle_clone_json(const char *aJsonStr) ;
+rssn_
+char *rssn_handle_clone_json(const char *aJsonStr)
+;
 
 /*
  Returns the number of expressions currently managed.
@@ -5668,7 +6765,9 @@ rssn_ char *rssn_handle_clone_json(const char *aJsonStr) ;
  # Safety
  This function is always safe to call.
  */
-rssn_ size_t rssn_handle_count() ;
+rssn_
+size_t rssn_handle_count()
+;
 
 /*
  Checks if a handle exists in the manager.
@@ -5676,12 +6775,16 @@ rssn_ size_t rssn_handle_count() ;
  # Safety
  This function is safe to call with any handle value.
  */
-rssn_ bool rssn_handle_exists(size_t aHandle) ;
+rssn_
+bool rssn_handle_exists(size_t aHandle)
+;
 
 /*
  Checks if a handle exists (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_handle_exists_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_handle_exists_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Checks if a handle exists (JSON).
@@ -5689,7 +6792,9 @@ rssn_ rssn_BincodeBuffer rssn_handle_exists_bincode(rssn_BincodeBuffer aInput) ;
  Input: JSON object with "handle" field
  Output: JSON object with "exists" boolean field
  */
-rssn_ char *rssn_handle_exists_json(const char *aJsonStr) ;
+rssn_
+char *rssn_handle_exists_json(const char *aJsonStr)
+;
 
 /*
  Frees a handle from the manager.
@@ -5699,12 +6804,16 @@ rssn_ char *rssn_handle_exists_json(const char *aJsonStr) ;
  # Safety
  This function is safe to call with any handle value.
  */
-rssn_ bool rssn_handle_free(size_t aHandle) ;
+rssn_
+bool rssn_handle_free(size_t aHandle)
+;
 
 /*
  Frees a handle (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_handle_free_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_handle_free_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Frees a handle (JSON).
@@ -5712,7 +6821,9 @@ rssn_ rssn_BincodeBuffer rssn_handle_free_bincode(rssn_BincodeBuffer aInput) ;
  Input: JSON object with "handle" field
  Output: JSON object with "freed" boolean field
  */
-rssn_ char *rssn_handle_free_json(const char *aJsonStr) ;
+rssn_
+char *rssn_handle_free_json(const char *aJsonStr)
+;
 
 /*
  Retrieves an expression from the handle manager.
@@ -5722,7 +6833,9 @@ rssn_ char *rssn_handle_free_json(const char *aJsonStr) ;
  # Safety
  The caller must ensure the returned pointer is freed using `rssn_free_expr`.
  */
-rssn_ rssn_Expr *rssn_handle_get(size_t aHandle) ;
+rssn_
+rssn_Expr *rssn_handle_get(size_t aHandle)
+;
 
 /*
  Returns a list of all active handles as a JSON array string.
@@ -5732,17 +6845,23 @@ rssn_ rssn_Expr *rssn_handle_get(size_t aHandle) ;
  # Safety
  The caller must free the returned string.
  */
-rssn_ char *rssn_handle_get_all() ;
+rssn_
+char *rssn_handle_get_all()
+;
 
 /*
  Returns all active handles (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_handle_get_all_bincode() ;
+rssn_
+rssn_BincodeBuffer rssn_handle_get_all_bincode()
+;
 
 /*
  Retrieves an expression by handle (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_handle_get_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_handle_get_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Retrieves an expression by handle (JSON).
@@ -5750,7 +6869,9 @@ rssn_ rssn_BincodeBuffer rssn_handle_get_bincode(rssn_BincodeBuffer aInput) ;
  Input: JSON object with "handle" field
  Output: JSON-serialized Expr
  */
-rssn_ char *rssn_handle_get_json(const char *aJsonStr) ;
+rssn_
+char *rssn_handle_get_json(const char *aJsonStr)
+;
 
 /*
  Inserts an expression into the handle manager and returns a unique handle.
@@ -5758,12 +6879,16 @@ rssn_ char *rssn_handle_get_json(const char *aJsonStr) ;
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
  */
-rssn_ size_t rssn_handle_insert(const rssn_Expr *aExpr) ;
+rssn_
+size_t rssn_handle_insert(const rssn_Expr *aExpr)
+;
 
 /*
  Inserts an expression (Bincode) into the handle manager.
  */
-rssn_ rssn_BincodeBuffer rssn_handle_insert_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_handle_insert_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Inserts an expression (JSON) into the handle manager.
@@ -5771,14 +6896,18 @@ rssn_ rssn_BincodeBuffer rssn_handle_insert_bincode(rssn_BincodeBuffer aInput) ;
  Input: JSON-serialized Expr
  Output: JSON object with "handle" field
  */
-rssn_ char *rssn_handle_insert_json(const char *aJsonStr) ;
+rssn_
+char *rssn_handle_insert_json(const char *aJsonStr)
+;
 
 /*
  Returns handle manager statistics (JSON).
 
  Output: JSON object with "count" and "handles" fields
  */
-rssn_ char *rssn_handle_stats_json() ;
+rssn_
+char *rssn_handle_stats_json()
+;
 
 /*
  Converts an expression handle to a string representation.
@@ -5788,7 +6917,9 @@ rssn_ char *rssn_handle_stats_json() ;
  # Safety
  The caller must free the returned string.
  */
-rssn_ char *rssn_handle_to_string(size_t aHandle) ;
+rssn_
+char *rssn_handle_to_string(size_t aHandle)
+;
 
 /*
  Constructs Hermite's differential equation: y'' - 2xy' + 2ny = 0.
@@ -5802,12 +6933,18 @@ rssn_Expr *rssn_hermite_differential_equation(const rssn_Expr *aY,
 /*
  Computes the symbolic Hermite polynomial H_n(x).
  */
-rssn_ rssn_Expr *rssn_hermite_h(const rssn_Expr *aDegree, const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_hermite_h(const rssn_Expr *aDegree,
+                          const rssn_Expr *aArg)
+;
 
 /*
  Constructs Rodrigues' formula for Hermite polynomials.
  */
-rssn_ rssn_Expr *rssn_hermite_rodrigues_formula(const rssn_Expr *aN, const rssn_Expr *aX) ;
+rssn_
+rssn_Expr *rssn_hermite_rodrigues_formula(const rssn_Expr *aN,
+                                          const rssn_Expr *aX)
+;
 
 /*
  Computes Hessian matrix (Handle)
@@ -5824,7 +6961,9 @@ rssn_Expr *rssn_hessian_matrix_handle(const rssn_Expr *aExprPtr,
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
  */
-rssn_ rssn_Expr *rssn_heuristic_simplify(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_heuristic_simplify(const rssn_Expr *aExpr)
+;
 
 rssn_
 rssn_HilbertSpace *rssn_hilbert_space_create(const char *aVar,
@@ -5832,7 +6971,9 @@ rssn_HilbertSpace *rssn_hilbert_space_create(const char *aVar,
                                              const rssn_Expr *aUpperBound)
 ;
 
-rssn_ void rssn_hilbert_space_free(rssn_HilbertSpace *aPtr) ;
+rssn_
+void rssn_hilbert_space_free(rssn_HilbertSpace *aPtr)
+;
 
 /*
  Calculates ideal gas Law expression: PV - nRT.
@@ -5848,7 +6989,10 @@ rssn_Expr *rssn_ideal_gas_law(const rssn_Expr *aP,
 /*
  Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers in-place.
  */
-rssn_ int32_t rssn_ifft(rssn_Complex<double> *aData, size_t aLen) ;
+rssn_
+int32_t rssn_ifft(rssn_Complex<double> *aData,
+                  size_t aLen)
+;
 
 /*
  Creates a new IteratedFunctionSystem (Handle)
@@ -5865,12 +7009,17 @@ rssn_IteratedFunctionSystem *rssn_ifs_create(rssn_Expr *const *aFunctionsPtr,
 /*
  Frees an IteratedFunctionSystem handle
  */
-rssn_ void rssn_ifs_free(rssn_IteratedFunctionSystem *aPtr) ;
+rssn_
+void rssn_ifs_free(rssn_IteratedFunctionSystem *aPtr)
+;
 
 /*
  Calculates similarity dimension (Handle)
  */
-rssn_ rssn_Expr *rssn_ifs_similarity_dimension(rssn_Expr *const *aScalingFactorsPtr, size_t aLen) ;
+rssn_
+rssn_Expr *rssn_ifs_similarity_dimension(rssn_Expr *const *aScalingFactorsPtr,
+                                         size_t aLen)
+;
 
 /*
  Initializes the plugin manager with a specified plugin directory.
@@ -5884,7 +7033,9 @@ rssn_ rssn_Expr *rssn_ifs_similarity_dimension(rssn_Expr *const *aScalingFactors
  0 on success, -1 on failure. On failure, an error message can be retrieved
  with `rssn_get_last_error`.
  */
-rssn_ int32_t rssn_init_plugin_manager(const char *aPluginDirPtr) ;
+rssn_
+int32_t rssn_init_plugin_manager(const char *aPluginDirPtr)
+;
 
 rssn_
 rssn_Expr *rssn_inner_product(const rssn_HilbertSpace *aSpace,
@@ -5898,12 +7049,18 @@ rssn_Expr *rssn_inner_product(const rssn_HilbertSpace *aSpace,
  # Safety
  The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
  */
-rssn_ rssn_Expr *rssn_integrate(const rssn_Expr *aExpr, const char *aVar) ;
+rssn_
+rssn_Expr *rssn_integrate(const rssn_Expr *aExpr,
+                          const char *aVar)
+;
 
 /*
  Integrates a rational function (Handle)
  */
-rssn_ rssn_Expr *rssn_integrate_rational_function_handle(const rssn_Expr *aExpr, const char *aX) ;
+rssn_
+rssn_Expr *rssn_integrate_rational_function_handle(const rssn_Expr *aExpr,
+                                                   const char *aX)
+;
 
 /*
  Evaluates a point on a Bezier curve defined by control points.
@@ -5928,12 +7085,16 @@ int32_t rssn_interp_lagrange(const rssn_FfiPoint *aPointsPtr,
 /*
  Computes the inverse error function erf⁻¹(x).
  */
-rssn_ double rssn_inverse_erf(double aX) ;
+rssn_
+double rssn_inverse_erf(double aX)
+;
 
 /*
  Computes the inverse complementary error function erfc⁻¹(x).
  */
-rssn_ double rssn_inverse_erfc(double aX) ;
+rssn_
+double rssn_inverse_erfc(double aX)
+;
 
 rssn_
 rssn_Expr *rssn_inverse_fourier_transform(const rssn_Expr *aExpr,
@@ -5959,7 +7120,9 @@ rssn_Expr *rssn_inverse_z_transform(const rssn_Expr *aExpr,
  # Safety
  `n` must be a valid pointer to an `Expr`.
  */
-rssn_ rssn_Expr *rssn_is_prime_handle(const rssn_Expr *aN) ;
+rssn_
+rssn_Expr *rssn_is_prime_handle(const rssn_Expr *aN)
+;
 
 /*
  Checks if a logical expression is satisfiable using handle-based FFI.
@@ -5972,18 +7135,30 @@ rssn_ rssn_Expr *rssn_is_prime_handle(const rssn_Expr *aN) ;
  # Safety
  The caller must ensure that `expr` is a valid pointer to an `Expr`.
  */
-rssn_ int32_t rssn_is_satisfiable_handle(const rssn_Expr *aExpr) ;
+rssn_
+int32_t rssn_is_satisfiable_handle(const rssn_Expr *aExpr)
+;
 
-rssn_ rssn_Expr *rssn_joint_entropy(const rssn_Expr *aJointProbs) ;
+rssn_
+rssn_Expr *rssn_joint_entropy(const rssn_Expr *aJointProbs)
+;
 
 /*
  Computes absolute value (magnitude) of complex number (JSON)
  */
-rssn_ char *rssn_json_abs(const char *aZJson) ;
+rssn_
+char *rssn_json_abs(const char *aZJson)
+;
 
-rssn_ char *rssn_json_adjoint_representation_algebra(const char *aXJson, const char *aYJson) ;
+rssn_
+char *rssn_json_adjoint_representation_algebra(const char *aXJson,
+                                               const char *aYJson)
+;
 
-rssn_ char *rssn_json_adjoint_representation_group(const char *aGJson, const char *aXJson) ;
+rssn_
+char *rssn_json_adjoint_representation_group(const char *aGJson,
+                                             const char *aXJson)
+;
 
 rssn_
 char *rssn_json_analytic_continuation(const char *aExprJson,
@@ -5993,7 +7168,10 @@ char *rssn_json_analytic_continuation(const char *aExprJson,
                                       const char *aOrderJson)
 ;
 
-rssn_ char *rssn_json_analyze_convergence(const char *aTermJson, const char *aVarJson) ;
+rssn_
+char *rssn_json_analyze_convergence(const char *aTermJson,
+                                    const char *aVarJson)
+;
 
 /*
  Analyzes stability of a fixed point (JSON)
@@ -6009,12 +7187,16 @@ char *rssn_json_analyze_stability(const char *aMapJson,
  Input: {"g1": Graph, "g2": Graph}
  Output: bool
  */
-rssn_ char *rssn_json_are_isomorphic_heuristic(const char *aJson) ;
+rssn_
+char *rssn_json_are_isomorphic_heuristic(const char *aJson)
+;
 
 /*
  Computes argument (angle) of complex number (JSON)
  */
-rssn_ char *rssn_json_arg(const char *aZJson) ;
+rssn_
+char *rssn_json_arg(const char *aZJson)
+;
 
 rssn_
 char *rssn_json_asymptotic_expansion(const char *aExprJson,
@@ -6023,7 +7205,9 @@ char *rssn_json_asymptotic_expansion(const char *aExprJson,
                                      const char *aOrderJson)
 ;
 
-rssn_ char *rssn_json_bell_number(size_t aN) ;
+rssn_
+char *rssn_json_bell_number(size_t aN)
+;
 
 /*
  Constructs Bessel's differential equation via JSON interface.
@@ -6037,96 +7221,143 @@ char *rssn_json_bessel_differential_equation(const char *aYJson,
 /*
  Computes the symbolic modified Bessel function I_n(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_i(const char *aOrderJson, const char *aArgJson) ;
+rssn_
+char *rssn_json_bessel_i(const char *aOrderJson,
+                         const char *aArgJson)
+;
 
 /*
  Computes I₀(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_i0(const char *aXJson) ;
+rssn_
+char *rssn_json_bessel_i0(const char *aXJson)
+;
 
 /*
  Computes I₁(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_i1(const char *aXJson) ;
+rssn_
+char *rssn_json_bessel_i1(const char *aXJson)
+;
 
 /*
  Computes the symbolic Bessel function J_n(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_j(const char *aOrderJson, const char *aArgJson) ;
+rssn_
+char *rssn_json_bessel_j(const char *aOrderJson,
+                         const char *aArgJson)
+;
 
 /*
  Computes J₀(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_j0(const char *aXJson) ;
+rssn_
+char *rssn_json_bessel_j0(const char *aXJson)
+;
 
 /*
  Computes J₁(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_j1(const char *aXJson) ;
+rssn_
+char *rssn_json_bessel_j1(const char *aXJson)
+;
 
 /*
  Computes the symbolic modified Bessel function K_n(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_k(const char *aOrderJson, const char *aArgJson) ;
+rssn_
+char *rssn_json_bessel_k(const char *aOrderJson,
+                         const char *aArgJson)
+;
 
 /*
  Computes K₀(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_k0(const char *aXJson) ;
+rssn_
+char *rssn_json_bessel_k0(const char *aXJson)
+;
 
 /*
  Computes K₁(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_k1(const char *aXJson) ;
+rssn_
+char *rssn_json_bessel_k1(const char *aXJson)
+;
 
 /*
  Computes the symbolic Bessel function Y_n(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_y(const char *aOrderJson, const char *aArgJson) ;
+rssn_
+char *rssn_json_bessel_y(const char *aOrderJson,
+                         const char *aArgJson)
+;
 
 /*
  Computes Y₀(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_y0(const char *aXJson) ;
+rssn_
+char *rssn_json_bessel_y0(const char *aXJson)
+;
 
 /*
  Computes Y₁(x) via JSON interface.
  */
-rssn_ char *rssn_json_bessel_y1(const char *aXJson) ;
+rssn_
+char *rssn_json_bessel_y1(const char *aXJson)
+;
 
 /*
  Computes the symbolic Beta function B(a, b) via JSON interface.
  */
-rssn_ char *rssn_json_beta(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_beta(const char *aAJson,
+                     const char *aBJson)
+;
 
 /*
  Computes B(a, b) via JSON interface.
  */
-rssn_ char *rssn_json_beta_numerical(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_beta_numerical(const char *aAJson,
+                               const char *aBJson)
+;
 
 /*
  Computes C(n, k) via JSON interface.
  */
-rssn_ char *rssn_json_binomial(const char *aNJson, const char *aKJson) ;
+rssn_
+char *rssn_json_binomial(const char *aNJson,
+                         const char *aKJson)
+;
 
 /*
  Computes the boundary of a domain (JSON)
  */
-rssn_ char *rssn_json_boundary(const char *aDomainJson) ;
+rssn_
+char *rssn_json_boundary(const char *aDomainJson)
+;
 
 /*
  Computes the inner product <Bra|Ket> using JSON.
  */
-rssn_ char *rssn_json_bra_ket(const char *aBraJson, const char *aKetJson) ;
+rssn_
+char *rssn_json_bra_ket(const char *aBraJson,
+                        const char *aKetJson)
+;
 
-rssn_ char *rssn_json_buchberger(const char *aBasisJson, const char *aOrderJson) ;
+rssn_
+char *rssn_json_buchberger(const char *aBasisJson,
+                           const char *aOrderJson)
+;
 
 /*
  Computes CAD for a set of polynomials via JSON interface.
 
  Input JSON should be an object: `{"polys": [Expr, ...], "vars": ["x", "y", ...]}`.
  */
-rssn_ char *rssn_json_cad(const char *aInputJson) ;
+rssn_
+char *rssn_json_cad(const char *aInputJson)
+;
 
 /*
  Calculates residue using JSON.
@@ -6137,9 +7368,13 @@ char *rssn_json_calculate_residue(const char *aExprJson,
                                   const char *aPoleJson)
 ;
 
-rssn_ char *rssn_json_catalan_number(size_t aN) ;
+rssn_
+char *rssn_json_catalan_number(size_t aN)
+;
 
-rssn_ char *rssn_json_character(const char *aRepJson) ;
+rssn_
+char *rssn_json_character(const char *aRepJson)
+;
 
 /*
  Constructs Chebyshev's differential equation via JSON interface.
@@ -6153,28 +7388,43 @@ char *rssn_json_chebyshev_differential_equation(const char *aYJson,
 /*
  Computes the symbolic Chebyshev polynomial T_n(x) via JSON interface.
  */
-rssn_ char *rssn_json_chebyshev_t(const char *aNJson, const char *aXJson) ;
+rssn_
+char *rssn_json_chebyshev_t(const char *aNJson,
+                            const char *aXJson)
+;
 
 /*
  Computes the symbolic Chebyshev polynomial U_n(x) via JSON interface.
  */
-rssn_ char *rssn_json_chebyshev_u(const char *aNJson, const char *aXJson) ;
+rssn_
+char *rssn_json_chebyshev_u(const char *aNJson,
+                            const char *aXJson)
+;
 
 /*
  Checks analytic using JSON.
  */
-rssn_ bool rssn_json_check_analytic(const char *aExprJson, const char *aVar) ;
+rssn_
+bool rssn_json_check_analytic(const char *aExprJson,
+                              const char *aVar)
+;
 
-rssn_ bool rssn_json_check_jacobi_identity(const char *aAlgebraJson) ;
+rssn_
+bool rssn_json_check_jacobi_identity(const char *aAlgebraJson)
+;
 
-rssn_ char *rssn_json_chinese_remainder(const char *aCongruencesJson) ;
+rssn_
+char *rssn_json_chinese_remainder(const char *aCongruencesJson)
+;
 
 /*
  Exact chromatic number.
  Input: Graph
  Output: usize
  */
-rssn_ char *rssn_json_chromatic_number_exact(const char *aJson) ;
+rssn_
+char *rssn_json_chromatic_number_exact(const char *aJson)
+;
 
 /*
  Classifies a PDE and suggests solution methods (JSON).
@@ -6185,26 +7435,40 @@ char *rssn_json_classify_pde(const char *aEquationJson,
                              const char *aVarsJson)
 ;
 
-rssn_ char *rssn_json_combinations(const char *aNJson, const char *aKJson) ;
+rssn_
+char *rssn_json_combinations(const char *aNJson,
+                             const char *aKJson)
+;
 
-rssn_ char *rssn_json_commutator_table(const char *aAlgebraJson) ;
+rssn_
+char *rssn_json_commutator_table(const char *aAlgebraJson)
+;
 
 /*
  Finds fixed points (JSON)
  */
-rssn_ char *rssn_json_complex_system_fixed_points(const char *aSystemJson) ;
+rssn_
+char *rssn_json_complex_system_fixed_points(const char *aSystemJson)
+;
 
 /*
  Iterates the system once (JSON)
  */
-rssn_ char *rssn_json_complex_system_iterate(const char *aSystemJson, const char *aZJson) ;
+rssn_
+char *rssn_json_complex_system_iterate(const char *aSystemJson,
+                                       const char *aZJson)
+;
 
 /*
  Creates a new Mandelbrot family system (JSON)
  */
-rssn_ char *rssn_json_complex_system_new_mandelbrot(const char *aCJson) ;
+rssn_
+char *rssn_json_complex_system_new_mandelbrot(const char *aCJson)
+;
 
-rssn_ char *rssn_json_conditional_entropy(const char *aJointProbsJson) ;
+rssn_
+char *rssn_json_conditional_entropy(const char *aJointProbsJson)
+;
 
 rssn_
 char *rssn_json_convolution_fourier(const char *aFJson,
@@ -6220,12 +7484,17 @@ char *rssn_json_convolution_laplace(const char *aFJson,
                                     const char *aOutVarJson)
 ;
 
-rssn_ char *rssn_json_coordinates_get_metric_tensor(rssn_CoordinateSystem aSystem) ;
+rssn_
+char *rssn_json_coordinates_get_metric_tensor(rssn_CoordinateSystem aSystem)
+;
 
 /*
  Computes the symbolic Pearson correlation coefficient using JSON.
  */
-rssn_ char *rssn_json_correlation(const char *aData1Json, const char *aData2Json) ;
+rssn_
+char *rssn_json_correlation(const char *aData1Json,
+                            const char *aData2Json)
+;
 
 /*
  Counts the number of distinct real roots in an interval (JSON)
@@ -6240,57 +7509,86 @@ int64_t rssn_json_count_real_roots_in_interval(const char *aExprJson,
 /*
  Computes the symbolic covariance of two sets of expressions using JSON.
  */
-rssn_ char *rssn_json_covariance(const char *aData1Json, const char *aData2Json) ;
+rssn_
+char *rssn_json_covariance(const char *aData1Json,
+                           const char *aData2Json)
+;
 
 /*
  Computes CRC-32 checksum via JSON interface.
  Input: [bytes]
  Returns: u32 checksum
  */
-rssn_ char *rssn_json_crc32_compute(const char *aDataJson) ;
+rssn_
+char *rssn_json_crc32_compute(const char *aDataJson)
+;
 
 /*
  Finalizes CRC-32 computation via JSON interface.
  Input: running crc as u32
  Returns: final crc as u32
  */
-rssn_ char *rssn_json_crc32_finalize(const char *aCrcJson) ;
+rssn_
+char *rssn_json_crc32_finalize(const char *aCrcJson)
+;
 
 /*
  Updates CRC-32 incrementally via JSON interface.
  Input: current crc as u32, data as [bytes]
  Returns: updated crc as u32
  */
-rssn_ char *rssn_json_crc32_update(const char *aCrcJson, const char *aDataJson) ;
+rssn_
+char *rssn_json_crc32_update(const char *aCrcJson,
+                             const char *aDataJson)
+;
 
 /*
  Verifies CRC-32 checksum via JSON interface.
  Input: data as [bytes], expected_crc as u32
  Returns: boolean
  */
-rssn_ char *rssn_json_crc32_verify(const char *aDataJson, const char *aExpectedCrcJson) ;
+rssn_
+char *rssn_json_crc32_verify(const char *aDataJson,
+                             const char *aExpectedCrcJson)
+;
 
-rssn_ char *rssn_json_cross_entropy(const char *aPProbsJson, const char *aQProbsJson) ;
+rssn_
+char *rssn_json_cross_entropy(const char *aPProbsJson,
+                              const char *aQProbsJson)
+;
 
 /*
  Adds two points.
  */
-rssn_ char *rssn_json_curve_add(const char *aCurveJson, const char *aP1Json, const char *aP2Json) ;
+rssn_
+char *rssn_json_curve_add(const char *aCurveJson,
+                          const char *aP1Json,
+                          const char *aP2Json)
+;
 
 /*
  Doubles a point.
  */
-rssn_ char *rssn_json_curve_double(const char *aCurveJson, const char *aPointJson) ;
+rssn_
+char *rssn_json_curve_double(const char *aCurveJson,
+                             const char *aPointJson)
+;
 
 /*
  Checks if a point is on the curve.
  */
-rssn_ char *rssn_json_curve_is_on_curve(const char *aCurveJson, const char *aPointJson) ;
+rssn_
+char *rssn_json_curve_is_on_curve(const char *aCurveJson,
+                                  const char *aPointJson)
+;
 
 /*
  Negates a point.
  */
-rssn_ char *rssn_json_curve_negate(const char *aCurveJson, const char *aPointJson) ;
+rssn_
+char *rssn_json_curve_negate(const char *aCurveJson,
+                             const char *aPointJson)
+;
 
 /*
  Creates an affine curve point.
@@ -6305,7 +7603,9 @@ char *rssn_json_curve_point_affine(const char *aXJson,
 /*
  Creates a point at infinity.
  */
-rssn_ char *rssn_json_curve_point_infinity() ;
+rssn_
+char *rssn_json_curve_point_infinity()
+;
 
 /*
  Scalar multiplication.
@@ -6316,7 +7616,9 @@ char *rssn_json_curve_scalar_mult(const char *aCurveJson,
                                   const char *aPJson)
 ;
 
-rssn_ char *rssn_json_cyclic_group_create(size_t aN) ;
+rssn_
+char *rssn_json_cyclic_group_create(size_t aN)
+;
 
 /*
  Computes definite integral using JSON.
@@ -6331,7 +7633,9 @@ char *rssn_json_definite_integrate(const char *aExprJson,
 /*
  Denests a nested square root (JSON)
  */
-rssn_ char *rssn_json_denest_sqrt(const char *aExprJson) ;
+rssn_
+char *rssn_json_denest_sqrt(const char *aExprJson)
+;
 
 /*
  Computes the density of states for a 3D electron gas using JSON.
@@ -6345,57 +7649,106 @@ char *rssn_json_density_of_states_3d(const char *aEnergyJson,
 /*
  Differentiates an expression using JSON.
  */
-rssn_ char *rssn_json_differentiate(const char *aExprJson, const char *aVar) ;
+rssn_
+char *rssn_json_differentiate(const char *aExprJson,
+                              const char *aVar)
+;
 
 /*
  Computes the symbolic Digamma function ψ(z) via JSON interface.
  */
-rssn_ char *rssn_json_digamma(const char *aArgJson) ;
+rssn_
+char *rssn_json_digamma(const char *aArgJson)
+;
 
 /*
  Computes the digamma function ψ(x) via JSON interface.
  */
-rssn_ char *rssn_json_digamma_numerical(const char *aXJson) ;
+rssn_
+char *rssn_json_digamma_numerical(const char *aXJson)
+;
 
-rssn_ char *rssn_json_dihedral_group_create(size_t aN) ;
+rssn_
+char *rssn_json_dihedral_group_create(size_t aN)
+;
 
 /*
  Computes the Dirac adjoint using JSON.
  */
-rssn_ char *rssn_json_dirac_adjoint(const char *aPsiJson) ;
+rssn_
+char *rssn_json_dirac_adjoint(const char *aPsiJson)
+;
 
-rssn_ char *rssn_json_dist_bernoulli(const char *aPJson) ;
+rssn_
+char *rssn_json_dist_bernoulli(const char *aPJson)
+;
 
-rssn_ char *rssn_json_dist_beta(const char *aAlphaJson, const char *aBetaJson) ;
+rssn_
+char *rssn_json_dist_beta(const char *aAlphaJson,
+                          const char *aBetaJson)
+;
 
-rssn_ char *rssn_json_dist_binomial(const char *aNJson, const char *aPJson) ;
+rssn_
+char *rssn_json_dist_binomial(const char *aNJson,
+                              const char *aPJson)
+;
 
-rssn_ char *rssn_json_dist_cdf(const char *aDistJson, const char *aXJson) ;
+rssn_
+char *rssn_json_dist_cdf(const char *aDistJson,
+                         const char *aXJson)
+;
 
-rssn_ char *rssn_json_dist_expectation(const char *aDistJson) ;
+rssn_
+char *rssn_json_dist_expectation(const char *aDistJson)
+;
 
-rssn_ char *rssn_json_dist_exponential(const char *aRateJson) ;
+rssn_
+char *rssn_json_dist_exponential(const char *aRateJson)
+;
 
-rssn_ char *rssn_json_dist_gamma(const char *aShapeJson, const char *aRateJson) ;
+rssn_
+char *rssn_json_dist_gamma(const char *aShapeJson,
+                           const char *aRateJson)
+;
 
-rssn_ char *rssn_json_dist_mgf(const char *aDistJson, const char *aTJson) ;
+rssn_
+char *rssn_json_dist_mgf(const char *aDistJson,
+                         const char *aTJson)
+;
 
-rssn_ char *rssn_json_dist_normal(const char *aMeanJson, const char *aStdDevJson) ;
+rssn_
+char *rssn_json_dist_normal(const char *aMeanJson,
+                            const char *aStdDevJson)
+;
 
-rssn_ char *rssn_json_dist_pdf(const char *aDistJson, const char *aXJson) ;
+rssn_
+char *rssn_json_dist_pdf(const char *aDistJson,
+                         const char *aXJson)
+;
 
-rssn_ char *rssn_json_dist_poisson(const char *aRateJson) ;
+rssn_
+char *rssn_json_dist_poisson(const char *aRateJson)
+;
 
-rssn_ char *rssn_json_dist_student_t(const char *aNuJson) ;
+rssn_
+char *rssn_json_dist_student_t(const char *aNuJson)
+;
 
-rssn_ char *rssn_json_dist_uniform(const char *aMinJson, const char *aMaxJson) ;
+rssn_
+char *rssn_json_dist_uniform(const char *aMinJson,
+                             const char *aMaxJson)
+;
 
-rssn_ char *rssn_json_dist_variance(const char *aDistJson) ;
+rssn_
+char *rssn_json_dist_variance(const char *aDistJson)
+;
 
 /*
  Computes n!! via JSON interface.
  */
-rssn_ char *rssn_json_double_factorial(const char *aNJson) ;
+rssn_
+char *rssn_json_double_factorial(const char *aNJson)
+;
 
 /*
  Computes Drude conductivity using JSON.
@@ -6451,27 +7804,37 @@ char *rssn_json_elliptic_curve_new(const char *aAJson,
 /*
  Computes the symbolic error function erf(z) via JSON interface.
  */
-rssn_ char *rssn_json_erf(const char *aArgJson) ;
+rssn_
+char *rssn_json_erf(const char *aArgJson)
+;
 
 /*
  Computes erf(x) via JSON interface.
  */
-rssn_ char *rssn_json_erf_numerical(const char *aXJson) ;
+rssn_
+char *rssn_json_erf_numerical(const char *aXJson)
+;
 
 /*
  Computes the symbolic complementary error function erfc(z) via JSON interface.
  */
-rssn_ char *rssn_json_erfc(const char *aArgJson) ;
+rssn_
+char *rssn_json_erfc(const char *aArgJson)
+;
 
 /*
  Computes erfc(x) via JSON interface.
  */
-rssn_ char *rssn_json_erfc_numerical(const char *aXJson) ;
+rssn_
+char *rssn_json_erfc_numerical(const char *aXJson)
+;
 
 /*
  Computes the symbolic imaginary error function erfi(z) via JSON interface.
  */
-rssn_ char *rssn_json_erfi(const char *aArgJson) ;
+rssn_
+char *rssn_json_erfi(const char *aArgJson)
+;
 
 /*
  Computes the Euler-Lagrange equation using JSON.
@@ -6501,46 +7864,72 @@ char *rssn_json_evaluate_at_point(const char *aExprJson,
                                   const char *aValueJson)
 ;
 
-rssn_ char *rssn_json_evaluate_numerical(const char *aExprJson) ;
+rssn_
+char *rssn_json_evaluate_numerical(const char *aExprJson)
+;
 
 /*
  Computes the expectation value using JSON.
  */
-rssn_ char *rssn_json_expectation_value(const char *aOpJson, const char *aPsiJson) ;
+rssn_
+char *rssn_json_expectation_value(const char *aOpJson,
+                                  const char *aPsiJson)
+;
 
-rssn_ char *rssn_json_exponential_map(const char *aXJson, size_t aOrder) ;
+rssn_
+char *rssn_json_exponential_map(const char *aXJson,
+                                size_t aOrder)
+;
 
-rssn_ char *rssn_json_extended_gcd(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_extended_gcd(const char *aAJson,
+                             const char *aBJson)
+;
 
 /*
  Computes the exterior derivative of a differential form (JSON)
  */
-rssn_ char *rssn_json_exterior_derivative(const char *aFormJson, const char *aVarsJson) ;
+rssn_
+char *rssn_json_exterior_derivative(const char *aFormJson,
+                                    const char *aVarsJson)
+;
 
 /*
  Factors a polynomial over a finite field (JSON)
  */
-rssn_ char *rssn_json_factor_gf(const char *aPolyJson) ;
+rssn_
+char *rssn_json_factor_gf(const char *aPolyJson)
+;
 
 /*
  Computes n! via JSON interface.
  */
-rssn_ char *rssn_json_factorial(const char *aNJson) ;
+rssn_
+char *rssn_json_factorial(const char *aNJson)
+;
 
 /*
  Computes the falling factorial (x)₍ₙ₎ via JSON interface.
  */
-rssn_ char *rssn_json_falling_factorial(const char *aXJson, const char *aNJson) ;
+rssn_
+char *rssn_json_falling_factorial(const char *aXJson,
+                                  const char *aNJson)
+;
 
 /*
  Computes Fermi energy for a 3D electron gas using JSON.
  */
-rssn_ char *rssn_json_fermi_energy_3d(const char *aConcentrationJson, const char *aMassJson) ;
+rssn_
+char *rssn_json_fermi_energy_3d(const char *aConcentrationJson,
+                                const char *aMassJson)
+;
 
 /*
  Computes the Feynman slash using JSON.
  */
-rssn_ char *rssn_json_feynman_slash(const char *aVMuJson) ;
+rssn_
+char *rssn_json_feynman_slash(const char *aVMuJson)
+;
 
 /*
  Finds constrained extrema (JSON)
@@ -6554,12 +7943,18 @@ char *rssn_json_find_constrained_extrema(const char *aExprJson,
 /*
  Finds extrema of a function (JSON)
  */
-rssn_ char *rssn_json_find_extrema(const char *aExprJson, const char *aVarsJson) ;
+rssn_
+char *rssn_json_find_extrema(const char *aExprJson,
+                             const char *aVarsJson)
+;
 
 /*
  Finds fixed points of a 1D map (JSON)
  */
-rssn_ char *rssn_json_find_fixed_points(const char *aMapJson, const char *aVar) ;
+rssn_
+char *rssn_json_find_fixed_points(const char *aMapJson,
+                                  const char *aVar)
+;
 
 /*
  Finds pole order using JSON.
@@ -6573,12 +7968,17 @@ size_t rssn_json_find_pole_order(const char *aExprJson,
 /*
  Finds poles using JSON.
  */
-rssn_ char *rssn_json_find_poles(const char *aExprJson, const char *aVar) ;
+rssn_
+char *rssn_json_find_poles(const char *aExprJson,
+                           const char *aVar)
+;
 
 /*
  Gets the degree of a finite field polynomial (JSON)
  */
-rssn_ int64_t rssn_json_finite_field_polynomial_degree(const char *aPolyJson) ;
+rssn_
+int64_t rssn_json_finite_field_polynomial_degree(const char *aPolyJson)
+;
 
 /*
  Performs polynomial long division (JSON)
@@ -6596,7 +7996,10 @@ char *rssn_json_finite_field_polynomial_new(const char *aCoeffsJson,
                                             const char *aModulusJson)
 ;
 
-rssn_ char *rssn_json_fourier_differentiation(const char *aFOmegaJson, const char *aOutVarJson) ;
+rssn_
+char *rssn_json_fourier_differentiation(const char *aFOmegaJson,
+                                        const char *aOutVarJson)
+;
 
 rssn_
 char *rssn_json_fourier_frequency_shift(const char *aFOmegaJson,
@@ -6632,52 +8035,83 @@ char *rssn_json_fourier_transform(const char *aExprJson,
 /*
  Computes the symbolic Gamma function Γ(z) via JSON interface.
  */
-rssn_ char *rssn_json_gamma(const char *aArgJson) ;
+rssn_
+char *rssn_json_gamma(const char *aArgJson)
+;
 
 /*
  Computes the gamma function Γ(x) via JSON interface.
  */
-rssn_ char *rssn_json_gamma_numerical(const char *aXJson) ;
+rssn_
+char *rssn_json_gamma_numerical(const char *aXJson)
+;
 
 /*
  Represents Gauss's theorem (JSON)
  */
-rssn_ char *rssn_json_gauss_theorem(const char *aVectorFieldJson, const char *aVolumeJson) ;
+rssn_
+char *rssn_json_gauss_theorem(const char *aVectorFieldJson,
+                              const char *aVolumeJson)
+;
 
 /*
  Computes general multi-valued arccos (JSON)
  */
-rssn_ char *rssn_json_general_arccos(const char *aZJson, const char *aKJson, const char *aSJson) ;
+rssn_
+char *rssn_json_general_arccos(const char *aZJson,
+                               const char *aKJson,
+                               const char *aSJson)
+;
 
 /*
  Computes general multi-valued arcsin (JSON)
  */
-rssn_ char *rssn_json_general_arcsin(const char *aZJson, const char *aKJson) ;
+rssn_
+char *rssn_json_general_arcsin(const char *aZJson,
+                               const char *aKJson)
+;
 
 /*
  Computes general multi-valued arctan (JSON)
  */
-rssn_ char *rssn_json_general_arctan(const char *aZJson, const char *aKJson) ;
+rssn_
+char *rssn_json_general_arctan(const char *aZJson,
+                               const char *aKJson)
+;
 
 /*
  Computes general multi-valued logarithm (JSON)
  */
-rssn_ char *rssn_json_general_log(const char *aZJson, const char *aKJson) ;
+rssn_
+char *rssn_json_general_log(const char *aZJson,
+                            const char *aKJson)
+;
 
 /*
  Computes general multi-valued n-th root (JSON)
  */
-rssn_ char *rssn_json_general_nth_root(const char *aZJson, const char *aNJson, const char *aKJson) ;
+rssn_
+char *rssn_json_general_nth_root(const char *aZJson,
+                                 const char *aNJson,
+                                 const char *aKJson)
+;
 
 /*
  Computes general multi-valued power (JSON)
  */
-rssn_ char *rssn_json_general_power(const char *aZJson, const char *aWJson, const char *aKJson) ;
+rssn_
+char *rssn_json_general_power(const char *aZJson,
+                              const char *aWJson,
+                              const char *aKJson)
+;
 
 /*
  Computes general multi-valued square root (JSON)
  */
-rssn_ char *rssn_json_general_sqrt(const char *aZJson, const char *aKJson) ;
+rssn_
+char *rssn_json_general_sqrt(const char *aZJson,
+                             const char *aKJson)
+;
 
 /*
  Computes the symbolic Generalized Laguerre polynomial L_n^α(x) via JSON interface.
@@ -6700,7 +8134,10 @@ char *rssn_json_generalized_stokes_theorem(const char *aOmegaJson,
 /*
  Generates a key pair.
  */
-rssn_ char *rssn_json_generate_keypair(const char *aCurveJson, const char *aGeneratorJson) ;
+rssn_
+char *rssn_json_generate_keypair(const char *aCurveJson,
+                                 const char *aGeneratorJson)
+;
 
 /*
  Generates a shared secret.
@@ -6714,22 +8151,32 @@ char *rssn_json_generate_shared_secret(const char *aCurveJson,
 /*
  Gets real and imaginary parts using JSON.
  */
-rssn_ char *rssn_json_get_real_imag_parts(const char *aExprJson) ;
+rssn_
+char *rssn_json_get_real_imag_parts(const char *aExprJson)
+;
 
 /*
  Performs addition in GF(2^8) via JSON interface.
  */
-rssn_ char *rssn_json_gf256_add(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_gf256_add(const char *aAJson,
+                          const char *aBJson)
+;
 
 /*
  Computes inverse in GF(2^8) via JSON interface.
  */
-rssn_ char *rssn_json_gf256_inv(const char *aAJson) ;
+rssn_
+char *rssn_json_gf256_inv(const char *aAJson)
+;
 
 /*
  Performs multiplication in GF(2^8) via JSON interface.
  */
-rssn_ char *rssn_json_gf256_mul(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_gf256_mul(const char *aAJson,
+                          const char *aBJson)
+;
 
 /*
  Calculates Gibbs Free Energy using JSON.
@@ -6740,217 +8187,290 @@ char *rssn_json_gibbs_free_energy(const char *aHJson,
                                   const char *aSJson)
 ;
 
-rssn_ char *rssn_json_gini_impurity(const char *aProbsJson) ;
+rssn_
+char *rssn_json_gini_impurity(const char *aProbsJson)
+;
 
-rssn_ char *rssn_json_gram_schmidt(const char *aSpaceJson, const char *aBasisJson) ;
+rssn_
+char *rssn_json_gram_schmidt(const char *aSpaceJson,
+                             const char *aBasisJson)
+;
 
 /*
  Adds an edge to the graph.
  Input JSON: {"graph": <graph>, "from": "label1", "to": "label2", "weight": <expr>}
  */
-rssn_ char *rssn_json_graph_add_edge(const char *aJson) ;
+rssn_
+char *rssn_json_graph_add_edge(const char *aJson)
+;
 
 /*
  Adds a node to the graph.
  Input JSON: {"graph": <graph>, "label": "node_label"}
  Returns updated graph as JSON.
  */
-rssn_ char *rssn_json_graph_add_node(const char *aJson) ;
+rssn_
+char *rssn_json_graph_add_node(const char *aJson)
+;
 
 /*
  Gets the adjacency matrix of the graph.
  Input JSON: <graph>
  Returns Expr (matrix) as JSON.
  */
-rssn_ char *rssn_json_graph_adjacency_matrix(const char *aJson) ;
+rssn_
+char *rssn_json_graph_adjacency_matrix(const char *aJson)
+;
 
 /*
  Performs BFS traversal.
  Input JSON: {"graph": <graph>, "start_node": <index>}
  */
-rssn_ char *rssn_json_graph_bfs(const char *aJson) ;
+rssn_
+char *rssn_json_graph_bfs(const char *aJson)
+;
 
 /*
  Performs BFS traversal.
  Input: {"graph": Graph, "start_node": usize}
  Output: [usize]
  */
-rssn_ char *rssn_json_graph_bfs_api(const char *aJson) ;
+rssn_
+char *rssn_json_graph_bfs_api(const char *aJson)
+;
 
 /*
  Finds maximum matching in bipartite graph.
  Input: {"graph": Graph, "partition": [i8]}
  Output: [(usize, usize)]
  */
-rssn_ char *rssn_json_graph_bipartite_maximum_matching(const char *aJson) ;
+rssn_
+char *rssn_json_graph_bipartite_maximum_matching(const char *aJson)
+;
 
 /*
  Finds bridges and articulation points.
  Input: Graph
  Output: {"bridges": [(usize, usize)], "articulation_points": [usize]}
  */
-rssn_ char *rssn_json_graph_bridges_and_articulation_points(const char *aJson) ;
+rssn_
+char *rssn_json_graph_bridges_and_articulation_points(const char *aJson)
+;
 
 /*
  Computes the Cartesian product of two graphs.
  */
-rssn_ char *rssn_json_graph_cartesian_product(const char *aJson) ;
+rssn_
+char *rssn_json_graph_cartesian_product(const char *aJson)
+;
 
 /*
  Computes the complement of a graph.
  */
-rssn_ char *rssn_json_graph_complement(const char *aJson) ;
+rssn_
+char *rssn_json_graph_complement(const char *aJson)
+;
 
 /*
  Finds connected components.
  */
-rssn_ char *rssn_json_graph_connected_components(const char *aJson) ;
+rssn_
+char *rssn_json_graph_connected_components(const char *aJson)
+;
 
 /*
  Finds connected components.
  Input: Graph
  Output: [[usize]] (array of arrays)
  */
-rssn_ char *rssn_json_graph_connected_components_api(const char *aJson) ;
+rssn_
+char *rssn_json_graph_connected_components_api(const char *aJson)
+;
 
 /*
  Performs DFS traversal.
  */
-rssn_ char *rssn_json_graph_dfs(const char *aJson) ;
+rssn_
+char *rssn_json_graph_dfs(const char *aJson)
+;
 
 /*
  Performs DFS traversal.
  Input: {"graph": Graph, "start_node": usize}
  Output: [usize] (array of node indices)
  */
-rssn_ char *rssn_json_graph_dfs_api(const char *aJson) ;
+rssn_
+char *rssn_json_graph_dfs_api(const char *aJson)
+;
 
 /*
  Computes maximum flow using Dinic's algorithm.
  Input: {"graph": Graph, "source": usize, "sink": usize}
  Output: f64
  */
-rssn_ char *rssn_json_graph_dinic_max_flow(const char *aJson) ;
+rssn_
+char *rssn_json_graph_dinic_max_flow(const char *aJson)
+;
 
 /*
  Computes the disjoint union of two graphs.
  */
-rssn_ char *rssn_json_graph_disjoint_union(const char *aJson) ;
+rssn_
+char *rssn_json_graph_disjoint_union(const char *aJson)
+;
 
 /*
  Computes maximum flow using Edmonds-Karp.
  Input: {"graph": Graph, "source": usize, "sink": usize}
  Output: f64
  */
-rssn_ char *rssn_json_graph_edmonds_karp_max_flow(const char *aJson) ;
+rssn_
+char *rssn_json_graph_edmonds_karp_max_flow(const char *aJson)
+;
 
 /*
  Checks if graph has a cycle.
  */
-rssn_ char *rssn_json_graph_has_cycle(const char *aJson) ;
+rssn_
+char *rssn_json_graph_has_cycle(const char *aJson)
+;
 
 /*
  Checks if graph has a cycle.
  Input: Graph
  Output: bool
  */
-rssn_ char *rssn_json_graph_has_cycle_api(const char *aJson) ;
+rssn_
+char *rssn_json_graph_has_cycle_api(const char *aJson)
+;
 
 /*
  Creates an induced subgraph.
  Input JSON: {"graph": <graph>, "nodes": ["label1", "label2"]}
  */
-rssn_ char *rssn_json_graph_induced_subgraph(const char *aJson) ;
+rssn_
+char *rssn_json_graph_induced_subgraph(const char *aJson)
+;
 
 /*
  Computes the intersection of two graphs.
  */
-rssn_ char *rssn_json_graph_intersection(const char *aJson) ;
+rssn_
+char *rssn_json_graph_intersection(const char *aJson)
+;
 
 /*
  Checks if graph is bipartite.
  */
-rssn_ char *rssn_json_graph_is_bipartite(const char *aJson) ;
+rssn_
+char *rssn_json_graph_is_bipartite(const char *aJson)
+;
 
 /*
  Checks if graph is bipartite.
  Input: Graph
  Output: [i8] or null
  */
-rssn_ char *rssn_json_graph_is_bipartite_api(const char *aJson) ;
+rssn_
+char *rssn_json_graph_is_bipartite_api(const char *aJson)
+;
 
 /*
  Checks if graph is connected.
  Input: Graph
  Output: bool
  */
-rssn_ char *rssn_json_graph_is_connected(const char *aJson) ;
+rssn_
+char *rssn_json_graph_is_connected(const char *aJson)
+;
 
 /*
  Computes the join of two graphs.
  */
-rssn_ char *rssn_json_graph_join(const char *aJson) ;
+rssn_
+char *rssn_json_graph_join(const char *aJson)
+;
 
 /*
  Computes MST using Kruskal's algorithm.
  */
-rssn_ char *rssn_json_graph_kruskal_mst(const char *aJson) ;
+rssn_
+char *rssn_json_graph_kruskal_mst(const char *aJson)
+;
 
 /*
  Computes MST using Kruskal's algorithm.
  Input: Graph
  Output: Graph (MST)
  */
-rssn_ char *rssn_json_graph_kruskal_mst_api(const char *aJson) ;
+rssn_
+char *rssn_json_graph_kruskal_mst_api(const char *aJson)
+;
 
 /*
  Gets the Laplacian matrix of the graph.
  */
-rssn_ char *rssn_json_graph_laplacian_matrix(const char *aJson) ;
+rssn_
+char *rssn_json_graph_laplacian_matrix(const char *aJson)
+;
 
 /*
  Computes maximum flow.
  Input JSON: {"graph": <graph>, "source": <index>, "sink": <index>}
  */
-rssn_ char *rssn_json_graph_max_flow(const char *aJson) ;
+rssn_
+char *rssn_json_graph_max_flow(const char *aJson)
+;
 
 /*
  Creates a new graph from JSON specification.
  JSON format: {"is_directed": true/false}
  */
-rssn_ char *rssn_json_graph_new(const char *aJson) ;
+rssn_
+char *rssn_json_graph_new(const char *aJson)
+;
 
 /*
  Finds strongly connected components.
  Input: Graph
  Output: [[usize]]
  */
-rssn_ char *rssn_json_graph_strongly_connected_components(const char *aJson) ;
+rssn_
+char *rssn_json_graph_strongly_connected_components(const char *aJson)
+;
 
 /*
  Computes the Tensor product of two graphs.
  */
-rssn_ char *rssn_json_graph_tensor_product(const char *aJson) ;
+rssn_
+char *rssn_json_graph_tensor_product(const char *aJson)
+;
 
 /*
  Performs topological sort.
  Input: Graph
  Output: [usize] or null
  */
-rssn_ char *rssn_json_graph_topological_sort(const char *aJson) ;
+rssn_
+char *rssn_json_graph_topological_sort(const char *aJson)
+;
 
 /*
  Computes the union of two graphs.
  Input JSON: {"g1": <graph>, "g2": <graph>}
  */
-rssn_ char *rssn_json_graph_union(const char *aJson) ;
+rssn_
+char *rssn_json_graph_union(const char *aJson)
+;
 
 /*
  Greedy coloring.
  Input: Graph
  Output: {node_id: color_id}
  */
-rssn_ char *rssn_json_greedy_coloring(const char *aJson) ;
+rssn_
+char *rssn_json_greedy_coloring(const char *aJson)
+;
 
 /*
  Represents Green's theorem (JSON)
@@ -6961,17 +8481,31 @@ char *rssn_json_greens_theorem(const char *aPJson,
                                const char *aDomainJson)
 ;
 
-rssn_ char *rssn_json_group_center(const char *aGroupJson) ;
+rssn_
+char *rssn_json_group_center(const char *aGroupJson)
+;
 
-rssn_ char *rssn_json_group_conjugacy_classes(const char *aGroupJson) ;
+rssn_
+char *rssn_json_group_conjugacy_classes(const char *aGroupJson)
+;
 
-rssn_ char *rssn_json_group_create(const char *aJsonStr) ;
+rssn_
+char *rssn_json_group_create(const char *aJsonStr)
+;
 
-rssn_ size_t rssn_json_group_element_order(const char *aGroupJson, const char *aAJson) ;
+rssn_
+size_t rssn_json_group_element_order(const char *aGroupJson,
+                                     const char *aAJson)
+;
 
-rssn_ char *rssn_json_group_inverse(const char *aGroupJson, const char *aAJson) ;
+rssn_
+char *rssn_json_group_inverse(const char *aGroupJson,
+                              const char *aAJson)
+;
 
-rssn_ bool rssn_json_group_is_abelian(const char *aGroupJson) ;
+rssn_
+bool rssn_json_group_is_abelian(const char *aGroupJson)
+;
 
 rssn_
 char *rssn_json_group_multiply(const char *aGroupJson,
@@ -6993,32 +8527,43 @@ char *rssn_json_hamiltons_principle(const char *aLagrangianJson,
  Input: [7 bytes]
  Returns: boolean
  */
-rssn_ char *rssn_json_hamming_check(const char *aCodewordJson) ;
+rssn_
+char *rssn_json_hamming_check(const char *aCodewordJson)
+;
 
 /*
  Decodes a 7-bit Hamming(7,4) codeword via JSON interface.
  Returns JSON object with "data" and "error_pos" fields.
  */
-rssn_ char *rssn_json_hamming_decode(const char *aCodewordJson) ;
+rssn_
+char *rssn_json_hamming_decode(const char *aCodewordJson)
+;
 
 /*
  Computes Hamming distance between two byte slices via JSON interface.
  Input: {"a": [bytes], "b": [bytes]}
  Returns: distance as integer, or null on error
  */
-rssn_ char *rssn_json_hamming_distance(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_hamming_distance(const char *aAJson,
+                                 const char *aBJson)
+;
 
 /*
  Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via JSON interface.
  */
-rssn_ char *rssn_json_hamming_encode(const char *aDataJson) ;
+rssn_
+char *rssn_json_hamming_encode(const char *aDataJson)
+;
 
 /*
  Computes Hamming weight of a byte slice via JSON interface.
  Input: [bytes]
  Returns: weight as integer
  */
-rssn_ char *rssn_json_hamming_weight(const char *aDataJson) ;
+rssn_
+char *rssn_json_hamming_weight(const char *aDataJson)
+;
 
 /*
  Constructs Hermite's differential equation via JSON interface.
@@ -7032,24 +8577,37 @@ char *rssn_json_hermite_differential_equation(const char *aYJson,
 /*
  Computes the symbolic Hermite polynomial H_n(x) via JSON interface.
  */
-rssn_ char *rssn_json_hermite_h(const char *aDegreeJson, const char *aArgJson) ;
+rssn_
+char *rssn_json_hermite_h(const char *aDegreeJson,
+                          const char *aArgJson)
+;
 
 /*
  Constructs Rodrigues' formula for Hermite polynomials via JSON interface.
  */
-rssn_ char *rssn_json_hermite_rodrigues_formula(const char *aNJson, const char *aXJson) ;
+rssn_
+char *rssn_json_hermite_rodrigues_formula(const char *aNJson,
+                                          const char *aXJson)
+;
 
 /*
  Computes Hessian matrix (JSON)
  */
-rssn_ char *rssn_json_hessian_matrix(const char *aExprJson, const char *aVarsJson) ;
+rssn_
+char *rssn_json_hessian_matrix(const char *aExprJson,
+                               const char *aVarsJson)
+;
 
 /*
  Simplifies an expression using the heuristic simplifier (JSON input/output).
  */
-rssn_ char *rssn_json_heuristic_simplify(const char *aExprJson) ;
+rssn_
+char *rssn_json_heuristic_simplify(const char *aExprJson)
+;
 
-rssn_ char *rssn_json_hilbert_space_create(const char *aJsonStr) ;
+rssn_
+char *rssn_json_hilbert_space_create(const char *aJsonStr)
+;
 
 /*
  Calculates ideal gas Law using JSON.
@@ -7074,7 +8632,9 @@ char *rssn_json_ifs_create(const char *aFunctionsJson,
 /*
  Calculates similarity dimension (JSON)
  */
-rssn_ char *rssn_json_ifs_similarity_dimension(const char *aScalingFactorsJson) ;
+rssn_
+char *rssn_json_ifs_similarity_dimension(const char *aScalingFactorsJson)
+;
 
 rssn_
 char *rssn_json_inner_product(const char *aSpaceJson,
@@ -7085,22 +8645,32 @@ char *rssn_json_inner_product(const char *aSpaceJson,
 /*
  Integrates an expression using JSON.
  */
-rssn_ char *rssn_json_integrate(const char *aExprJson, const char *aVar) ;
+rssn_
+char *rssn_json_integrate(const char *aExprJson,
+                          const char *aVar)
+;
 
 /*
  Integrates a rational function (JSON)
  */
-rssn_ char *rssn_json_integrate_rational_function(const char *aExprJson, const char *aXJson) ;
+rssn_
+char *rssn_json_integrate_rational_function(const char *aExprJson,
+                                            const char *aXJson)
+;
 
 /*
  Computes erf⁻¹(x) via JSON interface.
  */
-rssn_ char *rssn_json_inverse_erf(const char *aXJson) ;
+rssn_
+char *rssn_json_inverse_erf(const char *aXJson)
+;
 
 /*
  Computes erfc⁻¹(x) via JSON interface.
  */
-rssn_ char *rssn_json_inverse_erfc(const char *aXJson) ;
+rssn_
+char *rssn_json_inverse_erfc(const char *aXJson)
+;
 
 rssn_
 char *rssn_json_inverse_fourier_transform(const char *aExprJson,
@@ -7120,7 +8690,9 @@ char *rssn_json_inverse_z_transform(const char *aExprJson,
                                     const char *aOutVarJson)
 ;
 
-rssn_ char *rssn_json_is_prime(const char *aNJson) ;
+rssn_
+char *rssn_json_is_prime(const char *aNJson)
+;
 
 /*
  Checks if a logical expression is satisfiable using JSON-based FFI.
@@ -7130,7 +8702,9 @@ rssn_ char *rssn_json_is_prime(const char *aNJson) ;
  - `{"result": "unsatisfiable"}` if unsatisfiable
  - `{"result": "undecidable"}` if the expression contains quantifiers
  */
-rssn_ char *rssn_json_is_satisfiable(const char *aExprJson) ;
+rssn_
+char *rssn_json_is_satisfiable(const char *aExprJson)
+;
 
 /*
  Isolates real roots in an interval (JSON)
@@ -7141,16 +8715,26 @@ char *rssn_json_isolate_real_roots(const char *aExprJson,
                                    double aPrecision)
 ;
 
-rssn_ char *rssn_json_joint_entropy(const char *aJointProbsJson) ;
+rssn_
+char *rssn_json_joint_entropy(const char *aJointProbsJson)
+;
 
 /*
  Calculates kinetic energy using JSON.
  */
-rssn_ char *rssn_json_kinetic_energy(const char *aMassJson, const char *aVelocityJson) ;
+rssn_
+char *rssn_json_kinetic_energy(const char *aMassJson,
+                               const char *aVelocityJson)
+;
 
-rssn_ char *rssn_json_kl_divergence(const char *aPProbsJson, const char *aQProbsJson) ;
+rssn_
+char *rssn_json_kl_divergence(const char *aPProbsJson,
+                              const char *aQProbsJson)
+;
 
-rssn_ char *rssn_json_klein_four_group_create() ;
+rssn_
+char *rssn_json_klein_four_group_create()
+;
 
 /*
  Constructs Laguerre's differential equation via JSON interface.
@@ -7164,7 +8748,10 @@ char *rssn_json_laguerre_differential_equation(const char *aYJson,
 /*
  Computes the symbolic Laguerre polynomial L_n(x) via JSON interface.
  */
-rssn_ char *rssn_json_laguerre_l(const char *aDegreeJson, const char *aArgJson) ;
+rssn_
+char *rssn_json_laguerre_l(const char *aDegreeJson,
+                           const char *aArgJson)
+;
 
 rssn_
 char *rssn_json_laplace_differentiation(const char *aFSJson,
@@ -7178,7 +8765,10 @@ char *rssn_json_laplace_frequency_shift(const char *aFSJson,
                                         const char *aOutVarJson)
 ;
 
-rssn_ char *rssn_json_laplace_integration(const char *aFSJson, const char *aOutVarJson) ;
+rssn_
+char *rssn_json_laplace_integration(const char *aFSJson,
+                                    const char *aOutVarJson)
+;
 
 rssn_
 char *rssn_json_laplace_scaling(const char *aFSJson,
@@ -7217,48 +8807,76 @@ char *rssn_json_legendre_differential_equation(const char *aYJson,
 /*
  Computes the symbolic Legendre polynomial P_n(x) via JSON interface.
  */
-rssn_ char *rssn_json_legendre_p(const char *aDegreeJson, const char *aArgJson) ;
+rssn_
+char *rssn_json_legendre_p(const char *aDegreeJson,
+                           const char *aArgJson)
+;
 
 /*
  Constructs Rodrigues' formula for Legendre polynomials via JSON interface.
  */
-rssn_ char *rssn_json_legendre_rodrigues_formula(const char *aNJson, const char *aXJson) ;
+rssn_
+char *rssn_json_legendre_rodrigues_formula(const char *aNJson,
+                                           const char *aXJson)
+;
 
-rssn_ char *rssn_json_lie_algebra_so3() ;
+rssn_
+char *rssn_json_lie_algebra_so3()
+;
 
-rssn_ char *rssn_json_lie_algebra_su2() ;
+rssn_
+char *rssn_json_lie_algebra_su2()
+;
 
-rssn_ char *rssn_json_lie_bracket(const char *aXJson, const char *aYJson) ;
+rssn_
+char *rssn_json_lie_bracket(const char *aXJson,
+                            const char *aYJson)
+;
 
 /*
  Computes limit using JSON.
  */
-rssn_ char *rssn_json_limit(const char *aExprJson, const char *aVar, const char *aPointJson) ;
+rssn_
+char *rssn_json_limit(const char *aExprJson,
+                      const char *aVar,
+                      const char *aPointJson)
+;
 
 /*
  Computes ln(B(a, b)) via JSON interface.
  */
-rssn_ char *rssn_json_ln_beta_numerical(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_ln_beta_numerical(const char *aAJson,
+                                  const char *aBJson)
+;
 
 /*
  Computes ln(n!) via JSON interface.
  */
-rssn_ char *rssn_json_ln_factorial(const char *aNJson) ;
+rssn_
+char *rssn_json_ln_factorial(const char *aNJson)
+;
 
 /*
  Computes the symbolic log-gamma function ln(Γ(z)) via JSON interface.
  */
-rssn_ char *rssn_json_ln_gamma(const char *aArgJson) ;
+rssn_
+char *rssn_json_ln_gamma(const char *aArgJson)
+;
 
 /*
  Computes ln(Γ(x)) via JSON interface.
  */
-rssn_ char *rssn_json_ln_gamma_numerical(const char *aXJson) ;
+rssn_
+char *rssn_json_ln_gamma_numerical(const char *aXJson)
+;
 
 /*
  Calculates Lorentz factor using JSON.
  */
-rssn_ char *rssn_json_lorentz_factor(const char *aVelocityJson) ;
+rssn_
+char *rssn_json_lorentz_factor(const char *aVelocityJson)
+;
 
 /*
  Calculates Lorentz force using JSON.
@@ -7288,54 +8906,89 @@ char *rssn_json_lyapunov_exponent(const char *aMapJson,
 /*
  Calculates mass-energy equivalence using JSON.
  */
-rssn_ char *rssn_json_mass_energy_equivalence(const char *aMassJson) ;
+rssn_
+char *rssn_json_mass_energy_equivalence(const char *aMassJson)
+;
 
-rssn_ char *rssn_json_matrix_add(const char *aM1Json, const char *aM2Json) ;
+rssn_
+char *rssn_json_matrix_add(const char *aM1Json,
+                           const char *aM2Json)
+;
 
-rssn_ char *rssn_json_matrix_determinant(const char *aMatrixJson) ;
+rssn_
+char *rssn_json_matrix_determinant(const char *aMatrixJson)
+;
 
-rssn_ char *rssn_json_matrix_inverse(const char *aMatrixJson) ;
+rssn_
+char *rssn_json_matrix_inverse(const char *aMatrixJson)
+;
 
-rssn_ char *rssn_json_matrix_mul(const char *aM1Json, const char *aM2Json) ;
+rssn_
+char *rssn_json_matrix_mul(const char *aM1Json,
+                           const char *aM2Json)
+;
 
-rssn_ char *rssn_json_matrix_solve_linear_system(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_matrix_solve_linear_system(const char *aAJson,
+                                           const char *aBJson)
+;
 
-rssn_ char *rssn_json_matrix_transpose(const char *aMatrixJson) ;
+rssn_
+char *rssn_json_matrix_transpose(const char *aMatrixJson)
+;
 
 /*
  Computes the symbolic mean of a set of expressions using JSON.
  */
-rssn_ char *rssn_json_mean(const char *aDataJson) ;
+rssn_
+char *rssn_json_mean(const char *aDataJson)
+;
 
 /*
  Computes geometric product (JSON)
  */
-rssn_ char *rssn_json_multivector_geometric_product(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_multivector_geometric_product(const char *aAJson,
+                                              const char *aBJson)
+;
 
 /*
  Computes grade projection (JSON)
  */
-rssn_ char *rssn_json_multivector_grade_projection(const char *aMvJson, uint32_t aGrade) ;
+rssn_
+char *rssn_json_multivector_grade_projection(const char *aMvJson,
+                                             uint32_t aGrade)
+;
 
 /*
  Computes inner product (JSON)
  */
-rssn_ char *rssn_json_multivector_inner_product(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_multivector_inner_product(const char *aAJson,
+                                          const char *aBJson)
+;
 
 /*
  Computes magnitude (JSON)
  */
-rssn_ char *rssn_json_multivector_magnitude(const char *aMvJson) ;
+rssn_
+char *rssn_json_multivector_magnitude(const char *aMvJson)
+;
 
 /*
  Computes outer product (JSON)
  */
-rssn_ char *rssn_json_multivector_outer_product(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_multivector_outer_product(const char *aAJson,
+                                          const char *aBJson)
+;
 
 /*
  Computes reverse (JSON)
  */
-rssn_ char *rssn_json_multivector_reverse(const char *aMvJson) ;
+rssn_
+char *rssn_json_multivector_reverse(const char *aMvJson)
+;
 
 /*
  Creates a new scalar multivector (JSON)
@@ -7347,7 +9000,9 @@ char *rssn_json_multivector_scalar(uint32_t aP,
                                    const char *aValueJson)
 ;
 
-rssn_ char *rssn_json_mutual_information(const char *aJointProbsJson) ;
+rssn_
+char *rssn_json_mutual_information(const char *aJointProbsJson)
+;
 
 rssn_
 char *rssn_json_nonlinear_regression(const char *aDataJson,
@@ -7356,11 +9011,20 @@ char *rssn_json_nonlinear_regression(const char *aDataJson,
                                      const char *aParamsJson)
 ;
 
-rssn_ char *rssn_json_norm(const char *aSpaceJson, const char *aFJson) ;
+rssn_
+char *rssn_json_norm(const char *aSpaceJson,
+                     const char *aFJson)
+;
 
-rssn_ char *rssn_json_one_sample_t_test(const char *aDataJson, const char *aTargetMeanJson) ;
+rssn_
+char *rssn_json_one_sample_t_test(const char *aDataJson,
+                                  const char *aTargetMeanJson)
+;
 
-rssn_ char *rssn_json_partial_fraction_decomposition(const char *aExprJson, const char *aVarJson) ;
+rssn_
+char *rssn_json_partial_fraction_decomposition(const char *aExprJson,
+                                               const char *aVarJson)
+;
 
 /*
  Computes path integral using JSON.
@@ -7371,12 +9035,17 @@ char *rssn_json_path_integrate(const char *aExprJson,
                                const char *aContourJson)
 ;
 
-rssn_ char *rssn_json_permutations(const char *aNJson, const char *aKJson) ;
+rssn_
+char *rssn_json_permutations(const char *aNJson,
+                             const char *aKJson)
+;
 
 /*
  Compresses a point.
  */
-rssn_ char *rssn_json_point_compress(const char *aPointJson) ;
+rssn_
+char *rssn_json_point_compress(const char *aPointJson)
+;
 
 /*
  Decompresses a point.
@@ -7399,12 +9068,17 @@ char *rssn_json_poly_add_gf(const char *aP1Json,
 /*
  Adds two polynomials over GF(2^8) via JSON interface.
  */
-rssn_ char *rssn_json_poly_add_gf256(const char *aP1Json, const char *aP2Json) ;
+rssn_
+char *rssn_json_poly_add_gf256(const char *aP1Json,
+                               const char *aP2Json)
+;
 
 /*
  Computes polynomial derivative over finite field (JSON)
  */
-rssn_ char *rssn_json_poly_derivative_gf(const char *aPolyJson) ;
+rssn_
+char *rssn_json_poly_derivative_gf(const char *aPolyJson)
+;
 
 rssn_
 char *rssn_json_poly_division_multivariate(const char *aDividendJson,
@@ -7415,12 +9089,18 @@ char *rssn_json_poly_division_multivariate(const char *aDividendJson,
 /*
  Evaluates a polynomial over GF(2^8) via JSON interface.
  */
-rssn_ char *rssn_json_poly_eval_gf256(const char *aPolyJson, const char *aXJson) ;
+rssn_
+char *rssn_json_poly_eval_gf256(const char *aPolyJson,
+                                const char *aXJson)
+;
 
 /*
  Computes polynomial GCD over finite field (JSON)
  */
-rssn_ char *rssn_json_poly_gcd_gf(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_poly_gcd_gf(const char *aAJson,
+                            const char *aBJson)
+;
 
 /*
  Multiplies two polynomials over a general finite field via JSON interface.
@@ -7434,32 +9114,50 @@ char *rssn_json_poly_mul_gf(const char *aP1Json,
 /*
  Multiplies two polynomials over GF(2^8) via JSON interface.
  */
-rssn_ char *rssn_json_poly_mul_gf256(const char *aP1Json, const char *aP2Json) ;
+rssn_
+char *rssn_json_poly_mul_gf256(const char *aP1Json,
+                               const char *aP2Json)
+;
 
 /*
  Computes the symbolic Polygamma function ψ⁽ⁿ⁾(z) via JSON interface.
  */
-rssn_ char *rssn_json_polygamma(const char *aNJson, const char *aZJson) ;
+rssn_
+char *rssn_json_polygamma(const char *aNJson,
+                          const char *aZJson)
+;
 
 /*
  Checks if an expression contains a variable (JSON)
  */
-rssn_ bool rssn_json_polynomial_contains_var(const char *aExprJson, const char *aVar) ;
+rssn_
+bool rssn_json_polynomial_contains_var(const char *aExprJson,
+                                       const char *aVar)
+;
 
 /*
  Computes the degree of a polynomial (JSON)
  */
-rssn_ int64_t rssn_json_polynomial_degree(const char *aExprJson, const char *aVar) ;
+rssn_
+int64_t rssn_json_polynomial_degree(const char *aExprJson,
+                                    const char *aVar)
+;
 
 /*
  Checks if an expression is a polynomial in the given variable (JSON)
  */
-rssn_ bool rssn_json_polynomial_is_polynomial(const char *aExprJson, const char *aVar) ;
+rssn_
+bool rssn_json_polynomial_is_polynomial(const char *aExprJson,
+                                        const char *aVar)
+;
 
 /*
  Finds the leading coefficient of a polynomial (JSON)
  */
-rssn_ char *rssn_json_polynomial_leading_coefficient(const char *aExprJson, const char *aVar) ;
+rssn_
+char *rssn_json_polynomial_leading_coefficient(const char *aExprJson,
+                                               const char *aVar)
+;
 
 /*
  Performs polynomial long division (JSON)
@@ -7470,42 +9168,65 @@ char *rssn_json_polynomial_long_division(const char *aDividendJson,
                                          const char *aVar)
 ;
 
-rssn_ char *rssn_json_polynomial_regression(const char *aDataJson, size_t aDegree) ;
+rssn_
+char *rssn_json_polynomial_regression(const char *aDataJson,
+                                      size_t aDegree)
+;
 
 /*
  Converts polynomial to coefficient vector (JSON)
  */
-rssn_ char *rssn_json_polynomial_to_coeffs_vec(const char *aExprJson, const char *aVar) ;
+rssn_
+char *rssn_json_polynomial_to_coeffs_vec(const char *aExprJson,
+                                         const char *aVar)
+;
 
 /*
  Adds two prime field elements (JSON)
  */
-rssn_ char *rssn_json_prime_field_element_add(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_prime_field_element_add(const char *aAJson,
+                                        const char *aBJson)
+;
 
 /*
  Divides two prime field elements (JSON)
  */
-rssn_ char *rssn_json_prime_field_element_div(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_prime_field_element_div(const char *aAJson,
+                                        const char *aBJson)
+;
 
 /*
  Computes the inverse of a prime field element (JSON)
  */
-rssn_ char *rssn_json_prime_field_element_inverse(const char *aElemJson) ;
+rssn_
+char *rssn_json_prime_field_element_inverse(const char *aElemJson)
+;
 
 /*
  Multiplies two prime field elements (JSON)
  */
-rssn_ char *rssn_json_prime_field_element_mul(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_prime_field_element_mul(const char *aAJson,
+                                        const char *aBJson)
+;
 
 /*
  Creates a new prime field element (JSON)
  */
-rssn_ char *rssn_json_prime_field_element_new(const char *aValueJson, const char *aModulusJson) ;
+rssn_
+char *rssn_json_prime_field_element_new(const char *aValueJson,
+                                        const char *aModulusJson)
+;
 
 /*
  Subtracts two prime field elements (JSON)
  */
-rssn_ char *rssn_json_prime_field_element_sub(const char *aAJson, const char *aBJson) ;
+rssn_
+char *rssn_json_prime_field_element_sub(const char *aAJson,
+                                        const char *aBJson)
+;
 
 rssn_
 char *rssn_json_product(const char *aExprJson,
@@ -7539,27 +9260,43 @@ char *rssn_json_qed_lagrangian(const char *aPsiBarJson,
 /*
  Computes a propagator using JSON.
  */
-rssn_ char *rssn_json_qft_propagator(const char *aPJson, const char *aMJson, bool aIsFermion) ;
+rssn_
+char *rssn_json_qft_propagator(const char *aPJson,
+                               const char *aMJson,
+                               bool aIsFermion)
+;
 
 /*
  Generates a 3x3 2D reflection matrix via JSON interface.
  */
-rssn_ char *rssn_json_reflection_2d(const char *aAngleJson) ;
+rssn_
+char *rssn_json_reflection_2d(const char *aAngleJson)
+;
 
 /*
  Generates a 4x4 3D reflection matrix via JSON interface.
  */
-rssn_ char *rssn_json_reflection_3d(const char *aNxJson, const char *aNyJson, const char *aNzJson) ;
+rssn_
+char *rssn_json_reflection_3d(const char *aNxJson,
+                              const char *aNyJson,
+                              const char *aNzJson)
+;
 
 /*
  Computes P(a, x) via JSON interface.
  */
-rssn_ char *rssn_json_regularized_gamma_p(const char *aAJson, const char *aXJson) ;
+rssn_
+char *rssn_json_regularized_gamma_p(const char *aAJson,
+                                    const char *aXJson)
+;
 
 /*
  Computes Q(a, x) via JSON interface.
  */
-rssn_ char *rssn_json_regularized_gamma_q(const char *aAJson, const char *aXJson) ;
+rssn_
+char *rssn_json_regularized_gamma_q(const char *aAJson,
+                                    const char *aXJson)
+;
 
 /*
  Computes the regularized incomplete beta Iₓ(a, b) via JSON interface.
@@ -7570,39 +9307,58 @@ char *rssn_json_regularized_incomplete_beta(const char *aAJson,
                                             const char *aXJson)
 ;
 
-rssn_ char *rssn_json_representation_create(const char *aJsonStr) ;
+rssn_
+char *rssn_json_representation_create(const char *aJsonStr)
+;
 
-rssn_ bool rssn_json_representation_is_valid(const char *aRepJson, const char *aGroupJson) ;
+rssn_
+bool rssn_json_representation_is_valid(const char *aRepJson,
+                                       const char *aGroupJson)
+;
 
 /*
  Integrates an expression using the Risch-Norman algorithm (JSON)
  */
-rssn_ char *rssn_json_risch_norman_integrate(const char *aExprJson, const char *aXJson) ;
+rssn_
+char *rssn_json_risch_norman_integrate(const char *aExprJson,
+                                       const char *aXJson)
+;
 
 /*
  Computes the rising factorial (x)ₙ via JSON interface.
  */
-rssn_ char *rssn_json_rising_factorial(const char *aXJson, const char *aNJson) ;
+rssn_
+char *rssn_json_rising_factorial(const char *aXJson,
+                                 const char *aNJson)
+;
 
 /*
  Generates a 3x3 2D rotation matrix via JSON interface.
  */
-rssn_ char *rssn_json_rotation_2d(const char *aAngleJson) ;
+rssn_
+char *rssn_json_rotation_2d(const char *aAngleJson)
+;
 
 /*
  Generates a 4x4 3D rotation matrix around X-axis via JSON interface.
  */
-rssn_ char *rssn_json_rotation_3d_x(const char *aAngleJson) ;
+rssn_
+char *rssn_json_rotation_3d_x(const char *aAngleJson)
+;
 
 /*
  Generates a 4x4 3D rotation matrix around Y-axis via JSON interface.
  */
-rssn_ char *rssn_json_rotation_3d_y(const char *aAngleJson) ;
+rssn_
+char *rssn_json_rotation_3d_y(const char *aAngleJson)
+;
 
 /*
  Generates a 4x4 3D rotation matrix around Z-axis via JSON interface.
  */
-rssn_ char *rssn_json_rotation_3d_z(const char *aAngleJson) ;
+rssn_
+char *rssn_json_rotation_3d_z(const char *aAngleJson)
+;
 
 /*
  Generates a 4x4 3D rotation around arbitrary axis via JSON interface.
@@ -7618,63 +9374,98 @@ char *rssn_json_rotation_axis_angle(const char *aAxisXJson,
  Checks if a Reed-Solomon codeword is valid via JSON interface.
  Returns: boolean
  */
-rssn_ char *rssn_json_rs_check(const char *aCodewordJson, const char *aNSymJson) ;
+rssn_
+char *rssn_json_rs_check(const char *aCodewordJson,
+                         const char *aNSymJson)
+;
 
 /*
  Decodes a Reed-Solomon codeword via JSON interface.
  */
-rssn_ char *rssn_json_rs_decode(const char *aCodewordJson, const char *aNSymJson) ;
+rssn_
+char *rssn_json_rs_decode(const char *aCodewordJson,
+                          const char *aNSymJson)
+;
 
 /*
  Encodes data using Reed-Solomon code via JSON interface.
  Input: {"data": [bytes], "n_sym": number}
  */
-rssn_ char *rssn_json_rs_encode(const char *aDataJson, const char *aNSymJson) ;
+rssn_
+char *rssn_json_rs_encode(const char *aDataJson,
+                          const char *aNSymJson)
+;
 
 /*
  Estimates error count in a Reed-Solomon codeword via JSON interface.
  Returns: error count as integer
  */
-rssn_ char *rssn_json_rs_error_count(const char *aCodewordJson, const char *aNSymJson) ;
+rssn_
+char *rssn_json_rs_error_count(const char *aCodewordJson,
+                               const char *aNSymJson)
+;
 
 /*
  Lagrangian density for a scalar field using JSON.
  */
-rssn_ char *rssn_json_scalar_field_lagrangian(const char *aPhiJson, const char *aMJson) ;
+rssn_
+char *rssn_json_scalar_field_lagrangian(const char *aPhiJson,
+                                        const char *aMJson)
+;
 
 /*
  Generates a 3x3 2D scaling matrix via JSON interface.
  */
-rssn_ char *rssn_json_scaling_2d(const char *aSxJson, const char *aSyJson) ;
+rssn_
+char *rssn_json_scaling_2d(const char *aSxJson,
+                           const char *aSyJson)
+;
 
 /*
  Generates a 4x4 3D scaling matrix via JSON interface.
  */
-rssn_ char *rssn_json_scaling_3d(const char *aSxJson, const char *aSyJson, const char *aSzJson) ;
+rssn_
+char *rssn_json_scaling_3d(const char *aSxJson,
+                           const char *aSyJson,
+                           const char *aSzJson)
+;
 
 /*
  Calculates Schwarzschild radius using JSON.
  */
-rssn_ char *rssn_json_schwarzschild_radius(const char *aMassJson) ;
+rssn_
+char *rssn_json_schwarzschild_radius(const char *aMassJson)
+;
 
-rssn_ char *rssn_json_shannon_entropy(const char *aProbsJson) ;
+rssn_
+char *rssn_json_shannon_entropy(const char *aProbsJson)
+;
 
 /*
  Generates a 3x3 2D shear matrix via JSON interface.
  */
-rssn_ char *rssn_json_shear_2d(const char *aShxJson, const char *aShyJson) ;
+rssn_
+char *rssn_json_shear_2d(const char *aShxJson,
+                         const char *aShyJson)
+;
 
-rssn_ char *rssn_json_simple_linear_regression(const char *aDataJson) ;
+rssn_
+char *rssn_json_simple_linear_regression(const char *aDataJson)
+;
 
 /*
  Creates a new Simplex (JSON)
  */
-rssn_ char *rssn_json_simplex_create(const char *aVerticesJson) ;
+rssn_
+char *rssn_json_simplex_create(const char *aVerticesJson)
+;
 
 /*
  Gets the dimension of a Simplex (JSON)
  */
-rssn_ char *rssn_json_simplex_dimension(const char *aSimplexJson) ;
+rssn_
+char *rssn_json_simplex_dimension(const char *aSimplexJson)
+;
 
 /*
  Adds a simplex to a SimplicialComplex (JSON)
@@ -7695,7 +9486,9 @@ char *rssn_json_simplicial_complex_apply_symbolic_boundary_operator(const char *
 /*
  Creates a new SimplicialComplex (JSON)
  */
-rssn_ char *rssn_json_simplicial_complex_create() ;
+rssn_
+char *rssn_json_simplicial_complex_create()
+;
 
 /*
  Gets the symbolic boundary matrix for dimension k (JSON)
@@ -7708,31 +9501,44 @@ char *rssn_json_simplicial_complex_get_symbolic_boundary_matrix(const char *aCom
 /*
  Simplifies an expression using the legacy simplifier (JSON input/output).
  */
-rssn_ char *rssn_json_simplify(const char *aExprJson) ;
+rssn_
+char *rssn_json_simplify(const char *aExprJson)
+;
 
 /*
  Simplifies an expression using the DAG-based simplifier (JSON input/output).
  */
-rssn_ char *rssn_json_simplify_dag(const char *aExprJson) ;
+rssn_
+char *rssn_json_simplify_dag(const char *aExprJson)
+;
 
 /*
  Simplifies a logical expression using JSON-based FFI.
  */
-rssn_ char *rssn_json_simplify_logic(const char *aExprJson) ;
+rssn_
+char *rssn_json_simplify_logic(const char *aExprJson)
+;
 
 /*
  Simplifies radical expressions (JSON)
  */
-rssn_ char *rssn_json_simplify_radicals(const char *aExprJson) ;
+rssn_
+char *rssn_json_simplify_radicals(const char *aExprJson)
+;
 
 /*
  Computes sinc(x) via JSON interface.
  */
-rssn_ char *rssn_json_sinc(const char *aXJson) ;
+rssn_
+char *rssn_json_sinc(const char *aXJson)
+;
 
 rssn_ char *rssn_json_so3_generators() ;
 
-rssn_ char *rssn_json_solve(const char *aExprJson, const char *aVarJson) ;
+rssn_
+char *rssn_json_solve(const char *aExprJson,
+                      const char *aVarJson)
+;
 
 /*
  Solves a Bernoulli ODE using JSON.
@@ -7762,7 +9568,10 @@ char *rssn_json_solve_cauchy_euler_ode(const char *aEquationJson,
                                        const char *aVar)
 ;
 
-rssn_ char *rssn_json_solve_diophantine(const char *aEquationJson, const char *aVarsJson) ;
+rssn_
+char *rssn_json_solve_diophantine(const char *aEquationJson,
+                                  const char *aVarsJson)
+;
 
 /*
  Generates and attempts to solve the Euler-Lagrange equation using JSON.
@@ -7809,17 +9618,28 @@ char *rssn_json_solve_laplace_equation_2d(const char *aEquationJson,
                                           const char *aVarsJson)
 ;
 
-rssn_ char *rssn_json_solve_linear_system(const char *aSystemJson, const char *aVarsJson) ;
+rssn_
+char *rssn_json_solve_linear_system(const char *aSystemJson,
+                                    const char *aVarsJson)
+;
 
 /*
  Solves an ODE using JSON.
  */
-rssn_ char *rssn_json_solve_ode(const char *aOdeJson, const char *aFunc, const char *aVar) ;
+rssn_
+char *rssn_json_solve_ode(const char *aOdeJson,
+                          const char *aFunc,
+                          const char *aVar)
+;
 
 /*
  Solves a PDE using JSON with automatic method selection.
  */
-rssn_ char *rssn_json_solve_pde(const char *aPdeJson, const char *aFunc, const char *aVarsJson) ;
+rssn_
+char *rssn_json_solve_pde(const char *aPdeJson,
+                          const char *aFunc,
+                          const char *aVarsJson)
+;
 
 /*
  Solves a PDE using the method of characteristics (JSON).
@@ -7858,7 +9678,10 @@ char *rssn_json_solve_separable_ode(const char *aEquationJson,
                                     const char *aVar)
 ;
 
-rssn_ char *rssn_json_solve_system(const char *aEquationsJson, const char *aVarsJson) ;
+rssn_
+char *rssn_json_solve_system(const char *aEquationsJson,
+                             const char *aVarsJson)
+;
 
 /*
  Solves the 1D wave equation using D'Alembert's formula (JSON).
@@ -7872,24 +9695,37 @@ char *rssn_json_solve_wave_equation_1d(const char *aEquationJson,
 /*
  Computes square-free factorization (JSON)
  */
-rssn_ char *rssn_json_square_free_factorization_gf(const char *aPolyJson) ;
+rssn_
+char *rssn_json_square_free_factorization_gf(const char *aPolyJson)
+;
 
 /*
  Computes the symbolic standard deviation of a set of expressions using JSON.
  */
-rssn_ char *rssn_json_std_dev(const char *aDataJson) ;
+rssn_
+char *rssn_json_std_dev(const char *aDataJson)
+;
 
-rssn_ char *rssn_json_stirling_number_second_kind(size_t aN, size_t aK) ;
+rssn_
+char *rssn_json_stirling_number_second_kind(size_t aN,
+                                            size_t aK)
+;
 
 /*
  Represents Stokes' theorem (JSON)
  */
-rssn_ char *rssn_json_stokes_theorem(const char *aVectorFieldJson, const char *aSurfaceJson) ;
+rssn_
+char *rssn_json_stokes_theorem(const char *aVectorFieldJson,
+                               const char *aSurfaceJson)
+;
 
 /*
  Generates the Sturm sequence for a given polynomial (JSON)
  */
-rssn_ char *rssn_json_sturm_sequence(const char *aExprJson, const char *aVarPtr) ;
+rssn_
+char *rssn_json_sturm_sequence(const char *aExprJson,
+                               const char *aVarPtr)
+;
 
 rssn_ char *rssn_json_su2_generators() ;
 
@@ -7921,9 +9757,13 @@ char *rssn_json_symbolic_chain_add_term(const char *aChainJson,
 /*
  Creates a new SymbolicChain (JSON)
  */
-rssn_ char *rssn_json_symbolic_chain_create(size_t aDimension) ;
+rssn_
+char *rssn_json_symbolic_chain_create(size_t aDimension)
+;
 
-rssn_ char *rssn_json_symmetric_group_create(size_t aN) ;
+rssn_
+char *rssn_json_symmetric_group_create(size_t aN)
+;
 
 rssn_
 char *rssn_json_taylor_series(const char *aExprJson,
@@ -7932,23 +9772,40 @@ char *rssn_json_taylor_series(const char *aExprJson,
                               const char *aOrderJson)
 ;
 
-rssn_ char *rssn_json_tensor_add(const char *aT1Json, const char *aT2Json) ;
+rssn_
+char *rssn_json_tensor_add(const char *aT1Json,
+                           const char *aT2Json)
+;
 
-rssn_ char *rssn_json_tensor_contract(const char *aTJson, size_t aAxis1, size_t aAxis2) ;
+rssn_
+char *rssn_json_tensor_contract(const char *aTJson,
+                                size_t aAxis1,
+                                size_t aAxis2)
+;
 
-rssn_ char *rssn_json_tensor_outer_product(const char *aT1Json, const char *aT2Json) ;
+rssn_
+char *rssn_json_tensor_outer_product(const char *aT1Json,
+                                     const char *aT2Json)
+;
 
-rssn_ char *rssn_json_tensor_scalar_mul(const char *aTJson, const char *aScalarJson) ;
+rssn_
+char *rssn_json_tensor_scalar_mul(const char *aTJson,
+                                  const char *aScalarJson)
+;
 
 /*
  Converts a logical expression to Conjunctive Normal Form (CNF) using JSON-based FFI.
  */
-rssn_ char *rssn_json_to_cnf(const char *aExprJson) ;
+rssn_
+char *rssn_json_to_cnf(const char *aExprJson)
+;
 
 /*
  Converts a logical expression to Disjunctive Normal Form (DNF) using JSON-based FFI.
  */
-rssn_ char *rssn_json_to_dnf(const char *aExprJson) ;
+rssn_
+char *rssn_json_to_dnf(const char *aExprJson)
+;
 
 rssn_
 char *rssn_json_transform_contravariant_vector(const char *aCompsJson,
@@ -7962,9 +9819,15 @@ char *rssn_json_transform_covariant_vector(const char *aCompsJson,
                                            rssn_CoordinateSystem aTo)
 ;
 
-rssn_ char *rssn_json_transform_curl(const char *aCompsJson, rssn_CoordinateSystem aFrom) ;
+rssn_
+char *rssn_json_transform_curl(const char *aCompsJson,
+                               rssn_CoordinateSystem aFrom)
+;
 
-rssn_ char *rssn_json_transform_divergence(const char *aCompsJson, rssn_CoordinateSystem aFrom) ;
+rssn_
+char *rssn_json_transform_divergence(const char *aCompsJson,
+                                     rssn_CoordinateSystem aFrom)
+;
 
 rssn_
 char *rssn_json_transform_expression(const char *aExprJson,
@@ -7988,7 +9851,10 @@ char *rssn_json_transform_point(const char *aPointJson,
 /*
  Generates a 3x3 2D translation matrix via JSON interface.
  */
-rssn_ char *rssn_json_translation_2d(const char *aTxJson, const char *aTyJson) ;
+rssn_
+char *rssn_json_translation_2d(const char *aTxJson,
+                               const char *aTyJson)
+;
 
 /*
  Generates a 4x4 3D translation matrix via JSON interface.
@@ -8008,16 +9874,26 @@ char *rssn_json_two_sample_t_test(const char *aData1Json,
 /*
  Computes the uncertainty using JSON.
  */
-rssn_ char *rssn_json_uncertainty(const char *aOpJson, const char *aPsiJson) ;
+rssn_
+char *rssn_json_uncertainty(const char *aOpJson,
+                            const char *aPsiJson)
+;
 
-rssn_ char *rssn_json_unify_expression(const char *aExprJson) ;
+rssn_
+char *rssn_json_unify_expression(const char *aExprJson)
+;
 
 /*
  Computes the symbolic variance of a set of expressions using JSON.
  */
-rssn_ char *rssn_json_variance(const char *aDataJson) ;
+rssn_
+char *rssn_json_variance(const char *aDataJson)
+;
 
-rssn_ char *rssn_json_vector_cross(const char *aV1Json, const char *aV2Json) ;
+rssn_
+char *rssn_json_vector_cross(const char *aV1Json,
+                             const char *aV2Json)
+;
 
 rssn_
 char *rssn_json_vector_curl(const char *aVJson,
@@ -8033,7 +9909,10 @@ char *rssn_json_vector_divergence(const char *aVJson,
                                   const char *aZVar)
 ;
 
-rssn_ char *rssn_json_vector_dot(const char *aV1Json, const char *aV2Json) ;
+rssn_
+char *rssn_json_vector_dot(const char *aV1Json,
+                           const char *aV2Json)
+;
 
 rssn_
 char *rssn_json_vector_gradient(const char *aScalarFieldJson,
@@ -8042,9 +9921,13 @@ char *rssn_json_vector_gradient(const char *aScalarFieldJson,
                                 const char *aZVar)
 ;
 
-rssn_ char *rssn_json_vector_magnitude(const char *aVJson) ;
+rssn_
+char *rssn_json_vector_magnitude(const char *aVJson)
+;
 
-rssn_ char *rssn_json_vector_normalize(const char *aVJson) ;
+rssn_
+char *rssn_json_vector_normalize(const char *aVJson)
+;
 
 /*
  Verifies an equation solution using JSON.
@@ -8067,16 +9950,29 @@ bool rssn_json_verify_indefinite_integral(const char *aIntegrandJson,
 /*
  Verifies a matrix inverse using JSON.
  */
-rssn_ bool rssn_json_verify_matrix_inverse(const char *aOriginalJson, const char *aInverseJson) ;
+rssn_
+bool rssn_json_verify_matrix_inverse(const char *aOriginalJson,
+                                     const char *aInverseJson)
+;
 
 /*
  Computes the wedge product of two differential forms (JSON)
  */
-rssn_ char *rssn_json_wedge_product(const char *aForm1Json, const char *aForm2Json) ;
+rssn_
+char *rssn_json_wedge_product(const char *aForm1Json,
+                              const char *aForm2Json)
+;
 
-rssn_ char *rssn_json_z_differentiation(const char *aFZJson, const char *aOutVarJson) ;
+rssn_
+char *rssn_json_z_differentiation(const char *aFZJson,
+                                  const char *aOutVarJson)
+;
 
-rssn_ char *rssn_json_z_scaling(const char *aFZJson, const char *aAJson, const char *aOutVarJson) ;
+rssn_
+char *rssn_json_z_scaling(const char *aFZJson,
+                          const char *aAJson,
+                          const char *aOutVarJson)
+;
 
 rssn_
 char *rssn_json_z_test(const char *aDataJson,
@@ -8099,36 +9995,53 @@ char *rssn_json_z_transform(const char *aExprJson,
 /*
  Computes the symbolic Riemann zeta function ζ(s) via JSON interface.
  */
-rssn_ char *rssn_json_zeta(const char *aArgJson) ;
+rssn_
+char *rssn_json_zeta(const char *aArgJson)
+;
 
 /*
  Computes ζ(s) via JSON interface.
  */
-rssn_ char *rssn_json_zeta_numerical(const char *aSJson) ;
+rssn_
+char *rssn_json_zeta_numerical(const char *aSJson)
+;
 
 /*
  Frees a Ket.
  */
-rssn_ void rssn_ket_free(rssn_Ket *aKet) ;
+rssn_
+void rssn_ket_free(rssn_Ket *aKet)
+;
 
 /*
  Creates a new Ket from a state expression.
  */
-rssn_ rssn_Ket *rssn_ket_new(const rssn_Expr *aState) ;
+rssn_
+rssn_Ket *rssn_ket_new(const rssn_Expr *aState)
+;
 
-rssn_ void rssn_keypair_free(rssn_EcdhKeyPair *aKeypair) ;
+rssn_
+void rssn_keypair_free(rssn_EcdhKeyPair *aKeypair)
+;
 
-rssn_ char *rssn_keypair_get_private_key(const rssn_EcdhKeyPair *aKp) ;
+rssn_
+char *rssn_keypair_get_private_key(const rssn_EcdhKeyPair *aKp)
+;
 
 /*
  Returns a NEW handle to the public key point (must be freed).
  */
-rssn_ rssn_CurvePoint *rssn_keypair_get_public_key(const rssn_EcdhKeyPair *aKp) ;
+rssn_
+rssn_CurvePoint *rssn_keypair_get_public_key(const rssn_EcdhKeyPair *aKp)
+;
 
 /*
  Calculates kinetic energy: 1/2 * m * v^2.
  */
-rssn_ rssn_Expr *rssn_kinetic_energy(const rssn_Expr *aMass, const rssn_Expr *aVelocity) ;
+rssn_
+rssn_Expr *rssn_kinetic_energy(const rssn_Expr *aMass,
+                               const rssn_Expr *aVelocity)
+;
 
 rssn_
 rssn_Expr *rssn_kl_divergence(const rssn_Expr *const *aPProbs,
@@ -8137,12 +10050,17 @@ rssn_Expr *rssn_kl_divergence(const rssn_Expr *const *aPProbs,
                               size_t aQLen)
 ;
 
-rssn_ rssn_Group *rssn_klein_four_group_create() ;
+rssn_
+rssn_Group *rssn_klein_four_group_create()
+;
 
 /*
  Klein-Gordon equation.
  */
-rssn_ rssn_Expr *rssn_klein_gordon_equation(const rssn_Expr *aPsi, const rssn_Expr *aM) ;
+rssn_
+rssn_Expr *rssn_klein_gordon_equation(const rssn_Expr *aPsi,
+                                      const rssn_Expr *aM)
+;
 
 /*
  Applies the Knuth-Bendix completion algorithm to a set of equations.
@@ -8160,7 +10078,9 @@ rssn_Vec<rssn_RewriteRule> *rssn_knuth_bendix(const rssn_Expr *const *aEquations
 /*
  Applies the Knuth-Bendix completion algorithm (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_knuth_bendix_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_knuth_bendix_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Applies the Knuth-Bendix completion algorithm (JSON).
@@ -8168,12 +10088,17 @@ rssn_ rssn_BincodeBuffer rssn_knuth_bendix_bincode(rssn_BincodeBuffer aInput) ;
  Input: JSON array of equations (Expr::Eq)
  Output: JSON array of RewriteRule objects
  */
-rssn_ char *rssn_knuth_bendix_json(const char *aJsonStr) ;
+rssn_
+char *rssn_knuth_bendix_json(const char *aJsonStr)
+;
 
 /*
  Calculates Lagrangian: T - V.
  */
-rssn_ rssn_Expr *rssn_lagrangian(const rssn_Expr *aT, const rssn_Expr *aV) ;
+rssn_
+rssn_Expr *rssn_lagrangian(const rssn_Expr *aT,
+                           const rssn_Expr *aV)
+;
 
 /*
  Constructs Laguerre's differential equation: xy'' + (1-x)y' + ny = 0.
@@ -8187,7 +10112,10 @@ rssn_Expr *rssn_laguerre_differential_equation(const rssn_Expr *aY,
 /*
  Computes the symbolic Laguerre polynomial L_n(x).
  */
-rssn_ rssn_Expr *rssn_laguerre_l(const rssn_Expr *aDegree, const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_laguerre_l(const rssn_Expr *aDegree,
+                           const rssn_Expr *aArg)
+;
 
 rssn_
 rssn_Expr *rssn_laplace_differentiation(const rssn_Expr *aFS,
@@ -8201,7 +10129,10 @@ rssn_Expr *rssn_laplace_frequency_shift(const rssn_Expr *aFS,
                                         const char *aOutVar)
 ;
 
-rssn_ rssn_Expr *rssn_laplace_integration(const rssn_Expr *aFS, const char *aOutVar) ;
+rssn_
+rssn_Expr *rssn_laplace_integration(const rssn_Expr *aFS,
+                                    const char *aOutVar)
+;
 
 rssn_
 rssn_Expr *rssn_laplace_scaling(const rssn_Expr *aFS,
@@ -8240,26 +10171,48 @@ rssn_Expr *rssn_legendre_differential_equation(const rssn_Expr *aY,
 /*
  Computes the symbolic Legendre polynomial P_n(x).
  */
-rssn_ rssn_Expr *rssn_legendre_p(const rssn_Expr *aDegree, const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_legendre_p(const rssn_Expr *aDegree,
+                           const rssn_Expr *aArg)
+;
 
 /*
  Constructs Rodrigues' formula for Legendre polynomials.
  */
-rssn_ rssn_Expr *rssn_legendre_rodrigues_formula(const rssn_Expr *aN, const rssn_Expr *aX) ;
+rssn_
+rssn_Expr *rssn_legendre_rodrigues_formula(const rssn_Expr *aN,
+                                           const rssn_Expr *aX)
+;
 
-rssn_ void rssn_lie_algebra_free(rssn_LieAlgebra *aPtr) ;
+rssn_
+void rssn_lie_algebra_free(rssn_LieAlgebra *aPtr)
+;
 
-rssn_ rssn_Expr *rssn_lie_algebra_get_basis_element(const rssn_LieAlgebra *aPtr, size_t aIndex) ;
+rssn_
+rssn_Expr *rssn_lie_algebra_get_basis_element(const rssn_LieAlgebra *aPtr,
+                                              size_t aIndex)
+;
 
-rssn_ size_t rssn_lie_algebra_get_dimension(const rssn_LieAlgebra *aPtr) ;
+rssn_
+size_t rssn_lie_algebra_get_dimension(const rssn_LieAlgebra *aPtr)
+;
 
-rssn_ char *rssn_lie_algebra_get_name(const rssn_LieAlgebra *aPtr) ;
+rssn_
+char *rssn_lie_algebra_get_name(const rssn_LieAlgebra *aPtr)
+;
 
-rssn_ rssn_LieAlgebra *rssn_lie_algebra_so3_create() ;
+rssn_
+rssn_LieAlgebra *rssn_lie_algebra_so3_create()
+;
 
-rssn_ rssn_LieAlgebra *rssn_lie_algebra_su2_create() ;
+rssn_
+rssn_LieAlgebra *rssn_lie_algebra_su2_create()
+;
 
-rssn_ rssn_Expr *rssn_lie_bracket(const rssn_Expr *aX, const rssn_Expr *aY) ;
+rssn_
+rssn_Expr *rssn_lie_bracket(const rssn_Expr *aX,
+                            const rssn_Expr *aY)
+;
 
 /*
  Computes the limit of an expression: limit(expr, var -> point).
@@ -8267,7 +10220,11 @@ rssn_ rssn_Expr *rssn_lie_bracket(const rssn_Expr *aX, const rssn_Expr *aY) ;
  # Safety
  The caller must ensure `expr` and `point` are valid Expr pointers and `var` is a valid C string.
  */
-rssn_ rssn_Expr *rssn_limit(const rssn_Expr *aExpr, const char *aVar, const rssn_Expr *aPoint) ;
+rssn_
+rssn_Expr *rssn_limit(const rssn_Expr *aExpr,
+                      const char *aVar,
+                      const rssn_Expr *aPoint)
+;
 
 /*
  Computes the line integral of a scalar field along a curve.
@@ -8288,7 +10245,9 @@ rssn_BincodeBuffer rssn_line_integral_scalar_bincode(const uint8_t *aInputPtr,
 /*
  Computes the line integral of a scalar field (JSON).
  */
-rssn_ char *rssn_line_integral_scalar_json(const char *aInputJson) ;
+rssn_
+char *rssn_line_integral_scalar_json(const char *aInputJson)
+;
 
 /*
  Computes the line integral of a vector field along a curve.
@@ -8311,16 +10270,22 @@ rssn_BincodeBuffer rssn_line_integral_vector_bincode(const uint8_t *aInputPtr,
 /*
  Computes the line integral of a vector field (JSON).
  */
-rssn_ char *rssn_line_integral_vector_json(const char *aInputJson) ;
+rssn_
+char *rssn_line_integral_vector_json(const char *aInputJson)
+;
 
 rssn_
 rssn_Expr *rssn_linear_operator_apply(const rssn_LinearOperator *aOp,
                                       const rssn_Expr *aExpr)
 ;
 
-rssn_ rssn_LinearOperator *rssn_linear_operator_derivative_create(const char *aVar) ;
+rssn_
+rssn_LinearOperator *rssn_linear_operator_derivative_create(const char *aVar)
+;
 
-rssn_ void rssn_linear_operator_free(rssn_LinearOperator *aPtr) ;
+rssn_
+void rssn_linear_operator_free(rssn_LinearOperator *aPtr)
+;
 
 rssn_
 rssn_LinearOperator *rssn_linear_operator_integral_create(const rssn_Expr *aLowerBound,
@@ -8330,42 +10295,59 @@ rssn_LinearOperator *rssn_linear_operator_integral_create(const rssn_Expr *aLowe
 /*
  Creates a natural logarithm expression: ln(expr).
  */
-rssn_ rssn_Expr *rssn_ln(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_ln(const rssn_Expr *aExpr)
+;
 
 /*
  Computes the natural logarithm of the beta function ln(B(a, b)).
  */
-rssn_ double rssn_ln_beta_numerical(double aA, double aB) ;
+rssn_
+double rssn_ln_beta_numerical(double aA,
+                              double aB)
+;
 
 /*
  Creates a natural logarithm expression from bincode: ln(expr).
  */
-rssn_ rssn_BincodeBuffer rssn_ln_bincode(rssn_BincodeBuffer aExprBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_ln_bincode(rssn_BincodeBuffer aExprBuffer)
+;
 
 /*
  Computes the natural logarithm of the factorial ln(n!).
  */
-rssn_ double rssn_ln_factorial(uint64_t aN) ;
+rssn_
+double rssn_ln_factorial(uint64_t aN)
+;
 
 /*
  Computes the symbolic log-gamma function ln(Γ(z)).
  */
-rssn_ rssn_Expr *rssn_ln_gamma(const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_ln_gamma(const rssn_Expr *aArg)
+;
 
 /*
  Computes the natural logarithm of the gamma function ln(Γ(x)).
  */
-rssn_ double rssn_ln_gamma_numerical(double aX) ;
+rssn_
+double rssn_ln_gamma_numerical(double aX)
+;
 
 /*
  Creates a natural logarithm expression from JSON: ln(expr).
  */
-rssn_ char *rssn_ln_json(const char *aJsonExpr) ;
+rssn_
+char *rssn_ln_json(const char *aJsonExpr)
+;
 
 /*
  Calculates the Lorentz factor.
  */
-rssn_ rssn_Expr *rssn_lorentz_factor(const rssn_Expr *aVelocity) ;
+rssn_
+rssn_Expr *rssn_lorentz_factor(const rssn_Expr *aVelocity)
+;
 
 /*
  Calculates the Lorentz force.
@@ -8389,7 +10371,11 @@ rssn_ExprPair rssn_lorentz_transformation_x(const rssn_Expr *aX,
 /*
  Returns Lorenz system equations (Handle)
  */
-rssn_ bool rssn_lorenz_system(rssn_Expr **aDxOut, rssn_Expr **aDyOut, rssn_Expr **aDzOut) ;
+rssn_
+bool rssn_lorenz_system(rssn_Expr **aDxOut,
+                        rssn_Expr **aDyOut,
+                        rssn_Expr **aDzOut)
+;
 
 /*
  Calculates Lyapunov exponent (Handle)
@@ -8414,35 +10400,80 @@ rssn_Vector *rssn_magnetic_field_from_vector_potential(const rssn_Vector *aA,
 /*
  Calculates mass-energy equivalence.
  */
-rssn_ rssn_Expr *rssn_mass_energy_equivalence(const rssn_Expr *aMass) ;
+rssn_
+rssn_Expr *rssn_mass_energy_equivalence(const rssn_Expr *aMass)
+;
 
-rssn_ int32_t rssn_matrix_add(size_t aH1, size_t aH2, size_t *aResultH) ;
+rssn_
+int32_t rssn_matrix_add(size_t aH1,
+                        size_t aH2,
+                        size_t *aResultH)
+;
 
-rssn_ rssn_Expr *rssn_matrix_add_handle(const rssn_Expr *aM1, const rssn_Expr *aM2) ;
+rssn_
+rssn_Expr *rssn_matrix_add_handle(const rssn_Expr *aM1,
+                                  const rssn_Expr *aM2)
+;
 
-rssn_ int32_t rssn_matrix_determinant(size_t aH, size_t *aResultH) ;
+rssn_
+int32_t rssn_matrix_determinant(size_t aH,
+                                size_t *aResultH)
+;
 
-rssn_ rssn_Expr *rssn_matrix_determinant_handle(const rssn_Expr *aMatrix) ;
+rssn_
+rssn_Expr *rssn_matrix_determinant_handle(const rssn_Expr *aMatrix)
+;
 
-rssn_ int32_t rssn_matrix_identity(size_t aSize, size_t *aResultH) ;
+rssn_
+int32_t rssn_matrix_identity(size_t aSize,
+                             size_t *aResultH)
+;
 
-rssn_ int32_t rssn_matrix_inverse(size_t aH, size_t *aResultH) ;
+rssn_
+int32_t rssn_matrix_inverse(size_t aH,
+                            size_t *aResultH)
+;
 
-rssn_ rssn_Expr *rssn_matrix_inverse_handle(const rssn_Expr *aMatrix) ;
+rssn_
+rssn_Expr *rssn_matrix_inverse_handle(const rssn_Expr *aMatrix)
+;
 
-rssn_ int32_t rssn_matrix_mul(size_t aH1, size_t aH2, size_t *aResultH) ;
+rssn_
+int32_t rssn_matrix_mul(size_t aH1,
+                        size_t aH2,
+                        size_t *aResultH)
+;
 
-rssn_ rssn_Expr *rssn_matrix_mul_handle(const rssn_Expr *aM1, const rssn_Expr *aM2) ;
+rssn_
+rssn_Expr *rssn_matrix_mul_handle(const rssn_Expr *aM1,
+                                  const rssn_Expr *aM2)
+;
 
-rssn_ int32_t rssn_matrix_scalar_mul(size_t aScalarH, size_t aMatrixH, size_t *aResultH) ;
+rssn_
+int32_t rssn_matrix_scalar_mul(size_t aScalarH,
+                               size_t aMatrixH,
+                               size_t *aResultH)
+;
 
-rssn_ rssn_Expr *rssn_matrix_solve_linear_system_handle(const rssn_Expr *aA, const rssn_Expr *aB) ;
+rssn_
+rssn_Expr *rssn_matrix_solve_linear_system_handle(const rssn_Expr *aA,
+                                                  const rssn_Expr *aB)
+;
 
-rssn_ int32_t rssn_matrix_sub(size_t aH1, size_t aH2, size_t *aResultH) ;
+rssn_
+int32_t rssn_matrix_sub(size_t aH1,
+                        size_t aH2,
+                        size_t *aResultH)
+;
 
-rssn_ int32_t rssn_matrix_transpose(size_t aH, size_t *aResultH) ;
+rssn_
+int32_t rssn_matrix_transpose(size_t aH,
+                              size_t *aResultH)
+;
 
-rssn_ rssn_Expr *rssn_matrix_transpose_handle(const rssn_Expr *aMatrix) ;
+rssn_
+rssn_Expr *rssn_matrix_transpose_handle(const rssn_Expr *aMatrix)
+;
 
 /*
  Computes the symbolic mean of a set of expressions.
@@ -8450,7 +10481,10 @@ rssn_ rssn_Expr *rssn_matrix_transpose_handle(const rssn_Expr *aMatrix) ;
  # Safety
  The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
  */
-rssn_ rssn_Expr *rssn_mean(const rssn_Expr *const *aData, size_t aLen) ;
+rssn_
+rssn_Expr *rssn_mean(const rssn_Expr *const *aData,
+                     size_t aLen)
+;
 
 /*
  Computes geometric product (Handle)
@@ -8479,7 +10513,9 @@ rssn_Multivector *rssn_multivector_inner_product_handle(const rssn_Multivector *
 /*
  Computes magnitude (Handle)
  */
-rssn_ rssn_Expr *rssn_multivector_magnitude_handle(const rssn_Multivector *aMv) ;
+rssn_
+rssn_Expr *rssn_multivector_magnitude_handle(const rssn_Multivector *aMv)
+;
 
 /*
  Computes outer product (Handle)
@@ -8492,7 +10528,9 @@ rssn_Multivector *rssn_multivector_outer_product_handle(const rssn_Multivector *
 /*
  Computes reverse (Handle)
  */
-rssn_ rssn_Multivector *rssn_multivector_reverse_handle(const rssn_Multivector *aMv) ;
+rssn_
+rssn_Multivector *rssn_multivector_reverse_handle(const rssn_Multivector *aMv)
+;
 
 /*
  Creates a new scalar multivector (Handle)
@@ -8504,7 +10542,9 @@ rssn_Multivector *rssn_multivector_scalar_handle(uint32_t aP,
                                                  const rssn_Expr *aValue)
 ;
 
-rssn_ rssn_Expr *rssn_mutual_information(const rssn_Expr *aJointProbs) ;
+rssn_
+rssn_Expr *rssn_mutual_information(const rssn_Expr *aJointProbs)
+;
 
 rssn_
 rssn_Expr *rssn_nonlinear_regression(const rssn_Expr *const *aXData,
@@ -8517,7 +10557,10 @@ rssn_Expr *rssn_nonlinear_regression(const rssn_Expr *const *aXData,
                                      size_t aParamsLen)
 ;
 
-rssn_ rssn_Expr *rssn_norm(const rssn_HilbertSpace *aSpace, const rssn_Expr *aF) ;
+rssn_
+rssn_Expr *rssn_norm(const rssn_HilbertSpace *aSpace,
+                     const rssn_Expr *aF)
+;
 
 /*
  Computes the greatest common divisor (GCD) of two numbers.
@@ -8525,7 +10568,11 @@ rssn_ rssn_Expr *rssn_norm(const rssn_HilbertSpace *aSpace, const rssn_Expr *aF)
  Returns 0 on success, -1 on error.
  On error, call `rssn_get_last_error` to get the error message.
  */
-rssn_ int32_t rssn_nt_gcd(uint64_t aA, uint64_t aB, uint64_t *aResult) ;
+rssn_
+int32_t rssn_nt_gcd(uint64_t aA,
+                    uint64_t aB,
+                    uint64_t *aResult)
+;
 
 /*
  Checks if a number is prime using the Miller-Rabin test.
@@ -8533,7 +10580,10 @@ rssn_ int32_t rssn_nt_gcd(uint64_t aA, uint64_t aB, uint64_t *aResult) ;
  Returns 0 on success, -1 on error.
  On error, call `rssn_get_last_error` to get the error message.
  */
-rssn_ int32_t rssn_nt_is_prime(uint64_t aN, bool *aResult) ;
+rssn_
+int32_t rssn_nt_is_prime(uint64_t aN,
+                         bool *aResult)
+;
 
 /*
  Computes the modular multiplicative inverse.
@@ -8541,7 +10591,11 @@ rssn_ int32_t rssn_nt_is_prime(uint64_t aN, bool *aResult) ;
  Returns 0 on success, -1 on error (e.g., if no inverse exists).
  On error, call `rssn_get_last_error` to get the error message.
  */
-rssn_ int32_t rssn_nt_mod_inverse(int64_t aA, int64_t aB, int64_t *aResult) ;
+rssn_
+int32_t rssn_nt_mod_inverse(int64_t aA,
+                            int64_t aB,
+                            int64_t *aResult)
+;
 
 /*
  Computes modular exponentiation (base^exp % modulus).
@@ -8549,7 +10603,12 @@ rssn_ int32_t rssn_nt_mod_inverse(int64_t aA, int64_t aB, int64_t *aResult) ;
  Returns 0 on success, -1 on error.
  On error, call `rssn_get_last_error` to get the error message.
  */
-rssn_ int32_t rssn_nt_mod_pow(uint64_t aBase, uint64_t aExp, uint64_t aModulus, uint64_t *aResult) ;
+rssn_
+int32_t rssn_nt_mod_pow(uint64_t aBase,
+                        uint64_t aExp,
+                        uint64_t aModulus,
+                        uint64_t *aResult)
+;
 
 /*
  Evaluates a B-spline curve at parameter t.
@@ -8565,9 +10624,13 @@ int32_t rssn_num_b_spline(const double *aControlPoints,
                           double *aOutPoint)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_b_spline_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_b_spline_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_b_spline_json(const char *aInputPtr) ;
+rssn_
+char *rssn_num_b_spline_json(const char *aInputPtr)
+;
 
 /*
  Evaluates a Bézier curve at parameter t.
@@ -8581,9 +10644,13 @@ int32_t rssn_num_bezier_curve(const double *aControlPoints,
                               double *aOutPoint)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_bezier_curve_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_bezier_curve_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_bezier_curve_json(const char *aInputPtr) ;
+rssn_
+char *rssn_num_bezier_curve_json(const char *aInputPtr)
+;
 
 /*
  Computes the numerical gradient of a function at a point.
@@ -8632,23 +10699,37 @@ int32_t rssn_num_calculus_partial_derivative(const rssn_Expr *aF,
 /*
  Returns kinematic viscosity of air at 20°C.
  */
-rssn_ double rssn_num_cfd_air_kinematic_viscosity() ;
+rssn_
+double rssn_num_cfd_air_kinematic_viscosity()
+;
 
 /*
  Returns Prandtl number of air.
  */
-rssn_ double rssn_num_cfd_air_prandtl_number() ;
+rssn_
+double rssn_num_cfd_air_prandtl_number()
+;
 
-rssn_ char *rssn_num_cfd_air_properties_json(const char *aInput) ;
+rssn_
+char *rssn_num_cfd_air_properties_json(const char *aInput)
+;
 
 /*
  Calculates CFL number.
  */
-rssn_ double rssn_num_cfd_cfl_number(double aVelocity, double aDt, double aDx) ;
+rssn_
+double rssn_num_cfd_cfl_number(double aVelocity,
+                               double aDt,
+                               double aDx)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_cfd_cfl_number_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_cfd_cfl_number_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_cfd_cfl_number_json(const char *aInput) ;
+rssn_
+char *rssn_num_cfd_cfl_number_json(const char *aInput)
+;
 
 /*
  Checks CFL stability.
@@ -8663,19 +10744,32 @@ bool rssn_num_cfd_check_cfl_stability(double aVelocity,
 /*
  Calculates diffusion number.
  */
-rssn_ double rssn_num_cfd_diffusion_number(double aAlpha, double aDt, double aDx) ;
+rssn_
+double rssn_num_cfd_diffusion_number(double aAlpha,
+                                     double aDt,
+                                     double aDx)
+;
 
-rssn_ char *rssn_num_cfd_fluid_properties_json(const char *aInput) ;
+rssn_
+char *rssn_num_cfd_fluid_properties_json(const char *aInput)
+;
 
 /*
  Calculates Froude number.
  */
-rssn_ double rssn_num_cfd_froude_number(double aVelocity, double aLength, double aGravity) ;
+rssn_
+double rssn_num_cfd_froude_number(double aVelocity,
+                                  double aLength,
+                                  double aGravity)
+;
 
 /*
  Calculates Mach number.
  */
-rssn_ double rssn_num_cfd_mach_number(double aVelocity, double aSpeedOfSound) ;
+rssn_
+double rssn_num_cfd_mach_number(double aVelocity,
+                                double aSpeedOfSound)
+;
 
 /*
  Calculates Reynolds number.
@@ -8686,94 +10780,167 @@ double rssn_num_cfd_reynolds_number(double aVelocity,
                                     double aKinematicViscosity)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_cfd_reynolds_number_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_cfd_reynolds_number_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_cfd_reynolds_number_json(const char *aInput) ;
+rssn_
+char *rssn_num_cfd_reynolds_number_json(const char *aInput)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_cfd_solve_advection_1d_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_cfd_solve_advection_1d_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_cfd_solve_advection_1d_json(const char *aInput) ;
+rssn_
+char *rssn_num_cfd_solve_advection_1d_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_cfd_solve_advection_diffusion_1d_json(const char *aInput) ;
+rssn_
+char *rssn_num_cfd_solve_advection_diffusion_1d_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_cfd_solve_burgers_1d_json(const char *aInput) ;
+rssn_
+char *rssn_num_cfd_solve_burgers_1d_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_cfd_solve_diffusion_1d_json(const char *aInput) ;
+rssn_
+char *rssn_num_cfd_solve_diffusion_1d_json(const char *aInput)
+;
 
 /*
  Returns kinematic viscosity of water at 20°C.
  */
-rssn_ double rssn_num_cfd_water_kinematic_viscosity() ;
+rssn_
+double rssn_num_cfd_water_kinematic_viscosity()
+;
 
 /*
  Returns Prandtl number of water.
  */
-rssn_ double rssn_num_cfd_water_prandtl_number() ;
+rssn_
+double rssn_num_cfd_water_prandtl_number()
+;
 
-rssn_ char *rssn_num_cfd_water_properties_json(const char *aInput) ;
+rssn_
+char *rssn_num_cfd_water_properties_json(const char *aInput)
+;
 
 /*
  Computes the Bell number B(n).
  */
-rssn_ int32_t rssn_num_comb_bell(uint64_t aN, double *aResult) ;
+rssn_
+int32_t rssn_num_comb_bell(uint64_t aN,
+                           double *aResult)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_comb_bell_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_comb_bell_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_comb_bell_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_comb_bell_json(const char *aInputJson)
+;
 
 /*
  Computes the Catalan number C_n.
  */
-rssn_ int32_t rssn_num_comb_catalan(uint64_t aN, double *aResult) ;
+rssn_
+int32_t rssn_num_comb_catalan(uint64_t aN,
+                              double *aResult)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_comb_catalan_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_comb_catalan_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_comb_catalan_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_comb_catalan_json(const char *aInputJson)
+;
 
 /*
  Computes the number of combinations C(n, k).
  */
-rssn_ int32_t rssn_num_comb_combinations(uint64_t aN, uint64_t aK, double *aResult) ;
+rssn_
+int32_t rssn_num_comb_combinations(uint64_t aN,
+                                   uint64_t aK,
+                                   double *aResult)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_comb_combinations_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_comb_combinations_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_comb_combinations_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_comb_combinations_json(const char *aInputJson)
+;
 
 /*
  Computes the factorial of n.
  */
-rssn_ int32_t rssn_num_comb_factorial(uint64_t aN, double *aResult) ;
+rssn_
+int32_t rssn_num_comb_factorial(uint64_t aN,
+                                double *aResult)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_comb_factorial_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_comb_factorial_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_comb_factorial_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_comb_factorial_json(const char *aInputJson)
+;
 
 /*
  Computes the falling factorial.
  */
-rssn_ int32_t rssn_num_comb_falling_factorial(double aX, uint64_t aN, double *aResult) ;
+rssn_
+int32_t rssn_num_comb_falling_factorial(double aX,
+                                        uint64_t aN,
+                                        double *aResult)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_comb_falling_factorial_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_comb_falling_factorial_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_comb_falling_factorial_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_comb_falling_factorial_json(const char *aInputJson)
+;
 
 /*
  Computes the number of permutations P(n, k).
  */
-rssn_ int32_t rssn_num_comb_permutations(uint64_t aN, uint64_t aK, double *aResult) ;
+rssn_
+int32_t rssn_num_comb_permutations(uint64_t aN,
+                                   uint64_t aK,
+                                   double *aResult)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_comb_permutations_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_comb_permutations_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_comb_permutations_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_comb_permutations_json(const char *aInputJson)
+;
 
 /*
  Computes the rising factorial.
  */
-rssn_ int32_t rssn_num_comb_rising_factorial(double aX, uint64_t aN, double *aResult) ;
+rssn_
+int32_t rssn_num_comb_rising_factorial(double aX,
+                                       uint64_t aN,
+                                       double *aResult)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_comb_rising_factorial_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_comb_rising_factorial_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_comb_rising_factorial_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_comb_rising_factorial_json(const char *aInputJson)
+;
 
 /*
  Solves a linear recurrence relation numerically.
@@ -8787,18 +10954,30 @@ int32_t rssn_num_comb_solve_recurrence(const double *aCoeffs,
                                        double *aResult)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_comb_solve_recurrence_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_comb_solve_recurrence_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_comb_solve_recurrence_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_comb_solve_recurrence_json(const char *aInputJson)
+;
 
 /*
  Computes the Stirling numbers of the second kind S(n, k).
  */
-rssn_ int32_t rssn_num_comb_stirling_second(uint64_t aN, uint64_t aK, double *aResult) ;
+rssn_
+int32_t rssn_num_comb_stirling_second(uint64_t aN,
+                                      uint64_t aK,
+                                      double *aResult)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_comb_stirling_second_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_comb_stirling_second_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_comb_stirling_second_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_comb_stirling_second_json(const char *aInputJson)
+;
 
 /*
  Computes a contour integral of a symbolic expression.
@@ -8813,9 +10992,13 @@ int32_t rssn_num_complex_contour_integral(const rssn_Expr *aExprPtr,
                                           double *aResIm)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_complex_contour_integral_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_complex_contour_integral_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_complex_contour_integral_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_complex_contour_integral_json(const char *aInputJson)
+;
 
 /*
  Evaluates a symbolic expression to a complex number.
@@ -8830,9 +11013,13 @@ int32_t rssn_num_complex_eval(const rssn_Expr *aExprPtr,
                               double *aResIm)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_complex_eval_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_complex_eval_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_complex_eval_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_complex_eval_json(const char *aInputJson)
+;
 
 /*
  Computes the residue of a symbolic expression.
@@ -8851,7 +11038,10 @@ int32_t rssn_num_complex_residue(const rssn_Expr *aExprPtr,
 /*
  Frees a pointer allocated by the coordinate transformation functions.
  */
-rssn_ void rssn_num_coord_free(double *aPtr, size_t aLen) ;
+rssn_
+void rssn_num_coord_free(double *aPtr,
+                         size_t aLen)
+;
 
 /*
  Computes the numerical Jacobian matrix.
@@ -8869,12 +11059,17 @@ double *rssn_num_coord_jacobian(rssn_CoordinateSystem aFrom,
 /*
  Transforms a point via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_num_coord_transform_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_coord_transform_bincode(const uint8_t *aData,
+                                                    size_t aLen)
+;
 
 /*
  Transforms a point using JSON.
  */
-rssn_ char *rssn_num_coord_transform_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_coord_transform_json(const char *aJsonPtr)
+;
 
 /*
  Transforms a point from one coordinate system to another.
@@ -8911,12 +11106,17 @@ double *rssn_num_coord_transform_point_pure(const double *aPointPtr,
 /*
  Transforms a point (pure numerical) via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_num_coord_transform_pure_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_coord_transform_pure_bincode(const uint8_t *aData,
+                                                         size_t aLen)
+;
 
 /*
  Transforms a point (pure numerical) using JSON.
  */
-rssn_ char *rssn_num_coord_transform_pure_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_coord_transform_pure_json(const char *aJsonPtr)
+;
 
 /*
  Computes the Euler-Lagrange expression.
@@ -8943,19 +11143,28 @@ int32_t rssn_num_cov_evaluate_action(const rssn_Expr *aLagrangian,
                                      double *aResult)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_cov_evaluate_action_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_cov_evaluate_action_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_cov_evaluate_action_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_cov_evaluate_action_json(const char *aInputJson)
+;
 
 /*
  Evaluates a cubic spline at a given x coordinate.
  */
-rssn_ double rssn_num_cubic_spline_evaluate(const rssn_CubicSplineHandle *aHandle, double aX) ;
+rssn_
+double rssn_num_cubic_spline_evaluate(const rssn_CubicSplineHandle *aHandle,
+                                      double aX)
+;
 
 /*
  Frees a cubic spline handle.
  */
-rssn_ void rssn_num_cubic_spline_free(rssn_CubicSplineHandle *aHandle) ;
+rssn_
+void rssn_num_cubic_spline_free(rssn_CubicSplineHandle *aHandle)
+;
 
 /*
  Creates a cubic spline interpolator handle.
@@ -8966,9 +11175,13 @@ rssn_CubicSplineHandle *rssn_num_cubic_spline_interpolation(const double *aXCoor
                                                             size_t aLen)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_cubic_spline_interpolation_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_cubic_spline_interpolation_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_cubic_spline_interpolation_json(const char *aInputPtr) ;
+rssn_
+char *rssn_num_cubic_spline_interpolation_json(const char *aInputPtr)
+;
 
 /*
  Computes the Christoffel symbols at a given point.
@@ -8980,9 +11193,13 @@ rssn_Vec<double> *rssn_num_dg_christoffel_symbols(rssn_CoordinateSystem aSystem,
                                                   size_t aNVars)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_dg_christoffel_symbols_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_dg_christoffel_symbols_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_dg_christoffel_symbols_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_dg_christoffel_symbols_json(const char *aInputJson)
+;
 
 /*
  Computes the metric tensor at a given point.
@@ -8993,9 +11210,13 @@ rssn_Matrix<double> *rssn_num_dg_metric_tensor(rssn_CoordinateSystem aSystem,
                                                size_t aNVars)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_dg_metric_tensor_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_dg_metric_tensor_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_dg_metric_tensor_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_dg_metric_tensor_json(const char *aInputJson)
+;
 
 /*
  Computes the Ricci scalar at a given point.
@@ -9007,9 +11228,13 @@ int32_t rssn_num_dg_ricci_scalar(rssn_CoordinateSystem aSystem,
                                  double *aResult)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_dg_ricci_scalar_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_dg_ricci_scalar_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_dg_ricci_scalar_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_dg_ricci_scalar_json(const char *aInputJson)
+;
 
 /*
  Computes the Ricci tensor at a given point.
@@ -9020,27 +11245,44 @@ rssn_Matrix<double> *rssn_num_dg_ricci_tensor(rssn_CoordinateSystem aSystem,
                                               size_t aNVars)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_dg_ricci_tensor_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_dg_ricci_tensor_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_dg_ricci_tensor_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_dg_ricci_tensor_json(const char *aInputJson)
+;
 
 /*
  Compute error correction capability from minimum distance.
  */
-rssn_ size_t rssn_num_error_correction_capability(size_t aMinDistance) ;
+rssn_
+size_t rssn_num_error_correction_capability(size_t aMinDistance)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_error_correction_capability_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_capability_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_error_correction_capability_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_capability_json(const char *aInput)
+;
 
 /*
  Compute code rate.
  */
-rssn_ double rssn_num_error_correction_code_rate(size_t aK, size_t aN) ;
+rssn_
+double rssn_num_error_correction_code_rate(size_t aK,
+                                           size_t aN)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_error_correction_code_rate_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_code_rate_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_error_correction_code_rate_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_code_rate_json(const char *aInput)
+;
 
 /*
  Compute CRC-16 checksum.
@@ -9048,11 +11290,18 @@ rssn_ char *rssn_num_error_correction_code_rate_json(const char *aInput) ;
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
  */
-rssn_ uint16_t rssn_num_error_correction_crc16(const uint8_t *aDataPtr, size_t aLen) ;
+rssn_
+uint16_t rssn_num_error_correction_crc16(const uint8_t *aDataPtr,
+                                         size_t aLen)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_error_correction_crc16_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_crc16_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_error_correction_crc16_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_crc16_json(const char *aInput)
+;
 
 /*
  Compute CRC-32 checksum.
@@ -9060,11 +11309,18 @@ rssn_ char *rssn_num_error_correction_crc16_json(const char *aInput) ;
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
  */
-rssn_ uint32_t rssn_num_error_correction_crc32(const uint8_t *aDataPtr, size_t aLen) ;
+rssn_
+uint32_t rssn_num_error_correction_crc32(const uint8_t *aDataPtr,
+                                         size_t aLen)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_error_correction_crc32_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_crc32_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_error_correction_crc32_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_crc32_json(const char *aInput)
+;
 
 /*
  Verify CRC-32 checksum.
@@ -9082,7 +11338,9 @@ rssn_
 rssn_BincodeBuffer rssn_num_error_correction_crc32_verify_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_error_correction_crc32_verify_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_crc32_verify_json(const char *aInput)
+;
 
 /*
  Compute CRC-8 checksum.
@@ -9090,11 +11348,18 @@ rssn_ char *rssn_num_error_correction_crc32_verify_json(const char *aInput) ;
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
  */
-rssn_ uint8_t rssn_num_error_correction_crc8(const uint8_t *aDataPtr, size_t aLen) ;
+rssn_
+uint8_t rssn_num_error_correction_crc8(const uint8_t *aDataPtr,
+                                       size_t aLen)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_error_correction_crc8_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_crc8_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_error_correction_crc8_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_crc8_json(const char *aInput)
+;
 
 /*
  De-interleave data.
@@ -9114,7 +11379,9 @@ rssn_
 rssn_BincodeBuffer rssn_num_error_correction_deinterleave_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_error_correction_deinterleave_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_deinterleave_json(const char *aInput)
+;
 
 /*
  Check if a Hamming codeword is valid.
@@ -9122,13 +11389,17 @@ rssn_ char *rssn_num_error_correction_deinterleave_json(const char *aInput) ;
  # Safety
  `codeword_ptr` must be a valid pointer to 7 bytes.
  */
-rssn_ int32_t rssn_num_error_correction_hamming_check(const uint8_t *aCodewordPtr) ;
+rssn_
+int32_t rssn_num_error_correction_hamming_check(const uint8_t *aCodewordPtr)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_num_error_correction_hamming_check_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_error_correction_hamming_check_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_hamming_check_json(const char *aInput)
+;
 
 /*
  Hamming decode a 7-bit codeword.
@@ -9148,7 +11419,9 @@ rssn_
 rssn_BincodeBuffer rssn_num_error_correction_hamming_decode_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_error_correction_hamming_decode_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_hamming_decode_json(const char *aInput)
+;
 
 /*
  Compute Hamming distance between two byte arrays.
@@ -9166,7 +11439,9 @@ rssn_
 rssn_BincodeBuffer rssn_num_error_correction_hamming_distance_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_error_correction_hamming_distance_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_hamming_distance_json(const char *aInput)
+;
 
 /*
  Hamming encode a 4-bit data block.
@@ -9175,13 +11450,18 @@ rssn_ char *rssn_num_error_correction_hamming_distance_json(const char *aInput) 
  `data_ptr` must be a valid pointer to 4 bytes.
  `out_ptr` must be a valid pointer to at least 7 bytes.
  */
-rssn_ int32_t rssn_num_error_correction_hamming_encode(const uint8_t *aDataPtr, uint8_t *aOutPtr) ;
+rssn_
+int32_t rssn_num_error_correction_hamming_encode(const uint8_t *aDataPtr,
+                                                 uint8_t *aOutPtr)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_num_error_correction_hamming_encode_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_error_correction_hamming_encode_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_hamming_encode_json(const char *aInput)
+;
 
 /*
  Compute Hamming weight of a byte array.
@@ -9189,13 +11469,18 @@ rssn_ char *rssn_num_error_correction_hamming_encode_json(const char *aInput) ;
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
  */
-rssn_ int32_t rssn_num_error_correction_hamming_weight(const uint8_t *aDataPtr, size_t aLen) ;
+rssn_
+int32_t rssn_num_error_correction_hamming_weight(const uint8_t *aDataPtr,
+                                                 size_t aLen)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_num_error_correction_hamming_weight_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_error_correction_hamming_weight_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_hamming_weight_json(const char *aInput)
+;
 
 /*
  Interleave data.
@@ -9211,9 +11496,13 @@ int32_t rssn_num_error_correction_interleave(const uint8_t *aDataPtr,
                                              uint8_t *aOutPtr)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_error_correction_interleave_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_interleave_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_error_correction_interleave_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_interleave_json(const char *aInput)
+;
 
 /*
  Check if a Reed-Solomon codeword is valid.
@@ -9227,9 +11516,13 @@ int32_t rssn_num_error_correction_rs_check(const uint8_t *aCodewordPtr,
                                            size_t aNParity)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_error_correction_rs_check_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_rs_check_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_error_correction_rs_check_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_rs_check_json(const char *aInput)
+;
 
 /*
  Reed-Solomon decode a codeword in place.
@@ -9243,9 +11536,13 @@ int32_t rssn_num_error_correction_rs_decode(uint8_t *aCodewordPtr,
                                             size_t aNParity)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_error_correction_rs_decode_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_rs_decode_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_error_correction_rs_decode_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_rs_decode_json(const char *aInput)
+;
 
 /*
  Reed-Solomon encode a message.
@@ -9261,19 +11558,28 @@ int32_t rssn_num_error_correction_rs_encode(const uint8_t *aMessagePtr,
                                             size_t *aOutLen)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_error_correction_rs_encode_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_error_correction_rs_encode_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_error_correction_rs_encode_json(const char *aInput) ;
+rssn_
+char *rssn_num_error_correction_rs_encode_json(const char *aInput)
+;
 
 /*
  Compute error detection capability from minimum distance.
  */
-rssn_ size_t rssn_num_error_detection_capability(size_t aMinDistance) ;
+rssn_
+size_t rssn_num_error_detection_capability(size_t aMinDistance)
+;
 
 /*
  Evaluates an expression from a Bincode buffer.
  */
-rssn_ rssn_BincodeBuffer rssn_num_eval_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_eval_bincode(const uint8_t *aData,
+                                         size_t aLen)
+;
 
 /*
  Evaluates an expression handle given variable values.
@@ -9301,16 +11607,26 @@ int32_t rssn_num_eval_expr(const rssn_Expr *aExprPtr,
 
  Input JSON format: `{"expr": <Expr>, "vars": {"x": 1.0, "y": 2.0}}`
  */
-rssn_ char *rssn_num_eval_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_eval_json(const char *aJsonPtr)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_fa_gram_schmidt_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fa_gram_schmidt_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fa_gram_schmidt_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_fa_gram_schmidt_json(const char *aInputJson)
+;
 
 /*
  Calculates the L-infinity norm.
  */
-rssn_ double rssn_num_fa_infinity_norm(const double *aX, const double *aY, size_t aLen) ;
+rssn_
+double rssn_num_fa_infinity_norm(const double *aX,
+                                 const double *aY,
+                                 size_t aLen)
+;
 
 /*
  Calculates the inner product.
@@ -9325,32 +11641,55 @@ int32_t rssn_num_fa_inner_product(const double *aX1,
                                   double *aResult)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_fa_inner_product_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fa_inner_product_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fa_inner_product_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_fa_inner_product_json(const char *aInputJson)
+;
 
 /*
  Calculates the L1 norm.
  */
-rssn_ double rssn_num_fa_l1_norm(const double *aX, const double *aY, size_t aLen) ;
+rssn_
+double rssn_num_fa_l1_norm(const double *aX,
+                           const double *aY,
+                           size_t aLen)
+;
 
 /*
  Calculates the L2 norm.
  */
-rssn_ double rssn_num_fa_l2_norm(const double *aX, const double *aY, size_t aLen) ;
+rssn_
+double rssn_num_fa_l2_norm(const double *aX,
+                           const double *aY,
+                           size_t aLen)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_fa_l2_norm_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fa_l2_norm_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fa_l2_norm_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_fa_l2_norm_json(const char *aInputJson)
+;
 
-rssn_ char *rssn_num_fea_beam_element_2d_stiffness_json(const char *aInput) ;
+rssn_
+char *rssn_num_fea_beam_element_2d_stiffness_json(const char *aInput)
+;
 
 /*
  Computes bulk modulus from Young's modulus and Poisson's ratio.
  */
-rssn_ double rssn_num_fea_bulk_modulus(double aYoungsModulus, double aPoissonsRatio) ;
+rssn_
+double rssn_num_fea_bulk_modulus(double aYoungsModulus,
+                                 double aPoissonsRatio)
+;
 
-rssn_ char *rssn_num_fea_create_rectangular_mesh_json(const char *aInput) ;
+rssn_
+char *rssn_num_fea_create_rectangular_mesh_json(const char *aInput)
+;
 
 /*
  Computes and returns the stiffness value for a 1D linear element.
@@ -9366,31 +11705,46 @@ rssn_
 rssn_BincodeBuffer rssn_num_fea_linear_element_1d_stiffness_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_fea_linear_element_1d_stiffness_json(const char *aInput) ;
+rssn_
+char *rssn_num_fea_linear_element_1d_stiffness_json(const char *aInput)
+;
 
 /*
  Creates aluminum material and returns shear modulus.
  */
-rssn_ double rssn_num_fea_material_aluminum_shear_modulus() ;
+rssn_
+double rssn_num_fea_material_aluminum_shear_modulus()
+;
 
 /*
  Creates copper material and returns shear modulus.
  */
-rssn_ double rssn_num_fea_material_copper_shear_modulus() ;
+rssn_
+double rssn_num_fea_material_copper_shear_modulus()
+;
 
-rssn_ char *rssn_num_fea_material_properties_json(const char *aInput) ;
+rssn_
+char *rssn_num_fea_material_properties_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_fea_material_steel_json(const char *aInput) ;
+rssn_
+char *rssn_num_fea_material_steel_json(const char *aInput)
+;
 
 /*
  Creates steel material and returns shear modulus.
  */
-rssn_ double rssn_num_fea_material_steel_shear_modulus() ;
+rssn_
+double rssn_num_fea_material_steel_shear_modulus()
+;
 
 /*
  Computes maximum shear stress from principal stresses.
  */
-rssn_ double rssn_num_fea_max_shear_stress(double aSigma1, double aSigma2) ;
+rssn_
+double rssn_num_fea_max_shear_stress(double aSigma1,
+                                     double aSigma2)
+;
 
 /*
  Computes principal stresses from stress components.
@@ -9408,11 +11762,17 @@ int32_t rssn_num_fea_principal_stresses(double aSx,
                                         double *aOutAngle)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_fea_principal_stresses_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fea_principal_stresses_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fea_principal_stresses_json(const char *aInput) ;
+rssn_
+char *rssn_num_fea_principal_stresses_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_fea_safety_factor_json(const char *aInput) ;
+rssn_
+char *rssn_num_fea_safety_factor_json(const char *aInput)
+;
 
 /*
  Computes safety factor based on von Mises criterion.
@@ -9427,7 +11787,10 @@ double rssn_num_fea_safety_factor_von_mises(double aSx,
 /*
  Computes shear modulus from Young's modulus and Poisson's ratio.
  */
-rssn_ double rssn_num_fea_shear_modulus(double aYoungsModulus, double aPoissonsRatio) ;
+rssn_
+double rssn_num_fea_shear_modulus(double aYoungsModulus,
+                                  double aPoissonsRatio)
+;
 
 /*
  Computes the conductivity value for a 1D thermal element.
@@ -9439,37 +11802,58 @@ double rssn_num_fea_thermal_element_1d_conductivity(double aLength,
                                                     double aArea)
 ;
 
-rssn_ char *rssn_num_fea_thermal_element_1d_conductivity_json(const char *aInput) ;
+rssn_
+char *rssn_num_fea_thermal_element_1d_conductivity_json(const char *aInput)
+;
 
 /*
  Computes von Mises stress from plane stress components.
  */
-rssn_ double rssn_num_fea_von_mises_stress(double aSx, double aSy, double aTxy) ;
+rssn_
+double rssn_num_fea_von_mises_stress(double aSx,
+                                     double aSy,
+                                     double aTxy)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_fea_von_mises_stress_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fea_von_mises_stress_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fea_von_mises_stress_json(const char *aInput) ;
+rssn_
+char *rssn_num_fea_von_mises_stress_json(const char *aInput)
+;
 
 /*
  GF(2^8) addition.
  */
-rssn_ uint8_t rssn_num_ff_gf256_add(uint8_t aA, uint8_t aB) ;
+rssn_
+uint8_t rssn_num_ff_gf256_add(uint8_t aA,
+                              uint8_t aB)
+;
 
 /*
  GF(2^8) division.
  Returns 0 and sets error if divisor is 0.
  */
-rssn_ uint8_t rssn_num_ff_gf256_div(uint8_t aA, uint8_t aB) ;
+rssn_
+uint8_t rssn_num_ff_gf256_div(uint8_t aA,
+                              uint8_t aB)
+;
 
 /*
  GF(2^8) multiplication.
  */
-rssn_ uint8_t rssn_num_ff_gf256_mul(uint8_t aA, uint8_t aB) ;
+rssn_
+uint8_t rssn_num_ff_gf256_mul(uint8_t aA,
+                              uint8_t aB)
+;
 
 /*
  GF(2^8) multiplication from JSON.
  */
-rssn_ char *rssn_num_ff_gf256_mul_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ff_gf256_mul_json(const char *aJsonPtr)
+;
 
 /*
  Performs addition in GF(p).
@@ -9482,22 +11866,31 @@ rssn_PrimeFieldElement *rssn_num_ff_pfe_add(const rssn_PrimeFieldElement *aA,
 /*
  GF(p) addition via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_num_ff_pfe_add_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ff_pfe_add_bincode(const uint8_t *aData,
+                                               size_t aLen)
+;
 
 /*
  GF(p) addition from JSON.
  */
-rssn_ char *rssn_num_ff_pfe_add_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ff_pfe_add_json(const char *aJsonPtr)
+;
 
 /*
  Frees a PrimeFieldElement.
  */
-rssn_ void rssn_num_ff_pfe_free(rssn_PrimeFieldElement *aPfe) ;
+rssn_
+void rssn_num_ff_pfe_free(rssn_PrimeFieldElement *aPfe)
+;
 
 /*
  Computes the inverse of a PrimeFieldElement.
  */
-rssn_ rssn_PrimeFieldElement *rssn_num_ff_pfe_inverse(const rssn_PrimeFieldElement *aPfe) ;
+rssn_
+rssn_PrimeFieldElement *rssn_num_ff_pfe_inverse(const rssn_PrimeFieldElement *aPfe)
+;
 
 /*
  Performs multiplication in GF(p).
@@ -9510,17 +11903,25 @@ rssn_PrimeFieldElement *rssn_num_ff_pfe_mul(const rssn_PrimeFieldElement *aA,
 /*
  GF(p) multiplication via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_num_ff_pfe_mul_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ff_pfe_mul_bincode(const uint8_t *aData,
+                                               size_t aLen)
+;
 
 /*
  GF(p) multiplication from JSON.
  */
-rssn_ char *rssn_num_ff_pfe_mul_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ff_pfe_mul_json(const char *aJsonPtr)
+;
 
 /*
  Creates a new PrimeFieldElement.
  */
-rssn_ rssn_PrimeFieldElement *rssn_num_ff_pfe_new(uint64_t aValue, uint64_t aModulus) ;
+rssn_
+rssn_PrimeFieldElement *rssn_num_ff_pfe_new(uint64_t aValue,
+                                            uint64_t aModulus)
+;
 
 /*
  Computes (pfe^exp) mod modulus.
@@ -9530,7 +11931,9 @@ rssn_PrimeFieldElement *rssn_num_ff_pfe_pow(const rssn_PrimeFieldElement *aPfe,
                                             uint64_t aExp)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_fft_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fft_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  Computes the Fast Fourier Transform (FFT) in-place.
@@ -9543,11 +11946,19 @@ rssn_ rssn_BincodeBuffer rssn_num_fft_bincode(rssn_BincodeBuffer aBuffer) ;
  # Returns
  0 on success, -1 on error.
  */
-rssn_ int32_t rssn_num_fft_inplace(double *aReal, double *aImag, size_t aLen) ;
+rssn_
+int32_t rssn_num_fft_inplace(double *aReal,
+                             double *aImag,
+                             size_t aLen)
+;
 
-rssn_ char *rssn_num_fft_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_fft_json(const char *aInputJson)
+;
 
-rssn_ char *rssn_num_fractal_bifurcation_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_bifurcation_json(const char *aInput)
+;
 
 /*
  Computes box-counting dimension.
@@ -9561,9 +11972,13 @@ double rssn_num_fractal_box_counting_dim(const double *aPointsPtr,
                                          size_t aNumScales)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_fractal_box_counting_dim_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fractal_box_counting_dim_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fractal_box_counting_dim_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_box_counting_dim_json(const char *aInput)
+;
 
 /*
  Computes correlation dimension.
@@ -9577,9 +11992,13 @@ double rssn_num_fractal_correlation_dim(const double *aPointsPtr,
                                         size_t aNumRadii)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_fractal_correlation_dim_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fractal_correlation_dim_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fractal_correlation_dim_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_correlation_dim_json(const char *aInput)
+;
 
 /*
  Generates Henon map points.
@@ -9596,9 +12015,13 @@ int32_t rssn_num_fractal_henon_map(double aX0,
                                    double *aOutPtr)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_fractal_henon_map_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fractal_henon_map_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fractal_henon_map_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_henon_map_json(const char *aInput)
+;
 
 /*
  Computes the escape time for a single point in a Julia set.
@@ -9611,11 +12034,17 @@ uint32_t rssn_num_fractal_julia_escape_time(double aZReal,
                                             uint32_t aMaxIter)
 ;
 
-rssn_ char *rssn_num_fractal_julia_escape_time_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_julia_escape_time_json(const char *aInput)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_fractal_julia_set_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fractal_julia_set_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fractal_julia_set_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_julia_set_json(const char *aInput)
+;
 
 /*
  Iterates the logistic map.
@@ -9630,9 +12059,13 @@ int32_t rssn_num_fractal_logistic_map(double aX0,
                                       double *aOutPtr)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_fractal_logistic_map_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fractal_logistic_map_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fractal_logistic_map_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_logistic_map_json(const char *aInput)
+;
 
 /*
  Generates Lorenz attractor points.
@@ -9649,11 +12082,17 @@ int32_t rssn_num_fractal_lorenz_attractor(double aX0,
                                           double *aOutPtr)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_fractal_lorenz_attractor_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fractal_lorenz_attractor_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fractal_lorenz_attractor_custom_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_lorenz_attractor_custom_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_fractal_lorenz_attractor_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_lorenz_attractor_json(const char *aInput)
+;
 
 /*
  Computes the Lyapunov exponent for the logistic map.
@@ -9665,9 +12104,13 @@ double rssn_num_fractal_lyapunov_logistic(double aR,
                                           size_t aNumIterations)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_fractal_lyapunov_logistic_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fractal_lyapunov_logistic_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fractal_lyapunov_logistic_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_lyapunov_logistic_json(const char *aInput)
+;
 
 /*
  Computes the Lyapunov exponent for the Lorenz system.
@@ -9683,7 +12126,9 @@ double rssn_num_fractal_lyapunov_lorenz(double aX0,
                                         double aBeta)
 ;
 
-rssn_ char *rssn_num_fractal_lyapunov_lorenz_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_lyapunov_lorenz_json(const char *aInput)
+;
 
 /*
  Computes the escape time for a single point in the Mandelbrot set.
@@ -9698,15 +12143,25 @@ rssn_
 rssn_BincodeBuffer rssn_num_fractal_mandelbrot_escape_time_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_fractal_mandelbrot_escape_time_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_mandelbrot_escape_time_json(const char *aInput)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_fractal_mandelbrot_set_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_fractal_mandelbrot_set_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_fractal_mandelbrot_set_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_mandelbrot_set_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_fractal_rossler_attractor_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_rossler_attractor_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_fractal_tinkerbell_map_json(const char *aInput) ;
+rssn_
+char *rssn_num_fractal_tinkerbell_map_json(const char *aInput)
+;
 
 /*
  Performs multivector addition.
@@ -9719,12 +12174,16 @@ rssn_Multivector3D *rssn_num_ga_add(const rssn_Multivector3D *aMv1,
 /*
  Bincode FFI for ga_add.
  */
-rssn_ rssn_BincodeBuffer rssn_num_ga_add_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ga_add_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for ga_add.
  */
-rssn_ char *rssn_num_ga_add_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ga_add_json(const char *aJsonPtr)
+;
 
 /*
  Creates a new Multivector3D.
@@ -9751,17 +12210,23 @@ rssn_Multivector3D *rssn_num_ga_dot(const rssn_Multivector3D *aMv1,
 /*
  Bincode FFI for ga_dot.
  */
-rssn_ rssn_BincodeBuffer rssn_num_ga_dot_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ga_dot_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for ga_dot.
  */
-rssn_ char *rssn_num_ga_dot_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ga_dot_json(const char *aJsonPtr)
+;
 
 /*
  Frees a Multivector3D.
  */
-rssn_ void rssn_num_ga_free(rssn_Multivector3D *aMv) ;
+rssn_
+void rssn_num_ga_free(rssn_Multivector3D *aMv)
+;
 
 /*
  Gets components of a Multivector3D.
@@ -9781,17 +12246,23 @@ int32_t rssn_num_ga_get_components(const rssn_Multivector3D *aMv,
 /*
  Returns the inverse of a Multivector3D.
  */
-rssn_ rssn_Multivector3D *rssn_num_ga_inv(const rssn_Multivector3D *aMv) ;
+rssn_
+rssn_Multivector3D *rssn_num_ga_inv(const rssn_Multivector3D *aMv)
+;
 
 /*
  Bincode FFI for ga_inv.
  */
-rssn_ rssn_BincodeBuffer rssn_num_ga_inv_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ga_inv_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for ga_inv.
  */
-rssn_ char *rssn_num_ga_inv_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ga_inv_json(const char *aJsonPtr)
+;
 
 /*
  Performs geometric product.
@@ -9804,42 +12275,58 @@ rssn_Multivector3D *rssn_num_ga_mul(const rssn_Multivector3D *aMv1,
 /*
  Bincode FFI for ga_mul.
  */
-rssn_ rssn_BincodeBuffer rssn_num_ga_mul_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ga_mul_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for ga_mul.
  */
-rssn_ char *rssn_num_ga_mul_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ga_mul_json(const char *aJsonPtr)
+;
 
 /*
  Returns the norm of a Multivector3D.
  */
-rssn_ double rssn_num_ga_norm(const rssn_Multivector3D *aMv) ;
+rssn_
+double rssn_num_ga_norm(const rssn_Multivector3D *aMv)
+;
 
 /*
  Bincode FFI for ga_norm.
  */
-rssn_ rssn_BincodeBuffer rssn_num_ga_norm_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ga_norm_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for ga_norm.
  */
-rssn_ char *rssn_num_ga_norm_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ga_norm_json(const char *aJsonPtr)
+;
 
 /*
  Returns the reverse of a Multivector3D.
  */
-rssn_ rssn_Multivector3D *rssn_num_ga_reverse(const rssn_Multivector3D *aMv) ;
+rssn_
+rssn_Multivector3D *rssn_num_ga_reverse(const rssn_Multivector3D *aMv)
+;
 
 /*
  Bincode FFI for ga_reverse.
  */
-rssn_ rssn_BincodeBuffer rssn_num_ga_reverse_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ga_reverse_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for ga_reverse.
  */
-rssn_ char *rssn_num_ga_reverse_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ga_reverse_json(const char *aJsonPtr)
+;
 
 /*
  Performs multivector subtraction.
@@ -9852,12 +12339,16 @@ rssn_Multivector3D *rssn_num_ga_sub(const rssn_Multivector3D *aMv1,
 /*
  Bincode FFI for ga_sub.
  */
-rssn_ rssn_BincodeBuffer rssn_num_ga_sub_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ga_sub_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for ga_sub.
  */
-rssn_ char *rssn_num_ga_sub_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ga_sub_json(const char *aJsonPtr)
+;
 
 /*
  Performs outer product.
@@ -9870,41 +12361,67 @@ rssn_Multivector3D *rssn_num_ga_wedge(const rssn_Multivector3D *aMv1,
 /*
  Bincode FFI for ga_wedge.
  */
-rssn_ rssn_BincodeBuffer rssn_num_ga_wedge_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ga_wedge_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for ga_wedge.
  */
-rssn_ char *rssn_num_ga_wedge_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_ga_wedge_json(const char *aJsonPtr)
+;
 
 /*
  Adds a directed edge.
  */
-rssn_ void rssn_num_graph_add_edge(rssn_Graph *aGraph, size_t aU, size_t aV, double aWeight) ;
+rssn_
+void rssn_num_graph_add_edge(rssn_Graph *aGraph,
+                             size_t aU,
+                             size_t aV,
+                             double aWeight)
+;
 
 /*
  Computes BFS.
  */
-rssn_ int32_t rssn_num_graph_bfs(rssn_Graph *aGraph, size_t aStartNode, size_t *aDist) ;
+rssn_
+int32_t rssn_num_graph_bfs(rssn_Graph *aGraph,
+                           size_t aStartNode,
+                           size_t *aDist)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_graph_bfs_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graph_bfs_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graph_bfs_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_graph_bfs_json(const char *aInputJson)
+;
 
 /*
  Computes Connected Components.
  Result array `components` must be allocated by caller with size `num_nodes`.
  */
-rssn_ int32_t rssn_num_graph_connected_components(rssn_Graph *aGraph, size_t *aComponents) ;
+rssn_
+int32_t rssn_num_graph_connected_components(rssn_Graph *aGraph,
+                                            size_t *aComponents)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_graph_connected_components_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graph_connected_components_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graph_connected_components_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_graph_connected_components_json(const char *aInputJson)
+;
 
 /*
  Creates a new graph.
  */
-rssn_ rssn_Graph *rssn_num_graph_create(size_t aNumNodes) ;
+rssn_
+rssn_Graph *rssn_num_graph_create(size_t aNumNodes)
+;
 
 /*
  Computes Dijkstra's algorithm.
@@ -9916,33 +12433,52 @@ int32_t rssn_num_graph_dijkstra(rssn_Graph *aGraph,
                                 ptrdiff_t *aPrev)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_graph_dijkstra_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graph_dijkstra_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graph_dijkstra_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_graph_dijkstra_json(const char *aInputJson)
+;
 
 /*
  Computes Floyd-Warshall.
  */
-rssn_ int32_t rssn_num_graph_floyd_warshall(rssn_Graph *aGraph, double *aDistMatrix) ;
+rssn_
+int32_t rssn_num_graph_floyd_warshall(rssn_Graph *aGraph,
+                                      double *aDistMatrix)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_graph_floyd_warshall_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graph_floyd_warshall_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graph_floyd_warshall_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_graph_floyd_warshall_json(const char *aInputJson)
+;
 
 /*
  Frees a graph.
  */
-rssn_ void rssn_num_graph_free(rssn_Graph *aGraph) ;
+rssn_
+void rssn_num_graph_free(rssn_Graph *aGraph)
+;
 
 /*
  Computes Minimum Spanning Tree (MST).
  Returns a new Graph handle.
  */
-rssn_ rssn_Graph *rssn_num_graph_minimum_spanning_tree(rssn_Graph *aGraph) ;
+rssn_
+rssn_Graph *rssn_num_graph_minimum_spanning_tree(rssn_Graph *aGraph)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_graph_minimum_spanning_tree_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graph_minimum_spanning_tree_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graph_minimum_spanning_tree_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_graph_minimum_spanning_tree_json(const char *aInputJson)
+;
 
 /*
  Computes PageRank.
@@ -9955,9 +12491,13 @@ int32_t rssn_num_graph_page_rank(rssn_Graph *aGraph,
                                  double *aScores)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_graph_page_rank_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graph_page_rank_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graph_page_rank_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_graph_page_rank_json(const char *aInputJson)
+;
 
 /*
  Computes the angle between two 3D vectors in radians.
@@ -9971,7 +12511,9 @@ double rssn_num_graphics_angle_between(double aX1,
                                        double aZ2)
 ;
 
-rssn_ char *rssn_num_graphics_angle_between_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_angle_between_json(const char *aInput)
+;
 
 /*
  Bezier cubic curve evaluation.
@@ -9998,7 +12540,9 @@ int32_t rssn_num_graphics_bezier_cubic(double aP0x,
                                        double *aOutZ)
 ;
 
-rssn_ char *rssn_num_graphics_bezier_cubic_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_bezier_cubic_json(const char *aInput)
+;
 
 /*
  Computes the cross product of two 3D vectors.
@@ -10019,14 +12563,20 @@ int32_t rssn_num_graphics_cross_product(double aX1,
                                         double *aOutZ)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_graphics_cross_product_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graphics_cross_product_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graphics_cross_product_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_cross_product_json(const char *aInput)
+;
 
 /*
  Converts degrees to radians.
  */
-rssn_ double rssn_num_graphics_degrees_to_radians(double aDegrees) ;
+rssn_
+double rssn_num_graphics_degrees_to_radians(double aDegrees)
+;
 
 /*
  Computes the dot product of two 3D vectors.
@@ -10040,18 +12590,30 @@ double rssn_num_graphics_dot_product(double aX1,
                                      double aZ2)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_graphics_dot_product_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graphics_dot_product_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graphics_dot_product_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_dot_product_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_graphics_look_at_matrix_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_look_at_matrix_json(const char *aInput)
+;
 
 /*
  Computes the magnitude of a 3D vector.
  */
-rssn_ double rssn_num_graphics_magnitude(double aX, double aY, double aZ) ;
+rssn_
+double rssn_num_graphics_magnitude(double aX,
+                                   double aY,
+                                   double aZ)
+;
 
-rssn_ char *rssn_num_graphics_magnitude_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_magnitude_json(const char *aInput)
+;
 
 /*
  Normalizes a 3D vector.
@@ -10068,11 +12630,17 @@ int32_t rssn_num_graphics_normalize(double aX,
                                     double *aOutZ)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_graphics_normalize_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graphics_normalize_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graphics_normalize_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_normalize_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_graphics_perspective_matrix_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_perspective_matrix_json(const char *aInput)
+;
 
 /*
  Quaternion multiply.
@@ -10095,16 +12663,24 @@ int32_t rssn_num_graphics_quaternion_multiply(double aW1,
                                               double *aOutZ)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_graphics_quaternion_multiply_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graphics_quaternion_multiply_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graphics_quaternion_multiply_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_quaternion_multiply_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_graphics_quaternion_slerp_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_quaternion_slerp_json(const char *aInput)
+;
 
 /*
  Converts radians to degrees.
  */
-rssn_ double rssn_num_graphics_radians_to_degrees(double aRadians) ;
+rssn_
+double rssn_num_graphics_radians_to_degrees(double aRadians)
+;
 
 /*
  Ray-sphere intersection.
@@ -10123,7 +12699,9 @@ double rssn_num_graphics_ray_sphere_intersection(double aRayOx,
                                                  double aSphereR)
 ;
 
-rssn_ char *rssn_num_graphics_ray_sphere_intersection_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_ray_sphere_intersection_json(const char *aInput)
+;
 
 /*
  Computes the reflection vector.
@@ -10143,9 +12721,13 @@ int32_t rssn_num_graphics_reflect(double aIx,
                                   double *aOutZ)
 ;
 
-rssn_ char *rssn_num_graphics_reflect_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_reflect_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_graphics_rotation_matrix_axis_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_rotation_matrix_axis_json(const char *aInput)
+;
 
 /*
  Rotation matrix around X axis.
@@ -10154,30 +12736,55 @@ rssn_ char *rssn_num_graphics_rotation_matrix_axis_json(const char *aInput) ;
  # Safety
  `out_ptr` must point to at least 16 f64 values.
  */
-rssn_ int32_t rssn_num_graphics_rotation_matrix_x(double aAngleRad, double *aOutPtr) ;
+rssn_
+int32_t rssn_num_graphics_rotation_matrix_x(double aAngleRad,
+                                            double *aOutPtr)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_graphics_rotation_matrix_x_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graphics_rotation_matrix_x_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graphics_rotation_matrix_x_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_rotation_matrix_x_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_graphics_rotation_matrix_y_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_rotation_matrix_y_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_graphics_rotation_matrix_z_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_rotation_matrix_z_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_graphics_scaling_matrix_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_scaling_matrix_json(const char *aInput)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_graphics_translation_matrix_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_graphics_translation_matrix_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_graphics_translation_matrix_json(const char *aInput) ;
+rssn_
+char *rssn_num_graphics_translation_matrix_json(const char *aInput)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_ifft_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ifft_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  Computes the Inverse Fast Fourier Transform (IFFT) in-place.
  */
-rssn_ int32_t rssn_num_ifft_inplace(double *aReal, double *aImag, size_t aLen) ;
+rssn_
+int32_t rssn_num_ifft_inplace(double *aReal,
+                              double *aImag,
+                              size_t aLen)
+;
 
-rssn_ char *rssn_num_ifft_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_ifft_json(const char *aInputJson)
+;
 
 /*
  Computes Lagrange interpolation and returns a Polynomial pointer.
@@ -10188,9 +12795,13 @@ rssn_Polynomial *rssn_num_lagrange_interpolation(const double *aXCoords,
                                                  size_t aLen)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_lagrange_interpolation_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_lagrange_interpolation_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_lagrange_interpolation_json(const char *aInputPtr) ;
+rssn_
+char *rssn_num_lagrange_interpolation_json(const char *aInputPtr)
+;
 
 rssn_
 rssn_Matrix<double> *rssn_num_matrix_add(const rssn_Matrix<double> *aM1,
@@ -10200,12 +12811,17 @@ rssn_Matrix<double> *rssn_num_matrix_add(const rssn_Matrix<double> *aM1,
 /*
  Matrix addition via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_num_matrix_add_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_matrix_add_bincode(const uint8_t *aData,
+                                               size_t aLen)
+;
 
 /*
  Evaluates a matrix addition from JSON.
  */
-rssn_ char *rssn_num_matrix_add_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_matrix_add_json(const char *aJsonPtr)
+;
 
 /*
  Creates a new f64 matrix from dimensions and a raw data array.
@@ -10218,44 +12834,74 @@ rssn_ char *rssn_num_matrix_add_json(const char *aJsonPtr) ;
  # Returns
  A raw pointer to the Matrix object, or null on error.
  */
-rssn_ rssn_Matrix<double> *rssn_num_matrix_create(size_t aRows, size_t aCols, const double *aData) ;
+rssn_
+rssn_Matrix<double> *rssn_num_matrix_create(size_t aRows,
+                                            size_t aCols,
+                                            const double *aData)
+;
 
 /*
  Computes determinant from JSON.
  */
-rssn_ char *rssn_num_matrix_det_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_matrix_det_json(const char *aJsonPtr)
+;
 
-rssn_ int32_t rssn_num_matrix_determinant(const rssn_Matrix<double> *aMatrix, double *aResult) ;
+rssn_
+int32_t rssn_num_matrix_determinant(const rssn_Matrix<double> *aMatrix,
+                                    double *aResult)
+;
 
-rssn_ void rssn_num_matrix_free(rssn_Matrix<double> *aMatrix) ;
+rssn_
+void rssn_num_matrix_free(rssn_Matrix<double> *aMatrix)
+;
 
 /*
  Returns the Frobenius norm.
  */
-rssn_ double rssn_num_matrix_frobenius_norm(const rssn_Matrix<double> *aMatrix) ;
+rssn_
+double rssn_num_matrix_frobenius_norm(const rssn_Matrix<double> *aMatrix)
+;
 
-rssn_ size_t rssn_num_matrix_get_cols(const rssn_Matrix<double> *aMatrix) ;
+rssn_
+size_t rssn_num_matrix_get_cols(const rssn_Matrix<double> *aMatrix)
+;
 
-rssn_ int32_t rssn_num_matrix_get_data(const rssn_Matrix<double> *aMatrix, double *aBuffer) ;
+rssn_
+int32_t rssn_num_matrix_get_data(const rssn_Matrix<double> *aMatrix,
+                                 double *aBuffer)
+;
 
-rssn_ size_t rssn_num_matrix_get_rows(const rssn_Matrix<double> *aMatrix) ;
+rssn_
+size_t rssn_num_matrix_get_rows(const rssn_Matrix<double> *aMatrix)
+;
 
 /*
  Creates an identity matrix.
  */
-rssn_ rssn_Matrix<double> *rssn_num_matrix_identity(size_t aSize) ;
+rssn_
+rssn_Matrix<double> *rssn_num_matrix_identity(size_t aSize)
+;
 
-rssn_ rssn_Matrix<double> *rssn_num_matrix_inverse(const rssn_Matrix<double> *aMatrix) ;
+rssn_
+rssn_Matrix<double> *rssn_num_matrix_inverse(const rssn_Matrix<double> *aMatrix)
+;
 
 /*
  Checks if it's identity.
  */
-rssn_ int32_t rssn_num_matrix_is_identity(const rssn_Matrix<double> *aMatrix, double aEpsilon) ;
+rssn_
+int32_t rssn_num_matrix_is_identity(const rssn_Matrix<double> *aMatrix,
+                                    double aEpsilon)
+;
 
 /*
  Checks if it's orthogonal.
  */
-rssn_ int32_t rssn_num_matrix_is_orthogonal(const rssn_Matrix<double> *aMatrix, double aEpsilon) ;
+rssn_
+int32_t rssn_num_matrix_is_orthogonal(const rssn_Matrix<double> *aMatrix,
+                                      double aEpsilon)
+;
 
 rssn_
 rssn_Matrix<double> *rssn_num_matrix_mul(const rssn_Matrix<double> *aM1,
@@ -10265,72 +12911,119 @@ rssn_Matrix<double> *rssn_num_matrix_mul(const rssn_Matrix<double> *aM1,
 /*
  Matrix multiplication via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_num_matrix_mul_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_matrix_mul_bincode(const uint8_t *aData,
+                                               size_t aLen)
+;
 
 /*
  Evaluates a matrix multiplication from JSON.
  */
-rssn_ char *rssn_num_matrix_mul_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_matrix_mul_json(const char *aJsonPtr)
+;
 
 /*
  Returns the rank.
  */
-rssn_ int32_t rssn_num_matrix_rank(const rssn_Matrix<double> *aMatrix, size_t *aOutRank) ;
+rssn_
+int32_t rssn_num_matrix_rank(const rssn_Matrix<double> *aMatrix,
+                             size_t *aOutRank)
+;
 
 /*
  Returns the trace.
  */
-rssn_ int32_t rssn_num_matrix_trace(const rssn_Matrix<double> *aMatrix, double *aOutTrace) ;
+rssn_
+int32_t rssn_num_matrix_trace(const rssn_Matrix<double> *aMatrix,
+                              double *aOutTrace)
+;
 
-rssn_ rssn_Matrix<double> *rssn_num_matrix_transpose(const rssn_Matrix<double> *aMatrix) ;
+rssn_
+rssn_Matrix<double> *rssn_num_matrix_transpose(const rssn_Matrix<double> *aMatrix)
+;
 
 /*
  Applies periodic boundary condition to a 1D position.
  */
-rssn_ double rssn_num_md_apply_pbc_1d(double aX, double aBoxLength) ;
+rssn_
+double rssn_num_md_apply_pbc_1d(double aX,
+                                double aBoxLength)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_md_apply_pbc_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_md_apply_pbc_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_md_apply_pbc_json(const char *aInput) ;
+rssn_
+char *rssn_num_md_apply_pbc_json(const char *aInput)
+;
 
 /*
  Returns Avogadro's number.
  */
-rssn_ double rssn_num_md_avogadro_number() ;
+rssn_
+double rssn_num_md_avogadro_number()
+;
 
 /*
  Returns Boltzmann constant in SI units.
  */
-rssn_ double rssn_num_md_boltzmann_constant_si() ;
+rssn_
+double rssn_num_md_boltzmann_constant_si()
+;
 
 /*
  Calculates CFL number for MD stability.
  */
-rssn_ double rssn_num_md_cfl_check(double aVelocity, double aDt, double aSigma) ;
+rssn_
+double rssn_num_md_cfl_check(double aVelocity,
+                             double aDt,
+                             double aSigma)
+;
 
-rssn_ char *rssn_num_md_create_cubic_lattice_json(const char *aInput) ;
+rssn_
+char *rssn_num_md_create_cubic_lattice_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_md_harmonic_json(const char *aInput) ;
+rssn_
+char *rssn_num_md_harmonic_json(const char *aInput)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_md_lennard_jones_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_md_lennard_jones_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_md_lennard_jones_json(const char *aInput) ;
+rssn_
+char *rssn_num_md_lennard_jones_json(const char *aInput)
+;
 
 /*
  Applies minimum image convention to a 1D distance.
  */
-rssn_ double rssn_num_md_minimum_image_1d(double aDx, double aBoxLength) ;
+rssn_
+double rssn_num_md_minimum_image_1d(double aDx,
+                                    double aBoxLength)
+;
 
-rssn_ char *rssn_num_md_minimum_image_json(const char *aInput) ;
+rssn_
+char *rssn_num_md_minimum_image_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_md_morse_json(const char *aInput) ;
+rssn_
+char *rssn_num_md_morse_json(const char *aInput)
+;
 
-rssn_ char *rssn_num_md_system_properties_json(const char *aInput) ;
+rssn_
+char *rssn_num_md_system_properties_json(const char *aInput)
+;
 
 /*
  Returns temperature unit for argon in reduced units.
  */
-rssn_ double rssn_num_md_temperature_unit_argon() ;
+rssn_
+double rssn_num_md_temperature_unit_argon()
+;
 
 /*
  Computes the k-th branch of the complex arccosine.
@@ -10377,9 +13070,13 @@ void rssn_num_mv_complex_log_k(double aRe,
                                double *aResIm)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_mv_complex_log_k_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_mv_complex_log_k_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_mv_complex_log_k_json(const char *aJson) ;
+rssn_
+char *rssn_num_mv_complex_log_k_json(const char *aJson)
+;
 
 /*
  Computes the k-th branch of the complex n-th root.
@@ -10406,9 +13103,13 @@ void rssn_num_mv_complex_pow_k(double aZRe,
                                double *aResIm)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_mv_complex_pow_k_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_mv_complex_pow_k_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_mv_complex_pow_k_json(const char *aJson) ;
+rssn_
+char *rssn_num_mv_complex_pow_k_json(const char *aJson)
+;
 
 /*
  Computes the k-th branch of the complex square root.
@@ -10421,9 +13122,13 @@ void rssn_num_mv_complex_sqrt_k(double aRe,
                                 double *aResIm)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_mv_complex_sqrt_k_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_mv_complex_sqrt_k_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_mv_complex_sqrt_k_json(const char *aJson) ;
+rssn_
+char *rssn_num_mv_complex_sqrt_k_json(const char *aJson)
+;
 
 /*
  Finds a root of a complex function using Newton's method.
@@ -10439,61 +13144,92 @@ int32_t rssn_num_mv_newton_method_complex(const rssn_Expr *aFPtr,
                                           double *aResIm)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_mv_newton_method_complex_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_mv_newton_method_complex_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_mv_newton_method_complex_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_mv_newton_method_complex_json(const char *aInputJson)
+;
 
 /*
  Returns the number of prime factors and writes them to out_factors.
  out_factors must be large enough.
  */
-rssn_ size_t rssn_num_nt_factorize(uint64_t aN, uint64_t *aOutFactors) ;
+rssn_
+size_t rssn_num_nt_factorize(uint64_t aN,
+                             uint64_t *aOutFactors)
+;
 
 /*
  Factorizes a number via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_num_nt_factorize_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_nt_factorize_bincode(const uint8_t *aData,
+                                                 size_t aLen)
+;
 
 /*
  Factorizes a number from JSON.
  */
-rssn_ char *rssn_num_nt_factorize_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_nt_factorize_json(const char *aJsonPtr)
+;
 
 /*
  Computes the greatest common divisor (GCD).
  */
-rssn_ uint64_t rssn_num_nt_gcd(uint64_t aA, uint64_t aB) ;
+rssn_
+uint64_t rssn_num_nt_gcd(uint64_t aA,
+                         uint64_t aB)
+;
 
 /*
  Tests if a number is prime using Miller-Rabin.
  */
-rssn_ bool rssn_num_nt_is_prime(uint64_t aN) ;
+rssn_
+bool rssn_num_nt_is_prime(uint64_t aN)
+;
 
 /*
  Computes the least common multiple (LCM).
  */
-rssn_ uint64_t rssn_num_nt_lcm(uint64_t aA, uint64_t aB) ;
+rssn_
+uint64_t rssn_num_nt_lcm(uint64_t aA,
+                         uint64_t aB)
+;
 
 /*
  Finds the modular multiplicative inverse.
  Returns 0 if no inverse exists (modulus cannot be 0).
  */
-rssn_ int64_t rssn_num_nt_mod_inverse(int64_t aA, int64_t aM) ;
+rssn_
+int64_t rssn_num_nt_mod_inverse(int64_t aA,
+                                int64_t aM)
+;
 
 /*
  Modular inverse from JSON.
  */
-rssn_ char *rssn_num_nt_mod_inverse_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_nt_mod_inverse_json(const char *aJsonPtr)
+;
 
 /*
  Computes (base^exp) % modulus.
  */
-rssn_ uint64_t rssn_num_nt_mod_pow(rssn_u128 aBase, uint64_t aExp, uint64_t aModulus) ;
+rssn_
+uint64_t rssn_num_nt_mod_pow(rssn_u128 aBase,
+                             uint64_t aExp,
+                             uint64_t aModulus)
+;
 
 /*
  Computes Euler's totient function φ(n).
  */
-rssn_ uint64_t rssn_num_nt_phi(uint64_t aN) ;
+rssn_
+uint64_t rssn_num_nt_phi(uint64_t aN)
+;
 
 /*
  Solves a system of ODEs and returns the results as a Matrix handle.
@@ -10509,23 +13245,44 @@ rssn_Matrix<double> *rssn_num_ode_solve(const rssn_Expr *const *aFuncs,
                                         int32_t aMethod)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_ode_solve_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_ode_solve_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_ode_solve_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_ode_solve_json(const char *aInputJson)
+;
 
-rssn_ double rssn_num_physics_blackbody_power(double aArea, double aTemperature) ;
+rssn_
+double rssn_num_physics_blackbody_power(double aArea,
+                                        double aTemperature)
+;
 
-rssn_ char *rssn_num_physics_blackbody_power_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_blackbody_power_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_boltzmann_constant() ;
+rssn_
+double rssn_num_physics_boltzmann_constant()
+;
 
-rssn_ double rssn_num_physics_compton_wavelength(double aMass) ;
+rssn_
+double rssn_num_physics_compton_wavelength(double aMass)
+;
 
-rssn_ double rssn_num_physics_coulomb_force(double aQ1, double aQ2, double aR) ;
+rssn_
+double rssn_num_physics_coulomb_force(double aQ1,
+                                      double aQ2,
+                                      double aR)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_physics_coulomb_force_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_physics_coulomb_force_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_physics_coulomb_force_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_coulomb_force_json(const char *aInput)
+;
 
 rssn_
 double rssn_num_physics_cyclotron_radius(double aMass,
@@ -10542,49 +13299,98 @@ double rssn_num_physics_damped_harmonic_oscillator(double aAmplitude,
                                                    double aTime)
 ;
 
-rssn_ char *rssn_num_physics_damped_harmonic_oscillator_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_damped_harmonic_oscillator_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_de_broglie_wavelength(double aMomentum) ;
+rssn_
+double rssn_num_physics_de_broglie_wavelength(double aMomentum)
+;
 
-rssn_ char *rssn_num_physics_de_broglie_wavelength_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_de_broglie_wavelength_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_electric_field_point_charge(double aQ, double aR) ;
+rssn_
+double rssn_num_physics_electric_field_point_charge(double aQ,
+                                                    double aR)
+;
 
-rssn_ char *rssn_num_physics_electric_field_point_charge_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_electric_field_point_charge_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_electric_potential_point_charge(double aQ, double aR) ;
+rssn_
+double rssn_num_physics_electric_potential_point_charge(double aQ,
+                                                        double aR)
+;
 
-rssn_ double rssn_num_physics_electron_mass() ;
+rssn_
+double rssn_num_physics_electron_mass()
+;
 
-rssn_ double rssn_num_physics_elementary_charge() ;
+rssn_
+double rssn_num_physics_elementary_charge()
+;
 
-rssn_ double rssn_num_physics_gravitational_constant() ;
+rssn_
+double rssn_num_physics_gravitational_constant()
+;
 
-rssn_ double rssn_num_physics_hydrogen_energy_level(uint64_t aN) ;
+rssn_
+double rssn_num_physics_hydrogen_energy_level(uint64_t aN)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_num_physics_hydrogen_energy_level_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_physics_hydrogen_energy_level_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_hydrogen_energy_level_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_ideal_gas_pressure(double aN, double aT, double aV) ;
+rssn_
+double rssn_num_physics_ideal_gas_pressure(double aN,
+                                           double aT,
+                                           double aV)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_physics_ideal_gas_pressure_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_physics_ideal_gas_pressure_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_physics_ideal_gas_pressure_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_ideal_gas_pressure_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_ideal_gas_temperature(double aP, double aV, double aN) ;
+rssn_
+double rssn_num_physics_ideal_gas_temperature(double aP,
+                                              double aV,
+                                              double aN)
+;
 
-rssn_ double rssn_num_physics_ideal_gas_volume(double aN, double aT, double aP) ;
+rssn_
+double rssn_num_physics_ideal_gas_volume(double aN,
+                                         double aT,
+                                         double aP)
+;
 
-rssn_ double rssn_num_physics_length_contraction(double aProperLength, double aVelocity) ;
+rssn_
+double rssn_num_physics_length_contraction(double aProperLength,
+                                           double aVelocity)
+;
 
-rssn_ double rssn_num_physics_lorentz_factor(double aVelocity) ;
+rssn_
+double rssn_num_physics_lorentz_factor(double aVelocity)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_physics_lorentz_factor_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_physics_lorentz_factor_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_physics_lorentz_factor_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_lorentz_factor_json(const char *aInput)
+;
 
 rssn_
 double rssn_num_physics_lorentz_force(double aCharge,
@@ -10593,19 +13399,36 @@ double rssn_num_physics_lorentz_force(double aCharge,
                                       double aBField)
 ;
 
-rssn_ double rssn_num_physics_magnetic_field_infinite_wire(double aCurrent, double aR) ;
+rssn_
+double rssn_num_physics_magnetic_field_infinite_wire(double aCurrent,
+                                                     double aR)
+;
 
-rssn_ double rssn_num_physics_mass_energy(double aMass) ;
+rssn_
+double rssn_num_physics_mass_energy(double aMass)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_physics_mass_energy_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_physics_mass_energy_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_physics_mass_energy_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_mass_energy_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_maxwell_boltzmann_mean_speed(double aMass, double aTemperature) ;
+rssn_
+double rssn_num_physics_maxwell_boltzmann_mean_speed(double aMass,
+                                                     double aTemperature)
+;
 
-rssn_ char *rssn_num_physics_maxwell_boltzmann_mean_speed_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_maxwell_boltzmann_mean_speed_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_maxwell_boltzmann_rms_speed(double aMass, double aTemperature) ;
+rssn_
+double rssn_num_physics_maxwell_boltzmann_rms_speed(double aMass,
+                                                    double aTemperature)
+;
 
 rssn_
 double rssn_num_physics_maxwell_boltzmann_speed_distribution(double aV,
@@ -10613,31 +13436,57 @@ double rssn_num_physics_maxwell_boltzmann_speed_distribution(double aV,
                                                              double aTemperature)
 ;
 
-rssn_ double rssn_num_physics_photon_energy(double aWavelength) ;
+rssn_
+double rssn_num_physics_photon_energy(double aWavelength)
+;
 
-rssn_ char *rssn_num_physics_photon_energy_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_photon_energy_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_photon_wavelength(double aEnergy) ;
+rssn_
+double rssn_num_physics_photon_wavelength(double aEnergy)
+;
 
-rssn_ char *rssn_num_physics_photon_wavelength_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_photon_wavelength_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_planck_constant() ;
+rssn_
+double rssn_num_physics_planck_constant()
+;
 
-rssn_ double rssn_num_physics_quantum_harmonic_oscillator_energy(uint64_t aN, double aOmega) ;
+rssn_
+double rssn_num_physics_quantum_harmonic_oscillator_energy(uint64_t aN,
+                                                           double aOmega)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_num_physics_quantum_harmonic_oscillator_energy_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_physics_quantum_harmonic_oscillator_energy_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_quantum_harmonic_oscillator_energy_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_relativistic_kinetic_energy(double aMass, double aVelocity) ;
+rssn_
+double rssn_num_physics_relativistic_kinetic_energy(double aMass,
+                                                    double aVelocity)
+;
 
-rssn_ double rssn_num_physics_relativistic_momentum(double aMass, double aVelocity) ;
+rssn_
+double rssn_num_physics_relativistic_momentum(double aMass,
+                                              double aVelocity)
+;
 
-rssn_ double rssn_num_physics_relativistic_velocity_addition(double aV, double aW) ;
+rssn_
+double rssn_num_physics_relativistic_velocity_addition(double aV,
+                                                       double aW)
+;
 
-rssn_ char *rssn_num_physics_relativistic_velocity_addition_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_relativistic_velocity_addition_json(const char *aInput)
+;
 
 rssn_
 double rssn_num_physics_simple_harmonic_oscillator(double aAmplitude,
@@ -10650,110 +13499,185 @@ rssn_
 rssn_BincodeBuffer rssn_num_physics_simple_harmonic_oscillator_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_num_physics_simple_harmonic_oscillator_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_simple_harmonic_oscillator_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_speed_of_light() ;
+rssn_
+double rssn_num_physics_speed_of_light()
+;
 
-rssn_ double rssn_num_physics_time_dilation(double aProperTime, double aVelocity) ;
+rssn_
+double rssn_num_physics_time_dilation(double aProperTime,
+                                      double aVelocity)
+;
 
-rssn_ char *rssn_num_physics_time_dilation_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_time_dilation_json(const char *aInput)
+;
 
-rssn_ double rssn_num_physics_wien_displacement_wavelength(double aTemperature) ;
+rssn_
+double rssn_num_physics_wien_displacement_wavelength(double aTemperature)
+;
 
-rssn_ char *rssn_num_physics_wien_displacement_wavelength_json(const char *aInput) ;
+rssn_
+char *rssn_num_physics_wien_displacement_wavelength_json(const char *aInput)
+;
 
 /*
  Adds two polynomials.
  */
-rssn_ rssn_Polynomial *rssn_num_poly_add(const rssn_Polynomial *aA, const rssn_Polynomial *aB) ;
+rssn_
+rssn_Polynomial *rssn_num_poly_add(const rssn_Polynomial *aA,
+                                   const rssn_Polynomial *aB)
+;
 
 /*
  Adds two polynomials via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_num_poly_add_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_poly_add_bincode(const uint8_t *aData,
+                                             size_t aLen)
+;
 
 /*
  Adds two polynomials from JSON.
  */
-rssn_ char *rssn_num_poly_add_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_poly_add_json(const char *aJsonPtr)
+;
 
 /*
  Creates a new polynomial from coefficients.
  */
-rssn_ rssn_Polynomial *rssn_num_poly_create(const double *aCoeffs, size_t aLen) ;
+rssn_
+rssn_Polynomial *rssn_num_poly_create(const double *aCoeffs,
+                                      size_t aLen)
+;
 
 /*
  Returns the degree of a polynomial.
  */
-rssn_ size_t rssn_num_poly_degree(const rssn_Polynomial *aPoly) ;
+rssn_
+size_t rssn_num_poly_degree(const rssn_Polynomial *aPoly)
+;
 
 /*
  Computes the derivative.
  */
-rssn_ rssn_Polynomial *rssn_num_poly_derivative(const rssn_Polynomial *aPoly) ;
+rssn_
+rssn_Polynomial *rssn_num_poly_derivative(const rssn_Polynomial *aPoly)
+;
 
 /*
  Evaluates a polynomial at x.
  */
-rssn_ double rssn_num_poly_eval(const rssn_Polynomial *aPoly, double aX) ;
+rssn_
+double rssn_num_poly_eval(const rssn_Polynomial *aPoly,
+                          double aX)
+;
 
 /*
  Frees a polynomial object.
  */
-rssn_ void rssn_num_poly_free(rssn_Polynomial *aPoly) ;
+rssn_
+void rssn_num_poly_free(rssn_Polynomial *aPoly)
+;
 
 /*
  Computes the integral.
  */
-rssn_ rssn_Polynomial *rssn_num_poly_integral(const rssn_Polynomial *aPoly) ;
+rssn_
+rssn_Polynomial *rssn_num_poly_integral(const rssn_Polynomial *aPoly)
+;
 
 /*
  Multiplies two polynomials.
  */
-rssn_ rssn_Polynomial *rssn_num_poly_mul(const rssn_Polynomial *aA, const rssn_Polynomial *aB) ;
+rssn_
+rssn_Polynomial *rssn_num_poly_mul(const rssn_Polynomial *aA,
+                                   const rssn_Polynomial *aB)
+;
 
 /*
  Multiplies two polynomials from JSON.
  */
-rssn_ char *rssn_num_poly_mul_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_poly_mul_json(const char *aJsonPtr)
+;
 
 /*
  Subtracts two polynomials.
  */
-rssn_ rssn_Polynomial *rssn_num_poly_sub(const rssn_Polynomial *aA, const rssn_Polynomial *aB) ;
+rssn_
+rssn_Polynomial *rssn_num_poly_sub(const rssn_Polynomial *aA,
+                                   const rssn_Polynomial *aB)
+;
 
-rssn_ double rssn_num_pure_abs(double aX) ;
+rssn_
+double rssn_num_pure_abs(double aX)
+;
 
-rssn_ double rssn_num_pure_acos(double aX) ;
+rssn_
+double rssn_num_pure_acos(double aX)
+;
 
-rssn_ double rssn_num_pure_asin(double aX) ;
+rssn_
+double rssn_num_pure_asin(double aX)
+;
 
-rssn_ double rssn_num_pure_atan(double aX) ;
+rssn_
+double rssn_num_pure_atan(double aX)
+;
 
-rssn_ double rssn_num_pure_atan2(double aY, double aX) ;
+rssn_
+double rssn_num_pure_atan2(double aY,
+                           double aX)
+;
 
-rssn_ double rssn_num_pure_cos(double aX) ;
+rssn_
+double rssn_num_pure_cos(double aX)
+;
 
-rssn_ double rssn_num_pure_cosh(double aX) ;
+rssn_
+double rssn_num_pure_cosh(double aX)
+;
 
-rssn_ double rssn_num_pure_exp(double aX) ;
+rssn_
+double rssn_num_pure_exp(double aX)
+;
 
-rssn_ double rssn_num_pure_ln(double aX) ;
+rssn_
+double rssn_num_pure_ln(double aX)
+;
 
-rssn_ double rssn_num_pure_pow(double aBase, double aExp) ;
+rssn_
+double rssn_num_pure_pow(double aBase,
+                         double aExp)
+;
 
 /*
  Pure numerical functions exposed via FFI.
  */
-rssn_ double rssn_num_pure_sin(double aX) ;
+rssn_
+double rssn_num_pure_sin(double aX)
+;
 
-rssn_ double rssn_num_pure_sinh(double aX) ;
+rssn_
+double rssn_num_pure_sinh(double aX)
+;
 
-rssn_ double rssn_num_pure_sqrt(double aX) ;
+rssn_
+double rssn_num_pure_sqrt(double aX)
+;
 
-rssn_ double rssn_num_pure_tan(double aX) ;
+rssn_
+double rssn_num_pure_tan(double aX)
+;
 
-rssn_ double rssn_num_pure_tanh(double aX) ;
+rssn_
+double rssn_num_pure_tanh(double aX)
+;
 
 /*
  Computes the convolution of two sequences.
@@ -10765,9 +13689,13 @@ rssn_Matrix<double> *rssn_num_signal_convolve(const double *aA,
                                               size_t aVLen)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_signal_convolve_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_signal_convolve_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_signal_convolve_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_signal_convolve_json(const char *aInputJson)
+;
 
 /*
  Computes the cross-correlation of two sequences.
@@ -10779,9 +13707,13 @@ rssn_Matrix<double> *rssn_num_signal_cross_correlation(const double *aA,
                                                        size_t aVLen)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_signal_cross_correlation_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_signal_cross_correlation_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_signal_cross_correlation_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_signal_cross_correlation_json(const char *aInputJson)
+;
 
 /*
  Computes the FFT and returns a Matrix<Complex<f64>> as a Matrix<f64> (real, imag interleaved).
@@ -10792,24 +13724,34 @@ rssn_Matrix<double> *rssn_num_signal_fft(const double *aReal,
                                          size_t aLen)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_signal_fft_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_signal_fft_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_signal_fft_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_signal_fft_json(const char *aInputJson)
+;
 
 /*
  Generates a Hamming window.
  */
-rssn_ rssn_Matrix<double> *rssn_num_signal_hamming_window(size_t aN) ;
+rssn_
+rssn_Matrix<double> *rssn_num_signal_hamming_window(size_t aN)
+;
 
 /*
  Generates a Hann window.
  */
-rssn_ rssn_Matrix<double> *rssn_num_signal_hann_window(size_t aN) ;
+rssn_
+rssn_Matrix<double> *rssn_num_signal_hann_window(size_t aN)
+;
 
 /*
  Frees a `LinearSolution` object.
  */
-rssn_ void rssn_num_solve_free_solution(rssn_LinearSolution *aPtr) ;
+rssn_
+void rssn_num_solve_free_solution(rssn_LinearSolution *aPtr)
+;
 
 /*
  Gets the data of a unique solution.
@@ -10818,22 +13760,31 @@ rssn_ void rssn_num_solve_free_solution(rssn_LinearSolution *aPtr) ;
  * `ptr` - Pointer to the `LinearSolution`.
  * `buffer` - Buffer to store the solution vector.
  */
-rssn_ void rssn_num_solve_get_unique_solution(const rssn_LinearSolution *aPtr, double *aBuffer) ;
+rssn_
+void rssn_num_solve_get_unique_solution(const rssn_LinearSolution *aPtr,
+                                        double *aBuffer)
+;
 
 /*
  Gets the length of the unique solution vector.
  */
-rssn_ size_t rssn_num_solve_get_unique_solution_len(const rssn_LinearSolution *aPtr) ;
+rssn_
+size_t rssn_num_solve_get_unique_solution_len(const rssn_LinearSolution *aPtr)
+;
 
 /*
  Checks if there is no solution.
  */
-rssn_ bool rssn_num_solve_is_no_solution(const rssn_LinearSolution *aPtr) ;
+rssn_
+bool rssn_num_solve_is_no_solution(const rssn_LinearSolution *aPtr)
+;
 
 /*
  Checks if the solution is unique.
  */
-rssn_ bool rssn_num_solve_is_unique(const rssn_LinearSolution *aPtr) ;
+rssn_
+bool rssn_num_solve_is_unique(const rssn_LinearSolution *aPtr)
+;
 
 /*
  Solves a linear system Ax = b.
@@ -10878,29 +13829,41 @@ rssn_CsMat<double> *rssn_num_sparse_create(size_t aRows,
 /*
  Frees a sparse matrix object.
  */
-rssn_ void rssn_num_sparse_free(rssn_CsMat<double> *aMatrix) ;
+rssn_
+void rssn_num_sparse_free(rssn_CsMat<double> *aMatrix)
+;
 
 /*
  Computes the Frobenius norm.
  */
-rssn_ double rssn_num_sparse_frobenius_norm(const rssn_CsMat<double> *aMatrix) ;
+rssn_
+double rssn_num_sparse_frobenius_norm(const rssn_CsMat<double> *aMatrix)
+;
 
 /*
  Returns the number of columns.
  */
-rssn_ size_t rssn_num_sparse_get_cols(const rssn_CsMat<double> *aMatrix) ;
+rssn_
+size_t rssn_num_sparse_get_cols(const rssn_CsMat<double> *aMatrix)
+;
 
 /*
  Returns the number of non-zero elements.
  */
-rssn_ size_t rssn_num_sparse_get_nnz(const rssn_CsMat<double> *aMatrix) ;
+rssn_
+size_t rssn_num_sparse_get_nnz(const rssn_CsMat<double> *aMatrix)
+;
 
 /*
  Returns the number of rows.
  */
-rssn_ size_t rssn_num_sparse_get_rows(const rssn_CsMat<double> *aMatrix) ;
+rssn_
+size_t rssn_num_sparse_get_rows(const rssn_CsMat<double> *aMatrix)
+;
 
-rssn_ char *rssn_num_sparse_solve_cg_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_sparse_solve_cg_json(const char *aJsonPtr)
+;
 
 /*
  Sparse matrix-vector multiplication.
@@ -10917,141 +13880,285 @@ int32_t rssn_num_sparse_spmv(const rssn_CsMat<double> *aMatrix,
 /*
  Sparse matrix-vector multiplication via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_num_sparse_spmv_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_sparse_spmv_bincode(const uint8_t *aData,
+                                                size_t aLen)
+;
 
 /*
  Sparse matrix-vector multiplication from JSON.
  */
-rssn_ char *rssn_num_sparse_spmv_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_sparse_spmv_json(const char *aJsonPtr)
+;
 
 /*
  Computes the trace.
  */
-rssn_ int32_t rssn_num_sparse_trace(const rssn_CsMat<double> *aMatrix, double *aOutTrace) ;
+rssn_
+int32_t rssn_num_sparse_trace(const rssn_CsMat<double> *aMatrix,
+                              double *aOutTrace)
+;
 
-rssn_ double rssn_num_special_bessel_i0(double aX) ;
+rssn_
+double rssn_num_special_bessel_i0(double aX)
+;
 
-rssn_ double rssn_num_special_bessel_i1(double aX) ;
+rssn_
+double rssn_num_special_bessel_i1(double aX)
+;
 
-rssn_ double rssn_num_special_bessel_j0(double aX) ;
+rssn_
+double rssn_num_special_bessel_j0(double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_bessel_j0_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_bessel_j0_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_bessel_j0_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_bessel_j0_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_bessel_j1(double aX) ;
+rssn_
+double rssn_num_special_bessel_j1(double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_bessel_j1_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_bessel_j1_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_bessel_j1_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_bessel_j1_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_bessel_y0(double aX) ;
+rssn_
+double rssn_num_special_bessel_y0(double aX)
+;
 
-rssn_ double rssn_num_special_bessel_y1(double aX) ;
+rssn_
+double rssn_num_special_bessel_y1(double aX)
+;
 
-rssn_ double rssn_num_special_beta(double aA, double aB) ;
+rssn_
+double rssn_num_special_beta(double aA,
+                             double aB)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_beta_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_beta_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_beta_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_beta_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_binomial(uint64_t aN, uint64_t aK) ;
+rssn_
+double rssn_num_special_binomial(uint64_t aN,
+                                 uint64_t aK)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_binomial_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_binomial_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_binomial_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_binomial_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_chebyshev_t(uint32_t aN, double aX) ;
+rssn_
+double rssn_num_special_chebyshev_t(uint32_t aN,
+                                    double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_chebyshev_t_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_chebyshev_t_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_chebyshev_t_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_chebyshev_t_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_chebyshev_u(uint32_t aN, double aX) ;
+rssn_
+double rssn_num_special_chebyshev_u(uint32_t aN,
+                                    double aX)
+;
 
-rssn_ double rssn_num_special_digamma(double aX) ;
+rssn_
+double rssn_num_special_digamma(double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_digamma_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_digamma_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_digamma_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_digamma_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_double_factorial(uint64_t aN) ;
+rssn_
+double rssn_num_special_double_factorial(uint64_t aN)
+;
 
-rssn_ double rssn_num_special_erf(double aX) ;
+rssn_
+double rssn_num_special_erf(double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_erf_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_erf_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_erf_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_erf_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_erfc(double aX) ;
+rssn_
+double rssn_num_special_erfc(double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_erfc_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_erfc_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_erfc_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_erfc_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_factorial(uint64_t aN) ;
+rssn_
+double rssn_num_special_factorial(uint64_t aN)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_factorial_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_factorial_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_factorial_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_factorial_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_gamma(double aX) ;
+rssn_
+double rssn_num_special_gamma(double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_gamma_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_gamma_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_gamma_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_gamma_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_hermite_h(uint32_t aN, double aX) ;
+rssn_
+double rssn_num_special_hermite_h(uint32_t aN,
+                                  double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_hermite_h_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_hermite_h_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_hermite_h_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_hermite_h_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_inverse_erf(double aX) ;
+rssn_
+double rssn_num_special_inverse_erf(double aX)
+;
 
-rssn_ double rssn_num_special_laguerre_l(uint32_t aN, double aX) ;
+rssn_
+double rssn_num_special_laguerre_l(uint32_t aN,
+                                   double aX)
+;
 
-rssn_ double rssn_num_special_legendre_p(uint32_t aN, double aX) ;
+rssn_
+double rssn_num_special_legendre_p(uint32_t aN,
+                                   double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_legendre_p_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_legendre_p_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_legendre_p_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_legendre_p_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_ln_beta(double aA, double aB) ;
+rssn_
+double rssn_num_special_ln_beta(double aA,
+                                double aB)
+;
 
-rssn_ double rssn_num_special_ln_gamma(double aX) ;
+rssn_
+double rssn_num_special_ln_gamma(double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_ln_gamma_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_ln_gamma_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_ln_gamma_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_ln_gamma_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_logit(double aP) ;
+rssn_
+double rssn_num_special_logit(double aP)
+;
 
-rssn_ double rssn_num_special_lower_incomplete_gamma(double aS, double aX) ;
+rssn_
+double rssn_num_special_lower_incomplete_gamma(double aS,
+                                               double aX)
+;
 
-rssn_ double rssn_num_special_regularized_beta(double aX, double aA, double aB) ;
+rssn_
+double rssn_num_special_regularized_beta(double aX,
+                                         double aA,
+                                         double aB)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_regularized_beta_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_regularized_beta_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_regularized_beta_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_regularized_beta_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_sigmoid(double aX) ;
+rssn_
+double rssn_num_special_sigmoid(double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_sigmoid_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_sigmoid_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_sigmoid_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_sigmoid_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_sinc(double aX) ;
+rssn_
+double rssn_num_special_sinc(double aX)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_special_sinc_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_special_sinc_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_special_sinc_json(const char *aInput) ;
+rssn_
+char *rssn_num_special_sinc_json(const char *aInput)
+;
 
-rssn_ double rssn_num_special_softplus(double aX) ;
+rssn_
+double rssn_num_special_softplus(double aX)
+;
 
-rssn_ double rssn_num_special_upper_incomplete_gamma(double aS, double aX) ;
+rssn_
+double rssn_num_special_upper_incomplete_gamma(double aS,
+                                               double aX)
+;
 
-rssn_ double rssn_num_special_zeta(double aS) ;
+rssn_
+double rssn_num_special_zeta(double aS)
+;
 
 /*
  Performs a chi-squared test.
@@ -11065,9 +14172,13 @@ int32_t rssn_num_stats_chi_squared_test(const double *aObserved,
                                         double *aOutP)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_chi_squared_test_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_chi_squared_test_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_chi_squared_test_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_chi_squared_test_json(const char *aInput)
+;
 
 /*
  Computes the Pearson correlation coefficient of two arrays.
@@ -11079,9 +14190,13 @@ double rssn_num_stats_correlation(const double *aData1,
                                   size_t aLen2)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_correlation_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_correlation_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_correlation_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_correlation_json(const char *aInput)
+;
 
 /*
  Computes the covariance of two arrays.
@@ -11093,28 +14208,45 @@ double rssn_num_stats_covariance(const double *aData1,
                                  size_t aLen2)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_covariance_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_covariance_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_covariance_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_covariance_json(const char *aInput)
+;
 
 /*
  Computes the coefficient of variation of an array.
  */
-rssn_ double rssn_num_stats_cv(const double *aData, size_t aLen) ;
+rssn_
+double rssn_num_stats_cv(const double *aData,
+                         size_t aLen)
+;
 
 /*
  Computes the geometric mean of an array.
  */
-rssn_ double rssn_num_stats_geometric_mean(const double *aData, size_t aLen) ;
+rssn_
+double rssn_num_stats_geometric_mean(const double *aData,
+                                     size_t aLen)
+;
 
-rssn_ char *rssn_num_stats_geometric_mean_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_geometric_mean_json(const char *aInput)
+;
 
 /*
  Computes the harmonic mean of an array.
  */
-rssn_ double rssn_num_stats_harmonic_mean(const double *aData, size_t aLen) ;
+rssn_
+double rssn_num_stats_harmonic_mean(const double *aData,
+                                    size_t aLen)
+;
 
-rssn_ char *rssn_num_stats_harmonic_mean_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_harmonic_mean_json(const char *aInput)
+;
 
 /*
  Performs simple linear regression.
@@ -11128,46 +14260,77 @@ int32_t rssn_num_stats_linear_regression(const double *aX,
                                          double *aOutIntercept)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_linear_regression_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_linear_regression_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_linear_regression_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_linear_regression_json(const char *aInput)
+;
 
 /*
  Computes the mean of an array.
  */
-rssn_ double rssn_num_stats_mean(const double *aData, size_t aLen) ;
+rssn_
+double rssn_num_stats_mean(const double *aData,
+                           size_t aLen)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_mean_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_mean_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_mean_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_mean_json(const char *aInput)
+;
 
 /*
  Computes the range of an array.
  */
-rssn_ double rssn_num_stats_range(const double *aData, size_t aLen) ;
+rssn_
+double rssn_num_stats_range(const double *aData,
+                            size_t aLen)
+;
 
 /*
  Computes the Shannon entropy of a probability distribution.
  */
-rssn_ double rssn_num_stats_shannon_entropy(const double *aData, size_t aLen) ;
+rssn_
+double rssn_num_stats_shannon_entropy(const double *aData,
+                                      size_t aLen)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_shannon_entropy_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_shannon_entropy_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_shannon_entropy_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_shannon_entropy_json(const char *aInput)
+;
 
 /*
  Computes the standard error of an array.
  */
-rssn_ double rssn_num_stats_standard_error(const double *aData, size_t aLen) ;
+rssn_
+double rssn_num_stats_standard_error(const double *aData,
+                                     size_t aLen)
+;
 
 /*
  Computes the standard deviation of an array.
  */
-rssn_ double rssn_num_stats_std_dev(const double *aData, size_t aLen) ;
+rssn_
+double rssn_num_stats_std_dev(const double *aData,
+                              size_t aLen)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_std_dev_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_std_dev_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_std_dev_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_std_dev_json(const char *aInput)
+;
 
 /*
  Performs a two-sample t-test.
@@ -11182,18 +14345,29 @@ int32_t rssn_num_stats_two_sample_t_test(const double *aSample1,
                                          double *aOutP)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_two_sample_t_test_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_two_sample_t_test_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_two_sample_t_test_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_two_sample_t_test_json(const char *aInput)
+;
 
 /*
  Computes the variance of an array.
  */
-rssn_ double rssn_num_stats_variance(const double *aData, size_t aLen) ;
+rssn_
+double rssn_num_stats_variance(const double *aData,
+                               size_t aLen)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_variance_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_variance_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_variance_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_variance_json(const char *aInput)
+;
 
 /*
  Performs Welch's t-test.
@@ -11208,13 +14382,21 @@ int32_t rssn_num_stats_welch_t_test(const double *aSample1,
                                     double *aOutP)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_welch_t_test_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_welch_t_test_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_welch_t_test_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_welch_t_test_json(const char *aInput)
+;
 
-rssn_ rssn_BincodeBuffer rssn_num_stats_z_scores_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_stats_z_scores_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_stats_z_scores_json(const char *aInput) ;
+rssn_
+char *rssn_num_stats_z_scores_json(const char *aInput)
+;
 
 /*
  Creates a new tensor from shape and data.
@@ -11229,22 +14411,31 @@ rssn_ArrayD<double> *rssn_num_tensor_create(const size_t *aShape,
 /*
  Frees a tensor object.
  */
-rssn_ void rssn_num_tensor_free(rssn_ArrayD<double> *aTensor) ;
+rssn_
+void rssn_num_tensor_free(rssn_ArrayD<double> *aTensor)
+;
 
 /*
  Returns the number of dimensions.
  */
-rssn_ size_t rssn_num_tensor_get_ndim(const rssn_ArrayD<double> *aTensor) ;
+rssn_
+size_t rssn_num_tensor_get_ndim(const rssn_ArrayD<double> *aTensor)
+;
 
 /*
  Returns the shape of the tensor.
  */
-rssn_ int32_t rssn_num_tensor_get_shape(const rssn_ArrayD<double> *aTensor, size_t *aOutShape) ;
+rssn_
+int32_t rssn_num_tensor_get_shape(const rssn_ArrayD<double> *aTensor,
+                                  size_t *aOutShape)
+;
 
 /*
  Frobenius norm of a tensor.
  */
-rssn_ double rssn_num_tensor_norm(const rssn_ArrayD<double> *aTensor) ;
+rssn_
+double rssn_num_tensor_norm(const rssn_ArrayD<double> *aTensor)
+;
 
 /*
  Outer product of two tensors.
@@ -11257,7 +14448,9 @@ rssn_ArrayD<double> *rssn_num_tensor_outer_product(const rssn_ArrayD<double> *aA
 /*
  Outer product from JSON.
  */
-rssn_ char *rssn_num_tensor_outer_product_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_tensor_outer_product_json(const char *aJsonPtr)
+;
 
 /*
  Tensor contraction (tensordot).
@@ -11274,12 +14467,17 @@ rssn_ArrayD<double> *rssn_num_tensor_tensordot(const rssn_ArrayD<double> *aA,
 /*
  Tensor contraction via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_num_tensor_tensordot_bincode(const uint8_t *aData, size_t aLen) ;
+rssn_
+rssn_BincodeBuffer rssn_num_tensor_tensordot_bincode(const uint8_t *aData,
+                                                     size_t aLen)
+;
 
 /*
  Tensor contraction from JSON.
  */
-rssn_ char *rssn_num_tensor_tensordot_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_num_tensor_tensordot_json(const char *aJsonPtr)
+;
 
 /*
  Computes the Betti numbers for a point cloud.
@@ -11293,9 +14491,13 @@ int32_t rssn_num_topology_betti_numbers(const double *const *aPoints,
                                         size_t *aResult)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_topology_betti_numbers_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_topology_betti_numbers_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_topology_betti_numbers_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_topology_betti_numbers_json(const char *aInputJson)
+;
 
 /*
  Computes the Euclidean distance between two points.
@@ -11313,14 +14515,21 @@ rssn_
 rssn_Vec<rssn_Vec<size_t>> *rssn_num_topology_find_connected_components(const rssn_Graph *aGraphPtr)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_topology_persistence_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_topology_persistence_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_topology_persistence_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_topology_persistence_json(const char *aInputJson)
+;
 
 /*
  Computes the sum of two vectors.
  */
-rssn_ rssn_Vec<double> *rssn_num_vec_add(const rssn_Vec<double> *aV1, const rssn_Vec<double> *aV2) ;
+rssn_
+rssn_Vec<double> *rssn_num_vec_add(const rssn_Vec<double> *aV1,
+                                   const rssn_Vec<double> *aV2)
+;
 
 /*
  Computes the angle between two vectors.
@@ -11335,7 +14544,10 @@ int32_t rssn_num_vec_angle(const rssn_Vec<double> *aV1,
  Creates a new numerical vector from a raw array of doubles.
  The caller is responsible for freeing the returned pointer using rssn_num_vec_free.
  */
-rssn_ rssn_Vec<double> *rssn_num_vec_create(const double *aData, size_t aLen) ;
+rssn_
+rssn_Vec<double> *rssn_num_vec_create(const double *aData,
+                                      size_t aLen)
+;
 
 /*
  Computes the cross product of two 3D vectors.
@@ -11348,7 +14560,9 @@ rssn_Vec<double> *rssn_num_vec_cross_product(const rssn_Vec<double> *aV1,
 /*
  Returns a pointer to the underlying data of a numerical vector.
  */
-rssn_ const double *rssn_num_vec_data(const rssn_Vec<double> *aV) ;
+rssn_
+const double *rssn_num_vec_data(const rssn_Vec<double> *aV)
+;
 
 /*
  Computes the dot product of two vectors.
@@ -11362,27 +14576,40 @@ int32_t rssn_num_vec_dot_product(const rssn_Vec<double> *aV1,
 /*
  Frees a numerical vector allocated by the library.
  */
-rssn_ void rssn_num_vec_free(rssn_Vec<double> *aV) ;
+rssn_
+void rssn_num_vec_free(rssn_Vec<double> *aV)
+;
 
 /*
  Returns the length of a numerical vector.
  */
-rssn_ size_t rssn_num_vec_len(const rssn_Vec<double> *aV) ;
+rssn_
+size_t rssn_num_vec_len(const rssn_Vec<double> *aV)
+;
 
 /*
  Computes the Lp norm of a vector.
  */
-rssn_ int32_t rssn_num_vec_lp_norm(const rssn_Vec<double> *aV, double aP, double *aResult) ;
+rssn_
+int32_t rssn_num_vec_lp_norm(const rssn_Vec<double> *aV,
+                             double aP,
+                             double *aResult)
+;
 
 /*
  Computes the L2 norm of a vector.
  */
-rssn_ int32_t rssn_num_vec_norm(const rssn_Vec<double> *aV, double *aResult) ;
+rssn_
+int32_t rssn_num_vec_norm(const rssn_Vec<double> *aV,
+                          double *aResult)
+;
 
 /*
  Normalizes a vector.
  */
-rssn_ rssn_Vec<double> *rssn_num_vec_normalize(const rssn_Vec<double> *aV) ;
+rssn_
+rssn_Vec<double> *rssn_num_vec_normalize(const rssn_Vec<double> *aV)
+;
 
 /*
  Projects v1 onto v2.
@@ -11403,12 +14630,18 @@ rssn_Vec<double> *rssn_num_vec_reflect(const rssn_Vec<double> *aV,
 /*
  Multiplies a vector by a scalar.
  */
-rssn_ rssn_Vec<double> *rssn_num_vec_scalar_mul(const rssn_Vec<double> *aV, double aS) ;
+rssn_
+rssn_Vec<double> *rssn_num_vec_scalar_mul(const rssn_Vec<double> *aV,
+                                          double aS)
+;
 
 /*
  Computes the difference of two vectors.
  */
-rssn_ rssn_Vec<double> *rssn_num_vec_sub(const rssn_Vec<double> *aV1, const rssn_Vec<double> *aV2) ;
+rssn_
+rssn_Vec<double> *rssn_num_vec_sub(const rssn_Vec<double> *aV1,
+                                   const rssn_Vec<double> *aV2)
+;
 
 /*
  Computes the numerical curl of a 3D vector field at a point.
@@ -11419,9 +14652,13 @@ rssn_Vec<double> *rssn_num_vector_calculus_curl(const rssn_Expr *const *aFuncs,
                                                 const double *aPoint)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_vector_calculus_curl_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_vector_calculus_curl_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_vector_calculus_curl_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_vector_calculus_curl_json(const char *aInputJson)
+;
 
 /*
  Computes the numerical directional derivative of a function at a point.
@@ -11447,9 +14684,13 @@ int32_t rssn_num_vector_calculus_divergence(const rssn_Expr *const *aFuncs,
                                             double *aResult)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_vector_calculus_divergence_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_vector_calculus_divergence_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_vector_calculus_divergence_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_vector_calculus_divergence_json(const char *aInputJson)
+;
 
 /*
  Computes the numerical Laplacian of a scalar field at a point.
@@ -11462,9 +14703,13 @@ int32_t rssn_num_vector_calculus_laplacian(const rssn_Expr *aF,
                                            double *aResult)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_num_vector_calculus_laplacian_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_num_vector_calculus_laplacian_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_num_vector_calculus_laplacian_json(const char *aInputJson) ;
+rssn_
+char *rssn_num_vector_calculus_laplacian_json(const char *aInputJson)
+;
 
 /*
  Evaluates a power series at a point.
@@ -11484,13 +14729,21 @@ int32_t rssn_numerical_gradient(size_t aExprH,
                                 double *aResultVec)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_numerical_gradient_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_numerical_gradient_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_numerical_gradient_json(const char *aInputJson) ;
+rssn_
+char *rssn_numerical_gradient_json(const char *aInputJson)
+;
 
-rssn_ rssn_BincodeBuffer rssn_numerical_hessian_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_numerical_hessian_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_numerical_hessian_json(const char *aInputJson) ;
+rssn_
+char *rssn_numerical_hessian_json(const char *aInputJson)
+;
 
 rssn_
 int32_t rssn_numerical_integrate(size_t aExprH,
@@ -11502,9 +14755,13 @@ int32_t rssn_numerical_integrate(size_t aExprH,
                                  double *aResult)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_numerical_jacobian_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_numerical_jacobian_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_numerical_jacobian_json(const char *aInputJson) ;
+rssn_
+char *rssn_numerical_jacobian_json(const char *aInputJson)
+;
 
 /*
  Performs numerical integration (quadrature) of a function.
@@ -11539,7 +14796,9 @@ int32_t rssn_numerical_quadrature(const rssn_Expr *aExprPtr,
 /*
  Performs numerical integration via Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_numerical_quadrature_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_numerical_quadrature_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  Performs numerical integration via JSON.
@@ -11554,7 +14813,9 @@ rssn_ rssn_BincodeBuffer rssn_numerical_quadrature_bincode(rssn_BincodeBuffer aB
    "method": "Simpson"
  }
  */
-rssn_ char *rssn_numerical_quadrature_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_numerical_quadrature_json(const char *aJsonPtr)
+;
 
 /*
  Computes the sum of a series.
@@ -11567,9 +14828,13 @@ int32_t rssn_numerical_sum_series(const rssn_Expr *aF,
                                   double *aResult)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_numerical_sum_series_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_numerical_sum_series_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_numerical_sum_series_json(const char *aInputJson) ;
+rssn_
+char *rssn_numerical_sum_series_json(const char *aInputJson)
+;
 
 /*
  Computes the numerical Taylor series coefficients.
@@ -11582,9 +14847,13 @@ rssn_Vec<double> *rssn_numerical_taylor_coefficients(const rssn_Expr *aF,
                                                      size_t aOrder)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_numerical_taylor_coefficients_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_numerical_taylor_coefficients_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_numerical_taylor_coefficients_json(const char *aInputJson) ;
+rssn_
+char *rssn_numerical_taylor_coefficients_json(const char *aInputJson)
+;
 
 rssn_
 rssn_Expr *rssn_one_sample_t_test(const rssn_Expr *const *aData,
@@ -11595,12 +14864,16 @@ rssn_Expr *rssn_one_sample_t_test(const rssn_Expr *const *aData,
 /*
  Frees an Operator.
  */
-rssn_ void rssn_operator_free(rssn_Operator *aOpPtr) ;
+rssn_
+void rssn_operator_free(rssn_Operator *aOpPtr)
+;
 
 /*
  Creates a new Operator from an expression.
  */
-rssn_ rssn_Operator *rssn_operator_new(const rssn_Expr *aOp) ;
+rssn_
+rssn_Operator *rssn_operator_new(const rssn_Expr *aOp)
+;
 
 /*
  Generates a 4x4 orthographic projection matrix.
@@ -11617,7 +14890,9 @@ rssn_Expr *rssn_orthographic_projection(const rssn_Expr *aLeft,
 /*
  Frees a ParametricCurve handle.
  */
-rssn_ void rssn_parametric_curve_free(rssn_ParametricCurve *aCurve) ;
+rssn_
+void rssn_parametric_curve_free(rssn_ParametricCurve *aCurve)
+;
 
 /*
  Creates a new ParametricCurve.
@@ -11634,7 +14909,9 @@ rssn_ParametricCurve *rssn_parametric_curve_new(const char *aRX,
 /*
  Frees a ParametricSurface handle.
  */
-rssn_ void rssn_parametric_surface_free(rssn_ParametricSurface *aSurface) ;
+rssn_
+void rssn_parametric_surface_free(rssn_ParametricSurface *aSurface)
+;
 
 /*
  Creates a new ParametricSurface.
@@ -11654,19 +14931,26 @@ rssn_ParametricSurface *rssn_parametric_surface_new(const char *aRX,
 /*
  Clears a ParsingCache.
  */
-rssn_ void rssn_parsing_cache_clear(rssn_ParsingCache *aCache) ;
+rssn_
+void rssn_parsing_cache_clear(rssn_ParsingCache *aCache)
+;
 
 /*
  Frees a ParsingCache.
  */
-rssn_ void rssn_parsing_cache_free(rssn_ParsingCache *aCache) ;
+rssn_
+void rssn_parsing_cache_free(rssn_ParsingCache *aCache)
+;
 
 /*
  Retrieves an expression from the ParsingCache.
  Returns a pointer to the Expr (Arc<Expr> with incremented refcount), or null if not found.
  The caller is responsible for freeing the returned Expr (using the appropriate Expr free function).
  */
-rssn_ rssn_Expr *rssn_parsing_cache_get(rssn_ParsingCache *aCache, const char *aInput) ;
+rssn_
+rssn_Expr *rssn_parsing_cache_get(rssn_ParsingCache *aCache,
+                                  const char *aInput)
+;
 
 /*
  Retrieves an expression from the ParsingCache as a bincode buffer.
@@ -11680,13 +14964,18 @@ rssn_BincodeBuffer rssn_parsing_cache_get_bincode(rssn_ParsingCache *aCache,
  Retrieves an expression from the ParsingCache as a JSON string.
  Returns null if not found or error.
  */
-rssn_ char *rssn_parsing_cache_get_json(rssn_ParsingCache *aCache, const char *aInput) ;
+rssn_
+char *rssn_parsing_cache_get_json(rssn_ParsingCache *aCache,
+                                  const char *aInput)
+;
 
 /*
  Creates a new ParsingCache.
  The caller is responsible for freeing the memory using rssn_parsing_cache_free.
  */
-rssn_ rssn_ParsingCache *rssn_parsing_cache_new() ;
+rssn_
+rssn_ParsingCache *rssn_parsing_cache_new()
+;
 
 /*
  Stores an expression in the ParsingCache.
@@ -11716,7 +15005,10 @@ void rssn_parsing_cache_set_json(rssn_ParsingCache *aCache,
                                  const char *aJsonExpr)
 ;
 
-rssn_ rssn_ExprList *rssn_partial_fraction_decomposition(const rssn_Expr *aExpr, const char *aVar) ;
+rssn_
+rssn_ExprList *rssn_partial_fraction_decomposition(const rssn_Expr *aExpr,
+                                                   const char *aVar)
+;
 
 /*
  Computes a path integral.
@@ -11730,9 +15022,16 @@ rssn_Expr *rssn_path_integrate(const rssn_Expr *aExpr,
 /*
  Pauli matrices σ_x, σ_y, σ_z.
  */
-rssn_ void rssn_pauli_matrices(rssn_Expr **aSigmaX, rssn_Expr **aSigmaY, rssn_Expr **aSigmaZ) ;
+rssn_
+void rssn_pauli_matrices(rssn_Expr **aSigmaX,
+                         rssn_Expr **aSigmaY,
+                         rssn_Expr **aSigmaZ)
+;
 
-rssn_ rssn_Expr *rssn_permutations(const rssn_Expr *aN, const rssn_Expr *aK) ;
+rssn_
+rssn_Expr *rssn_permutations(const rssn_Expr *aN,
+                             const rssn_Expr *aK)
+;
 
 /*
  Generates a 4x4 perspective projection matrix.
@@ -11771,9 +15070,13 @@ int32_t rssn_physics_bem_solve_laplace_2d(const double *aPointsX,
                                           double *aOutQ)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_physics_bem_solve_laplace_2d_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_bem_solve_laplace_2d_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_bem_solve_laplace_2d_json(const char *aInput) ;
+rssn_
+char *rssn_physics_bem_solve_laplace_2d_json(const char *aInput)
+;
 
 /*
  Solves 1D heat equation using CN and returns a flat array of doubles.
@@ -11789,68 +15092,106 @@ double *rssn_physics_cnm_solve_heat_1d(const double *aInitialCondition,
                                        size_t *aOutSize)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_physics_cnm_solve_heat_2d_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_cnm_solve_heat_2d_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_cnm_solve_heat_2d_json(const char *aInput) ;
+rssn_
+char *rssn_physics_cnm_solve_heat_2d_json(const char *aInput)
+;
 
 /*
  Simulates the gravity semi-implicit Euler scenario and returns the results as a Matrix handle.
  */
-rssn_ rssn_Matrix<double> *rssn_physics_em_simulate_gravity_semi_implicit() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_em_simulate_gravity_semi_implicit()
+;
 
 /*
  Simulates the oscillator forward Euler scenario and returns the results as a Matrix handle.
  */
-rssn_ rssn_Matrix<double> *rssn_physics_em_simulate_oscillator_forward() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_em_simulate_oscillator_forward()
+;
 
 /*
  Simulates the stiff decay scenario using backward Euler and returns a Matrix handle.
  */
-rssn_ rssn_Matrix<double> *rssn_physics_em_simulate_stiff_decay_backward() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_em_simulate_stiff_decay_backward()
+;
 
-rssn_ rssn_BincodeBuffer rssn_physics_em_solve_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_em_solve_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_em_solve_json(const char *aInput) ;
+rssn_
+char *rssn_physics_em_solve_json(const char *aInput)
+;
 
-rssn_ char *rssn_physics_fdm_burgers_json(const char *aInput) ;
+rssn_
+char *rssn_physics_fdm_burgers_json(const char *aInput)
+;
 
 /*
  Returns a pointer to the grid data.
  */
-rssn_ double *rssn_physics_fdm_grid_data(rssn_FdmGrid<double> *aGrid) ;
+rssn_
+double *rssn_physics_fdm_grid_data(rssn_FdmGrid<double> *aGrid)
+;
 
 /*
  Frees a FdmGrid handle.
  */
-rssn_ void rssn_physics_fdm_grid_free(rssn_FdmGrid<double> *aGrid) ;
+rssn_
+void rssn_physics_fdm_grid_free(rssn_FdmGrid<double> *aGrid)
+;
 
 /*
  Returns the size of the grid data.
  */
-rssn_ size_t rssn_physics_fdm_grid_len(rssn_FdmGrid<double> *aGrid) ;
+rssn_
+size_t rssn_physics_fdm_grid_len(rssn_FdmGrid<double> *aGrid)
+;
 
 /*
  Creates a new FdmGrid handle with the given dimensions.
  */
-rssn_ rssn_FdmGrid<double> *rssn_physics_fdm_grid_new(size_t aD1, size_t aD2, size_t aD3) ;
+rssn_
+rssn_FdmGrid<double> *rssn_physics_fdm_grid_new(size_t aD1,
+                                                size_t aD2,
+                                                size_t aD3)
+;
 
-rssn_ char *rssn_physics_fdm_heat_json(const char *aInput) ;
+rssn_
+char *rssn_physics_fdm_heat_json(const char *aInput)
+;
 
-rssn_ char *rssn_physics_fdm_poisson_json(const char *aInput) ;
+rssn_
+char *rssn_physics_fdm_poisson_json(const char *aInput)
+;
 
 /*
  Simulates 2D heat conduction and returns a new FdmGrid handle.
  */
-rssn_ rssn_FdmGrid<double> *rssn_physics_fdm_simulate_heat_2d() ;
+rssn_
+rssn_FdmGrid<double> *rssn_physics_fdm_simulate_heat_2d()
+;
 
 /*
  Simulates 2D wave propagation and returns a new FdmGrid handle.
  */
-rssn_ rssn_FdmGrid<double> *rssn_physics_fdm_simulate_wave_2d() ;
+rssn_
+rssn_FdmGrid<double> *rssn_physics_fdm_simulate_wave_2d()
+;
 
-rssn_ rssn_BincodeBuffer rssn_physics_fdm_wave_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_fdm_wave_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_fdm_wave_json(const char *aInput) ;
+rssn_
+char *rssn_physics_fdm_wave_json(const char *aInput)
+;
 
 /*
  Solves 1D Poisson using FEM and returns a flat array of doubles.
@@ -11862,42 +15203,65 @@ double *rssn_physics_fem_solve_poisson_1d(size_t aNElements,
                                           size_t *aOutSize)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_physics_fem_solve_poisson_1d_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_fem_solve_poisson_1d_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_fem_solve_poisson_1d_json(const char *aInput) ;
+rssn_
+char *rssn_physics_fem_solve_poisson_1d_json(const char *aInput)
+;
 
-rssn_ char *rssn_physics_fvm_advection_json(const char *aInput) ;
+rssn_
+char *rssn_physics_fvm_advection_json(const char *aInput)
+;
 
 /*
  Returns a pointer to the mesh data.
  */
-rssn_ double *rssn_physics_fvm_mesh_data(rssn_Mesh *aMesh) ;
+rssn_
+double *rssn_physics_fvm_mesh_data(rssn_Mesh *aMesh)
+;
 
 /*
  Frees a Mesh handle.
  */
-rssn_ void rssn_physics_fvm_mesh_free(rssn_Mesh *aMesh) ;
+rssn_
+void rssn_physics_fvm_mesh_free(rssn_Mesh *aMesh)
+;
 
 /*
  Creates a new Mesh handle.
  */
-rssn_ rssn_Mesh *rssn_physics_fvm_mesh_new(size_t aNumCells, double aDomainSize) ;
+rssn_
+rssn_Mesh *rssn_physics_fvm_mesh_new(size_t aNumCells,
+                                     double aDomainSize)
+;
 
 /*
  Simulates 1D advection and returns the final values in a new buffer.
  */
-rssn_ double *rssn_physics_fvm_simulate_advection_1d() ;
+rssn_
+double *rssn_physics_fvm_simulate_advection_1d()
+;
 
-rssn_ rssn_BincodeBuffer rssn_physics_fvm_swe_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_fvm_swe_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_fvm_swe_json(const char *aInput) ;
+rssn_
+char *rssn_physics_fvm_swe_json(const char *aInput)
+;
 
 /*
  Simulates the dam break scenario and returns the final particle positions as a Matrix handle (Nx2).
  */
-rssn_ rssn_Matrix<double> *rssn_physics_mm_simulate_dam_break() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_mm_simulate_dam_break()
+;
 
-rssn_ char *rssn_physics_mm_simulate_dam_break_json() ;
+rssn_
+char *rssn_physics_mm_simulate_dam_break_json()
+;
 
 /*
  Adds a particle to the SPH system.
@@ -11914,31 +15278,48 @@ void rssn_physics_mm_sph_add_particle(rssn_SPHSystem *aSystem,
 /*
  Creates a new SPH system.
  */
-rssn_ rssn_SPHSystem *rssn_physics_mm_sph_create(double aH, double aBoundsX, double aBoundsY) ;
+rssn_
+rssn_SPHSystem *rssn_physics_mm_sph_create(double aH,
+                                           double aBoundsX,
+                                           double aBoundsY)
+;
 
 /*
  Frees an SPH system.
  */
-rssn_ void rssn_physics_mm_sph_free(rssn_SPHSystem *aSystem) ;
+rssn_
+void rssn_physics_mm_sph_free(rssn_SPHSystem *aSystem)
+;
 
 /*
  Returns the number of particles in the SPH system.
  */
-rssn_ size_t rssn_physics_mm_sph_get_particle_count(rssn_SPHSystem *aSystem) ;
+rssn_
+size_t rssn_physics_mm_sph_get_particle_count(rssn_SPHSystem *aSystem)
+;
 
 /*
  Gets particle positions as a Matrix (Nx2).
  */
-rssn_ rssn_Matrix<double> *rssn_physics_mm_sph_get_positions(rssn_SPHSystem *aSystem) ;
+rssn_
+rssn_Matrix<double> *rssn_physics_mm_sph_get_positions(rssn_SPHSystem *aSystem)
+;
 
 /*
  Updates the SPH system by one time step.
  */
-rssn_ void rssn_physics_mm_sph_update(rssn_SPHSystem *aSystem, double aDt) ;
+rssn_
+void rssn_physics_mm_sph_update(rssn_SPHSystem *aSystem,
+                                double aDt)
+;
 
-rssn_ rssn_BincodeBuffer rssn_physics_mm_sph_update_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_mm_sph_update_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_mm_sph_update_json(const char *aInput) ;
+rssn_
+char *rssn_physics_mm_sph_update_json(const char *aInput)
+;
 
 /*
  Solves 1D Poisson using Multigrid and returns a flat array of doubles.
@@ -11952,7 +15333,9 @@ double *rssn_physics_mtm_solve_poisson_1d(size_t aNInterior,
                                           size_t *aOutSize)
 ;
 
-rssn_ char *rssn_physics_mtm_solve_poisson_1d_json(const char *aInput) ;
+rssn_
+char *rssn_physics_mtm_solve_poisson_1d_json(const char *aInput)
+;
 
 /*
  Solves 2D Poisson using Multigrid and returns a flat array of doubles.
@@ -11965,39 +15348,61 @@ double *rssn_physics_mtm_solve_poisson_2d(size_t aN,
                                           size_t *aOutSize)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_physics_mtm_solve_poisson_2d_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_mtm_solve_poisson_2d_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_mtm_solve_poisson_2d_json(const char *aInput) ;
+rssn_
+char *rssn_physics_mtm_solve_poisson_2d_json(const char *aInput)
+;
 
-rssn_ char *rssn_physics_rkm_damped_oscillator_json(const char *aInput) ;
+rssn_
+char *rssn_physics_rkm_damped_oscillator_json(const char *aInput)
+;
 
-rssn_ rssn_BincodeBuffer rssn_physics_rkm_lorenz_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_rkm_lorenz_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_rkm_lorenz_json(const char *aInput) ;
+rssn_
+char *rssn_physics_rkm_lorenz_json(const char *aInput)
+;
 
-rssn_ char *rssn_physics_rkm_lotka_volterra_json(const char *aInput) ;
+rssn_
+char *rssn_physics_rkm_lotka_volterra_json(const char *aInput)
+;
 
 /*
  Simulates the damped oscillator scenario and returns the results as a Matrix handle.
  */
-rssn_ rssn_Matrix<double> *rssn_physics_rkm_simulate_damped_oscillator() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_rkm_simulate_damped_oscillator()
+;
 
 /*
  Simulates the Lorenz attractor scenario and returns the results as a Matrix handle.
  */
-rssn_ rssn_Matrix<double> *rssn_physics_rkm_simulate_lorenz() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_rkm_simulate_lorenz()
+;
 
 /*
  Simulates the Lotka-Volterra predator-prey scenario and returns the results as a Matrix handle.
  */
-rssn_ rssn_Matrix<double> *rssn_physics_rkm_simulate_lotka_volterra() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_rkm_simulate_lotka_volterra()
+;
 
 /*
  Simulates the Van der Pol oscillator scenario and returns the results as a Matrix handle.
  */
-rssn_ rssn_Matrix<double> *rssn_physics_rkm_simulate_vanderpol() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_rkm_simulate_vanderpol()
+;
 
-rssn_ char *rssn_physics_rkm_vanderpol_json(const char *aInput) ;
+rssn_
+char *rssn_physics_rkm_vanderpol_json(const char *aInput)
+;
 
 /*
  Runs a 2D FDTD simulation and returns the final Ez field as a Matrix handle (WxH).
@@ -12011,9 +15416,13 @@ rssn_Matrix<double> *rssn_physics_sim_fdtd_run_2d(size_t aWidth,
                                                   double aSourceFreq)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_physics_sim_fdtd_run_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_sim_fdtd_run_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_sim_fdtd_run_json(const char *aInput) ;
+rssn_
+char *rssn_physics_sim_fdtd_run_json(const char *aInput)
+;
 
 /*
  Runs a geodesic simulation and returns the resulting path as a Matrix handle (Nx2).
@@ -12028,11 +15437,17 @@ rssn_Matrix<double> *rssn_physics_sim_geodesic_run(double aBlackHoleMass,
                                                    double aInitialDt)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_physics_sim_geodesic_run_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_sim_geodesic_run_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_sim_geodesic_run_json(const char *aInput) ;
+rssn_
+char *rssn_physics_sim_geodesic_run_json(const char *aInput)
+;
 
-rssn_ rssn_BincodeBuffer rssn_physics_sim_gpe_run_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_sim_gpe_run_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  Runs the GPE ground state finder and returns the result as a Matrix handle (Nx x Ny).
@@ -12048,12 +15463,16 @@ rssn_Matrix<double> *rssn_physics_sim_gpe_run_ground_state_finder(size_t aNx,
                                                                   double aTrapStrength)
 ;
 
-rssn_ char *rssn_physics_sim_gpe_run_json(const char *aInput) ;
+rssn_
+char *rssn_physics_sim_gpe_run_json(const char *aInput)
+;
 
 /*
  Frees the Ising result handle.
  */
-rssn_ void rssn_physics_sim_ising_free_result(rssn_IsingResultHandle aHandle) ;
+rssn_
+void rssn_physics_sim_ising_free_result(rssn_IsingResultHandle aHandle)
+;
 
 /*
  Runs a 2D Ising model simulation and returns the final grid as a Matrix handle and the magnetization.
@@ -12065,29 +15484,43 @@ rssn_IsingResultHandle rssn_physics_sim_ising_run(size_t aWidth,
                                                   size_t aMcSteps)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_physics_sim_ising_run_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_sim_ising_run_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_sim_ising_run_json(const char *aInput) ;
+rssn_
+char *rssn_physics_sim_ising_run_json(const char *aInput)
+;
 
 rssn_
 rssn_BincodeBuffer rssn_physics_sim_linear_elasticity_run_bincode(rssn_BincodeBuffer aBuffer)
 ;
 
-rssn_ char *rssn_physics_sim_linear_elasticity_run_json(const char *aInput) ;
+rssn_
+char *rssn_physics_sim_linear_elasticity_run_json(const char *aInput)
+;
 
 /*
  Runs the 2D cantilever beam scenario and returns the displacement results as a Matrix handle (Nx2).
  */
-rssn_ rssn_Matrix<double> *rssn_physics_sim_linear_elasticity_simulate_cantilever() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_sim_linear_elasticity_simulate_cantilever()
+;
 
 /*
  Frees the result handles.
  */
-rssn_ void rssn_physics_sim_navier_stokes_free_results(rssn_NavierStokesResultHandles aHandles) ;
+rssn_
+void rssn_physics_sim_navier_stokes_free_results(rssn_NavierStokesResultHandles aHandles)
+;
 
-rssn_ rssn_BincodeBuffer rssn_physics_sim_navier_stokes_run_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_sim_navier_stokes_run_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_sim_navier_stokes_run_json(const char *aInput) ;
+rssn_
+char *rssn_physics_sim_navier_stokes_run_json(const char *aInput)
+;
 
 /*
  Runs the lid-driven cavity simulation and returns handles to the U, V, and P matrices.
@@ -12118,35 +15551,53 @@ rssn_Matrix<double> *rssn_physics_sim_schrodinger_run_2d(size_t aNx,
                                                          const double *aInitialPsiImPtr)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_physics_sim_schrodinger_run_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_sim_schrodinger_run_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_sim_schrodinger_run_json(const char *aInput) ;
+rssn_
+char *rssn_physics_sim_schrodinger_run_json(const char *aInput)
+;
 
 /*
  Simulates the 1D advection-diffusion scenario and returns the results as a Matrix handle (1xN).
  */
-rssn_ rssn_Matrix<double> *rssn_physics_sm_simulate_1d_advection() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_sm_simulate_1d_advection()
+;
 
 /*
  Simulates the 2D advection-diffusion scenario and returns the results as a Matrix handle (WxH).
  */
-rssn_ rssn_Matrix<double> *rssn_physics_sm_simulate_2d_advection() ;
+rssn_
+rssn_Matrix<double> *rssn_physics_sm_simulate_2d_advection()
+;
 
-rssn_ char *rssn_physics_sm_solve_advection_1d_json(const char *aInput) ;
+rssn_
+char *rssn_physics_sm_solve_advection_1d_json(const char *aInput)
+;
 
-rssn_ rssn_BincodeBuffer rssn_physics_sm_solve_advection_2d_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_physics_sm_solve_advection_2d_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_physics_sm_solve_advection_2d_json(const char *aInput) ;
+rssn_
+char *rssn_physics_sm_solve_advection_2d_json(const char *aInput)
+;
 
 /*
  Returns the symbolic representation of Pi.
  */
-rssn_ rssn_Expr *rssn_pi() ;
+rssn_
+rssn_Expr *rssn_pi()
+;
 
 /*
  Returns Pi as bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_pi_bincode() ;
+rssn_
+rssn_BincodeBuffer rssn_pi_bincode()
+;
 
 /*
  Returns Pi as JSON.
@@ -12174,7 +15625,10 @@ size_t rssn_plugin_execute(const char *aPluginNamePtr,
 /*
  Compresses a point. Returns the x-coordinate string. sets *is_odd to the parity.
  */
-rssn_ char *rssn_point_compress(const rssn_CurvePoint *aPoint, bool *aIsOddOut) ;
+rssn_
+char *rssn_point_compress(const rssn_CurvePoint *aPoint,
+                          bool *aIsOddOut)
+;
 
 /*
  Decompresses a point.
@@ -12185,9 +15639,14 @@ rssn_CurvePoint *rssn_point_decompress(const char *aXStr,
                                        const rssn_EllipticCurve *aCurve)
 ;
 
-rssn_ rssn_Expr *rssn_poles_get(const rssn_Vec<rssn_Expr> *aPoles, size_t aIndex) ;
+rssn_
+rssn_Expr *rssn_poles_get(const rssn_Vec<rssn_Expr> *aPoles,
+                          size_t aIndex)
+;
 
-rssn_ size_t rssn_poles_len(const rssn_Vec<rssn_Expr> *aPoles) ;
+rssn_
+size_t rssn_poles_len(const rssn_Vec<rssn_Expr> *aPoles)
+;
 
 /*
  Adds two polynomials over a general finite field.
@@ -12215,7 +15674,11 @@ uint8_t *rssn_poly_add_gf256(const uint8_t *aP1,
                              size_t *aOutLen)
 ;
 
-rssn_ int32_t rssn_poly_degree(size_t aExprHandle, const char *aVarPtr, int64_t *aResult) ;
+rssn_
+int32_t rssn_poly_degree(size_t aExprHandle,
+                         const char *aVarPtr,
+                         int64_t *aResult)
+;
 
 /*
  Computes the formal derivative of a polynomial in GF(2^8).
@@ -12223,7 +15686,11 @@ rssn_ int32_t rssn_poly_degree(size_t aExprHandle, const char *aVarPtr, int64_t 
  # Safety
  Caller must ensure pointer is valid. Result is allocated and must be freed.
  */
-rssn_ uint8_t *rssn_poly_derivative_gf256(const uint8_t *aPoly, size_t aLen, size_t *aOutLen) ;
+rssn_
+uint8_t *rssn_poly_derivative_gf256(const uint8_t *aPoly,
+                                    size_t aLen,
+                                    size_t *aOutLen)
+;
 
 /*
  Computes polynomial derivative over finite field (Handle)
@@ -12238,7 +15705,11 @@ rssn_FiniteFieldPolynomial *rssn_poly_derivative_gf_handle(const rssn_FiniteFiel
  # Safety
  Caller must ensure `poly` is a valid pointer to an array of `len` bytes.
  */
-rssn_ uint8_t rssn_poly_eval_gf256(const uint8_t *aPoly, size_t aLen, uint8_t aX) ;
+rssn_
+uint8_t rssn_poly_eval_gf256(const uint8_t *aPoly,
+                             size_t aLen,
+                             uint8_t aX)
+;
 
 /*
  Computes the GCD of two polynomials over GF(2^8).
@@ -12262,7 +15733,11 @@ rssn_FiniteFieldPolynomial *rssn_poly_gcd_gf_handle(const rssn_FiniteFieldPolyno
                                                     const rssn_FiniteFieldPolynomial *aB)
 ;
 
-rssn_ int32_t rssn_poly_is_polynomial(size_t aExprHandle, const char *aVarPtr, bool *aResult) ;
+rssn_
+int32_t rssn_poly_is_polynomial(size_t aExprHandle,
+                                const char *aVarPtr,
+                                bool *aResult)
+;
 
 rssn_
 int32_t rssn_poly_long_division(size_t aNHandle,
@@ -12314,22 +15789,32 @@ uint8_t *rssn_poly_scale_gf256(const uint8_t *aPoly,
 /*
  Computes the symbolic Polygamma function ψ⁽ⁿ⁾(z).
  */
-rssn_ rssn_Expr *rssn_polygamma(const rssn_Expr *aN, const rssn_Expr *aZ) ;
+rssn_
+rssn_Expr *rssn_polygamma(const rssn_Expr *aN,
+                          const rssn_Expr *aZ)
+;
 
 /*
  Frees a polygon mesh.
  */
-rssn_ void rssn_polygon_mesh_free(rssn_PolygonMesh *aMesh) ;
+rssn_
+void rssn_polygon_mesh_free(rssn_PolygonMesh *aMesh)
+;
 
 /*
  Creates a new polygon mesh.
  */
-rssn_ rssn_PolygonMesh *rssn_polygon_mesh_new(const rssn_Vector *aVertices, size_t aVertexCount) ;
+rssn_
+rssn_PolygonMesh *rssn_polygon_mesh_new(const rssn_Vector *aVertices,
+                                        size_t aVertexCount)
+;
 
 /*
  Triangulates a polygon mesh.
  */
-rssn_ rssn_PolygonMesh *rssn_polygon_mesh_triangulate(const rssn_PolygonMesh *aMesh) ;
+rssn_
+rssn_PolygonMesh *rssn_polygon_mesh_triangulate(const rssn_PolygonMesh *aMesh)
+;
 
 rssn_
 rssn_Expr *rssn_polynomial_regression(const rssn_Expr *const *aXData,
@@ -12341,7 +15826,10 @@ rssn_Expr *rssn_polynomial_regression(const rssn_Expr *const *aXData,
 /*
  Creates a power expression: base^exp.
  */
-rssn_ rssn_Expr *rssn_pow(const rssn_Expr *aBase, const rssn_Expr *aExp) ;
+rssn_
+rssn_Expr *rssn_pow(const rssn_Expr *aBase,
+                    const rssn_Expr *aExp)
+;
 
 /*
  Creates a power expression from bincode: base^exp.
@@ -12362,17 +15850,26 @@ rssn_BincodeBuffer rssn_pow_bincode(rssn_BincodeBuffer aBaseBuffer,
  * `json_base` - JSON-serialized base Expr
  * `json_exp` - JSON-serialized exponent Expr
  */
-rssn_ char *rssn_pow_json(const char *aJsonBase, const char *aJsonExp) ;
+rssn_
+char *rssn_pow_json(const char *aJsonBase,
+                    const char *aJsonExp)
+;
 
 /*
  Calculates power: F . v.
  */
-rssn_ rssn_Expr *rssn_power(const rssn_Vector *aForce, const rssn_Vector *aVelocity) ;
+rssn_
+rssn_Expr *rssn_power(const rssn_Vector *aForce,
+                      const rssn_Vector *aVelocity)
+;
 
 /*
  Calculates the Poynting vector.
  */
-rssn_ rssn_Vector *rssn_poynting_vector(const rssn_Vector *aEField, const rssn_Vector *aBField) ;
+rssn_
+rssn_Vector *rssn_poynting_vector(const rssn_Vector *aEField,
+                                  const rssn_Vector *aBField)
+;
 
 /*
  Adds two prime field elements (Handle)
@@ -12385,7 +15882,9 @@ rssn_PrimeFieldElement *rssn_prime_field_element_add_handle(const rssn_PrimeFiel
 /*
  Frees a prime field element (Handle)
  */
-rssn_ void rssn_prime_field_element_free_handle(rssn_PrimeFieldElement *aElem) ;
+rssn_
+void rssn_prime_field_element_free_handle(rssn_PrimeFieldElement *aElem)
+;
 
 /*
  Computes the inverse of a prime field element (Handle)
@@ -12414,7 +15913,9 @@ rssn_PrimeFieldElement *rssn_prime_field_element_new_handle(const rssn_BigInt *a
 /*
  Computes the probability density |ψ(x)|^2.
  */
-rssn_ rssn_Expr *rssn_probability_density(const rssn_Ket *aPsi) ;
+rssn_
+rssn_Expr *rssn_probability_density(const rssn_Ket *aPsi)
+;
 
 rssn_
 rssn_Expr *rssn_product_handle(const rssn_Expr *aExpr,
@@ -12454,7 +15955,11 @@ rssn_Expr *rssn_qed_lagrangian(const rssn_Expr *aPsiBar,
 /*
  Computes a propagator for a particle in QFT.
  */
-rssn_ rssn_Expr *rssn_qft_propagator(const rssn_Expr *aP, const rssn_Expr *aM, bool aIsFermion) ;
+rssn_
+rssn_Expr *rssn_qft_propagator(const rssn_Expr *aP,
+                               const rssn_Expr *aM,
+                               bool aIsFermion)
+;
 
 /*
  Scattering cross-section.
@@ -12482,29 +15987,42 @@ rssn_Vec<double> *rssn_real_roots_find_roots(const double *aCoeffsPtr,
                                              double aTolerance)
 ;
 
-rssn_ rssn_BincodeBuffer rssn_real_roots_find_roots_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_real_roots_find_roots_bincode(rssn_BincodeBuffer aBuffer)
+;
 
-rssn_ char *rssn_real_roots_find_roots_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_real_roots_find_roots_json(const char *aJsonPtr)
+;
 
 /*
  Frees a roots vector.
  */
-rssn_ void rssn_real_roots_free_vec(rssn_Vec<double> *aPtr) ;
+rssn_
+void rssn_real_roots_free_vec(rssn_Vec<double> *aPtr)
+;
 
 /*
  Gets the data of the roots vector.
  */
-rssn_ void rssn_real_roots_get_vec_data(const rssn_Vec<double> *aPtr, double *aBuffer) ;
+rssn_
+void rssn_real_roots_get_vec_data(const rssn_Vec<double> *aPtr,
+                                  double *aBuffer)
+;
 
 /*
  Gets the length of the roots vector.
  */
-rssn_ size_t rssn_real_roots_get_vec_len(const rssn_Vec<double> *aPtr) ;
+rssn_
+size_t rssn_real_roots_get_vec_len(const rssn_Vec<double> *aPtr)
+;
 
 /*
  Generates a 3x3 2D reflection matrix across a line.
  */
-rssn_ rssn_Expr *rssn_reflection_2d(const rssn_Expr *aAngle) ;
+rssn_
+rssn_Expr *rssn_reflection_2d(const rssn_Expr *aAngle)
+;
 
 /*
  Generates a 4x4 3D reflection matrix across a plane.
@@ -12518,17 +16036,27 @@ rssn_Expr *rssn_reflection_3d(const rssn_Expr *aNx,
 /*
  Computes the regularized lower incomplete gamma function P(a, x).
  */
-rssn_ double rssn_regularized_gamma_p(double aA, double aX) ;
+rssn_
+double rssn_regularized_gamma_p(double aA,
+                                double aX)
+;
 
 /*
  Computes the regularized upper incomplete gamma function Q(a, x).
  */
-rssn_ double rssn_regularized_gamma_q(double aA, double aX) ;
+rssn_
+double rssn_regularized_gamma_q(double aA,
+                                double aX)
+;
 
 /*
  Computes the regularized incomplete beta function Iₓ(a, b).
  */
-rssn_ double rssn_regularized_incomplete_beta(double aA, double aB, double aX) ;
+rssn_
+double rssn_regularized_incomplete_beta(double aA,
+                                        double aB,
+                                        double aX)
+;
 
 rssn_
 rssn_Representation *rssn_representation_create(const rssn_Expr *const *aElementsPtr,
@@ -12538,9 +16066,14 @@ rssn_Representation *rssn_representation_create(const rssn_Expr *const *aElement
                                                 size_t aMapLen)
 ;
 
-rssn_ void rssn_representation_free(rssn_Representation *aPtr) ;
+rssn_
+void rssn_representation_free(rssn_Representation *aPtr)
+;
 
-rssn_ bool rssn_representation_is_valid(const rssn_Representation *aRep, const rssn_Group *aGroup) ;
+rssn_
+bool rssn_representation_is_valid(const rssn_Representation *aRep,
+                                  const rssn_Group *aGroup)
+;
 
 /*
  Frees a rewrite rule.
@@ -12548,7 +16081,9 @@ rssn_ bool rssn_representation_is_valid(const rssn_Representation *aRep, const r
  # Safety
  The caller must ensure `rule` was created by this module and hasn't been freed yet.
  */
-rssn_ void rssn_rewrite_rule_free(rssn_RewriteRule *aRule) ;
+rssn_
+void rssn_rewrite_rule_free(rssn_RewriteRule *aRule)
+;
 
 /*
  Gets the LHS of a rewrite rule.
@@ -12558,7 +16093,9 @@ rssn_ void rssn_rewrite_rule_free(rssn_RewriteRule *aRule) ;
  # Safety
  The caller must ensure `rule` is a valid RewriteRule pointer.
  */
-rssn_ rssn_Expr *rssn_rewrite_rule_get_lhs(const rssn_RewriteRule *aRule) ;
+rssn_
+rssn_Expr *rssn_rewrite_rule_get_lhs(const rssn_RewriteRule *aRule)
+;
 
 /*
  Gets the RHS of a rewrite rule.
@@ -12568,7 +16105,9 @@ rssn_ rssn_Expr *rssn_rewrite_rule_get_lhs(const rssn_RewriteRule *aRule) ;
  # Safety
  The caller must ensure `rule` is a valid RewriteRule pointer.
  */
-rssn_ rssn_Expr *rssn_rewrite_rule_get_rhs(const rssn_RewriteRule *aRule) ;
+rssn_
+rssn_Expr *rssn_rewrite_rule_get_rhs(const rssn_RewriteRule *aRule)
+;
 
 /*
  Creates a new rewrite rule from lhs and rhs expressions.
@@ -12576,12 +16115,17 @@ rssn_ rssn_Expr *rssn_rewrite_rule_get_rhs(const rssn_RewriteRule *aRule) ;
  # Safety
  The caller must ensure `lhs` and `rhs` are valid Expr pointers.
  */
-rssn_ rssn_RewriteRule *rssn_rewrite_rule_new(const rssn_Expr *aLhs, const rssn_Expr *aRhs) ;
+rssn_
+rssn_RewriteRule *rssn_rewrite_rule_new(const rssn_Expr *aLhs,
+                                        const rssn_Expr *aRhs)
+;
 
 /*
  Creates a rewrite rule from Bincode.
  */
-rssn_ rssn_BincodeBuffer rssn_rewrite_rule_new_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_rewrite_rule_new_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Creates a rewrite rule from JSON.
@@ -12589,7 +16133,9 @@ rssn_ rssn_BincodeBuffer rssn_rewrite_rule_new_bincode(rssn_BincodeBuffer aInput
  Input: JSON object with "lhs" and "rhs" fields (both Expr)
  Output: JSON-serialized RewriteRule
  */
-rssn_ char *rssn_rewrite_rule_new_json(const char *aJsonStr) ;
+rssn_
+char *rssn_rewrite_rule_new_json(const char *aJsonStr)
+;
 
 /*
  Converts a rewrite rule to a string representation.
@@ -12599,12 +16145,16 @@ rssn_ char *rssn_rewrite_rule_new_json(const char *aJsonStr) ;
  # Safety
  The caller must free the returned string.
  */
-rssn_ char *rssn_rewrite_rule_to_string(const rssn_RewriteRule *aRule) ;
+rssn_
+char *rssn_rewrite_rule_to_string(const rssn_RewriteRule *aRule)
+;
 
 /*
  Converts a rewrite rule to a human-readable string (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_rewrite_rule_to_string_bincode(rssn_BincodeBuffer aInput) ;
+rssn_
+rssn_BincodeBuffer rssn_rewrite_rule_to_string_bincode(rssn_BincodeBuffer aInput)
+;
 
 /*
  Converts a rewrite rule to a human-readable string (JSON).
@@ -12612,42 +16162,61 @@ rssn_ rssn_BincodeBuffer rssn_rewrite_rule_to_string_bincode(rssn_BincodeBuffer 
  Input: JSON-serialized RewriteRule
  Output: JSON object with "string" field
  */
-rssn_ char *rssn_rewrite_rule_to_string_json(const char *aJsonStr) ;
+rssn_
+char *rssn_rewrite_rule_to_string_json(const char *aJsonStr)
+;
 
 /*
  Integrates an expression using the Risch-Norman algorithm (Handle)
  */
-rssn_ rssn_Expr *rssn_risch_norman_integrate_handle(const rssn_Expr *aExpr, const char *aX) ;
+rssn_
+rssn_Expr *rssn_risch_norman_integrate_handle(const rssn_Expr *aExpr,
+                                              const char *aX)
+;
 
 /*
  Computes the rising factorial (Pochhammer symbol) (x)ₙ.
  */
-rssn_ double rssn_rising_factorial(double aX, uint32_t aN) ;
+rssn_
+double rssn_rising_factorial(double aX,
+                             uint32_t aN)
+;
 
 /*
  Generates a 3x3 2D rotation matrix.
  */
-rssn_ rssn_Expr *rssn_rotation_2d(const rssn_Expr *aAngle) ;
+rssn_
+rssn_Expr *rssn_rotation_2d(const rssn_Expr *aAngle)
+;
 
 /*
  Generates a 4x4 3D rotation matrix around the X-axis.
  */
-rssn_ rssn_Expr *rssn_rotation_3d_x(const rssn_Expr *aAngle) ;
+rssn_
+rssn_Expr *rssn_rotation_3d_x(const rssn_Expr *aAngle)
+;
 
 /*
  Generates a 4x4 3D rotation matrix around the Y-axis.
  */
-rssn_ rssn_Expr *rssn_rotation_3d_y(const rssn_Expr *aAngle) ;
+rssn_
+rssn_Expr *rssn_rotation_3d_y(const rssn_Expr *aAngle)
+;
 
 /*
  Generates a 4x4 3D rotation matrix around the Z-axis.
  */
-rssn_ rssn_Expr *rssn_rotation_3d_z(const rssn_Expr *aAngle) ;
+rssn_
+rssn_Expr *rssn_rotation_3d_z(const rssn_Expr *aAngle)
+;
 
 /*
  Generates a 4x4 3D rotation matrix around an arbitrary axis.
  */
-rssn_ rssn_Expr *rssn_rotation_axis_angle(const rssn_Vector *aAxis, const rssn_Expr *aAngle) ;
+rssn_
+rssn_Expr *rssn_rotation_axis_angle(const rssn_Vector *aAxis,
+                                    const rssn_Expr *aAngle)
+;
 
 /*
  Checks if a Reed-Solomon codeword is valid without attempting correction.
@@ -12656,7 +16225,11 @@ rssn_ rssn_Expr *rssn_rotation_axis_angle(const rssn_Vector *aAxis, const rssn_E
  Caller must ensure `codeword` points to `codeword_len` bytes.
  Returns 1 if valid, 0 if invalid, -1 on error.
  */
-rssn_ int32_t rssn_rs_check(const uint8_t *aCodeword, size_t aCodewordLen, size_t aNSym) ;
+rssn_
+int32_t rssn_rs_check(const uint8_t *aCodeword,
+                      size_t aCodewordLen,
+                      size_t aNSym)
+;
 
 /*
  Decodes a Reed-Solomon codeword, correcting errors if possible.
@@ -12691,7 +16264,11 @@ uint8_t *rssn_rs_encode(const uint8_t *aData,
  Caller must ensure `codeword` points to `codeword_len` bytes.
  Returns error count or -1 on error.
  */
-rssn_ int32_t rssn_rs_error_count(const uint8_t *aCodeword, size_t aCodewordLen, size_t aNSym) ;
+rssn_
+int32_t rssn_rs_error_count(const uint8_t *aCodeword,
+                            size_t aCodewordLen,
+                            size_t aNSym)
+;
 
 /*
  Frees memory allocated by rs_encode or rs_decode.
@@ -12699,7 +16276,10 @@ rssn_ int32_t rssn_rs_error_count(const uint8_t *aCodeword, size_t aCodewordLen,
  # Safety
  Caller must ensure `ptr` was returned by rssn_rs_encode or rssn_rs_decode.
  */
-rssn_ void rssn_rs_free(uint8_t *aPtr, size_t aLen) ;
+rssn_
+void rssn_rs_free(uint8_t *aPtr,
+                  size_t aLen)
+;
 
 /*
  Frees a rules vector.
@@ -12707,7 +16287,9 @@ rssn_ void rssn_rs_free(uint8_t *aPtr, size_t aLen) ;
  # Safety
  The caller must ensure `rules` was created by this module and hasn't been freed yet.
  */
-rssn_ void rssn_rules_vec_free(rssn_Vec<rssn_RewriteRule> *aRules) ;
+rssn_
+void rssn_rules_vec_free(rssn_Vec<rssn_RewriteRule> *aRules)
+;
 
 /*
  Gets a rule from a rules vector by index.
@@ -12728,22 +16310,34 @@ rssn_RewriteRule *rssn_rules_vec_get(const rssn_Vec<rssn_RewriteRule> *aRules,
  # Safety
  The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
  */
-rssn_ size_t rssn_rules_vec_len(const rssn_Vec<rssn_RewriteRule> *aRules) ;
+rssn_
+size_t rssn_rules_vec_len(const rssn_Vec<rssn_RewriteRule> *aRules)
+;
 
 /*
  Lagrangian density for a free real scalar field.
  */
-rssn_ rssn_Expr *rssn_scalar_field_lagrangian(const rssn_Expr *aPhi, const rssn_Expr *aM) ;
+rssn_
+rssn_Expr *rssn_scalar_field_lagrangian(const rssn_Expr *aPhi,
+                                        const rssn_Expr *aM)
+;
 
 /*
  Generates a 3x3 2D scaling matrix.
  */
-rssn_ rssn_Expr *rssn_scaling_2d(const rssn_Expr *aSx, const rssn_Expr *aSy) ;
+rssn_
+rssn_Expr *rssn_scaling_2d(const rssn_Expr *aSx,
+                           const rssn_Expr *aSy)
+;
 
 /*
  Generates a 4x4 3D scaling matrix.
  */
-rssn_ rssn_Expr *rssn_scaling_3d(const rssn_Expr *aSx, const rssn_Expr *aSy, const rssn_Expr *aSz) ;
+rssn_
+rssn_Expr *rssn_scaling_3d(const rssn_Expr *aSx,
+                           const rssn_Expr *aSy,
+                           const rssn_Expr *aSz)
+;
 
 /*
  Scattering amplitude.
@@ -12757,7 +16351,9 @@ rssn_Expr *rssn_scattering_amplitude(const rssn_Ket *aInitialState,
 /*
  Calculates Schwarzschild radius.
  */
-rssn_ rssn_Expr *rssn_schwarzschild_radius(const rssn_Expr *aMass) ;
+rssn_
+rssn_Expr *rssn_schwarzschild_radius(const rssn_Expr *aMass)
+;
 
 rssn_
 rssn_ConvergenceResult *rssn_series_analyze_convergence_handle(const rssn_Expr *aSeries,
@@ -12769,14 +16365,23 @@ rssn_BincodeBuffer rssn_series_bincode_analyze_convergence(rssn_BincodeBuffer aS
                                                            rssn_BincodeBuffer aVarBuf)
 ;
 
-rssn_ char *rssn_series_json_analyze_convergence(const char *aSeriesJson, const char *aVarJson) ;
+rssn_
+char *rssn_series_json_analyze_convergence(const char *aSeriesJson,
+                                           const char *aVarJson)
+;
 
-rssn_ rssn_Expr *rssn_shannon_entropy(const rssn_Expr *const *aProbs, size_t aLen) ;
+rssn_
+rssn_Expr *rssn_shannon_entropy(const rssn_Expr *const *aProbs,
+                                size_t aLen)
+;
 
 /*
  Generates a 3x3 2D shear matrix.
  */
-rssn_ rssn_Expr *rssn_shear_2d(const rssn_Expr *aShx, const rssn_Expr *aShy) ;
+rssn_
+rssn_Expr *rssn_shear_2d(const rssn_Expr *aShx,
+                         const rssn_Expr *aShy)
+;
 
 rssn_
 rssn_Expr *rssn_simple_linear_regression(const rssn_Expr *const *aXData,
@@ -12787,17 +16392,24 @@ rssn_Expr *rssn_simple_linear_regression(const rssn_Expr *const *aXData,
 /*
  Creates a new Simplex (Handle)
  */
-rssn_ rssn_Simplex *rssn_simplex_create(const size_t *aVerticesPtr, size_t aLen) ;
+rssn_
+rssn_Simplex *rssn_simplex_create(const size_t *aVerticesPtr,
+                                  size_t aLen)
+;
 
 /*
  Gets the dimension of a Simplex
  */
-rssn_ size_t rssn_simplex_dimension(const rssn_Simplex *aPtr) ;
+rssn_
+size_t rssn_simplex_dimension(const rssn_Simplex *aPtr)
+;
 
 /*
  Frees a Simplex handle
  */
-rssn_ void rssn_simplex_free(rssn_Simplex *aPtr) ;
+rssn_
+void rssn_simplex_free(rssn_Simplex *aPtr)
+;
 
 /*
  Adds a simplex to a SimplicialComplex
@@ -12819,22 +16431,30 @@ rssn_SymbolicChain *rssn_simplicial_complex_apply_symbolic_boundary_operator(con
 /*
  Creates a new SimplicialComplex (Handle)
  */
-rssn_ rssn_SimplicialComplex *rssn_simplicial_complex_create() ;
+rssn_
+rssn_SimplicialComplex *rssn_simplicial_complex_create()
+;
 
 /*
  Gets the dimension of a SimplicialComplex
  */
-rssn_ int rssn_simplicial_complex_dimension(const rssn_SimplicialComplex *aPtr) ;
+rssn_
+int rssn_simplicial_complex_dimension(const rssn_SimplicialComplex *aPtr)
+;
 
 /*
  Computes the Euler characteristic
  */
-rssn_ ptrdiff_t rssn_simplicial_complex_euler_characteristic(const rssn_SimplicialComplex *aPtr) ;
+rssn_
+ptrdiff_t rssn_simplicial_complex_euler_characteristic(const rssn_SimplicialComplex *aPtr)
+;
 
 /*
  Frees a SimplicialComplex handle
  */
-rssn_ void rssn_simplicial_complex_free(rssn_SimplicialComplex *aPtr) ;
+rssn_
+void rssn_simplicial_complex_free(rssn_SimplicialComplex *aPtr)
+;
 
 /*
  Gets the symbolic boundary matrix for dimension k
@@ -12850,7 +16470,9 @@ rssn_Expr *rssn_simplicial_complex_get_symbolic_boundary_matrix(const rssn_Simpl
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
  */
-rssn_ rssn_Expr *rssn_simplify(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_simplify(const rssn_Expr *aExpr)
+;
 
 /*
  Simplifies an expression using the DAG-based simplifier.
@@ -12858,7 +16480,9 @@ rssn_ rssn_Expr *rssn_simplify(const rssn_Expr *aExpr) ;
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
  */
-rssn_ rssn_Expr *rssn_simplify_dag(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_simplify_dag(const rssn_Expr *aExpr)
+;
 
 /*
  Simplifies a logical expression using handle-based FFI.
@@ -12866,12 +16490,16 @@ rssn_ rssn_Expr *rssn_simplify_dag(const rssn_Expr *aExpr) ;
  # Safety
  The caller must ensure that `expr` is a valid pointer to an `Expr`.
  */
-rssn_ rssn_Expr *rssn_simplify_logic_handle(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_simplify_logic_handle(const rssn_Expr *aExpr)
+;
 
 /*
  Simplifies radical expressions (Handle)
  */
-rssn_ rssn_Expr *rssn_simplify_radicals_handle(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_simplify_radicals_handle(const rssn_Expr *aExpr)
+;
 
 /*
  Creates a sine expression: sin(expr).
@@ -12879,7 +16507,9 @@ rssn_ rssn_Expr *rssn_simplify_radicals_handle(const rssn_Expr *aExpr) ;
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
  */
-rssn_ rssn_Expr *rssn_sin(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_sin(const rssn_Expr *aExpr)
+;
 
 /*
  Creates a sine expression from bincode: sin(expr).
@@ -12890,7 +16520,9 @@ rssn_ rssn_Expr *rssn_sin(const rssn_Expr *aExpr) ;
  # Returns
  Bincode-serialized Expr
  */
-rssn_ rssn_BincodeBuffer rssn_sin_bincode(rssn_BincodeBuffer aExprBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_sin_bincode(rssn_BincodeBuffer aExprBuffer)
+;
 
 /*
  Creates a sine expression from JSON: sin(expr).
@@ -12901,16 +16533,26 @@ rssn_ rssn_BincodeBuffer rssn_sin_bincode(rssn_BincodeBuffer aExprBuffer) ;
  # Returns
  JSON-serialized Expr or null on error
  */
-rssn_ char *rssn_sin_json(const char *aJsonExpr) ;
+rssn_
+char *rssn_sin_json(const char *aJsonExpr)
+;
 
 /*
  Computes the normalized sinc function sin(πx)/(πx).
  */
-rssn_ double rssn_sinc(double aX) ;
+rssn_
+double rssn_sinc(double aX)
+;
 
-rssn_ rssn_Expr **rssn_so3_generators(size_t *aOutLen) ;
+rssn_
+rssn_Expr **rssn_so3_generators(size_t *aOutLen)
+;
 
-rssn_ int32_t rssn_solve(size_t aExprH, const char *aVar, size_t *aResultH) ;
+rssn_
+int32_t rssn_solve(size_t aExprH,
+                   const char *aVar,
+                   size_t *aResultH)
+;
 
 /*
  Solves the airfoil singular integral equation.
@@ -12932,7 +16574,9 @@ rssn_BincodeBuffer rssn_solve_airfoil_equation_bincode(const uint8_t *aInputPtr,
 /*
  Solves the airfoil singular integral equation (JSON).
  */
-rssn_ char *rssn_solve_airfoil_equation_json(const char *aInputJson) ;
+rssn_
+char *rssn_solve_airfoil_equation_json(const char *aInputJson)
+;
 
 /*
  Solves a Bernoulli ODE.
@@ -13020,7 +16664,10 @@ rssn_Expr *rssn_solve_first_order_linear_ode(const rssn_Expr *aEquation,
                                              const char *aVar)
 ;
 
-rssn_ rssn_Vec<rssn_Expr> *rssn_solve_handle(const rssn_Expr *aExpr, const char *aVar) ;
+rssn_
+rssn_Vec<rssn_Expr> *rssn_solve_handle(const rssn_Expr *aExpr,
+                                       const char *aVar)
+;
 
 /*
  Solves the 1D heat equation.
@@ -13077,7 +16724,9 @@ rssn_Expr *rssn_solve_laplace_equation_2d(const rssn_Expr *aEquation,
 /*
  Bincode FFI for solving linear systems.
  */
-rssn_ rssn_BincodeBuffer rssn_solve_linear_system_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_solve_linear_system_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 rssn_
 rssn_Vec<rssn_Expr> *rssn_solve_linear_system_handle(const rssn_Expr *aSystem,
@@ -13087,7 +16736,9 @@ rssn_Vec<rssn_Expr> *rssn_solve_linear_system_handle(const rssn_Expr *aSystem,
 /*
  JSON FFI for solving linear systems.
  */
-rssn_ char *rssn_solve_linear_system_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_solve_linear_system_json(const char *aJsonPtr)
+;
 
 /*
  Solves an ordinary differential equation.
@@ -13195,33 +16846,45 @@ rssn_Expr *rssn_solve_wave_equation_1d_dalembert(const rssn_Expr *aEquation,
 /*
  Spin operator S = hbar/2 * σ.
  */
-rssn_ rssn_Expr *rssn_spin_operator(const rssn_Expr *aPauli) ;
+rssn_
+rssn_Expr *rssn_spin_operator(const rssn_Expr *aPauli)
+;
 
 /*
  Creates a square root expression: sqrt(expr).
  */
-rssn_ rssn_Expr *rssn_sqrt(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_sqrt(const rssn_Expr *aExpr)
+;
 
 /*
  Creates a square root expression from bincode: sqrt(expr).
  */
-rssn_ rssn_BincodeBuffer rssn_sqrt_bincode(rssn_BincodeBuffer aExprBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_sqrt_bincode(rssn_BincodeBuffer aExprBuffer)
+;
 
 /*
  Creates a square root expression from JSON: sqrt(expr).
  */
-rssn_ char *rssn_sqrt_json(const char *aJsonExpr) ;
+rssn_
+char *rssn_sqrt_json(const char *aJsonExpr)
+;
 
 /*
  Frees a State.
  */
-rssn_ void rssn_state_free(rssn_State *aState) ;
+rssn_
+void rssn_state_free(rssn_State *aState)
+;
 
 /*
  Gets the intermediate value from the state.
  The returned string must be freed by the caller using rssn_free_string.
  */
-rssn_ char *rssn_state_get_intermediate_value(const rssn_State *aState) ;
+rssn_
+char *rssn_state_get_intermediate_value(const rssn_State *aState)
+;
 
 /*
  Gets the intermediate value from a bincode state buffer.
@@ -13237,30 +16900,41 @@ rssn_BincodeBuffer rssn_state_get_intermediate_value_bincode(rssn_BincodeBuffer 
  Returns the value as a plain string (not JSON-encoded).
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_state_get_intermediate_value_json(const char *aJsonState) ;
+rssn_
+char *rssn_state_get_intermediate_value_json(const char *aJsonState)
+;
 
 /*
  Creates a new State.
  The caller is responsible for freeing the memory using rssn_state_free.
  */
-rssn_ rssn_State *rssn_state_new() ;
+rssn_
+rssn_State *rssn_state_new()
+;
 
 /*
  Creates a new State and returns it as a bincode buffer.
  The caller must free the returned buffer using rssn_free_bincode_buffer.
  */
-rssn_ rssn_BincodeBuffer rssn_state_new_bincode() ;
+rssn_
+rssn_BincodeBuffer rssn_state_new_bincode()
+;
 
 /*
  Creates a new State and returns it as a JSON string.
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_state_new_json() ;
+rssn_
+char *rssn_state_new_json()
+;
 
 /*
  Sets the intermediate value in the state.
  */
-rssn_ void rssn_state_set_intermediate_value(rssn_State *aState, const char *aValue) ;
+rssn_
+void rssn_state_set_intermediate_value(rssn_State *aState,
+                                       const char *aValue)
+;
 
 /*
  Sets the intermediate value in a bincode state buffer and returns the updated buffer.
@@ -13275,7 +16949,10 @@ rssn_BincodeBuffer rssn_state_set_intermediate_value_bincode(rssn_BincodeBuffer 
  Sets the intermediate value in a JSON state string and returns the updated JSON.
  The caller must free the returned string using rssn_free_string.
  */
-rssn_ char *rssn_state_set_intermediate_value_json(const char *aJsonState, const char *aValue) ;
+rssn_
+char *rssn_state_set_intermediate_value_json(const char *aJsonState,
+                                             const char *aValue)
+;
 
 rssn_
 int32_t rssn_stats_covariance(const double *aD1,
@@ -13284,11 +16961,23 @@ int32_t rssn_stats_covariance(const double *aD1,
                               double *aResult)
 ;
 
-rssn_ int32_t rssn_stats_mean(const double *aData, size_t aLen, double *aResult) ;
+rssn_
+int32_t rssn_stats_mean(const double *aData,
+                        size_t aLen,
+                        double *aResult)
+;
 
-rssn_ int32_t rssn_stats_std_dev(const double *aData, size_t aLen, double *aResult) ;
+rssn_
+int32_t rssn_stats_std_dev(const double *aData,
+                           size_t aLen,
+                           double *aResult)
+;
 
-rssn_ int32_t rssn_stats_variance(const double *aData, size_t aLen, double *aResult) ;
+rssn_
+int32_t rssn_stats_variance(const double *aData,
+                            size_t aLen,
+                            double *aResult)
+;
 
 /*
  Computes the symbolic standard deviation of a set of expressions.
@@ -13296,9 +16985,15 @@ rssn_ int32_t rssn_stats_variance(const double *aData, size_t aLen, double *aRes
  # Safety
  The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
  */
-rssn_ rssn_Expr *rssn_std_dev(const rssn_Expr *const *aData, size_t aLen) ;
+rssn_
+rssn_Expr *rssn_std_dev(const rssn_Expr *const *aData,
+                        size_t aLen)
+;
 
-rssn_ rssn_Expr *rssn_stirling_number_second_kind(size_t aN, size_t aK) ;
+rssn_
+rssn_Expr *rssn_stirling_number_second_kind(size_t aN,
+                                            size_t aK)
+;
 
 /*
  Represents Stokes' theorem (Handle)
@@ -13316,7 +17011,9 @@ rssn_Vec<rssn_Expr> *rssn_sturm_sequence_handle(const rssn_Expr *aExprPtr,
                                                 const char *aVarPtr)
 ;
 
-rssn_ rssn_Expr **rssn_su2_generators(size_t *aOutLen) ;
+rssn_
+rssn_Expr **rssn_su2_generators(size_t *aOutLen)
+;
 
 /*
  Substitutes a variable with an expression.
@@ -13347,12 +17044,17 @@ char *rssn_surface_integral(const char *aFieldX,
 /*
  Computes the surface integral (flux) of a vector field (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_surface_integral_bincode(const uint8_t *aInputPtr, size_t aInputLen) ;
+rssn_
+rssn_BincodeBuffer rssn_surface_integral_bincode(const uint8_t *aInputPtr,
+                                                 size_t aInputLen)
+;
 
 /*
  Computes the surface integral (flux) of a vector field (JSON).
  */
-rssn_ char *rssn_surface_integral_json(const char *aInputJson) ;
+rssn_
+char *rssn_surface_integral_json(const char *aInputJson)
+;
 
 /*
  Adds a term to a SymbolicChain
@@ -13366,29 +17068,41 @@ bool rssn_symbolic_chain_add_term(rssn_SymbolicChain *aChainPtr,
 /*
  Creates a new SymbolicChain (Handle)
  */
-rssn_ rssn_SymbolicChain *rssn_symbolic_chain_create(size_t aDimension) ;
+rssn_
+rssn_SymbolicChain *rssn_symbolic_chain_create(size_t aDimension)
+;
 
 /*
  Frees a SymbolicChain handle
  */
-rssn_ void rssn_symbolic_chain_free(rssn_SymbolicChain *aPtr) ;
+rssn_
+void rssn_symbolic_chain_free(rssn_SymbolicChain *aPtr)
+;
 
-rssn_ rssn_Group *rssn_symmetric_group_create(size_t aN) ;
+rssn_
+rssn_Group *rssn_symmetric_group_create(size_t aN)
+;
 
 /*
  Creates a tangent expression: tan(expr).
  */
-rssn_ rssn_Expr *rssn_tan(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_tan(const rssn_Expr *aExpr)
+;
 
 /*
  Creates a tangent expression from bincode: tan(expr).
  */
-rssn_ rssn_BincodeBuffer rssn_tan_bincode(rssn_BincodeBuffer aExprBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_tan_bincode(rssn_BincodeBuffer aExprBuffer)
+;
 
 /*
  Creates a tangent expression from JSON: tan(expr).
  */
-rssn_ char *rssn_tan_json(const char *aJsonExpr) ;
+rssn_
+char *rssn_tan_json(const char *aJsonExpr)
+;
 
 rssn_
 rssn_Expr *rssn_taylor_series_handle(const rssn_Expr *aExpr,
@@ -13397,7 +17111,10 @@ rssn_Expr *rssn_taylor_series_handle(const rssn_Expr *aExpr,
                                      size_t aOrder)
 ;
 
-rssn_ rssn_Tensor *rssn_tensor_add_handle(const rssn_Tensor *aT1, const rssn_Tensor *aT2) ;
+rssn_
+rssn_Tensor *rssn_tensor_add_handle(const rssn_Tensor *aT1,
+                                    const rssn_Tensor *aT2)
+;
 
 rssn_
 rssn_Tensor *rssn_tensor_contract_handle(const rssn_Tensor *aT,
@@ -13410,7 +17127,10 @@ rssn_Tensor *rssn_tensor_outer_product_handle(const rssn_Tensor *aT1,
                                               const rssn_Tensor *aT2)
 ;
 
-rssn_ rssn_Tensor *rssn_tensor_scalar_mul_handle(const rssn_Tensor *aT, const rssn_Expr *aScalar) ;
+rssn_
+rssn_Tensor *rssn_tensor_scalar_mul_handle(const rssn_Tensor *aT,
+                                           const rssn_Expr *aScalar)
+;
 
 /*
  Allocates and returns a test string ("pong") to the caller.
@@ -13423,7 +17143,9 @@ rssn_ rssn_Tensor *rssn_tensor_scalar_mul_handle(const rssn_Tensor *aT, const rs
 
  Returns a pointer to a null-terminated C string. The caller is responsible for freeing this string.
  */
-rssn_ char *rssn_test_string_passing() ;
+rssn_
+char *rssn_test_string_passing()
+;
 
 /*
  Time-dependent Schrödinger equation.
@@ -13439,7 +17161,9 @@ rssn_Expr *rssn_time_dependent_schrodinger_equation(const rssn_Operator *aHamilt
  # Safety
  The caller must ensure that `expr` is a valid pointer to an `Expr`.
  */
-rssn_ rssn_Expr *rssn_to_cnf_handle(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_to_cnf_handle(const rssn_Expr *aExpr)
+;
 
 /*
  Converts a logical expression to Disjunctive Normal Form (DNF) using handle-based FFI.
@@ -13447,12 +17171,17 @@ rssn_ rssn_Expr *rssn_to_cnf_handle(const rssn_Expr *aExpr) ;
  # Safety
  The caller must ensure that `expr` is a valid pointer to an `Expr`.
  */
-rssn_ rssn_Expr *rssn_to_dnf_handle(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_to_dnf_handle(const rssn_Expr *aExpr)
+;
 
 /*
  Calculates torque: r x F.
  */
-rssn_ rssn_Vector *rssn_torque(const rssn_Vector *aR, const rssn_Vector *aForce) ;
+rssn_
+rssn_Vector *rssn_torque(const rssn_Vector *aR,
+                         const rssn_Vector *aForce)
+;
 
 rssn_
 rssn_Vec<rssn_Expr> *rssn_transform_contravariant_vector_handle(const rssn_Vec<rssn_Expr> *aComps,
@@ -13501,7 +17230,10 @@ rssn_Vec<rssn_Expr> *rssn_transform_point_handle(const rssn_Vec<rssn_Expr> *aPoi
  # Safety
  All Expr pointers must be valid.
  */
-rssn_ rssn_Expr *rssn_translation_2d(const rssn_Expr *aTx, const rssn_Expr *aTy) ;
+rssn_
+rssn_Expr *rssn_translation_2d(const rssn_Expr *aTx,
+                               const rssn_Expr *aTy)
+;
 
 /*
  Generates a 4x4 3D translation matrix.
@@ -13523,9 +17255,14 @@ rssn_Expr *rssn_two_sample_t_test(const rssn_Expr *const *aData1,
 /*
  Computes the uncertainty ΔA.
  */
-rssn_ rssn_Expr *rssn_uncertainty(const rssn_Operator *aOp, const rssn_Ket *aPsi) ;
+rssn_
+rssn_Expr *rssn_uncertainty(const rssn_Operator *aOp,
+                            const rssn_Ket *aPsi)
+;
 
-rssn_ rssn_Expr *rssn_unify_expression_handle(const rssn_Expr *aExpr) ;
+rssn_
+rssn_Expr *rssn_unify_expression_handle(const rssn_Expr *aExpr)
+;
 
 /*
  Computes the symbolic variance of a set of expressions.
@@ -13533,57 +17270,80 @@ rssn_ rssn_Expr *rssn_unify_expression_handle(const rssn_Expr *aExpr) ;
  # Safety
  The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
  */
-rssn_ rssn_Expr *rssn_variance(const rssn_Expr *const *aData, size_t aLen) ;
+rssn_
+rssn_Expr *rssn_variance(const rssn_Expr *const *aData,
+                         size_t aLen)
+;
 
 /*
  Bincode FFI for vec_add.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_add_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_add_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for vec_add.
  */
-rssn_ char *rssn_vec_add_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_add_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for angle.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_angle_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_angle_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for angle.
  */
-rssn_ char *rssn_vec_angle_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_angle_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for cosine_similarity.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_cosine_similarity_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_cosine_similarity_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for cosine_similarity.
  */
-rssn_ char *rssn_vec_cosine_similarity_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_cosine_similarity_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for cross_product.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_cross_product_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_cross_product_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for cross_product.
  */
-rssn_ char *rssn_vec_cross_product_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_cross_product_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for distance.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_distance_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_distance_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for distance.
  */
-rssn_ char *rssn_vec_distance_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_distance_json(const char *aJsonPtr)
+;
 
 /*
  Computes the dot product of two vectors.
@@ -13599,130 +17359,190 @@ int32_t rssn_vec_dot_product(const double *aD1,
 /*
  Bincode FFI for dot_product.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_dot_product_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_dot_product_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for dot_product.
  */
-rssn_ char *rssn_vec_dot_product_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_dot_product_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for is_orthogonal.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_is_orthogonal_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_is_orthogonal_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for is_orthogonal.
  */
-rssn_ char *rssn_vec_is_orthogonal_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_is_orthogonal_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for is_parallel.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_is_parallel_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_is_parallel_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for is_parallel.
  */
-rssn_ char *rssn_vec_is_parallel_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_is_parallel_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for lerp.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_lerp_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_lerp_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for lerp.
  */
-rssn_ char *rssn_vec_lerp_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_lerp_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for lp_norm.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_lp_norm_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_lp_norm_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for lp_norm.
  */
-rssn_ char *rssn_vec_lp_norm_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_lp_norm_json(const char *aJsonPtr)
+;
 
 /*
  Computes the L2 norm of a vector.
  */
-rssn_ int32_t rssn_vec_norm(const double *aData, size_t aLen, double *aResult) ;
+rssn_
+int32_t rssn_vec_norm(const double *aData,
+                      size_t aLen,
+                      double *aResult)
+;
 
 /*
  Bincode FFI for norm.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_norm_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_norm_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for norm ($L_2$).
  */
-rssn_ char *rssn_vec_norm_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_norm_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for normalize.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_normalize_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_normalize_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for normalize.
  */
-rssn_ char *rssn_vec_normalize_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_normalize_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for project.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_project_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_project_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for project.
  */
-rssn_ char *rssn_vec_project_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_project_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for reflect.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_reflect_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_reflect_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for reflect.
  */
-rssn_ char *rssn_vec_reflect_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_reflect_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for scalar_mul.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_scalar_mul_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_scalar_mul_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for scalar_mul.
  */
-rssn_ char *rssn_vec_scalar_mul_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_scalar_mul_json(const char *aJsonPtr)
+;
 
 /*
  Bincode FFI for vec_sub.
  */
-rssn_ rssn_BincodeBuffer rssn_vec_sub_bincode(rssn_BincodeBuffer aBuffer) ;
+rssn_
+rssn_BincodeBuffer rssn_vec_sub_bincode(rssn_BincodeBuffer aBuffer)
+;
 
 /*
  JSON FFI for vec_sub.
  */
-rssn_ char *rssn_vec_sub_json(const char *aJsonPtr) ;
+rssn_
+char *rssn_vec_sub_json(const char *aJsonPtr)
+;
 
-rssn_ rssn_Vector *rssn_vector_cross_handle(const rssn_Vector *aV1, const rssn_Vector *aV2) ;
+rssn_
+rssn_Vector *rssn_vector_cross_handle(const rssn_Vector *aV1,
+                                      const rssn_Vector *aV2)
+;
 
-rssn_ rssn_Expr *rssn_vector_dot_handle(const rssn_Vector *aV1, const rssn_Vector *aV2) ;
+rssn_
+rssn_Expr *rssn_vector_dot_handle(const rssn_Vector *aV1,
+                                  const rssn_Vector *aV2)
+;
 
 /*
  Frees a Vector.
  */
-rssn_ void rssn_vector_free(rssn_Vector *aVec) ;
+rssn_
+void rssn_vector_free(rssn_Vector *aVec)
+;
 
-rssn_ rssn_Expr *rssn_vector_magnitude_handle(const rssn_Vector *aV) ;
+rssn_
+rssn_Expr *rssn_vector_magnitude_handle(const rssn_Vector *aV)
+;
 
-rssn_ rssn_Vector *rssn_vector_normalize_handle(const rssn_Vector *aV) ;
+rssn_
+rssn_Vector *rssn_vector_normalize_handle(const rssn_Vector *aV)
+;
 
 /*
  Verifies a definite integral (Handle)
@@ -13797,7 +17617,9 @@ bool rssn_verify_ode_solution_handle(const rssn_Expr *aOdePtr,
 /*
  Frees a Volterra integral equation.
  */
-rssn_ void rssn_volterra_free(rssn_VolterraEquation *aPtr) ;
+rssn_
+void rssn_volterra_free(rssn_VolterraEquation *aPtr)
+;
 
 /*
  Creates a new Volterra integral equation.
@@ -13815,7 +17637,9 @@ rssn_VolterraEquation *rssn_volterra_new(const rssn_Expr *aYX,
 /*
  Solves a Volterra equation by differentiation.
  */
-rssn_ rssn_Expr *rssn_volterra_solve_by_differentiation(const rssn_VolterraEquation *aEq) ;
+rssn_
+rssn_Expr *rssn_volterra_solve_by_differentiation(const rssn_VolterraEquation *aEq)
+;
 
 /*
  Solves a Volterra equation by differentiation (Bincode).
@@ -13828,7 +17652,9 @@ rssn_BincodeBuffer rssn_volterra_solve_by_differentiation_bincode(const uint8_t 
 /*
  Solves a Volterra equation by differentiation (JSON).
  */
-rssn_ char *rssn_volterra_solve_by_differentiation_json(const char *aInputJson) ;
+rssn_
+char *rssn_volterra_solve_by_differentiation_json(const char *aInputJson)
+;
 
 /*
  Solves a Volterra equation using successive approximations.
@@ -13849,27 +17675,39 @@ rssn_BincodeBuffer rssn_volterra_solve_successive_bincode(const uint8_t *aInputP
 /*
  Solves a Volterra equation using successive approximations (JSON).
  */
-rssn_ char *rssn_volterra_solve_successive_json(const char *aInputJson) ;
+rssn_
+char *rssn_volterra_solve_successive_json(const char *aInputJson)
+;
 
 /*
  Frees a Volume handle.
  */
-rssn_ void rssn_volume_free(rssn_Volume *aVolume) ;
+rssn_
+void rssn_volume_free(rssn_Volume *aVolume)
+;
 
 /*
  Computes the volume integral of a scalar field.
  */
-rssn_ char *rssn_volume_integral(const char *aScalarField, const rssn_Volume *aVolume) ;
+rssn_
+char *rssn_volume_integral(const char *aScalarField,
+                           const rssn_Volume *aVolume)
+;
 
 /*
  Computes the volume integral of a scalar field (Bincode).
  */
-rssn_ rssn_BincodeBuffer rssn_volume_integral_bincode(const uint8_t *aInputPtr, size_t aInputLen) ;
+rssn_
+rssn_BincodeBuffer rssn_volume_integral_bincode(const uint8_t *aInputPtr,
+                                                size_t aInputLen)
+;
 
 /*
  Computes the volume integral of a scalar field (JSON).
  */
-rssn_ char *rssn_volume_integral_json(const char *aInputJson) ;
+rssn_
+char *rssn_volume_integral_json(const char *aInputJson)
+;
 
 /*
  Creates a new Volume.
@@ -13902,9 +17740,16 @@ rssn_Expr *rssn_work_line_integral(const rssn_Vector *aForceField,
                                    const rssn_ParametricCurve *aPath)
 ;
 
-rssn_ rssn_Expr *rssn_z_differentiation(const rssn_Expr *aFZ, const char *aOutVar) ;
+rssn_
+rssn_Expr *rssn_z_differentiation(const rssn_Expr *aFZ,
+                                  const char *aOutVar)
+;
 
-rssn_ rssn_Expr *rssn_z_scaling(const rssn_Expr *aFZ, const rssn_Expr *aA, const char *aOutVar) ;
+rssn_
+rssn_Expr *rssn_z_scaling(const rssn_Expr *aFZ,
+                          const rssn_Expr *aA,
+                          const char *aOutVar)
+;
 
 rssn_
 rssn_Expr *rssn_z_test(const rssn_Expr *const *aData,
@@ -13913,35 +17758,62 @@ rssn_Expr *rssn_z_test(const rssn_Expr *const *aData,
                        const rssn_Expr *aPopStdDev)
 ;
 
-rssn_ rssn_Expr *rssn_z_time_shift(const rssn_Expr *aFZ, const rssn_Expr *aK, const char *aOutVar) ;
+rssn_
+rssn_Expr *rssn_z_time_shift(const rssn_Expr *aFZ,
+                             const rssn_Expr *aK,
+                             const char *aOutVar)
+;
 
-rssn_ rssn_Expr *rssn_z_transform(const rssn_Expr *aExpr, const char *aInVar, const char *aOutVar) ;
+rssn_
+rssn_Expr *rssn_z_transform(const rssn_Expr *aExpr,
+                            const char *aInVar,
+                            const char *aOutVar)
+;
 
 /*
  Computes the symbolic Riemann zeta function ζ(s).
  */
-rssn_ rssn_Expr *rssn_zeta(const rssn_Expr *aArg) ;
+rssn_
+rssn_Expr *rssn_zeta(const rssn_Expr *aArg)
+;
 
 /*
  Computes the Riemann zeta function ζ(s).
  */
-rssn_ double rssn_zeta_numerical(double aS) ;
+rssn_
+double rssn_zeta_numerical(double aS)
+;
 
-rssn_ DEPRECATED_WITH_NOTE char *stats_percentile(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *stats_percentile(const char *aJsonPtr)
+;
 
-rssn_ DEPRECATED_WITH_NOTE char *stats_simple_linear_regression(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *stats_simple_linear_regression(const char *aJsonPtr)
+;
 
 /*
  Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers.
  */
-rssn_ DEPRECATED_WITH_NOTE char *transforms_fft(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *transforms_fft(const char *aJsonPtr)
+;
 
 /*
  Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers.
  */
-rssn_ DEPRECATED_WITH_NOTE char *transforms_ifft(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *transforms_ifft(const char *aJsonPtr)
+;
 
-rssn_ DEPRECATED_WITH_NOTE char *vector_scalar_mul(const char *aJsonPtr) ;
+rssn_
+DEPRECATED_WITH_NOTE
+char *vector_scalar_mul(const char *aJsonPtr)
+;
 
 }  // extern "C"
 
