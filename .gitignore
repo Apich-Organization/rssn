@@ -22,6 +22,7 @@ scc
 *.d
 *.rlib
 /vendor
+/src/vendor
 
 **/*.exe
 **/*.a
@@ -257,3 +258,5 @@ replay_pid*
 .ninja_deps
 .ninja_log
 
+src/full_bak.rs
+src/full.rs
