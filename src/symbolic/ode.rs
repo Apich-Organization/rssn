@@ -26,8 +26,11 @@ use crate::symbolic::transforms;
 /// A structured representation of a parsed ODE.
 
 pub struct ParsedODE {
+    /// The order of the differential equation (the highest derivative present).
     pub order: u32,
+    /// A mapping from derivative orders to their corresponding coefficient expressions.
     pub coeffs: HashMap<u32, Expr>,
+    /// Any part of the expression that could not be categorized as a linear term in the function.
     pub remaining_expr: Expr,
 }
 
@@ -1152,6 +1155,18 @@ fn separate_factors(
 
 #[must_use]
 
+/// Solves a separable first-order Ordinary Differential Equation.
+///
+/// A separable ODE is of the form `dy/dx = g(x)h(y)`. This function attempts to
+/// separate the variables and integrate both sides to find the general solution.
+///
+/// # Arguments
+/// * `equation` - The ODE to solve.
+/// * `func` - The name of the unknown function (e.g., "y").
+/// * `var` - The independent variable (e.g., "x").
+///
+/// # Returns
+/// An `Option<Expr>` representing the general solution, or `None` if it's not separable.
 pub fn solve_separable_ode(
     equation: &Expr,
     func: &str,
@@ -1340,6 +1355,18 @@ pub fn solve_separable_ode(
 
 #[must_use]
 
+/// Solves a first-order linear Ordinary Differential Equation.
+///
+/// A first-order linear ODE is of the form `y' + P(x)y = Q(x)`.
+/// This function uses the integrating factor method to find the general solution.
+///
+/// # Arguments
+/// * `equation` - The ODE to solve.
+/// * `func` - The name of the unknown function (e.g., "y").
+/// * `var` - The independent variable (e.g., "x").
+///
+/// # Returns
+/// An `Option<Expr>` representing the general solution, or `None` if it's not linear.
 pub fn solve_first_order_linear_ode(
     equation: &Expr,
     func: &str,

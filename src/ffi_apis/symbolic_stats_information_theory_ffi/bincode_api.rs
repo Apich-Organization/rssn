@@ -2,6 +2,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_information_theory;
 
+/// Computes the Shannon entropy of a probability distribution.
+
+///
+
+/// Takes a bincode-serialized `Vec<Expr>` representing the probabilities.
+
+/// Returns a bincode-serialized `Expr` representing the entropy.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_shannon_entropy(
@@ -21,6 +29,14 @@ pub extern "C" fn rssn_bincode_shannon_entropy(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the Kullback-Leibler divergence (relative entropy) between two probability distributions.
+
+///
+
+/// Takes two bincode-serialized `Vec<Expr>` representing the probability distributions (`p` and `q`).
+
+/// Returns a bincode-serialized `Expr` representing the KL divergence.
 
 #[no_mangle]
 
@@ -53,6 +69,14 @@ pub extern "C" fn rssn_bincode_kl_divergence(
     }
 }
 
+/// Computes the cross-entropy between two probability distributions.
+
+///
+
+/// Takes two bincode-serialized `Vec<Expr>` representing the probability distributions (`p` and `q`).
+
+/// Returns a bincode-serialized `Expr` representing the cross-entropy.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_cross_entropy(
@@ -84,6 +108,14 @@ pub extern "C" fn rssn_bincode_cross_entropy(
     }
 }
 
+/// Computes the Gini impurity of a probability distribution.
+
+///
+
+/// Takes a bincode-serialized `Vec<Expr>` representing the probabilities.
+
+/// Returns a bincode-serialized `Expr` representing the Gini impurity.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_gini_impurity(
@@ -103,6 +135,14 @@ pub extern "C" fn rssn_bincode_gini_impurity(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the joint entropy of a joint probability distribution.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing the joint probability distribution.
+
+/// Returns a bincode-serialized `Expr` representing the joint entropy.
 
 #[no_mangle]
 
@@ -127,6 +167,14 @@ pub extern "C" fn rssn_bincode_joint_entropy(
     }
 }
 
+/// Computes the conditional entropy of a joint probability distribution.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing the joint probability distribution.
+
+/// Returns a bincode-serialized `Expr` representing the conditional entropy.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_conditional_entropy(
@@ -149,6 +197,14 @@ pub extern "C" fn rssn_bincode_conditional_entropy(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the mutual information between two random variables from their joint probability distribution.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing the joint probability distribution.
+
+/// Returns a bincode-serialized `Expr` representing the mutual information.
 
 #[no_mangle]
 

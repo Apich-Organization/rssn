@@ -11,6 +11,16 @@ use crate::symbolic::series::product;
 use crate::symbolic::series::summation;
 use crate::symbolic::series::taylor_series;
 
+/// Computes the Taylor series expansion of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (variable),
+
+/// `Expr` (center), and `usize` (order).
+
+/// Returns a JSON string representing the `Expr` of the Taylor series.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_taylor_series(
@@ -54,6 +64,16 @@ pub extern "C" fn rssn_json_taylor_series(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the Laurent series expansion of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (variable),
+
+/// `Expr` (center), and `usize` (order).
+
+/// Returns a JSON string representing the `Expr` of the Laurent series.
 
 #[no_mangle]
 
@@ -99,6 +119,16 @@ pub extern "C" fn rssn_json_laurent_series(
     }
 }
 
+/// Computes the Fourier series expansion of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (variable),
+
+/// `Expr` (period), and `usize` (order).
+
+/// Returns a JSON string representing the `Expr` of the Fourier series.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_fourier_series(
@@ -143,6 +173,16 @@ pub extern "C" fn rssn_json_fourier_series(
     }
 }
 
+/// Computes the summation of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (variable),
+
+/// `Expr` (lower bound), and `Expr` (upper bound).
+
+/// Returns a JSON string representing the `Expr` of the summation.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_summation(
@@ -182,6 +222,16 @@ pub extern "C" fn rssn_json_summation(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the product of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (variable),
+
+/// `Expr` (lower bound), and `Expr` (upper bound).
+
+/// Returns a JSON string representing the `Expr` of the product.
 
 #[no_mangle]
 
@@ -223,6 +273,14 @@ pub extern "C" fn rssn_json_product(
     }
 }
 
+/// Analyzes the convergence of a series.
+
+///
+
+/// Takes JSON strings representing `Expr` (series expression) and `String` (variable).
+
+/// Returns a JSON string representing the `Expr` of the convergence analysis result.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_series_json_analyze_convergence(
@@ -249,6 +307,16 @@ pub extern "C" fn rssn_series_json_analyze_convergence(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the asymptotic expansion of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (variable),
+
+/// `Expr` (point), and `usize` (order).
+
+/// Returns a JSON string representing the `Expr` of the asymptotic expansion.
 
 #[no_mangle]
 
@@ -291,6 +359,16 @@ pub extern "C" fn rssn_json_asymptotic_expansion(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the analytic continuation of a series.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (variable),
+
+/// `Expr` (original center), `Expr` (new center), and `usize` (order).
+
+/// Returns a JSON string representing the `Expr` of the analytic continuation.
 
 #[no_mangle]
 

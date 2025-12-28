@@ -1,5 +1,13 @@
 use crate::symbolic::vector::*;
 
+/// Computes the magnitude of a vector.
+
+///
+
+/// Takes a raw pointer to a `Vector` as input.
+
+/// Returns a raw pointer to an `Expr` representing its magnitude.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_vector_magnitude_handle(
@@ -15,6 +23,14 @@ pub extern "C" fn rssn_vector_magnitude_handle(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Computes the dot product of two vectors.
+
+///
+
+/// Takes two raw pointers to `Vector` objects as input.
+
+/// Returns a raw pointer to an `Expr` representing their dot product.
 
 #[no_mangle]
 
@@ -38,6 +54,14 @@ pub extern "C" fn rssn_vector_dot_handle(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the cross product of two vectors.
+
+///
+
+/// Takes two raw pointers to `Vector` objects as input.
+
+/// Returns a raw pointer to a new `Vector` representing their cross product.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_vector_cross_handle(
@@ -59,6 +83,14 @@ pub extern "C" fn rssn_vector_cross_handle(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Normalizes a vector.
+
+///
+
+/// Takes a raw pointer to a `Vector` as input.
+
+/// Returns a raw pointer to a new `Vector` representing the normalized vector.
 
 #[no_mangle]
 

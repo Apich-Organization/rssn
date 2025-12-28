@@ -25,6 +25,14 @@ unsafe fn collect_exprs(
     exprs
 }
 
+/// Computes the Shannon entropy of a probability distribution.
+
+///
+
+/// Takes a raw pointer to an array of `Expr` (probabilities) and its length.
+
+/// Returns a raw pointer to an `Expr` representing the entropy.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_shannon_entropy(
@@ -43,6 +51,14 @@ pub unsafe extern "C" fn rssn_shannon_entropy(
         stats_information_theory::shannon_entropy(&p),
     ))
 }
+
+/// Computes the Kullback-Leibler divergence between two probability distributions.
+
+///
+
+/// Takes raw pointers to two arrays of `Expr` (probabilities) and their lengths.
+
+/// Returns a raw pointer to an `Expr` representing the KL divergence.
 
 #[no_mangle]
 
@@ -72,6 +88,14 @@ pub unsafe extern "C" fn rssn_kl_divergence(
     }
 }
 
+/// Computes the cross-entropy between two probability distributions.
+
+///
+
+/// Takes raw pointers to two arrays of `Expr` (probabilities) and their lengths.
+
+/// Returns a raw pointer to an `Expr` representing the cross-entropy.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_cross_entropy(
@@ -100,6 +124,14 @@ pub unsafe extern "C" fn rssn_cross_entropy(
     }
 }
 
+/// Computes the Gini impurity of a probability distribution.
+
+///
+
+/// Takes a raw pointer to an array of `Expr` (probabilities) and its length.
+
+/// Returns a raw pointer to an `Expr` representing the Gini impurity.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_gini_impurity(
@@ -119,6 +151,14 @@ pub unsafe extern "C" fn rssn_gini_impurity(
     ))
 }
 
+/// Computes the joint entropy of a joint probability distribution.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing the joint probability distribution.
+
+/// Returns a raw pointer to an `Expr` representing the joint entropy.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_joint_entropy(
@@ -136,6 +176,14 @@ pub unsafe extern "C" fn rssn_joint_entropy(
     }
 }
 
+/// Computes the conditional entropy of a joint probability distribution.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing the joint probability distribution.
+
+/// Returns a raw pointer to an `Expr` representing the conditional entropy.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_conditional_entropy(
@@ -152,6 +200,14 @@ pub unsafe extern "C" fn rssn_conditional_entropy(
         | Err(_) => std::ptr::null_mut(),
     }
 }
+
+/// Computes the mutual information between two random variables from their joint probability distribution.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing the joint probability distribution.
+
+/// Returns a raw pointer to an `Expr` representing the mutual information.
 
 #[no_mangle]
 

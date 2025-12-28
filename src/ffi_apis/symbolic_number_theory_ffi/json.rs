@@ -14,6 +14,14 @@ struct Congruence {
     modulus: Expr,
 }
 
+/// Solves a Diophantine equation.
+
+///
+
+/// Takes JSON strings representing the equation (`Expr`) and variables (`Vec<String>`),
+
+/// and returns a JSON string representing the `Vec<Expr>` of solutions.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve_diophantine(
@@ -55,6 +63,16 @@ pub extern "C" fn rssn_json_solve_diophantine(
     }
 }
 
+/// Computes the extended greatest common divisor (GCD).
+
+///
+
+/// Takes JSON strings representing two numbers (`a` and `b`),
+
+/// and returns a JSON string representing a tuple `(g, x, y)` where `g` is the GCD
+
+/// and `x`, `y` are coefficients such that `ax + by = g`.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_extended_gcd(
@@ -86,6 +104,14 @@ pub extern "C" fn rssn_json_extended_gcd(
     }
 }
 
+/// Checks if a number is prime.
+
+///
+
+/// Takes a JSON string representing an `Expr` (number),
+
+/// and returns a JSON string representing a boolean indicating whether the number is prime.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_is_prime(
@@ -105,6 +131,14 @@ pub extern "C" fn rssn_json_is_prime(
         std::ptr::null_mut()
     }
 }
+
+/// Solves the Chinese Remainder Theorem.
+
+///
+
+/// Takes a JSON string representing a vector of congruences (`(remainder, modulus)`),
+
+/// and returns a JSON string representing the `Expr` solution.
 
 #[no_mangle]
 

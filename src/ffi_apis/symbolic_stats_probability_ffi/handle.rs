@@ -46,6 +46,14 @@ fn wrap_dist<
 
 // --- Constructors for Distributions ---
 
+/// Creates a normal distribution.
+
+///
+
+/// Takes raw pointers to `Expr` representing the mean and standard deviation.
+
+/// Returns a raw pointer to an `Expr` representing the normal distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dist_normal(
@@ -64,6 +72,14 @@ pub unsafe extern "C" fn rssn_dist_normal(
         std_dev,
     })
 }
+
+/// Creates a uniform distribution.
+
+///
+
+/// Takes raw pointers to `Expr` representing the minimum and maximum values.
+
+/// Returns a raw pointer to an `Expr` representing the uniform distribution.
 
 #[no_mangle]
 
@@ -84,6 +100,14 @@ pub unsafe extern "C" fn rssn_dist_uniform(
     })
 }
 
+/// Creates a binomial distribution.
+
+///
+
+/// Takes raw pointers to `Expr` representing `n` (number of trials) and `p` (probability of success).
+
+/// Returns a raw pointer to an `Expr` representing the binomial distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dist_binomial(
@@ -103,6 +127,14 @@ pub unsafe extern "C" fn rssn_dist_binomial(
     })
 }
 
+/// Creates a Poisson distribution.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing the rate parameter (λ).
+
+/// Returns a raw pointer to an `Expr` representing the Poisson distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dist_poisson(
@@ -116,6 +148,14 @@ pub unsafe extern "C" fn rssn_dist_poisson(
         rate,
     })
 }
+
+/// Creates a Bernoulli distribution.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing `p` (probability of success).
+
+/// Returns a raw pointer to an `Expr` representing the Bernoulli distribution.
 
 #[no_mangle]
 
@@ -131,6 +171,14 @@ pub unsafe extern "C" fn rssn_dist_bernoulli(
     })
 }
 
+/// Creates an exponential distribution.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing the rate parameter (λ).
+
+/// Returns a raw pointer to an `Expr` representing the exponential distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dist_exponential(
@@ -144,6 +192,14 @@ pub unsafe extern "C" fn rssn_dist_exponential(
         rate,
     })
 }
+
+/// Creates a gamma distribution.
+
+///
+
+/// Takes raw pointers to `Expr` representing the shape and rate parameters.
+
+/// Returns a raw pointer to an `Expr` representing the gamma distribution.
 
 #[no_mangle]
 
@@ -164,6 +220,14 @@ pub unsafe extern "C" fn rssn_dist_gamma(
     })
 }
 
+/// Creates a beta distribution.
+
+///
+
+/// Takes raw pointers to `Expr` representing the alpha and beta parameters.
+
+/// Returns a raw pointer to an `Expr` representing the beta distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dist_beta(
@@ -183,6 +247,14 @@ pub unsafe extern "C" fn rssn_dist_beta(
     })
 }
 
+/// Creates a Student's t-distribution.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing the degrees of freedom (ν).
+
+/// Returns a raw pointer to an `Expr` representing the Student's t-distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dist_student_t(
@@ -198,6 +270,14 @@ pub unsafe extern "C" fn rssn_dist_student_t(
 }
 
 // --- Methods on Distributions ---
+
+/// Computes the probability density function (PDF) of a distribution.
+
+///
+
+/// Takes raw pointers to `Expr` representing the distribution and the value `x`.
+
+/// Returns a raw pointer to an `Expr` representing the PDF at `x`.
 
 #[no_mangle]
 
@@ -224,6 +304,14 @@ pub unsafe extern "C" fn rssn_dist_pdf(
     }
 }
 
+/// Computes the cumulative distribution function (CDF) of a distribution.
+
+///
+
+/// Takes raw pointers to `Expr` representing the distribution and the value `x`.
+
+/// Returns a raw pointer to an `Expr` representing the CDF at `x`.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dist_cdf(
@@ -249,6 +337,14 @@ pub unsafe extern "C" fn rssn_dist_cdf(
     }
 }
 
+/// Computes the expectation (mean) of a distribution.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing the distribution.
+
+/// Returns a raw pointer to an `Expr` representing the expectation.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dist_expectation(
@@ -270,6 +366,14 @@ pub unsafe extern "C" fn rssn_dist_expectation(
     }
 }
 
+/// Computes the variance of a distribution.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing the distribution.
+
+/// Returns a raw pointer to an `Expr` representing the variance.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_dist_variance(
@@ -290,6 +394,14 @@ pub unsafe extern "C" fn rssn_dist_variance(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the moment generating function (MGF) of a distribution.
+
+///
+
+/// Takes raw pointers to `Expr` representing the distribution and the variable `t`.
+
+/// Returns a raw pointer to an `Expr` representing the MGF.
 
 #[no_mangle]
 

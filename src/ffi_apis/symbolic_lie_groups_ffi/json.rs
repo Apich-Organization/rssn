@@ -231,6 +231,8 @@ pub unsafe extern "C" fn rssn_json_so3_generators(
     to_json_string(&exprs)
 }
 
+/// Returns the SU(2) Lie algebra generators as a JSON string.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_su2_generators(

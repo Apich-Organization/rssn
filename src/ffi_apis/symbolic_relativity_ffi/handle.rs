@@ -7,7 +7,9 @@ use crate::symbolic::relativity;
 #[repr(C)]
 
 pub struct ExprPair {
+    /// The first expression in the pair.
     pub first: *mut Expr,
+    /// The second expression in the pair.
     pub second: *mut Expr,
 }
 

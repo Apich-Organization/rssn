@@ -30,6 +30,14 @@ fn parse_expr(
 // Serialization usually follows. If not, this JSON API will fail for Distribution variant.
 // Assuming Expr implements Serialize/Deserialize fully including Distribution via custom serializer or trait.
 
+/// Creates a normal distribution.
+
+///
+
+/// Takes JSON strings representing `Expr` (mean) and `Expr` (standard deviation).
+
+/// Returns a JSON string representing the `Expr` of the normal distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_normal(
@@ -56,6 +64,14 @@ pub unsafe extern "C" fn rssn_json_dist_normal(
     to_json_string(&dist)
 }
 
+/// Creates a uniform distribution.
+
+///
+
+/// Takes JSON strings representing `Expr` (minimum value) and `Expr` (maximum value).
+
+/// Returns a JSON string representing the `Expr` of the uniform distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_uniform(
@@ -78,6 +94,14 @@ pub unsafe extern "C" fn rssn_json_dist_uniform(
 
     to_json_string(&dist)
 }
+
+/// Creates a binomial distribution.
+
+///
+
+/// Takes JSON strings representing `Expr` (number of trials) and `Expr` (probability of success).
+
+/// Returns a JSON string representing the `Expr` of the binomial distribution.
 
 #[no_mangle]
 
@@ -102,6 +126,14 @@ pub unsafe extern "C" fn rssn_json_dist_binomial(
     to_json_string(&dist)
 }
 
+/// Creates a Poisson distribution.
+
+///
+
+/// Takes a JSON string representing `Expr` (rate parameter λ).
+
+/// Returns a JSON string representing the `Expr` of the Poisson distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_poisson(
@@ -119,6 +151,14 @@ pub unsafe extern "C" fn rssn_json_dist_poisson(
 
     to_json_string(&dist)
 }
+
+/// Creates a Bernoulli distribution.
+
+///
+
+/// Takes a JSON string representing `Expr` (probability of success).
+
+/// Returns a JSON string representing the `Expr` of the Bernoulli distribution.
 
 #[no_mangle]
 
@@ -138,6 +178,14 @@ pub unsafe extern "C" fn rssn_json_dist_bernoulli(
     to_json_string(&dist)
 }
 
+/// Creates an exponential distribution.
+
+///
+
+/// Takes a JSON string representing `Expr` (rate parameter λ).
+
+/// Returns a JSON string representing the `Expr` of the exponential distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_exponential(
@@ -155,6 +203,14 @@ pub unsafe extern "C" fn rssn_json_dist_exponential(
 
     to_json_string(&dist)
 }
+
+/// Creates a gamma distribution.
+
+///
+
+/// Takes JSON strings representing `Expr` (shape parameter) and `Expr` (rate parameter).
+
+/// Returns a JSON string representing the `Expr` of the gamma distribution.
 
 #[no_mangle]
 
@@ -179,6 +235,14 @@ pub unsafe extern "C" fn rssn_json_dist_gamma(
     to_json_string(&dist)
 }
 
+/// Creates a beta distribution.
+
+///
+
+/// Takes JSON strings representing `Expr` (alpha parameter) and `Expr` (beta parameter).
+
+/// Returns a JSON string representing the `Expr` of the beta distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_beta(
@@ -202,6 +266,14 @@ pub unsafe extern "C" fn rssn_json_dist_beta(
     to_json_string(&dist)
 }
 
+/// Creates a Student's t-distribution.
+
+///
+
+/// Takes a JSON string representing `Expr` (degrees of freedom ν).
+
+/// Returns a JSON string representing the `Expr` of the Student's t-distribution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_student_t(
@@ -221,6 +293,14 @@ pub unsafe extern "C" fn rssn_json_dist_student_t(
 }
 
 // --- Methods ---
+
+/// Computes the probability density function (PDF) of a distribution.
+
+///
+
+/// Takes JSON strings representing `Expr` (distribution) and `Expr` (value `x`).
+
+/// Returns a JSON string representing the `Expr` of the PDF at `x`.
 
 #[no_mangle]
 
@@ -248,6 +328,14 @@ pub unsafe extern "C" fn rssn_json_dist_pdf(
     }
 }
 
+/// Computes the cumulative distribution function (CDF) of a distribution.
+
+///
+
+/// Takes JSON strings representing `Expr` (distribution) and `Expr` (value `x`).
+
+/// Returns a JSON string representing the `Expr` of the CDF at `x`.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_cdf(
@@ -274,6 +362,14 @@ pub unsafe extern "C" fn rssn_json_dist_cdf(
     }
 }
 
+/// Computes the expectation (mean) of a distribution.
+
+///
+
+/// Takes a JSON string representing `Expr` (distribution).
+
+/// Returns a JSON string representing the `Expr` of the expectation.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_expectation(
@@ -296,6 +392,14 @@ pub unsafe extern "C" fn rssn_json_dist_expectation(
     }
 }
 
+/// Computes the variance of a distribution.
+
+///
+
+/// Takes a JSON string representing `Expr` (distribution).
+
+/// Returns a JSON string representing the `Expr` of the variance.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_dist_variance(
@@ -317,6 +421,14 @@ pub unsafe extern "C" fn rssn_json_dist_variance(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the moment generating function (MGF) of a distribution.
+
+///
+
+/// Takes JSON strings representing `Expr` (distribution) and `Expr` (variable `t`).
+
+/// Returns a JSON string representing the `Expr` of the MGF.
 
 #[no_mangle]
 

@@ -370,6 +370,14 @@ pub(crate) fn root_bound(
 
 #[must_use]
 
+/// Evaluates a symbolic expression numerically at a given point.
+///
+/// # Arguments
+/// * `expr` - The expression to evaluate.
+/// * `vars` - A map from variable names to their numerical values.
+///
+/// # Returns
+/// The numerical result as an `f64`.
 pub fn eval_expr(
     expr: &Expr,
     vars: &HashMap<String, f64>,

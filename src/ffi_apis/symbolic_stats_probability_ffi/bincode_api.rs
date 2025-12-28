@@ -22,6 +22,14 @@ fn parse_expr(
     from_bincode_buffer(&buf)
 }
 
+/// Creates a normal distribution.
+
+///
+
+/// Takes bincode-serialized `Expr` representing the mean and standard deviation.
+
+/// Returns a bincode-serialized `Expr` representing the normal distribution.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_normal(
@@ -48,6 +56,14 @@ pub extern "C" fn rssn_bincode_dist_normal(
     to_bincode_buffer(&dist)
 }
 
+/// Creates a uniform distribution.
+
+///
+
+/// Takes bincode-serialized `Expr` representing the minimum and maximum values.
+
+/// Returns a bincode-serialized `Expr` representing the uniform distribution.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_uniform(
@@ -70,6 +86,14 @@ pub extern "C" fn rssn_bincode_dist_uniform(
 
     to_bincode_buffer(&dist)
 }
+
+/// Creates a binomial distribution.
+
+///
+
+/// Takes bincode-serialized `Expr` representing `n` (number of trials) and `p` (probability of success).
+
+/// Returns a bincode-serialized `Expr` representing the binomial distribution.
 
 #[no_mangle]
 
@@ -94,6 +118,14 @@ pub extern "C" fn rssn_bincode_dist_binomial(
     to_bincode_buffer(&dist)
 }
 
+/// Creates a Poisson distribution.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing the rate parameter (λ).
+
+/// Returns a bincode-serialized `Expr` representing the Poisson distribution.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_poisson(
@@ -111,6 +143,14 @@ pub extern "C" fn rssn_bincode_dist_poisson(
 
     to_bincode_buffer(&dist)
 }
+
+/// Creates a Bernoulli distribution.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing `p` (probability of success).
+
+/// Returns a bincode-serialized `Expr` representing the Bernoulli distribution.
 
 #[no_mangle]
 
@@ -130,6 +170,14 @@ pub extern "C" fn rssn_bincode_dist_bernoulli(
     to_bincode_buffer(&dist)
 }
 
+/// Creates an exponential distribution.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing the rate parameter (λ).
+
+/// Returns a bincode-serialized `Expr` representing the exponential distribution.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_exponential(
@@ -147,6 +195,14 @@ pub extern "C" fn rssn_bincode_dist_exponential(
 
     to_bincode_buffer(&dist)
 }
+
+/// Creates a gamma distribution.
+
+///
+
+/// Takes bincode-serialized `Expr` representing the shape and rate parameters.
+
+/// Returns a bincode-serialized `Expr` representing the gamma distribution.
 
 #[no_mangle]
 
@@ -171,6 +227,14 @@ pub extern "C" fn rssn_bincode_dist_gamma(
     to_bincode_buffer(&dist)
 }
 
+/// Creates a beta distribution.
+
+///
+
+/// Takes bincode-serialized `Expr` representing the alpha and beta parameters.
+
+/// Returns a bincode-serialized `Expr` representing the beta distribution.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_beta(
@@ -194,6 +258,14 @@ pub extern "C" fn rssn_bincode_dist_beta(
     to_bincode_buffer(&dist)
 }
 
+/// Creates a Student's t-distribution.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing the degrees of freedom (ν).
+
+/// Returns a bincode-serialized `Expr` representing the Student's t-distribution.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_student_t(
@@ -213,6 +285,14 @@ pub extern "C" fn rssn_bincode_dist_student_t(
 }
 
 // --- Methods ---
+
+/// Computes the probability density function (PDF) of a distribution.
+
+///
+
+/// Takes bincode-serialized `Expr` representing the distribution and the value `x`.
+
+/// Returns a bincode-serialized `Expr` representing the PDF at `x`.
 
 #[no_mangle]
 
@@ -240,6 +320,14 @@ pub extern "C" fn rssn_bincode_dist_pdf(
     }
 }
 
+/// Computes the cumulative distribution function (CDF) of a distribution.
+
+///
+
+/// Takes bincode-serialized `Expr` representing the distribution and the value `x`.
+
+/// Returns a bincode-serialized `Expr` representing the CDF at `x`.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_cdf(
@@ -266,6 +354,14 @@ pub extern "C" fn rssn_bincode_dist_cdf(
     }
 }
 
+/// Computes the expectation (mean) of a distribution.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing the distribution.
+
+/// Returns a bincode-serialized `Expr` representing the expectation.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_expectation(
@@ -288,6 +384,14 @@ pub extern "C" fn rssn_bincode_dist_expectation(
     }
 }
 
+/// Computes the variance of a distribution.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing the distribution.
+
+/// Returns a bincode-serialized `Expr` representing the variance.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_dist_variance(
@@ -309,6 +413,14 @@ pub extern "C" fn rssn_bincode_dist_variance(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the moment generating function (MGF) of a distribution.
+
+///
+
+/// Takes bincode-serialized `Expr` representing the distribution and the variable `t`.
+
+/// Returns a bincode-serialized `Expr` representing the MGF.
 
 #[no_mangle]
 

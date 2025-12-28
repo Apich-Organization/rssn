@@ -153,11 +153,17 @@ enum BoundaryConditionType {
 
 #[derive(Debug, Clone)]
 
+/// Represents the set of boundary and initial conditions for a 1D PDE.
 pub struct BoundaryConditions {
+    /// The type of boundary condition at x=0.
     at_zero: BoundaryConditionType,
+    /// The type of boundary condition at x=L.
     at_l: BoundaryConditionType,
+    /// The length of the spatial domain L.
     l: Expr,
+    /// The initial condition function at t=0, u(x, 0) = f(x).
     initial_cond: Expr,
+    /// The initial condition for the first time derivative, ∂u/∂t(x, 0) = g(x) (for wave eq).
     initial_cond_deriv: Option<Expr>,
 }
 
@@ -552,12 +558,19 @@ pub enum PDEType {
     serde::Deserialize,
 )]
 
+/// Contains the results of a PDE classification.
 pub struct PDEClassification {
+    /// The identified type of the PDE (e.g., Wave, Heat).
     pub pde_type: PDEType,
+    /// The highest order of derivatives present in the equation.
     pub order: usize,
+    /// The number of independent variables (spatial and temporal).
     pub dimension: usize,
+    /// Whether the equation is linear with respect to the unknown function and its derivatives.
     pub is_linear: bool,
+    /// Whether the equation is homogeneous (all terms contain the unknown function or its derivatives).
     pub is_homogeneous: bool,
+    /// A list of suggested methods for solving this specific classification of PDE.
     pub suggested_methods: Vec<String>,
 }
 
@@ -1383,6 +1396,18 @@ fn collect_terms(
 
 #[must_use]
 
+/// Solves a first-order PDE using the method of characteristics.
+///
+/// This method transforms the PDE into a set of ordinary differential equations (characteristic equations)
+/// that describe how the solution evolves along specific curves.
+///
+/// # Arguments
+/// * `equation` - The PDE to solve.
+/// * `func` - The name of the unknown function.
+/// * `vars` - The independent variables.
+///
+/// # Returns
+/// An `Option<Expr>` containing the solution if found.
 pub fn solve_pde_by_characteristics(
     equation: &Expr,
     func: &str,

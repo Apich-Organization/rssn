@@ -6,6 +6,14 @@ use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_linear_system;
 use crate::symbolic::solve::solve_system;
 
+/// Solves an equation for a given variable.
+
+///
+
+/// Takes JSON strings representing `Expr` (equation) and `String` (variable).
+
+/// Returns a JSON string representing the `Expr` of the solution.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_solve(
@@ -31,6 +39,14 @@ pub extern "C" fn rssn_json_solve(
         std::ptr::null_mut()
     }
 }
+
+/// Solves a system of equations for given variables.
+
+///
+
+/// Takes JSON strings representing `Vec<Expr>` (equations) and `Vec<String>` (variables).
+
+/// Returns a JSON string representing the `Expr` of the solution.
 
 #[no_mangle]
 
@@ -72,6 +88,14 @@ pub extern "C" fn rssn_json_solve_system(
         std::ptr::null_mut()
     }
 }
+
+/// Solves a linear system of equations.
+
+///
+
+/// Takes JSON strings representing `Expr` (system) and `Vec<String>` (variables).
+
+/// Returns a JSON string representing the `Expr` of the solution.
 
 #[no_mangle]
 

@@ -33,8 +33,11 @@ pub struct LieAlgebraElement(pub Expr);
 )]
 
 pub struct LieAlgebra {
+    /// The name of the Lie algebra (e.g., "so(3)", "su(2)").
     pub name: String,
+    /// The set of basis elements (generators) for the Lie algebra.
     pub basis: Vec<LieAlgebraElement>,
+    /// The dimension of the Lie algebra (number of basis elements).
     pub dimension: usize,
 }
 

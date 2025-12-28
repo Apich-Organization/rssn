@@ -1,6 +1,14 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::vector::*;
 
+/// Computes the magnitude of a vector.
+
+///
+
+/// Takes a bincode-serialized `Vector` as input.
+
+/// Returns a bincode-serialized `Expr` representing its magnitude.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_vector_magnitude(
@@ -20,6 +28,14 @@ pub extern "C" fn rssn_bincode_vector_magnitude(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the dot product of two vectors.
+
+///
+
+/// Takes two bincode-serialized `Vector` objects as input.
+
+/// Returns a bincode-serialized `Expr` representing their dot product.
 
 #[no_mangle]
 
@@ -47,6 +63,14 @@ pub extern "C" fn rssn_bincode_vector_dot(
     }
 }
 
+/// Computes the cross product of two vectors.
+
+///
+
+/// Takes two bincode-serialized `Vector` objects as input.
+
+/// Returns a bincode-serialized `Vector` representing their cross product.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_vector_cross(
@@ -72,6 +96,14 @@ pub extern "C" fn rssn_bincode_vector_cross(
         BincodeBuffer::empty()
     }
 }
+
+/// Normalizes a vector.
+
+///
+
+/// Takes a bincode-serialized `Vector` as input.
+
+/// Returns a bincode-serialized `Vector` representing the normalized vector.
 
 #[no_mangle]
 

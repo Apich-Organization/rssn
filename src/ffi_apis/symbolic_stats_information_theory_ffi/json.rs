@@ -4,6 +4,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_information_theory;
 
+/// Computes the Shannon entropy of a probability distribution.
+
+///
+
+/// Takes a JSON string representing a `Vec<Expr>` (probabilities).
+
+/// Returns a JSON string representing the `Expr` of the entropy.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_shannon_entropy(
@@ -23,6 +31,14 @@ pub unsafe extern "C" fn rssn_json_shannon_entropy(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the Kullback-Leibler divergence between two probability distributions.
+
+///
+
+/// Takes JSON strings representing two `Vec<Expr>` (probability distributions `p` and `q`).
+
+/// Returns a JSON string representing the `Expr` of the KL divergence.
 
 #[no_mangle]
 
@@ -51,6 +67,14 @@ pub unsafe extern "C" fn rssn_json_kl_divergence(
     }
 }
 
+/// Computes the cross-entropy between two probability distributions.
+
+///
+
+/// Takes two JSON strings representing `Vec<Expr>` (probability distributions `p` and `q`).
+
+/// Returns a JSON string representing the `Expr` of the cross-entropy.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_cross_entropy(
@@ -78,6 +102,14 @@ pub unsafe extern "C" fn rssn_json_cross_entropy(
     }
 }
 
+/// Computes the Gini impurity of a probability distribution.
+
+///
+
+/// Takes a JSON string representing a `Vec<Expr>` (probabilities).
+
+/// Returns a JSON string representing the `Expr` of the Gini impurity.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_gini_impurity(
@@ -97,6 +129,14 @@ pub unsafe extern "C" fn rssn_json_gini_impurity(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the joint entropy of a joint probability distribution.
+
+///
+
+/// Takes a JSON string representing an `Expr` (joint probability distribution).
+
+/// Returns a JSON string representing the `Expr` of the joint entropy.
 
 #[no_mangle]
 
@@ -121,6 +161,14 @@ pub unsafe extern "C" fn rssn_json_joint_entropy(
     }
 }
 
+/// Computes the conditional entropy of a joint probability distribution.
+
+///
+
+/// Takes a JSON string representing an `Expr` (joint probability distribution).
+
+/// Returns a JSON string representing the `Expr` of the conditional entropy.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_conditional_entropy(
@@ -143,6 +191,14 @@ pub unsafe extern "C" fn rssn_json_conditional_entropy(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the mutual information between two random variables from their joint probability distribution.
+
+///
+
+/// Takes a JSON string representing an `Expr` (joint probability distribution).
+
+/// Returns a JSON string representing the `Expr` of the mutual information.
 
 #[no_mangle]
 

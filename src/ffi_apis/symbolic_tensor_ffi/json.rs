@@ -3,6 +3,14 @@ use std::ffi::c_char;
 use crate::ffi_apis::common::*;
 use crate::symbolic::tensor::*;
 
+/// Performs tensor addition.
+
+///
+
+/// Takes two JSON strings representing `Tensor` objects as input,
+
+/// and returns a JSON string representing their sum.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_tensor_add(
@@ -36,6 +44,14 @@ pub extern "C" fn rssn_json_tensor_add(
     }
 }
 
+/// Performs scalar multiplication on a tensor.
+
+///
+
+/// Takes a JSON string representing a `Tensor` and a JSON string representing an `Expr` (scalar).
+
+/// Returns a JSON string representing the resulting `Tensor`.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_tensor_scalar_mul(
@@ -67,6 +83,14 @@ pub extern "C" fn rssn_json_tensor_scalar_mul(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the outer product of two tensors.
+
+///
+
+/// Takes two JSON strings representing `Tensor` objects as input,
+
+/// and returns a JSON string representing their outer product.
 
 #[no_mangle]
 
@@ -102,6 +126,14 @@ pub extern "C" fn rssn_json_tensor_outer_product(
         std::ptr::null_mut()
     }
 }
+
+/// Performs tensor contraction.
+
+///
+
+/// Takes a JSON string representing a `Tensor`, and two `usize` values representing the axes to contract.
+
+/// Returns a JSON string representing the contracted `Tensor`.
 
 #[no_mangle]
 

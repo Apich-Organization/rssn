@@ -495,6 +495,16 @@ pub fn simplify(expr: Expr) -> Expr {
 #[inline]
 #[must_use]
 
+/// Checks if a symbolic expression is equivalent to zero.
+///
+/// This function handles `Expr::Dag` by converting it to an `Expr` and then checking
+/// `Expr::Constant`, `Expr::BigInt`, and `Expr::Rational`.
+///
+/// # Arguments
+/// * `expr` - The expression to check.
+///
+/// # Returns
+/// `true` if the expression is numerically 0, `false` otherwise.
 pub fn is_zero(expr: &Expr) -> bool {
 
     match expr {

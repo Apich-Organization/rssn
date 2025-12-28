@@ -1,6 +1,14 @@
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::*;
 
+/// Performs matrix addition using raw pointers to `Expr` objects.
+
+///
+
+/// Takes two raw pointers to `Expr` (representing matrices) as input,
+
+/// and returns a raw pointer to a new `Expr` representing their sum.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_matrix_add_handle(
@@ -22,6 +30,14 @@ pub extern "C" fn rssn_matrix_add_handle(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Performs matrix multiplication using raw pointers to `Expr` objects.
+
+///
+
+/// Takes two raw pointers to `Expr` (representing matrices) as input,
+
+/// and returns a raw pointer to a new `Expr` representing their product.
 
 #[no_mangle]
 
@@ -45,6 +61,14 @@ pub extern "C" fn rssn_matrix_mul_handle(
     Box::into_raw(Box::new(result))
 }
 
+/// Performs matrix transposition using a raw pointer to an `Expr` object.
+
+///
+
+/// Takes a raw pointer to an `Expr` (representing a matrix) as input,
+
+/// and returns a raw pointer to a new `Expr` representing its transpose.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_matrix_transpose_handle(
@@ -62,6 +86,14 @@ pub extern "C" fn rssn_matrix_transpose_handle(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the determinant of a matrix using a raw pointer to an `Expr` object.
+
+///
+
+/// Takes a raw pointer to an `Expr` (representing a matrix) as input,
+
+/// and returns a raw pointer to a new `Expr` representing its determinant.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_matrix_determinant_handle(
@@ -78,6 +110,14 @@ pub extern "C" fn rssn_matrix_determinant_handle(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the inverse of a matrix using a raw pointer to an `Expr` object.
+
+///
+
+/// Takes a raw pointer to an `Expr` (representing a matrix) as input,
+
+/// and returns a raw pointer to a new `Expr` representing its inverse.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_matrix_inverse_handle(
@@ -93,6 +133,14 @@ pub extern "C" fn rssn_matrix_inverse_handle(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Solves a linear system of equations AX = B using raw pointers to `Expr` objects.
+
+///
+
+/// Takes two raw pointers to `Expr` (representing matrix A and vector B) as input,
+
+/// and returns a raw pointer to a new `Expr` representing the solution vector X.
 
 #[no_mangle]
 

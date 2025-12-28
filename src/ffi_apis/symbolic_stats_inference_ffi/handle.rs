@@ -54,6 +54,18 @@ unsafe fn collect_exprs(
 // Let's wrap HypothesisTest in `Expr::Tuple` or similar if we strictly return `Expr`.
 // Tuple(stat, p_value, df) seems reasonable?
 
+/// Performs a one-sample t-test.
+
+///
+
+/// Takes a raw pointer to an array of `Expr` (data), its length,
+
+/// and a raw pointer to an `Expr` (target mean).
+
+/// Returns a raw pointer to an `Expr` tuple containing the test statistic,
+
+/// p-value formula, and degrees of freedom.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_one_sample_t_test(
@@ -93,6 +105,18 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
         ]),
     ))
 }
+
+/// Performs a two-sample t-test.
+
+///
+
+/// Takes raw pointers to two arrays of `Expr` (data sets), their lengths,
+
+/// and a raw pointer to an `Expr` (hypothesized difference in means).
+
+/// Returns a raw pointer to an `Expr` tuple containing the test statistic,
+
+/// p-value formula, and degrees of freedom.
 
 #[no_mangle]
 
@@ -143,6 +167,18 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
         ]),
     ))
 }
+
+/// Performs a z-test.
+
+///
+
+/// Takes a raw pointer to an array of `Expr` (data), its length,
+
+/// a raw pointer to an `Expr` (target mean), and a raw pointer to an `Expr` (population standard deviation).
+
+/// Returns a raw pointer to an `Expr` tuple containing the test statistic,
+
+/// p-value formula, and a placeholder for degrees of freedom.
 
 #[no_mangle]
 

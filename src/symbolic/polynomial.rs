@@ -1841,6 +1841,13 @@ impl Neg for SparsePolynomial {
 impl SparsePolynomial {
     #[must_use]
 
+    /// Evaluates the polynomial at a given point.
+    ///
+    /// # Arguments
+    /// * `vars` - A map from variable names to their numerical values.
+    ///
+    /// # Returns
+    /// The numerical result of the evaluation.
     pub fn eval(
         &self,
         vars: &HashMap<String, f64>,
@@ -2020,6 +2027,13 @@ pub(crate) fn subtract_monomials(
 impl SparsePolynomial {
     #[must_use]
 
+    /// Returns the degree of the polynomial with respect to a specific variable.
+    ///
+    /// # Arguments
+    /// * `var` - The variable name.
+    ///
+    /// # Returns
+    /// The highest exponent of the variable, or -1 if the polynomial is empty.
     pub fn degree(
         &self,
         var: &str,
@@ -2040,6 +2054,13 @@ impl SparsePolynomial {
 
     #[must_use]
 
+    /// Returns the term with the highest degree in the specified variable.
+    ///
+    /// # Arguments
+    /// * `var` - The variable name.
+    ///
+    /// # Returns
+    /// An `Option` containing the leading monomial and its coefficient.
     pub fn leading_term(
         &self,
         var: &str,
@@ -2061,6 +2082,14 @@ impl SparsePolynomial {
 
     #[must_use]
 
+    /// Performs polynomial long division.
+    ///
+    /// # Arguments
+    /// * `divisor` - The polynomial to divide by.
+    /// * `var` - The main variable for division.
+    ///
+    /// # Returns
+    /// A tuple containing the (quotient, remainder).
     pub fn long_division(
         self,
         divisor: Self,
@@ -2168,6 +2197,15 @@ impl SparsePolynomial {
 
     #[must_use]
 
+    /// Returns the coefficients of the polynomial as a vector.
+    ///
+    /// The coefficients are returned in descending order of degree (leading coefficient first).
+    ///
+    /// # Arguments
+    /// * `var` - The variable name.
+    ///
+    /// # Returns
+    /// A `Vec<Expr>` of coefficients.
     pub fn get_coeffs_as_vec(
         &self,
         var: &str,
@@ -2239,6 +2277,14 @@ impl SparsePolynomial {
 
     #[must_use]
 
+    /// Returns the coefficient associated with a specific power of a variable.
+    ///
+    /// # Arguments
+    /// * `var` - The variable name.
+    /// * `power` - The exponent of the variable.
+    ///
+    /// # Returns
+    /// `Some(Expr)` if the term exists, `None` otherwise.
     pub fn get_coeff_for_power(
         &self,
         var: &str,

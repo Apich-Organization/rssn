@@ -9,6 +9,14 @@ use crate::symbolic::transforms;
 
 // --- Fourier Transform ---
 
+/// Computes the Fourier transform of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the Fourier transform.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_fourier_transform(
@@ -46,6 +54,14 @@ pub extern "C" fn rssn_bincode_fourier_transform(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the inverse Fourier transform of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the inverse Fourier transform.
 
 #[no_mangle]
 
@@ -85,6 +101,16 @@ pub extern "C" fn rssn_bincode_inverse_fourier_transform(
     }
 }
 
+/// Applies the time shift property of the Fourier transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (frequency domain expression), `Expr` (time shift amount),
+
+/// and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_fourier_time_shift(
@@ -119,6 +145,16 @@ pub extern "C" fn rssn_bincode_fourier_time_shift(
         BincodeBuffer::empty()
     }
 }
+
+/// Applies the frequency shift property of the Fourier transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (frequency domain expression), `Expr` (frequency shift amount),
+
+/// and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
 
 #[no_mangle]
 
@@ -155,6 +191,16 @@ pub extern "C" fn rssn_bincode_fourier_frequency_shift(
     }
 }
 
+/// Applies the scaling property of the Fourier transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (frequency domain expression), `Expr` (scaling factor `a`),
+
+/// and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_fourier_scaling(
@@ -190,6 +236,14 @@ pub extern "C" fn rssn_bincode_fourier_scaling(
     }
 }
 
+/// Applies the differentiation property of the Fourier transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (frequency domain expression) and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_fourier_differentiation(
@@ -219,6 +273,14 @@ pub extern "C" fn rssn_bincode_fourier_differentiation(
 }
 
 // --- Laplace Transform ---
+
+/// Computes the Laplace transform of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the Laplace transform.
 
 #[no_mangle]
 
@@ -258,6 +320,14 @@ pub extern "C" fn rssn_bincode_laplace_transform(
     }
 }
 
+/// Computes the inverse Laplace transform of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the inverse Laplace transform.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_inverse_laplace_transform(
@@ -296,6 +366,16 @@ pub extern "C" fn rssn_bincode_inverse_laplace_transform(
     }
 }
 
+/// Applies the time shift property of the Laplace transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (s-domain expression), `Expr` (time shift amount `a`),
+
+/// and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_laplace_time_shift(
@@ -328,6 +408,16 @@ pub extern "C" fn rssn_bincode_laplace_time_shift(
         BincodeBuffer::empty()
     }
 }
+
+/// Applies the frequency shift property of the Laplace transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (s-domain expression), `Expr` (frequency shift amount `a`),
+
+/// and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
 
 #[no_mangle]
 
@@ -362,6 +452,16 @@ pub extern "C" fn rssn_bincode_laplace_frequency_shift(
     }
 }
 
+/// Applies the scaling property of the Laplace transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (s-domain expression), `Expr` (scaling factor `a`),
+
+/// and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_laplace_scaling(
@@ -394,6 +494,16 @@ pub extern "C" fn rssn_bincode_laplace_scaling(
         BincodeBuffer::empty()
     }
 }
+
+/// Applies the differentiation property of the Laplace transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (s-domain expression), `String` (output variable),
+
+/// and `Expr` (`f(0)` - initial condition).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
 
 #[no_mangle]
 
@@ -430,6 +540,14 @@ pub extern "C" fn rssn_bincode_laplace_differentiation(
     }
 }
 
+/// Applies the integration property of the Laplace transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (s-domain expression) and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_laplace_integration(
@@ -457,6 +575,14 @@ pub extern "C" fn rssn_bincode_laplace_integration(
 }
 
 // --- Z-Transform ---
+
+/// Computes the Z-transform of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the Z-transform.
 
 #[no_mangle]
 
@@ -500,6 +626,14 @@ pub extern "C" fn rssn_bincode_z_transform(
     }
 }
 
+/// Computes the inverse Z-transform of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the inverse Z-transform.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_inverse_z_transform(
@@ -538,6 +672,16 @@ pub extern "C" fn rssn_bincode_inverse_z_transform(
     }
 }
 
+/// Applies the time shift property of the Z-transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (z-domain expression), `Expr` (time shift amount `k`),
+
+/// and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_z_time_shift(
@@ -574,6 +718,16 @@ pub extern "C" fn rssn_bincode_z_time_shift(
         BincodeBuffer::empty()
     }
 }
+
+/// Applies the scaling property of the Z-transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (z-domain expression), `Expr` (scaling factor `a`),
+
+/// and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
 
 #[no_mangle]
 
@@ -612,6 +766,14 @@ pub extern "C" fn rssn_bincode_z_scaling(
     }
 }
 
+/// Applies the differentiation property of the Z-transform.
+
+///
+
+/// Takes bincode-serialized `Expr` (z-domain expression) and `String` (output variable).
+
+/// Returns a bincode-serialized `Expr` representing the transformed expression.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_z_differentiation(
@@ -639,6 +801,16 @@ pub extern "C" fn rssn_bincode_z_differentiation(
 }
 
 // --- Utils ---
+
+/// Computes the convolution of two functions using the Fourier transform property.
+
+///
+
+/// Takes bincode-serialized `Expr` representing two functions (`f` and `g`),
+
+/// and `String`s for input and output variables.
+
+/// Returns a bincode-serialized `Expr` representing the convolution.
 
 #[no_mangle]
 
@@ -684,6 +856,16 @@ pub extern "C" fn rssn_bincode_convolution_fourier(
     }
 }
 
+/// Computes the convolution of two functions using the Laplace transform property.
+
+///
+
+/// Takes bincode-serialized `Expr` representing two functions (`f` and `g`),
+
+/// and `String`s for input and output variables.
+
+/// Returns a bincode-serialized `Expr` representing the convolution.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_convolution_laplace(
@@ -727,6 +909,14 @@ pub extern "C" fn rssn_bincode_convolution_laplace(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the partial fraction decomposition of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression) and `String` (variable).
+
+/// Returns a bincode-serialized `Expr` representing the partial fraction decomposition.
 
 #[no_mangle]
 

@@ -2,6 +2,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::numeric::evaluate_numerical;
 
+/// Numerically evaluates a symbolic expression.
+
+///
+
+/// Takes a bincode-serialized `Expr` as input,
+
+/// and returns a bincode-serialized numerical evaluation of that expression.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_evaluate_numerical(

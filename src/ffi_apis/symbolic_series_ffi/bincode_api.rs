@@ -9,6 +9,16 @@ use crate::symbolic::series::product;
 use crate::symbolic::series::summation;
 use crate::symbolic::series::taylor_series;
 
+/// Computes the Taylor series expansion of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (variable),
+
+/// `Expr` (center), and `usize` (order).
+
+/// Returns a bincode-serialized `Expr` representing the Taylor series.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_taylor_series(
@@ -54,6 +64,16 @@ pub extern "C" fn rssn_bincode_taylor_series(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the Laurent series expansion of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (variable),
+
+/// `Expr` (center), and `usize` (order).
+
+/// Returns a bincode-serialized `Expr` representing the Laurent series.
 
 #[no_mangle]
 
@@ -101,6 +121,16 @@ pub extern "C" fn rssn_bincode_laurent_series(
     }
 }
 
+/// Computes the Fourier series expansion of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (variable),
+
+/// `Expr` (period), and `usize` (order).
+
+/// Returns a bincode-serialized `Expr` representing the Fourier series.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_fourier_series(
@@ -147,6 +177,16 @@ pub extern "C" fn rssn_bincode_fourier_series(
     }
 }
 
+/// Computes the summation of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (variable),
+
+/// `Expr` (lower bound), and `Expr` (upper bound).
+
+/// Returns a bincode-serialized `Expr` representing the summation.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_summation(
@@ -186,6 +226,16 @@ pub extern "C" fn rssn_bincode_summation(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the product of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (variable),
+
+/// `Expr` (lower bound), and `Expr` (upper bound).
+
+/// Returns a bincode-serialized `Expr` representing the product.
 
 #[no_mangle]
 
@@ -227,6 +277,14 @@ pub extern "C" fn rssn_bincode_product(
     }
 }
 
+/// Analyzes the convergence of a series.
+
+///
+
+/// Takes bincode-serialized `Expr` (series expression) and `String` (variable).
+
+/// Returns a bincode-serialized `Expr` representing the convergence analysis result.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_series_bincode_analyze_convergence(
@@ -255,6 +313,16 @@ pub extern "C" fn rssn_series_bincode_analyze_convergence(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the asymptotic expansion of an expression.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (variable),
+
+/// `Expr` (point), and `usize` (order).
+
+/// Returns a bincode-serialized `Expr` representing the asymptotic expansion.
 
 #[no_mangle]
 
@@ -297,6 +365,16 @@ pub extern "C" fn rssn_bincode_asymptotic_expansion(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the analytic continuation of a series.
+
+///
+
+/// Takes bincode-serialized `Expr` (expression), `String` (variable),
+
+/// `Expr` (original center), `Expr` (new center), and `usize` (order).
+
+/// Returns a bincode-serialized `Expr` representing the analytic continuation.
 
 #[no_mangle]
 

@@ -4,6 +4,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::numeric::evaluate_numerical;
 
+/// Numerically evaluates a symbolic expression.
+
+///
+
+/// Takes a JSON string representing an `Expr` as input,
+
+/// and returns a JSON string representing the numerical evaluation of that expression.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_evaluate_numerical(

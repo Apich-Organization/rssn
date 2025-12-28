@@ -35,6 +35,14 @@ unsafe fn collect_pairs(
     data
 }
 
+/// Performs a simple linear regression.
+
+///
+
+/// Takes raw pointers to arrays of `Expr` (x and y data) and the length of the data.
+
+/// Returns a raw pointer to an `Expr` (vector) containing the intercept and slope coefficients.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_simple_linear_regression(
@@ -62,6 +70,16 @@ pub unsafe extern "C" fn rssn_simple_linear_regression(
         Expr::Vector(vec![b0, b1]),
     ))
 }
+
+/// Performs a polynomial regression.
+
+///
+
+/// Takes raw pointers to arrays of `Expr` (x and y data), the length of the data,
+
+/// and the degree of the polynomial.
+
+/// Returns a raw pointer to an `Expr` (vector) containing the coefficients of the polynomial.
 
 #[no_mangle]
 
@@ -94,6 +112,18 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
         | Err(_) => std::ptr::null_mut(),
     }
 }
+
+/// Performs a nonlinear regression.
+
+///
+
+/// Takes raw pointers to arrays of `Expr` (x and y data), the length of the data,
+
+/// a raw pointer to an `Expr` (model), raw pointers to arrays of C-style strings (variables and parameters),
+
+/// and their respective lengths.
+
+/// Returns a raw pointer to an `Expr` representing the solutions (optimized parameter values).
 
 #[no_mangle]
 

@@ -11,6 +11,14 @@ use crate::symbolic::transforms;
 
 // --- Fourier Transform ---
 
+/// Computes the Fourier transform of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the Fourier transform.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_fourier_transform(
@@ -44,6 +52,14 @@ pub unsafe extern "C" fn rssn_json_fourier_transform(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the inverse Fourier transform of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the inverse Fourier transform.
 
 #[no_mangle]
 
@@ -79,6 +95,16 @@ pub unsafe extern "C" fn rssn_json_inverse_fourier_transform(
     }
 }
 
+/// Applies the time shift property of the Fourier transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (frequency domain expression), `Expr` (time shift amount `a`),
+
+/// and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_fourier_time_shift(
@@ -109,6 +135,16 @@ pub unsafe extern "C" fn rssn_json_fourier_time_shift(
         std::ptr::null_mut()
     }
 }
+
+/// Applies the frequency shift property of the Fourier transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (frequency domain expression), `Expr` (frequency shift amount `a`),
+
+/// and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
 
 #[no_mangle]
 
@@ -141,6 +177,16 @@ pub unsafe extern "C" fn rssn_json_fourier_frequency_shift(
     }
 }
 
+/// Applies the scaling property of the Fourier transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (frequency domain expression), `Expr` (scaling factor `a`),
+
+/// and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_fourier_scaling(
@@ -172,6 +218,14 @@ pub unsafe extern "C" fn rssn_json_fourier_scaling(
     }
 }
 
+/// Applies the differentiation property of the Fourier transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (frequency domain expression) and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_fourier_differentiation(
@@ -197,6 +251,14 @@ pub unsafe extern "C" fn rssn_json_fourier_differentiation(
 }
 
 // --- Laplace Transform ---
+
+/// Computes the Laplace transform of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the Laplace transform.
 
 #[no_mangle]
 
@@ -232,6 +294,14 @@ pub unsafe extern "C" fn rssn_json_laplace_transform(
     }
 }
 
+/// Computes the inverse Laplace transform of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the inverse Laplace transform.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_inverse_laplace_transform(
@@ -266,6 +336,16 @@ pub unsafe extern "C" fn rssn_json_inverse_laplace_transform(
     }
 }
 
+/// Applies the time shift property of the Laplace transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (s-domain expression), `Expr` (time shift amount `a`),
+
+/// and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_laplace_time_shift(
@@ -296,6 +376,16 @@ pub unsafe extern "C" fn rssn_json_laplace_time_shift(
         std::ptr::null_mut()
     }
 }
+
+/// Applies the frequency shift property of the Laplace transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (s-domain expression), `Expr` (frequency shift amount `a`),
+
+/// and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
 
 #[no_mangle]
 
@@ -328,6 +418,16 @@ pub unsafe extern "C" fn rssn_json_laplace_frequency_shift(
     }
 }
 
+/// Applies the scaling property of the Laplace transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (s-domain expression), `Expr` (scaling factor `a`),
+
+/// and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_laplace_scaling(
@@ -358,6 +458,16 @@ pub unsafe extern "C" fn rssn_json_laplace_scaling(
         std::ptr::null_mut()
     }
 }
+
+/// Applies the differentiation property of the Laplace transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (s-domain expression), `String` (output variable),
+
+/// and `Expr` (`f(0)` - initial condition).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
 
 #[no_mangle]
 
@@ -390,6 +500,14 @@ pub unsafe extern "C" fn rssn_json_laplace_differentiation(
     }
 }
 
+/// Applies the integration property of the Laplace transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (s-domain expression) and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_laplace_integration(
@@ -415,6 +533,14 @@ pub unsafe extern "C" fn rssn_json_laplace_integration(
 }
 
 // --- Z-Transform ---
+
+/// Computes the Z-transform of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the Z-transform.
 
 #[no_mangle]
 
@@ -454,6 +580,14 @@ pub unsafe extern "C" fn rssn_json_z_transform(
     }
 }
 
+/// Computes the inverse Z-transform of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the inverse Z-transform.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_inverse_z_transform(
@@ -487,6 +621,16 @@ pub unsafe extern "C" fn rssn_json_inverse_z_transform(
         std::ptr::null_mut()
     }
 }
+
+/// Applies the time shift property of the Z-transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (z-domain expression), `Expr` (time shift amount `k`),
+
+/// and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
 
 #[no_mangle]
 
@@ -523,6 +667,16 @@ pub unsafe extern "C" fn rssn_json_z_time_shift(
     }
 }
 
+/// Applies the scaling property of the Z-transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (z-domain expression), `Expr` (scaling factor `a`),
+
+/// and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_z_scaling(
@@ -558,6 +712,14 @@ pub unsafe extern "C" fn rssn_json_z_scaling(
     }
 }
 
+/// Applies the differentiation property of the Z-transform.
+
+///
+
+/// Takes JSON strings representing `Expr` (z-domain expression) and `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the transformed expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_z_differentiation(
@@ -583,6 +745,16 @@ pub unsafe extern "C" fn rssn_json_z_differentiation(
 }
 
 // --- Utils ---
+
+/// Computes the convolution of two functions using the Fourier transform property.
+
+///
+
+/// Takes JSON strings representing `Expr` (two functions `f` and `g`),
+
+/// and `String` (input variable), `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the convolution.
 
 #[no_mangle]
 
@@ -624,6 +796,16 @@ pub unsafe extern "C" fn rssn_json_convolution_fourier(
     }
 }
 
+/// Computes the convolution of two functions using the Laplace transform property.
+
+///
+
+/// Takes JSON strings representing `Expr` (two functions `f` and `g`),
+
+/// and `String` (input variable), `String` (output variable).
+
+/// Returns a JSON string representing the `Expr` of the convolution.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_convolution_laplace(
@@ -663,6 +845,14 @@ pub unsafe extern "C" fn rssn_json_convolution_laplace(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the partial fraction decomposition of an expression.
+
+///
+
+/// Takes JSON strings representing `Expr` (expression) and `String` (variable).
+
+/// Returns a JSON string representing `Vec<Expr>` (partial fraction decomposition).
 
 #[no_mangle]
 
