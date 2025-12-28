@@ -207,18 +207,27 @@ pub fn simulate_1d_advection_diffusion_scenario(
     )
 }
 
+/// Configuration for 2D advection-diffusion simulation.
 #[derive(
     Debug, Clone, Serialize, Deserialize,
 )]
 
 pub struct AdvectionDiffusionConfig {
+    /// Number of grid points along the x-axis.
     pub width: usize,
+    /// Number of grid points along the y-axis.
     pub height: usize,
+    /// Grid spacing along the x-axis.
     pub dx: f64,
+    /// Grid spacing along the y-axis.
     pub dy: f64,
+    /// Advection velocity vector (u, v).
     pub c: (f64, f64),
+    /// Diffusion coefficient.
     pub d: f64,
+    /// Time step size.
     pub dt: f64,
+    /// Number of simulation steps.
     pub steps: usize,
 }
 
@@ -517,20 +526,31 @@ pub fn ifft3d(
         .for_each(ifft_slice);
 }
 
+/// Configuration for 3D advection-diffusion simulation.
 #[derive(
     Debug, Clone, Serialize, Deserialize,
 )]
 
 pub struct AdvectionDiffusionConfig3d {
+    /// Number of grid points along the x-axis.
     pub width: usize,
+    /// Number of grid points along the y-axis.
     pub height: usize,
+    /// Number of grid points along the z-axis.
     pub depth: usize,
+    /// Grid spacing along the x-axis.
     pub dx: f64,
+    /// Grid spacing along the y-axis.
     pub dy: f64,
+    /// Grid spacing along the z-axis.
     pub dz: f64,
+    /// Advection velocity vector (u, v, w).
     pub c: (f64, f64, f64),
+    /// Diffusion coefficient.
     pub d: f64,
+    /// Time step size.
     pub dt: f64,
+    /// Number of simulation steps.
     pub steps: usize,
 }
 

@@ -1093,6 +1093,7 @@ impl fmt::Display for Expr {
 }
 
 impl Expr {
+    /// Returns the real part of the expression.
     #[must_use]
     #[inline]
 
@@ -1109,6 +1110,7 @@ impl Expr {
         }
     }
 
+    /// Returns the imaginary part of the expression.
     #[must_use]
     #[inline]
 
@@ -1125,6 +1127,7 @@ impl Expr {
         }
     }
 
+    /// Attempts to convert the expression to a 64-bit float.
     #[inline]
     #[must_use]
 

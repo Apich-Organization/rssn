@@ -10,7 +10,7 @@ use crate::numerical::sparse::solve_conjugate_gradient;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
+/// A struct for Gaussian quadrature.
 pub struct GaussQuadrature {
     points: Vec<f64>,
     weights: Vec<f64>,

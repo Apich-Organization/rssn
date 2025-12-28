@@ -15,13 +15,16 @@ use serde::Serialize;
     Serialize,
     Deserialize,
 )]
-
+/// A 2D vector.
 pub struct Vector2D {
+    /// The x component of the vector.
     pub x: f64,
+    /// The y component of the vector.
     pub y: f64,
 }
 
 impl Vector2D {
+    /// Creates a new 2D vector.
     pub fn new(
         x: f64,
         y: f64,
@@ -106,26 +109,35 @@ impl Div<f64> for Vector2D {
 #[derive(
     Debug, Clone, Serialize, Deserialize,
 )]
-
+/// A particle in the SPH simulation.
 pub struct Particle {
+    /// The position of the particle.
     pub pos: Vector2D,
+    /// The velocity of the particle.
     pub vel: Vector2D,
+    /// The force acting on the particle.
     pub force: Vector2D,
+    /// The density of the particle.
     pub density: f64,
+    /// The pressure of the particle.
     pub pressure: f64,
+    /// The mass of the particle.
     pub mass: f64,
 }
 
 #[derive(
     Debug, Clone, Serialize, Deserialize,
 )]
-
+/// The Poly6 kernel for SPH simulations.
 pub struct Poly6Kernel {
+    /// The squared smoothing radius.
     pub h_sq: f64,
+    /// The normalization factor.
     pub factor: f64,
 }
 
 impl Poly6Kernel {
+    /// Creates a new Poly6 kernel.
     pub fn new(h: f64) -> Self {
 
         Self {
@@ -153,13 +165,16 @@ impl Poly6Kernel {
 #[derive(
     Debug, Clone, Serialize, Deserialize,
 )]
-
+/// The spiky kernel for SPH simulations.
 pub struct SpikyKernel {
+    /// The smoothing radius.
     pub h: f64,
+    /// The normalization factor.
     pub factor: f64,
 }
 
 impl SpikyKernel {
+    /// Creates a new spiky kernel.
     pub fn new(h: f64) -> Self {
 
         Self {
@@ -196,19 +211,28 @@ impl SpikyKernel {
 #[derive(
     Debug, Clone, Serialize, Deserialize,
 )]
-
+/// The SPH system.
 pub struct SPHSystem {
+    /// The particles in the system.
     pub particles: Vec<Particle>,
+    /// The Poly6 kernel.
     pub poly6: Poly6Kernel,
+    /// The spiky kernel.
     pub spiky: SpikyKernel,
+    /// The gravity vector.
     pub gravity: Vector2D,
+    /// The viscosity of the fluid.
     pub viscosity: f64,
+    /// The gas constant.
     pub gas_const: f64,
+    /// The rest density of the fluid.
     pub rest_density: f64,
+    /// The bounds of the simulation.
     pub bounds: Vector2D,
 }
 
 impl SPHSystem {
+    /// Computes the density and pressure of each particle.
     pub fn compute_density_pressure(
         &mut self
     ) {
@@ -256,6 +280,7 @@ impl SPHSystem {
             });
     }
 
+    /// Computes the forces acting on each particle.
     pub fn compute_forces(&mut self) {
 
         let spiky = &self.spiky;
@@ -319,6 +344,7 @@ impl SPHSystem {
             });
     }
 
+    /// Integrates the equations of motion for each particle.
     pub fn integrate(
         &mut self,
         dt: f64,
@@ -368,6 +394,7 @@ impl SPHSystem {
             });
     }
 
+    /// Updates the SPH system by one time step.
     pub fn update(
         &mut self,
         dt: f64,

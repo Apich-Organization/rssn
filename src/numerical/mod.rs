@@ -23,6 +23,7 @@ pub mod interpolate;
 pub mod matrix;
 pub mod multi_valued;
 pub mod number_theory;
+/// Ordinary Differential Equation (ODE) solvers.
 pub mod ode;
 pub mod optimize;
 pub mod pde;
@@ -31,8 +32,11 @@ pub mod physics_cfd;
 pub mod physics_fea;
 pub mod physics_md;
 pub mod polynomial;
+/// Functions for finding real roots of equations.
 pub mod real_roots;
+/// Series expansion and summation methods.
 pub mod series;
+/// Signal processing algorithms.
 pub mod signal;
 pub mod solve;
 pub mod sparse;

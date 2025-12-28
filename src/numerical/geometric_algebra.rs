@@ -24,13 +24,21 @@ use serde::Serialize;
 )]
 
 pub struct Multivector3D {
+    /// Scalar component.
     pub s: f64,
+    /// Vector e1 component.
     pub v1: f64,
+    /// Vector e2 component.
     pub v2: f64,
+    /// Vector e3 component.
     pub v3: f64,
+    /// Bivector e12 component.
     pub b12: f64,
+    /// Bivector e23 component.
     pub b23: f64,
+    /// Bivector e31 component.
     pub b31: f64,
+    /// Pseudoscalar e123 component.
     pub pss: f64,
 }
 

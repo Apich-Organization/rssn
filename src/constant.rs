@@ -1,15 +1,20 @@
+/// The date the library was built.
 pub const BUILD_DATE: &str =
     env!("VERGEN_BUILD_DATE");
 
+/// The Git commit SHA the library was built from.
 pub const COMMIT_SHA: &str =
     env!("VERGEN_GIT_SHA");
 
+/// The version of the Rust compiler used to build the library.
 pub const RUSTC_VERSION: &str =
     env!("VERGEN_RUSTC_SEMVER");
 
+/// The target triple for which the library was built.
 pub const CARGO_TARGET_TRIPLE: &str =
     env!("VERGEN_CARGO_TARGET_TRIPLE");
 
+/// Operating system and version information of the build environment.
 pub const SYSTEM_INFO: &str =
     env!("VERGEN_SYSINFO_OS_VERSION");
 

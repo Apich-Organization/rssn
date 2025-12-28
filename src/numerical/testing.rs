@@ -1004,6 +1004,7 @@ pub(crate) fn evaluate_expr(
     }
 }
 
+/// Solves a transcendental equation numerically.
 #[must_use]
 
 pub fn solve_transcendental_numerical(
@@ -1224,6 +1225,7 @@ pub(crate) fn extract_linear_equation_coeffs(
     ))
 }
 
+/// Solves a linear system numerically.
 #[must_use]
 
 pub fn solve_linear_system_numerical(
@@ -1333,6 +1335,7 @@ pub(crate) fn expr_div(
     ))
 }
 
+/// Solves a linear system symbolically.
 #[must_use]
 
 pub fn solve_linear_system_symbolic(
@@ -1450,6 +1453,7 @@ pub fn solve_linear_system_symbolic(
     Some(solution)
 }
 
+/// Solves a system of equations by dispatching to appropriate solver.
 #[must_use]
 
 pub fn solve_system(
@@ -1552,6 +1556,7 @@ pub fn solve_system(
     }
 }
 
+/// Solves a nonlinear system numerically.
 #[must_use]
 
 pub fn solve_nonlinear_system_numerical(

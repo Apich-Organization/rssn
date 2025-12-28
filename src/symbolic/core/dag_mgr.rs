@@ -30,17 +30,22 @@ use super::to_expr::*;
 use crate::symbolic::unit_unification::UnitQuantity;
 
 lazy_static! {
+    /// Global singleton instance of the DagManager.
     pub static ref DAG_MANAGER: DagManager =
         DagManager::new();
 }
 
+/// Represents a node in a Direct Acyclic Graph (DAG) for expression deduplication.
 #[derive(
     Debug, Clone, serde::Serialize,
 )]
 
 pub struct DagNode {
+    /// The operation performed at this node.
     pub op: DagOp,
+    /// The children expressions of this node.
     pub children: Vec<Arc<DagNode>>,
+    /// Precomputed 64-bit hash of the operation and children.
     #[serde(skip)]
     pub hash: u64,
 }
@@ -105,172 +110,325 @@ impl<'de> serde::Deserialize<'de>
     serde::Deserialize,
 )]
 
+/// Represents the different types of operations and leaf nodes in a Directed Acyclic Graph (DAG).
 pub enum DagOp {
     // --- Leaf Nodes ---
+    /// A double-precision floating-point constant.
     Constant(OrderedFloat<f64>),
+    /// A large integer constant.
     BigInt(BigInt),
+    /// A rational number constant.
     Rational(BigRational),
+    /// A boolean constant.
     Boolean(bool),
+    /// A variable identified by its name.
     Variable(String),
+    /// A pattern variable for matching.
     Pattern(String),
+    /// A domain definition.
     Domain(String),
+    /// The mathematical constant pi (π).
     Pi,
+    /// The mathematical constant e.
     E,
+    /// Positive infinity.
     Infinity,
+    /// Negative infinity.
     NegativeInfinity,
+    /// Represents that a system has infinite solutions.
     InfiniteSolutions,
+    /// Represents that a system has no solution.
     NoSolution,
 
     // --- Operators with associated data ---
+    /// A derivative operation with respect to a variable.
     Derivative(String),
+    /// An n-th order derivative operation.
     DerivativeN(String),
+    /// A limit operation as a variable approaches a point.
     Limit(String),
+    /// Represents solving an equation for a variable.
     Solve(String),
+    /// Analysis of series convergence.
     ConvergenceAnalysis(String),
+    /// Universal quantifier.
     ForAll(String),
+    /// Existential quantifier.
     Exists(String),
+    /// Substitution operation.
     Substitute(String),
+    /// Ordinary Differential Equation.
     Ode {
+        /// The name of the function being solved for.
         func: String,
+        /// The independent variable.
         var: String,
     },
+    /// Partial Differential Equation.
     Pde {
+        /// The name of the function being solved for.
         func: String,
+        /// The independent variables.
         vars: Vec<String>,
     },
+    /// A logical or mathematical predicate.
     Predicate {
+        /// The name of the predicate.
         name: String,
     },
+    /// A geometric path.
     Path(PathType),
+    /// An interval on the real line.
     Interval(bool, bool),
 
     // --- Operators without associated data (children only) ---
+    /// Addition.
     Add,
+    /// Subtraction.
     Sub,
+    /// Multiplication.
     Mul,
+    /// Division.
     Div,
+    /// Negation.
     Neg,
+    /// Exponentiation.
     Power,
+    /// Sine function.
     Sin,
+    /// Cosine function.
     Cos,
+    /// Tangent function.
     Tan,
+    /// Natural exponential function.
     Exp,
+    /// Natural logarithm.
     Log,
+    /// Absolute value.
     Abs,
+    /// Square root.
     Sqrt,
+    /// Equality comparison.
     Eq,
+    /// Less than comparison.
     Lt,
+    /// Greater than comparison.
     Gt,
+    /// Less than or equal comparison.
     Le,
+    /// Greater than or equal comparison.
     Ge,
+    /// A matrix of a specific size.
     Matrix {
+        /// Number of rows.
         rows: usize,
+        /// Number of columns.
         cols: usize,
     },
+    /// A vector.
     Vector,
+    /// A complex number.
     Complex,
+    /// Matrix transpose.
     Transpose,
+    /// Matrix multiplication.
     MatrixMul,
+    /// Matrix-vector multiplication.
     MatrixVecMul,
+    /// Matrix inverse.
     Inverse,
+    /// Definite integral.
     Integral,
+    /// Volume integral.
     VolumeIntegral,
+    /// Surface integral.
     SurfaceIntegral,
+    /// Summation.
     Sum,
+    /// Series expansion.
     Series(String),
+    /// Summation over a range.
     Summation(String),
+    /// Product over a range.
     Product(String),
+    /// Asymptotic expansion.
     AsymptoticExpansion(String),
+    /// Secant function.
     Sec,
+    /// Cosecant function.
     Csc,
+    /// Cotangent function.
     Cot,
+    /// Inverse sine function.
     ArcSin,
+    /// Inverse cosine function.
     ArcCos,
+    /// Inverse tangent function.
     ArcTan,
+    /// Inverse secant function.
     ArcSec,
+    /// Inverse cosecant function.
     ArcCsc,
+    /// Inverse cotangent function.
     ArcCot,
+    /// Hyperbolic sine function.
     Sinh,
+    /// Hyperbolic cosine function.
     Cosh,
+    /// Hyperbolic tangent function.
     Tanh,
+    /// Hyperbolic secant function.
     Sech,
+    /// Hyperbolic cosecant function.
     Csch,
+    /// Hyperbolic cotangent function.
     Coth,
+    /// Inverse hyperbolic sine function.
     ArcSinh,
+    /// Inverse hyperbolic cosine function.
     ArcCosh,
+    /// Inverse hyperbolic tangent function.
     ArcTanh,
+    /// Inverse hyperbolic secant function.
     ArcSech,
+    /// Inverse hyperbolic cosecant function.
     ArcCsch,
+    /// Inverse hyperbolic cotangent function.
     ArcCoth,
+    /// Logarithm with a specific base.
     LogBase,
+    /// 2-argument arctangent.
     Atan2,
+    /// Binomial coefficient.
     Binomial,
+    /// Factorial function.
     Factorial,
+    /// Permutations.
     Permutation,
+    /// Combinations.
     Combination,
+    /// Falling factorial.
     FallingFactorial,
+    /// Rising factorial.
     RisingFactorial,
+    /// Domain boundary operator.
     Boundary,
+    /// Gamma function.
     Gamma,
+    /// Beta function.
     Beta,
+    /// Error function.
     Erf,
+    /// Complementary error function.
     Erfc,
+    /// Imaginary error function.
     Erfi,
+    /// Riemann zeta function.
     Zeta,
+    /// Bessel function of the first kind.
     BesselJ,
+    /// Bessel function of the second kind.
     BesselY,
+    /// Legendre polynomial.
     LegendreP,
+    /// Laguerre polynomial.
     LaguerreL,
+    /// Hermite polynomial.
     HermiteH,
+    /// Digamma function.
     Digamma,
+    /// Kronecker delta function.
     KroneckerDelta,
+    /// Logical AND.
     And,
+    /// Logical OR.
     Or,
+    /// Logical NOT.
     Not,
+    /// Logical XOR.
     Xor,
+    /// Logical implication.
     Implies,
+    /// Logical equivalence.
     Equivalent,
+    /// Set union.
     Union,
+    /// Polynomial expression.
     Polynomial,
+    /// Sparse polynomial.
     SparsePolynomial(SparsePolynomial), /* Note: Storing whole struct for simplicity */
+    /// Floor function.
     Floor,
+    /// Primality test.
     IsPrime,
+    /// Greatest common divisor.
     Gcd,
+    /// Modulo operation.
     Mod,
+    /// System of equations.
     System,
+    /// Solution set.
     Solutions,
+    /// Parametric solution.
     ParametricSolution,
+    /// The i-th root of a polynomial.
     RootOf {
+        /// The index of the root.
         index: u32,
     },
+    /// General solution to an ODE/PDE.
     GeneralSolution,
+    /// Particular solution to an ODE/PDE.
     ParticularSolution,
+    /// Fredholm integral equation.
     Fredholm,
+    /// Volterra integral equation.
     Volterra,
+    /// Function application.
     Apply,
+    /// Tuple of expressions.
     Tuple,
+    /// Probability distribution.
     Distribution, /* Trait objects are handled separately */
+    /// Maximum of multiple values.
     Max,
+    /// Physical quantity.
     Quantity, // Handled separately
+    /// Physical quantity with a specific value.
     QuantityWithValue(String),
 
     // --- Custom ---
+    /// Custom variant with zero children (deprecated).
     CustomZero,
+    /// Custom variant with a string label (deprecated).
     CustomString(String),
+    /// Custom variant with one child (deprecated).
     CustomArcOne,
+    /// Custom variant with two children (deprecated).
     CustomArcTwo,
+    /// Custom variant with three children (deprecated).
     CustomArcThree,
+    /// Custom variant with four children (deprecated).
     CustomArcFour,
+    /// Custom variant with five children (deprecated).
     CustomArcFive,
+    /// Custom variant with one vector child (deprecated).
     CustomVecOne,
+    /// Custom variant with two vector children (deprecated).
     CustomVecTwo,
+    /// Custom variant with three vector children (deprecated).
     CustomVecThree,
+    /// Custom variant with four vector children (deprecated).
     CustomVecFour,
+    /// Custom variant with five vector children (deprecated).
     CustomVecFive,
 
     // --- Dynamic/Generic Operations ---
+    /// List of children for unary operations.
     UnaryList(String),
+    /// List of children for binary operations.
     BinaryList(String),
+    /// List of children for n-ary operations.
     NaryList(String),
 }
 
@@ -376,6 +534,10 @@ impl From<DagNode> for Expr {
     }
 }
 
+/// Manager for Directed Acyclic Graph (DAG) nodes.
+///
+/// This manager maintains a cache of `DagNode` instances to ensure that
+/// identical expressions are represented by the same shared memory.
 pub struct DagManager {
     nodes: Mutex<
         HashMap<u64, Vec<Arc<DagNode>>>,
@@ -391,6 +553,7 @@ impl Default for DagManager {
 
 
 impl DagManager {
+    /// Creates a new `DagManager`.
     #[inline]
     #[must_use]
 

@@ -987,6 +987,7 @@ impl BSplineCurve {
 )]
 
 pub struct Polygon {
+    /// Indices of vertices belonging to this polygon face.
     pub indices: Vec<usize>,
 }
 
@@ -1012,7 +1013,9 @@ impl Polygon {
 )]
 
 pub struct PolygonMesh {
+    /// List of vertex positions in 3D space.
     pub vertices: Vec<Vector>,
+    /// List of faces connecting the vertices.
     pub polygons: Vec<Polygon>,
 }
 

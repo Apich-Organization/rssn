@@ -201,9 +201,15 @@ pub use expr::*;
 pub use expr_impl::*;
 pub use to_expr::*;
 
+/// Public API and constructors for symbolic expressions.
 pub mod api;
+/// Abstract Syntax Tree (AST) specific implementations.
 pub mod ast_impl;
+/// DAG management and deduplication logic.
 pub mod dag_mgr;
+/// Core expression type definition.
 pub mod expr;
+/// Core expression implementation details.
 pub mod expr_impl;
+/// Traits and utilities for converting values to Expressions.
 pub mod to_expr;

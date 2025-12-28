@@ -373,7 +373,9 @@ use serde::Serialize;
 )]
 
 pub struct TensorData {
+    /// Dimensions of the tensor.
     pub shape: Vec<usize>,
+    /// Flat vector of tensor data.
     pub data: Vec<f64>,
 }
 
@@ -391,6 +393,7 @@ impl From<&ArrayD<f64>> for TensorData {
 }
 
 impl TensorData {
+    /// Converts back to an `ndarray::ArrayD`.
     pub fn to_arrayd(
         &self
     ) -> Result<ArrayD<f64>, String>

@@ -1688,10 +1688,15 @@ pub fn orbit_entropy(
 pub struct AffineTransform2D {
     /// Coefficients of the transformation
     pub a: f64,
+    /// Coefficient b.
     pub b: f64,
+    /// Coefficient c.
     pub c: f64,
+    /// Coefficient d.
     pub d: f64,
+    /// Coefficient e (translation in x).
     pub e: f64,
+    /// Coefficient f (translation in y).
     pub f: f64,
 }
 

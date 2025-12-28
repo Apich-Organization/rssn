@@ -10,12 +10,16 @@ use crate::output::io::write_npy_file;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
 pub struct FdtdParameters {
+    /// The width of the simulation grid.
     pub width: usize,
+    /// The height of the simulation grid.
     pub height: usize,
+    /// The number of time steps to simulate.
     pub time_steps: usize,
+    /// The position of the source.
     pub source_pos: (usize, usize),
+    /// The frequency of the source.
     pub source_freq: f64,
 }
 

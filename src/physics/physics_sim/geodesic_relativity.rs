@@ -12,8 +12,8 @@ use crate::physics::physics_rkm::OdeSystem;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
 pub struct GeodesicParameters {
+    /// The mass of the black hole.
     pub black_hole_mass: f64,
     /// Initial state: `[r, dr/dτ, φ, dφ/dτ]`
     pub initial_state: [f64; 4],

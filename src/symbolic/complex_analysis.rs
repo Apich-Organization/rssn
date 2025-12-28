@@ -37,7 +37,9 @@ use crate::symbolic::simplify_dag::simplify;
 )]
 
 pub struct PathContinuation {
+    /// The variable name used in the series expansions.
     pub var: String,
+    /// The maximum degree of the Taylor series terms.
     pub order: usize,
     /// A vector of (center, `series_expression`) tuples.
     pub pieces: Vec<(Expr, Expr)>,
@@ -507,9 +509,13 @@ pub fn contour_integral_residue_theorem(
 )]
 
 pub struct MobiusTransformation {
+    /// Coefficient 'a' in (az + b) / (cz + d)
     pub a: Expr,
+    /// Coefficient 'b' in (az + b) / (cz + d)
     pub b: Expr,
+    /// Coefficient 'c' in (az + b) / (cz + d)
     pub c: Expr,
+    /// Coefficient 'd' in (az + b) / (cz + d)
     pub d: Expr,
 }
 

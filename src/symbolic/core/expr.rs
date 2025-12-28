@@ -31,28 +31,35 @@ use crate::symbolic::unit_unification::UnitQuantity;
 
 // --- Distribution Trait ---
 // Moved here to break circular dependency
+/// Trait representing a probability distribution.
 pub trait Distribution:
     Debug + Send + Sync
 {
+    /// Probability Density Function (PDF).
     fn pdf(
         &self,
         x: &Expr,
     ) -> Expr;
 
+    /// Cumulative Distribution Function (CDF).
     fn cdf(
         &self,
         x: &Expr,
     ) -> Expr;
 
+    /// Calculates the expected value of the distribution.
     fn expectation(&self) -> Expr;
 
+    /// Calculates the variance of the distribution.
     fn variance(&self) -> Expr;
 
+    /// Moment Generating Function (MGF).
     fn mgf(
         &self,
         t: &Expr,
     ) -> Expr;
 
+    /// Creates a boxed clone of the distribution.
     fn clone_box(
         &self
     ) -> Arc<dyn Distribution>;
@@ -74,10 +81,13 @@ pub trait Distribution:
 )]
 
 pub enum PathType {
+    /// A straight line path.
     Line,
 
+    /// A circular path.
     Circle,
 
+    /// A rectangular path.
     Rectangle,
 }
 
@@ -265,19 +275,27 @@ pub enum Expr {
     ),
     /// A definite integral of `integrand` with respect to `var` from `lower_bound` to `upper_bound`.
     Integral {
+        /// The expression to be integrated.
         integrand: Arc<Expr>,
+        /// The variable of integration.
         var: Arc<Expr>,
+        /// The lower limit of integration.
         lower_bound: Arc<Expr>,
+        /// The upper limit of integration.
         upper_bound: Arc<Expr>,
     },
     /// A volume integral of a scalar field over a specified volume.
     VolumeIntegral {
+        /// The scalar field to be integrated over the volume.
         scalar_field: Arc<Expr>,
+        /// The volume domain.
         volume: Arc<Expr>,
     },
     /// A surface integral of a vector field over a specified surface.
     SurfaceIntegral {
+        /// The vector field to be integrated over the surface.
         vector_field: Arc<Expr>,
+        /// The surface domain.
         surface: Arc<Expr>,
     },
     /// A limit of an expression as a variable approaches a point.
@@ -290,9 +308,13 @@ pub enum Expr {
     // --- Series and Summations ---
     /// A summation of `body` with `var` from `from` to `to`.
     Sum {
+        /// The expression to be summed.
         body: Arc<Expr>,
+        /// The summation variable.
         var: Arc<Expr>,
+        /// The starting value of the summation variable.
         from: Arc<Expr>,
+        /// The ending value of the summation variable.
         to: Arc<Expr>,
     },
     /// A finite or infinite series expansion.
@@ -465,7 +487,9 @@ pub enum Expr {
     Equivalent(Arc<Expr>, Arc<Expr>),
     /// A predicate with a name and arguments.
     Predicate {
+        /// The name of the predicate.
         name: String,
+        /// The arguments to the predicate.
         args: Vec<Expr>,
     },
     /// Universal quantifier ("for all").
@@ -511,12 +535,16 @@ pub enum Expr {
     Solutions(Vec<Expr>),
     /// A parametric solution, e.g., for a system of ODEs.
     ParametricSolution {
+        /// The x-component of the parametric solution.
         x: Arc<Expr>,
+        /// The y-component of the parametric solution.
         y: Arc<Expr>,
     },
     /// Represents the `i`-th root of a polynomial.
     RootOf {
+        /// The polynomial to find the root of.
         poly: Arc<Expr>,
+        /// The index of the root (for polynomials with multiple roots).
         index: u32,
     },
     /// Represents infinite solutions.
@@ -527,14 +555,20 @@ pub enum Expr {
     // --- Differential Equations ---
     /// An ordinary differential equation (ODE).
     Ode {
+        /// The differential equation.
         equation: Arc<Expr>,
+        /// The unknown function name.
         func: String,
+        /// The independent variable name.
         var: String,
     },
     /// A partial differential equation (PDE).
     Pde {
+        /// The partial differential equation.
         equation: Arc<Expr>,
+        /// The unknown function name.
         func: String,
+        /// The independent variable names.
         vars: Vec<String>,
     },
     /// The general solution to a differential equation.

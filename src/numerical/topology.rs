@@ -92,7 +92,9 @@ pub type Simplex = Vec<usize>;
 )]
 
 pub struct PersistenceInterval {
+    /// Birth radius.
     pub birth: f64,
+    /// Death radius.
     pub death: f64,
 }
 
@@ -106,7 +108,9 @@ pub struct PersistenceInterval {
 )]
 
 pub struct PersistenceDiagram {
+    /// Homological dimension.
     pub dimension: usize,
+    /// List of persistence intervals.
     pub intervals:
         Vec<PersistenceInterval>,
 }

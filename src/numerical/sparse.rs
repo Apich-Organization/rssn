@@ -9,6 +9,7 @@ use ndarray::ArrayD;
 use sprs_rssn::CsMat;
 use sprs_rssn::TriMat;
 
+/// Alias for a dynamic-dimensional array of f64.
 pub type Array = ArrayD<f64>;
 
 /// Creates a new CSR matrix from a triplet matrix.
@@ -380,10 +381,15 @@ use serde::Serialize;
 )]
 
 pub struct SparseMatrixData {
+    /// Number of rows.
     pub rows: usize,
+    /// Number of columns.
     pub cols: usize,
+    /// CSR row pointer.
     pub indptr: Vec<usize>,
+    /// CSR column indices.
     pub indices: Vec<usize>,
+    /// Non-zero data values.
     pub data: Vec<f64>,
 }
 
@@ -409,6 +415,7 @@ impl From<&CsMat<f64>>
 }
 
 impl SparseMatrixData {
+    /// Converts back to a `CsMat` sparse matrix.
     #[must_use]
 
     pub fn to_csmat(

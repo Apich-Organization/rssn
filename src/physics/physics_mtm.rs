@@ -5,10 +5,13 @@ use serde::Serialize;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
+/// A 1D grid for the multigrid solver.
 pub struct Grid {
+    /// The solution vector.
     pub u: Vec<f64>,
+    /// The right-hand side vector.
     pub f: Vec<f64>,
+    /// The grid spacing.
     pub h: f64,
 }
 
@@ -291,11 +294,15 @@ pub fn simulate_1d_poisson_multigrid_scenario(
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
+/// A 2D grid for the multigrid solver.
 pub struct Grid2D {
+    /// The solution vector.
     pub u: Vec<f64>,
+    /// The right-hand side vector.
     pub f: Vec<f64>,
+    /// The number of grid points in each dimension.
     pub n: usize,
+    /// The grid spacing.
     pub h: f64,
 }
 
