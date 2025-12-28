@@ -20,12 +20,12 @@ use faer::linalg::solvers::DenseSolveCore;
 use faer::linalg::solvers::Solve;
 // Faer imports
 use faer::{
+    get_global_parallelism,
+    set_global_parallelism,
     Mat,
     MatMut,
     MatRef,
     Side,
-    get_global_parallelism,
-    set_global_parallelism,
 };
 use num_traits::One;
 use num_traits::ToPrimitive;
@@ -145,9 +145,16 @@ impl Field for f64 {
         // faer operator * uses global parallelism
         let res_mat = rhs_t * lhs_t;
 
-        let mut data = Vec::with_capacity(lhs.rows * rhs.cols);
-        for j in 0..rhs.cols {
-            data.extend_from_slice(res_mat.col_as_slice(j));
+        let mut data =
+            Vec::with_capacity(
+                lhs.rows * rhs.cols,
+            );
+
+        for j in 0 .. rhs.cols {
+
+            data.extend_from_slice(
+                res_mat.col_as_slice(j),
+            );
         }
 
         Some(
@@ -224,11 +231,16 @@ impl Field for f64 {
         // Correct.
 
         // So:
-        let mut data = Vec::with_capacity(n * n);
-        for j in 0..n {
-             data.extend_from_slice(inv_t.col_as_slice(j));
+        let mut data =
+            Vec::with_capacity(n * n);
+
+        for j in 0 .. n {
+
+            data.extend_from_slice(
+                inv_t.col_as_slice(j),
+            );
         }
-        
+
         Some(
             Matrix::new(n, n, data)
                 .with_backend(
@@ -255,12 +267,12 @@ impl Field for f64 {
             FaerDecompositionType::Svd => {
                 let mat_t = MatRef::from_column_major_slice(&matrix.data, cols, rows);
                 let svd = mat_t.thin_svd().ok()?;
-                
+
                 let u_prime = svd.U();
                 let v_prime = svd.V();
                 let s_col = svd.S().column_vector();
                 let s = (0..s_col.nrows()).map(|i| *s_col.get(i)).collect::<Vec<_>>();
-                
+
                 let k = s.len();
                 let mut u_data = vec![0.0; rows * k];
                 for i in 0..rows {
@@ -268,14 +280,14 @@ impl Field for f64 {
                         u_data[i * k + j] = *v_prime.get(i, j);
                     }
                 }
-                
+
                 let mut v_data = vec![0.0; cols * k];
-                 for i in 0..cols {
+                for i in 0..cols {
                     for j in 0..k {
                         v_data[i * k + j] = *u_prime.get(i, j);
                     }
                 }
-                
+
                 Some(FaerDecompositionResult::Svd {
                     u: Matrix::new(rows, k, u_data).with_backend(matrix.backend),
                     s,
@@ -303,19 +315,19 @@ impl Field for f64 {
              FaerDecompositionType::EigenSymmetric => {
                  if rows != cols { return None; }
                  let mat = MatRef::from_column_major_slice(&matrix.data, rows, cols);
-                  let evd = mat.self_adjoint_eigen(Side::Lower).ok()?;
-                  
-                  let s_col = evd.S().column_vector();
-                  let s = (0..s_col.nrows()).map(|i| *s_col.get(i)).collect::<Vec<_>>();
-                  let u_mat = evd.U(); // Eigenvectors
-                 
+                 let evd = mat.self_adjoint_eigen(Side::Lower).ok()?;
+
+                 let s_col = evd.S().column_vector();
+                 let s = (0..s_col.nrows()).map(|i| *s_col.get(i)).collect::<Vec<_>>();
+                 let u_mat = evd.U(); // Eigenvectors
+
                  let mut u_data = vec![0.0; rows * cols];
                  for i in 0..rows {
                     for j in 0..cols {
                         u_data[i * cols + j] = *u_mat.get(i, j);
                     }
                  }
-                 
+
                  Some(FaerDecompositionResult::EigenSymmetric {
                      values: s,
                      vectors: Matrix::new(rows, cols, u_data).with_backend(matrix.backend)
@@ -605,6 +617,7 @@ impl<T: Field> Matrix<T> {
             self.data
                 .get(0)
                 .and_then(|e| {
+
                     e.faer_decompose(
                         self, kind,
                     )

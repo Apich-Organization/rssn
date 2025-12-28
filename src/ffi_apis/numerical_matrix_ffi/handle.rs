@@ -554,7 +554,7 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd(
 
         if let FaerDecompositionResult::Svd { u, s, v } = res {
             let s_mat = Matrix::new(s.len(), 1, s).with_backend(m.backend);
-            
+
             *out_u = Box::into_raw(Box::new(u)) as *mut RssnMatrixHandle;
             *out_s = Box::into_raw(Box::new(s_mat)) as *mut RssnMatrixHandle;
             *out_v = Box::into_raw(Box::new(v)) as *mut RssnMatrixHandle;

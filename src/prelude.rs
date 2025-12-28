@@ -1356,15 +1356,17 @@ pub mod num {
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod faer {
+
     pub use faer::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod jit {
-    pub use cranelift_frontend::*;
+
     pub use cranelift_codegen::*;
+    pub use cranelift_frontend::*;
+    pub use cranelift_jit::*;
     pub use cranelift_module::*;
     pub use cranelift_native::*;
-    pub use cranelift_jit::*;
 }
