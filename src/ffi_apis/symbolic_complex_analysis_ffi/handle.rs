@@ -4,6 +4,16 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::complex_analysis::*;
 use crate::symbolic::core::Expr;
 
+/// Creates a new `PathContinuation` object.
+
+///
+
+/// Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+
+/// a raw pointer to an `Expr` for the start point, and a `usize` for the order.
+
+/// Returns a raw pointer to a new `PathContinuation` object.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_new(
@@ -41,6 +51,16 @@ pub unsafe extern "C" fn path_continuation_new(
         path_continuation,
     ))
 }
+
+/// Continues the analytic continuation along a given path.
+
+///
+
+/// Takes a raw mutable pointer to a `PathContinuation` object, a raw pointer to an array of `Expr` (path points),
+
+/// and the length of the array.
+
+/// Returns a C-style string "OK" on success, or an error message on failure.
 
 #[no_mangle]
 
@@ -83,6 +103,14 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
     }
 }
 
+/// Gets the final expression after analytic continuation.
+
+///
+
+/// Takes a raw pointer to a `PathContinuation` object.
+
+/// Returns a raw pointer to an `Expr` representing the final expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_get_final_expression(
@@ -106,6 +134,16 @@ pub unsafe extern "C" fn path_continuation_get_final_expression(
         | None => std::ptr::null_mut(),
     }
 }
+
+/// Estimates the radius of convergence of a series.
+
+///
+
+/// Takes a raw pointer to an `Expr` (the series), a C-style string for the variable,
+
+/// a raw pointer to an `Expr` for the center, and an integer for the order.
+
+/// Returns an `f64` representing the estimated radius of convergence.
 
 #[no_mangle]
 
@@ -141,6 +179,14 @@ pub unsafe extern "C" fn estimate_radius_of_convergence(
     .unwrap_or(0.0)
 }
 
+/// Calculates the distance between two complex numbers.
+
+///
+
+/// Takes two raw pointers to `Expr` representing the complex numbers.
+
+/// Returns an `f64` representing the distance.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_distance(
@@ -159,6 +205,16 @@ pub unsafe extern "C" fn complex_distance(
 
     crate::symbolic::complex_analysis::complex_distance(p1_ref, p2_ref).unwrap_or(0.0)
 }
+
+/// Classifies the singularity of a function at a given point.
+
+///
+
+/// Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+
+/// a raw pointer to an `Expr` for the singularity point, and an integer for the order.
+
+/// Returns a raw pointer to a `SingularityType` enum.
 
 #[no_mangle]
 
@@ -197,6 +253,16 @@ pub unsafe extern "C" fn classify_singularity(
     ))
 }
 
+/// Computes the Laurent series of a function.
+
+///
+
+/// Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+
+/// a raw pointer to an `Expr` for the center, and an integer for the order.
+
+/// Returns a raw pointer to an `Expr` representing the Laurent series.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn laurent_series(
@@ -232,6 +298,16 @@ pub unsafe extern "C" fn laurent_series(
     Box::into_raw(Box::new(series))
 }
 
+/// Calculates the residue of a function at a given singularity.
+
+///
+
+/// Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+
+/// and a raw pointer to an `Expr` for the singularity.
+
+/// Returns a raw pointer to an `Expr` representing the residue.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn calculate_residue(
@@ -264,6 +340,16 @@ pub unsafe extern "C" fn calculate_residue(
 
     Box::into_raw(Box::new(residue))
 }
+
+/// Calculates a contour integral using the residue theorem.
+
+///
+
+/// Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+
+/// a raw pointer to an array of `Expr` for the singularities, and the length of the array.
+
+/// Returns a raw pointer to an `Expr` representing the result of the integral.
 
 #[no_mangle]
 
@@ -309,6 +395,14 @@ pub unsafe extern "C" fn contour_integral_residue_theorem(
     Box::into_raw(Box::new(result))
 }
 
+/// Creates a new Mobius transformation.
+
+///
+
+/// Takes four raw pointers to `Expr` representing the parameters a, b, c, and d.
+
+/// Returns a raw pointer to a new `MobiusTransformation` object.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_new(
@@ -346,6 +440,12 @@ pub unsafe extern "C" fn mobius_transformation_new(
     Box::into_raw(Box::new(mobius))
 }
 
+/// Creates an identity Mobius transformation.
+
+///
+
+/// Takes no arguments and returns a raw pointer to a `MobiusTransformation` object.
+
 #[no_mangle]
 
 pub extern "C" fn mobius_transformation_identity(
@@ -357,6 +457,14 @@ pub extern "C" fn mobius_transformation_identity(
 
     Box::into_raw(Box::new(mobius))
 }
+
+/// Applies a Mobius transformation to a complex number.
+
+///
+
+/// Takes a raw pointer to a `MobiusTransformation` object and a raw pointer to an `Expr` (complex number).
+
+/// Returns a raw pointer to an `Expr` representing the result.
 
 #[no_mangle]
 
@@ -379,6 +487,14 @@ pub unsafe extern "C" fn mobius_transformation_apply(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Composes two Mobius transformations.
+
+///
+
+/// Takes two raw pointers to `MobiusTransformation` objects.
+
+/// Returns a raw pointer to a `MobiusTransformation` representing their composition.
 
 #[no_mangle]
 
@@ -404,6 +520,14 @@ pub unsafe extern "C" fn mobius_transformation_compose(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the inverse of a Mobius transformation.
+
+///
+
+/// Takes a raw pointer to a `MobiusTransformation` object.
+
+/// Returns a raw pointer to a `MobiusTransformation` representing its inverse.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_inverse(
@@ -421,6 +545,16 @@ pub unsafe extern "C" fn mobius_transformation_inverse(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Applies Cauchy's integral formula.
+
+///
+
+/// Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+
+/// and a raw pointer to an `Expr` for the point `z0`.
+
+/// Returns a raw pointer to an `Expr` representing the value of the function at `z0`.
 
 #[no_mangle]
 
@@ -452,6 +586,16 @@ pub unsafe extern "C" fn cauchy_integral_formula(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Applies Cauchy's derivative formula.
+
+///
+
+/// Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+
+/// a raw pointer to an `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
+
+/// Returns a raw pointer to an `Expr` representing the nth derivative of the function at `z0`.
 
 #[no_mangle]
 
@@ -486,6 +630,14 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the complex exponential `e^z`.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing `z`.
+
+/// Returns a raw pointer to an `Expr` representing `e^z`.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_exp(
@@ -503,6 +655,14 @@ pub unsafe extern "C" fn complex_exp(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Computes the complex logarithm `log(z)`.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing `z`.
+
+/// Returns a raw pointer to an `Expr` representing `log(z)`.
 
 #[no_mangle]
 
@@ -522,6 +682,14 @@ pub unsafe extern "C" fn complex_log(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the argument of a complex number `arg(z)`.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing `z`.
+
+/// Returns a raw pointer to an `Expr` representing `arg(z)`.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_arg(
@@ -539,6 +707,14 @@ pub unsafe extern "C" fn complex_arg(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Computes the modulus of a complex number `|z|`.
+
+///
+
+/// Takes a raw pointer to an `Expr` representing `z`.
+
+/// Returns a raw pointer to an `Expr` representing `|z|`.
 
 #[no_mangle]
 

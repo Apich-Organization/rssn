@@ -60,6 +60,7 @@ mod arc_serde {
     }
 }
 
+/// Represents a prime finite field `GF(p)`.
 #[derive(
     Debug,
     PartialEq,
@@ -70,6 +71,7 @@ mod arc_serde {
 )]
 
 pub struct PrimeField {
+    /// The prime modulus `p` defining the field characteristic.
     pub modulus: BigInt,
 }
 
@@ -93,6 +95,7 @@ impl PrimeField {
     }
 }
 
+/// Represents an element of a prime finite field `GF(p)`.
 #[derive(
     Debug,
     Clone,
@@ -101,7 +104,9 @@ impl PrimeField {
 )]
 
 pub struct PrimeFieldElement {
+    /// The numeric value of the field element, always in range `[0, p-1]`.
     pub value: BigInt,
+    /// The prime field this element belongs to.
     #[serde(with = "arc_serde")]
     pub field: Arc<PrimeField>,
 }
@@ -390,6 +395,7 @@ impl DivAssign for PrimeFieldElement {
     }
 }
 
+/// Represents a univariate polynomial with coefficients from a prime finite field.
 #[derive(
     Debug,
     Clone,
@@ -400,7 +406,9 @@ impl DivAssign for PrimeFieldElement {
 )]
 
 pub struct FiniteFieldPolynomial {
+    /// The coefficients of the polynomial in descending order of degree.
     pub coeffs: Vec<PrimeFieldElement>,
+    /// The underlying prime field for the coefficients.
     #[serde(with = "arc_serde")]
     pub field: Arc<PrimeField>,
 }
@@ -722,6 +730,7 @@ impl Mul for FiniteFieldPolynomial {
     }
 }
 
+/// Represents an extension field `GF(p^n)` defined by an irreducible polynomial over `GF(p)`.
 #[derive(
     Debug,
     Clone,
@@ -732,12 +741,15 @@ impl Mul for FiniteFieldPolynomial {
 )]
 
 pub struct ExtensionField {
+    /// The base prime field `GF(p)`.
     #[serde(with = "arc_serde")]
     pub prime_field: Arc<PrimeField>,
+    /// The irreducible polynomial of degree `n` used to define the extension.
     pub irreducible_poly:
         FiniteFieldPolynomial,
 }
 
+/// Represents an element of an extension field `GF(p^n)`.
 #[derive(
     Debug,
     Clone,
@@ -748,7 +760,9 @@ pub struct ExtensionField {
 )]
 
 pub struct ExtensionFieldElement {
+    /// The polynomial representation of the extension field element.
     pub poly: FiniteFieldPolynomial,
+    /// The extension field this element belongs to.
     #[serde(with = "arc_serde")]
     pub field: Arc<ExtensionField>,
 }
@@ -896,6 +910,7 @@ pub(crate) fn poly_extended_gcd(
 }
 
 impl ExtensionFieldElement {
+    /// Adds two extension field elements.
     pub fn add(
         self,
         rhs: Self,
@@ -907,6 +922,7 @@ impl ExtensionFieldElement {
         ))
     }
 
+    /// Subtracts one extension field element from another.
     pub fn sub(
         self,
         rhs: Self,
@@ -918,6 +934,7 @@ impl ExtensionFieldElement {
         ))
     }
 
+    /// Multiplies two extension field elements.
     pub fn mul(
         self,
         rhs: Self,
@@ -929,6 +946,7 @@ impl ExtensionFieldElement {
         ))
     }
 
+    /// Divides one extension field element by another.
     pub fn div(
         self,
         rhs: &Self,

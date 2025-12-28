@@ -30,6 +30,9 @@ use super::expr_impl::*;
 use crate::symbolic::unit_unification::UnitQuantity;
 
 impl DagNode {
+    /// Converts a DAG node into an `Expr` (AST) structure.
+    ///
+    /// This is an iterative implementation to avoid stack overflow on deep trees.
     pub fn to_expr(
         &self
     ) -> Result<Expr, String> {
@@ -1512,6 +1515,9 @@ impl DagNode {
 
     #[must_use]
 
+    /// Creates a new `DagNode` with the given operation and children.
+    ///
+    /// Automatically handles hashing and enforces safety limits on the number of children.
     pub fn new(
         op: DagOp,
         children: Vec<Arc<Self>>,
@@ -1565,6 +1571,7 @@ impl DagNode {
 }
 
 impl Expr {
+    /// Clones the distribution if the expression represents a probability distribution.
     pub fn clone_box_dist(
         &self
     ) -> Result<
@@ -1585,6 +1592,7 @@ impl Expr {
         }
     }
 
+    /// Clones the unit quantity if the expression represents a quantity.
     pub fn clone_box_quant(
         &self
     ) -> Result<Arc<UnitQuantity>, String>

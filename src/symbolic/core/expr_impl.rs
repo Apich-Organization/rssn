@@ -268,9 +268,11 @@ impl Ord for Expr {
     }
 }
 
+/// Custom error type for symbolic operations.
 #[derive(Debug)]
 
 pub enum SymbolicError {
+    /// Error message variant.
     Msg(String),
 }
 
@@ -1955,6 +1957,9 @@ impl Expr {
 
     #[must_use]
 
+    /// Normalizes the expression by sorting sub-expressions of commutative operators.
+    ///
+    /// This helps in identifying identical expressions that differ only in terms of operand order.
     pub fn normalize(&self) -> Self {
 
         match self {

@@ -4,6 +4,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::complex_analysis::*;
 use crate::symbolic::core::Expr;
 
+/// Creates a new `PathContinuation` object.
+
+///
+
+/// Takes JSON-serialized inputs for the function, variable, start point, and order.
+
+/// Returns a JSON-serialized `PathContinuation` object.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_new_json(
@@ -39,6 +47,14 @@ pub unsafe extern "C" fn path_continuation_new_json(
     to_json_string(&path_continuation)
 }
 
+/// Continues the analytic continuation along a given path.
+
+///
+
+/// Takes a JSON-serialized `PathContinuation` object and a JSON-serialized `Vec<Expr>` representing the path points.
+
+/// Returns a C-style string "OK" on success, or an error message on failure.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_continue_along_path_json(
@@ -68,6 +84,14 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_json(
     }
 }
 
+/// Gets the final expression after analytic continuation.
+
+///
+
+/// Takes a JSON-serialized `PathContinuation` object.
+
+/// Returns a JSON-serialized `Expr` representing the final expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_get_final_expression_json(
@@ -83,6 +107,16 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_json(
         &pc.get_final_expression(),
     )
 }
+
+/// Estimates the radius of convergence of a series.
+
+///
+
+/// Takes a JSON-serialized `Expr` (the series), a C-style string for the variable,
+
+/// a JSON-serialized `Expr` for the center, and an integer for the order.
+
+/// Returns an `f64` representing the estimated radius of convergence.
 
 #[no_mangle]
 
@@ -123,6 +157,14 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_json(
     .unwrap_or(0.0)
 }
 
+/// Calculates the distance between two complex numbers.
+
+///
+
+/// Takes two JSON-serialized `Expr` representing the complex numbers.
+
+/// Returns an `f64` representing the distance.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_distance_json(
@@ -146,6 +188,16 @@ pub unsafe extern "C" fn complex_distance_json(
 
     crate::symbolic::complex_analysis::complex_distance(&p1, &p2).unwrap_or(0.0)
 }
+
+/// Classifies the singularity of a function at a given point.
+
+///
+
+/// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+
+/// a JSON-serialized `Expr` for the singularity point, and an integer for the order.
+
+/// Returns a JSON-serialized `SingularityType` enum.
 
 #[no_mangle]
 
@@ -181,6 +233,16 @@ pub unsafe extern "C" fn classify_singularity_json(
     to_json_string(&singularity_type)
 }
 
+/// Computes the Laurent series of a function.
+
+///
+
+/// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+
+/// a JSON-serialized `Expr` for the center, and an integer for the order.
+
+/// Returns a JSON-serialized `Expr` representing the Laurent series.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn laurent_series_json(
@@ -215,6 +277,16 @@ pub unsafe extern "C" fn laurent_series_json(
     to_json_string(&series)
 }
 
+/// Calculates the residue of a function at a given singularity.
+
+///
+
+/// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+
+/// and a JSON-serialized `Expr` for the singularity.
+
+/// Returns a JSON-serialized `Expr` representing the residue.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn calculate_residue_json(
@@ -246,6 +318,16 @@ pub unsafe extern "C" fn calculate_residue_json(
 
     to_json_string(&residue)
 }
+
+/// Calculates a contour integral using the residue theorem.
+
+///
+
+/// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+
+/// and a JSON-serialized `Vec<Expr>` for the singularities.
+
+/// Returns a JSON string representing the `Expr` of the integral.
 
 #[no_mangle]
 

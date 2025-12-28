@@ -52,7 +52,9 @@ pub enum CurvePoint {
     Infinity,
     /// An affine point with coordinates (x, y)
     Affine {
+        /// The x-coordinate of the point.
         x: PrimeFieldElement,
+        /// The y-coordinate of the point.
         y: PrimeFieldElement,
     },
 }
