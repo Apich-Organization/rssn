@@ -7183,6 +7183,20 @@ rssn_
 void rssn_jit_free(rssn_JitEngine *aEngine)
 ;
 
+/*
+ Registers a custom instruction handler.
+
+ `opcode`: The exact u32 opcode found in `Instruction::Custom`.
+ `func_ptr`: Pointer to the C function to call. Signature must be `fn(i64, ...) -> i64` where `i64` represents a stack value.
+ `arg_count`: Number of arguments the function expects (popped from stack).
+ */
+rssn_
+void rssn_jit_register_custom_op(rssn_JitEngine *aEngine,
+                                 uint32_t aOpcode,
+                                 const uint8_t *aFuncPtr,
+                                 size_t aArgCount)
+;
+
 rssn_
 rssn_Expr *rssn_joint_entropy(const rssn_Expr *aJointProbs)
 ;
