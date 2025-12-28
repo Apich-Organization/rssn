@@ -1437,6 +1437,20 @@ pub fn solve_first_order_linear_ode(
     ))
 }
 
+/// Solves a Bernoulli differential equation.
+///
+/// A Bernoulli ODE is of the form `y' + P(x)y = Q(x)y^n`.
+/// This function transforms the Bernoulli equation into a first-order linear ODE
+/// using the substitution `v = y^(1-n)`, which can then be solved.
+///
+/// # Arguments
+/// * `equation` - The Bernoulli ODE to solve.
+/// * `func` - The name of the unknown function (e.g., "y").
+/// * `var` - The independent variable (e.g., "x").
+///
+/// # Returns
+/// An `Option<Expr>` representing the solution, or `None` if the equation
+/// is not a Bernoulli ODE or cannot be solved.
 #[must_use]
 
 pub fn solve_bernoulli_ode(
@@ -1445,20 +1459,6 @@ pub fn solve_bernoulli_ode(
     var: &str,
 ) -> Option<Expr> {
 
-    /// Solves a Bernoulli differential equation.
-    ///
-    /// A Bernoulli ODE is of the form `y' + P(x)y = Q(x)y^n`.
-    /// This function transforms the Bernoulli equation into a first-order linear ODE
-    /// using the substitution `v = y^(1-n)`, which can then be solved.
-    ///
-    /// # Arguments
-    /// * `equation` - The Bernoulli ODE to solve.
-    /// * `func` - The name of the unknown function (e.g., "y").
-    /// * `var` - The independent variable (e.g., "x").
-    ///
-    /// # Returns
-    /// An `Option<Expr>` representing the solution, or `None` if the equation
-    /// does not match the Bernoulli form or cannot be solved.
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
@@ -1593,6 +1593,22 @@ pub fn solve_bernoulli_ode(
     None
 }
 
+/// Solves a Riccati differential equation.
+///
+/// A Riccati ODE is of the form `y' = P(x) + Q(x)y + R(x)y^2`.
+/// If a particular solution `y1` is known, the general solution can be found
+/// by substituting `y = y1 + 1/v`, which transforms the Riccati equation
+/// into a first-order linear ODE in `v`.
+///
+/// # Arguments
+/// * `equation` - The Riccati ODE to solve.
+/// * `func` - The name of the unknown function (e.g., "y").
+/// * `var` - The independent variable (e.g., "x").
+/// * `y1` - A known particular solution to the Riccati equation.
+///
+/// # Returns
+/// An `Option<Expr>` representing the general solution, or `None` if the
+/// equation is not a Riccati ODE or the particular solution is invalid.
 #[must_use]
 
 pub fn solve_riccati_ode(
@@ -1602,22 +1618,6 @@ pub fn solve_riccati_ode(
     y1: &Expr,
 ) -> Option<Expr> {
 
-    /// Solves a Riccati differential equation.
-    ///
-    /// A Riccati ODE is of the form `y' = P(x) + Q(x)y + R(x)y^2`.
-    /// If a particular solution `y1` is known, the general solution can be found
-    /// by substituting `y = y1 + 1/v`, which transforms the Riccati equation
-    /// into a first-order linear ODE in `v`.
-    ///
-    /// # Arguments
-    /// * `equation` - The Riccati ODE to solve.
-    /// * `func` - The name of the unknown function (e.g., "y").
-    /// * `var` - The independent variable (e.g., "x").
-    /// * `y1` - A known particular solution to the Riccati equation.
-    ///
-    /// # Returns
-    /// An `Option<Expr>` representing the general solution, or `None` if the equation
-    /// does not match the Riccati form or cannot be solved.
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
@@ -2032,6 +2032,21 @@ pub fn solve_riccati_ode(
     ))
 }
 
+/// Solves a homogeneous Cauchy-Euler (equidimensional) differential equation of second order.
+///
+/// A Cauchy-Euler ODE is of the form `ax^2y'' + bxy' + cy = 0`.
+/// This function finds the roots of the associated indicial equation to construct
+/// the general solution, handling cases of distinct real roots, repeated real roots,
+/// and complex conjugate roots.
+///
+/// # Arguments
+/// * `equation` - The Cauchy-Euler ODE to solve.
+/// * `func` - The name of the unknown function (e.g., "y").
+/// * `var` - The independent variable (e.g., "x").
+///
+/// # Returns
+/// An `Option<Expr>` representing the general solution, or `None` if the
+/// equation is not a second-order Cauchy-Euler ODE.
 #[must_use]
 
 pub fn solve_cauchy_euler_ode(
@@ -2040,21 +2055,6 @@ pub fn solve_cauchy_euler_ode(
     var: &str,
 ) -> Option<Expr> {
 
-    /// Solves a homogeneous Cauchy-Euler (equidimensional) differential equation of second order.
-    ///
-    /// A Cauchy-Euler ODE is of the form `ax^2y'' + bxy' + cy = 0`.
-    /// This function finds the roots of the associated indicial equation to construct
-    /// the general solution, handling cases of distinct real roots, repeated real roots,
-    /// and complex conjugate roots.
-    ///
-    /// # Arguments
-    /// * `equation` - The Cauchy-Euler ODE to solve.
-    /// * `func` - The name of the unknown function (e.g., "y").
-    /// * `var` - The independent variable (e.g., "x").
-    ///
-    /// # Returns
-    /// An `Option<Expr>` representing the general solution, or `None` if the equation
-    /// does not match the Cauchy-Euler form or cannot be solved.
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
@@ -2202,6 +2202,21 @@ pub fn solve_cauchy_euler_ode(
     ))
 }
 
+/// Solves a second-order homogeneous linear ODE by reduction of order.
+///
+/// If one non-trivial solution `y1` to a second-order homogeneous linear ODE
+/// is known, a second linearly independent solution `y2` can be found.
+/// The general solution is then `y = C1*y1 + C2*y2`.
+///
+/// # Arguments
+/// * `equation` - The second-order homogeneous linear ODE to solve.
+/// * `func` - The name of the unknown function (e.g., "y").
+/// * `var` - The independent variable (e.g., "x").
+/// * `y1` - A known non-trivial solution to the homogeneous ODE.
+///
+/// # Returns
+/// An `Option<Expr>` representing the general solution, or `None` if the
+/// reduction of order cannot be performed.
 #[must_use]
 
 pub fn solve_by_reduction_of_order(
@@ -2211,21 +2226,6 @@ pub fn solve_by_reduction_of_order(
     y1: &Expr,
 ) -> Option<Expr> {
 
-    /// Solves a second-order homogeneous linear ODE by reduction of order.
-    ///
-    /// If one non-trivial solution `y1` to a second-order homogeneous linear ODE
-    /// is known, a second linearly independent solution `y2` can be found.
-    /// The general solution is then `y = C1*y1 + C2*y2`.
-    ///
-    /// # Arguments
-    /// * `equation` - The second-order homogeneous linear ODE to solve.
-    /// * `func` - The name of the unknown function (e.g., "y").
-    /// * `var` - The independent variable (e.g., "x").
-    /// * `y1` - A known non-trivial solution to the homogeneous ODE.
-    ///
-    /// # Returns
-    /// An `Option<Expr>` representing the general solution, or `None` if the equation
-    /// is not a second-order homogeneous linear ODE or cannot be solved.
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
@@ -2317,6 +2317,19 @@ pub fn solve_by_reduction_of_order(
     ))
 }
 
+/// Solves an exact first-order Ordinary Differential Equation.
+///
+/// An ODE of the form `M(x,y)dx + N(x,y)dy = 0` is exact if `∂M/∂y = ∂N/∂x`.
+/// The solution is then given by `F(x,y) = C`, where `∂F/∂x = M` and `∂F/∂y = N`.
+///
+/// # Arguments
+/// * `equation` - The exact ODE to solve.
+/// * `func` - The name of the unknown function (e.g., "y").
+/// * `var` - The independent variable (e.g., "x").
+///
+/// # Returns
+/// An `Option<Expr>` representing the implicit solution `F(x,y) = C`,
+/// or `None` if the equation is not exact or cannot be solved.
 #[must_use]
 
 pub fn solve_exact_ode(
@@ -2324,20 +2337,6 @@ pub fn solve_exact_ode(
     func: &str,
     var: &str,
 ) -> Option<Expr> {
-
-    /// Solves an exact first-order Ordinary Differential Equation.
-    ///
-    /// An ODE of the form `M(x,y)dx + N(x,y)dy = 0` is exact if `∂M/∂y = ∂N/∂x`.
-    /// The solution is then given by `F(x,y) = C`, where `∂F/∂x = M` and `∂F/∂y = N`.
-    ///
-    /// # Arguments
-    /// * `equation` - The exact ODE to solve.
-    /// * `func` - The name of the unknown function (e.g., "y").
-    /// * `var` - The independent variable (e.g., "x").
-    ///
-    /// # Returns
-    /// An `Option<Expr>` representing the implicit solution `F(x,y) = C`,
-    /// or `None` if the equation is not exact or cannot be solved.
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
@@ -2430,6 +2429,24 @@ pub fn solve_exact_ode(
     None
 }
 
+/// Solves an Ordinary Differential Equation using the power series method.
+///
+/// This method assumes a solution of the form `y(x) = Σ a_n (x - x0)^n`
+/// and substitutes it into the ODE to find a recurrence relation for the coefficients `a_n`.
+/// It then uses initial conditions to determine the first few coefficients and constructs
+/// a truncated power series solution.
+///
+/// # Arguments
+/// * `equation` - The ODE to solve.
+/// * `func` - The name of the unknown function (e.g., "y").
+/// * `var` - The independent variable (e.g., "x").
+/// * `x0` - The point around which the power series is expanded.
+/// * `order` - The order of the truncated series (number of terms).
+/// * `initial_conditions` - A slice of tuples `(k, val)` where `val` is the k-th derivative at `x0`.
+///
+/// # Returns
+/// An `Option<Expr>` representing the truncated power series solution,
+/// or `None` if the method fails to find a solution.
 #[must_use]
 
 pub fn solve_ode_by_series(
@@ -2444,24 +2461,6 @@ pub fn solve_ode_by_series(
     )],
 ) -> Option<Expr> {
 
-    /// Solves an Ordinary Differential Equation using the power series method.
-    ///
-    /// This method assumes a solution of the form `y(x) = Σ a_n (x - x0)^n`
-    /// and substitutes it into the ODE to find a recurrence relation for the coefficients `a_n`.
-    /// It then uses initial conditions to determine the first few coefficients and constructs
-    /// a truncated power series solution.
-    ///
-    /// # Arguments
-    /// * `equation` - The ODE to solve.
-    /// * `func` - The name of the unknown function (e.g., "y").
-    /// * `var` - The independent variable (e.g., "x").
-    /// * `x0` - The center of the power series expansion.
-    /// * `order` - The maximum order of the series to compute.
-    /// * `initial_conditions` - A slice of `(u32, Expr)` tuples representing initial conditions
-    ///   for `y(x0)`, `y'(x0)`, etc. (e.g., `(0, y(x0))`, `(1, y'(x0))`).
-    ///
-    /// # Returns
-    /// An `Option<Expr>` representing the truncated power series solution.
     let mut y_n_at_x0: HashMap<
         u32,
         Expr,
@@ -2618,6 +2617,21 @@ pub fn solve_ode_by_series(
     Some(series_sum)
 }
 
+/// Solves a linear Ordinary Differential Equation using the Fourier Transform method.
+///
+/// This method transforms the ODE from the time domain to the frequency domain,
+/// converting differential operators into algebraic multiplications. The resulting
+/// algebraic equation is solved for the transformed function, and then the inverse
+/// Fourier Transform is applied to obtain the solution in the original domain.
+///
+/// # Arguments
+/// * `equation` - The ODE to solve.
+/// * `func` - The name of the unknown function (e.g., "y").
+/// * `var` - The independent variable (e.g., "t").
+///
+/// # Returns
+/// An `Option<Expr>` representing the solution, or `None` if the ODE type
+/// is not supported by this method.
 #[must_use]
 
 pub fn solve_ode_by_fourier(
@@ -2625,22 +2639,6 @@ pub fn solve_ode_by_fourier(
     func: &str,
     var: &str,
 ) -> Option<Expr> {
-
-    /// Solves a linear Ordinary Differential Equation using the Fourier Transform method.
-    ///
-    /// This method transforms the ODE from the time domain to the frequency domain,
-    /// converting differential operators into algebraic multiplications. The resulting
-    /// algebraic equation is solved for the transformed function, and then the inverse
-    /// Fourier Transform is applied to obtain the solution in the original domain.
-    ///
-    /// # Arguments
-    /// * `equation` - The ODE to solve.
-    /// * `func` - The name of the unknown function (e.g., "y").
-    /// * `var` - The independent variable (e.g., "t").
-    ///
-    /// # Returns
-    /// An `Option<Expr>` representing the solution, or `None` if the ODE type
-    /// is not supported by this method.
     let omega_var = "w";
 
     let parsed =

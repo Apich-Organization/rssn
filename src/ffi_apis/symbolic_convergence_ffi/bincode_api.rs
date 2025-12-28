@@ -2,11 +2,24 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::convergence::analyze_convergence;
 use crate::symbolic::core::Expr;
 
+/// Analyzes the convergence of a series using bincode-serialized inputs.
+
+///
+
+/// Takes a `BincodeBuffer` containing the series term (`Expr`) and another
+
+/// `BincodeBuffer` for the variable (`String`).
+
+/// Returns a `BincodeBuffer` containing the analysis result.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_analyze_convergence(
+
     term_buf: BincodeBuffer,
+
     var_buf: BincodeBuffer,
+
 ) -> BincodeBuffer {
 
     let term: Option<Expr> =

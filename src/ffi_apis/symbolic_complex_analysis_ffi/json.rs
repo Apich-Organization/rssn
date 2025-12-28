@@ -361,13 +361,26 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_json(
     to_json_string(&result)
 }
 
+/// Creates a new `MobiusTransformation` object from JSON-serialized coefficients.
+
+///
+
+/// Takes JSON-serialized `Expr` for coefficients `a`, `b`, `c`, and `d`.
+
+/// Returns a JSON-serialized `MobiusTransformation` object.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_new_json(
+
     a_json: *const c_char,
+
     b_json: *const c_char,
+
     c_json: *const c_char,
+
     d_json: *const c_char,
+
 ) -> *mut c_char {
 
     let a: Expr = match from_json_string(
@@ -414,9 +427,16 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
     to_json_string(&mobius)
 }
 
+/// Creates an identity `MobiusTransformation` object.
+
+///
+
+/// Returns a JSON-serialized identity `MobiusTransformation` object.
+
 #[no_mangle]
 
 pub extern "C" fn mobius_transformation_identity_json(
+
 ) -> *mut c_char {
 
     let mobius =
@@ -426,11 +446,22 @@ pub extern "C" fn mobius_transformation_identity_json(
     to_json_string(&mobius)
 }
 
+/// Applies a Mobius Transformation to a complex number.
+
+///
+
+/// Takes a JSON-serialized `MobiusTransformation` object and a JSON-serialized `Expr` representing the complex number `z`.
+
+/// Returns a JSON-serialized `Expr` representing the result of the transformation.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_apply_json(
+
     mobius_json: *const c_char,
+
     z_json: *const c_char,
+
 ) -> *mut c_char {
 
     let mobius : MobiusTransformation = match from_json_string(mobius_json) {
@@ -452,11 +483,22 @@ pub unsafe extern "C" fn mobius_transformation_apply_json(
     to_json_string(&result)
 }
 
+/// Composes two Mobius Transformations.
+
+///
+
+/// Takes two JSON-serialized `MobiusTransformation` objects.
+
+/// Returns a JSON-serialized `MobiusTransformation` object representing their composition.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_compose_json(
+
     mobius1_json: *const c_char,
+
     mobius2_json: *const c_char,
+
 ) -> *mut c_char {
 
     let mobius1 : MobiusTransformation = match from_json_string(mobius1_json) {
@@ -475,10 +517,20 @@ pub unsafe extern "C" fn mobius_transformation_compose_json(
     to_json_string(&result)
 }
 
+/// Computes the inverse of a Mobius Transformation.
+
+///
+
+/// Takes a JSON-serialized `MobiusTransformation` object.
+
+/// Returns a JSON-serialized `MobiusTransformation` object representing the inverse.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_inverse_json(
+
     mobius_json: *const c_char
+
 ) -> *mut c_char {
 
     let mobius : MobiusTransformation = match from_json_string(mobius_json) {
@@ -491,12 +543,26 @@ pub unsafe extern "C" fn mobius_transformation_inverse_json(
     to_json_string(&result)
 }
 
+/// Applies Cauchy's Integral Formula to a function at a given point.
+
+///
+
+/// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+
+/// and a JSON-serialized `Expr` for the point `z0`.
+
+/// Returns a JSON-serialized `Expr` representing the result of the integral.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn cauchy_integral_formula_json(
+
     func_json: *const c_char,
+
     var: *const c_char,
+
     z0_json: *const c_char,
+
 ) -> *mut c_char {
 
     let func : Expr = match from_json_string(func_json) {
@@ -519,13 +585,28 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
     to_json_string(&result)
 }
 
+/// Applies Cauchy's Derivative Formula to compute the nth derivative of a function at a given point.
+
+///
+
+/// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+
+/// a JSON-serialized `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
+
+/// Returns a JSON-serialized `Expr` representing the nth derivative.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn cauchy_derivative_formula_json(
+
     func_json: *const c_char,
+
     var: *const c_char,
+
     z0_json: *const c_char,
+
     n: usize,
+
 ) -> *mut c_char {
 
     let func : Expr = match from_json_string(func_json) {
@@ -553,10 +634,20 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
     to_json_string(&result)
 }
 
+/// Computes the complex exponential of a given complex number.
+
+///
+
+/// Takes a JSON-serialized `Expr` representing the complex number `z`.
+
+/// Returns a JSON-serialized `Expr` representing `e^z`.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_exp_json(
+
     z_json: *const c_char
+
 ) -> *mut c_char {
 
     let z: Expr = match from_json_string(
@@ -573,10 +664,20 @@ pub unsafe extern "C" fn complex_exp_json(
     to_json_string(&result)
 }
 
+/// Computes the complex natural logarithm of a given complex number.
+
+///
+
+/// Takes a JSON-serialized `Expr` representing the complex number `z`.
+
+/// Returns a JSON-serialized `Expr` representing `ln(z)`.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_log_json(
+
     z_json: *const c_char
+
 ) -> *mut c_char {
 
     let z: Expr = match from_json_string(
@@ -593,10 +694,20 @@ pub unsafe extern "C" fn complex_log_json(
     to_json_string(&result)
 }
 
+/// Computes the argument (phase angle) of a given complex number.
+
+///
+
+/// Takes a JSON-serialized `Expr` representing the complex number `z`.
+
+/// Returns a JSON-serialized `Expr` representing the argument of `z`.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_arg_json(
+
     z_json: *const c_char
+
 ) -> *mut c_char {
 
     let z: Expr = match from_json_string(
@@ -613,10 +724,20 @@ pub unsafe extern "C" fn complex_arg_json(
     to_json_string(&result)
 }
 
+/// Computes the modulus (magnitude) of a given complex number.
+
+///
+
+/// Takes a JSON-serialized `Expr` representing the complex number `z`.
+
+/// Returns a JSON-serialized `Expr` representing the modulus of `z`.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_modulus_json(
+
     z_json: *const c_char
+
 ) -> *mut c_char {
 
     let z: Expr = match from_json_string(

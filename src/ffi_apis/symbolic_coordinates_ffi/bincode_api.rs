@@ -2,12 +2,26 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::coordinates::*;
 use crate::symbolic::core::Expr;
 
+/// Transforms a point from one coordinate system to another using bincode-serialized inputs.
+
+///
+
+/// Takes `BincodeBuffer`s for the point (`Vec<Expr>`), the source `CoordinateSystem`,
+
+/// and the target `CoordinateSystem`.
+
+/// Returns a `BincodeBuffer` containing the transformed point (`Vec<Expr>`).
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_point(
+
     point_buf: BincodeBuffer,
+
     from_buf: BincodeBuffer,
+
     to_buf: BincodeBuffer,
+
 ) -> BincodeBuffer {
 
     let point: Option<Vec<Expr>> =
@@ -40,12 +54,26 @@ pub extern "C" fn rssn_bincode_transform_point(
     }
 }
 
+/// Transforms an expression from one coordinate system to another using bincode-serialized inputs.
+
+///
+
+/// Takes `BincodeBuffer`s for the expression (`Expr`), the source `CoordinateSystem`,
+
+/// and the target `CoordinateSystem`.
+
+/// Returns a `BincodeBuffer` containing the transformed expression (`Expr`).
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_expression(
+
     expr_buf: BincodeBuffer,
+
     from_buf: BincodeBuffer,
+
     to_buf: BincodeBuffer,
+
 ) -> BincodeBuffer {
 
     let expr: Option<Expr> =
@@ -79,10 +107,20 @@ pub extern "C" fn rssn_bincode_transform_expression(
     }
 }
 
+/// Gets the metric tensor for a given coordinate system using bincode-serialized input.
+
+///
+
+/// Takes a `BincodeBuffer` containing the `CoordinateSystem`.
+
+/// Returns a `BincodeBuffer` containing the metric tensor (`Vec<Vec<Expr>>`).
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_coordinates_get_metric_tensor(
+
     system_buf: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let system: Option<
@@ -109,12 +147,26 @@ pub extern "C" fn rssn_bincode_coordinates_get_metric_tensor(
     }
 }
 
+/// Transforms a contravariant vector from one coordinate system to another using bincode-serialized inputs.
+
+///
+
+/// Takes `BincodeBuffer`s for the vector components (`Vec<Expr>`), the source `CoordinateSystem`,
+
+/// and the target `CoordinateSystem`.
+
+/// Returns a `BincodeBuffer` containing the transformed contravariant vector components (`Vec<Expr>`).
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_contravariant_vector(
+
     comps_buf: BincodeBuffer,
+
     from_buf: BincodeBuffer,
+
     to_buf: BincodeBuffer,
+
 ) -> BincodeBuffer {
 
     let comps: Option<Vec<Expr>> =
@@ -140,12 +192,26 @@ pub extern "C" fn rssn_bincode_transform_contravariant_vector(
     }
 }
 
+/// Transforms a covariant vector from one coordinate system to another using bincode-serialized inputs.
+
+///
+
+/// Takes `BincodeBuffer`s for the vector components (`Vec<Expr>`), the source `CoordinateSystem`,
+
+/// and the target `CoordinateSystem`.
+
+/// Returns a `BincodeBuffer` containing the transformed covariant vector components (`Vec<Expr>`).
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_covariant_vector(
+
     comps_buf: BincodeBuffer,
+
     from_buf: BincodeBuffer,
+
     to_buf: BincodeBuffer,
+
 ) -> BincodeBuffer {
 
     let comps: Option<Vec<Expr>> =
@@ -179,11 +245,22 @@ pub extern "C" fn rssn_bincode_transform_covariant_vector(
     }
 }
 
+/// Transforms the divergence of a vector field from one coordinate system to another using bincode-serialized inputs.
+
+///
+
+/// Takes `BincodeBuffer`s for the vector components (`Vec<Expr>`) and the source `CoordinateSystem`.
+
+/// Returns a `BincodeBuffer` containing the transformed divergence (`Expr`).
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_divergence(
+
     comps_buf: BincodeBuffer,
+
     from_buf: BincodeBuffer,
+
 ) -> BincodeBuffer {
 
     let comps: Option<Vec<Expr>> =
@@ -214,11 +291,22 @@ pub extern "C" fn rssn_bincode_transform_divergence(
     }
 }
 
+/// Transforms the curl of a vector field from one coordinate system to another using bincode-serialized inputs.
+
+///
+
+/// Takes `BincodeBuffer`s for the vector components (`Vec<Expr>`) and the source `CoordinateSystem`.
+
+/// Returns a `BincodeBuffer` containing the transformed curl (`Vec<Expr>`).
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_curl(
+
     comps_buf: BincodeBuffer,
+
     from_buf: BincodeBuffer,
+
 ) -> BincodeBuffer {
 
     let comps: Option<Vec<Expr>> =
@@ -247,13 +335,28 @@ pub extern "C" fn rssn_bincode_transform_curl(
     }
 }
 
+/// Transforms the gradient of a scalar function from one coordinate system to another using bincode-serialized inputs.
+
+///
+
+/// Takes `BincodeBuffer`s for the scalar function (`Expr`), the variables (`Vec<String>`),
+
+/// the source `CoordinateSystem`, and the target `CoordinateSystem`.
+
+/// Returns a `BincodeBuffer` containing the transformed gradient (`Vec<Expr>`).
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_gradient(
+
     scalar_buf: BincodeBuffer,
+
     vars_buf: BincodeBuffer,
+
     from_buf: BincodeBuffer,
+
     to_buf: BincodeBuffer,
+
 ) -> BincodeBuffer {
 
     let scalar: Option<Expr> =
