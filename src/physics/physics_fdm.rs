@@ -357,9 +357,9 @@ where
             );
         });
 
-    let r_x = alpha * dt / (dx * dx);
+    let r_x = alpha * dt / dx.powi(2);
 
-    let r_y = alpha * dt / (dy * dy);
+    let r_y = alpha * dt / dy.powi(2);
 
     for _ in 0 .. steps {
 

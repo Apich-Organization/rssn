@@ -154,8 +154,17 @@ enum class rssn_ConvergenceResult {
  Defines the monomial ordering to be used in polynomial division.
  */
 enum class rssn_MonomialOrder {
+    /*
+     Dictionary order: compares exponents of variables in a fixed sequence.
+     */
     RssnMonomialOrderLexicographical,
+    /*
+     Compares total degree first, then uses lexicographical order to break ties.
+     */
     RssnMonomialOrderGradedLexicographical,
+    /*
+     Compares total degree first, then uses reverse lexicographical order to break ties.
+     */
     RssnMonomialOrderGradedReverseLexicographical,
 };
 
@@ -215,6 +224,9 @@ struct rssn_ComplexDynamicalSystem;
  */
 struct rssn_ComputationResultCache;
 
+/*
+ Represents a critical point of a multivariate function.
+ */
 struct rssn_CriticalPoint;
 
 /*
@@ -284,6 +296,9 @@ struct rssn_FfiOptimizationResult;
  */
 struct rssn_FiniteField;
 
+/*
+ Represents a univariate polynomial with coefficients from a prime finite field.
+ */
 struct rssn_FiniteFieldPolynomial;
 
 /*
@@ -670,24 +685,52 @@ struct rssn_NavierStokesResultHandles {
 
 extern "C" {
 
+/*
+ Calculates the residue of a function at a given singularity.
+
+ Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+ and a raw pointer to an `Expr` for the singularity.
+ Returns a raw pointer to an `Expr` representing the residue.
+ */
 rssn_
 rssn_Expr *calculate_residue(const rssn_Expr *aFunc,
                              const char *aVar,
                              const rssn_Expr *aSingularity)
 ;
 
+/*
+ Calculates the residue of a function at a given singularity.
+
+ Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+ and a bincode-serialized `Expr` for the singularity.
+ Returns a bincode-serialized `Expr` representing the residue.
+ */
 rssn_
 rssn_BincodeBuffer calculate_residue_bincode(rssn_BincodeBuffer aFuncBincode,
                                              const char *aVar,
                                              rssn_BincodeBuffer aSingularityBincode)
 ;
 
+/*
+ Calculates the residue of a function at a given singularity.
+
+ Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+ and a JSON-serialized `Expr` for the singularity.
+ Returns a JSON-serialized `Expr` representing the residue.
+ */
 rssn_
 char *calculate_residue_json(const char *aFuncJson,
                              const char *aVar,
                              const char *aSingularityJson)
 ;
 
+/*
+ Applies Cauchy's derivative formula.
+
+ Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+ a raw pointer to an `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
+ Returns a raw pointer to an `Expr` representing the nth derivative of the function at `z0`.
+ */
 rssn_
 rssn_Expr *cauchy_derivative_formula(const rssn_Expr *aFunc,
                                      const char *aVar,
@@ -695,6 +738,13 @@ rssn_Expr *cauchy_derivative_formula(const rssn_Expr *aFunc,
                                      size_t aN)
 ;
 
+/*
+ Applies Cauchy's derivative formula.
+
+ Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+ a bincode-serialized `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
+ Returns a bincode-serialized `Expr` representing the nth derivative of the function at `z0`.
+ */
 rssn_
 rssn_BincodeBuffer cauchy_derivative_formula_bincode(rssn_BincodeBuffer aFuncBincode,
                                                      const char *aVar,
@@ -709,12 +759,26 @@ char *cauchy_derivative_formula_json(const char *aFuncJson,
                                      size_t aN)
 ;
 
+/*
+ Applies Cauchy's integral formula.
+
+ Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+ and a raw pointer to an `Expr` for the point `z0`.
+ Returns a raw pointer to an `Expr` representing the value of the function at `z0`.
+ */
 rssn_
 rssn_Expr *cauchy_integral_formula(const rssn_Expr *aFunc,
                                    const char *aVar,
                                    const rssn_Expr *aZ0)
 ;
 
+/*
+ Applies Cauchy's integral formula.
+
+ Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+ and a bincode-serialized `Expr` for the point `z0`.
+ Returns a bincode-serialized `Expr` representing the value of the function at `z0`.
+ */
 rssn_
 rssn_BincodeBuffer cauchy_integral_formula_bincode(rssn_BincodeBuffer aFuncBincode,
                                                    const char *aVar,
@@ -727,6 +791,13 @@ char *cauchy_integral_formula_json(const char *aFuncJson,
                                    const char *aZ0Json)
 ;
 
+/*
+ Classifies the singularity of a function at a given point.
+
+ Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+ a raw pointer to an `Expr` for the singularity point, and an integer for the order.
+ Returns a raw pointer to a `SingularityType` enum.
+ */
 rssn_
 rssn_SingularityType *classify_singularity(const rssn_Expr *aFunc,
                                            const char *aVar,
@@ -734,6 +805,13 @@ rssn_SingularityType *classify_singularity(const rssn_Expr *aFunc,
                                            size_t aOrder)
 ;
 
+/*
+ Classifies the singularity of a function at a given point.
+
+ Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+ a bincode-serialized `Expr` for the singularity point, and an integer for the order.
+ Returns a bincode-serialized `SingularityType` enum.
+ */
 rssn_
 rssn_BincodeBuffer classify_singularity_bincode(rssn_BincodeBuffer aFuncBincode,
                                                 const char *aVar,
@@ -741,6 +819,13 @@ rssn_BincodeBuffer classify_singularity_bincode(rssn_BincodeBuffer aFuncBincode,
                                                 size_t aOrder)
 ;
 
+/*
+ Classifies the singularity of a function at a given point.
+
+ Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+ a JSON-serialized `Expr` for the singularity point, and an integer for the order.
+ Returns a JSON-serialized `SingularityType` enum.
+ */
 rssn_
 char *classify_singularity_json(const char *aFuncJson,
                                 const char *aVar,
@@ -748,10 +833,22 @@ char *classify_singularity_json(const char *aFuncJson,
                                 size_t aOrder)
 ;
 
+/*
+ Computes the argument of a complex number `arg(z)`.
+
+ Takes a raw pointer to an `Expr` representing `z`.
+ Returns a raw pointer to an `Expr` representing `arg(z)`.
+ */
 rssn_
 rssn_Expr *complex_arg(const rssn_Expr *aZ)
 ;
 
+/*
+ Computes the argument of a complex number `arg(z)`.
+
+ Takes a bincode-serialized `Expr` representing `z`.
+ Returns a bincode-serialized `Expr` representing `arg(z)`.
+ */
 rssn_
 rssn_BincodeBuffer complex_arg_bincode(rssn_BincodeBuffer aZBincode)
 ;
@@ -760,25 +857,55 @@ rssn_
 char *complex_arg_json(const char *aZJson)
 ;
 
+/*
+ Calculates the distance between two complex numbers.
+
+ Takes two raw pointers to `Expr` representing the complex numbers.
+ Returns an `f64` representing the distance.
+ */
 rssn_
 double complex_distance(const rssn_Expr *aP1,
                         const rssn_Expr *aP2)
 ;
 
+/*
+ Calculates the distance between two complex numbers.
+
+ Takes two bincode-serialized `Expr` representing the complex numbers.
+ Returns an `f64` representing the distance.
+ */
 rssn_
 double complex_distance_bincode(rssn_BincodeBuffer aP1Bincode,
                                 rssn_BincodeBuffer aP2Bincode)
 ;
 
+/*
+ Calculates the distance between two complex numbers.
+
+ Takes two JSON-serialized `Expr` representing the complex numbers.
+ Returns an `f64` representing the distance.
+ */
 rssn_
 double complex_distance_json(const char *aP1Json,
                              const char *aP2Json)
 ;
 
+/*
+ Computes the complex exponential `e^z`.
+
+ Takes a raw pointer to an `Expr` representing `z`.
+ Returns a raw pointer to an `Expr` representing `e^z`.
+ */
 rssn_
 rssn_Expr *complex_exp(const rssn_Expr *aZ)
 ;
 
+/*
+ Computes the complex exponential `e^z`.
+
+ Takes a bincode-serialized `Expr` representing `z`.
+ Returns a bincode-serialized `Expr` representing `e^z`.
+ */
 rssn_
 rssn_BincodeBuffer complex_exp_bincode(rssn_BincodeBuffer aZBincode)
 ;
@@ -787,10 +914,22 @@ rssn_
 char *complex_exp_json(const char *aZJson)
 ;
 
+/*
+ Computes the complex logarithm `log(z)`.
+
+ Takes a raw pointer to an `Expr` representing `z`.
+ Returns a raw pointer to an `Expr` representing `log(z)`.
+ */
 rssn_
 rssn_Expr *complex_log(const rssn_Expr *aZ)
 ;
 
+/*
+ Computes the complex logarithm `log(z)`.
+
+ Takes a bincode-serialized `Expr` representing `z`.
+ Returns a bincode-serialized `Expr` representing `log(z)`.
+ */
 rssn_
 rssn_BincodeBuffer complex_log_bincode(rssn_BincodeBuffer aZBincode)
 ;
@@ -799,6 +938,12 @@ rssn_
 char *complex_log_json(const char *aZJson)
 ;
 
+/*
+ Computes the modulus of a complex number `|z|`.
+
+ Takes a raw pointer to an `Expr` representing `z`.
+ Returns a raw pointer to an `Expr` representing `|z|`.
+ */
 rssn_
 rssn_Expr *complex_modulus(const rssn_Expr *aZ)
 ;
@@ -811,6 +956,13 @@ rssn_
 char *complex_modulus_json(const char *aZJson)
 ;
 
+/*
+ Calculates a contour integral using the residue theorem.
+
+ Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+ a raw pointer to an array of `Expr` for the singularities, and the length of the array.
+ Returns a raw pointer to an `Expr` representing the result of the integral.
+ */
 rssn_
 rssn_Expr *contour_integral_residue_theorem(const rssn_Expr *aFunc,
                                             const char *aVar,
@@ -818,18 +970,39 @@ rssn_Expr *contour_integral_residue_theorem(const rssn_Expr *aFunc,
                                             size_t aSingularitiesLen)
 ;
 
+/*
+ Calculates a contour integral using the residue theorem.
+
+ Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+ and a bincode-serialized `Vec<Expr>` for the singularities.
+ Returns a bincode-serialized `Expr` representing the result of the integral.
+ */
 rssn_
 rssn_BincodeBuffer contour_integral_residue_theorem_bincode(rssn_BincodeBuffer aFuncBincode,
                                                             const char *aVar,
                                                             rssn_BincodeBuffer aSingularitiesBincode)
 ;
 
+/*
+ Calculates a contour integral using the residue theorem.
+
+ Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+ and a JSON-serialized `Vec<Expr>` for the singularities.
+ Returns a JSON string representing the `Expr` of the integral.
+ */
 rssn_
 char *contour_integral_residue_theorem_json(const char *aFuncJson,
                                             const char *aVar,
                                             const char *aSingularitiesJson)
 ;
 
+/*
+ Estimates the radius of convergence of a series.
+
+ Takes a raw pointer to an `Expr` (the series), a C-style string for the variable,
+ a raw pointer to an `Expr` for the center, and an integer for the order.
+ Returns an `f64` representing the estimated radius of convergence.
+ */
 rssn_
 double estimate_radius_of_convergence(const rssn_Expr *aSeriesExpr,
                                       const char *aVar,
@@ -837,6 +1010,13 @@ double estimate_radius_of_convergence(const rssn_Expr *aSeriesExpr,
                                       size_t aOrder)
 ;
 
+/*
+ Estimates the radius of convergence of a series.
+
+ Takes a bincode-serialized `Expr` (the series), a C-style string for the variable,
+ a bincode-serialized `Expr` for the center, and an integer for the order.
+ Returns an `f64` representing the estimated radius of convergence.
+ */
 rssn_
 double estimate_radius_of_convergence_bincode(rssn_BincodeBuffer aSeriesExprBincode,
                                               const char *aVar,
@@ -844,6 +1024,13 @@ double estimate_radius_of_convergence_bincode(rssn_BincodeBuffer aSeriesExprBinc
                                               size_t aOrder)
 ;
 
+/*
+ Estimates the radius of convergence of a series.
+
+ Takes a JSON-serialized `Expr` (the series), a C-style string for the variable,
+ a JSON-serialized `Expr` for the center, and an integer for the order.
+ Returns an `f64` representing the estimated radius of convergence.
+ */
 rssn_
 double estimate_radius_of_convergence_json(const char *aSeriesExprJson,
                                            const char *aVar,
@@ -979,6 +1166,13 @@ rssn_
 char *interpolate_lagrange(const char *aJsonPtr)
 ;
 
+/*
+ Computes the Laurent series of a function.
+
+ Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+ a raw pointer to an `Expr` for the center, and an integer for the order.
+ Returns a raw pointer to an `Expr` representing the Laurent series.
+ */
 rssn_
 rssn_Expr *laurent_series(const rssn_Expr *aFunc,
                           const char *aVar,
@@ -986,6 +1180,13 @@ rssn_Expr *laurent_series(const rssn_Expr *aFunc,
                           size_t aOrder)
 ;
 
+/*
+ Computes the Laurent series of a function.
+
+ Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+ a bincode-serialized `Expr` for the center, and an integer for the order.
+ Returns a bincode-serialized `Expr` representing the Laurent series.
+ */
 rssn_
 rssn_BincodeBuffer laurent_series_bincode(rssn_BincodeBuffer aFuncBincode,
                                           const char *aVar,
@@ -993,6 +1194,13 @@ rssn_BincodeBuffer laurent_series_bincode(rssn_BincodeBuffer aFuncBincode,
                                           size_t aOrder)
 ;
 
+/*
+ Computes the Laurent series of a function.
+
+ Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+ a JSON-serialized `Expr` for the center, and an integer for the order.
+ Returns a JSON-serialized `Expr` representing the Laurent series.
+ */
 rssn_
 char *laurent_series_json(const char *aFuncJson,
                           const char *aVar,
@@ -1117,11 +1325,23 @@ DEPRECATED_WITH_NOTE
 rssn_Expr *matrix_transpose(rssn_Expr *aHandle)
 ;
 
+/*
+ Applies a Mobius transformation to a complex number.
+
+ Takes a raw pointer to a `MobiusTransformation` object and a raw pointer to an `Expr` (complex number).
+ Returns a raw pointer to an `Expr` representing the result.
+ */
 rssn_
 rssn_Expr *mobius_transformation_apply(const rssn_MobiusTransformation *aMobius,
                                        const rssn_Expr *aZ)
 ;
 
+/*
+ Applies a Mobius transformation to a complex number.
+
+ Takes a bincode-serialized `MobiusTransformation` object and a bincode-serialized `Expr` (complex number).
+ Returns a bincode-serialized `Expr` representing the result.
+ */
 rssn_
 rssn_BincodeBuffer mobius_transformation_apply_bincode(rssn_BincodeBuffer aMobiusBincode,
                                                        rssn_BincodeBuffer aZBincode)
@@ -1132,11 +1352,23 @@ char *mobius_transformation_apply_json(const char *aMobiusJson,
                                        const char *aZJson)
 ;
 
+/*
+ Composes two Mobius transformations.
+
+ Takes two raw pointers to `MobiusTransformation` objects.
+ Returns a raw pointer to a `MobiusTransformation` representing their composition.
+ */
 rssn_
 rssn_MobiusTransformation *mobius_transformation_compose(const rssn_MobiusTransformation *aMobius1,
                                                          const rssn_MobiusTransformation *aMobius2)
 ;
 
+/*
+ Composes two Mobius transformations.
+
+ Takes two bincode-serialized `MobiusTransformation` objects.
+ Returns a bincode-serialized `MobiusTransformation` representing their composition.
+ */
 rssn_
 rssn_BincodeBuffer mobius_transformation_compose_bincode(rssn_BincodeBuffer aMobius1Bincode,
                                                          rssn_BincodeBuffer aMobius2Bincode)
@@ -1147,10 +1379,20 @@ char *mobius_transformation_compose_json(const char *aMobius1Json,
                                          const char *aMobius2Json)
 ;
 
+/*
+ Creates an identity Mobius transformation.
+
+ Takes no arguments and returns a raw pointer to a `MobiusTransformation` object.
+ */
 rssn_
 rssn_MobiusTransformation *mobius_transformation_identity()
 ;
 
+/*
+ Creates an identity Mobius transformation.
+
+ Takes no arguments and returns a bincode-serialized `MobiusTransformation` object.
+ */
 rssn_
 rssn_BincodeBuffer mobius_transformation_identity_bincode()
 ;
@@ -1159,10 +1401,22 @@ rssn_
 char *mobius_transformation_identity_json()
 ;
 
+/*
+ Computes the inverse of a Mobius transformation.
+
+ Takes a raw pointer to a `MobiusTransformation` object.
+ Returns a raw pointer to a `MobiusTransformation` representing its inverse.
+ */
 rssn_
 rssn_MobiusTransformation *mobius_transformation_inverse(const rssn_MobiusTransformation *aMobius)
 ;
 
+/*
+ Computes the inverse of a Mobius transformation.
+
+ Takes a bincode-serialized `MobiusTransformation` object.
+ Returns a bincode-serialized `MobiusTransformation` representing its inverse.
+ */
 rssn_
 rssn_BincodeBuffer mobius_transformation_inverse_bincode(rssn_BincodeBuffer aMobiusBincode)
 ;
@@ -1171,6 +1425,12 @@ rssn_
 char *mobius_transformation_inverse_json(const char *aMobiusJson)
 ;
 
+/*
+ Creates a new Mobius transformation.
+
+ Takes four raw pointers to `Expr` representing the parameters a, b, c, and d.
+ Returns a raw pointer to a new `MobiusTransformation` object.
+ */
 rssn_
 rssn_MobiusTransformation *mobius_transformation_new(const rssn_Expr *aA,
                                                      const rssn_Expr *aB,
@@ -1178,6 +1438,12 @@ rssn_MobiusTransformation *mobius_transformation_new(const rssn_Expr *aA,
                                                      const rssn_Expr *aD)
 ;
 
+/*
+ Creates a new Mobius transformation.
+
+ Takes four bincode-serialized `Expr` representing the parameters a, b, c, and d.
+ Returns a bincode-serialized `MobiusTransformation` object.
+ */
 rssn_
 rssn_BincodeBuffer mobius_transformation_new_bincode(rssn_BincodeBuffer aABincode,
                                                      rssn_BincodeBuffer aBBincode,
@@ -1270,34 +1536,78 @@ rssn_FfiOptimizationResult *numerical_optimize_sphere_gd_handle(const double *aI
                                                                 double aTolerance)
 ;
 
+/*
+ Continues the analytic continuation along a given path.
+
+ Takes a raw mutable pointer to a `PathContinuation` object, a raw pointer to an array of `Expr` (path points),
+ and the length of the array.
+ Returns a C-style string "OK" on success, or an error message on failure.
+ */
 rssn_
 char *path_continuation_continue_along_path(rssn_PathContinuation *aPc,
                                             const rssn_Expr *const *aPathPoints,
                                             size_t aPathPointsLen)
 ;
 
+/*
+ Continues the analytic continuation along a given path.
+
+ Takes a bincode-serialized `PathContinuation` object and a bincode-serialized `Vec<Expr>` representing the path points.
+ Returns a bincode-serialized string "OK" on success, or an error message on failure.
+ */
 rssn_
 rssn_BincodeBuffer path_continuation_continue_along_path_bincode(rssn_BincodeBuffer aPcBincode,
                                                                  rssn_BincodeBuffer aPathPointsBincode)
 ;
 
+/*
+ Continues the analytic continuation along a given path.
+
+ Takes a JSON-serialized `PathContinuation` object and a JSON-serialized `Vec<Expr>` representing the path points.
+ Returns a C-style string "OK" on success, or an error message on failure.
+ */
 rssn_
 char *path_continuation_continue_along_path_json(const char *aPcJson,
                                                  const char *aPathPointsJson)
 ;
 
+/*
+ Gets the final expression after analytic continuation.
+
+ Takes a raw pointer to a `PathContinuation` object.
+ Returns a raw pointer to an `Expr` representing the final expression.
+ */
 rssn_
 rssn_Expr *path_continuation_get_final_expression(const rssn_PathContinuation *aPc)
 ;
 
+/*
+ Gets the final expression after analytic continuation.
+
+ Takes a bincode-serialized `PathContinuation` object.
+ Returns a bincode-serialized `Expr` representing the final expression.
+ */
 rssn_
 rssn_BincodeBuffer path_continuation_get_final_expression_bincode(rssn_BincodeBuffer aPcBincode)
 ;
 
+/*
+ Gets the final expression after analytic continuation.
+
+ Takes a JSON-serialized `PathContinuation` object.
+ Returns a JSON-serialized `Expr` representing the final expression.
+ */
 rssn_
 char *path_continuation_get_final_expression_json(const char *aPcJson)
 ;
 
+/*
+ Creates a new `PathContinuation` object.
+
+ Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
+ a raw pointer to an `Expr` for the start point, and a `usize` for the order.
+ Returns a raw pointer to a new `PathContinuation` object.
+ */
 rssn_
 rssn_PathContinuation *path_continuation_new(const rssn_Expr *aFunc,
                                              const char *aVar,
@@ -1312,6 +1622,12 @@ rssn_BincodeBuffer path_continuation_new_bincode(rssn_BincodeBuffer aFuncBincode
                                                  size_t aOrder)
 ;
 
+/*
+ Creates a new `PathContinuation` object.
+
+ Takes JSON-serialized inputs for the function, variable, start point, and order.
+ Returns a JSON-serialized `PathContinuation` object.
+ */
 rssn_
 char *path_continuation_new_json(const char *aFuncJson,
                                  const char *aVar,

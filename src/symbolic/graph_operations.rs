@@ -6,11 +6,10 @@ use std::hash::Hash;
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
 
-/// Trait to convert a value to a symbolic expression.
-/// This allows preserving the structure of node labels when creating product graphs.
-
+pub trait ToExpr {
     /// Converts the value into a symbolic `Expr`.
     fn to_expr(&self) -> Expr;
+}
 
 impl ToExpr for String {
     fn to_expr(&self) -> Expr {
