@@ -24,6 +24,7 @@ pub mod constant_ffi;
 )]
 pub mod ffi_api;
 pub mod jit_ffi;
+pub mod nightly_ffi;
 pub mod numerical_calculus_ffi;
 pub mod numerical_calculus_of_variations_ffi;
 pub mod numerical_combinatorics_ffi;
@@ -148,4 +149,3 @@ pub mod symbolic_transforms_ffi;
 pub mod symbolic_unit_unification_ffi;
 pub mod symbolic_vector_calculus_ffi;
 pub mod symbolic_vector_ffi;
-pub mod nightly_ffi;

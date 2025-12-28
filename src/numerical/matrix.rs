@@ -206,7 +206,7 @@ impl Field for f64 {
 
                 // inv_t(i, j)
                 data[i * n + j] =
-                    *inv_t.get(j, i);                                      
+                    *inv_t.get(j, i);
                 // So we just need the buffer.
             }
         }
@@ -396,8 +396,13 @@ pub enum FaerDecompositionType {
 }
 
 /// Results of Faer matrix decompositions
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
+#[serde(bound(
+    serialize = "T: Serialize",
+    deserialize = "T: Deserialize<'de>"
+))]
 
 pub enum FaerDecompositionResult<
     T: Field,

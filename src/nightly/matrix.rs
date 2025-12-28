@@ -30,9 +30,9 @@ use faer::{
 use num_traits::One;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
+pub use pulp::*;
 use serde::Deserialize;
 use serde::Serialize;
-pub use pulp::*;
 
 use crate::symbolic::finite_field::PrimeFieldElement;
 
@@ -397,8 +397,13 @@ pub enum FaerDecompositionType {
 }
 
 /// Results of Faer matrix decompositions
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
+#[derive(
+    Debug, Clone, Serialize, Deserialize,
+)]
+#[serde(bound(
+    serialize = "T: Serialize",
+    deserialize = "T: Deserialize<'de>"
+))]
 
 pub enum FaerDecompositionResult<
     T: Field,

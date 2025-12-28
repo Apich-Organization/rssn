@@ -308,6 +308,8 @@ pub mod ffi_blindings;
 pub mod input;
 #[cfg(feature = "jit")]
 pub mod jit;
+#[cfg(feature = "nightly")]
+pub mod nightly;
 pub mod numerical;
 #[cfg(feature = "output")]
 pub mod output;
@@ -317,8 +319,6 @@ pub mod physics;
 pub mod plugins;
 pub mod prelude;
 pub mod symbolic;
-#[cfg(feature = "nightly")]
-pub mod nightly;
 
 use std::sync::Arc;
 
