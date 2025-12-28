@@ -18,13 +18,16 @@ use crate::numerical::solve::LinearSolution;
     Serialize,
     Deserialize,
 )]
-
+/// A 2D vector.
 pub struct Vector2D {
+    /// The x component of the vector.
     pub x: f64,
+    /// The y component of the vector.
     pub y: f64,
 }
 
 impl Vector2D {
+    /// Creates a new 2D vector.
     pub fn new(
         x: f64,
         y: f64,
@@ -36,6 +39,7 @@ impl Vector2D {
         }
     }
 
+    /// Calculates the norm of the vector.
     pub fn norm(&self) -> f64 {
 
         (self.x * self.x
@@ -97,16 +101,19 @@ impl Sub for Vector2D {
     Serialize,
     Deserialize,
 )]
-
+/// A 3D vector.
 pub struct Vector3D {
+    /// The x component of the vector.
     pub x: f64,
+    /// The y component of the vector.
     pub y: f64,
+    /// The z component of the vector.
     pub z: f64,
 }
 
 impl Vector3D {
     #[allow(dead_code)]
-
+    /// Creates a new 3D vector.
     pub fn new(
         x: f64,
         y: f64,
@@ -121,7 +128,7 @@ impl Vector3D {
     }
 
     #[allow(dead_code)]
-
+    /// Calculates the norm of the vector.
     pub fn norm(&self) -> f64 {
 
         (self.x * self.x
@@ -155,9 +162,10 @@ impl Sub for Vector3D {
     Serialize,
     Deserialize,
 )]
-
 pub enum BoundaryCondition<T> {
+    /// A known potential value.
     Potential(T),
+    /// A known flux value.
     Flux(T),
 }
 
@@ -169,16 +177,22 @@ pub enum BoundaryCondition<T> {
     Serialize,
     Deserialize,
 )]
-
+/// A 2D boundary element.
 pub struct Element2D {
+    /// The first point of the element.
     pub p1: Vector2D,
+    /// The second point of the element.
     pub p2: Vector2D,
+    /// The midpoint of the element.
     pub midpoint: Vector2D,
+    /// The length of the element.
     pub length: f64,
+    /// The normal vector of the element.
     pub normal: Vector2D,
 }
 
 impl Element2D {
+    /// Creates a new 2D boundary element.
     pub fn new(
         p1: Vector2D,
         p2: Vector2D,

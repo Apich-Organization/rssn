@@ -88,7 +88,9 @@ use crate::numerical::matrix::Matrix;
 )]
 
 pub struct Point2D {
+    /// The x-coordinate of the point.
     pub x: f64,
+    /// The y-coordinate of the point.
     pub y: f64,
 }
 
@@ -134,8 +136,11 @@ impl Point2D {
 )]
 
 pub struct Point3D {
+    /// The x-coordinate of the point.
     pub x: f64,
+    /// The y-coordinate of the point.
     pub y: f64,
+    /// The z-coordinate of the point.
     pub z: f64,
 }
 
@@ -201,7 +206,9 @@ impl Point3D {
 )]
 
 pub struct Vector2D {
+    /// The x-component of the vector.
     pub x: f64,
+    /// The y-component of the vector.
     pub y: f64,
 }
 
@@ -362,8 +369,11 @@ impl Neg for Vector2D {
 )]
 
 pub struct Vector3D {
+    /// The x-component of the vector.
     pub x: f64,
+    /// The y-component of the vector.
     pub y: f64,
+    /// The z-component of the vector.
     pub z: f64,
 }
 
@@ -518,9 +528,13 @@ impl Neg for Vector3D {
 )]
 
 pub struct Color {
+    /// The red component (range [0, 1]).
     pub r: f64,
+    /// The green component (range [0, 1]).
     pub g: f64,
+    /// The blue component (range [0, 1]).
     pub b: f64,
+    /// The alpha component (range [0, 1]).
     pub a: f64,
 }
 
@@ -1203,9 +1217,13 @@ pub fn identity_matrix() -> Matrix<f64>
 )]
 
 pub struct Quaternion {
+    /// The real component.
     pub w: f64,
+    /// The i component.
     pub x: f64,
+    /// The j component.
     pub y: f64,
+    /// The k component.
     pub z: f64,
 }
 
@@ -1598,7 +1616,9 @@ impl Quaternion {
 )]
 
 pub struct Ray {
+    /// The origin of the ray.
     pub origin: Point3D,
+    /// The direction of the ray (should be normalized).
     pub direction: Vector3D,
 }
 
@@ -1653,7 +1673,9 @@ impl Ray {
 )]
 
 pub struct Sphere {
+    /// The center of the sphere.
     pub center: Point3D,
+    /// The radius of the sphere.
     pub radius: f64,
 }
 
@@ -1780,7 +1802,9 @@ pub fn ray_sphere_intersection(
 )]
 
 pub struct Plane {
+    /// A point on the plane.
     pub point: Point3D,
+    /// The normal vector of the plane (should be normalized).
     pub normal: Vector3D,
 }
 

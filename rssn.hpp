@@ -168,9 +168,21 @@ enum class rssn_MonomialOrder {
     RssnMonomialOrderGradedReverseLexicographical,
 };
 
+/*
+ Supported coordinate systems for symbolic transformations.
+ */
 enum class rssn_CoordinateSystem {
+    /*
+     Standard 3D Cartesian coordinates (x, y, z).
+     */
     RssnCoordinateSystemCartesian,
+    /*
+     Cylindrical coordinates (r, theta, z).
+     */
     RssnCoordinateSystemCylindrical,
+    /*
+     Spherical coordinates (rho, theta, phi).
+     */
     RssnCoordinateSystemSpherical,
 };
 
@@ -468,6 +480,9 @@ struct rssn_RssnMatrixHandle;
  */
 struct rssn_RssnMatrixHandle;
 
+/*
+ The SPH system.
+ */
 struct rssn_SPHSystem;
 
 /*

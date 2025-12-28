@@ -49,22 +49,28 @@ use crate::plugins::stable_abi::StablePluginModule;
 /// Holds the plugin instance and its current health state.
 use crate::plugins::stable_abi::StablePlugin_TO;
 
+/// Holds the plugin instance and its current health state.
 pub struct ManagedPlugin {
+    /// The plugin instance
     pub plugin: Box<dyn Plugin>,
+    /// The plugin health state
     pub health: RwLock<PluginHealth>,
 }
 
+/// A plugin that is managed by the plugin manager.
 pub struct ManagedStablePlugin {
+    /// The plugin instance.
     pub plugin: StablePlugin_TO<
         'static,
         RBox<()>,
     >,
+    /// The plugin's health status.
     pub health: RwLock<PluginHealth>,
 }
 
 /// Manages the lifecycle of all loaded plugins.
-
 pub struct PluginManager {
+    /// A map of plugin names to their managed instances.
     pub plugins: Arc<
         RwLock<
             HashMap<
@@ -73,6 +79,7 @@ pub struct PluginManager {
             >,
         >,
     >,
+    /// A map of stable plugin names to their managed instances.
     pub stable_plugins: Arc<
         RwLock<
             HashMap<
@@ -81,9 +88,12 @@ pub struct PluginManager {
             >,
         >,
     >,
+    /// The handle to the health check thread.
     pub health_check_thread:
         Option<thread::JoinHandle<()>>,
+    /// A signal to stop the health check thread.
     pub stop_signal: Arc<AtomicBool>,
+    /// A list of loaded libraries.
     pub libraries: Vec<Library>,
 }
 

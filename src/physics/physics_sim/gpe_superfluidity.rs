@@ -13,15 +13,22 @@ use crate::physics::physics_sm::ifft2d;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
 pub struct GpeParameters {
+    /// The number of grid points in the x-direction.
     pub nx: usize,
+    /// The number of grid points in the y-direction.
     pub ny: usize,
+    /// The length of the simulation domain in the x-direction.
     pub lx: f64,
+    /// The length of the simulation domain in the y-direction.
     pub ly: f64,
+    /// The imaginary time step.
     pub d_tau: f64,
+    /// The number of time steps to simulate.
     pub time_steps: usize,
+    /// The interaction strength.
     pub g: f64,
+    /// The strength of the trapping potential.
     pub trap_strength: f64,
 }
 

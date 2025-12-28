@@ -145,8 +145,12 @@
 //! - [`state`] - State management
 //! - [`computable`] - Computable trait
 
+/// Caching for parsing and computation results.
 pub mod cache;
+/// Trait for computable mathematical objects.
 pub mod computable;
+/// Task representation and tracking.
 pub mod computation;
 pub mod engine;
+/// State management for computations.
 pub mod state;

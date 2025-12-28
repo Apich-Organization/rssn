@@ -263,6 +263,7 @@ impl UniformDist {
             .map_err(|e| e.to_string())
     }
 
+    /// Returns the probability density function (PDF) value at `x`.
     #[must_use]
 
     pub fn pdf(
@@ -273,6 +274,7 @@ impl UniformDist {
         self.0.pdf(x)
     }
 
+    /// Returns the cumulative distribution function (CDF) value at `x`.
     #[must_use]
 
     pub fn cdf(
@@ -289,6 +291,7 @@ impl UniformDist {
 pub struct BinomialDist(Binomial);
 
 impl BinomialDist {
+    /// Creates a new `BinomialDist` instance.
     pub fn new(
         n: u64,
         p: f64,
@@ -299,6 +302,7 @@ impl BinomialDist {
             .map_err(|e| e.to_string())
     }
 
+    /// Returns the probability mass function (PMF) value at `k`.
     #[must_use]
 
     pub fn pmf(
@@ -309,6 +313,7 @@ impl BinomialDist {
         self.0.pmf(k)
     }
 
+    /// Returns the cumulative distribution function (CDF) value at `k`.
     #[must_use]
 
     pub fn cdf(
@@ -455,6 +460,7 @@ pub struct PoissonDist(
 );
 
 impl PoissonDist {
+    /// Creates a new `PoissonDist` instance.
     pub fn new(
         rate: f64
     ) -> Result<Self, String> {
@@ -464,6 +470,7 @@ impl PoissonDist {
             .map_err(|e| e.to_string())
     }
 
+    /// Returns the probability mass function (PMF) value at `k`.
     #[must_use]
 
     pub fn pmf(
@@ -474,6 +481,7 @@ impl PoissonDist {
         self.0.pmf(k)
     }
 
+    /// Returns the cumulative distribution function (CDF) value at `k`.
     #[must_use]
 
     pub fn cdf(
@@ -492,6 +500,7 @@ pub struct ExponentialDist(
 );
 
 impl ExponentialDist {
+    /// Creates a new `ExponentialDist` instance.
     pub fn new(
         rate: f64
     ) -> Result<Self, String> {
@@ -503,6 +512,7 @@ impl ExponentialDist {
         .map_err(|e| e.to_string())
     }
 
+    /// Returns the probability density function (PDF) value at `x`.
     #[must_use]
 
     pub fn pdf(
@@ -513,6 +523,7 @@ impl ExponentialDist {
         self.0.pdf(x)
     }
 
+    /// Returns the cumulative distribution function (CDF) value at `x`.
     #[must_use]
 
     pub fn cdf(
@@ -531,6 +542,7 @@ pub struct GammaDist(
 );
 
 impl GammaDist {
+    /// Creates a new `GammaDist` instance.
     pub fn new(
         shape: f64,
         rate: f64,
@@ -541,6 +553,7 @@ impl GammaDist {
             .map_err(|e| e.to_string())
     }
 
+    /// Returns the probability density function (PDF) value at `x`.
     #[must_use]
 
     pub fn pdf(
@@ -551,6 +564,7 @@ impl GammaDist {
         self.0.pdf(x)
     }
 
+    /// Returns the cumulative distribution function (CDF) value at `x`.
     #[must_use]
 
     pub fn cdf(

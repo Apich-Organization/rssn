@@ -299,7 +299,9 @@
     clippy::manual_let_else
 )]
 
+/// Computation engine and task management.
 pub mod compute;
+/// System and physical constants.
 pub mod constant;
 #[cfg(feature = "ffi_api")]
 pub mod ffi_apis;
@@ -307,11 +309,15 @@ pub mod ffi_apis;
 // #[instability::unstable(feature = "experimental")]
 // Disabled because it only works on nightly rust
 #[cfg(feature = "ffi_blinding")]
+/// FFI blinding and security utilities.
 pub mod ffi_blindings;
+/// Input parsing and handling.
 pub mod input;
 #[cfg(feature = "jit")]
+/// Just-In-Time (JIT) compilation for expressions.
 pub mod jit;
 #[cfg(feature = "nightly")]
+/// Features requiring nightly Rust.
 pub mod nightly;
 pub mod numerical;
 #[cfg(feature = "output")]
@@ -319,6 +325,7 @@ pub mod output;
 #[cfg(feature = "physics")]
 pub mod physics;
 #[cfg(feature = "plugins")]
+/// Plugin system for extending functionality.
 pub mod plugins;
 pub mod prelude;
 pub mod symbolic;

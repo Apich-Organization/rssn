@@ -1391,6 +1391,17 @@ pub(crate) const fn get_liate_type(
     }
 }
 
+/// Substitutes all occurrences of an expression with another expression.
+///
+/// This function performs a deep recursive search and replaces matching sub-expressions.
+///
+/// # Arguments
+/// * `expr` - The root expression to search in.
+/// * `to_replace` - The sub-expression to be replaced.
+/// * `replacement` - The expression to substitute in.
+///
+/// # Returns
+/// A new `Expr` with the substitutions applied.
 #[must_use]
 
 pub fn substitute_expr(

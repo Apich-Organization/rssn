@@ -296,14 +296,21 @@ pub fn simulate_1d_heat_conduction_cn_scenario(
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
+/// Configuration for the 2D heat equation solver.
 pub struct HeatEquationSolverConfig {
+    /// The number of grid points in the x direction.
     pub nx: usize,
+    /// The number of grid points in the y direction.
     pub ny: usize,
+    /// The grid spacing in the x direction.
     pub dx: f64,
+    /// The grid spacing in the y direction.
     pub dy: f64,
+    /// The time step.
     pub dt: f64,
+    /// The diffusion coefficient.
     pub d_coeff: f64,
+    /// The number of time steps to simulate.
     pub steps: usize,
 }
 

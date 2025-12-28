@@ -22,38 +22,50 @@ use crate::symbolic::core::Expr;
     Clone,
     PartialEq,
 )]
-
+/// Represents the health status of a plugin.
 pub enum PluginHealth {
     /// The plugin is operating correctly.
     Ok,
     /// The plugin is in a degraded state but is still functional.
-    Degraded(RString),
+    Warning(RString),
     /// The plugin has encountered a critical error.
     Error(RString),
-    /// The plugin is not responding (timeout).
-    Timeout,
+    /// The plugin needs to be reinitialized.
+    RequiresReinitialization,
+    /// The plugin has been terminated.
+    Terminated,
+    /// The plugin's health is unknown.
+    Unknown,
 }
 
+/// Represents the kind of error that a plugin can encounter.
 #[derive(Debug, Clone, PartialEq)]
-
 pub enum PluginErrorKind {
+    /// The plugin was not found.
     NotFound,
+    /// The plugin's API version is incompatible with the host.
     IncompatibleVersion,
+    /// The plugin failed to load.
     LoadFailed,
+    /// The plugin failed to execute a command.
     ExecutionFailed,
+    /// An error occurred during serialization or deserialization.
     SerializationError,
+    /// An internal error occurred within the plugin.
     InternalError,
 }
 
 /// A specialized error type for plugin-related failures.
 #[derive(Debug, Clone)]
-
 pub struct PluginError {
+    /// The kind of error.
     pub kind: PluginErrorKind,
+    /// A descriptive error message.
     pub message: String,
 }
 
 impl PluginError {
+    /// Creates a new `PluginError`.
     pub fn new(
         kind: PluginErrorKind,
         msg: &str,

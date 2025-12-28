@@ -16,14 +16,18 @@ use crate::output::io::write_npy_file;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
 pub struct IsingParameters {
+    /// The width of the simulation grid.
     pub width: usize,
+    /// The height of the simulation grid.
     pub height: usize,
+    /// The temperature of the system.
     pub temperature: f64,
+    /// The number of Monte Carlo steps to perform.
     pub mc_steps: usize,
 }
 
+/// Runs an Ising model simulation.
 pub fn run_ising_simulation(
     params: &IsingParameters
 ) -> (Vec<i8>, f64) {

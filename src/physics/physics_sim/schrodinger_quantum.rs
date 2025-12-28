@@ -15,14 +15,23 @@ use crate::physics::physics_sm::ifft2d;
 )]
 
 pub struct SchrodingerParameters {
+    /// Number of grid points in the x-direction.
     pub nx: usize,
+    /// Number of grid points in the y-direction.
     pub ny: usize,
+    /// Domain length in the x-direction.
     pub lx: f64,
+    /// Domain length in the y-direction.
     pub ly: f64,
+    /// Time step size.
     pub dt: f64,
+    /// Total number of simulation time steps.
     pub time_steps: usize,
+    /// Reduced Planck constant (hbar).
     pub hbar: f64,
+    /// Mass of the particle.
     pub mass: f64,
+    /// Potential energy distribution (flattened).
     pub potential: Vec<f64>,
 }
 

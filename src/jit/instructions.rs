@@ -12,13 +12,19 @@ use serde::Serialize;
     Serialize,
     Deserialize,
 )]
-
+/// The type of a JIT value.
 pub enum JitType {
+    /// 8-bit integer.
     I8,
+    /// 16-bit integer.
     I16,
+    /// 32-bit integer.
     I32,
+    /// 64-bit integer.
     I64,
+    /// 32-bit float.
     F32,
+    /// 64-bit float.
     F64,
 }
 
@@ -58,22 +64,35 @@ pub enum Instruction {
     Not,
 
     /// Comparisons
+    /// Pop rhs, Pop lhs. Push 1 if lhs == rhs else 0.
     Eq(JitType),
+    /// Pop rhs, Pop lhs. Push 1 if lhs != rhs else 0.
     Ne(JitType),
+    /// Pop rhs, Pop lhs. Push 1 if lhs < rhs else 0.
     Lt(JitType),
+    /// Pop rhs, Pop lhs. Push 1 if lhs > rhs else 0.
     Gt(JitType),
+    /// Pop rhs, Pop lhs. Push 1 if lhs <= rhs else 0.
     Le(JitType),
+    /// Pop rhs, Pop lhs. Push 1 if lhs >= rhs else 0.
     Ge(JitType),
 
     /// Control Flow
+    /// A label to jump to.
     Label(u32),
+    /// Unconditionally jump to a label.
     Jump(u32),
+    /// Pop value. Jump to label if value is not 0.
     BranchIfTrue(u32),
+    /// Pop value. Jump to label if value is 0.
     BranchIfFalse(u32),
 
     /// Stack manipulation
+    /// Duplicate the top value on the stack.
     Dup,
+    /// Swap the top two values on the stack.
     Swap,
+    /// Drop the top value from the stack.
     Drop,
 
     /// Call helper: Pop args_count, Pop function_ptr. Call(fn_ptr, args...).
@@ -85,10 +104,10 @@ pub enum Instruction {
     Return,
 
     /// Custom instruction for user-defined interactions.
-    /// `opcode`: Identifier for the custom operation.
-    /// `payload`: Static data associated with the instruction.
     Custom {
+        /// Identifier for the custom operation.
         opcode: u32,
+        /// Static data associated with the instruction.
         payload: Vec<u64>,
     },
 }

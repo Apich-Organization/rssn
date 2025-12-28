@@ -12,11 +12,17 @@ use crate::physics::physics_mtm::solve_poisson_2d_multigrid;
 )]
 
 pub struct NavierStokesParameters {
+    /// Number of grid points in the x-direction.
     pub nx: usize,
+    /// Number of grid points in the y-direction.
     pub ny: usize,
+    /// Reynolds number.
     pub re: f64,
+    /// Time step size.
     pub dt: f64,
+    /// Number of simulation iterations.
     pub n_iter: usize,
+    /// Velocity of the lid (driving force).
     pub lid_velocity: f64,
 }
 

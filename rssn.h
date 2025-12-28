@@ -169,9 +169,21 @@ typedef enum rssn_MonomialOrder {
     RssnMonomialOrderGradedReverseLexicographical,
 } rssn_MonomialOrder;
 
+/*
+ Supported coordinate systems for symbolic transformations.
+ */
 typedef enum rssn_CoordinateSystem {
+    /*
+     Standard 3D Cartesian coordinates (x, y, z).
+     */
     RssnCoordinateSystemCartesian,
+    /*
+     Cylindrical coordinates (r, theta, z).
+     */
     RssnCoordinateSystemCylindrical,
+    /*
+     Spherical coordinates (rho, theta, phi).
+     */
     RssnCoordinateSystemSpherical,
 } rssn_CoordinateSystem;
 
@@ -454,6 +466,9 @@ typedef struct rssn_RssnMatrixHandle rssn_RssnMatrixHandle;
  */
 typedef struct rssn_RssnMatrixHandle rssn_RssnMatrixHandle;
 
+/*
+ The SPH system.
+ */
 typedef struct rssn_SPHSystem rssn_SPHSystem;
 
 /*

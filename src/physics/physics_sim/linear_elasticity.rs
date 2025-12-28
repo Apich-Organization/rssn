@@ -24,13 +24,18 @@ pub type Elements = Vec<[usize; 4]>;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
 pub struct ElasticityParameters {
+    /// The nodes of the mesh.
     pub nodes: Nodes,
+    /// The elements of the mesh.
     pub elements: Elements,
+    /// The Young's modulus of the material.
     pub youngs_modulus: f64,
+    /// The Poisson's ratio of the material.
     pub poissons_ratio: f64,
+    /// The indices of the nodes that are fixed.
     pub fixed_nodes: Vec<usize>,
+    /// The loads applied to the nodes.
     pub loads: Vec<(usize, f64, f64)>,
 }
 

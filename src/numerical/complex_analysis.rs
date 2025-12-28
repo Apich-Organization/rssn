@@ -183,9 +183,13 @@ where
 )]
 
 pub struct MobiusTransformation {
+    /// Coefficient a of the Möbius transformation.
     pub a: Complex<f64>,
+    /// Coefficient b of the Möbius transformation.
     pub b: Complex<f64>,
+    /// Coefficient c of the Möbius transformation.
     pub c: Complex<f64>,
+    /// Coefficient d of the Möbius transformation.
     pub d: Complex<f64>,
 }
 

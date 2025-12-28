@@ -18,8 +18,11 @@ use crate::symbolic::core::Expr;
 )]
 
 pub enum OdeSolverMethod {
+    /// Forward Euler method (1st order).
     Euler,
+    /// Heun's method (2nd order Runge-Kutta).
     Heun,
+    /// Classic RK4 method (4th order Runge-Kutta).
     RungeKutta4,
 }
 

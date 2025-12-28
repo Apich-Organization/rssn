@@ -15,8 +15,13 @@
 //! - `io`: Handles saving and loading of expressions and results to/from files.
 //! - `typst`: Converts expressions into Typst code, a modern typesetting system.
 
+/// Handles saving and loading of expressions and results to/from files.
 pub mod io;
+/// Converts expressions into LaTeX strings.
 pub mod latex;
+/// Provides tools to generate plots and visualizations of functions and data.
 pub mod plotting;
+/// Generates formatted, indented, and colored text output.
 pub mod pretty_print;
+/// Converts expressions into Typst code.
 pub mod typst;

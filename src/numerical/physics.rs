@@ -159,12 +159,19 @@ pub const FINE_STRUCTURE_CONSTANT: f64 =
 )]
 
 pub struct Particle3D {
+    /// Mass of the particle.
     pub mass: f64,
+    /// X position.
     pub x: f64,
+    /// Y position.
     pub y: f64,
+    /// Z position.
     pub z: f64,
+    /// X velocity.
     pub vx: f64,
+    /// Y velocity.
     pub vy: f64,
+    /// Z velocity.
     pub vz: f64,
 }
 

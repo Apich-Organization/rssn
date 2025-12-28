@@ -21,6 +21,7 @@
 pub mod cad;
 pub mod calculus;
 pub mod calculus_of_variations;
+/// Foundations for Computer Algebra Systems.
 pub mod cas_foundations;
 pub mod classical_mechanics;
 pub mod combinatorics;
@@ -43,6 +44,7 @@ pub mod geometric_algebra;
 pub mod graph;
 pub mod graph_algorithms;
 pub mod graph_isomorphism_and_coloring;
+/// Operations and transformations on symbolic expression graphs.
 pub mod graph_operations;
 pub mod grobner;
 pub mod group_theory;

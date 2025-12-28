@@ -811,6 +811,7 @@ pub fn simulate_2d_heat_conduction_scenario(
     )
 }
 
+/// Example scenario: Simulates wave propagation on a 120x120 grid.
 pub fn simulate_2d_wave_propagation_scenario(
 ) -> FdmGrid<f64> {
 

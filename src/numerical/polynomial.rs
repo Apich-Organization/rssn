@@ -25,6 +25,7 @@ use crate::numerical::real_roots;
 )]
 
 pub struct Polynomial {
+    /// Coefficients of the polynomial, from highest degree to lowest.
     pub coeffs: Vec<f64>,
 }
 
@@ -529,6 +530,13 @@ impl Div<f64> for Polynomial {
 }
 
 impl Polynomial {
+    /// Divides the polynomial by a scalar.
+    ///
+    /// # Arguments
+    /// * `rhs` - The scalar to divide by.
+    ///
+    /// # Returns
+    /// A `Result` containing the new `Polynomial`, or an error if the scalar is zero.
     pub fn div_scalar(
         self,
         rhs: f64,

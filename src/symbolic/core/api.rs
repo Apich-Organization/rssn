@@ -737,6 +737,7 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new Predicate expression, managed by the DAG.
     pub fn new_predicate<I, T>(
         name: &str,
         args: I,
@@ -769,6 +770,7 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new ForAll quantifier expression, managed by the DAG.
     pub fn new_forall<A>(
         var: &str,
         expr: A,
@@ -795,6 +797,7 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new Exists quantifier expression, managed by the DAG.
     pub fn new_exists<A>(
         var: &str,
         expr: A,
@@ -821,6 +824,7 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new Interval expression, managed by the DAG.
     pub fn new_interval<A, B>(
         lower: A,
         upper: B,
@@ -860,6 +864,7 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new SparsePolynomial expression, managed by the DAG.
     #[must_use]
 
     pub fn new_sparse_polynomial(
@@ -879,6 +884,7 @@ impl Expr {
     }
 
     // --- Custom Constructors ---
+    /// Creates a new CustomZero expression (deprecated).
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -899,6 +905,7 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new CustomString expression (deprecated).
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -923,6 +930,7 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new CustomArcThree expression (deprecated).
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -970,6 +978,7 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new CustomArcFour expression (deprecated).
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -1025,6 +1034,7 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new CustomArcFive expression (deprecated).
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \

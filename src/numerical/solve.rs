@@ -20,11 +20,16 @@ use crate::symbolic::core::Expr;
 )]
 
 pub enum LinearSolution {
+    /// A single unique solution vector.
     Unique(Vec<f64>),
+    /// A parametric solution (particular + null space basis).
     Parametric {
+        /// A particular solution vector.
         particular: Vec<f64>,
+        /// A basis for the null space of the matrix.
         null_space_basis: Matrix<f64>,
     },
+    /// The system is inconsistent and has no solution.
     NoSolution,
 }
 

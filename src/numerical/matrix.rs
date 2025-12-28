@@ -53,8 +53,10 @@ pub trait Field:
     + Zero
     + One
 {
+    /// Checks if the element is invertible.
     fn is_invertible(&self) -> bool;
 
+    /// Returns the inverse of the element.
     fn inverse(
         &self
     ) -> Result<Self, String>;
@@ -409,28 +411,39 @@ pub enum FaerDecompositionResult<
 > {
     /// LU: P * A = L * U
     Lu {
+        /// Lower triangular matrix.
         l: Matrix<T>,
+        /// Upper triangular matrix.
         u: Matrix<T>,
+        /// Row permutation indices.
         p: Vec<usize>,
     },
     /// QR: A = Q * R
     Qr {
+        /// Orthogonal matrix Q.
         q: Matrix<T>,
+        /// Upper triangular matrix R.
         r: Matrix<T>,
     },
     /// Cholesky: A = L * L^T
     Cholesky {
+        /// Lower triangular matrix L.
         l: Matrix<T>,
     },
     /// SVD: A = U * S * V^T
     Svd {
+        /// Left singular vectors.
         u: Matrix<T>,
+        /// Singular values.
         s: Vec<f64>,
+        /// Right singular vectors.
         v: Matrix<T>,
     },
     /// Eigen Symmetric: A = V * D * V^T (s are eigenvalues, u are eigenvectors)
     EigenSymmetric {
+        /// Eigenvalues.
         values: Vec<f64>,
+        /// Eigenvectors matrix.
         vectors: Matrix<T>,
     },
 }
@@ -450,6 +463,7 @@ pub struct Matrix<T: Field> {
     rows: usize,
     cols: usize,
     data: Vec<T>,
+    /// Computational backend used for matrix operations.
     #[serde(default)]
     pub backend: Backend,
 }

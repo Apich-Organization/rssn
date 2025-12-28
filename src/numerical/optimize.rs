@@ -51,10 +51,15 @@ type MThLineSearch =
 #[derive(Debug, Clone, Copy)]
 
 pub enum ProblemType {
+    /// Rosenbrock function.
     Rosenbrock,
+    /// Sphere function.
     Sphere,
+    /// Rastrigin function.
     Rastrigin,
+    /// Ackley function.
     Ackley,
+    /// Custom function provided by the user.
     Custom,
 }
 
@@ -62,9 +67,13 @@ pub enum ProblemType {
 #[derive(Debug, Clone)]
 
 pub struct OptimizationConfig {
+    /// Maximum number of iterations.
     pub max_iters: u64,
+    /// Convergence tolerance.
     pub tolerance: f64,
+    /// Type of problem being solved.
     pub problem_type: ProblemType,
+    /// Number of dimensions in the parameter space.
     pub dimension: usize,
 }
 
@@ -86,7 +95,9 @@ impl Default for OptimizationConfig {
 /// Rosenbrock function optimization (classical test function)
 
 pub struct Rosenbrock {
+    /// Parameter a (usually 1.0).
     pub a: f64,
+    /// Parameter b (usually 100.0).
     pub b: f64,
 }
 
@@ -243,6 +254,7 @@ impl Gradient for Sphere {
 /// Rastrigin function optimization (multimodal function)
 
 pub struct Rastrigin {
+    /// Parameter a (usually 10.0).
     pub a: f64,
 }
 
@@ -291,13 +303,16 @@ impl CostFunction for Rastrigin {
 /// Linear regression problem optimization
 
 pub struct LinearRegression {
+    /// Feature matrix X.
     pub x: Array2<f64>,
+    /// Target vector y.
     pub y: Array1<f64>,
 }
 
 impl LinearRegression {
     #[allow(clippy::suspicious_operation_groupings)]
 
+    /// Creates a new `LinearRegression` problem instance.
     pub fn new(
         x: Array2<f64>,
         y: Array1<f64>,
@@ -584,6 +599,7 @@ impl EquationOptimizer {
         Ok(res)
     }
 
+    /// Automatically configures and solves a problem using the Conjugate Gradient method.
     pub fn auto_solve_conjugate_gradient<
         C,
     >(
@@ -770,6 +786,7 @@ impl EquationOptimizer {
 pub struct ResultAnalyzer;
 
 impl ResultAnalyzer {
+    /// Prints the optimization results to the console.
     pub fn print_optimization_result<
         S: State<
             Param = Array1<f64>,
@@ -841,6 +858,7 @@ impl ResultAnalyzer {
         }
     }
 
+    /// Analyzes the convergence state and returns a summary string.
     pub fn analyze_convergence<
         S: State<Float = f64>,
     >(

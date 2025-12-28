@@ -8,13 +8,18 @@ use crate::symbolic::core::Expr;
 
 /// Configuration for plotting.
 #[derive(Clone, Debug)]
-
 pub struct PlotConfig {
+    /// The width of the plot in pixels.
     pub width: u32,
+    /// The height of the plot in pixels.
     pub height: u32,
+    /// The caption of the plot.
     pub caption: String,
+    /// The color of the line in the plot.
     pub line_color: RGBAColor,
+    /// The color of the mesh in the plot.
     pub mesh_color: RGBAColor,
+    /// The number of samples to use when plotting.
     pub samples: usize,
 }
 

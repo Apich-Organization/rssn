@@ -183,7 +183,6 @@ pub fn solve_rk4<
 
 /// Adaptive Runge-Kutta solver using Dormand-Prince 5(4).
 #[derive(Default)]
-
 pub struct DormandPrince54 {
     c: [f64; 7],
     a: [[f64; 6]; 6],
@@ -192,6 +191,7 @@ pub struct DormandPrince54 {
 }
 
 impl DormandPrince54 {
+    /// Creates a new Dormand-Prince 5(4) solver.
     pub fn new() -> Self {
 
         Self {
@@ -275,6 +275,7 @@ impl DormandPrince54 {
         }
     }
 
+    /// Solves an ODE system using the Dormand-Prince 5(4) method.
     pub fn solve<
         S: OdeSystem + Sync,
     >(
@@ -419,7 +420,6 @@ impl DormandPrince54 {
 }
 
 /// Adaptive Runge-Kutta solver using Cash-Karp 4(5).
-
 pub struct CashKarp45 {
     c: [f64; 6],
     a: [[f64; 5]; 5],
@@ -497,6 +497,7 @@ impl Default for CashKarp45 {
 }
 
 impl CashKarp45 {
+    /// Solves an ODE system using the Cash-Karp 4(5) method.
     pub fn solve<
         S: OdeSystem + Sync,
     >(
@@ -638,7 +639,6 @@ impl CashKarp45 {
 
 /// Adaptive Runge-Kutta solver using Bogacki-Shampine 3(2).
 /// Efficient for low-accuracy requirements.
-
 pub struct BogackiShampine23 {
     c: [f64; 4],
     a: [[f64; 3]; 3],
@@ -682,6 +682,7 @@ impl Default for BogackiShampine23 {
 }
 
 impl BogackiShampine23 {
+    /// Solves an ODE system using the Bogacki-Shampine 2(3) method.
     pub fn solve<
         S: OdeSystem + Sync,
     >(
@@ -829,10 +830,12 @@ impl BogackiShampine23 {
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
 pub struct LorenzSystem {
+    /// The sigma parameter.
     pub sigma: f64,
+    /// The rho parameter.
     pub rho: f64,
+    /// The beta parameter.
     pub beta: f64,
 }
 
@@ -865,9 +868,10 @@ impl OdeSystem for LorenzSystem {
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
 pub struct DampedOscillatorSystem {
+    /// The angular frequency.
     pub omega: f64,
+    /// The damping ratio.
     pub zeta: f64,
 }
 
@@ -901,8 +905,8 @@ impl OdeSystem
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
 pub struct VanDerPolSystem {
+    /// The mu parameter.
     pub mu: f64,
 }
 
@@ -934,11 +938,14 @@ impl OdeSystem for VanDerPolSystem {
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
 pub struct LotkaVolterraSystem {
+    /// The alpha parameter.
     pub alpha: f64,
+    /// The beta parameter.
     pub beta: f64,
+    /// The delta parameter.
     pub delta: f64,
+    /// The gamma parameter.
     pub gamma: f64,
 }
 
@@ -969,9 +976,10 @@ impl OdeSystem for LotkaVolterraSystem {
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
-
 pub struct PendulumSystem {
+    /// The acceleration due to gravity.
     pub g: f64,
+    /// The length of the pendulum.
     pub l: f64,
 }
 
@@ -999,6 +1007,7 @@ impl OdeSystem for PendulumSystem {
 // Scenarios
 // ============================================================================
 
+/// Simulates the Lorenz attractor system.
 pub fn simulate_lorenz_attractor_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 
@@ -1027,6 +1036,7 @@ pub fn simulate_lorenz_attractor_scenario(
     )
 }
 
+/// Simulates a damped harmonic oscillator.
 pub fn simulate_damped_oscillator_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 
@@ -1050,6 +1060,7 @@ pub fn simulate_damped_oscillator_scenario(
     )
 }
 
+/// Simulates the Van der Pol oscillator.
 pub fn simulate_vanderpol_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 
@@ -1076,6 +1087,7 @@ pub fn simulate_vanderpol_scenario(
     )
 }
 
+/// Simulates the Lotka-Volterra predator-prey system.
 pub fn simulate_lotka_volterra_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 

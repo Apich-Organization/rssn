@@ -186,8 +186,11 @@ impl Material {
 )]
 
 pub struct Node2D {
+    /// Unique identifier for the node.
     pub id: usize,
+    /// X coordinate.
     pub x: f64,
+    /// Y coordinate.
     pub y: f64,
 }
 
@@ -235,9 +238,13 @@ impl Node2D {
 )]
 
 pub struct Node3D {
+    /// Unique identifier for the node.
     pub id: usize,
+    /// X coordinate.
     pub x: f64,
+    /// Y coordinate.
     pub y: f64,
+    /// Z coordinate.
     pub z: f64,
 }
 
@@ -268,8 +275,11 @@ impl Node3D {
 /// Represents a 1D linear finite element.
 
 pub struct LinearElement1D {
+    /// Length of the element.
     pub length: f64,
+    /// Young's modulus of the material.
     pub youngs_modulus: f64,
+    /// Cross-sectional area of the element.
     pub area: f64,
 }
 
