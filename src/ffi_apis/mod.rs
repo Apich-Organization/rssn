@@ -148,3 +148,4 @@ pub mod symbolic_transforms_ffi;
 pub mod symbolic_unit_unification_ffi;
 pub mod symbolic_vector_calculus_ffi;
 pub mod symbolic_vector_ffi;
+pub mod nightly_ffi;

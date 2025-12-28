@@ -318,22 +318,6 @@ impl JitEngine {
                                   args.push(pop!());
                              }
                              // args are popped in reverse order (top is last arg)
-                             // wait, stack: [arg1, arg2], pop -> arg2, pop -> arg1
-                             // functions expect (arg1, arg2). So we need to reverse the vector?
-                             // No, if I push(1), push(2), stack is [1, 2]. Pop gives 2.
-                             // call(1, 2). 
-                             // So args are reversed.
-                             // But `args` has [2, 1]. `args.reverse()` -> [1, 2].
-                             // Logic was correct in previous version.
-                             // But here we construct differently.
-                             // With pop!, we get them in reverse order.
-                             // Let's verify: 
-                             // Call(x, y)
-                             // Stack: ..., x, y (top)
-                             // pop -> y
-                             // pop -> x
-                             // args = [y, x]
-                             // reverse -> [x, y] -> correct.
 
                              let mut sig = self.module.make_signature();
                              for _ in 0..arg_cnt {
@@ -343,7 +327,7 @@ impl JitEngine {
 
                              let sig_ref = builder.import_signature(sig);
 
-                             // args need to be reversed?
+                             // args need to be reversed
                              // CallIndirect expects &[Value].
                              // If vector is [y, x], args are y, x.
                              // This means y is arg0. Incorrect.

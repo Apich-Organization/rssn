@@ -1,4 +1,4 @@
-//! # Numerical Matrix and Linear Algebra
+//! # Numerical Matrix and Linear Algebra with AVX512
 //!
 //! This module provides a generic `Matrix` struct for dense matrices over any type
 //! that implements a custom `Field` trait. It supports a wide range of linear algebra
@@ -16,10 +16,10 @@ use std::ops::Neg;
 use std::ops::Sub;
 use std::ops::SubAssign;
 
-use faer::linalg::solvers::DenseSolveCore;
-use faer::linalg::solvers::Solve;
+use faer_nightly::linalg::solvers::DenseSolveCore;
+use faer_nightly::linalg::solvers::Solve;
 // Faer imports
-use faer::{
+use faer_nightly::{
     get_global_parallelism,
     set_global_parallelism,
     Mat,

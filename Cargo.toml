@@ -1,6 +1,6 @@
 [package]
 name = "rssn"
-version = "0.1.19"
+version = "0.1.20"
 edition = "2021"
 rust-version = "1.89.0"
 authors = ["The rssn developers"]
@@ -106,11 +106,19 @@ ahash = { version = "0.8.12", features = ["serde"] }
 abi_stable = { version = "0.11.3", optional = true }
 instability = "0.3.10"
 faer = "0.23.2"
+faer_nightly = { package = "faer", version = "0.23.2", features = [
+    "nightly",
+], optional = true }
 cranelift-frontend = { version = "0.127", optional = true }
 cranelift-native = { version = "0.127", optional = true }
 cranelift-codegen = { version = "0.127", optional = true }
 cranelift-module = { version = "0.127", optional = true }
 cranelift-jit = { version = "0.127", optional = true }
+pulp = { version = "0.22.2", features = ["macro", "x86-v4"], optional = true }
+pulp_nightly = { package = "pulp", version = "0.22.2", features = [
+    "macro",
+    "x86-v4",
+], optional = true }
 
 [build-dependencies]
 cbindgen = "0.29.2"
@@ -150,8 +158,8 @@ ffi_api = []
 # Will be available at v0.3.0 release.
 ffi_blinding = ["dep:libc"]
 # Experimental features
-experimental = ["ffi_blinding", "jit"]
-nightly = []
+experimental = ["ffi_blinding", "jit", "dep:pulp"]
+nightly = ["dep:pulp_nightly", "dep:faer_nightly"]
 full = [
     "default",
     "output",
