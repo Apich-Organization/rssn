@@ -16,10 +16,10 @@ use std::ops::Neg;
 use std::ops::Sub;
 use std::ops::SubAssign;
 
-use faer_nightly::linalg::solvers::DenseSolveCore;
-use faer_nightly::linalg::solvers::Solve;
+use faer::linalg::solvers::DenseSolveCore;
+use faer::linalg::solvers::Solve;
 // Faer imports
-use faer_nightly::{
+use faer::{
     get_global_parallelism,
     set_global_parallelism,
     Mat,
@@ -32,6 +32,7 @@ use num_traits::ToPrimitive;
 use num_traits::Zero;
 use serde::Deserialize;
 use serde::Serialize;
+pub use pupl::*;
 
 use crate::symbolic::finite_field::PrimeFieldElement;
 
