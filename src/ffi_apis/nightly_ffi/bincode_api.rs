@@ -36,11 +36,14 @@ fn decode<
     data: *const u8,
     len: usize,
 ) -> Option<T> {
+
     if data.is_null() {
+
         return None;
     }
 
     let slice = unsafe {
+
         std::slice::from_raw_parts(
             data, len,
         )
@@ -54,6 +57,7 @@ fn decode<
 fn encode<T: Serialize>(
     val: &T
 ) -> BincodeBuffer {
+
     match bincode_next::serde::encode_to_vec(val, bincode_next::config::standard()) {
         Ok(bytes) => BincodeBuffer::from_vec(bytes),
         Err(_) => BincodeBuffer::empty(),
@@ -67,6 +71,7 @@ pub unsafe extern "C" fn rssn_num_matrix_add_bincode_nightly(
     data: *const u8,
     len: usize,
 ) -> BincodeBuffer {
+
     let req: MatrixOpRequest = match decode(data, len) {
         Some(r) => r,
         None => {
@@ -98,6 +103,7 @@ pub unsafe extern "C" fn rssn_num_matrix_add_bincode_nightly(
     if req.m1.rows() != m2.rows()
         || req.m1.cols() != m2.cols()
     {
+
         return encode(&FfiResult::<
             Matrix<f64>,
             String,
@@ -128,6 +134,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_bincode_nightly(
     data: *const u8,
     len: usize,
 ) -> BincodeBuffer {
+
     let req: MatrixOpRequest = match decode(data, len) {
         Some(r) => r,
         None => {
@@ -157,6 +164,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_bincode_nightly(
         };
 
     if req.m1.cols() != m2.rows() {
+
         return encode(&FfiResult::<
             Matrix<f64>,
             String,
@@ -187,6 +195,7 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend_bincode_nightly(
     data: *const u8,
     len: usize,
 ) -> BincodeBuffer {
+
     let req: MatrixBackendRequest = match decode(data, len) {
         Some(r) => r,
         None => return encode(&FfiResult::<Matrix<f64>, String> { ok: None, err: Some("Bincode decode error".to_string()) }),
@@ -217,6 +226,7 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_bincode_nightly(
     data: *const u8,
     len: usize,
 ) -> BincodeBuffer {
+
     let req: MatrixDecompositionRequest = match decode(data, len) {
         Some(r) => r,
         None => return encode(&FfiResult::<FaerDecompositionResult<f64>, String> { ok: None, err: Some("Bincode decode error".to_string()) }),
@@ -237,19 +247,21 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_bincode_nightly(
                 err: None,
             })
         },
-        | None => encode(&FfiResult::<
-            FaerDecompositionResult<
-                f64,
-            >,
-            String,
-        > {
-            ok: None,
-            err: Some(
-                "Decomposition \
+        | None => {
+            encode(&FfiResult::<
+                FaerDecompositionResult<
+                    f64,
+                >,
+                String,
+            > {
+                ok: None,
+                err: Some(
+                    "Decomposition \
                      failed or backend \
                      not supported"
-                    .to_string(),
-            ),
-        }),
+                        .to_string(),
+                ),
+            })
+        },
     }
 }
