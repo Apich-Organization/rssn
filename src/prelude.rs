@@ -3454,9 +3454,9 @@ pub use crate::is_exclusive;
 
 pub mod numerical {
 
-    pub use crate::numerical::calculus::* as numerical_*;
+    pub use crate::numerical::calculus::*;
     pub use crate::numerical::calculus_of_variations::evaluate_action as numerical_evaluate_action;
-    pub use crate::numerical::calculus_of_variations::* as numerical_*;
+    pub use crate::numerical::calculus_of_variations::*;
     pub use crate::numerical::combinatorics::combinations as numerical_combinations;
     pub use crate::numerical::combinatorics::factorial as numerical_factorial;
     pub use crate::numerical::combinatorics::permutations as numerical_permutations;
@@ -3466,7 +3466,7 @@ pub mod numerical {
     pub use crate::numerical::complex_analysis::count_zeros_poles as numerical_count_zeros_poles;
     pub use crate::numerical::complex_analysis::eval_complex_expr as numerical_eval_complex_expr;
     pub use crate::numerical::complex_analysis::residue as numerical_residue;
-    pub use crate::numerical::complex_analysis::* as numerical_*;
+    pub use crate::numerical::complex_analysis::*;
     pub use crate::numerical::computer_graphics::cross_product as computer_graphics_numerical_cross_product;
     pub use crate::numerical::computer_graphics::dot_product as computer_graphics_numerical_dot_product;
     pub use crate::numerical::computer_graphics::rotation_matrix_x as numerical_rotation_matrix_x;
@@ -3482,7 +3482,7 @@ pub mod numerical {
     pub use crate::numerical::coordinates::numerical_jacobian as numerical_coordinates_jacobian;
     pub use crate::numerical::coordinates::transform_point as numerical_transform_point;
     pub use crate::numerical::coordinates::transform_point_pure as numerical_transform_point_pure;
-    pub use crate::numerical::differential_geometry::* as numerical_*;
+    pub use crate::numerical::differential_geometry::*;
     pub use crate::numerical::elementary::eval_expr as numerical_eval_expr;
     pub use crate::numerical::elementary::eval_expr_single as numerical_eval_expr_single;
     pub use crate::numerical::elementary::pure::abs as numerical_abs;
@@ -3523,7 +3523,7 @@ pub mod numerical {
     pub use crate::numerical::functional_analysis::inner_product as numerical_inner_product;
     pub use crate::numerical::functional_analysis::l1_norm as numerical_functional_analysis_l1_norm;
     pub use crate::numerical::functional_analysis::l2_norm as numerical_functional_analysis_l2_norm;
-    pub use crate::numerical::functional_analysis::* as numerical_*;
+    pub use crate::numerical::functional_analysis::*;
     pub use crate::numerical::geometric_algebra::Multivector3D as numerical_Multivector3D;
     pub use crate::numerical::graph::dijkstra as numerical_dijkstra;
     pub use crate::numerical::graph::Graph as numerical_Graph;
@@ -3537,7 +3537,7 @@ pub mod numerical {
     pub use crate::numerical::interpolate::bezier_curve as numerical_bezier_curve;
     pub use crate::numerical::interpolate::cubic_spline_interpolation as numerical_cubic_spline_interpolation;
     pub use crate::numerical::interpolate::lagrange_interpolation as numerical_lagrange_interpolation;
-    pub use crate::numerical::interpolate::* as numerical_*;
+    pub use crate::numerical::interpolate::*;
     pub use crate::numerical::matrix::Field as numerical_Field;
     pub use crate::numerical::matrix::Matrix as numerical_Matrix;
     pub use crate::numerical::multi_valued::newton_method_complex as numerical_newton_method_complex;
@@ -3550,7 +3550,7 @@ pub mod numerical {
     pub use crate::numerical::number_theory::phi as numerical_phi;
     pub use crate::numerical::number_theory::primes_sieve as numerical_primes_sieve;
     pub use crate::numerical::ode::solve_ode_system_rk4 as numerical_solve_ode_system_rk4;
-    pub use crate::numerical::ode::* as numerical_*;
+    pub use crate::numerical::ode::*;
     pub use crate::numerical::optimize::EquationOptimizer;
     pub use crate::numerical::optimize::LinearRegression;
     pub use crate::numerical::optimize::OptimizationConfig;
@@ -3580,8 +3580,8 @@ pub mod numerical {
     pub use crate::numerical::real_roots::find_roots as numerical_find_roots;
     pub use crate::numerical::real_roots::isolate_real_roots as numerical_isolate_real_roots;
     pub use crate::numerical::real_roots::sturm_sequence as numerical_sturm_sequence;
-    pub use crate::numerical::series::* as numerical_*;
-    pub use crate::numerical::signal::* as numerical_*;
+    pub use crate::numerical::series::*;
+    pub use crate::numerical::signal::*;
     pub use crate::numerical::solve::solve_linear_system as numerical_solve_linear_system;
     pub use crate::numerical::solve::solve_nonlinear_system as numerical_solve_nonlinear_system;
     pub use crate::numerical::solve::LinearSolution as numerical_LinearSolution;
@@ -3645,12 +3645,12 @@ pub mod numerical {
     pub use crate::numerical::topology::find_connected_components as numerical_find_connected_components;
     pub use crate::numerical::topology::vietoris_rips_complex as numerical_vietoris_rips_complex;
     pub use crate::numerical::topology::Simplex as numerical_Simplex;
-    pub use crate::numerical::topology::* as numerical_*;
+    pub use crate::numerical::topology::*;
     pub use crate::numerical::transforms::fft as transforms_numerical_fft;
     pub use crate::numerical::transforms::fft_slice as numerical_fft_slice;
     pub use crate::numerical::transforms::ifft as numerical_ifft;
     pub use crate::numerical::transforms::ifft_slice as numerical_ifft_slice;
-    pub use crate::numerical::transforms::* as numerical_*;
+    pub use crate::numerical::transforms::*;
     pub use crate::numerical::vector::angle as numerical_angle;
     pub use crate::numerical::vector::cosine_similarity as numerical_cosine_similarity;
     pub use crate::numerical::vector::cross_product as numerical_cross_product;
@@ -3672,7 +3672,7 @@ pub mod numerical {
     pub use crate::numerical::vector_calculus::curl as numerical_curl;
     pub use crate::numerical::vector_calculus::divergence as numerical_divergence;
     pub use crate::numerical::vector_calculus::gradient as vector_calculus_numerical_gradient;
-    pub use crate::numerical::vector_calculus::* as numerical_*;
+    pub use crate::numerical::vector_calculus::*;
 }
 
 #[cfg(feature = "output")]
@@ -3965,7 +3965,7 @@ pub use once_cell::sync::OnceCell;
 pub use ordered_float::OrderedFloat;
 pub use rand::prelude as rand_prelude;
 pub use rand::Rng as rand_Rng;
-pub use rayon::prelude::* as rayon_*;
+pub use rayon::prelude::*;
 pub use serde::Deserialize as serde_Deserialize;
 pub use serde::Serialize as serde_Serialize;
 pub use sprs_rssn::CsMat;
@@ -6022,106 +6022,106 @@ pub use crate::numerical::vector_calculus::laplacian as vector_calculus_laplacia
 
 pub mod rand {
 
-    pub use rand::* as rand_*;
+    pub use rand::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod argmin {
 
-    pub use argmin::* as argmin_*;
-    pub use argmin_math::* as argmin_math_*;
-    pub use rand_v09::* as rand_v09_*;
+    pub use argmin::*;
+    pub use argmin_math::*;
+    pub use rand_v09::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod nalgebra {
 
-    pub use nalgebra::* as nalgebra_*;
+    pub use nalgebra::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod statrs {
 
-    pub use statrs::* as statrs_*;
+    pub use statrs::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod ndarray {
 
-    pub use ndarray::* as ndarray_*;
+    pub use ndarray::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod quadrature {
 
-    pub use quadrature::* as quadrature_*;
+    pub use quadrature::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod rustfft {
 
-    pub use rustfft::* as rustfft_*;
+    pub use rustfft::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod sprs {
 
-    pub use sprs_rssn::* as sprs_rssn_*;
+    pub use sprs_rssn::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod special {
 
-    pub use special::* as special_*;
+    pub use special::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod errorfunctions {
 
-    pub use errorfunctions::* as errorfunctions_*;
+    pub use errorfunctions::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod bincode {
 
-    pub use bincode_next::* as bincode_next_*;
+    pub use bincode_next::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod num {
 
-    pub use num_bigint::* as num_bigint_*;
-    pub use num_complex::* as num_complex_*;
-    pub use num_rational::* as num_rational_*;
-    pub use num_traits::* as num_traits_*;
-    pub use ordered_float::* as ordered_float_*;
+    pub use num_bigint::*;
+    pub use num_complex::*;
+    pub use num_rational::*;
+    pub use num_traits::*;
+    pub use ordered_float::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod faer {
 
-    pub use faer::* as faer_*;
+    pub use faer::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 
 pub mod jit {
 
-    pub use cranelift_codegen::* as cranelift_codegen_*;
-    pub use cranelift_frontend::* as cranelift_frontend_*;
-    pub use cranelift_jit::* as cranelift_jit_*;
-    pub use cranelift_module::* as cranelift_module_*;
-    pub use cranelift_native::* as cranelift_native_*;
+    pub use cranelift_codegen::*;
+    pub use cranelift_frontend::*;
+    pub use cranelift_jit::*;
+    pub use cranelift_module::*;
+    pub use cranelift_native::*;
 }
