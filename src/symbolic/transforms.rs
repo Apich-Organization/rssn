@@ -755,6 +755,17 @@ pub fn inverse_z_transform(
 
 #[must_use]
 
+/// Performs partial fraction decomposition on a rational expression.
+///
+/// This function decomposes a rational function (a ratio of polynomials) into a sum of
+/// simpler fractions. It handles cases with both distinct and repeated roots in the denominator.
+///
+/// # Arguments
+/// * `expr` - The rational expression to decompose.
+/// * `var` - The variable with respect to which the decomposition is performed.
+///
+/// # Returns
+/// An `Option<Vec<Expr>>` containing the terms of the decomposition if successful, or `None` otherwise.
 pub fn partial_fraction_decomposition(
     expr: &Expr,
     var: &str,

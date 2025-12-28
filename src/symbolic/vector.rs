@@ -29,8 +29,11 @@ use crate::symbolic::simplify_dag::simplify;
 )]
 
 pub struct Vector {
+    /// The x-component of the vector.
     pub x: Expr,
+    /// The y-component of the vector.
     pub y: Expr,
+    /// The z-component of the vector.
     pub z: Expr,
 }
 

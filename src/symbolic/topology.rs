@@ -202,7 +202,9 @@ impl Simplex {
 )]
 
 pub struct Chain {
+    /// The simplices and their corresponding numerical coefficients in the chain.
     pub terms: HashMap<Simplex, f64>,
+    /// The dimension of the simplices in the chain.
     pub dimension: usize,
 }
 
@@ -212,7 +214,9 @@ pub struct Chain {
 )]
 
 pub struct SymbolicChain {
+    /// The simplices and their corresponding symbolic coefficients in the chain.
     pub terms: HashMap<Simplex, Expr>,
+    /// The dimension of the simplices in the chain.
     pub dimension: usize,
 }
 
@@ -851,9 +855,12 @@ impl SimplicialComplex {
 /// Represents the full chain complex and its dual, the cochain complex.
 
 pub struct ChainComplex {
+    /// The underlying simplicial complex.
     pub complex: SimplicialComplex,
+    /// A map of dimensions to their corresponding sparse boundary matrices.
     pub boundary_operators:
         BTreeMap<usize, CsMat<f64>>,
+    /// A map of dimensions to their corresponding sparse coboundary matrices.
     pub coboundary_operators:
         BTreeMap<usize, CsMat<f64>>,
 }
@@ -1093,6 +1100,7 @@ impl ChainComplex {
 /// Represents a filtration, a sequence of nested simplicial complexes.
 
 pub struct Filtration {
+    /// A sequence of pairs consisting of a threshold value and the simplicial complex at that threshold.
     pub steps: Vec<(
         f64,
         SimplicialComplex,

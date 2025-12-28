@@ -3567,6 +3567,17 @@ pub(crate) fn pattern_match_recursive(
 
 #[must_use]
 
+/// Substitutes pattern variables in a template expression with assigned expressions (DAG version).
+///
+/// This version handles `Expr::Dag` nodes by automatically unwrapping them for matching
+/// and substitution, making it suitable for use with expressions stored in a Directed Acyclic Graph.
+///
+/// # Arguments
+/// * `template` - The expression containing patterns to be replaced.
+/// * `assignments` - A map from pattern names to their replacement expressions.
+///
+/// # Returns
+/// A new `Expr` with patterns substituted.
 pub fn substitute_patterns(
     template: &Expr,
     assignments: &HashMap<String, Expr>,
