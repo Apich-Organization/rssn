@@ -96,6 +96,9 @@ pub extern "C" fn rssn_get_system_info(
 
 macro_rules! gen_ffi_handle {
     ($ffi_name:ident, $internal_getter:path) => {
+        /// Generates a FFI function that retrieves a constant value,
+        /// converts it to a C string, and returns a pointer to it.
+        /// The caller must free the returned string using rssn_free_string.
         #[no_mangle]
         pub extern "C" fn $ffi_name() -> *mut std::os::raw::c_char {
             let value = $internal_getter();
@@ -252,7 +255,10 @@ gen_ffi_handle!(rssn_get_muon_magnetic_moment, crate::constant::get_muon_magneti
 
 #[inline(always)]
 #[no_mangle]
-
+/// Frees a C string that was allocated by the `rssn_get_*` functions in this module.
+///
+/// # Safety
+/// The `ptr` must be a valid C string pointer allocated by this module.
 pub unsafe extern "C" fn rssn_free_string_constant(
     ptr: *mut c_char
 ) {

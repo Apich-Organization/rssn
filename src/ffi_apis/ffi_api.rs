@@ -86,9 +86,11 @@ use crate::symbolic::core::Expr;
 /// - `_from_json`: Deserializes a JSON string into a `$T` object and returns it as a raw pointer (handle).
 /// - `_to_json`: Serializes a `$T` object (given by its handle) into a JSON string.
 /// - `_free`: Frees the memory of a `$T` object given by its handle.
-
 macro_rules! impl_handle_api {
     ($T:ty, $from_json:ident, $to_json:ident, $free:ident) => {
+        /// Deserializes a JSON string into a `$T` object and returns a raw pointer (handle) to it.
+        ///
+        /// The caller is responsible for freeing the returned handle using `$free`.
         #[no_mangle]
 
         pub unsafe extern "C" fn $from_json(json_ptr : *const c_char) -> *mut $T {
@@ -114,6 +116,9 @@ macro_rules! impl_handle_api {
             }
         }
 
+        /// Serializes a `$T` object (given by its handle) into a JSON string.
+        ///
+        /// The caller is responsible for freeing the returned string using `free_string`.
         #[no_mangle]
 
         pub unsafe extern "C" fn $to_json(handle : *mut $T) -> *mut c_char {
@@ -139,6 +144,7 @@ macro_rules! impl_handle_api {
             }
         }
 
+        /// Frees the memory associated with a `$T` handle.
         #[deprecated(
             since = "0.1.6",
             note = "Please use the handle-based `rssn_expr_free` instead."
@@ -297,13 +303,16 @@ pub unsafe extern "C" fn rssn_expr_simplify(
 }
 
 #[derive(Serialize, Deserialize)]
-
+/// A generic FFI-compatible result type, used for returning either a successful value or an error.
 pub struct FfiResult<T, E> {
+    /// The successful result value, if any.
     pub ok: Option<T>,
+    /// The error message or error object, if any.
     pub err: Option<E>,
 }
 
 impl<T, E> FfiResult<T, E> {
+    /// Creates a new `FfiResult` with a successful value.
     pub fn ok(val: T) -> Self {
 
         Self {
@@ -312,6 +321,7 @@ impl<T, E> FfiResult<T, E> {
         }
     }
 
+    /// Creates a new `FfiResult` with an error.
     pub fn err(err: E) -> Self {
 
         Self {
@@ -761,7 +771,8 @@ macro_rules! impl_ffi_1_vec_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-
+        /// Implements a FFI function that takes a JSON string representing a vector (Vec<f64>),
+        /// calls a wrapped function that operates on it, and returns the f64 result as a JSON string.
         pub unsafe extern "C" fn $fn_name(json_ptr : *const c_char) -> *mut c_char {
 
             if json_ptr.is_null() {
@@ -819,7 +830,8 @@ macro_rules! impl_ffi_2_vec_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-
+        /// Implements a FFI function that takes a JSON string representing two vectors (Vec<f64>),
+        /// calls a wrapped function that operates on them, and returns the f64 result as a JSON string.
         pub unsafe extern "C" fn $fn_name(json_ptr : *const c_char) -> *mut c_char {
 
             if json_ptr.is_null() {
@@ -889,7 +901,8 @@ macro_rules! impl_ffi_2_vec_in_vec_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-
+        /// Implements a FFI function that takes a JSON string representing two vectors (Vec<f64>),
+        /// calls a wrapped function that operates on them, and returns the Vec<f64> result as a JSON string.
         pub unsafe extern "C" fn $fn_name(json_ptr : *const c_char) -> *mut c_char {
 
             if json_ptr.is_null() {
@@ -959,7 +972,8 @@ macro_rules! impl_ffi_1_u64_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-
+        /// Implements a FFI function that takes a JSON string representing a u64,
+        /// calls a wrapped function that operates on it, and returns the f64 result as a JSON string.
         pub unsafe extern "C" fn $fn_name(json_ptr : *const c_char) -> *mut c_char {
 
             if json_ptr.is_null() {
@@ -1015,7 +1029,8 @@ macro_rules! impl_ffi_2_u64_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-
+        /// Implements a FFI function that takes a JSON string representing two u64 values,
+        /// calls a wrapped function that operates on them, and returns the f64 result as a JSON string.
         pub unsafe extern "C" fn $fn_name(json_ptr : *const c_char) -> *mut c_char {
 
             if json_ptr.is_null() {
@@ -1220,6 +1235,18 @@ impl_ffi_2_u64_in_f64_out!(
 );
 
 /// Computes the L2 norm of a vector.
+///
+/// # Arguments
+/// * `data` - A pointer to the first element of the vector.
+/// * `len` - The length of the vector.
+/// * `result` - A pointer to store the computed norm.
+///
+/// # Returns
+/// 0 on success, -1 on error (e.g., null pointer).
+///
+/// # Safety
+/// The `data` pointer must point to a valid array of `len` f64 elements.
+/// The `result` pointer must point to a valid f64 location.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_norm(
@@ -1258,6 +1285,20 @@ pub unsafe extern "C" fn rssn_vec_norm(
 }
 
 /// Computes the dot product of two vectors.
+///
+/// # Arguments
+/// * `d1` - A pointer to the first element of the first vector.
+/// * `l1` - The length of the first vector.
+/// * `d2` - A pointer to the first element of the second vector.
+/// * `l2` - The length of the second vector.
+/// * `result` - A pointer to store the computed dot product.
+///
+/// # Returns
+/// 0 on success, -1 on error (e.g., null pointer or mismatched lengths).
+///
+/// # Safety
+/// The `d1` and `d2` pointers must point to valid arrays of `l1` and `l2` f64 elements respectively.
+/// The `result` pointer must point to a valid f64 location.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_dot_product(
@@ -1315,7 +1356,17 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
     }
 }
 
-/// Computes the factorial of a number.
+/// Computes the factorial of a number `n`.
+///
+/// # Arguments
+/// * `n` - The number to compute the factorial of.
+/// * `result` - A pointer to store the computed factorial.
+///
+/// # Returns
+/// 0 on success, -1 on error (e.g., null pointer).
+///
+/// # Safety
+/// The `result` pointer must point to a valid f64 location.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_comb_factorial(
@@ -1344,6 +1395,17 @@ pub unsafe extern "C" fn rssn_comb_factorial(
 }
 
 /// Computes the number of permutations (nPk).
+///
+/// # Arguments
+/// * `n` - The total number of items.
+/// * `k` - The number of items to choose.
+/// * `result` - A pointer to store the computed number of permutations.
+///
+/// # Returns
+/// 0 on success, -1 on error (e.g., null pointer).
+///
+/// # Safety
+/// The `result` pointer must point to a valid f64 location.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_comb_permutations(
@@ -1375,6 +1437,17 @@ pub unsafe extern "C" fn rssn_comb_permutations(
 }
 
 /// Computes the number of combinations (nCk).
+///
+/// # Arguments
+/// * `n` - The total number of items.
+/// * `k` - The number of items to choose.
+/// * `result` - A pointer to store the computed number of combinations.
+///
+/// # Returns
+/// 0 on success, -1 on error (e.g., null pointer).
+///
+/// # Safety
+/// The `result` pointer must point to a valid f64 location.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_comb_combinations(
@@ -1739,7 +1812,8 @@ macro_rules! impl_special_fn_one_arg {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-
+        /// Implements a FFI function that takes a JSON string representing a single f64 argument,
+        /// calls a wrapped special function that operates on it, and returns the f64 result as a JSON string.
         pub unsafe extern "C" fn $fn_name(json_ptr : *const c_char) -> *mut c_char {
 
             if json_ptr.is_null() {
@@ -1808,7 +1882,8 @@ macro_rules! impl_special_fn_two_args {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[no_mangle]
-
+        /// Implements a FFI function that takes a JSON string representing two f64 arguments,
+        /// calls a wrapped special function that operates on them, and returns the f64 result as a JSON string.
         pub unsafe extern "C" fn $fn_name(json_ptr : *const c_char) -> *mut c_char {
 
             if json_ptr.is_null() {
@@ -1920,7 +1995,9 @@ impl_special_fn_two_args!(
 macro_rules! impl_rssn_special_fn_one_arg {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
-
+        /// Implements a FFI function that takes a single f64 argument `x`,
+        /// calls a wrapped special function that operates on it, and stores the f64 result
+        /// in the `result` pointer. Returns 0 on success, -1 on error.
         pub unsafe extern "C" fn $fn_name(
             x : f64,
             result : *mut f64,
@@ -1949,7 +2026,9 @@ macro_rules! impl_rssn_special_fn_one_arg {
 macro_rules! impl_rssn_special_fn_two_args {
     ($fn_name:ident, $wrapped_fn:ident) => {
         #[no_mangle]
-
+        /// Implements a FFI function that takes two f64 arguments `a` and `b`,
+        /// calls a wrapped special function that operates on them, and stores the f64 result
+        /// in the `result` pointer. Returns 0 on success, -1 on error.
         pub unsafe extern "C" fn $fn_name(
             a : f64,
             b : f64,
