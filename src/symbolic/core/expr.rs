@@ -591,6 +591,7 @@ pub enum Expr {
                 'UnaryList' variant \
                 instead."
     )]
+    /// Deprecated: Zero-argument custom operation.
     CustomZero,
     #[deprecated(
         since = "0.1.18",
@@ -598,6 +599,7 @@ pub enum Expr {
                 'UnaryList' variant \
                 instead."
     )]
+    /// Deprecated: String-argument custom operation.
     CustomString(String),
 
     #[deprecated(
@@ -606,6 +608,7 @@ pub enum Expr {
                 'UnaryList' variant \
                 instead."
     )]
+    /// Deprecated: One-arc-argument custom operation.
     CustomArcOne(Arc<Expr>),
     #[deprecated(
         since = "0.1.18",
@@ -613,6 +616,7 @@ pub enum Expr {
                 'BinaryList' variant \
                 instead."
     )]
+    /// Deprecated: Two-arc-argument custom operation.
     CustomArcTwo(Arc<Expr>, Arc<Expr>),
     #[deprecated(
         since = "0.1.18",
@@ -620,6 +624,7 @@ pub enum Expr {
                 'NaryList' variant \
                 instead."
     )]
+    /// Deprecated: Three-arc-argument custom operation.
     CustomArcThree(
         Arc<Expr>,
         Arc<Expr>,
@@ -631,6 +636,7 @@ pub enum Expr {
                 'NaryList' variant \
                 instead."
     )]
+    /// Deprecated: Four-arc-argument custom operation.
     CustomArcFour(
         Arc<Expr>,
         Arc<Expr>,
@@ -643,6 +649,7 @@ pub enum Expr {
                 'NaryList' variant \
                 instead."
     )]
+    /// Deprecated: Five-arc-argument custom operation.
     CustomArcFive(
         Arc<Expr>,
         Arc<Expr>,
@@ -657,6 +664,7 @@ pub enum Expr {
                 'UnaryList' variant \
                 instead."
     )]
+    /// Deprecated: One-vector-argument custom operation.
     CustomVecOne(Vec<Expr>),
     #[deprecated(
         since = "0.1.18",
@@ -664,6 +672,7 @@ pub enum Expr {
                 'BinaryList' variant \
                 instead."
     )]
+    /// Deprecated: Two-vector-argument custom operation.
     CustomVecTwo(Vec<Expr>, Vec<Expr>),
     #[deprecated(
         since = "0.1.18",
@@ -671,6 +680,7 @@ pub enum Expr {
                 'NaryList' variant \
                 instead."
     )]
+    /// Deprecated: Three-vector-argument custom operation.
     CustomVecThree(
         Vec<Expr>,
         Vec<Expr>,
@@ -682,6 +692,7 @@ pub enum Expr {
                 'NaryList' variant \
                 instead."
     )]
+    /// Deprecated: Four-vector-argument custom operation.
     CustomVecFour(
         Vec<Expr>,
         Vec<Expr>,
@@ -694,6 +705,7 @@ pub enum Expr {
                 'NaryList' variant \
                 instead."
     )]
+    /// Deprecated: Five-vector-argument custom operation.
     CustomVecFive(
         Vec<Expr>,
         Vec<Expr>,

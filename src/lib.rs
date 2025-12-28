@@ -258,9 +258,6 @@
     clippy::correctness,
     clippy::suspicious,
     clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
     clippy::missing_safety_doc,
     clippy::same_item_push,
     clippy::implicit_clone,
@@ -276,6 +273,12 @@
     warnings,
     missing_docs,
     unsafe_code,
+    // To avoid performance issues in hot paths
+    clippy::expect_used,
+    // To avoid simd optimization issues
+    clippy::indexing_slicing,
+    // To avoid simd optimization issues
+    clippy::arithmetic_side_effects,
     clippy::dbg_macro,
     clippy::todo,
     clippy::unnecessary_safety_comment

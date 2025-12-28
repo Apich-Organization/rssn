@@ -41,6 +41,14 @@ pub unsafe extern "C" fn path_continuation_new_bincode(
     )
 }
 
+/// Continues the analytic continuation along a given path.
+
+///
+
+/// Takes a bincode-serialized `PathContinuation` object and a bincode-serialized `Vec<Expr>` representing the path points.
+
+/// Returns a bincode-serialized string "OK" on success, or an error message on failure.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
@@ -72,6 +80,14 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
     }
 }
 
+/// Gets the final expression after analytic continuation.
+
+///
+
+/// Takes a bincode-serialized `PathContinuation` object.
+
+/// Returns a bincode-serialized `Expr` representing the final expression.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
@@ -87,6 +103,16 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
         &pc.get_final_expression(),
     )
 }
+
+/// Estimates the radius of convergence of a series.
+
+///
+
+/// Takes a bincode-serialized `Expr` (the series), a C-style string for the variable,
+
+/// a bincode-serialized `Expr` for the center, and an integer for the order.
+
+/// Returns an `f64` representing the estimated radius of convergence.
 
 #[no_mangle]
 
@@ -127,6 +153,14 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
     .unwrap_or(0.0)
 }
 
+/// Calculates the distance between two complex numbers.
+
+///
+
+/// Takes two bincode-serialized `Expr` representing the complex numbers.
+
+/// Returns an `f64` representing the distance.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_distance_bincode(
@@ -152,6 +186,16 @@ pub unsafe extern "C" fn complex_distance_bincode(
 
     crate::symbolic::complex_analysis::complex_distance(&p1, &p2).unwrap_or(0.0)
 }
+
+/// Classifies the singularity of a function at a given point.
+
+///
+
+/// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+
+/// a bincode-serialized `Expr` for the singularity point, and an integer for the order.
+
+/// Returns a bincode-serialized `SingularityType` enum.
 
 #[no_mangle]
 
@@ -187,6 +231,16 @@ pub unsafe extern "C" fn classify_singularity_bincode(
     to_bincode_buffer(&singularity_type)
 }
 
+/// Computes the Laurent series of a function.
+
+///
+
+/// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+
+/// a bincode-serialized `Expr` for the center, and an integer for the order.
+
+/// Returns a bincode-serialized `Expr` representing the Laurent series.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn laurent_series_bincode(
@@ -221,6 +275,16 @@ pub unsafe extern "C" fn laurent_series_bincode(
     to_bincode_buffer(&series)
 }
 
+/// Calculates the residue of a function at a given singularity.
+
+///
+
+/// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+
+/// and a bincode-serialized `Expr` for the singularity.
+
+/// Returns a bincode-serialized `Expr` representing the residue.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn calculate_residue_bincode(
@@ -253,6 +317,16 @@ pub unsafe extern "C" fn calculate_residue_bincode(
     to_bincode_buffer(&residue)
 }
 
+/// Calculates a contour integral using the residue theorem.
+
+///
+
+/// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+
+/// and a bincode-serialized `Vec<Expr>` for the singularities.
+
+/// Returns a bincode-serialized `Expr` representing the result of the integral.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
@@ -284,6 +358,14 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
 
     to_bincode_buffer(&result)
 }
+
+/// Creates a new Mobius transformation.
+
+///
+
+/// Takes four bincode-serialized `Expr` representing the parameters a, b, c, and d.
+
+/// Returns a bincode-serialized `MobiusTransformation` object.
 
 #[no_mangle]
 
@@ -322,6 +404,12 @@ pub unsafe extern "C" fn mobius_transformation_new_bincode(
     to_bincode_buffer(&mobius)
 }
 
+/// Creates an identity Mobius transformation.
+
+///
+
+/// Takes no arguments and returns a bincode-serialized `MobiusTransformation` object.
+
 #[no_mangle]
 
 pub extern "C" fn mobius_transformation_identity_bincode(
@@ -333,6 +421,14 @@ pub extern "C" fn mobius_transformation_identity_bincode(
 
     to_bincode_buffer(&mobius)
 }
+
+/// Applies a Mobius transformation to a complex number.
+
+///
+
+/// Takes a bincode-serialized `MobiusTransformation` object and a bincode-serialized `Expr` (complex number).
+
+/// Returns a bincode-serialized `Expr` representing the result.
 
 #[no_mangle]
 
@@ -355,6 +451,14 @@ pub unsafe extern "C" fn mobius_transformation_apply_bincode(
 
     to_bincode_buffer(&result)
 }
+
+/// Composes two Mobius transformations.
+
+///
+
+/// Takes two bincode-serialized `MobiusTransformation` objects.
+
+/// Returns a bincode-serialized `MobiusTransformation` representing their composition.
 
 #[no_mangle]
 
@@ -379,6 +483,14 @@ pub unsafe extern "C" fn mobius_transformation_compose_bincode(
     to_bincode_buffer(&result)
 }
 
+/// Computes the inverse of a Mobius transformation.
+
+///
+
+/// Takes a bincode-serialized `MobiusTransformation` object.
+
+/// Returns a bincode-serialized `MobiusTransformation` representing its inverse.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
@@ -394,6 +506,16 @@ pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
 
     to_bincode_buffer(&result)
 }
+
+/// Applies Cauchy's integral formula.
+
+///
+
+/// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+
+/// and a bincode-serialized `Expr` for the point `z0`.
+
+/// Returns a bincode-serialized `Expr` representing the value of the function at `z0`.
 
 #[no_mangle]
 
@@ -422,6 +544,16 @@ pub unsafe extern "C" fn cauchy_integral_formula_bincode(
 
     to_bincode_buffer(&result)
 }
+
+/// Applies Cauchy's derivative formula.
+
+///
+
+/// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
+
+/// a bincode-serialized `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
+
+/// Returns a bincode-serialized `Expr` representing the nth derivative of the function at `z0`.
 
 #[no_mangle]
 
@@ -457,6 +589,14 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
     to_bincode_buffer(&result)
 }
 
+/// Computes the complex exponential `e^z`.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing `z`.
+
+/// Returns a bincode-serialized `Expr` representing `e^z`.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_exp_bincode(
@@ -473,6 +613,14 @@ pub unsafe extern "C" fn complex_exp_bincode(
     to_bincode_buffer(&result)
 }
 
+/// Computes the complex logarithm `log(z)`.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing `z`.
+
+/// Returns a bincode-serialized `Expr` representing `log(z)`.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_log_bincode(
@@ -488,6 +636,14 @@ pub unsafe extern "C" fn complex_log_bincode(
 
     to_bincode_buffer(&result)
 }
+
+/// Computes the argument of a complex number `arg(z)`.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing `z`.
+
+/// Returns a bincode-serialized `Expr` representing `arg(z)`.
 
 #[no_mangle]
 
