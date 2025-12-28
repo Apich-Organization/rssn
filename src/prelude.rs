@@ -4000,31 +4000,6 @@ pub use crate::constant::get_rustc_version;
 pub use crate::constant::get_system_info;
 pub use crate::input::parser::parse_expr;
 
-// crate::pure exports:
-pub use crate::pure::abs as pure_abs;
-pub use crate::pure::acos;
-pub use crate::pure::acosh as pure_acosh;
-pub use crate::pure::asin;
-pub use crate::pure::asinh as pure_asinh;
-pub use crate::pure::atan2 as pure_atan2;
-pub use crate::pure::atan;
-pub use crate::pure::atanh as pure_atanh;
-pub use crate::pure::ceil;
-pub use crate::pure::cos as pure_cos;
-pub use crate::pure::cosh as pure_cosh;
-pub use crate::pure::exp as pure_exp;
-pub use crate::pure::floor;
-pub use crate::pure::ln as pure_ln;
-pub use crate::pure::log;
-pub use crate::pure::pow as pure_pow;
-pub use crate::pure::round;
-pub use crate::pure::signum;
-pub use crate::pure::sin as pure_sin;
-pub use crate::pure::sinh as pure_sinh;
-pub use crate::pure::sqrt as pure_sqrt;
-pub use crate::pure::tan as pure_tan;
-pub use crate::pure::tanh as pure_tanh;
-
 // crate::symbolic::cad exports:
 pub use crate::symbolic::cad::Cad as cad_Cad;
 pub use crate::symbolic::cad::CadCell as cad_CadCell;
