@@ -3,6 +3,14 @@ use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_linear_system;
 use crate::symbolic::solve::solve_system;
 
+/// Solves an equation for a given variable.
+
+///
+
+/// Takes a raw pointer to `Expr` (equation) and a C-style string (variable).
+
+/// Returns a raw pointer to a `Vec<Expr>` representing the solutions.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_solve_handle(
@@ -33,6 +41,14 @@ pub extern "C" fn rssn_solve_handle(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Solves a system of equations for given variables.
+
+///
+
+/// Takes raw pointers to `Vec<Expr>` (equations) and `Vec<String>` (variables).
+
+/// Returns a raw pointer to a `Vec<(Expr, Expr)>` representing the solutions.
 
 #[no_mangle]
 
@@ -68,6 +84,14 @@ pub extern "C" fn rssn_solve_system_handle(
         | None => std::ptr::null_mut(),
     }
 }
+
+/// Solves a linear system of equations.
+
+///
+
+/// Takes a raw pointer to `Expr` (system) and a raw pointer to `Vec<String>` (variables).
+
+/// Returns a raw pointer to a `Vec<Expr>` representing the solutions.
 
 #[no_mangle]
 

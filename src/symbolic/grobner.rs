@@ -83,8 +83,11 @@ use crate::symbolic::simplify_dag::simplify;
 #[repr(C)]
 
 pub enum MonomialOrder {
+    /// Dictionary order: compares exponents of variables in a fixed sequence.
     Lexicographical,
+    /// Compares total degree first, then uses lexicographical order to break ties.
     GradedLexicographical,
+    /// Compares total degree first, then uses reverse lexicographical order to break ties.
     GradedReverseLexicographical,
 }
 
@@ -339,6 +342,14 @@ pub(crate) fn subtract_monomials(
 
 #[must_use]
 
+/// Subtracts one polynomial from another.
+///
+/// # Arguments
+/// * `p1` - The first polynomial.
+/// * `p2` - The second polynomial.
+///
+/// # Returns
+/// A `SparsePolynomial` representing `p1 - p2`.
 pub fn subtract_poly(
     p1: &SparsePolynomial,
     p2: &SparsePolynomial,

@@ -23,7 +23,9 @@ use crate::symbolic::simplify_dag::substitute_patterns;
 )]
 
 pub struct RewriteRule {
+    /// The left-hand side pattern to match.
     pub lhs: Expr,
+    /// The right-hand side expression to replace it with.
     pub rhs: Expr,
 }
 

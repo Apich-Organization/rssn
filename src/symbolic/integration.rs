@@ -918,6 +918,18 @@ pub(crate) fn poly_integrate(
     integral_expr
 }
 
+/// Integrates a rational function `P(x)/Q(x)` using the Hermite-Ostrogradsky decomposition.
+///
+/// This method decomposes the rational function into a part that can be integrated
+/// to yield a rational function and a part whose integral is transcendental (logarithmic).
+///
+/// # Arguments
+/// * `p` - The numerator polynomial.
+/// * `q` - The denominator polynomial.
+/// * `x` - The variable of integration.
+///
+/// # Returns
+/// A `Result` containing the symbolic integral or an error message.
 pub fn hermite_integrate_rational(
     p: &SparsePolynomial,
     q: &SparsePolynomial,
@@ -1207,6 +1219,17 @@ fn substitute_expr_for_var(
     }
 }
 
+/// Integrates a rational function represented as a symbolic expression.
+///
+/// This function converts the expression into a polynomial ratio and then applies
+/// rational integration techniques.
+///
+/// # Arguments
+/// * `expr` - The rational expression to integrate.
+/// * `x` - The variable of integration.
+///
+/// # Returns
+/// A `Result` containing the symbolic integral or an error message.
 pub fn integrate_rational_function_expr(
     expr: &Expr,
     x: &str,
@@ -1228,6 +1251,14 @@ pub fn integrate_rational_function_expr(
 
 #[must_use]
 
+/// Computes the symbolic derivative of a polynomial.
+///
+/// # Arguments
+/// * `p` - The polynomial to differentiate.
+/// * `x` - The variable with respect to which to differentiate.
+///
+/// # Returns
+/// A `SparsePolynomial` representing the derivative.
 pub fn poly_derivative_symbolic(
     p: &SparsePolynomial,
     x: &str,

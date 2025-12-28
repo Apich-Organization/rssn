@@ -31,7 +31,9 @@ pub struct GroupElement(pub Expr);
 )]
 
 pub struct Group {
+    /// The list of unique elements belonging to the group.
     pub elements: Vec<GroupElement>,
+    /// The Cayley table mapping pairs of elements to their product.
     pub multiplication_table: HashMap<
         (
             GroupElement,
@@ -39,6 +41,7 @@ pub struct Group {
         ),
         GroupElement,
     >,
+    /// The unique identity element of the group.
     pub identity: GroupElement,
 }
 
@@ -281,8 +284,10 @@ impl Group {
 )]
 
 pub struct Representation {
+    /// The elements of the group being represented.
     pub group_elements:
         Vec<GroupElement>,
+    /// The mapping from group elements to their corresponding matrix expressions.
     pub matrices:
         HashMap<GroupElement, Expr>,
 }

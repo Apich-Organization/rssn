@@ -4,6 +4,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::*;
 
+/// Computes the magnitude of a vector.
+
+///
+
+/// Takes a JSON string representing a `Vector`.
+
+/// Returns a JSON string representing the `Expr` of its magnitude.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_magnitude(
@@ -23,6 +31,14 @@ pub extern "C" fn rssn_json_vector_magnitude(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the dot product of two vectors.
+
+///
+
+/// Takes two JSON strings representing `Vector` objects.
+
+/// Returns a JSON string representing the `Expr` of their dot product.
 
 #[no_mangle]
 
@@ -50,6 +66,14 @@ pub extern "C" fn rssn_json_vector_dot(
     }
 }
 
+/// Computes the cross product of two vectors.
+
+///
+
+/// Takes two JSON strings representing `Vector` objects.
+
+/// Returns a JSON string representing the `Vector` of their cross product.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_cross(
@@ -76,6 +100,14 @@ pub extern "C" fn rssn_json_vector_cross(
     }
 }
 
+/// Normalizes a vector.
+
+///
+
+/// Takes a JSON string representing a `Vector`.
+
+/// Returns a JSON string representing the normalized `Vector`.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_normalize(
@@ -95,6 +127,22 @@ pub extern "C" fn rssn_json_vector_normalize(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the gradient of a scalar field.
+
+///
+
+/// Takes a JSON string representing an `Expr` (scalar field) and three C-style strings for the variable names (x, y, z).
+
+/// Returns a JSON string representing the `Vector` of the gradient.
+
+/// Computes the gradient of a scalar field.
+
+///
+
+/// Takes a JSON string representing an `Expr` (scalar field) and three C-style strings for the variable names (x, y, z).
+
+/// Returns a JSON string representing the `Vector` of the gradient.
 
 #[no_mangle]
 
@@ -177,6 +225,14 @@ pub extern "C" fn rssn_json_vector_gradient(
     }
 }
 
+/// Computes the divergence of a vector field.
+
+///
+
+/// Takes a JSON string representing a `Vector` and three C-style strings for the variable names (x, y, z).
+
+/// Returns a JSON string representing the `Expr` of the divergence.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_vector_divergence(
@@ -254,6 +310,14 @@ pub extern "C" fn rssn_json_vector_divergence(
         std::ptr::null_mut()
     }
 }
+
+/// Computes the curl of a 3D vector field.
+
+///
+
+/// Takes a JSON string representing a `Vector` and three C-style strings for the variable names (x, y, z).
+
+/// Returns a JSON string representing the `Vector` of the curl.
 
 #[no_mangle]
 

@@ -51,6 +51,9 @@
 //! - **JSON API** (`json.rs`): JSON string-based API for language interop
 //! - **Bincode API** (`bincode_api.rs`): Binary serialization for efficiency
 
+//! - **Bincode API** (`bincode_api.rs`): Binary serialization for efficiency
+
+/// Bincode API for symbolic special functions.
 pub mod bincode_api;
 pub mod handle;
 pub mod json;

@@ -2,6 +2,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::unit_unification::unify_expression;
 
+/// Unifies the units in a symbolic expression.
+
+///
+
+/// Takes a bincode-serialized `Expr` as input,
+
+/// and returns a bincode-serialized `Expr` representing the expression with unified units.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_unify_expression(

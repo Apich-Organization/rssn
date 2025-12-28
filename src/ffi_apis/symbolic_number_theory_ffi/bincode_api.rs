@@ -12,6 +12,14 @@ struct Congruence {
     modulus: Expr,
 }
 
+/// Solves a Diophantine equation.
+
+///
+
+/// Takes bincode-serialized `Expr` representing the equation and `Vec<String>`
+
+/// representing variables. Returns a bincode-serialized `Vec<Expr>` of solutions.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve_diophantine(
@@ -55,6 +63,16 @@ pub extern "C" fn rssn_bincode_solve_diophantine(
     }
 }
 
+/// Computes the extended greatest common divisor (GCD).
+
+///
+
+/// Takes bincode-serialized `Expr` representing two numbers (`a` and `b`),
+
+/// and returns a bincode-serialized tuple `(g, x, y)` where `g` is the GCD
+
+/// and `x`, `y` are coefficients such that `ax + by = g`.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_extended_gcd(
@@ -86,6 +104,14 @@ pub extern "C" fn rssn_bincode_extended_gcd(
     }
 }
 
+/// Checks if a number is prime.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing a number,
+
+/// and returns a bincode-serialized boolean indicating whether the number is prime.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_is_prime(
@@ -105,6 +131,14 @@ pub extern "C" fn rssn_bincode_is_prime(
         BincodeBuffer::empty()
     }
 }
+
+/// Solves the Chinese Remainder Theorem.
+
+///
+
+/// Takes a bincode-serialized vector of congruences (`(remainder, modulus)`),
+
+/// and returns a bincode-serialized `Expr` representing the solution.
 
 #[no_mangle]
 

@@ -61,6 +61,14 @@ pub fn get_matrix_dims(
 
 #[must_use]
 
+/// Creates a matrix of the specified dimensions filled with symbolic zeros.
+///
+/// # Arguments
+/// * `rows` - The number of rows.
+/// * `cols` - The number of columns.
+///
+/// # Returns
+/// A 2D vector of `Expr` representing the zero matrix.
 pub fn create_empty_matrix(
     rows: usize,
     cols: usize,

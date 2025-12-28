@@ -4,6 +4,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::unit_unification::unify_expression;
 
+/// Unifies the units in a symbolic expression.
+
+///
+
+/// Takes a JSON string representing an `Expr` as input,
+
+/// and returns a JSON string representing the expression with unified units.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_unify_expression(

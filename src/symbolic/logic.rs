@@ -777,7 +777,9 @@ pub fn is_satisfiable(
 )]
 
 pub enum Literal {
+    /// A positive literal, representing the atom itself.
     Positive(Expr),
+    /// A negative literal, representing the negation of the atom.
     Negative(Expr),
 }
 

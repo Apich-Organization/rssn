@@ -4,6 +4,14 @@ use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_linear_system;
 use crate::symbolic::solve::solve_system;
 
+/// Solves an equation for a given variable.
+
+///
+
+/// Takes bincode-serialized `Expr` (equation) and `String` (variable).
+
+/// Returns a bincode-serialized `Expr` representing the solution.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_solve(
@@ -29,6 +37,14 @@ pub extern "C" fn rssn_bincode_solve(
         BincodeBuffer::empty()
     }
 }
+
+/// Solves a system of equations for given variables.
+
+///
+
+/// Takes bincode-serialized `Vec<Expr>` (equations) and `Vec<String>` (variables).
+
+/// Returns a bincode-serialized `Expr` representing the solution.
 
 #[no_mangle]
 
@@ -72,6 +88,14 @@ pub extern "C" fn rssn_bincode_solve_system(
         BincodeBuffer::empty()
     }
 }
+
+/// Solves a linear system of equations.
+
+///
+
+/// Takes bincode-serialized `Expr` (system) and `Vec<String>` (variables).
+
+/// Returns a bincode-serialized `Expr` representing the solution.
 
 #[no_mangle]
 

@@ -5,6 +5,14 @@ use crate::symbolic::stats_inference::{
     self,
 };
 
+/// Performs a one-sample t-test.
+
+///
+
+/// Takes bincode-serialized `Vec<Expr>` (data) and `Expr` (target mean).
+
+/// Returns a bincode-serialized `HypothesisTest` representing the test result.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_one_sample_t_test(
@@ -32,6 +40,14 @@ pub extern "C" fn rssn_bincode_one_sample_t_test(
         BincodeBuffer::empty()
     }
 }
+
+/// Performs a two-sample t-test.
+
+///
+
+/// Takes bincode-serialized `Vec<Expr>` (two data sets) and `Expr` (hypothesized difference in means).
+
+/// Returns a bincode-serialized `HypothesisTest` representing the test result.
 
 #[no_mangle]
 
@@ -67,6 +83,14 @@ pub extern "C" fn rssn_bincode_two_sample_t_test(
         BincodeBuffer::empty()
     }
 }
+
+/// Performs a z-test.
+
+///
+
+/// Takes bincode-serialized `Vec<Expr>` (data), `Expr` (target mean), and `Expr` (population standard deviation).
+
+/// Returns a bincode-serialized `HypothesisTest` representing the test result.
 
 #[no_mangle]
 

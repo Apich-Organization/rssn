@@ -2,6 +2,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::*;
 
+/// Performs matrix addition.
+
+///
+
+/// Takes two bincode-serialized `Expr` representing matrices,
+
+/// and returns a bincode-serialized `Expr` representing their sum.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_matrix_add(
@@ -32,6 +40,14 @@ pub extern "C" fn rssn_bincode_matrix_add(
         BincodeBuffer::empty()
     }
 }
+
+/// Performs matrix multiplication.
+
+///
+
+/// Takes two bincode-serialized `Expr` representing matrices,
+
+/// and returns a bincode-serialized `Expr` representing their product.
 
 #[no_mangle]
 
@@ -64,6 +80,14 @@ pub extern "C" fn rssn_bincode_matrix_mul(
     }
 }
 
+/// Performs matrix transposition.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing a matrix,
+
+/// and returns a bincode-serialized `Expr` representing its transpose.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_matrix_transpose(
@@ -87,6 +111,14 @@ pub extern "C" fn rssn_bincode_matrix_transpose(
     }
 }
 
+/// Computes the determinant of a matrix.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing a matrix,
+
+/// and returns a bincode-serialized `Expr` representing its determinant.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_matrix_determinant(
@@ -109,6 +141,14 @@ pub extern "C" fn rssn_bincode_matrix_determinant(
     }
 }
 
+/// Computes the inverse of a matrix.
+
+///
+
+/// Takes a bincode-serialized `Expr` representing a matrix,
+
+/// and returns a bincode-serialized `Expr` representing its inverse.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_matrix_inverse(
@@ -130,6 +170,14 @@ pub extern "C" fn rssn_bincode_matrix_inverse(
         BincodeBuffer::empty()
     }
 }
+
+/// Solves a linear system of equations AX = B.
+
+///
+
+/// Takes two bincode-serialized `Expr` representing matrix A and vector B,
+
+/// and returns a bincode-serialized `Expr` representing the solution vector X.
 
 #[no_mangle]
 

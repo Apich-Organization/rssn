@@ -8,6 +8,16 @@ use crate::symbolic::series::product;
 use crate::symbolic::series::summation;
 use crate::symbolic::series::taylor_series;
 
+/// Computes the Taylor series expansion of an expression.
+
+///
+
+/// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+
+/// a raw pointer to `Expr` (center), and a `usize` (order).
+
+/// Returns a raw pointer to a new `Expr` representing the Taylor series.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_taylor_series_handle(
@@ -49,6 +59,16 @@ pub extern "C" fn rssn_taylor_series_handle(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Computes the Laurent series expansion of an expression.
+
+///
+
+/// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+
+/// a raw pointer to `Expr` (center), and a `usize` (order).
+
+/// Returns a raw pointer to a new `Expr` representing the Laurent series.
 
 #[no_mangle]
 
@@ -92,6 +112,16 @@ pub extern "C" fn rssn_laurent_series_handle(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the Fourier series expansion of an expression.
+
+///
+
+/// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+
+/// a raw pointer to `Expr` (period), and a `usize` (order).
+
+/// Returns a raw pointer to a new `Expr` representing the Fourier series.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_fourier_series_handle(
@@ -133,6 +163,16 @@ pub extern "C" fn rssn_fourier_series_handle(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Computes the summation of an expression.
+
+///
+
+/// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+
+/// raw pointers to `Expr` (lower bound), and `Expr` (upper bound).
+
+/// Returns a raw pointer to a new `Expr` representing the summation.
 
 #[no_mangle]
 
@@ -181,6 +221,16 @@ pub extern "C" fn rssn_summation_handle(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the product of an expression.
+
+///
+
+/// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+
+/// raw pointers to `Expr` (lower bound), and `Expr` (upper bound).
+
+/// Returns a raw pointer to a new `Expr` representing the product.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_product_handle(
@@ -228,6 +278,14 @@ pub extern "C" fn rssn_product_handle(
     Box::into_raw(Box::new(result))
 }
 
+/// Analyzes the convergence of a series.
+
+///
+
+/// Takes a raw pointer to `Expr` (series expression) and a C-style string (variable).
+
+/// Returns a raw pointer to a `ConvergenceResult` representing the convergence analysis result.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_series_analyze_convergence_handle(
@@ -257,6 +315,16 @@ pub extern "C" fn rssn_series_analyze_convergence_handle(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Computes the asymptotic expansion of an expression.
+
+///
+
+/// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+
+/// a raw pointer to `Expr` (point), and a `usize` (order).
+
+/// Returns a raw pointer to a new `Expr` representing the asymptotic expansion.
 
 #[no_mangle]
 
@@ -299,6 +367,16 @@ pub extern "C" fn rssn_asymptotic_expansion_handle(
 
     Box::into_raw(Box::new(result))
 }
+
+/// Computes the analytic continuation of a series.
+
+///
+
+/// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+
+/// raw pointers to `Expr` (original center), `Expr` (new center), and a `usize` (order).
+
+/// Returns a raw pointer to a new `Expr` representing the analytic continuation.
 
 #[no_mangle]
 

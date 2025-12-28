@@ -4,6 +4,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::*;
 
+/// Performs matrix addition.
+
+///
+
+/// Takes two JSON strings representing `Expr` (matrices) as input,
+
+/// and returns a JSON string representing their sum.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_matrix_add(
@@ -34,6 +42,14 @@ pub extern "C" fn rssn_json_matrix_add(
         std::ptr::null_mut()
     }
 }
+
+/// Performs matrix multiplication.
+
+///
+
+/// Takes two JSON strings representing `Expr` (matrices) as input,
+
+/// and returns a JSON string representing their product.
 
 #[no_mangle]
 
@@ -66,6 +82,14 @@ pub extern "C" fn rssn_json_matrix_mul(
     }
 }
 
+/// Performs matrix transposition.
+
+///
+
+/// Takes a JSON string representing an `Expr` (matrix) as input,
+
+/// and returns a JSON string representing its transpose.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_matrix_transpose(
@@ -87,6 +111,14 @@ pub extern "C" fn rssn_json_matrix_transpose(
     }
 }
 
+/// Computes the determinant of a matrix.
+
+///
+
+/// Takes a JSON string representing an `Expr` (matrix) as input,
+
+/// and returns a JSON string representing its determinant.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_matrix_determinant(
@@ -107,6 +139,14 @@ pub extern "C" fn rssn_json_matrix_determinant(
     }
 }
 
+/// Computes the inverse of a matrix.
+
+///
+
+/// Takes a JSON string representing an `Expr` (matrix) as input,
+
+/// and returns a JSON string representing its inverse.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_json_matrix_inverse(
@@ -126,6 +166,14 @@ pub extern "C" fn rssn_json_matrix_inverse(
         std::ptr::null_mut()
     }
 }
+
+/// Solves a linear system of equations AX = B.
+
+///
+
+/// Takes two JSON strings representing `Expr` (matrix A and vector B) as input,
+
+/// and returns a JSON string representing the solution vector X.
 
 #[no_mangle]
 

@@ -9,6 +9,14 @@ use crate::symbolic::stats_inference::{
 
 // For JSON, we can return the full HypothesisTest struct serialized.
 
+/// Performs a one-sample t-test.
+
+///
+
+/// Takes JSON strings representing `Vec<Expr>` (data) and `Expr` (target mean).
+
+/// Returns a JSON string representing the `HypothesisTest` result.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_one_sample_t_test(
@@ -36,6 +44,14 @@ pub unsafe extern "C" fn rssn_json_one_sample_t_test(
         std::ptr::null_mut()
     }
 }
+
+/// Performs a two-sample t-test.
+
+///
+
+/// Takes JSON strings representing `Vec<Expr>` (two data sets) and `Expr` (hypothesized difference in means).
+
+/// Returns a JSON string representing the `HypothesisTest` result.
 
 #[no_mangle]
 
@@ -69,6 +85,14 @@ pub unsafe extern "C" fn rssn_json_two_sample_t_test(
         std::ptr::null_mut()
     }
 }
+
+/// Performs a z-test.
+
+///
+
+/// Takes JSON strings representing `Vec<Expr>` (data), `Expr` (target mean), and `Expr` (population standard deviation).
+
+/// Returns a JSON string representing the `HypothesisTest` result.
 
 #[no_mangle]
 

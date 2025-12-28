@@ -4,6 +4,14 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
 
+/// Performs a simple linear regression.
+
+///
+
+/// Takes a bincode-serialized `Vec<(Expr, Expr)>` representing the data points.
+
+/// Returns a bincode-serialized `Vec<Expr>` containing the intercept and slope coefficients.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_simple_linear_regression(
@@ -24,6 +32,16 @@ pub extern "C" fn rssn_bincode_simple_linear_regression(
         BincodeBuffer::empty()
     }
 }
+
+/// Performs a polynomial regression.
+
+///
+
+/// Takes a bincode-serialized `Vec<(Expr, Expr)>` representing the data points
+
+/// and a `usize` for the degree of the polynomial.
+
+/// Returns a bincode-serialized `Vec<Expr>` containing the coefficients of the polynomial.
 
 #[no_mangle]
 
@@ -47,6 +65,16 @@ pub extern "C" fn rssn_bincode_polynomial_regression(
         BincodeBuffer::empty()
     }
 }
+
+/// Performs a nonlinear regression.
+
+///
+
+/// Takes bincode-serialized `Vec<(Expr, Expr)>` (data points), `Expr` (model),
+
+/// `Vec<String>` (variables), and `Vec<String>` (parameters).
+
+/// Returns a bincode-serialized `Vec<Expr>` representing the optimized parameter values.
 
 #[no_mangle]
 

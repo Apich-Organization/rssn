@@ -1,6 +1,14 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::tensor::*;
 
+/// Performs tensor addition.
+
+///
+
+/// Takes two bincode-serialized `Tensor` objects as input,
+
+/// and returns a bincode-serialized `Tensor` representing their sum.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_tensor_add(
@@ -35,6 +43,14 @@ pub extern "C" fn rssn_bincode_tensor_add(
         BincodeBuffer::empty()
     }
 }
+
+/// Performs scalar multiplication on a tensor.
+
+///
+
+/// Takes a bincode-serialized `Tensor` and a bincode-serialized `Expr` (scalar).
+
+/// Returns a bincode-serialized `Tensor` representing the result.
 
 #[no_mangle]
 
@@ -71,6 +87,14 @@ pub extern "C" fn rssn_bincode_tensor_scalar_mul(
         BincodeBuffer::empty()
     }
 }
+
+/// Computes the outer product of two tensors.
+
+///
+
+/// Takes two bincode-serialized `Tensor` objects as input,
+
+/// and returns a bincode-serialized `Tensor` representing their outer product.
 
 #[no_mangle]
 

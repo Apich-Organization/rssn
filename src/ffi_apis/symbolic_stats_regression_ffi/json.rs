@@ -11,6 +11,14 @@ use crate::symbolic::stats_regression;
 // Usually FFI JSON API takes serialization of input types.
 // `&[(Expr, Expr)]` deserializes from `[[x1,y1], [x2,y2], ...]`.
 
+/// Performs a simple linear regression.
+
+///
+
+/// Takes a JSON string representing `Vec<(Expr, Expr)>` (data points).
+
+/// Returns a JSON string representing a `Vec<Expr>` containing the intercept and slope coefficients.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_simple_linear_regression(
@@ -31,6 +39,14 @@ pub unsafe extern "C" fn rssn_json_simple_linear_regression(
         std::ptr::null_mut()
     }
 }
+
+/// Performs a polynomial regression.
+
+///
+
+/// Takes a JSON string representing `Vec<(Expr, Expr)>` (data points) and a `usize` (degree).
+
+/// Returns a JSON string representing a `Vec<Expr>` containing the coefficients of the polynomial.
 
 #[no_mangle]
 
@@ -54,6 +70,16 @@ pub unsafe extern "C" fn rssn_json_polynomial_regression(
         std::ptr::null_mut()
     }
 }
+
+/// Performs a nonlinear regression.
+
+///
+
+/// Takes JSON strings representing `Vec<(Expr, Expr)>` (data points), `Expr` (model),
+
+/// `Vec<String>` (variables), and `Vec<String>` (parameters).
+
+/// Returns a JSON string representing `Vec<(Expr, Expr)>` (optimized parameter values).
 
 #[no_mangle]
 

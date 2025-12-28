@@ -34,6 +34,7 @@ use crate::symbolic::solve::solve;
 )]
 
 pub struct Ket {
+    /// The symbolic expression representing the quantum state.
     pub state: Expr,
 }
 
@@ -50,6 +51,7 @@ pub struct Ket {
 )]
 
 pub struct Bra {
+    /// The symbolic expression representing the dual quantum state.
     pub state: Expr,
 }
 
@@ -99,6 +101,7 @@ pub fn bra_ket(
 )]
 
 pub struct Operator {
+    /// The symbolic expression representing the quantum operator.
     pub op: Expr,
 }
 

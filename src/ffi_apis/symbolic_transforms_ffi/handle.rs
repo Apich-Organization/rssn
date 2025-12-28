@@ -513,7 +513,16 @@ pub unsafe extern "C" fn rssn_z_differentiation(
 
 // --- ExprList Support for Partial Fraction Decomposition ---
 
+/// A C-compatible wrapper for a `Vec<Expr>`, used for returning lists of expressions via FFI.
 pub struct ExprList(pub Vec<Expr>);
+
+/// Computes the partial fraction decomposition of an expression.
+
+///
+
+/// Takes a raw pointer to an `Expr` (expression) and a C-style string (variable).
+
+/// Returns a raw pointer to an `ExprList` representing the decomposition.
 
 #[no_mangle]
 
@@ -541,6 +550,14 @@ pub unsafe extern "C" fn rssn_partial_fraction_decomposition(
     }
 }
 
+/// Returns the length of an `ExprList`.
+
+///
+
+/// Takes a raw pointer to an `ExprList`.
+
+/// Returns a `usize` representing its length.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_expr_list_len(
@@ -554,6 +571,14 @@ pub unsafe extern "C" fn rssn_expr_list_len(
 
     (*list).0.len()
 }
+
+/// Returns a specific element from an `ExprList`.
+
+///
+
+/// Takes a raw pointer to an `ExprList` and a `usize` index.
+
+/// Returns a raw pointer to an `Expr` at that index.
 
 #[no_mangle]
 
@@ -579,6 +604,12 @@ pub unsafe extern "C" fn rssn_expr_list_get(
         std::ptr::null_mut()
     }
 }
+
+/// Frees the memory allocated for an `ExprList`.
+
+///
+
+/// Takes a raw mutable pointer to an `ExprList`.
 
 #[no_mangle]
 

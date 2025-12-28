@@ -1,5 +1,13 @@
 use crate::symbolic::tensor::*;
 
+/// Performs tensor addition.
+
+///
+
+/// Takes raw pointers to two `Tensor` objects as input,
+
+/// and returns a raw pointer to a new `Tensor` representing their sum.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_tensor_add_handle(
@@ -28,6 +36,14 @@ pub extern "C" fn rssn_tensor_add_handle(
         },
     }
 }
+
+/// Performs scalar multiplication on a tensor.
+
+///
+
+/// Takes a raw pointer to a `Tensor` and a raw pointer to an `Expr` (scalar).
+
+/// Returns a raw pointer to a new `Tensor` representing the result.
 
 #[no_mangle]
 
@@ -58,6 +74,14 @@ pub extern "C" fn rssn_tensor_scalar_mul_handle(
     }
 }
 
+/// Computes the outer product of two tensors.
+
+///
+
+/// Takes raw pointers to two `Tensor` objects as input,
+
+/// and returns a raw pointer to a new `Tensor` representing their outer product.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_tensor_outer_product_handle(
@@ -86,6 +110,14 @@ pub extern "C" fn rssn_tensor_outer_product_handle(
         },
     }
 }
+
+/// Performs tensor contraction.
+
+///
+
+/// Takes a raw pointer to a `Tensor`, and two `usize` values representing the axes to contract.
+
+/// Returns a raw pointer to a new `Tensor` representing the contracted tensor.
 
 #[no_mangle]
 

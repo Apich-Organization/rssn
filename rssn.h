@@ -270,6 +270,9 @@ typedef struct rssn_EllipticCurve rssn_EllipticCurve;
  */
 typedef struct rssn_Expr rssn_Expr;
 
+/*
+ A C-compatible wrapper for a `Vec<Expr>`, used for returning lists of expressions via FFI.
+ */
 typedef struct rssn_ExprList rssn_ExprList;
 
 typedef struct rssn_FfiOptimizationResult rssn_FfiOptimizationResult;
@@ -543,7 +546,13 @@ typedef struct rssn_FfiPoint {
  Structure to hold two expressions (e.g., transformed x and t).
  */
 typedef struct rssn_ExprPair {
+    /*
+     The first expression in the pair.
+     */
     struct rssn_Expr *mFirst;
+    /*
+     The second expression in the pair.
+     */
     struct rssn_Expr *mSecond;
 } rssn_ExprPair;
 
@@ -1324,6 +1333,13 @@ struct rssn_Expr *rssn_adjoint_representation_group(const struct rssn_Expr *aG,
                                                     const struct rssn_Expr *aX)
 ;
 
+/*
+ Computes the analytic continuation of a series.
+
+ Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+ raw pointers to `Expr` (original center), `Expr` (new center), and a `usize` (order).
+ Returns a raw pointer to a new `Expr` representing the analytic continuation.
+ */
 rssn_
 struct rssn_Expr *rssn_analytic_continuation_handle(const struct rssn_Expr *aExpr,
                                                     const char *aVar,
@@ -1396,6 +1412,13 @@ rssn_
 struct rssn_Expr *rssn_arg_handle(const struct rssn_Expr *aZ)
 ;
 
+/*
+ Computes the asymptotic expansion of an expression.
+
+ Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+ a raw pointer to `Expr` (point), and a `usize` (order).
+ Returns a raw pointer to a new `Expr` representing the asymptotic expansion.
+ */
 rssn_
 struct rssn_Expr *rssn_asymptotic_expansion_handle(const struct rssn_Expr *aExpr,
                                                    const char *aVar,
@@ -1602,6 +1625,13 @@ struct rssn_BincodeBuffer rssn_bincode_adjoint_representation_group(struct rssn_
                                                                     struct rssn_BincodeBuffer aXBuf)
 ;
 
+/*
+ Computes the analytic continuation of a series.
+
+ Takes bincode-serialized `Expr` (expression), `String` (variable),
+ `Expr` (original center), `Expr` (new center), and `usize` (order).
+ Returns a bincode-serialized `Expr` representing the analytic continuation.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_analytic_continuation(struct rssn_BincodeBuffer aExprBuf,
                                                              struct rssn_BincodeBuffer aVarBuf,
@@ -1638,6 +1668,13 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_arg(struct rssn_BincodeBuffer aZBuf)
 ;
 
+/*
+ Computes the asymptotic expansion of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (variable),
+ `Expr` (point), and `usize` (order).
+ Returns a bincode-serialized `Expr` representing the asymptotic expansion.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(struct rssn_BincodeBuffer aExprBuf,
                                                             struct rssn_BincodeBuffer aVarBuf,
@@ -1649,12 +1686,24 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_bell_number(size_t aN)
 ;
 
+/*
+ Computes the Bessel differential equation.
+
+ Takes bincode-serialized `Expr` representing `y`, `x`, and `n` as inputs,
+ and returns a bincode-serialized `Expr` representing the equation.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_differential_equation(struct rssn_BincodeBuffer aYBuf,
                                                                     struct rssn_BincodeBuffer aXBuf,
                                                                     struct rssn_BincodeBuffer aNBuf)
 ;
 
+/*
+ Computes the modified Bessel function of the first kind I_n(x).
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing I_n(x).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_i(struct rssn_BincodeBuffer aOrderBuf,
                                                 struct rssn_BincodeBuffer aArgBuf)
@@ -1674,6 +1723,12 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_i1(struct rssn_BincodeBuffer aValBuf)
 ;
 
+/*
+ Computes the Bessel function of the first kind J_n(x).
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing J_n(x).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_j(struct rssn_BincodeBuffer aOrderBuf,
                                                 struct rssn_BincodeBuffer aArgBuf)
@@ -1693,6 +1748,12 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_j1(struct rssn_BincodeBuffer aValBuf)
 ;
 
+/*
+ Computes the modified Bessel function of the second kind K_n(x).
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing K_n(x).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_k(struct rssn_BincodeBuffer aOrderBuf,
                                                 struct rssn_BincodeBuffer aArgBuf)
@@ -1712,6 +1773,12 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_k1(struct rssn_BincodeBuffer aValBuf)
 ;
 
+/*
+ Computes the Bessel function of the second kind Y_n(x).
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing Y_n(x).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_y(struct rssn_BincodeBuffer aOrderBuf,
                                                 struct rssn_BincodeBuffer aArgBuf)
@@ -1731,6 +1798,12 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_y1(struct rssn_BincodeBuffer aValBuf)
 ;
 
+/*
+ Computes the beta function B(a, b).
+
+ Takes bincode-serialized `Expr` representing `a` and `b` as inputs,
+ and returns a bincode-serialized `Expr` representing B(a, b).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_beta(struct rssn_BincodeBuffer aABuf,
                                             struct rssn_BincodeBuffer aBBuf)
@@ -1798,17 +1871,35 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_character(struct rssn_BincodeBuffer aRepBuf)
 ;
 
+/*
+ Computes the Chebyshev differential equation.
+
+ Takes bincode-serialized `Expr` representing `y`, `x`, and `n` as inputs,
+ and returns a bincode-serialized `Expr` representing the equation.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_chebyshev_differential_equation(struct rssn_BincodeBuffer aYBuf,
                                                                        struct rssn_BincodeBuffer aXBuf,
                                                                        struct rssn_BincodeBuffer aNBuf)
 ;
 
+/*
+ Computes the Chebyshev polynomial of the first kind T_n(x).
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing T_n(x).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_chebyshev_t(struct rssn_BincodeBuffer aNBuf,
                                                    struct rssn_BincodeBuffer aXBuf)
 ;
 
+/*
+ Computes the Chebyshev polynomial of the second kind U_n(x).
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing U_n(x).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_chebyshev_u(struct rssn_BincodeBuffer aNBuf,
                                                    struct rssn_BincodeBuffer aXBuf)
@@ -1826,6 +1917,12 @@ rssn_
 bool rssn_bincode_check_jacobi_identity(struct rssn_BincodeBuffer aAlgebraBuf)
 ;
 
+/*
+ Solves the Chinese Remainder Theorem.
+
+ Takes a bincode-serialized vector of congruences (`(remainder, modulus)`),
+ and returns a bincode-serialized `Expr` representing the solution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_chinese_remainder(struct rssn_BincodeBuffer aCongruencesBuf)
 ;
@@ -1877,10 +1974,23 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_complex_system_new_mandelbrot(struct rssn_BincodeBuffer aCBuf)
 ;
 
+/*
+ Computes the conditional entropy of a joint probability distribution.
+
+ Takes a bincode-serialized `Expr` representing the joint probability distribution.
+ Returns a bincode-serialized `Expr` representing the conditional entropy.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_conditional_entropy(struct rssn_BincodeBuffer aJointProbsBuf)
 ;
 
+/*
+ Computes the convolution of two functions using the Fourier transform property.
+
+ Takes bincode-serialized `Expr` representing two functions (`f` and `g`),
+ and `String`s for input and output variables.
+ Returns a bincode-serialized `Expr` representing the convolution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_convolution_fourier(struct rssn_BincodeBuffer aFBuf,
                                                            struct rssn_BincodeBuffer aGBuf,
@@ -1888,6 +1998,13 @@ struct rssn_BincodeBuffer rssn_bincode_convolution_fourier(struct rssn_BincodeBu
                                                            struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Computes the convolution of two functions using the Laplace transform property.
+
+ Takes bincode-serialized `Expr` representing two functions (`f` and `g`),
+ and `String`s for input and output variables.
+ Returns a bincode-serialized `Expr` representing the convolution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_convolution_laplace(struct rssn_BincodeBuffer aFBuf,
                                                            struct rssn_BincodeBuffer aGBuf,
@@ -1963,6 +2080,12 @@ struct rssn_BincodeBuffer rssn_bincode_crc32_verify(struct rssn_BincodeBuffer aD
                                                     struct rssn_BincodeBuffer aExpectedCrcBuf)
 ;
 
+/*
+ Computes the cross-entropy between two probability distributions.
+
+ Takes two bincode-serialized `Vec<Expr>` representing the probability distributions (`p` and `q`).
+ Returns a bincode-serialized `Expr` representing the cross-entropy.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_cross_entropy(struct rssn_BincodeBuffer aPProbsBuf,
                                                      struct rssn_BincodeBuffer aQProbsBuf)
@@ -2064,6 +2187,12 @@ struct rssn_BincodeBuffer rssn_bincode_differentiate(struct rssn_BincodeBuffer a
                                                      const char *aVar)
 ;
 
+/*
+ Computes the digamma function ψ(z).
+
+ Takes a bincode-serialized `Expr` representing `z` as input,
+ and returns a bincode-serialized `Expr` representing ψ(z).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_digamma(struct rssn_BincodeBuffer aArgBuf)
 ;
@@ -2079,66 +2208,150 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_dihedral_group_create(size_t aN)
 ;
 
+/*
+ Creates a Bernoulli distribution.
+
+ Takes a bincode-serialized `Expr` representing `p` (probability of success).
+ Returns a bincode-serialized `Expr` representing the Bernoulli distribution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_bernoulli(struct rssn_BincodeBuffer aPBuf)
 ;
 
+/*
+ Creates a beta distribution.
+
+ Takes bincode-serialized `Expr` representing the alpha and beta parameters.
+ Returns a bincode-serialized `Expr` representing the beta distribution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_beta(struct rssn_BincodeBuffer aAlphaBuf,
                                                  struct rssn_BincodeBuffer aBetaBuf)
 ;
 
+/*
+ Creates a binomial distribution.
+
+ Takes bincode-serialized `Expr` representing `n` (number of trials) and `p` (probability of success).
+ Returns a bincode-serialized `Expr` representing the binomial distribution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_binomial(struct rssn_BincodeBuffer aNBuf,
                                                      struct rssn_BincodeBuffer aPBuf)
 ;
 
+/*
+ Computes the cumulative distribution function (CDF) of a distribution.
+
+ Takes bincode-serialized `Expr` representing the distribution and the value `x`.
+ Returns a bincode-serialized `Expr` representing the CDF at `x`.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_cdf(struct rssn_BincodeBuffer aDistBuf,
                                                 struct rssn_BincodeBuffer aXBuf)
 ;
 
+/*
+ Computes the expectation (mean) of a distribution.
+
+ Takes a bincode-serialized `Expr` representing the distribution.
+ Returns a bincode-serialized `Expr` representing the expectation.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_expectation(struct rssn_BincodeBuffer aDistBuf)
 ;
 
+/*
+ Creates an exponential distribution.
+
+ Takes a bincode-serialized `Expr` representing the rate parameter (λ).
+ Returns a bincode-serialized `Expr` representing the exponential distribution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_exponential(struct rssn_BincodeBuffer aRateBuf)
 ;
 
+/*
+ Creates a gamma distribution.
+
+ Takes bincode-serialized `Expr` representing the shape and rate parameters.
+ Returns a bincode-serialized `Expr` representing the gamma distribution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_gamma(struct rssn_BincodeBuffer aShapeBuf,
                                                   struct rssn_BincodeBuffer aRateBuf)
 ;
 
+/*
+ Computes the moment generating function (MGF) of a distribution.
+
+ Takes bincode-serialized `Expr` representing the distribution and the variable `t`.
+ Returns a bincode-serialized `Expr` representing the MGF.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_mgf(struct rssn_BincodeBuffer aDistBuf,
                                                 struct rssn_BincodeBuffer aTBuf)
 ;
 
+/*
+ Creates a normal distribution.
+
+ Takes bincode-serialized `Expr` representing the mean and standard deviation.
+ Returns a bincode-serialized `Expr` representing the normal distribution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_normal(struct rssn_BincodeBuffer aMeanBuf,
                                                    struct rssn_BincodeBuffer aStdDevBuf)
 ;
 
+/*
+ Computes the probability density function (PDF) of a distribution.
+
+ Takes bincode-serialized `Expr` representing the distribution and the value `x`.
+ Returns a bincode-serialized `Expr` representing the PDF at `x`.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_pdf(struct rssn_BincodeBuffer aDistBuf,
                                                 struct rssn_BincodeBuffer aXBuf)
 ;
 
+/*
+ Creates a Poisson distribution.
+
+ Takes a bincode-serialized `Expr` representing the rate parameter (λ).
+ Returns a bincode-serialized `Expr` representing the Poisson distribution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_poisson(struct rssn_BincodeBuffer aRateBuf)
 ;
 
+/*
+ Creates a Student's t-distribution.
+
+ Takes a bincode-serialized `Expr` representing the degrees of freedom (ν).
+ Returns a bincode-serialized `Expr` representing the Student's t-distribution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_student_t(struct rssn_BincodeBuffer aNuBuf)
 ;
 
+/*
+ Creates a uniform distribution.
+
+ Takes bincode-serialized `Expr` representing the minimum and maximum values.
+ Returns a bincode-serialized `Expr` representing the uniform distribution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_uniform(struct rssn_BincodeBuffer aMinBuf,
                                                     struct rssn_BincodeBuffer aMaxBuf)
 ;
 
+/*
+ Computes the variance of a distribution.
+
+ Takes a bincode-serialized `Expr` representing the distribution.
+ Returns a bincode-serialized `Expr` representing the variance.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dist_variance(struct rssn_BincodeBuffer aDistBuf)
 ;
@@ -2200,6 +2413,12 @@ struct rssn_BincodeBuffer rssn_bincode_elliptic_curve_new(struct rssn_BincodeBuf
                                                           struct rssn_BincodeBuffer aModulusBuf)
 ;
 
+/*
+ Computes the error function erf(z).
+
+ Takes a bincode-serialized `Expr` representing `z` as input,
+ and returns a bincode-serialized `Expr` representing erf(z).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_erf(struct rssn_BincodeBuffer aArgBuf)
 ;
@@ -2211,6 +2430,12 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_erf_numerical(struct rssn_BincodeBuffer aValBuf)
 ;
 
+/*
+ Computes the complementary error function erfc(z).
+
+ Takes a bincode-serialized `Expr` representing `z` as input,
+ and returns a bincode-serialized `Expr` representing erfc(z).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_erfc(struct rssn_BincodeBuffer aArgBuf)
 ;
@@ -2222,6 +2447,12 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_erfc_numerical(struct rssn_BincodeBuffer aValBuf)
 ;
 
+/*
+ Computes the imaginary error function erfi(z).
+
+ Takes a bincode-serialized `Expr` representing `z` as input,
+ and returns a bincode-serialized `Expr` representing erfi(z).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_erfi(struct rssn_BincodeBuffer aArgBuf)
 ;
@@ -2254,6 +2485,12 @@ struct rssn_BincodeBuffer rssn_bincode_evaluate_at_point(struct rssn_BincodeBuff
                                                          struct rssn_BincodeBuffer aValueBuf)
 ;
 
+/*
+ Numerically evaluates a symbolic expression.
+
+ Takes a bincode-serialized `Expr` as input,
+ and returns a bincode-serialized numerical evaluation of that expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_evaluate_numerical(struct rssn_BincodeBuffer aExprBuf)
 ;
@@ -2271,6 +2508,13 @@ struct rssn_BincodeBuffer rssn_bincode_exponential_map(struct rssn_BincodeBuffer
                                                        size_t aOrder)
 ;
 
+/*
+ Computes the extended greatest common divisor (GCD).
+
+ Takes bincode-serialized `Expr` representing two numbers (`a` and `b`),
+ and returns a bincode-serialized tuple `(g, x, y)` where `g` is the GCD
+ and `x`, `y` are coefficients such that `ax + by = g`.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_extended_gcd(struct rssn_BincodeBuffer aABuf,
                                                     struct rssn_BincodeBuffer aBBuf)
@@ -2379,23 +2623,50 @@ struct rssn_BincodeBuffer rssn_bincode_finite_field_polynomial_new(struct rssn_B
                                                                    struct rssn_BincodeBuffer aModulusBuf)
 ;
 
+/*
+ Applies the differentiation property of the Fourier transform.
+
+ Takes bincode-serialized `Expr` (frequency domain expression) and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_fourier_differentiation(struct rssn_BincodeBuffer aFOmegaBuf,
                                                                struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Applies the frequency shift property of the Fourier transform.
+
+ Takes bincode-serialized `Expr` (frequency domain expression), `Expr` (frequency shift amount),
+ and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_fourier_frequency_shift(struct rssn_BincodeBuffer aFOmegaBuf,
                                                                struct rssn_BincodeBuffer aABuf,
                                                                struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Applies the scaling property of the Fourier transform.
+
+ Takes bincode-serialized `Expr` (frequency domain expression), `Expr` (scaling factor `a`),
+ and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_fourier_scaling(struct rssn_BincodeBuffer aFOmegaBuf,
                                                        struct rssn_BincodeBuffer aABuf,
                                                        struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Computes the Fourier series expansion of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (variable),
+ `Expr` (period), and `usize` (order).
+ Returns a bincode-serialized `Expr` representing the Fourier series.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_fourier_series(struct rssn_BincodeBuffer aExprBuf,
                                                       struct rssn_BincodeBuffer aVarBuf,
@@ -2403,18 +2674,37 @@ struct rssn_BincodeBuffer rssn_bincode_fourier_series(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aOrderBuf)
 ;
 
+/*
+ Applies the time shift property of the Fourier transform.
+
+ Takes bincode-serialized `Expr` (frequency domain expression), `Expr` (time shift amount),
+ and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_fourier_time_shift(struct rssn_BincodeBuffer aFOmegaBuf,
                                                           struct rssn_BincodeBuffer aABuf,
                                                           struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Computes the Fourier transform of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the Fourier transform.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_fourier_transform(struct rssn_BincodeBuffer aExprBuf,
                                                          struct rssn_BincodeBuffer aInVarBuf,
                                                          struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Computes the gamma function Γ(z).
+
+ Takes a bincode-serialized `Expr` representing `z` as input,
+ and returns a bincode-serialized `Expr` representing Γ(z).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_gamma(struct rssn_BincodeBuffer aArgBuf)
 ;
@@ -2493,6 +2783,12 @@ struct rssn_BincodeBuffer rssn_bincode_general_sqrt(struct rssn_BincodeBuffer aZ
                                                     struct rssn_BincodeBuffer aKBuf)
 ;
 
+/*
+ Computes the generalized Laguerre polynomial L_n^α(x).
+
+ Takes bincode-serialized `Expr` representing `n`, `alpha`, and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing L_n^α(x).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_generalized_laguerre(struct rssn_BincodeBuffer aNBuf,
                                                             struct rssn_BincodeBuffer aAlphaBuf,
@@ -2564,6 +2860,12 @@ struct rssn_BincodeBuffer rssn_bincode_gibbs_free_energy(struct rssn_BincodeBuff
                                                          struct rssn_BincodeBuffer aSBuf)
 ;
 
+/*
+ Computes the Gini impurity of a probability distribution.
+
+ Takes a bincode-serialized `Vec<Expr>` representing the probabilities.
+ Returns a bincode-serialized `Expr` representing the Gini impurity.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_gini_impurity(struct rssn_BincodeBuffer aProbsBuf)
 ;
@@ -2904,17 +3206,35 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_hamming_weight(struct rssn_BincodeBuffer aDataBuf)
 ;
 
+/*
+ Computes the Hermite differential equation.
+
+ Takes bincode-serialized `Expr` representing `y`, `x`, and `n` as inputs,
+ and returns a bincode-serialized `Expr` representing the equation.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_hermite_differential_equation(struct rssn_BincodeBuffer aYBuf,
                                                                      struct rssn_BincodeBuffer aXBuf,
                                                                      struct rssn_BincodeBuffer aNBuf)
 ;
 
+/*
+ Computes the Hermite polynomial H_n(x).
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing H_n(x).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_hermite_h(struct rssn_BincodeBuffer aDegreeBuf,
                                                  struct rssn_BincodeBuffer aArgBuf)
 ;
 
+/*
+ Computes the Rodrigues' formula for Hermite polynomials.
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing the formula.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_hermite_rodrigues_formula(struct rssn_BincodeBuffer aNBuf,
                                                                  struct rssn_BincodeBuffer aXBuf)
@@ -3002,24 +3322,48 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_inverse_erfc(struct rssn_BincodeBuffer aValBuf)
 ;
 
+/*
+ Computes the inverse Fourier transform of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the inverse Fourier transform.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_inverse_fourier_transform(struct rssn_BincodeBuffer aExprBuf,
                                                                  struct rssn_BincodeBuffer aInVarBuf,
                                                                  struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Computes the inverse Laplace transform of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the inverse Laplace transform.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_inverse_laplace_transform(struct rssn_BincodeBuffer aExprBuf,
                                                                  struct rssn_BincodeBuffer aInVarBuf,
                                                                  struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Computes the inverse Z-transform of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the inverse Z-transform.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_inverse_z_transform(struct rssn_BincodeBuffer aExprBuf,
                                                            struct rssn_BincodeBuffer aInVarBuf,
                                                            struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Checks if a number is prime.
+
+ Takes a bincode-serialized `Expr` representing a number,
+ and returns a bincode-serialized boolean indicating whether the number is prime.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_is_prime(struct rssn_BincodeBuffer aNBuf)
 ;
@@ -3045,6 +3389,12 @@ struct rssn_BincodeBuffer rssn_bincode_isolate_real_roots(struct rssn_BincodeBuf
                                                           double aPrecision)
 ;
 
+/*
+ Computes the joint entropy of a joint probability distribution.
+
+ Takes a bincode-serialized `Expr` representing the joint probability distribution.
+ Returns a bincode-serialized `Expr` representing the joint entropy.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_joint_entropy(struct rssn_BincodeBuffer aJointProbsBuf)
 ;
@@ -3057,6 +3407,12 @@ struct rssn_BincodeBuffer rssn_bincode_kinetic_energy(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aVelocityBuf)
 ;
 
+/*
+ Computes the Kullback-Leibler divergence (relative entropy) between two probability distributions.
+
+ Takes two bincode-serialized `Vec<Expr>` representing the probability distributions (`p` and `q`).
+ Returns a bincode-serialized `Expr` representing the KL divergence.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_kl_divergence(struct rssn_BincodeBuffer aPProbsBuf,
                                                      struct rssn_BincodeBuffer aQProbsBuf)
@@ -3066,52 +3422,111 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_klein_four_group_create(void)
 ;
 
+/*
+ Computes the Laguerre differential equation.
+
+ Takes bincode-serialized `Expr` representing `y`, `x`, and `n` as inputs,
+ and returns a bincode-serialized `Expr` representing the equation.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laguerre_differential_equation(struct rssn_BincodeBuffer aYBuf,
                                                                       struct rssn_BincodeBuffer aXBuf,
                                                                       struct rssn_BincodeBuffer aNBuf)
 ;
 
+/*
+ Computes the Laguerre polynomial L_n(x).
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing L_n(x).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laguerre_l(struct rssn_BincodeBuffer aDegreeBuf,
                                                   struct rssn_BincodeBuffer aArgBuf)
 ;
 
+/*
+ Applies the differentiation property of the Laplace transform.
+
+ Takes bincode-serialized `Expr` (s-domain expression), `String` (output variable),
+ and `Expr` (`f(0)` - initial condition).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laplace_differentiation(struct rssn_BincodeBuffer aFSBuf,
                                                                struct rssn_BincodeBuffer aOutVarBuf,
                                                                struct rssn_BincodeBuffer aFZeroBuf)
 ;
 
+/*
+ Applies the frequency shift property of the Laplace transform.
+
+ Takes bincode-serialized `Expr` (s-domain expression), `Expr` (frequency shift amount `a`),
+ and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laplace_frequency_shift(struct rssn_BincodeBuffer aFSBuf,
                                                                struct rssn_BincodeBuffer aABuf,
                                                                struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Applies the integration property of the Laplace transform.
+
+ Takes bincode-serialized `Expr` (s-domain expression) and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laplace_integration(struct rssn_BincodeBuffer aFSBuf,
                                                            struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Applies the scaling property of the Laplace transform.
+
+ Takes bincode-serialized `Expr` (s-domain expression), `Expr` (scaling factor `a`),
+ and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laplace_scaling(struct rssn_BincodeBuffer aFSBuf,
                                                        struct rssn_BincodeBuffer aABuf,
                                                        struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Applies the time shift property of the Laplace transform.
+
+ Takes bincode-serialized `Expr` (s-domain expression), `Expr` (time shift amount `a`),
+ and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laplace_time_shift(struct rssn_BincodeBuffer aFSBuf,
                                                           struct rssn_BincodeBuffer aABuf,
                                                           struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Computes the Laplace transform of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the Laplace transform.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laplace_transform(struct rssn_BincodeBuffer aExprBuf,
                                                          struct rssn_BincodeBuffer aInVarBuf,
                                                          struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Computes the Laurent series expansion of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (variable),
+ `Expr` (center), and `usize` (order).
+ Returns a bincode-serialized `Expr` representing the Laurent series.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laurent_series(struct rssn_BincodeBuffer aExprBuf,
                                                       struct rssn_BincodeBuffer aVarBuf,
@@ -3119,17 +3534,35 @@ struct rssn_BincodeBuffer rssn_bincode_laurent_series(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aOrderBuf)
 ;
 
+/*
+ Computes the Legendre differential equation.
+
+ Takes bincode-serialized `Expr` representing `y`, `x`, and `n` as inputs,
+ and returns a bincode-serialized `Expr` representing the equation.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_legendre_differential_equation(struct rssn_BincodeBuffer aYBuf,
                                                                       struct rssn_BincodeBuffer aXBuf,
                                                                       struct rssn_BincodeBuffer aNBuf)
 ;
 
+/*
+ Computes the Legendre polynomial P_n(x).
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing P_n(x).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_legendre_p(struct rssn_BincodeBuffer aDegreeBuf,
                                                   struct rssn_BincodeBuffer aArgBuf)
 ;
 
+/*
+ Computes the Rodrigues' formula for Legendre polynomials.
+
+ Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
+ and returns a bincode-serialized `Expr` representing the formula.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_legendre_rodrigues_formula(struct rssn_BincodeBuffer aNBuf,
                                                                   struct rssn_BincodeBuffer aXBuf)
@@ -3172,6 +3605,12 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_ln_factorial(struct rssn_BincodeBuffer aNBuf)
 ;
 
+/*
+ Computes the log-gamma function ln(Γ(z)).
+
+ Takes a bincode-serialized `Expr` representing `z` as input,
+ and returns a bincode-serialized `Expr` representing ln(Γ(z)).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_ln_gamma(struct rssn_BincodeBuffer aArgBuf)
 ;
@@ -3224,29 +3663,65 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_mass_energy_equivalence(struct rssn_BincodeBuffer aMassBuf)
 ;
 
+/*
+ Performs matrix addition.
+
+ Takes two bincode-serialized `Expr` representing matrices,
+ and returns a bincode-serialized `Expr` representing their sum.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_matrix_add(struct rssn_BincodeBuffer aM1Buf,
                                                   struct rssn_BincodeBuffer aM2Buf)
 ;
 
+/*
+ Computes the determinant of a matrix.
+
+ Takes a bincode-serialized `Expr` representing a matrix,
+ and returns a bincode-serialized `Expr` representing its determinant.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_matrix_determinant(struct rssn_BincodeBuffer aMatrixBuf)
 ;
 
+/*
+ Computes the inverse of a matrix.
+
+ Takes a bincode-serialized `Expr` representing a matrix,
+ and returns a bincode-serialized `Expr` representing its inverse.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_matrix_inverse(struct rssn_BincodeBuffer aMatrixBuf)
 ;
 
+/*
+ Performs matrix multiplication.
+
+ Takes two bincode-serialized `Expr` representing matrices,
+ and returns a bincode-serialized `Expr` representing their product.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_matrix_mul(struct rssn_BincodeBuffer aM1Buf,
                                                   struct rssn_BincodeBuffer aM2Buf)
 ;
 
+/*
+ Solves a linear system of equations AX = B.
+
+ Takes two bincode-serialized `Expr` representing matrix A and vector B,
+ and returns a bincode-serialized `Expr` representing the solution vector X.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_matrix_solve_linear_system(struct rssn_BincodeBuffer aABuf,
                                                                   struct rssn_BincodeBuffer aBBuf)
 ;
 
+/*
+ Performs matrix transposition.
+
+ Takes a bincode-serialized `Expr` representing a matrix,
+ and returns a bincode-serialized `Expr` representing its transpose.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_matrix_transpose(struct rssn_BincodeBuffer aMatrixBuf)
 ;
@@ -3314,10 +3789,23 @@ struct rssn_BincodeBuffer rssn_bincode_multivector_scalar(uint32_t aP,
                                                           struct rssn_BincodeBuffer aValueBuf)
 ;
 
+/*
+ Computes the mutual information between two random variables from their joint probability distribution.
+
+ Takes a bincode-serialized `Expr` representing the joint probability distribution.
+ Returns a bincode-serialized `Expr` representing the mutual information.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_mutual_information(struct rssn_BincodeBuffer aJointProbsBuf)
 ;
 
+/*
+ Performs a nonlinear regression.
+
+ Takes bincode-serialized `Vec<(Expr, Expr)>` (data points), `Expr` (model),
+ `Vec<String>` (variables), and `Vec<String>` (parameters).
+ Returns a bincode-serialized `Vec<Expr>` representing the optimized parameter values.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_nonlinear_regression(struct rssn_BincodeBuffer aDataBuf,
                                                             struct rssn_BincodeBuffer aModelBuf,
@@ -3330,11 +3818,23 @@ struct rssn_BincodeBuffer rssn_bincode_norm(struct rssn_BincodeBuffer aSpaceBuf,
                                             struct rssn_BincodeBuffer aFBuf)
 ;
 
+/*
+ Performs a one-sample t-test.
+
+ Takes bincode-serialized `Vec<Expr>` (data) and `Expr` (target mean).
+ Returns a bincode-serialized `HypothesisTest` representing the test result.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_one_sample_t_test(struct rssn_BincodeBuffer aDataBuf,
                                                          struct rssn_BincodeBuffer aTargetMeanBuf)
 ;
 
+/*
+ Computes the partial fraction decomposition of an expression.
+
+ Takes bincode-serialized `Expr` (expression) and `String` (variable).
+ Returns a bincode-serialized `Expr` representing the partial fraction decomposition.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_partial_fraction_decomposition(struct rssn_BincodeBuffer aExprBuf,
                                                                       struct rssn_BincodeBuffer aVarBuf)
@@ -3433,6 +3933,12 @@ struct rssn_BincodeBuffer rssn_bincode_poly_mul_gf256(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aP2Buf)
 ;
 
+/*
+ Computes the polygamma function ψ⁽ⁿ⁾(z).
+
+ Takes bincode-serialized `Expr` representing `n` and `z` as inputs,
+ and returns a bincode-serialized `Expr` representing ψ⁽ⁿ⁾(z).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_polygamma(struct rssn_BincodeBuffer aNBuf,
                                                  struct rssn_BincodeBuffer aZBuf)
@@ -3479,6 +3985,13 @@ struct rssn_BincodeBuffer rssn_bincode_polynomial_long_division(struct rssn_Binc
                                                                 const char *aVar)
 ;
 
+/*
+ Performs a polynomial regression.
+
+ Takes a bincode-serialized `Vec<(Expr, Expr)>` representing the data points
+ and a `usize` for the degree of the polynomial.
+ Returns a bincode-serialized `Vec<Expr>` containing the coefficients of the polynomial.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_polynomial_regression(struct rssn_BincodeBuffer aDataBuf,
                                                              size_t aDegree)
@@ -3539,6 +4052,13 @@ struct rssn_BincodeBuffer rssn_bincode_prime_field_element_sub(struct rssn_Binco
                                                                struct rssn_BincodeBuffer aBBuf)
 ;
 
+/*
+ Computes the product of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (variable),
+ `Expr` (lower bound), and `Expr` (upper bound).
+ Returns a bincode-serialized `Expr` representing the product.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_product(struct rssn_BincodeBuffer aExprBuf,
                                                struct rssn_BincodeBuffer aVarBuf,
@@ -3727,6 +4247,12 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_schwarzschild_radius(struct rssn_BincodeBuffer aMassBuf)
 ;
 
+/*
+ Computes the Shannon entropy of a probability distribution.
+
+ Takes a bincode-serialized `Vec<Expr>` representing the probabilities.
+ Returns a bincode-serialized `Expr` representing the entropy.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_shannon_entropy(struct rssn_BincodeBuffer aProbsBuf)
 ;
@@ -3739,6 +4265,12 @@ struct rssn_BincodeBuffer rssn_bincode_shear_2d(struct rssn_BincodeBuffer aShxBu
                                                 struct rssn_BincodeBuffer aShyBuf)
 ;
 
+/*
+ Performs a simple linear regression.
+
+ Takes a bincode-serialized `Vec<(Expr, Expr)>` representing the data points.
+ Returns a bincode-serialized `Vec<Expr>` containing the intercept and slope coefficients.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_simple_linear_regression(struct rssn_BincodeBuffer aDataBuf)
 ;
@@ -3827,6 +4359,12 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_so3_generators(void)
 ;
 
+/*
+ Solves an equation for a given variable.
+
+ Takes bincode-serialized `Expr` (equation) and `String` (variable).
+ Returns a bincode-serialized `Expr` representing the solution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve(struct rssn_BincodeBuffer aExprBuf,
                                              struct rssn_BincodeBuffer aVarBuf)
@@ -3860,6 +4398,12 @@ struct rssn_BincodeBuffer rssn_bincode_solve_cauchy_euler_ode(struct rssn_Bincod
                                                               const char *aVar)
 ;
 
+/*
+ Solves a Diophantine equation.
+
+ Takes bincode-serialized `Expr` representing the equation and `Vec<String>`
+ representing variables. Returns a bincode-serialized `Vec<Expr>` of solutions.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve_diophantine(struct rssn_BincodeBuffer aEquationBuf,
                                                          struct rssn_BincodeBuffer aVarsBuf)
@@ -3910,6 +4454,12 @@ struct rssn_BincodeBuffer rssn_bincode_solve_laplace_equation_2d(struct rssn_Bin
                                                                  struct rssn_BincodeBuffer aVarsBuf)
 ;
 
+/*
+ Solves a linear system of equations.
+
+ Takes bincode-serialized `Expr` (system) and `Vec<String>` (variables).
+ Returns a bincode-serialized `Expr` representing the solution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve_linear_system(struct rssn_BincodeBuffer aSystemBuf,
                                                            struct rssn_BincodeBuffer aVarsBuf)
@@ -3961,6 +4511,12 @@ struct rssn_BincodeBuffer rssn_bincode_solve_separable_ode(struct rssn_BincodeBu
                                                            const char *aVar)
 ;
 
+/*
+ Solves a system of equations for given variables.
+
+ Takes bincode-serialized `Vec<Expr>` (equations) and `Vec<String>` (variables).
+ Returns a bincode-serialized `Expr` representing the solution.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_solve_system(struct rssn_BincodeBuffer aEquationsBuf,
                                                     struct rssn_BincodeBuffer aVarsBuf)
@@ -4023,6 +4579,13 @@ struct rssn_BincodeBuffer rssn_bincode_substitute(struct rssn_BincodeBuffer aExp
                                                   struct rssn_BincodeBuffer aReplacementBuf)
 ;
 
+/*
+ Computes the summation of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (variable),
+ `Expr` (lower bound), and `Expr` (upper bound).
+ Returns a bincode-serialized `Expr` representing the summation.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_summation(struct rssn_BincodeBuffer aExprBuf,
                                                  struct rssn_BincodeBuffer aVarBuf,
@@ -4050,6 +4613,13 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_symmetric_group_create(size_t aN)
 ;
 
+/*
+ Computes the Taylor series expansion of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (variable),
+ `Expr` (center), and `usize` (order).
+ Returns a bincode-serialized `Expr` representing the Taylor series.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_taylor_series(struct rssn_BincodeBuffer aExprBuf,
                                                      struct rssn_BincodeBuffer aVarBuf,
@@ -4057,16 +4627,34 @@ struct rssn_BincodeBuffer rssn_bincode_taylor_series(struct rssn_BincodeBuffer a
                                                      struct rssn_BincodeBuffer aOrderBuf)
 ;
 
+/*
+ Performs tensor addition.
+
+ Takes two bincode-serialized `Tensor` objects as input,
+ and returns a bincode-serialized `Tensor` representing their sum.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_tensor_add(struct rssn_BincodeBuffer aT1Buf,
                                                   struct rssn_BincodeBuffer aT2Buf)
 ;
 
+/*
+ Computes the outer product of two tensors.
+
+ Takes two bincode-serialized `Tensor` objects as input,
+ and returns a bincode-serialized `Tensor` representing their outer product.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_tensor_outer_product(struct rssn_BincodeBuffer aT1Buf,
                                                             struct rssn_BincodeBuffer aT2Buf)
 ;
 
+/*
+ Performs scalar multiplication on a tensor.
+
+ Takes a bincode-serialized `Tensor` and a bincode-serialized `Expr` (scalar).
+ Returns a bincode-serialized `Tensor` representing the result.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_tensor_scalar_mul(struct rssn_BincodeBuffer aTBuf,
                                                          struct rssn_BincodeBuffer aScalarBuf)
@@ -4144,6 +4732,12 @@ struct rssn_BincodeBuffer rssn_bincode_translation_3d(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aTzBuf)
 ;
 
+/*
+ Performs a two-sample t-test.
+
+ Takes bincode-serialized `Vec<Expr>` (two data sets) and `Expr` (hypothesized difference in means).
+ Returns a bincode-serialized `HypothesisTest` representing the test result.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_two_sample_t_test(struct rssn_BincodeBuffer aData1Buf,
                                                          struct rssn_BincodeBuffer aData2Buf,
@@ -4158,6 +4752,12 @@ struct rssn_BincodeBuffer rssn_bincode_uncertainty(struct rssn_BincodeBuffer aOp
                                                    struct rssn_BincodeBuffer aPsiBuf)
 ;
 
+/*
+ Unifies the units in a symbolic expression.
+
+ Takes a bincode-serialized `Expr` as input,
+ and returns a bincode-serialized `Expr` representing the expression with unified units.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_unify_expression(struct rssn_BincodeBuffer aExprBuf)
 ;
@@ -4169,20 +4769,44 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_variance(struct rssn_BincodeBuffer aDataBuf)
 ;
 
+/*
+ Computes the cross product of two vectors.
+
+ Takes two bincode-serialized `Vector` objects as input.
+ Returns a bincode-serialized `Vector` representing their cross product.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_vector_cross(struct rssn_BincodeBuffer aV1Buf,
                                                     struct rssn_BincodeBuffer aV2Buf)
 ;
 
+/*
+ Computes the dot product of two vectors.
+
+ Takes two bincode-serialized `Vector` objects as input.
+ Returns a bincode-serialized `Expr` representing their dot product.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_vector_dot(struct rssn_BincodeBuffer aV1Buf,
                                                   struct rssn_BincodeBuffer aV2Buf)
 ;
 
+/*
+ Computes the magnitude of a vector.
+
+ Takes a bincode-serialized `Vector` as input.
+ Returns a bincode-serialized `Expr` representing its magnitude.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_vector_magnitude(struct rssn_BincodeBuffer aVBuf)
 ;
 
+/*
+ Normalizes a vector.
+
+ Takes a bincode-serialized `Vector` as input.
+ Returns a bincode-serialized `Vector` representing the normalized vector.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_vector_normalize(struct rssn_BincodeBuffer aVBuf)
 ;
@@ -4213,35 +4837,73 @@ struct rssn_BincodeBuffer rssn_bincode_wedge_product(struct rssn_BincodeBuffer a
                                                      struct rssn_BincodeBuffer aForm2Buf)
 ;
 
+/*
+ Applies the differentiation property of the Z-transform.
+
+ Takes bincode-serialized `Expr` (z-domain expression) and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_z_differentiation(struct rssn_BincodeBuffer aFZBuf,
                                                          struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Applies the scaling property of the Z-transform.
+
+ Takes bincode-serialized `Expr` (z-domain expression), `Expr` (scaling factor `a`),
+ and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_z_scaling(struct rssn_BincodeBuffer aFZBuf,
                                                  struct rssn_BincodeBuffer aABuf,
                                                  struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Performs a z-test.
+
+ Takes bincode-serialized `Vec<Expr>` (data), `Expr` (target mean), and `Expr` (population standard deviation).
+ Returns a bincode-serialized `HypothesisTest` representing the test result.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_z_test(struct rssn_BincodeBuffer aDataBuf,
                                               struct rssn_BincodeBuffer aTargetMeanBuf,
                                               struct rssn_BincodeBuffer aPopStdDevBuf)
 ;
 
+/*
+ Applies the time shift property of the Z-transform.
+
+ Takes bincode-serialized `Expr` (z-domain expression), `Expr` (time shift amount `k`),
+ and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the transformed expression.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_z_time_shift(struct rssn_BincodeBuffer aFZBuf,
                                                     struct rssn_BincodeBuffer aKBuf,
                                                     struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Computes the Z-transform of an expression.
+
+ Takes bincode-serialized `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a bincode-serialized `Expr` representing the Z-transform.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_z_transform(struct rssn_BincodeBuffer aExprBuf,
                                                    struct rssn_BincodeBuffer aInVarBuf,
                                                    struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Computes the Riemann zeta function ζ(s).
+
+ Takes a bincode-serialized `Expr` representing `s` as input,
+ and returns a bincode-serialized `Expr` representing ζ(s).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_zeta(struct rssn_BincodeBuffer aArgBuf)
 ;
@@ -4722,6 +5384,12 @@ void rssn_computation_result_cache_set_json(struct rssn_ComputationResultCache *
                                             const char *aJsonValue)
 ;
 
+/*
+ Computes the conditional entropy of a joint probability distribution.
+
+ Takes a raw pointer to an `Expr` representing the joint probability distribution.
+ Returns a raw pointer to an `Expr` representing the conditional entropy.
+ */
 rssn_
 struct rssn_Expr *rssn_conditional_entropy(const struct rssn_Expr *aJointProbs)
 ;
@@ -4979,6 +5647,12 @@ struct rssn_SimplicialComplex *rssn_create_torus_complex(size_t aM,
                                                          size_t aN)
 ;
 
+/*
+ Computes the cross-entropy between two probability distributions.
+
+ Takes raw pointers to two arrays of `Expr` (probabilities) and their lengths.
+ Returns a raw pointer to an `Expr` representing the cross-entropy.
+ */
 rssn_
 struct rssn_Expr *rssn_cross_entropy(const struct rssn_Expr *const *aPProbs,
                                      size_t aPLen,
@@ -5167,66 +5841,150 @@ struct rssn_Expr *rssn_dirac_equation(const struct rssn_Expr *aPsi,
                                       const struct rssn_Expr *aM)
 ;
 
+/*
+ Creates a Bernoulli distribution.
+
+ Takes a raw pointer to an `Expr` representing `p` (probability of success).
+ Returns a raw pointer to an `Expr` representing the Bernoulli distribution.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_bernoulli(const struct rssn_Expr *aP)
 ;
 
+/*
+ Creates a beta distribution.
+
+ Takes raw pointers to `Expr` representing the alpha and beta parameters.
+ Returns a raw pointer to an `Expr` representing the beta distribution.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_beta(const struct rssn_Expr *aAlpha,
                                  const struct rssn_Expr *aBeta)
 ;
 
+/*
+ Creates a binomial distribution.
+
+ Takes raw pointers to `Expr` representing `n` (number of trials) and `p` (probability of success).
+ Returns a raw pointer to an `Expr` representing the binomial distribution.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_binomial(const struct rssn_Expr *aN,
                                      const struct rssn_Expr *aP)
 ;
 
+/*
+ Computes the cumulative distribution function (CDF) of a distribution.
+
+ Takes raw pointers to `Expr` representing the distribution and the value `x`.
+ Returns a raw pointer to an `Expr` representing the CDF at `x`.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_cdf(const struct rssn_Expr *aDist,
                                 const struct rssn_Expr *aX)
 ;
 
+/*
+ Computes the expectation (mean) of a distribution.
+
+ Takes a raw pointer to an `Expr` representing the distribution.
+ Returns a raw pointer to an `Expr` representing the expectation.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_expectation(const struct rssn_Expr *aDist)
 ;
 
+/*
+ Creates an exponential distribution.
+
+ Takes a raw pointer to an `Expr` representing the rate parameter (λ).
+ Returns a raw pointer to an `Expr` representing the exponential distribution.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_exponential(const struct rssn_Expr *aRate)
 ;
 
+/*
+ Creates a gamma distribution.
+
+ Takes raw pointers to `Expr` representing the shape and rate parameters.
+ Returns a raw pointer to an `Expr` representing the gamma distribution.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_gamma(const struct rssn_Expr *aShape,
                                   const struct rssn_Expr *aRate)
 ;
 
+/*
+ Computes the moment generating function (MGF) of a distribution.
+
+ Takes raw pointers to `Expr` representing the distribution and the variable `t`.
+ Returns a raw pointer to an `Expr` representing the MGF.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_mgf(const struct rssn_Expr *aDist,
                                 const struct rssn_Expr *aT)
 ;
 
+/*
+ Creates a normal distribution.
+
+ Takes raw pointers to `Expr` representing the mean and standard deviation.
+ Returns a raw pointer to an `Expr` representing the normal distribution.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_normal(const struct rssn_Expr *aMean,
                                    const struct rssn_Expr *aStdDev)
 ;
 
+/*
+ Computes the probability density function (PDF) of a distribution.
+
+ Takes raw pointers to `Expr` representing the distribution and the value `x`.
+ Returns a raw pointer to an `Expr` representing the PDF at `x`.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_pdf(const struct rssn_Expr *aDist,
                                 const struct rssn_Expr *aX)
 ;
 
+/*
+ Creates a Poisson distribution.
+
+ Takes a raw pointer to an `Expr` representing the rate parameter (λ).
+ Returns a raw pointer to an `Expr` representing the Poisson distribution.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_poisson(const struct rssn_Expr *aRate)
 ;
 
+/*
+ Creates a Student's t-distribution.
+
+ Takes a raw pointer to an `Expr` representing the degrees of freedom (ν).
+ Returns a raw pointer to an `Expr` representing the Student's t-distribution.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_student_t(const struct rssn_Expr *aNu)
 ;
 
+/*
+ Creates a uniform distribution.
+
+ Takes raw pointers to `Expr` representing the minimum and maximum values.
+ Returns a raw pointer to an `Expr` representing the uniform distribution.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_uniform(const struct rssn_Expr *aMin,
                                     const struct rssn_Expr *aMax)
 ;
 
+/*
+ Computes the variance of a distribution.
+
+ Takes a raw pointer to an `Expr` representing the distribution.
+ Returns a raw pointer to an `Expr` representing the variance.
+ */
 rssn_
 struct rssn_Expr *rssn_dist_variance(const struct rssn_Expr *aDist)
 ;
@@ -5407,6 +6165,12 @@ struct rssn_Expr *rssn_evaluate_at_point(const struct rssn_Expr *aExpr,
                                          const struct rssn_Expr *aValue)
 ;
 
+/*
+ Numerically evaluates a symbolic expression.
+
+ Takes a raw pointer to an `Expr` as input,
+ and returns an `f64` representing the numerical evaluation of that expression.
+ */
 rssn_
 double rssn_evaluate_numerical_handle(const struct rssn_Expr *aExpr)
 ;
@@ -5485,15 +6249,32 @@ rssn_
 void rssn_expr_free(size_t aHandle)
 ;
 
+/*
+ Frees the memory allocated for an `ExprList`.
+
+ Takes a raw mutable pointer to an `ExprList`.
+ */
 rssn_
 void rssn_expr_list_free(struct rssn_ExprList *aList)
 ;
 
+/*
+ Returns a specific element from an `ExprList`.
+
+ Takes a raw pointer to an `ExprList` and a `usize` index.
+ Returns a raw pointer to an `Expr` at that index.
+ */
 rssn_
 struct rssn_Expr *rssn_expr_list_get(const struct rssn_ExprList *aList,
                                      size_t aIndex)
 ;
 
+/*
+ Returns the length of an `ExprList`.
+
+ Takes a raw pointer to an `ExprList`.
+ Returns a `usize` representing its length.
+ */
 rssn_
 size_t rssn_expr_list_len(const struct rssn_ExprList *aList)
 ;
@@ -5670,6 +6451,13 @@ struct rssn_Expr *rssn_fourier_scaling(const struct rssn_Expr *aFOmega,
                                        const char *aOutVar)
 ;
 
+/*
+ Computes the Fourier series expansion of an expression.
+
+ Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+ a raw pointer to `Expr` (period), and a `usize` (order).
+ Returns a raw pointer to a new `Expr` representing the Fourier series.
+ */
 rssn_
 struct rssn_Expr *rssn_fourier_series_handle(const struct rssn_Expr *aExpr,
                                              const char *aVar,
@@ -6170,6 +6958,12 @@ struct rssn_Expr *rssn_gibbs_free_energy(const struct rssn_Expr *aH,
                                          const struct rssn_Expr *aS)
 ;
 
+/*
+ Computes the Gini impurity of a probability distribution.
+
+ Takes a raw pointer to an array of `Expr` (probabilities) and its length.
+ Returns a raw pointer to an `Expr` representing the Gini impurity.
+ */
 rssn_
 struct rssn_Expr *rssn_gini_impurity(const struct rssn_Expr *const *aProbs,
                                      size_t aLen)
@@ -7116,6 +7910,12 @@ void rssn_jit_register_custom_op(struct rssn_JitEngine *aEngine,
                                  size_t aArgCount)
 ;
 
+/*
+ Computes the joint entropy of a joint probability distribution.
+
+ Takes a raw pointer to an `Expr` representing the joint probability distribution.
+ Returns a raw pointer to an `Expr` representing the joint entropy.
+ */
 rssn_
 struct rssn_Expr *rssn_joint_entropy(const struct rssn_Expr *aJointProbs)
 ;
@@ -7137,6 +7937,13 @@ char *rssn_json_adjoint_representation_group(const char *aGJson,
                                              const char *aXJson)
 ;
 
+/*
+ Computes the analytic continuation of a series.
+
+ Takes JSON strings representing `Expr` (expression), `String` (variable),
+ `Expr` (original center), `Expr` (new center), and `usize` (order).
+ Returns a JSON string representing the `Expr` of the analytic continuation.
+ */
 rssn_
 char *rssn_json_analytic_continuation(const char *aExprJson,
                                       const char *aVarJson,
@@ -7175,6 +7982,13 @@ rssn_
 char *rssn_json_arg(const char *aZJson)
 ;
 
+/*
+ Computes the asymptotic expansion of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (variable),
+ `Expr` (point), and `usize` (order).
+ Returns a JSON string representing the `Expr` of the asymptotic expansion.
+ */
 rssn_
 char *rssn_json_asymptotic_expansion(const char *aExprJson,
                                      const char *aVarJson,
@@ -7390,6 +8204,12 @@ rssn_
 bool rssn_json_check_jacobi_identity(const char *aAlgebraJson)
 ;
 
+/*
+ Solves the Chinese Remainder Theorem.
+
+ Takes a JSON string representing a vector of congruences (`(remainder, modulus)`),
+ and returns a JSON string representing the `Expr` solution.
+ */
 rssn_
 char *rssn_json_chinese_remainder(const char *aCongruencesJson)
 ;
@@ -7443,10 +8263,23 @@ rssn_
 char *rssn_json_complex_system_new_mandelbrot(const char *aCJson)
 ;
 
+/*
+ Computes the conditional entropy of a joint probability distribution.
+
+ Takes a JSON string representing an `Expr` (joint probability distribution).
+ Returns a JSON string representing the `Expr` of the conditional entropy.
+ */
 rssn_
 char *rssn_json_conditional_entropy(const char *aJointProbsJson)
 ;
 
+/*
+ Computes the convolution of two functions using the Fourier transform property.
+
+ Takes JSON strings representing `Expr` (two functions `f` and `g`),
+ and `String` (input variable), `String` (output variable).
+ Returns a JSON string representing the `Expr` of the convolution.
+ */
 rssn_
 char *rssn_json_convolution_fourier(const char *aFJson,
                                     const char *aGJson,
@@ -7454,6 +8287,13 @@ char *rssn_json_convolution_fourier(const char *aFJson,
                                     const char *aOutVarJson)
 ;
 
+/*
+ Computes the convolution of two functions using the Laplace transform property.
+
+ Takes JSON strings representing `Expr` (two functions `f` and `g`),
+ and `String` (input variable), `String` (output variable).
+ Returns a JSON string representing the `Expr` of the convolution.
+ */
 rssn_
 char *rssn_json_convolution_laplace(const char *aFJson,
                                     const char *aGJson,
@@ -7529,6 +8369,12 @@ char *rssn_json_crc32_verify(const char *aDataJson,
                              const char *aExpectedCrcJson)
 ;
 
+/*
+ Computes the cross-entropy between two probability distributions.
+
+ Takes two JSON strings representing `Vec<Expr>` (probability distributions `p` and `q`).
+ Returns a JSON string representing the `Expr` of the cross-entropy.
+ */
 rssn_
 char *rssn_json_cross_entropy(const char *aPProbsJson,
                               const char *aQProbsJson)
@@ -7656,66 +8502,150 @@ rssn_
 char *rssn_json_dirac_adjoint(const char *aPsiJson)
 ;
 
+/*
+ Creates a Bernoulli distribution.
+
+ Takes a JSON string representing `Expr` (probability of success).
+ Returns a JSON string representing the `Expr` of the Bernoulli distribution.
+ */
 rssn_
 char *rssn_json_dist_bernoulli(const char *aPJson)
 ;
 
+/*
+ Creates a beta distribution.
+
+ Takes JSON strings representing `Expr` (alpha parameter) and `Expr` (beta parameter).
+ Returns a JSON string representing the `Expr` of the beta distribution.
+ */
 rssn_
 char *rssn_json_dist_beta(const char *aAlphaJson,
                           const char *aBetaJson)
 ;
 
+/*
+ Creates a binomial distribution.
+
+ Takes JSON strings representing `Expr` (number of trials) and `Expr` (probability of success).
+ Returns a JSON string representing the `Expr` of the binomial distribution.
+ */
 rssn_
 char *rssn_json_dist_binomial(const char *aNJson,
                               const char *aPJson)
 ;
 
+/*
+ Computes the cumulative distribution function (CDF) of a distribution.
+
+ Takes JSON strings representing `Expr` (distribution) and `Expr` (value `x`).
+ Returns a JSON string representing the `Expr` of the CDF at `x`.
+ */
 rssn_
 char *rssn_json_dist_cdf(const char *aDistJson,
                          const char *aXJson)
 ;
 
+/*
+ Computes the expectation (mean) of a distribution.
+
+ Takes a JSON string representing `Expr` (distribution).
+ Returns a JSON string representing the `Expr` of the expectation.
+ */
 rssn_
 char *rssn_json_dist_expectation(const char *aDistJson)
 ;
 
+/*
+ Creates an exponential distribution.
+
+ Takes a JSON string representing `Expr` (rate parameter λ).
+ Returns a JSON string representing the `Expr` of the exponential distribution.
+ */
 rssn_
 char *rssn_json_dist_exponential(const char *aRateJson)
 ;
 
+/*
+ Creates a gamma distribution.
+
+ Takes JSON strings representing `Expr` (shape parameter) and `Expr` (rate parameter).
+ Returns a JSON string representing the `Expr` of the gamma distribution.
+ */
 rssn_
 char *rssn_json_dist_gamma(const char *aShapeJson,
                            const char *aRateJson)
 ;
 
+/*
+ Computes the moment generating function (MGF) of a distribution.
+
+ Takes JSON strings representing `Expr` (distribution) and `Expr` (variable `t`).
+ Returns a JSON string representing the `Expr` of the MGF.
+ */
 rssn_
 char *rssn_json_dist_mgf(const char *aDistJson,
                          const char *aTJson)
 ;
 
+/*
+ Creates a normal distribution.
+
+ Takes JSON strings representing `Expr` (mean) and `Expr` (standard deviation).
+ Returns a JSON string representing the `Expr` of the normal distribution.
+ */
 rssn_
 char *rssn_json_dist_normal(const char *aMeanJson,
                             const char *aStdDevJson)
 ;
 
+/*
+ Computes the probability density function (PDF) of a distribution.
+
+ Takes JSON strings representing `Expr` (distribution) and `Expr` (value `x`).
+ Returns a JSON string representing the `Expr` of the PDF at `x`.
+ */
 rssn_
 char *rssn_json_dist_pdf(const char *aDistJson,
                          const char *aXJson)
 ;
 
+/*
+ Creates a Poisson distribution.
+
+ Takes a JSON string representing `Expr` (rate parameter λ).
+ Returns a JSON string representing the `Expr` of the Poisson distribution.
+ */
 rssn_
 char *rssn_json_dist_poisson(const char *aRateJson)
 ;
 
+/*
+ Creates a Student's t-distribution.
+
+ Takes a JSON string representing `Expr` (degrees of freedom ν).
+ Returns a JSON string representing the `Expr` of the Student's t-distribution.
+ */
 rssn_
 char *rssn_json_dist_student_t(const char *aNuJson)
 ;
 
+/*
+ Creates a uniform distribution.
+
+ Takes JSON strings representing `Expr` (minimum value) and `Expr` (maximum value).
+ Returns a JSON string representing the `Expr` of the uniform distribution.
+ */
 rssn_
 char *rssn_json_dist_uniform(const char *aMinJson,
                              const char *aMaxJson)
 ;
 
+/*
+ Computes the variance of a distribution.
+
+ Takes a JSON string representing `Expr` (distribution).
+ Returns a JSON string representing the `Expr` of the variance.
+ */
 rssn_
 char *rssn_json_dist_variance(const char *aDistJson)
 ;
@@ -7841,6 +8771,12 @@ char *rssn_json_evaluate_at_point(const char *aExprJson,
                                   const char *aValueJson)
 ;
 
+/*
+ Numerically evaluates a symbolic expression.
+
+ Takes a JSON string representing an `Expr` as input,
+ and returns a JSON string representing the numerical evaluation of that expression.
+ */
 rssn_
 char *rssn_json_evaluate_numerical(const char *aExprJson)
 ;
@@ -7858,6 +8794,13 @@ char *rssn_json_exponential_map(const char *aXJson,
                                 size_t aOrder)
 ;
 
+/*
+ Computes the extended greatest common divisor (GCD).
+
+ Takes JSON strings representing two numbers (`a` and `b`),
+ and returns a JSON string representing a tuple `(g, x, y)` where `g` is the GCD
+ and `x`, `y` are coefficients such that `ax + by = g`.
+ */
 rssn_
 char *rssn_json_extended_gcd(const char *aAJson,
                              const char *aBJson)
@@ -7973,23 +8916,50 @@ char *rssn_json_finite_field_polynomial_new(const char *aCoeffsJson,
                                             const char *aModulusJson)
 ;
 
+/*
+ Applies the differentiation property of the Fourier transform.
+
+ Takes JSON strings representing `Expr` (frequency domain expression) and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_fourier_differentiation(const char *aFOmegaJson,
                                         const char *aOutVarJson)
 ;
 
+/*
+ Applies the frequency shift property of the Fourier transform.
+
+ Takes JSON strings representing `Expr` (frequency domain expression), `Expr` (frequency shift amount `a`),
+ and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_fourier_frequency_shift(const char *aFOmegaJson,
                                         const char *aAJson,
                                         const char *aOutVarJson)
 ;
 
+/*
+ Applies the scaling property of the Fourier transform.
+
+ Takes JSON strings representing `Expr` (frequency domain expression), `Expr` (scaling factor `a`),
+ and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_fourier_scaling(const char *aFOmegaJson,
                                 const char *aAJson,
                                 const char *aOutVarJson)
 ;
 
+/*
+ Computes the Fourier series expansion of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (variable),
+ `Expr` (period), and `usize` (order).
+ Returns a JSON string representing the `Expr` of the Fourier series.
+ */
 rssn_
 char *rssn_json_fourier_series(const char *aExprJson,
                                const char *aVarJson,
@@ -7997,12 +8967,25 @@ char *rssn_json_fourier_series(const char *aExprJson,
                                const char *aOrderJson)
 ;
 
+/*
+ Applies the time shift property of the Fourier transform.
+
+ Takes JSON strings representing `Expr` (frequency domain expression), `Expr` (time shift amount `a`),
+ and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_fourier_time_shift(const char *aFOmegaJson,
                                    const char *aAJson,
                                    const char *aOutVarJson)
 ;
 
+/*
+ Computes the Fourier transform of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the Fourier transform.
+ */
 rssn_
 char *rssn_json_fourier_transform(const char *aExprJson,
                                   const char *aInVarJson,
@@ -8164,6 +9147,12 @@ char *rssn_json_gibbs_free_energy(const char *aHJson,
                                   const char *aSJson)
 ;
 
+/*
+ Computes the Gini impurity of a probability distribution.
+
+ Takes a JSON string representing a `Vec<Expr>` (probabilities).
+ Returns a JSON string representing the `Expr` of the Gini impurity.
+ */
 rssn_
 char *rssn_json_gini_impurity(const char *aProbsJson)
 ;
@@ -8649,24 +9638,48 @@ rssn_
 char *rssn_json_inverse_erfc(const char *aXJson)
 ;
 
+/*
+ Computes the inverse Fourier transform of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the inverse Fourier transform.
+ */
 rssn_
 char *rssn_json_inverse_fourier_transform(const char *aExprJson,
                                           const char *aInVarJson,
                                           const char *aOutVarJson)
 ;
 
+/*
+ Computes the inverse Laplace transform of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the inverse Laplace transform.
+ */
 rssn_
 char *rssn_json_inverse_laplace_transform(const char *aExprJson,
                                           const char *aInVarJson,
                                           const char *aOutVarJson)
 ;
 
+/*
+ Computes the inverse Z-transform of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the inverse Z-transform.
+ */
 rssn_
 char *rssn_json_inverse_z_transform(const char *aExprJson,
                                     const char *aInVarJson,
                                     const char *aOutVarJson)
 ;
 
+/*
+ Checks if a number is prime.
+
+ Takes a JSON string representing an `Expr` (number),
+ and returns a JSON string representing a boolean indicating whether the number is prime.
+ */
 rssn_
 char *rssn_json_is_prime(const char *aNJson)
 ;
@@ -8692,6 +9705,12 @@ char *rssn_json_isolate_real_roots(const char *aExprJson,
                                    double aPrecision)
 ;
 
+/*
+ Computes the joint entropy of a joint probability distribution.
+
+ Takes a JSON string representing an `Expr` (joint probability distribution).
+ Returns a JSON string representing the `Expr` of the joint entropy.
+ */
 rssn_
 char *rssn_json_joint_entropy(const char *aJointProbsJson)
 ;
@@ -8704,6 +9723,12 @@ char *rssn_json_kinetic_energy(const char *aMassJson,
                                const char *aVelocityJson)
 ;
 
+/*
+ Computes the Kullback-Leibler divergence between two probability distributions.
+
+ Takes JSON strings representing two `Vec<Expr>` (probability distributions `p` and `q`).
+ Returns a JSON string representing the `Expr` of the KL divergence.
+ */
 rssn_
 char *rssn_json_kl_divergence(const char *aPProbsJson,
                               const char *aQProbsJson)
@@ -8730,41 +9755,88 @@ char *rssn_json_laguerre_l(const char *aDegreeJson,
                            const char *aArgJson)
 ;
 
+/*
+ Applies the differentiation property of the Laplace transform.
+
+ Takes JSON strings representing `Expr` (s-domain expression), `String` (output variable),
+ and `Expr` (`f(0)` - initial condition).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_laplace_differentiation(const char *aFSJson,
                                         const char *aOutVarJson,
                                         const char *aFZeroJson)
 ;
 
+/*
+ Applies the frequency shift property of the Laplace transform.
+
+ Takes JSON strings representing `Expr` (s-domain expression), `Expr` (frequency shift amount `a`),
+ and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_laplace_frequency_shift(const char *aFSJson,
                                         const char *aAJson,
                                         const char *aOutVarJson)
 ;
 
+/*
+ Applies the integration property of the Laplace transform.
+
+ Takes JSON strings representing `Expr` (s-domain expression) and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_laplace_integration(const char *aFSJson,
                                     const char *aOutVarJson)
 ;
 
+/*
+ Applies the scaling property of the Laplace transform.
+
+ Takes JSON strings representing `Expr` (s-domain expression), `Expr` (scaling factor `a`),
+ and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_laplace_scaling(const char *aFSJson,
                                 const char *aAJson,
                                 const char *aOutVarJson)
 ;
 
+/*
+ Applies the time shift property of the Laplace transform.
+
+ Takes JSON strings representing `Expr` (s-domain expression), `Expr` (time shift amount `a`),
+ and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_laplace_time_shift(const char *aFSJson,
                                    const char *aAJson,
                                    const char *aOutVarJson)
 ;
 
+/*
+ Computes the Laplace transform of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the Laplace transform.
+ */
 rssn_
 char *rssn_json_laplace_transform(const char *aExprJson,
                                   const char *aInVarJson,
                                   const char *aOutVarJson)
 ;
 
+/*
+ Computes the Laurent series expansion of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (variable),
+ `Expr` (center), and `usize` (order).
+ Returns a JSON string representing the `Expr` of the Laurent series.
+ */
 rssn_
 char *rssn_json_laurent_series(const char *aExprJson,
                                const char *aVarJson,
@@ -8889,29 +9961,65 @@ rssn_
 char *rssn_json_mass_energy_equivalence(const char *aMassJson)
 ;
 
+/*
+ Performs matrix addition.
+
+ Takes two JSON strings representing `Expr` (matrices) as input,
+ and returns a JSON string representing their sum.
+ */
 rssn_
 char *rssn_json_matrix_add(const char *aM1Json,
                            const char *aM2Json)
 ;
 
+/*
+ Computes the determinant of a matrix.
+
+ Takes a JSON string representing an `Expr` (matrix) as input,
+ and returns a JSON string representing its determinant.
+ */
 rssn_
 char *rssn_json_matrix_determinant(const char *aMatrixJson)
 ;
 
+/*
+ Computes the inverse of a matrix.
+
+ Takes a JSON string representing an `Expr` (matrix) as input,
+ and returns a JSON string representing its inverse.
+ */
 rssn_
 char *rssn_json_matrix_inverse(const char *aMatrixJson)
 ;
 
+/*
+ Performs matrix multiplication.
+
+ Takes two JSON strings representing `Expr` (matrices) as input,
+ and returns a JSON string representing their product.
+ */
 rssn_
 char *rssn_json_matrix_mul(const char *aM1Json,
                            const char *aM2Json)
 ;
 
+/*
+ Solves a linear system of equations AX = B.
+
+ Takes two JSON strings representing `Expr` (matrix A and vector B) as input,
+ and returns a JSON string representing the solution vector X.
+ */
 rssn_
 char *rssn_json_matrix_solve_linear_system(const char *aAJson,
                                            const char *aBJson)
 ;
 
+/*
+ Performs matrix transposition.
+
+ Takes a JSON string representing an `Expr` (matrix) as input,
+ and returns a JSON string representing its transpose.
+ */
 rssn_
 char *rssn_json_matrix_transpose(const char *aMatrixJson)
 ;
@@ -8979,10 +10087,23 @@ char *rssn_json_multivector_scalar(uint32_t aP,
                                    const char *aValueJson)
 ;
 
+/*
+ Computes the mutual information between two random variables from their joint probability distribution.
+
+ Takes a JSON string representing an `Expr` (joint probability distribution).
+ Returns a JSON string representing the `Expr` of the mutual information.
+ */
 rssn_
 char *rssn_json_mutual_information(const char *aJointProbsJson)
 ;
 
+/*
+ Performs a nonlinear regression.
+
+ Takes JSON strings representing `Vec<(Expr, Expr)>` (data points), `Expr` (model),
+ `Vec<String>` (variables), and `Vec<String>` (parameters).
+ Returns a JSON string representing `Vec<(Expr, Expr)>` (optimized parameter values).
+ */
 rssn_
 char *rssn_json_nonlinear_regression(const char *aDataJson,
                                      const char *aModelJson,
@@ -8995,11 +10116,23 @@ char *rssn_json_norm(const char *aSpaceJson,
                      const char *aFJson)
 ;
 
+/*
+ Performs a one-sample t-test.
+
+ Takes JSON strings representing `Vec<Expr>` (data) and `Expr` (target mean).
+ Returns a JSON string representing the `HypothesisTest` result.
+ */
 rssn_
 char *rssn_json_one_sample_t_test(const char *aDataJson,
                                   const char *aTargetMeanJson)
 ;
 
+/*
+ Computes the partial fraction decomposition of an expression.
+
+ Takes JSON strings representing `Expr` (expression) and `String` (variable).
+ Returns a JSON string representing `Vec<Expr>` (partial fraction decomposition).
+ */
 rssn_
 char *rssn_json_partial_fraction_decomposition(const char *aExprJson,
                                                const char *aVarJson)
@@ -9147,6 +10280,12 @@ char *rssn_json_polynomial_long_division(const char *aDividendJson,
                                          const char *aVar)
 ;
 
+/*
+ Performs a polynomial regression.
+
+ Takes a JSON string representing `Vec<(Expr, Expr)>` (data points) and a `usize` (degree).
+ Returns a JSON string representing a `Vec<Expr>` containing the coefficients of the polynomial.
+ */
 rssn_
 char *rssn_json_polynomial_regression(const char *aDataJson,
                                       size_t aDegree)
@@ -9207,6 +10346,13 @@ char *rssn_json_prime_field_element_sub(const char *aAJson,
                                         const char *aBJson)
 ;
 
+/*
+ Computes the product of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (variable),
+ `Expr` (lower bound), and `Expr` (upper bound).
+ Returns a JSON string representing the `Expr` of the product.
+ */
 rssn_
 char *rssn_json_product(const char *aExprJson,
                         const char *aVarJson,
@@ -9416,6 +10562,12 @@ rssn_
 char *rssn_json_schwarzschild_radius(const char *aMassJson)
 ;
 
+/*
+ Computes the Shannon entropy of a probability distribution.
+
+ Takes a JSON string representing a `Vec<Expr>` (probabilities).
+ Returns a JSON string representing the `Expr` of the entropy.
+ */
 rssn_
 char *rssn_json_shannon_entropy(const char *aProbsJson)
 ;
@@ -9428,6 +10580,12 @@ char *rssn_json_shear_2d(const char *aShxJson,
                          const char *aShyJson)
 ;
 
+/*
+ Performs a simple linear regression.
+
+ Takes a JSON string representing `Vec<(Expr, Expr)>` (data points).
+ Returns a JSON string representing a `Vec<Expr>` containing the intercept and slope coefficients.
+ */
 rssn_
 char *rssn_json_simple_linear_regression(const char *aDataJson)
 ;
@@ -9516,6 +10674,12 @@ rssn_
 char *rssn_json_so3_generators(void)
 ;
 
+/*
+ Solves an equation for a given variable.
+
+ Takes JSON strings representing `Expr` (equation) and `String` (variable).
+ Returns a JSON string representing the `Expr` of the solution.
+ */
 rssn_
 char *rssn_json_solve(const char *aExprJson,
                       const char *aVarJson)
@@ -9549,6 +10713,12 @@ char *rssn_json_solve_cauchy_euler_ode(const char *aEquationJson,
                                        const char *aVar)
 ;
 
+/*
+ Solves a Diophantine equation.
+
+ Takes JSON strings representing the equation (`Expr`) and variables (`Vec<String>`),
+ and returns a JSON string representing the `Vec<Expr>` of solutions.
+ */
 rssn_
 char *rssn_json_solve_diophantine(const char *aEquationJson,
                                   const char *aVarsJson)
@@ -9599,6 +10769,12 @@ char *rssn_json_solve_laplace_equation_2d(const char *aEquationJson,
                                           const char *aVarsJson)
 ;
 
+/*
+ Solves a linear system of equations.
+
+ Takes JSON strings representing `Expr` (system) and `Vec<String>` (variables).
+ Returns a JSON string representing the `Expr` of the solution.
+ */
 rssn_
 char *rssn_json_solve_linear_system(const char *aSystemJson,
                                     const char *aVarsJson)
@@ -9659,6 +10835,12 @@ char *rssn_json_solve_separable_ode(const char *aEquationJson,
                                     const char *aVar)
 ;
 
+/*
+ Solves a system of equations for given variables.
+
+ Takes JSON strings representing `Vec<Expr>` (equations) and `Vec<String>` (variables).
+ Returns a JSON string representing the `Expr` of the solution.
+ */
 rssn_
 char *rssn_json_solve_system(const char *aEquationsJson,
                              const char *aVarsJson)
@@ -9708,6 +10890,9 @@ char *rssn_json_sturm_sequence(const char *aExprJson,
                                const char *aVarPtr)
 ;
 
+/*
+ Returns the SU(2) Lie algebra generators as a JSON string.
+ */
 rssn_
 char *rssn_json_su2_generators(void)
 ;
@@ -9721,6 +10906,13 @@ char *rssn_json_substitute(const char *aExprJson,
                            const char *aReplacementJson)
 ;
 
+/*
+ Computes the summation of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (variable),
+ `Expr` (lower bound), and `Expr` (upper bound).
+ Returns a JSON string representing the `Expr` of the summation.
+ */
 rssn_
 char *rssn_json_summation(const char *aExprJson,
                           const char *aVarJson,
@@ -9748,6 +10940,13 @@ rssn_
 char *rssn_json_symmetric_group_create(size_t aN)
 ;
 
+/*
+ Computes the Taylor series expansion of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (variable),
+ `Expr` (center), and `usize` (order).
+ Returns a JSON string representing the `Expr` of the Taylor series.
+ */
 rssn_
 char *rssn_json_taylor_series(const char *aExprJson,
                               const char *aVarJson,
@@ -9755,22 +10954,46 @@ char *rssn_json_taylor_series(const char *aExprJson,
                               const char *aOrderJson)
 ;
 
+/*
+ Performs tensor addition.
+
+ Takes two JSON strings representing `Tensor` objects as input,
+ and returns a JSON string representing their sum.
+ */
 rssn_
 char *rssn_json_tensor_add(const char *aT1Json,
                            const char *aT2Json)
 ;
 
+/*
+ Performs tensor contraction.
+
+ Takes a JSON string representing a `Tensor`, and two `usize` values representing the axes to contract.
+ Returns a JSON string representing the contracted `Tensor`.
+ */
 rssn_
 char *rssn_json_tensor_contract(const char *aTJson,
                                 size_t aAxis1,
                                 size_t aAxis2)
 ;
 
+/*
+ Computes the outer product of two tensors.
+
+ Takes two JSON strings representing `Tensor` objects as input,
+ and returns a JSON string representing their outer product.
+ */
 rssn_
 char *rssn_json_tensor_outer_product(const char *aT1Json,
                                      const char *aT2Json)
 ;
 
+/*
+ Performs scalar multiplication on a tensor.
+
+ Takes a JSON string representing a `Tensor` and a JSON string representing an `Expr` (scalar).
+ Returns a JSON string representing the resulting `Tensor`.
+ */
 rssn_
 char *rssn_json_tensor_scalar_mul(const char *aTJson,
                                   const char *aScalarJson)
@@ -9848,6 +11071,12 @@ char *rssn_json_translation_3d(const char *aTxJson,
                                const char *aTzJson)
 ;
 
+/*
+ Performs a two-sample t-test.
+
+ Takes JSON strings representing `Vec<Expr>` (two data sets) and `Expr` (hypothesized difference in means).
+ Returns a JSON string representing the `HypothesisTest` result.
+ */
 rssn_
 char *rssn_json_two_sample_t_test(const char *aData1Json,
                                   const char *aData2Json,
@@ -9862,6 +11091,12 @@ char *rssn_json_uncertainty(const char *aOpJson,
                             const char *aPsiJson)
 ;
 
+/*
+ Unifies the units in a symbolic expression.
+
+ Takes a JSON string representing an `Expr` as input,
+ and returns a JSON string representing the expression with unified units.
+ */
 rssn_
 char *rssn_json_unify_expression(const char *aExprJson)
 ;
@@ -9873,11 +11108,23 @@ rssn_
 char *rssn_json_variance(const char *aDataJson)
 ;
 
+/*
+ Computes the cross product of two vectors.
+
+ Takes two JSON strings representing `Vector` objects.
+ Returns a JSON string representing the `Vector` of their cross product.
+ */
 rssn_
 char *rssn_json_vector_cross(const char *aV1Json,
                              const char *aV2Json)
 ;
 
+/*
+ Computes the curl of a 3D vector field.
+
+ Takes a JSON string representing a `Vector` and three C-style strings for the variable names (x, y, z).
+ Returns a JSON string representing the `Vector` of the curl.
+ */
 rssn_
 char *rssn_json_vector_curl(const char *aVJson,
                             const char *aXVar,
@@ -9885,6 +11132,12 @@ char *rssn_json_vector_curl(const char *aVJson,
                             const char *aZVar)
 ;
 
+/*
+ Computes the divergence of a vector field.
+
+ Takes a JSON string representing a `Vector` and three C-style strings for the variable names (x, y, z).
+ Returns a JSON string representing the `Expr` of the divergence.
+ */
 rssn_
 char *rssn_json_vector_divergence(const char *aVJson,
                                   const char *aXVar,
@@ -9892,11 +11145,27 @@ char *rssn_json_vector_divergence(const char *aVJson,
                                   const char *aZVar)
 ;
 
+/*
+ Computes the dot product of two vectors.
+
+ Takes two JSON strings representing `Vector` objects.
+ Returns a JSON string representing the `Expr` of their dot product.
+ */
 rssn_
 char *rssn_json_vector_dot(const char *aV1Json,
                            const char *aV2Json)
 ;
 
+/*
+ Computes the gradient of a scalar field.
+
+ Takes a JSON string representing an `Expr` (scalar field) and three C-style strings for the variable names (x, y, z).
+ Returns a JSON string representing the `Vector` of the gradient.
+ Computes the gradient of a scalar field.
+
+ Takes a JSON string representing an `Expr` (scalar field) and three C-style strings for the variable names (x, y, z).
+ Returns a JSON string representing the `Vector` of the gradient.
+ */
 rssn_
 char *rssn_json_vector_gradient(const char *aScalarFieldJson,
                                 const char *aXVar,
@@ -9904,10 +11173,22 @@ char *rssn_json_vector_gradient(const char *aScalarFieldJson,
                                 const char *aZVar)
 ;
 
+/*
+ Computes the magnitude of a vector.
+
+ Takes a JSON string representing a `Vector`.
+ Returns a JSON string representing the `Expr` of its magnitude.
+ */
 rssn_
 char *rssn_json_vector_magnitude(const char *aVJson)
 ;
 
+/*
+ Normalizes a vector.
+
+ Takes a JSON string representing a `Vector`.
+ Returns a JSON string representing the normalized `Vector`.
+ */
 rssn_
 char *rssn_json_vector_normalize(const char *aVJson)
 ;
@@ -9946,29 +11227,61 @@ char *rssn_json_wedge_product(const char *aForm1Json,
                               const char *aForm2Json)
 ;
 
+/*
+ Applies the differentiation property of the Z-transform.
+
+ Takes JSON strings representing `Expr` (z-domain expression) and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_z_differentiation(const char *aFZJson,
                                   const char *aOutVarJson)
 ;
 
+/*
+ Applies the scaling property of the Z-transform.
+
+ Takes JSON strings representing `Expr` (z-domain expression), `Expr` (scaling factor `a`),
+ and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_z_scaling(const char *aFZJson,
                           const char *aAJson,
                           const char *aOutVarJson)
 ;
 
+/*
+ Performs a z-test.
+
+ Takes JSON strings representing `Vec<Expr>` (data), `Expr` (target mean), and `Expr` (population standard deviation).
+ Returns a JSON string representing the `HypothesisTest` result.
+ */
 rssn_
 char *rssn_json_z_test(const char *aDataJson,
                        const char *aTargetMeanJson,
                        const char *aPopStdDevJson)
 ;
 
+/*
+ Applies the time shift property of the Z-transform.
+
+ Takes JSON strings representing `Expr` (z-domain expression), `Expr` (time shift amount `k`),
+ and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the transformed expression.
+ */
 rssn_
 char *rssn_json_z_time_shift(const char *aFZJson,
                              const char *aKJson,
                              const char *aOutVarJson)
 ;
 
+/*
+ Computes the Z-transform of an expression.
+
+ Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
+ Returns a JSON string representing the `Expr` of the Z-transform.
+ */
 rssn_
 char *rssn_json_z_transform(const char *aExprJson,
                             const char *aInVarJson,
@@ -10026,6 +11339,12 @@ struct rssn_Expr *rssn_kinetic_energy(const struct rssn_Expr *aMass,
                                       const struct rssn_Expr *aVelocity)
 ;
 
+/*
+ Computes the Kullback-Leibler divergence between two probability distributions.
+
+ Takes raw pointers to two arrays of `Expr` (probabilities) and their lengths.
+ Returns a raw pointer to an `Expr` representing the KL divergence.
+ */
 rssn_
 struct rssn_Expr *rssn_kl_divergence(const struct rssn_Expr *const *aPProbs,
                                      size_t aPLen,
@@ -10135,6 +11454,13 @@ struct rssn_Expr *rssn_laplace_transform(const struct rssn_Expr *aExpr,
                                          const char *aOutVar)
 ;
 
+/*
+ Computes the Laurent series expansion of an expression.
+
+ Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+ a raw pointer to `Expr` (center), and a `usize` (order).
+ Returns a raw pointer to a new `Expr` representing the Laurent series.
+ */
 rssn_
 struct rssn_Expr *rssn_laurent_series_handle(const struct rssn_Expr *aExpr,
                                              const char *aVar,
@@ -10393,6 +11719,12 @@ int32_t rssn_matrix_add(size_t aH1,
                         size_t *aResultH)
 ;
 
+/*
+ Performs matrix addition using raw pointers to `Expr` objects.
+
+ Takes two raw pointers to `Expr` (representing matrices) as input,
+ and returns a raw pointer to a new `Expr` representing their sum.
+ */
 rssn_
 struct rssn_Expr *rssn_matrix_add_handle(const struct rssn_Expr *aM1,
                                          const struct rssn_Expr *aM2)
@@ -10403,6 +11735,12 @@ int32_t rssn_matrix_determinant(size_t aH,
                                 size_t *aResultH)
 ;
 
+/*
+ Computes the determinant of a matrix using a raw pointer to an `Expr` object.
+
+ Takes a raw pointer to an `Expr` (representing a matrix) as input,
+ and returns a raw pointer to a new `Expr` representing its determinant.
+ */
 rssn_
 struct rssn_Expr *rssn_matrix_determinant_handle(const struct rssn_Expr *aMatrix)
 ;
@@ -10417,6 +11755,12 @@ int32_t rssn_matrix_inverse(size_t aH,
                             size_t *aResultH)
 ;
 
+/*
+ Computes the inverse of a matrix using a raw pointer to an `Expr` object.
+
+ Takes a raw pointer to an `Expr` (representing a matrix) as input,
+ and returns a raw pointer to a new `Expr` representing its inverse.
+ */
 rssn_
 struct rssn_Expr *rssn_matrix_inverse_handle(const struct rssn_Expr *aMatrix)
 ;
@@ -10427,6 +11771,12 @@ int32_t rssn_matrix_mul(size_t aH1,
                         size_t *aResultH)
 ;
 
+/*
+ Performs matrix multiplication using raw pointers to `Expr` objects.
+
+ Takes two raw pointers to `Expr` (representing matrices) as input,
+ and returns a raw pointer to a new `Expr` representing their product.
+ */
 rssn_
 struct rssn_Expr *rssn_matrix_mul_handle(const struct rssn_Expr *aM1,
                                          const struct rssn_Expr *aM2)
@@ -10438,6 +11788,12 @@ int32_t rssn_matrix_scalar_mul(size_t aScalarH,
                                size_t *aResultH)
 ;
 
+/*
+ Solves a linear system of equations AX = B using raw pointers to `Expr` objects.
+
+ Takes two raw pointers to `Expr` (representing matrix A and vector B) as input,
+ and returns a raw pointer to a new `Expr` representing the solution vector X.
+ */
 rssn_
 struct rssn_Expr *rssn_matrix_solve_linear_system_handle(const struct rssn_Expr *aA,
                                                          const struct rssn_Expr *aB)
@@ -10454,6 +11810,12 @@ int32_t rssn_matrix_transpose(size_t aH,
                               size_t *aResultH)
 ;
 
+/*
+ Performs matrix transposition using a raw pointer to an `Expr` object.
+
+ Takes a raw pointer to an `Expr` (representing a matrix) as input,
+ and returns a raw pointer to a new `Expr` representing its transpose.
+ */
 rssn_
 struct rssn_Expr *rssn_matrix_transpose_handle(const struct rssn_Expr *aMatrix)
 ;
@@ -10525,10 +11887,24 @@ struct rssn_Multivector *rssn_multivector_scalar_handle(uint32_t aP,
                                                         const struct rssn_Expr *aValue)
 ;
 
+/*
+ Computes the mutual information between two random variables from their joint probability distribution.
+
+ Takes a raw pointer to an `Expr` representing the joint probability distribution.
+ Returns a raw pointer to an `Expr` representing the mutual information.
+ */
 rssn_
 struct rssn_Expr *rssn_mutual_information(const struct rssn_Expr *aJointProbs)
 ;
 
+/*
+ Performs a nonlinear regression.
+
+ Takes raw pointers to arrays of `Expr` (x and y data), the length of the data,
+ a raw pointer to an `Expr` (model), raw pointers to arrays of C-style strings (variables and parameters),
+ and their respective lengths.
+ Returns a raw pointer to an `Expr` representing the solutions (optimized parameter values).
+ */
 rssn_
 struct rssn_Expr *rssn_nonlinear_regression(const struct rssn_Expr *const *aXData,
                                             const struct rssn_Expr *const *aYData,
@@ -15112,6 +16488,14 @@ rssn_
 char *rssn_numerical_taylor_coefficients_json(const char *aInputJson)
 ;
 
+/*
+ Performs a one-sample t-test.
+
+ Takes a raw pointer to an array of `Expr` (data), its length,
+ and a raw pointer to an `Expr` (target mean).
+ Returns a raw pointer to an `Expr` tuple containing the test statistic,
+ p-value formula, and degrees of freedom.
+ */
 rssn_
 struct rssn_Expr *rssn_one_sample_t_test(const struct rssn_Expr *const *aData,
                                          size_t aLen,
@@ -15262,6 +16646,12 @@ void rssn_parsing_cache_set_json(struct rssn_ParsingCache *aCache,
                                  const char *aJsonExpr)
 ;
 
+/*
+ Computes the partial fraction decomposition of an expression.
+
+ Takes a raw pointer to an `Expr` (expression) and a C-style string (variable).
+ Returns a raw pointer to an `ExprList` representing the decomposition.
+ */
 rssn_
 struct rssn_ExprList *rssn_partial_fraction_decomposition(const struct rssn_Expr *aExpr,
                                                           const char *aVar)
@@ -16134,6 +17524,13 @@ rssn_
 struct rssn_PolygonMesh *rssn_polygon_mesh_triangulate(const struct rssn_PolygonMesh *aMesh)
 ;
 
+/*
+ Performs a polynomial regression.
+
+ Takes raw pointers to arrays of `Expr` (x and y data), the length of the data,
+ and the degree of the polynomial.
+ Returns a raw pointer to an `Expr` (vector) containing the coefficients of the polynomial.
+ */
 rssn_
 struct rssn_Expr *rssn_polynomial_regression(const struct rssn_Expr *const *aXData,
                                              const struct rssn_Expr *const *aYData,
@@ -16235,6 +17632,13 @@ rssn_
 struct rssn_Expr *rssn_probability_density(const struct rssn_Ket *aPsi)
 ;
 
+/*
+ Computes the product of an expression.
+
+ Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+ raw pointers to `Expr` (lower bound), and `Expr` (upper bound).
+ Returns a raw pointer to a new `Expr` representing the product.
+ */
 rssn_
 struct rssn_Expr *rssn_product_handle(const struct rssn_Expr *aExpr,
                                       const char *aVar,
@@ -16673,21 +18077,45 @@ rssn_
 struct rssn_Expr *rssn_schwarzschild_radius(const struct rssn_Expr *aMass)
 ;
 
+/*
+ Analyzes the convergence of a series.
+
+ Takes a raw pointer to `Expr` (series expression) and a C-style string (variable).
+ Returns a raw pointer to a `ConvergenceResult` representing the convergence analysis result.
+ */
 rssn_
 enum rssn_ConvergenceResult *rssn_series_analyze_convergence_handle(const struct rssn_Expr *aSeries,
                                                                     const char *aVar)
 ;
 
+/*
+ Analyzes the convergence of a series.
+
+ Takes bincode-serialized `Expr` (series expression) and `String` (variable).
+ Returns a bincode-serialized `Expr` representing the convergence analysis result.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_series_bincode_analyze_convergence(struct rssn_BincodeBuffer aSeriesBuf,
                                                                   struct rssn_BincodeBuffer aVarBuf)
 ;
 
+/*
+ Analyzes the convergence of a series.
+
+ Takes JSON strings representing `Expr` (series expression) and `String` (variable).
+ Returns a JSON string representing the `Expr` of the convergence analysis result.
+ */
 rssn_
 char *rssn_series_json_analyze_convergence(const char *aSeriesJson,
                                            const char *aVarJson)
 ;
 
+/*
+ Computes the Shannon entropy of a probability distribution.
+
+ Takes a raw pointer to an array of `Expr` (probabilities) and its length.
+ Returns a raw pointer to an `Expr` representing the entropy.
+ */
 rssn_
 struct rssn_Expr *rssn_shannon_entropy(const struct rssn_Expr *const *aProbs,
                                        size_t aLen)
@@ -16701,6 +18129,12 @@ struct rssn_Expr *rssn_shear_2d(const struct rssn_Expr *aShx,
                                 const struct rssn_Expr *aShy)
 ;
 
+/*
+ Performs a simple linear regression.
+
+ Takes raw pointers to arrays of `Expr` (x and y data) and the length of the data.
+ Returns a raw pointer to an `Expr` (vector) containing the intercept and slope coefficients.
+ */
 rssn_
 struct rssn_Expr *rssn_simple_linear_regression(const struct rssn_Expr *const *aXData,
                                                 const struct rssn_Expr *const *aYData,
@@ -16982,6 +18416,12 @@ struct rssn_Expr *rssn_solve_first_order_linear_ode(const struct rssn_Expr *aEqu
                                                     const char *aVar)
 ;
 
+/*
+ Solves an equation for a given variable.
+
+ Takes a raw pointer to `Expr` (equation) and a C-style string (variable).
+ Returns a raw pointer to a `Vec<Expr>` representing the solutions.
+ */
 rssn_
 struct rssn_Vec_Expr *rssn_solve_handle(const struct rssn_Expr *aExpr,
                                         const char *aVar)
@@ -17046,6 +18486,12 @@ rssn_
 struct rssn_BincodeBuffer rssn_solve_linear_system_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves a linear system of equations.
+
+ Takes a raw pointer to `Expr` (system) and a raw pointer to `Vec<String>` (variables).
+ Returns a raw pointer to a `Vec<Expr>` representing the solutions.
+ */
 rssn_
 struct rssn_Vec_Expr *rssn_solve_linear_system_handle(const struct rssn_Expr *aSystem,
                                                       const struct rssn_Vec_String *aVars)
@@ -17342,6 +18788,13 @@ struct rssn_Expr *rssn_substitute(const struct rssn_Expr *aExpr,
                                   const struct rssn_Expr *aReplacement)
 ;
 
+/*
+ Computes the summation of an expression.
+
+ Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+ raw pointers to `Expr` (lower bound), and `Expr` (upper bound).
+ Returns a raw pointer to a new `Expr` representing the summation.
+ */
 rssn_
 struct rssn_Expr *rssn_summation_handle(const struct rssn_Expr *aExpr,
                                         const char *aVar,
@@ -17422,6 +18875,13 @@ rssn_
 char *rssn_tan_json(const char *aJsonExpr)
 ;
 
+/*
+ Computes the Taylor series expansion of an expression.
+
+ Takes a raw pointer to `Expr` (expression), a C-style string (variable),
+ a raw pointer to `Expr` (center), and a `usize` (order).
+ Returns a raw pointer to a new `Expr` representing the Taylor series.
+ */
 rssn_
 struct rssn_Expr *rssn_taylor_series_handle(const struct rssn_Expr *aExpr,
                                             const char *aVar,
@@ -17429,22 +18889,46 @@ struct rssn_Expr *rssn_taylor_series_handle(const struct rssn_Expr *aExpr,
                                             size_t aOrder)
 ;
 
+/*
+ Performs tensor addition.
+
+ Takes raw pointers to two `Tensor` objects as input,
+ and returns a raw pointer to a new `Tensor` representing their sum.
+ */
 rssn_
 struct rssn_Tensor *rssn_tensor_add_handle(const struct rssn_Tensor *aT1,
                                            const struct rssn_Tensor *aT2)
 ;
 
+/*
+ Performs tensor contraction.
+
+ Takes a raw pointer to a `Tensor`, and two `usize` values representing the axes to contract.
+ Returns a raw pointer to a new `Tensor` representing the contracted tensor.
+ */
 rssn_
 struct rssn_Tensor *rssn_tensor_contract_handle(const struct rssn_Tensor *aT,
                                                 size_t aAxis1,
                                                 size_t aAxis2)
 ;
 
+/*
+ Computes the outer product of two tensors.
+
+ Takes raw pointers to two `Tensor` objects as input,
+ and returns a raw pointer to a new `Tensor` representing their outer product.
+ */
 rssn_
 struct rssn_Tensor *rssn_tensor_outer_product_handle(const struct rssn_Tensor *aT1,
                                                      const struct rssn_Tensor *aT2)
 ;
 
+/*
+ Performs scalar multiplication on a tensor.
+
+ Takes a raw pointer to a `Tensor` and a raw pointer to an `Expr` (scalar).
+ Returns a raw pointer to a new `Tensor` representing the result.
+ */
 rssn_
 struct rssn_Tensor *rssn_tensor_scalar_mul_handle(const struct rssn_Tensor *aT,
                                                   const struct rssn_Expr *aScalar)
@@ -17562,6 +19046,14 @@ struct rssn_Expr *rssn_translation_3d(const struct rssn_Expr *aTx,
                                       const struct rssn_Expr *aTz)
 ;
 
+/*
+ Performs a two-sample t-test.
+
+ Takes raw pointers to two arrays of `Expr` (data sets), their lengths,
+ and a raw pointer to an `Expr` (hypothesized difference in means).
+ Returns a raw pointer to an `Expr` tuple containing the test statistic,
+ p-value formula, and degrees of freedom.
+ */
 rssn_
 struct rssn_Expr *rssn_two_sample_t_test(const struct rssn_Expr *const *aData1,
                                          size_t aLen1,
@@ -17578,6 +19070,12 @@ struct rssn_Expr *rssn_uncertainty(const struct rssn_Operator *aOp,
                                    const struct rssn_Ket *aPsi)
 ;
 
+/*
+ Unifies the units in a symbolic expression.
+
+ Takes a raw pointer to an `Expr` as input,
+ and returns a raw pointer to a new `Expr` representing the expression with unified units.
+ */
 rssn_
 struct rssn_Expr *rssn_unify_expression_handle(const struct rssn_Expr *aExpr)
 ;
@@ -17837,11 +19335,23 @@ rssn_
 char *rssn_vec_sub_json(const char *aJsonPtr)
 ;
 
+/*
+ Computes the cross product of two vectors.
+
+ Takes two raw pointers to `Vector` objects as input.
+ Returns a raw pointer to a new `Vector` representing their cross product.
+ */
 rssn_
 rssn_Vector *rssn_vector_cross_handle(const rssn_Vector *aV1,
                                       const rssn_Vector *aV2)
 ;
 
+/*
+ Computes the dot product of two vectors.
+
+ Takes two raw pointers to `Vector` objects as input.
+ Returns a raw pointer to an `Expr` representing their dot product.
+ */
 rssn_
 struct rssn_Expr *rssn_vector_dot_handle(const rssn_Vector *aV1,
                                          const rssn_Vector *aV2)
@@ -17854,10 +19364,22 @@ rssn_
 void rssn_vector_free(rssn_Vector *aVec)
 ;
 
+/*
+ Computes the magnitude of a vector.
+
+ Takes a raw pointer to a `Vector` as input.
+ Returns a raw pointer to an `Expr` representing its magnitude.
+ */
 rssn_
 struct rssn_Expr *rssn_vector_magnitude_handle(const rssn_Vector *aV)
 ;
 
+/*
+ Normalizes a vector.
+
+ Takes a raw pointer to a `Vector` as input.
+ Returns a raw pointer to a new `Vector` representing the normalized vector.
+ */
 rssn_
 rssn_Vector *rssn_vector_normalize_handle(const rssn_Vector *aV)
 ;
@@ -18069,6 +19591,14 @@ struct rssn_Expr *rssn_z_scaling(const struct rssn_Expr *aFZ,
                                  const char *aOutVar)
 ;
 
+/*
+ Performs a z-test.
+
+ Takes a raw pointer to an array of `Expr` (data), its length,
+ a raw pointer to an `Expr` (target mean), and a raw pointer to an `Expr` (population standard deviation).
+ Returns a raw pointer to an `Expr` tuple containing the test statistic,
+ p-value formula, and a placeholder for degrees of freedom.
+ */
 rssn_
 struct rssn_Expr *rssn_z_test(const struct rssn_Expr *const *aData,
                               size_t aLen,
