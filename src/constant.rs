@@ -244,7 +244,7 @@ nist_const!(
 nist_const!(
     JOSEPHSON_CONSTANT,
     get_josephson_constant,
-    483_597.8484e9,
+    483_597.848_4e9,
     "Hz V⁻¹",
     "exact (definition based)",
     "Josephson constant (2e/h)"
@@ -300,7 +300,7 @@ nist_const!(
 nist_const!(
     PROTON_ELECTRON_MASS_RATIO,
     get_proton_electron_mass_ratio,
-    1836.152_673_426,
+    1_836.152_673_426,
     "dimensionless",
     "0.000_000_032",
     "proton-electron mass ratio"
