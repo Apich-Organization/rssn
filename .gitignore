@@ -265,3 +265,4 @@ buildwarning
 .buildwarning.swp
 check_prelude.sh
 scan.sh
+perf.data
