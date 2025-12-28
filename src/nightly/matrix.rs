@@ -5,6 +5,8 @@
 //! operations, including matrix arithmetic, RREF, inversion, null space calculation,
 //! and eigenvalue decomposition for symmetric matrices.
 
+#![allow(unused)]
+
 use std::fmt::Debug;
 use std::ops::Add;
 use std::ops::AddAssign;
