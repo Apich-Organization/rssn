@@ -27,3 +27,20 @@ pub unsafe extern "C" fn rssn_jit_execute(func_ptr: *const u8) -> f64 {
     let func: unsafe extern "C" fn() -> f64 = std::mem::transmute(func_ptr);
     func()
 }
+
+/// Registers a custom instruction handler.
+/// 
+/// `opcode`: The exact u32 opcode found in `Instruction::Custom`.
+/// `func_ptr`: Pointer to the C function to call. Signature must be `fn(i64, ...) -> i64` where `i64` represents a stack value.
+/// `arg_count`: Number of arguments the function expects (popped from stack).
+#[no_mangle]
+pub unsafe extern "C" fn rssn_jit_register_custom_op(
+    engine: *mut JitEngine,
+    opcode: u32,
+    func_ptr: *const u8,
+    arg_count: usize,
+) {
+    if engine.is_null() || func_ptr.is_null() { return; }
+    let engine = &mut *engine;
+    engine.register_custom_op(opcode, func_ptr, arg_count);
+}
