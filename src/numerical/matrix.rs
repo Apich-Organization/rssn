@@ -16,14 +16,15 @@ use std::ops::Neg;
 use std::ops::Sub;
 use std::ops::SubAssign;
 
-use faer::linalg::solvers::Inverse;
-use faer::solvers::SpSolver;
+use faer::linalg::solvers::DenseSolveCore;
+use faer::linalg::solvers::Solve;
 // Faer imports
 use faer::{
     Mat,
     MatMut,
     MatRef,
-    Parallelism,
+    get_global_parallelism,
+    set_global_parallelism,
 };
 use num_traits::One;
 use num_traits::ToPrimitive;

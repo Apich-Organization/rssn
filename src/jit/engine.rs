@@ -6,22 +6,28 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::jit::instructions::{Instruction, JitType};
 
 #[cfg(feature = "jit")]
-use cranelift::prelude::*;
+use cranelift_codegen::Context;
 #[cfg(feature = "jit")]
-use cranelift::jit::{JITBuilder, JITModule};
+use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
 #[cfg(feature = "jit")]
-use cranelift::module::{DataContext, Linkage, Module};
+use cranelift_jit::{JITBuilder, JITModule};
+#[cfg(feature = "jit")]
+use cranelift_module::{DataDescription, Module, Linkage};
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::*;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::condcodes::*;
 
 /// The JIT Engine for compiling and executing code.
 pub struct JitEngine {
     #[cfg(feature = "jit")]
     builder_context: FunctionBuilderContext,
     #[cfg(feature = "jit")]
-    ctx: codegen::Context,
+    ctx: Context,
     #[cfg(feature = "jit")]
     module: JITModule,
     #[cfg(feature = "jit")]
-    data_ctx: DataContext,
+    data_ctx: DataDescription,
     
     #[cfg(feature = "jit")]
     custom_ops: HashMap<u32, CustomOpData>,
@@ -48,13 +54,13 @@ impl JitEngine {
         
         #[cfg(feature = "jit")]
         {
-            let builder = JITBuilder::new(cranelift::module::default_libcall_names()).unwrap();
+            let builder = JITBuilder::new(cranelift_module::default_libcall_names()).unwrap();
             let module = JITModule::new(builder);
             Self {
                 builder_context: FunctionBuilderContext::new(),
                 ctx: module.make_context(),
                 module,
-                data_ctx: DataContext::new(),
+                data_ctx: DataDescription::new(),
                 custom_ops: HashMap::new(),
                 function_counter,
             }
@@ -404,7 +410,7 @@ fn type_to_clif(ty: JitType) -> (Type, Type) {
 }
 
 #[cfg(feature = "jit")]
-fn cast_to_storage(builder: &mut FunctionBuilder, val: Value, ty: Type, storage_ty: Type) -> Value {
+fn cast_to_storage(builder: &mut FunctionBuilder<'_>, val: Value, ty: Type, storage_ty: Type) -> Value {
     if ty == storage_ty {
         return val;
     }
@@ -426,7 +432,7 @@ fn cast_to_storage(builder: &mut FunctionBuilder, val: Value, ty: Type, storage_
 }
 
 #[cfg(feature = "jit")]
-fn cast_from_storage(builder: &mut FunctionBuilder, val: Value, target_ty: Type) -> Value {
+fn cast_from_storage(builder: &mut FunctionBuilder<'_>, val: Value, target_ty: Type) -> Value {
     if target_ty == types::I64 {
         return val;
     }
