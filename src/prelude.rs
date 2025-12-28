@@ -6079,6 +6079,7 @@ pub mod faer {
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
+#[cfg(feature = "jit")]
 
 pub mod jit {
 
