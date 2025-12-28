@@ -19,16 +19,32 @@ use crate::symbolic::stats::variance;
 )]
 
 pub struct HypothesisTest {
+    /// The null hypothesis, typically stating no effect or no difference (e.g., mu = mu0).
     pub null_hypothesis: Expr,
+    /// The alternative hypothesis, stating the presence of an effect or difference (e.g., mu != mu0).
     pub alternative_hypothesis: Expr,
+    /// The formula for the test statistic (e.g., t-score, z-score).
     pub test_statistic: Expr,
+    /// The symbolic formula for computing the p-value.
     pub p_value_formula: Expr,
+    /// The symbolic expression for the degrees of freedom, if applicable to the test.
     pub degrees_of_freedom:
         Option<Expr>,
 }
 
 #[must_use]
 
+/// Constructs a symbolic one-sample t-test.
+///
+/// This function generates the symbolic formulas for a t-test that compares the mean of a
+/// single sample to a target population mean. It assumes the population variance is unknown.
+///
+/// # Arguments
+/// * `sample` - A slice of symbolic expressions representing the sample data.
+/// * `target_mean` - The symbolic value of the population mean under the null hypothesis.
+///
+/// # Returns
+/// A `HypothesisTest` struct containing the symbolic hypotheses, test statistic, and p-value.
 pub fn one_sample_t_test_symbolic(
     sample: &[Expr],
     target_mean: &Expr,

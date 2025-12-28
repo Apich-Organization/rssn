@@ -81,10 +81,15 @@ use crate::symbolic::core::Expr;
 #[repr(C)]
 
 pub enum SupportedQuantity {
+    /// Represents a length quantity.
     Length(Length),
+    /// Represents a mass quantity.
     Mass(Mass),
+    /// Represents a time quantity.
     Time(Time),
+    /// Represents an area quantity.
     Area(Area),
+    /// Represents a velocity quantity.
     Velocity(Velocity),
 }
 

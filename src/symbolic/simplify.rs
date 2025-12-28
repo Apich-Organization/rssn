@@ -529,6 +529,16 @@ pub fn is_zero(expr: &Expr) -> bool {
 #[inline]
 #[must_use]
 
+/// Checks if a symbolic expression is equivalent to the constant value one.
+///
+/// This function handles `Expr::Dag` by converting it to an `Expr` and then checking
+/// `Expr::Constant`, `Expr::BigInt`, and `Expr::Rational`.
+///
+/// # Arguments
+/// * `expr` - The expression to check.
+///
+/// # Returns
+/// `true` if the expression is numerically 1, `false` otherwise.
 pub fn is_one(expr: &Expr) -> bool {
 
     match expr {
@@ -563,6 +573,16 @@ pub fn is_one(expr: &Expr) -> bool {
 #[inline]
 #[must_use]
 
+/// Attempts to convert a symbolic expression to its numerical floating-point representation.
+///
+/// This is applicable to basic numeric types like constants, integers, and rationals.
+/// If the expression is a `Expr::Dag`, it will be unwrapped before conversion.
+///
+/// # Arguments
+/// * `expr` - The expression to convert.
+///
+/// # Returns
+/// `Some(f64)` if conversion is possible, `None` otherwise.
 pub fn as_f64(
     expr: &Expr
 ) -> Option<f64> {
@@ -1818,14 +1838,28 @@ pub(crate) fn simplify_add(
     Ok(result_expr)
 }
 
+/// Represents a transformation rule used by the simplification engine.
+///
+/// A `RewriteRule` consists of a pattern and a replacement expression. When an expression
+/// matches the pattern, it can be replaced by the instantiated replacement expression.
 pub struct RewriteRule {
+    /// A descriptive name for the rule.
     name: &'static str,
+    /// The pattern to match against.
     pattern: Expr,
+    /// The expression to replace the matched pattern with.
     replacement: Expr,
 }
 
 #[must_use]
 
+/// Returns the name of a rewrite rule.
+///
+/// # Arguments
+/// * `rule` - The rewrite rule to query.
+///
+/// # Returns
+/// The name of the rule as a `String`.
 pub fn get_name(
     rule: &RewriteRule
 ) -> String {
@@ -2052,6 +2086,17 @@ pub(crate) fn get_default_rules(
 
 #[must_use]
 
+/// Substitutes pattern variables in a template expression with assigned expressions.
+///
+/// This function performs a recursive replacement of `Expr::Pattern(name)` nodes
+/// with the corresponding values found in the `assignments` map.
+///
+/// # Arguments
+/// * `template` - The expression containing patterns to be replaced.
+/// * `assignments` - A map from pattern names to their replacement expressions.
+///
+/// # Returns
+/// A new `Expr` with patterns substituted.
 pub fn substitute_patterns(
     template: &Expr,
     assignments: &HashMap<String, Expr>,
@@ -2636,6 +2681,18 @@ pub(crate) fn pattern_match_recursive(
 
 #[must_use]
 
+/// Collects terms from an expression and orders them by complexity.
+///
+/// This function is useful for canonicalizing expressions, especially sums and differences.
+/// It extracts a constant term and a vector of `(base, coefficient)` pairs for other terms.
+/// Terms are ordered heuristically by their complexity.
+///
+/// # Arguments
+/// * `expr` - The expression to collect terms from.
+///
+/// # Returns
+/// A tuple `(constant_term, terms)` where `constant_term` is an `Expr` and `terms` is a
+/// `Vec<(Expr, Expr)>` of `(base, coefficient)` pairs.
 pub fn collect_and_order_terms(
     expr: &Expr
 ) -> (
@@ -2875,6 +2932,15 @@ pub(crate) fn fold_constants(
 
 #[must_use]
 
+/// Checks if an expression is a pure numeric type.
+///
+/// An expression is numeric if it is a constant (f64), a big integer, or a rational number.
+///
+/// # Arguments
+/// * `expr` - The expression to check.
+///
+/// # Returns
+/// `true` if the expression is numeric, `false` otherwise.
 pub const fn is_numeric(
     expr: &Expr
 ) -> bool {

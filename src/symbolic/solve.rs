@@ -1951,6 +1951,18 @@ pub(crate) fn contains_var(
 
 #[must_use]
 
+/// Extracts polynomial coefficients from an expression with respect to a variable.
+///
+/// This function attempts to represent the given expression as a polynomial in `var`
+/// and returns the coefficients in descending order of degree (e.g., [a_n, ..., a_1, a_0]).
+///
+/// # Arguments
+/// * `expr` - The symbolic expression to analyze.
+/// * `var` - The variable with respect to which coefficients are extracted.
+///
+/// # Returns
+/// An `Option<Vec<Expr>>` containing the coefficients if the expression is a polynomial,
+/// or `None` if it contains transcendental terms or other non-polynomial structures in `var`.
 pub fn extract_polynomial_coeffs(
     expr: &Expr,
     var: &str,

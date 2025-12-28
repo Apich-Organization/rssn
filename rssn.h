@@ -469,6 +469,9 @@ typedef struct rssn_State rssn_State;
  */
 typedef struct rssn_SymbolicChain rssn_SymbolicChain;
 
+/*
+ Represents a symbolic tensor of arbitrary rank.
+ */
 typedef struct rssn_Tensor rssn_Tensor;
 
 typedef struct rssn_Vec_CriticalPoint rssn_Vec_CriticalPoint;

@@ -18,7 +18,9 @@ use crate::symbolic::simplify_dag::simplify;
 #[derive(Debug, Clone)]
 
 pub struct Normal {
+    /// The location parameter (mean) of the distribution.
     pub mean: Expr,
+    /// The scale parameter (standard deviation) of the distribution.
     pub std_dev: Expr,
 }
 
@@ -170,7 +172,9 @@ impl Distribution for Normal {
 #[derive(Debug, Clone)]
 
 pub struct Uniform {
+    /// The lower bound of the support.
     pub min: Expr,
+    /// The upper bound of the support.
     pub max: Expr,
 }
 
@@ -292,7 +296,9 @@ impl Distribution for Uniform {
 #[derive(Debug, Clone)]
 
 pub struct Binomial {
+    /// The number of trials.
     pub n: Expr,
+    /// The probability of success in each trial.
     pub p: Expr,
 }
 
@@ -426,6 +432,7 @@ impl Distribution for Binomial {
 #[derive(Debug, Clone)]
 
 pub struct Poisson {
+    /// The average rate (expected number of occurrences) λ.
     pub rate: Expr,
 }
 
@@ -527,6 +534,7 @@ impl Distribution for Poisson {
 #[derive(Debug, Clone)]
 
 pub struct Bernoulli {
+    /// The probability of success (outcome 1).
     pub p: Expr,
 }
 
@@ -644,6 +652,7 @@ impl Distribution for Bernoulli {
 #[derive(Debug, Clone)]
 
 pub struct Exponential {
+    /// The rate parameter λ, representing the frequency of events.
     pub rate: Expr,
 }
 
@@ -732,7 +741,9 @@ impl Distribution for Exponential {
 #[derive(Debug, Clone)]
 
 pub struct Gamma {
+    /// The shape parameter α.
     pub shape: Expr,
+    /// The rate parameter β (inverse of the scale parameter).
     pub rate: Expr,
 }
 
@@ -866,7 +877,9 @@ impl Distribution for Gamma {
 #[derive(Debug, Clone)]
 
 pub struct Beta {
+    /// The first shape parameter α.
     pub alpha: Expr,
+    /// The second shape parameter β.
     pub beta: Expr,
 }
 
@@ -1020,6 +1033,7 @@ impl Distribution for Beta {
 #[derive(Debug, Clone)]
 
 pub struct StudentT {
+    /// The degrees of freedom ν.
     pub nu: Expr,
 }
 

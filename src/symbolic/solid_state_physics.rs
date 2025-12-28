@@ -18,8 +18,11 @@ use crate::symbolic::vector::Vector;
 )]
 
 pub struct CrystalLattice {
+    /// The first primitive translation vector.
     pub a1: Vector,
+    /// The second primitive translation vector.
     pub a2: Vector,
+    /// The third primitive translation vector.
     pub a3: Vector,
 }
 

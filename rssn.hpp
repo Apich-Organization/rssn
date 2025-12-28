@@ -491,6 +491,9 @@ struct rssn_String;
  */
 struct rssn_SymbolicChain;
 
+/*
+ Represents a symbolic tensor of arbitrary rank.
+ */
 struct rssn_Tensor;
 
 template<typename T = void>
