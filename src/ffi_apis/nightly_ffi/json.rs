@@ -36,17 +36,14 @@ struct MatrixDecompositionRequest {
 /// Evaluates a matrix addition from JSON.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_add_json(
+pub unsafe extern "C" fn rssn_num_matrix_add_json_nightly(
     json_ptr: *const c_char
 ) -> *mut c_char {
-
     if json_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
     let json_str = match unsafe {
-
         CStr::from_ptr(json_ptr)
             .to_str()
     } {
@@ -62,7 +59,6 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
         ) {
             | Ok(r) => r,
             | Err(e) => {
-
                 let res: FfiResult<
                     Matrix<f64>,
                     String,
@@ -82,7 +78,6 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
     let m2 = match req.m2 {
         | Some(m) => m,
         | None => {
-
             let res: FfiResult<
                 Matrix<f64>,
                 String,
@@ -109,7 +104,6 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
     if req.m1.rows() != m2.rows()
         || req.m1.cols() != m2.cols()
     {
-
         let res: FfiResult<
             Matrix<f64>,
             String,
@@ -150,17 +144,14 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
 /// Evaluates a matrix multiplication from JSON.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_mul_json(
+pub unsafe extern "C" fn rssn_num_matrix_mul_json_nightly(
     json_ptr: *const c_char
 ) -> *mut c_char {
-
     if json_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
     let json_str = match unsafe {
-
         CStr::from_ptr(json_ptr)
             .to_str()
     } {
@@ -176,7 +167,6 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
         ) {
             | Ok(r) => r,
             | Err(e) => {
-
                 let res: FfiResult<
                     Matrix<f64>,
                     String,
@@ -196,7 +186,6 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
     let m2 = match req.m2 {
         | Some(m) => m,
         | None => {
-
             let res: FfiResult<
                 Matrix<f64>,
                 String,
@@ -221,7 +210,6 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
     };
 
     if req.m1.cols() != m2.rows() {
-
         let res: FfiResult<
             Matrix<f64>,
             String,
@@ -262,17 +250,14 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
 /// Computes determinant from JSON.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_det_json(
+pub unsafe extern "C" fn rssn_num_matrix_det_json_nightly(
     json_ptr: *const c_char
 ) -> *mut c_char {
-
     if json_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
     let json_str = match unsafe {
-
         CStr::from_ptr(json_ptr)
             .to_str()
     } {
@@ -288,7 +273,6 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(
         ) {
             | Ok(m) => m,
             | Err(e) => {
-
                 let res: FfiResult<
                     f64,
                     String,
@@ -307,7 +291,6 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(
 
     match matrix.determinant() {
         | Ok(d) => {
-
             let ffi_res: FfiResult<
                 f64,
                 String,
@@ -326,7 +309,6 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(
             .into_raw()
         },
         | Err(e) => {
-
             let ffi_res: FfiResult<
                 f64,
                 String,
@@ -350,17 +332,14 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(
 /// Sets backend for a matrix (returns new matrix with backend set) from JSON.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_set_backend_json(
+pub unsafe extern "C" fn rssn_num_matrix_set_backend_json_nightly(
     json_ptr: *const c_char
 ) -> *mut c_char {
-
     if json_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
     let json_str = match unsafe {
-
         CStr::from_ptr(json_ptr)
             .to_str()
     } {
@@ -376,7 +355,6 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend_json(
         ) {
             | Ok(r) => r,
             | Err(e) => {
-
                 let res: FfiResult<
                     Matrix<f64>,
                     String,
@@ -419,17 +397,14 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend_json(
 /// Decomposes a matrix from JSON.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_decompose_json(
+pub unsafe extern "C" fn rssn_num_matrix_decompose_json_nightly(
     json_ptr: *const c_char
 ) -> *mut c_char {
-
     if json_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
     let json_str = match unsafe {
-
         CStr::from_ptr(json_ptr)
             .to_str()
     } {
@@ -452,7 +427,6 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_json(
         .decompose(req.kind)
     {
         | Some(result) => {
-
             let ffi_res: FfiResult<
                 FaerDecompositionResult<
                     f64,
@@ -473,7 +447,6 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_json(
             .into_raw()
         },
         | None => {
-
             let ffi_res: FfiResult<
                 FaerDecompositionResult<
                     f64,
