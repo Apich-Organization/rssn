@@ -2,7 +2,7 @@
 name = "rssn"
 version = "0.1.19"
 edition = "2021"
-rust-version = "1.87.0"
+rust-version = "1.89.0"
 authors = ["The rssn developers"]
 description = "A comprehensive scientific computing library for Rust, aiming for feature parity with NumPy, SciPy, and SymPy."
 license = "Apache-2.0"
@@ -105,6 +105,8 @@ plotters = { version = "0.3", features = [
 ahash = { version = "0.8.12", features = ["serde"] }
 abi_stable = { version = "0.11.3", optional = true }
 instability = "0.3.10"
+faer = "0.23.2"
+cranelift = { version = "0.127", optional = true }
 
 [build-dependencies]
 cbindgen = "0.29.2"
@@ -133,11 +135,12 @@ default = []
 output = ["dep:plotters", "dep:ndarray-npy"]
 physics = []
 plugins = ["dep:libloading", "dep:abi_stable"]
+jit = ["dep:cranelift"]
 ffi_api = []
 # Will be available at v0.3.0 release.
 ffi_blinding = ["dep:libc"]
 # Experimental features
-experimental = ["ffi_blinding"]
+experimental = ["ffi_blinding", "jit"]
 full = [
     "default",
     "output",
@@ -145,6 +148,7 @@ full = [
     "plugins",
     "ffi_api",
     "ffi_blinding",
+    "jit",
     "experimental",
 ]
 

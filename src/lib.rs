@@ -306,6 +306,8 @@ pub mod ffi_apis;
 #[cfg(feature = "ffi_blinding")]
 pub mod ffi_blindings;
 pub mod input;
+#[cfg(feature = "jit")]
+pub mod jit;
 pub mod numerical;
 #[cfg(feature = "output")]
 pub mod output;
