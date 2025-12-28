@@ -691,7 +691,7 @@ pub fn solve_burgers_1d(
                 // Central difference for convection and diffusion
                 let convection = u[i] * (u[i + 1] - u[i - 1]) / (2.0 * dx);
 
-                let diffusion = nu * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / (dx * dx);
+                let diffusion = nu * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / dx.powi(2);
 
                 *next_val = u[i] + dt * (diffusion - convection);
             });
@@ -747,7 +747,7 @@ pub fn solve_advection_diffusion_1d(
                     -c * (u[i + 1] - u[i]) / dx
                 };
 
-                let diffusion = d * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / (dx * dx);
+                let diffusion = d * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / dx.powi(2);
 
                 *next_val = u[i] + dt * (advection + diffusion);
             });

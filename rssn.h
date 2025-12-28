@@ -660,6 +660,13 @@ struct rssn_BincodeBuffer cauchy_derivative_formula_bincode(struct rssn_BincodeB
                                                             size_t aN)
 ;
 
+/*
+ Applies Cauchy's Derivative Formula to compute the nth derivative of a function at a given point.
+
+ Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+ a JSON-serialized `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
+ Returns a JSON-serialized `Expr` representing the nth derivative.
+ */
 rssn_
 char *cauchy_derivative_formula_json(const char *aFuncJson,
                                      const char *aVar,
@@ -693,6 +700,13 @@ struct rssn_BincodeBuffer cauchy_integral_formula_bincode(struct rssn_BincodeBuf
                                                           struct rssn_BincodeBuffer aZ0Bincode)
 ;
 
+/*
+ Applies Cauchy's Integral Formula to a function at a given point.
+
+ Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
+ and a JSON-serialized `Expr` for the point `z0`.
+ Returns a JSON-serialized `Expr` representing the result of the integral.
+ */
 rssn_
 char *cauchy_integral_formula_json(const char *aFuncJson,
                                    const char *aVar,
@@ -761,6 +775,12 @@ rssn_
 struct rssn_BincodeBuffer complex_arg_bincode(struct rssn_BincodeBuffer aZBincode)
 ;
 
+/*
+ Computes the argument (phase angle) of a given complex number.
+
+ Takes a JSON-serialized `Expr` representing the complex number `z`.
+ Returns a JSON-serialized `Expr` representing the argument of `z`.
+ */
 rssn_
 char *complex_arg_json(const char *aZJson)
 ;
@@ -818,6 +838,12 @@ rssn_
 struct rssn_BincodeBuffer complex_exp_bincode(struct rssn_BincodeBuffer aZBincode)
 ;
 
+/*
+ Computes the complex exponential of a given complex number.
+
+ Takes a JSON-serialized `Expr` representing the complex number `z`.
+ Returns a JSON-serialized `Expr` representing `e^z`.
+ */
 rssn_
 char *complex_exp_json(const char *aZJson)
 ;
@@ -842,6 +868,12 @@ rssn_
 struct rssn_BincodeBuffer complex_log_bincode(struct rssn_BincodeBuffer aZBincode)
 ;
 
+/*
+ Computes the complex natural logarithm of a given complex number.
+
+ Takes a JSON-serialized `Expr` representing the complex number `z`.
+ Returns a JSON-serialized `Expr` representing `ln(z)`.
+ */
 rssn_
 char *complex_log_json(const char *aZJson)
 ;
@@ -860,6 +892,12 @@ rssn_
 struct rssn_BincodeBuffer complex_modulus_bincode(struct rssn_BincodeBuffer aZBincode)
 ;
 
+/*
+ Computes the modulus (magnitude) of a given complex number.
+
+ Takes a JSON-serialized `Expr` representing the complex number `z`.
+ Returns a JSON-serialized `Expr` representing the modulus of `z`.
+ */
 rssn_
 char *complex_modulus_json(const char *aZJson)
 ;
@@ -1255,6 +1293,12 @@ struct rssn_BincodeBuffer mobius_transformation_apply_bincode(struct rssn_Bincod
                                                               struct rssn_BincodeBuffer aZBincode)
 ;
 
+/*
+ Applies a Mobius Transformation to a complex number.
+
+ Takes a JSON-serialized `MobiusTransformation` object and a JSON-serialized `Expr` representing the complex number `z`.
+ Returns a JSON-serialized `Expr` representing the result of the transformation.
+ */
 rssn_
 char *mobius_transformation_apply_json(const char *aMobiusJson,
                                        const char *aZJson)
@@ -1282,6 +1326,12 @@ struct rssn_BincodeBuffer mobius_transformation_compose_bincode(struct rssn_Binc
                                                                 struct rssn_BincodeBuffer aMobius2Bincode)
 ;
 
+/*
+ Composes two Mobius Transformations.
+
+ Takes two JSON-serialized `MobiusTransformation` objects.
+ Returns a JSON-serialized `MobiusTransformation` object representing their composition.
+ */
 rssn_
 char *mobius_transformation_compose_json(const char *aMobius1Json,
                                          const char *aMobius2Json)
@@ -1305,6 +1355,11 @@ rssn_
 struct rssn_BincodeBuffer mobius_transformation_identity_bincode(void)
 ;
 
+/*
+ Creates an identity `MobiusTransformation` object.
+
+ Returns a JSON-serialized identity `MobiusTransformation` object.
+ */
 rssn_
 char *mobius_transformation_identity_json(void)
 ;
@@ -1329,6 +1384,12 @@ rssn_
 struct rssn_BincodeBuffer mobius_transformation_inverse_bincode(struct rssn_BincodeBuffer aMobiusBincode)
 ;
 
+/*
+ Computes the inverse of a Mobius Transformation.
+
+ Takes a JSON-serialized `MobiusTransformation` object.
+ Returns a JSON-serialized `MobiusTransformation` object representing the inverse.
+ */
 rssn_
 char *mobius_transformation_inverse_json(const char *aMobiusJson)
 ;
@@ -1359,6 +1420,12 @@ struct rssn_BincodeBuffer mobius_transformation_new_bincode(struct rssn_BincodeB
                                                             struct rssn_BincodeBuffer aDBincode)
 ;
 
+/*
+ Creates a new `MobiusTransformation` object from JSON-serialized coefficients.
+
+ Takes JSON-serialized `Expr` for coefficients `a`, `b`, `c`, and `d`.
+ Returns a JSON-serialized `MobiusTransformation` object.
+ */
 rssn_
 char *mobius_transformation_new_json(const char *aAJson,
                                      const char *aBJson,
@@ -1661,6 +1728,13 @@ struct rssn_Expr *rssn_analytic_continuation_handle(const struct rssn_Expr *aExp
                                                     size_t aOrder)
 ;
 
+/*
+ Analyzes the convergence of a series using direct pointers.
+
+ Takes a pointer to an `Expr` representing the series term and a C-style string
+ for the variable.
+ Returns a `ConvergenceResult` enum indicating the analysis outcome.
+ */
 rssn_
 enum rssn_ConvergenceResult rssn_analyze_convergence_handle(const struct rssn_Expr *aTerm,
                                                             const char *aVar)
@@ -1953,6 +2027,13 @@ struct rssn_BincodeBuffer rssn_bincode_analytic_continuation(struct rssn_Bincode
                                                              struct rssn_BincodeBuffer aOrderBuf)
 ;
 
+/*
+ Analyzes the convergence of a series using bincode-serialized inputs.
+
+ Takes a `BincodeBuffer` containing the series term (`Expr`) and another
+ `BincodeBuffer` for the variable (`String`).
+ Returns a `BincodeBuffer` containing the analysis result.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_analyze_convergence(struct rssn_BincodeBuffer aTermBuf,
                                                            struct rssn_BincodeBuffer aVarBuf)
@@ -2325,6 +2406,12 @@ struct rssn_BincodeBuffer rssn_bincode_convolution_laplace(struct rssn_BincodeBu
                                                            struct rssn_BincodeBuffer aOutVarBuf)
 ;
 
+/*
+ Gets the metric tensor for a given coordinate system using bincode-serialized input.
+
+ Takes a `BincodeBuffer` containing the `CoordinateSystem`.
+ Returns a `BincodeBuffer` containing the metric tensor (`Vec<Vec<Expr>>`).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_coordinates_get_metric_tensor(struct rssn_BincodeBuffer aSystemBuf)
 ;
@@ -4987,34 +5074,74 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_to_dnf(struct rssn_BincodeBuffer aExprBuf)
 ;
 
+/*
+ Transforms a contravariant vector from one coordinate system to another using bincode-serialized inputs.
+
+ Takes `BincodeBuffer`s for the vector components (`Vec<Expr>`), the source `CoordinateSystem`,
+ and the target `CoordinateSystem`.
+ Returns a `BincodeBuffer` containing the transformed contravariant vector components (`Vec<Expr>`).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_transform_contravariant_vector(struct rssn_BincodeBuffer aCompsBuf,
                                                                       struct rssn_BincodeBuffer aFromBuf,
                                                                       struct rssn_BincodeBuffer aToBuf)
 ;
 
+/*
+ Transforms a covariant vector from one coordinate system to another using bincode-serialized inputs.
+
+ Takes `BincodeBuffer`s for the vector components (`Vec<Expr>`), the source `CoordinateSystem`,
+ and the target `CoordinateSystem`.
+ Returns a `BincodeBuffer` containing the transformed covariant vector components (`Vec<Expr>`).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_transform_covariant_vector(struct rssn_BincodeBuffer aCompsBuf,
                                                                   struct rssn_BincodeBuffer aFromBuf,
                                                                   struct rssn_BincodeBuffer aToBuf)
 ;
 
+/*
+ Transforms the curl of a vector field from one coordinate system to another using bincode-serialized inputs.
+
+ Takes `BincodeBuffer`s for the vector components (`Vec<Expr>`) and the source `CoordinateSystem`.
+ Returns a `BincodeBuffer` containing the transformed curl (`Vec<Expr>`).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_transform_curl(struct rssn_BincodeBuffer aCompsBuf,
                                                       struct rssn_BincodeBuffer aFromBuf)
 ;
 
+/*
+ Transforms the divergence of a vector field from one coordinate system to another using bincode-serialized inputs.
+
+ Takes `BincodeBuffer`s for the vector components (`Vec<Expr>`) and the source `CoordinateSystem`.
+ Returns a `BincodeBuffer` containing the transformed divergence (`Expr`).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_transform_divergence(struct rssn_BincodeBuffer aCompsBuf,
                                                             struct rssn_BincodeBuffer aFromBuf)
 ;
 
+/*
+ Transforms an expression from one coordinate system to another using bincode-serialized inputs.
+
+ Takes `BincodeBuffer`s for the expression (`Expr`), the source `CoordinateSystem`,
+ and the target `CoordinateSystem`.
+ Returns a `BincodeBuffer` containing the transformed expression (`Expr`).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_transform_expression(struct rssn_BincodeBuffer aExprBuf,
                                                             struct rssn_BincodeBuffer aFromBuf,
                                                             struct rssn_BincodeBuffer aToBuf)
 ;
 
+/*
+ Transforms the gradient of a scalar function from one coordinate system to another using bincode-serialized inputs.
+
+ Takes `BincodeBuffer`s for the scalar function (`Expr`), the variables (`Vec<String>`),
+ the source `CoordinateSystem`, and the target `CoordinateSystem`.
+ Returns a `BincodeBuffer` containing the transformed gradient (`Vec<Expr>`).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_transform_gradient(struct rssn_BincodeBuffer aScalarBuf,
                                                           struct rssn_BincodeBuffer aVarsBuf,
@@ -5022,6 +5149,13 @@ struct rssn_BincodeBuffer rssn_bincode_transform_gradient(struct rssn_BincodeBuf
                                                           struct rssn_BincodeBuffer aToBuf)
 ;
 
+/*
+ Transforms a point from one coordinate system to another using bincode-serialized inputs.
+
+ Takes `BincodeBuffer`s for the point (`Vec<Expr>`), the source `CoordinateSystem`,
+ and the target `CoordinateSystem`.
+ Returns a `BincodeBuffer` containing the transformed point (`Vec<Expr>`).
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_transform_point(struct rssn_BincodeBuffer aPointBuf,
                                                        struct rssn_BincodeBuffer aFromBuf,
@@ -8265,6 +8399,13 @@ char *rssn_json_analytic_continuation(const char *aExprJson,
                                       const char *aOrderJson)
 ;
 
+/*
+ Analyzes the convergence of a series using JSON-serialized inputs.
+
+ Takes C-style strings containing JSON-serialized `Expr` for the series term
+ and `String` for the variable.
+ Returns a C-style string containing the JSON-serialized analysis result.
+ */
 rssn_
 char *rssn_json_analyze_convergence(const char *aTermJson,
                                     const char *aVarJson)

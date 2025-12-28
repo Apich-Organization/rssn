@@ -496,7 +496,7 @@ impl ComputeEngine {
             comp_guard.status = ComputationStatus::Running;
 
             // Simulate work
-            for i in 0 .. 100 {
+            for i in 0u8 .. 100u8 {
 
                 let mut paused =
                     lock.lock().expect(
@@ -538,7 +538,7 @@ impl ComputeEngine {
                 comp_guard
                     .progress
                     .percentage =
-                    i as f32;
+                    f32::from(i); // i is 0..99, safe to use From for f32
 
                 comp_guard
                     .progress
@@ -610,7 +610,7 @@ impl ComputeEngine {
         id: &str,
     ) {
 
-        if let Some(computation) = self
+        let computation = self
             .computations
             .read()
             .expect(
@@ -619,27 +619,31 @@ impl ComputeEngine {
                  poisoned",
             )
             .get(id)
-        {
+            .cloned();
 
-            let comp = computation
-                .lock()
-                .expect(
-                    "Computation lock \
-                     poisoned",
-                );
+        if let Some(computation) = computation {
 
-            let (lock, cvar) =
-                &*comp.pause;
+            let pause = {
+                let comp = computation
+                    .lock()
+                    .expect(
+                        "Computation lock \
+                         poisoned",
+                    );
+                comp.pause.clone()
+            };
 
-            let mut paused =
-                lock.lock().expect(
-                    "Pause lock \
-                     poisoned",
-                );
+            {
+                let mut paused =
+                    pause.0.lock().expect(
+                        "Pause lock \
+                         poisoned",
+                    );
 
-            *paused = true;
+                *paused = true;
+            }
 
-            cvar.notify_one();
+            pause.1.notify_one();
         }
     }
 
@@ -675,7 +679,7 @@ impl ComputeEngine {
         id: &str,
     ) {
 
-        if let Some(computation) = self
+        let computation = self
             .computations
             .read()
             .expect(
@@ -684,27 +688,31 @@ impl ComputeEngine {
                  poisoned",
             )
             .get(id)
-        {
+            .cloned();
 
-            let comp = computation
-                .lock()
-                .expect(
-                    "Computation lock \
-                     poisoned",
-                );
+        if let Some(computation) = computation {
 
-            let (lock, cvar) =
-                &*comp.pause;
+            let pause = {
+                let comp = computation
+                    .lock()
+                    .expect(
+                        "Computation lock \
+                         poisoned",
+                    );
+                comp.pause.clone()
+            };
 
-            let mut paused =
-                lock.lock().expect(
-                    "Pause lock \
-                     poisoned",
-                );
+            {
+                let mut paused =
+                    pause.0.lock().expect(
+                        "Pause lock \
+                         poisoned",
+                    );
 
-            *paused = false;
+                *paused = false;
+            }
 
-            cvar.notify_one();
+            pause.1.notify_one();
         }
     }
 
@@ -741,7 +749,7 @@ impl ComputeEngine {
         id: &str,
     ) {
 
-        if let Some(computation) = self
+        let computation = self
             .computations
             .read()
             .expect(
@@ -750,29 +758,37 @@ impl ComputeEngine {
                  poisoned",
             )
             .get(id)
-        {
+            .cloned();
 
-            let mut comp = computation
-                .lock()
-                .expect(
-                    "Computation lock \
-                     poisoned",
-                );
+        if let Some(computation) = computation {
 
-            comp.status = ComputationStatus::Failed("Cancelled".to_string());
+            let pause = {
+                let mut comp = computation
+                    .lock()
+                    .expect(
+                        "Computation lock \
+                         poisoned",
+                    );
 
-            let (lock, cvar) =
-                &*comp.pause;
+                comp.status =
+                    ComputationStatus::Failed(
+                        "Cancelled"
+                            .to_string(),
+                    );
+                comp.pause.clone()
+            };
 
-            let mut paused =
-                lock.lock().expect(
-                    "Pause lock \
-                     poisoned",
-                );
+            {
+                let mut paused =
+                    pause.0.lock().expect(
+                        "Pause lock \
+                         poisoned",
+                    );
 
-            *paused = false;
+                *paused = false;
+            }
 
-            cvar.notify_one();
+            pause.1.notify_one();
         }
 
         self.computations
