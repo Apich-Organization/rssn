@@ -408,7 +408,8 @@ pub enum FaerDecompositionType {
 }
 
 /// Results of Faer matrix decompositions
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
 
 pub enum FaerDecompositionResult<
     T: Field,

@@ -335,7 +335,7 @@ pub unsafe extern "C" fn rssn_num_matrix_identity(
     size: usize
 ) -> *mut RssnMatrixHandle {
 
-    let m = Matrix::identity(size);
+    let m = Matrix::<f64>::identity(size);
 
     Box::into_raw(Box::new(m))
         as *mut RssnMatrixHandle
