@@ -311,6 +311,11 @@ typedef struct rssn_HilbertSpace rssn_HilbertSpace;
 typedef struct rssn_IteratedFunctionSystem rssn_IteratedFunctionSystem;
 
 /*
+ The JIT Engine for compiling and executing code.
+ */
+typedef struct rssn_JitEngine rssn_JitEngine;
+
+/*
  Represents a quantum state using Dirac notation (Ket).
 
  Symbolically, a ket is represented as `|state>`.
@@ -7053,6 +7058,40 @@ struct rssn_Expr *rssn_is_prime_handle(const struct rssn_Expr *aN)
  */
 rssn_
 int32_t rssn_is_satisfiable_handle(const struct rssn_Expr *aExpr)
+;
+
+/*
+ Compiles a sequence of instructions provided as JSON.
+ Returns a JSON result containing the address (as usize) of the compiled function.
+ */
+rssn_
+char *rssn_jit_compile_json(struct rssn_JitEngine *aEngine,
+                            const char *aJsonPtr)
+;
+
+/*
+ Creates a new JIT Engine instance.
+ */
+rssn_
+struct rssn_JitEngine *rssn_jit_create(void)
+;
+
+/*
+ Executes a JIT-compiled function pointer.
+
+ # Safety
+ The function pointer must be a valid pointer returned by `rssn_jit_compile_*`.
+ It assumes the function signature is `fn() -> f64`.
+ */
+rssn_
+double rssn_jit_execute(const uint8_t *aFuncPtr)
+;
+
+/*
+ Frees a JIT Engine instance.
+ */
+rssn_
+void rssn_jit_free(struct rssn_JitEngine *aEngine)
 ;
 
 rssn_

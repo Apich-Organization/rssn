@@ -23,6 +23,7 @@ pub mod constant_ffi;
             ffi api modules instead."
 )]
 pub mod ffi_api;
+pub mod jit_ffi;
 pub mod numerical_calculus_ffi;
 pub mod numerical_calculus_of_variations_ffi;
 pub mod numerical_combinatorics_ffi;

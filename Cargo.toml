@@ -106,7 +106,7 @@ ahash = { version = "0.8.12", features = ["serde"] }
 abi_stable = { version = "0.11.3", optional = true }
 instability = "0.3.10"
 faer = "0.23.2"
-cranelift = { version = "0.127", optional = true }
+cranelift = { version = "0.127", optional = true, features = ["jit", "module"] }
 
 [build-dependencies]
 cbindgen = "0.29.2"

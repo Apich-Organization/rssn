@@ -1352,3 +1352,15 @@ pub mod num {
     pub use num_traits::*;
     pub use ordered_float::*;
 }
+
+/// Unified layer under development, for now rssn only provide campatible version choises.
+
+pub mod faer {
+    pub use faer::*;
+}
+
+/// Unified layer under development, for now rssn only provide campatible version choises.
+
+pub mod jit {
+    pub use cranelift::*;
+}
