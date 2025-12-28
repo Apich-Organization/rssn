@@ -26,8 +26,6 @@ pub struct JitEngine {
     ctx: Context,
     #[cfg(feature = "jit")]
     module: JITModule,
-    #[cfg(feature = "jit")]
-    data_ctx: DataDescription,
     
     #[cfg(feature = "jit")]
     custom_ops: HashMap<u32, CustomOpData>,
@@ -60,7 +58,6 @@ impl JitEngine {
                 builder_context: FunctionBuilderContext::new(),
                 ctx: module.make_context(),
                 module,
-                data_ctx: DataDescription::new(),
                 custom_ops: HashMap::new(),
                 function_counter,
             }

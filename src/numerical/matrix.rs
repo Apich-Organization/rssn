@@ -23,6 +23,7 @@ use faer::{
     Mat,
     MatMut,
     MatRef,
+    Side,
     get_global_parallelism,
     set_global_parallelism,
 };
@@ -252,85 +253,61 @@ impl Field for f64 {
 
         match kind {
             FaerDecompositionType::Svd => {
-                // SVD of A (row-major) = SVD(A^T (buffer col-major)).
-                // SVD of A^T: A^T = U' S V'^T.
-                // A = (U' S V'^T)^T = V' S U'^T.
-                // So U_A = V', V_A = U'.
-                
                 let mat_t = MatRef::from_column_major_slice(&matrix.data, cols, rows);
-                
                 let svd = mat_t.thin_svd().ok()?;
-                // Result has U, S, V.
-                // u() returns MatRef.
                 
-                let u_prime = &svd.u;
-                let v_prime = &svd.v;
-                let s = svd.s_diagonal.column_vector().col_as_slice(0).to_vec();
-                
-                // We need U_A = V' (from faer).
-                // V' is Mat<f64> (col-major).
-                // We want U_A as Matrix (row-major).
-                // Rows of U_A should be rows of V'. 
-                // Wait. U_A has `rows` rows and `min(rows, cols)` cols.
-                // V' (from A^T) has `cols` (of A^T = rows of A) rows and `k` cols.
-                // It fits.
-                // To get V' as row-major Matrix, we take V' col-major buffer and transpose logic?
-                // No, simpler: Read V' into Vec (row-major).
-                // element(i, j) = v_prime.read(i, j).
-                // faer 0.23: v_prime is MatRef.
+                let u_prime = svd.U();
+                let v_prime = svd.V();
+                let s_col = svd.S().column_vector();
+                let s = (0..s_col.nrows()).map(|i| *s_col.get(i)).collect::<Vec<_>>();
                 
                 let k = s.len();
-                let u_rows = rows;
-                let u_cols = k;
-                
-                let mut u_data = vec![0.0; u_rows * u_cols];
-                for i in 0..u_rows {
-                    for j in 0..u_cols {
-                        u_data[i * u_cols + j] = *v_prime.get(i, j);
+                let mut u_data = vec![0.0; rows * k];
+                for i in 0..rows {
+                    for j in 0..k {
+                        u_data[i * k + j] = *v_prime.get(i, j);
                     }
                 }
                 
-                let v_rows = cols;
-                let v_cols = k;
-                
-                let mut v_data = vec![0.0; v_rows * v_cols];
-                 for i in 0..v_rows {
-                    for j in 0..v_cols {
-                        v_data[i * v_cols + j] = *u_prime.get(i, j);
+                let mut v_data = vec![0.0; cols * k];
+                 for i in 0..cols {
+                    for j in 0..k {
+                        v_data[i * k + j] = *u_prime.get(i, j);
                     }
                 }
                 
                 Some(FaerDecompositionResult::Svd {
-                    u: Matrix::new(u_rows, u_cols, u_data).with_backend(matrix.backend),
+                    u: Matrix::new(rows, k, u_data).with_backend(matrix.backend),
                     s,
-                    v: Matrix::new(v_rows, v_cols, v_data).with_backend(matrix.backend),
+                    v: Matrix::new(cols, k, v_data).with_backend(matrix.backend),
                 })
             }
             FaerDecompositionType::Cholesky => {
-                // Cholesky: A symmetric. A = L L^T.
-                // A row-major = A col-major. 
-                // MatRef::from_column_major_slice works DIRECTLY as A.
-                // if rows != cols { return None; }
-                
-                // let mat = MatRef::from_column_major_slice(&matrix.data, rows, cols);
-                // 0.23: cholesky(Side).
-                // if let Ok(chol) = mat.cholesky(faer::Side::Lower) {
-                     None // Disabled until method name resolution
-                // } else {
-                //    None // Not positive definite
-                // }
+                if rows != cols { return None; }
+                let mat = MatRef::from_column_major_slice(&matrix.data, rows, cols);
+                if let Ok(chol) = mat.llt(Side::Lower) {
+                    let l_mat = chol.L();
+                    let mut l_data = vec![0.0; rows * cols];
+                    for i in 0..rows {
+                        for j in 0..cols {
+                             l_data[i * cols + j] = *l_mat.get(i, j);
+                        }
+                    }
+                    Some(FaerDecompositionResult::Cholesky {
+                        l: Matrix::new(rows, cols, l_data).with_backend(matrix.backend)
+                    })
+                } else {
+                    None
+                }
             }
              FaerDecompositionType::EigenSymmetric => {
-                 // Self-adjoint EVD.
-                 // A symmetric -> A row-major == A col-major.
                  if rows != cols { return None; }
-                 
                  let mat = MatRef::from_column_major_slice(&matrix.data, rows, cols);
-                  // self_adjoint_eigendecomposition() seems correct or similar
-                  let evd = mat.self_adjoint_eigen(faer::Side::Lower).ok()?;
+                  let evd = mat.self_adjoint_eigen(Side::Lower).ok()?;
                   
-                  let s = evd.s_diagonal.column_vector().col_as_slice(0).to_vec();
-                  let u_mat = &evd.u; // Eigenvectors
+                  let s_col = evd.S().column_vector();
+                  let s = (0..s_col.nrows()).map(|i| *s_col.get(i)).collect::<Vec<_>>();
+                  let u_mat = evd.U(); // Eigenvectors
                  
                  let mut u_data = vec![0.0; rows * cols];
                  for i in 0..rows {
