@@ -17,8 +17,14 @@ use std::time::Duration;
 
 use bincode_next::config;
 use bincode_next::serde;
+use lazy_static::lazy_static;
 use libloading::Library;
 use libloading::Symbol;
+
+lazy_static! {
+    /// Global instance of the PluginManager for FFI access.
+    pub static ref GLOBAL_PLUGIN_MANAGER: RwLock<PluginManager> = RwLock::new(PluginManager::empty());
+}
 
 use crate::plugins::plugin_c::Plugin;
 use crate::plugins::plugin_c::PluginError;

@@ -435,6 +435,11 @@ struct rssn_Representation;
  */
 struct rssn_RewriteRule;
 
+/*
+ Opaque handle for a Matrix<f64>.
+ */
+struct rssn_RssnMatrixHandle;
+
 struct rssn_SPHSystem;
 
 /*
@@ -12804,8 +12809,8 @@ char *rssn_num_lagrange_interpolation_json(const char *aInputPtr)
 ;
 
 rssn_
-rssn_Matrix<double> *rssn_num_matrix_add(const rssn_Matrix<double> *aM1,
-                                         const rssn_Matrix<double> *aM2)
+rssn_RssnMatrixHandle *rssn_num_matrix_add(const rssn_RssnMatrixHandle *aM1,
+                                           const rssn_RssnMatrixHandle *aM2)
 ;
 
 /*
@@ -12835,9 +12840,52 @@ char *rssn_num_matrix_add_json(const char *aJsonPtr)
  A raw pointer to the Matrix object, or null on error.
  */
 rssn_
-rssn_Matrix<double> *rssn_num_matrix_create(size_t aRows,
-                                            size_t aCols,
-                                            const double *aData)
+rssn_RssnMatrixHandle *rssn_num_matrix_create(size_t aRows,
+                                              size_t aCols,
+                                              const double *aData)
+;
+
+/*
+ Decomposes a matrix via Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_num_matrix_decompose_bincode(const uint8_t *aData,
+                                                     size_t aLen)
+;
+
+/*
+ Computes Cholesky decomposition: A = L * L^T.
+ */
+rssn_
+int32_t rssn_num_matrix_decompose_cholesky(const rssn_RssnMatrixHandle *aMatrix,
+                                           rssn_RssnMatrixHandle **aOutL)
+;
+
+/*
+ Computes Symmetric Eigendecomposition: A = V * D * V^T.
+ */
+rssn_
+int32_t rssn_num_matrix_decompose_eigen_symmetric(const rssn_RssnMatrixHandle *aMatrix,
+                                                  rssn_RssnMatrixHandle **aOutValues,
+                                                  rssn_RssnMatrixHandle **aOutVectors)
+;
+
+/*
+ Decomposes a matrix from JSON.
+ */
+rssn_
+char *rssn_num_matrix_decompose_json(const char *aJsonPtr)
+;
+
+/*
+ Computes SVD decomposition: A = U * S * V^T.
+ Returns 0 on success, -1 on error.
+ */
+rssn_
+int32_t rssn_num_matrix_decompose_svd(const rssn_RssnMatrixHandle *aMatrix,
+                                      rssn_RssnMatrixHandle **aOutU,
+                                      rssn_RssnMatrixHandle **aOutS,
+                                      rssn_RssnMatrixHandle **aOutV)
 ;
 
 /*
@@ -12848,50 +12896,50 @@ char *rssn_num_matrix_det_json(const char *aJsonPtr)
 ;
 
 rssn_
-int32_t rssn_num_matrix_determinant(const rssn_Matrix<double> *aMatrix,
+int32_t rssn_num_matrix_determinant(const rssn_RssnMatrixHandle *aMatrix,
                                     double *aResult)
 ;
 
 rssn_
-void rssn_num_matrix_free(rssn_Matrix<double> *aMatrix)
+void rssn_num_matrix_free(rssn_RssnMatrixHandle *aMatrix)
 ;
 
 /*
  Returns the Frobenius norm.
  */
 rssn_
-double rssn_num_matrix_frobenius_norm(const rssn_Matrix<double> *aMatrix)
+double rssn_num_matrix_frobenius_norm(const rssn_RssnMatrixHandle *aMatrix)
 ;
 
 rssn_
-size_t rssn_num_matrix_get_cols(const rssn_Matrix<double> *aMatrix)
+size_t rssn_num_matrix_get_cols(const rssn_RssnMatrixHandle *aMatrix)
 ;
 
 rssn_
-int32_t rssn_num_matrix_get_data(const rssn_Matrix<double> *aMatrix,
+int32_t rssn_num_matrix_get_data(const rssn_RssnMatrixHandle *aMatrix,
                                  double *aBuffer)
 ;
 
 rssn_
-size_t rssn_num_matrix_get_rows(const rssn_Matrix<double> *aMatrix)
+size_t rssn_num_matrix_get_rows(const rssn_RssnMatrixHandle *aMatrix)
 ;
 
 /*
  Creates an identity matrix.
  */
 rssn_
-rssn_Matrix<double> *rssn_num_matrix_identity(size_t aSize)
+rssn_RssnMatrixHandle *rssn_num_matrix_identity(size_t aSize)
 ;
 
 rssn_
-rssn_Matrix<double> *rssn_num_matrix_inverse(const rssn_Matrix<double> *aMatrix)
+rssn_RssnMatrixHandle *rssn_num_matrix_inverse(const rssn_RssnMatrixHandle *aMatrix)
 ;
 
 /*
  Checks if it's identity.
  */
 rssn_
-int32_t rssn_num_matrix_is_identity(const rssn_Matrix<double> *aMatrix,
+int32_t rssn_num_matrix_is_identity(const rssn_RssnMatrixHandle *aMatrix,
                                     double aEpsilon)
 ;
 
@@ -12899,13 +12947,13 @@ int32_t rssn_num_matrix_is_identity(const rssn_Matrix<double> *aMatrix,
  Checks if it's orthogonal.
  */
 rssn_
-int32_t rssn_num_matrix_is_orthogonal(const rssn_Matrix<double> *aMatrix,
+int32_t rssn_num_matrix_is_orthogonal(const rssn_RssnMatrixHandle *aMatrix,
                                       double aEpsilon)
 ;
 
 rssn_
-rssn_Matrix<double> *rssn_num_matrix_mul(const rssn_Matrix<double> *aM1,
-                                         const rssn_Matrix<double> *aM2)
+rssn_RssnMatrixHandle *rssn_num_matrix_mul(const rssn_RssnMatrixHandle *aM1,
+                                           const rssn_RssnMatrixHandle *aM2)
 ;
 
 /*
@@ -12927,20 +12975,44 @@ char *rssn_num_matrix_mul_json(const char *aJsonPtr)
  Returns the rank.
  */
 rssn_
-int32_t rssn_num_matrix_rank(const rssn_Matrix<double> *aMatrix,
+int32_t rssn_num_matrix_rank(const rssn_RssnMatrixHandle *aMatrix,
                              size_t *aOutRank)
+;
+
+/*
+ Sets the backend for the matrix.
+ 0: Native, 1: Faer
+ */
+rssn_
+int32_t rssn_num_matrix_set_backend(rssn_RssnMatrixHandle *aMatrix,
+                                    int32_t aBackendId)
+;
+
+/*
+ Sets backend for a matrix via Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_num_matrix_set_backend_bincode(const uint8_t *aData,
+                                                       size_t aLen)
+;
+
+/*
+ Sets backend for a matrix (returns new matrix with backend set) from JSON.
+ */
+rssn_
+char *rssn_num_matrix_set_backend_json(const char *aJsonPtr)
 ;
 
 /*
  Returns the trace.
  */
 rssn_
-int32_t rssn_num_matrix_trace(const rssn_Matrix<double> *aMatrix,
+int32_t rssn_num_matrix_trace(const rssn_RssnMatrixHandle *aMatrix,
                               double *aOutTrace)
 ;
 
 rssn_
-rssn_Matrix<double> *rssn_num_matrix_transpose(const rssn_Matrix<double> *aMatrix)
+rssn_RssnMatrixHandle *rssn_num_matrix_transpose(const rssn_RssnMatrixHandle *aMatrix)
 ;
 
 /*
@@ -15620,6 +15692,67 @@ rssn_
 size_t rssn_plugin_execute(const char *aPluginNamePtr,
                            const char *aCommandPtr,
                            size_t aArgsHandle)
+;
+
+/*
+ Executes a plugin command.
+
+ # Arguments
+ * `name` - Plugin name.
+ * `command` - Command string.
+ * `args_handle` - Handle to the argument expression.
+
+ # Returns
+ Handle to the result expression, or 0 on error.
+ */
+rssn_
+size_t rssn_plugins_execute(const char *aName,
+                            const char *aCommand,
+                            size_t aArgsHandle)
+;
+
+/*
+ Executes a plugin command via Bincode.
+ */
+rssn_
+rssn_BincodeBuffer rssn_plugins_execute_bincode(const uint8_t *aData,
+                                                size_t aLen)
+;
+
+/*
+ Executes a plugin command via JSON (args passed as JSON expr).
+ */
+rssn_
+char *rssn_plugins_execute_json(const char *aJsonPtr)
+;
+
+/*
+ Returns a JSON array of loaded plugin names.
+
+ The caller must free the string using `rssn_free_string`.
+ */
+rssn_
+char *rssn_plugins_get_loaded()
+;
+
+/*
+ Loads plugins from a specified directory.
+
+ # Arguments
+ * `path` - Path to the plugin directory.
+
+ # Returns
+ True if successful, false otherwise.
+ */
+rssn_
+bool rssn_plugins_load(const char *aPath)
+;
+
+/*
+ Unloads a plugin by name.
+ */
+rssn_
+bool rssn_plugins_unload(const char *aName)
 ;
 
 /*

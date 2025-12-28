@@ -79,6 +79,7 @@ pub mod physics_sim_linear_elasticity_ffi;
 pub mod physics_sim_navier_stokes_ffi;
 pub mod physics_sim_schrodinger_ffi;
 pub mod physics_sm_ffi;
+pub mod plugins_ffi;
 pub mod symbolic_cad_ffi;
 pub mod symbolic_calculus_ffi;
 pub mod symbolic_calculus_of_variations_ffi;

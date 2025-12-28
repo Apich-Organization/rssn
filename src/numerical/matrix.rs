@@ -16,6 +16,15 @@ use std::ops::Neg;
 use std::ops::Sub;
 use std::ops::SubAssign;
 
+use faer::linalg::solvers::Inverse;
+use faer::solvers::SpSolver;
+// Faer imports
+use faer::{
+    Mat,
+    MatMut,
+    MatRef,
+    Parallelism,
+};
 use num_traits::One;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
@@ -23,11 +32,6 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::symbolic::finite_field::PrimeFieldElement;
-
-// Faer imports
-use faer::{MatRef, MatMut, Mat, Parallelism};
-use faer::solvers::SpSolver;
-use faer::linalg::solvers::Inverse;
 
 /// A trait defining the requirements for a field in linear algebra.
 
@@ -54,33 +58,43 @@ pub trait Field:
     ) -> Result<Self, String>;
 
     /// Optional: Multiply two matrices using Faer backend if supported.
+
     fn faer_mul(
         _lhs: &Matrix<Self>,
         _rhs: &Matrix<Self>,
     ) -> Option<Matrix<Self>> {
+
         None
     }
 
     /// Optional: Invert a matrix using Faer backend if supported.
+
     fn faer_inverse(
-        _matrix: &Matrix<Self>,
+        _matrix: &Matrix<Self>
     ) -> Option<Matrix<Self>> {
+
         None
     }
 
     /// Optional: Solve Ax = b using Faer backend if supported.
+
     fn faer_solve(
         _a: &Matrix<Self>,
         _b: &Matrix<Self>,
     ) -> Option<Matrix<Self>> {
+
         None
     }
 
     /// Optional: Perform matrix decomposition using Faer backend.
+
     fn faer_decompose(
         &self,
-        _kind: FaerDecompositionType
-    ) -> Option<FaerDecompositionResult<Self>> {
+        _kind: FaerDecompositionType,
+    ) -> Option<
+        FaerDecompositionResult<Self>,
+    > {
+
         None
     }
 }
@@ -105,12 +119,13 @@ impl Field for f64 {
         }
     }
 
-
     fn faer_mul(
         lhs: &Matrix<Self>,
         rhs: &Matrix<Self>,
     ) -> Option<Matrix<Self>> {
+
         if lhs.cols != rhs.rows {
+
             return None;
         }
 
@@ -118,11 +133,17 @@ impl Field for f64 {
         // A * B = C  => C^T = B^T * A^T
         // We compute B^T * A^T using Faer (which expects col-major), result is col-major C^T.
         // Col-major C^T has the same memory layout as Row-major C.
-        
+
         let lhs_t = MatRef::from_column_major_slice(&lhs.data, lhs.cols, lhs.rows);
+
         let rhs_t = MatRef::from_column_major_slice(&rhs.data, rhs.cols, rhs.rows);
 
-        let mut res_data = vec![0.0; lhs.rows * rhs.cols];
+        let mut res_data =
+            vec![
+                0.0;
+                lhs.rows * rhs.cols
+            ];
+
         let mut res_mat = MatMut::from_column_major_slice_mut(&mut res_data, rhs.cols, lhs.rows);
 
         // res_mat (C^T) = rhs_t (B^T) * lhs_t (A^T)
@@ -137,80 +158,105 @@ impl Field for f64 {
             Parallelism::Auto,
         );
 
-        Some(Matrix::new(lhs.rows, rhs.cols, res_data).with_backend(lhs.backend))
+        Some(
+            Matrix::new(
+                lhs.rows,
+                rhs.cols,
+                res_data,
+            )
+            .with_backend(lhs.backend),
+        )
     }
 
     fn faer_inverse(
-        matrix: &Matrix<Self>,
+        matrix: &Matrix<Self>
     ) -> Option<Matrix<Self>> {
+
         if matrix.rows != matrix.cols {
+
             return None;
         }
+
         let n = matrix.rows;
-        
+
         // Similar trick: (A^-1)^T = (A^T)^-1.
         // View as A^T (col-major). Invert. Result is (A^-1)^T (col-major) -> A^-1 (row-major).
         let mat_t = MatRef::from_column_major_slice(&matrix.data, n, n);
-        
+
         // Use partial pivot LU for inversion
         let lu = mat_t.partial_piv_lu();
-        // Check singularity? Faer might handle it or return junk/inf. 
+
+        // Check singularity? Faer might handle it or return junk/inf.
         // Ideally we check determinant or rank, but for perf we just invert.
         // faer 0.23: lu.inverse() returns Mat<f64>.
-        
+
         let inv_t = lu.inverse();
-        
-        // inv_t is (A^-1)^T in col-major. 
+
+        // inv_t is (A^-1)^T in col-major.
         // We need the data as Vec<f64>.
         // Mat stores data in col-major. col_as_slice might help if contiguous.
         // Mat is contiguous.
-        
+
         // However, we need to extract the data vector.
-        // Mat::into_inner() or similar? 
+        // Mat::into_inner() or similar?
         // Or just read it.
-        
+
         let mut data = vec![0.0; n * n];
+
         // Copy data out.
         // If Mat is standard, we can just copy.
         // inv_t is Mat<f64>.
-        
-        for j in 0..n {
-            for i in 0..n {
-                // inv_t(i, j) 
-                data[i * n + j] = *inv_t.get(j, i); // Swap indices? 
-                // Wait. We want row-major C.
-                // Memory of C is: C(0,0), C(0,1)..
-                // Memory of C^T (col-major) is: C^T(0,0), C^T(1,0)..
-                // C^T(j, i) = C(i, j).
-                // So sequence (0,0), (1,0) of C^T is C(0,0), C(0,1) of C.
-                // So the raw buffer of inv_t (col-major) is exactly row-major of inv.
-                // So we just need the buffer.
+
+        for j in 0 .. n {
+
+            for i in 0 .. n {
+
+                // inv_t(i, j)
+                data[i * n + j] =
+                    *inv_t.get(j, i); // Swap indices?
+                                      // Wait. We want row-major C.
+                                      // Memory of C is: C(0,0), C(0,1)..
+                                      // Memory of C^T (col-major) is: C^T(0,0), C^T(1,0)..
+                                      // C^T(j, i) = C(i, j).
+                                      // So sequence (0,0), (1,0) of C^T is C(0,0), C(0,1) of C.
+                                      // So the raw buffer of inv_t (col-major) is exactly row-major of inv.
+                                      // So we just need the buffer.
             }
         }
-        
+
         // Actually, we can just copy the slice if strictly contiguous.
         // Mat::as_slice() gives column major slice.
         // This slice corresponds exactly to row major data of the transpose of the matrix represented by Mat.
         // inv_t represents (A^-1)^T.
         // Its col-major data is Row-major data of ((A^-1)^T)^T = A^-1.
         // Correct.
-        
+
         // So:
         let slice = inv_t.as_slice();
+
         let data = slice.to_vec();
-        
-        Some(Matrix::new(n, n, data).with_backend(matrix.backend))
+
+        Some(
+            Matrix::new(n, n, data)
+                .with_backend(
+                    matrix.backend,
+                ),
+        )
     }
 
     fn faer_decompose(
         matrix: &Matrix<Self>,
-        kind: FaerDecompositionType
-    ) -> Option<FaerDecompositionResult<Self>> {
+        kind: FaerDecompositionType,
+    ) -> Option<
+        FaerDecompositionResult<Self>,
+    > {
+
         // Ensure rows/cols are compatible (handled by faer per decomp mostly)
         // But we need dimensions.
         let rows = matrix.rows;
+
         let cols = matrix.cols;
-        
+
         match kind {
             FaerDecompositionType::Svd => {
                 // SVD of A (row-major) = SVD(A^T (buffer col-major)).
@@ -341,7 +387,16 @@ impl Field for PrimeFieldElement {
 }
 
 /// Backend usage for matrix operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
+
 pub enum Backend {
     /// Native Rust implementation (default)
     Native,
@@ -351,12 +406,22 @@ pub enum Backend {
 
 impl Default for Backend {
     fn default() -> Self {
+
         Self::Native
     }
 }
 
 /// Types of matrix decompositions supported by Faer
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+)]
+
 pub enum FaerDecompositionType {
     /// LU Decomposition with Partial Pivoting
     Lu,
@@ -372,17 +437,36 @@ pub enum FaerDecompositionType {
 
 /// Results of Faer matrix decompositions
 #[derive(Debug, Clone)]
-pub enum FaerDecompositionResult<T: Field> {
+
+pub enum FaerDecompositionResult<
+    T: Field,
+> {
     /// LU: P * A = L * U
-    Lu { l: Matrix<T>, u: Matrix<T>, p: Vec<usize> },
+    Lu {
+        l: Matrix<T>,
+        u: Matrix<T>,
+        p: Vec<usize>,
+    },
     /// QR: A = Q * R
-    Qr { q: Matrix<T>, r: Matrix<T> },
+    Qr {
+        q: Matrix<T>,
+        r: Matrix<T>,
+    },
     /// Cholesky: A = L * L^T
-    Cholesky { l: Matrix<T> },
+    Cholesky {
+        l: Matrix<T>,
+    },
     /// SVD: A = U * S * V^T
-    Svd { u: Matrix<T>, s: Vec<f64>, v: Matrix<T> },
+    Svd {
+        u: Matrix<T>,
+        s: Vec<f64>,
+        v: Matrix<T>,
+    },
     /// Eigen Symmetric: A = V * D * V^T (s are eigenvalues, u are eigenvectors)
-    EigenSymmetric { values: Vec<f64>, vectors: Matrix<T> },
+    EigenSymmetric {
+        values: Vec<f64>,
+        vectors: Matrix<T>,
+    },
 }
 
 
@@ -436,13 +520,24 @@ impl<T: Field> Matrix<T> {
     }
 
     /// Sets the backend for the matrix.
-    pub fn with_backend(mut self, backend: Backend) -> Self {
+
+    pub fn with_backend(
+        mut self,
+        backend: Backend,
+    ) -> Self {
+
         self.backend = backend;
+
         self
     }
-    
+
     /// Updates the backend for the matrix in-place.
-    pub fn set_backend(&mut self, backend: Backend) {
+
+    pub fn set_backend(
+        &mut self,
+        backend: Backend,
+    ) {
+
         self.backend = backend;
     }
 
@@ -536,28 +631,50 @@ impl<T: Field> Matrix<T> {
     /// Computes a matrix decomposition using the Faer backend.
     /// Returns None if the backend is not set to Faer, if the decomposition type is unsupported
     /// for the matrix type, or if the decomposition fails (e.g., Cholesky on non-SPD).
-    pub fn decompose(&self, kind: FaerDecompositionType) -> Option<FaerDecompositionResult<T>> {
-        if self.backend == Backend::Faer {
-             self.data.get(0).and_then(|e| e.faer_decompose(self, kind))
+
+    pub fn decompose(
+        &self,
+        kind: FaerDecompositionType,
+    ) -> Option<
+        FaerDecompositionResult<T>,
+    > {
+
+        if self.backend == Backend::Faer
+        {
+
+            self.data
+                .get(0)
+                .and_then(|e| {
+                    e.faer_decompose(
+                        self, kind,
+                    )
+                })
         } else {
-            // Or should we allow using Faer temporarily? 
+
+            // Or should we allow using Faer temporarily?
             // The prompt implies we "provide new method for using faer".
             // So we force try faer even if backend is not set, or we respect backend?
             // "using faer ... method" implies explicit usage.
-            // Let's try to delegate regardless of `self.backend` if T implements it, 
-            // OR enforce backend. 
+            // Let's try to delegate regardless of `self.backend` if T implements it,
+            // OR enforce backend.
             // Enforcing backend is consistent.
             // BUT, for convenience, if the user explicitly calls `decompose`, they imply Faer (since it returns FaerResult).
             // So we delegate directly.
-            
+
             // We need a dummy instance to call trait method if static?
             // No, `faer_decompose` is a method on `Field` trait but takes `&self` (the element) as receiver?
             // Wait, my trait def was `fn faer_decompose(&self, type)`. `&self` is the element instance.
             // This is slightly awkward design (Field trait), but consistent with existing `inverse`.
             // We use the first element to dispatch.
-            
-            if self.data.is_empty() { return None; }
-            self.data[0].faer_decompose(self, kind)
+
+            if self.data.is_empty() {
+
+                return None;
+            }
+
+            self.data[0].faer_decompose(
+                self, kind,
+            )
         }
     }
 
@@ -759,7 +876,8 @@ impl<T: Field> Matrix<T> {
             self.cols,
             self.rows,
             new_data,
-        ).with_backend(self.backend)
+        )
+        .with_backend(self.backend)
     }
 
     /// # Strassen's Matrix Multiplication
@@ -864,7 +982,8 @@ impl<T: Field> Matrix<T> {
             self.rows,
             other.cols,
             result_data,
-        ).with_backend(self.backend))
+        )
+        .with_backend(self.backend))
     }
 
     /// Splits a matrix into four sub-matrices of equal size.
@@ -1381,8 +1500,14 @@ impl<T: Field> Matrix<T> {
     pub fn inverse(
         &self
     ) -> Option<Self> {
-        if self.backend == Backend::Faer {
-            if let Some(res) = T::faer_inverse(self) {
+
+        if self.backend == Backend::Faer
+        {
+
+            if let Some(res) =
+                T::faer_inverse(self)
+            {
+
                 return Some(res);
             }
         }
@@ -1440,11 +1565,16 @@ impl<T: Field> Matrix<T> {
                     }
                 }
 
-                Some(Self::new(
-                    n,
-                    n,
-                    inv_data,
-                ).with_backend(self.backend))
+                Some(
+                    Self::new(
+                        n,
+                        n,
+                        inv_data,
+                    )
+                    .with_backend(
+                        self.backend,
+                    ),
+                )
             } else {
 
                 // Matrix is not invertible (rank is less than n)
@@ -1578,7 +1708,8 @@ impl<T: Field> Matrix<T> {
             self.cols,
             num_free,
             null_space_data,
-        ).with_backend(self.backend))
+        )
+        .with_backend(self.backend))
     }
 
     /// Computes the rank of the matrix.
@@ -1777,7 +1908,9 @@ impl<T: Field> Matrix<T> {
         }
 
         Self::new(size, size, data)
-            .with_backend(Backend::default())
+            .with_backend(
+                Backend::default(),
+            )
     }
 
     /// Checks if the matrix is identity within a given tolerance.
@@ -2139,7 +2272,8 @@ impl<T: Field> Add for Matrix<T> {
             self.rows,
             self.cols,
             data,
-        ).with_backend(self.backend)
+        )
+        .with_backend(self.backend)
     }
 }
 
@@ -2166,7 +2300,8 @@ impl<T: Field> Sub for Matrix<T> {
             self.rows,
             self.cols,
             data,
-        ).with_backend(self.backend)
+        )
+        .with_backend(self.backend)
     }
 }
 
@@ -2181,10 +2316,20 @@ impl<T: Field> Mul for Matrix<T> {
         assert_eq!(self.cols, rhs.rows);
 
         // Try Faer backend
-        if self.backend == Backend::Faer || rhs.backend == Backend::Faer {
-             if let Some(res) = T::faer_mul(&self, &rhs) {
-                 return res.with_backend(self.backend); // Propagate lhs backend preference
-             }
+        if self.backend == Backend::Faer
+            || rhs.backend
+                == Backend::Faer
+        {
+
+            if let Some(res) =
+                T::faer_mul(&self, &rhs)
+            {
+
+                return res
+                    .with_backend(
+                        self.backend,
+                    ); // Propagate lhs backend preference
+            }
         }
 
         let mut data = vec![
@@ -2215,7 +2360,8 @@ impl<T: Field> Mul for Matrix<T> {
             self.rows,
             rhs.cols,
             data,
-        ).with_backend(self.backend)
+        )
+        .with_backend(self.backend)
     }
 }
 
@@ -2239,7 +2385,8 @@ impl Mul<f64> for Matrix<f64> {
             self.rows,
             self.cols,
             new_data,
-        ).with_backend(self.backend)
+        )
+        .with_backend(self.backend)
     }
 }
 
@@ -2263,7 +2410,8 @@ impl Mul<f64> for &Matrix<f64> {
             self.rows,
             self.cols,
             new_data,
-        ).with_backend(self.backend)
+        )
+        .with_backend(self.backend)
     }
 }
 
@@ -2340,7 +2488,8 @@ impl<T: Field> Neg for Matrix<T> {
             self.rows,
             self.cols,
             data,
-        ).with_backend(self.backend)
+        )
+        .with_backend(self.backend)
     }
 }
 
@@ -2375,7 +2524,8 @@ impl Div<f64> for Matrix<f64> {
             self.rows,
             self.cols,
             new_data,
-        ).with_backend(self.backend)
+        )
+        .with_backend(self.backend)
     }
 }
 
