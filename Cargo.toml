@@ -139,12 +139,19 @@ default = []
 output = ["dep:plotters", "dep:ndarray-npy"]
 physics = []
 plugins = ["dep:libloading", "dep:abi_stable"]
-jit = ["dep:cranelift-codegen", "dep:cranelift-frontend", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-native"]
+jit = [
+    "dep:cranelift-codegen",
+    "dep:cranelift-frontend",
+    "dep:cranelift-jit",
+    "dep:cranelift-module",
+    "dep:cranelift-native",
+]
 ffi_api = []
 # Will be available at v0.3.0 release.
 ffi_blinding = ["dep:libc"]
 # Experimental features
 experimental = ["ffi_blinding", "jit"]
+nightly = []
 full = [
     "default",
     "output",
