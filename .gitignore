@@ -266,3 +266,5 @@ buildwarning
 check_prelude.sh
 scan.sh
 perf.data
+src/prelude.rs.bak
+src/prelude.rs.bak.1
