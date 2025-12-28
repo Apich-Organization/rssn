@@ -111,19 +111,20 @@ impl JitEngine {
             builder.switch_to_block(entry_block);
             
             // Stack slot setup
-            let stack_slot = builder.create_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 2048)); 
+            let stack_slot = builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 2048, 4)); 
             let stack_ptr = builder.ins().stack_addr(types::I64, stack_slot, 0);
             
-            let sp_var = Variable::new(0);
-            builder.declare_var(sp_var, types::I64);
-            builder.def_var(sp_var, builder.ins().iconst(types::I64, 0));
+            let sp_var = builder.declare_var(types::I64);
+            let mut var_tmp = builder.ins().iconst(types::I64, 0);
+            builder.def_var(sp_var, var_tmp);
             
             // Macros for stack manipulation
             macro_rules! pop {
                 () => {{
                     let sp = builder.use_var(sp_var);
-                    let old_sp = builder.ins().isub_imm(sp, 8);
-                    let val = builder.ins().load(types::I64, MemFlags::new(), stack_ptr, old_sp);
+                    let old_sp = builder.ins().iadd_imm(sp, -8);
+                    let addr = builder.ins().iadd(stack_ptr, old_sp);
+                    let val = builder.ins().load(types::I64, MemFlags::new(), addr, 0);
                     builder.def_var(sp_var, old_sp);
                     val
                 }};
@@ -133,7 +134,8 @@ impl JitEngine {
                 ($val:expr) => {{
                     let val = $val;
                     let sp = builder.use_var(sp_var);
-                    builder.ins().store(MemFlags::new(), val, stack_ptr, sp);
+                    let addr = builder.ins().iadd(stack_ptr, sp);
+                    builder.ins().store(MemFlags::new(), val, addr, 0);
                     let new_sp = builder.ins().iadd_imm(sp, 8);
                     builder.def_var(sp_var, new_sp);
                 }};
@@ -143,7 +145,7 @@ impl JitEngine {
             for inst in instructions {
                 if let Instruction::Label(id) = inst {
                      let block = blocks[id];
-                     if !builder.is_filled() {
+                     if !builder.is_unreachable() {
                          builder.ins().jump(block, &[]);
                      }
                      builder.switch_to_block(block);
@@ -308,17 +310,23 @@ impl JitEngine {
                         }
                     }
                     
-                    Instruction::BranchIfTrue(target) => {
+                     Instruction::BranchIfTrue(target) => {
                         let val = pop!();
                         if let Some(blk) = blocks.get(target) {
-                             builder.ins().brnz(val, *blk, &[]);
+                             let cond = builder.ins().icmp_imm(IntCC::NotEqual, val, 0);
+                             let continue_block = builder.create_block();
+                             builder.ins().brif(cond, *blk, &[], continue_block, &[]);
+                             builder.switch_to_block(continue_block);
                         }
                     }
                     
                      Instruction::BranchIfFalse(target) => {
                         let val = pop!();
                         if let Some(blk) = blocks.get(target) {
-                             builder.ins().brz(val, *blk, &[]);
+                             let cond = builder.ins().icmp_imm(IntCC::Equal, val, 0);
+                             let continue_block = builder.create_block();
+                             builder.ins().brif(cond, *blk, &[], continue_block, &[]);
+                             builder.switch_to_block(continue_block);
                         }
                     }
                     
@@ -361,15 +369,16 @@ impl JitEngine {
 
                     Instruction::Return => {
                         let sp = builder.use_var(sp_var);
-                        let top_off = builder.ins().isub_imm(sp, 8);
-                        let val_raw = builder.ins().load(types::I64, MemFlags::new(), stack_ptr, top_off);
-                        let ret_val = builder.ins().bitcast(types::F64, val_raw);
+                        let top_off = builder.ins().iadd_imm(sp, -8);
+                        let addr = builder.ins().iadd(stack_ptr, top_off);
+                        let val_raw = builder.ins().load(types::I64, MemFlags::new(), addr, 0);
+                        let ret_val = builder.ins().bitcast(types::F64, MemFlags::new(), val_raw);
                         builder.ins().return_(&[ret_val]);
                     }
                 }
             }
             
-            if !builder.is_filled() {
+            if !builder.is_unreachable() {
                  let zero = builder.ins().f64const(0.0);
                  builder.ins().return_(&[zero]);
             }
@@ -421,11 +430,11 @@ fn cast_to_storage(builder: &mut FunctionBuilder<'_>, val: Value, ty: Type, stor
     }
     if ty.is_float() && storage_ty == types::I64 {
         if ty == types::F32 {
-             let bits = builder.ins().bitcast(types::I32, val);
+             let bits = builder.ins().bitcast(types::I32, MemFlags::new(), val);
              return builder.ins().uextend(types::I64, bits);
         }
         if ty == types::F64 {
-             return builder.ins().bitcast(types::I64, val);
+             return builder.ins().bitcast(types::I64, MemFlags::new(), val);
         }
     }
     val
@@ -441,10 +450,10 @@ fn cast_from_storage(builder: &mut FunctionBuilder<'_>, val: Value, target_ty: T
     }
     if target_ty == types::F32 {
         let t = builder.ins().ireduce(types::I32, val);
-        return builder.ins().bitcast(types::F32, t);
+        return builder.ins().bitcast(types::F32, MemFlags::new(), t);
     }
     if target_ty == types::F64 {
-        return builder.ins().bitcast(types::F64, val);
+        return builder.ins().bitcast(types::F64, MemFlags::new(), val);
     }
     val
 }

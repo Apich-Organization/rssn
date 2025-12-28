@@ -123,7 +123,7 @@ See [ARCHITECTURE](ARCHITECTURE.md) for details.
 
 ## 📜 Code Stastics
 
-See [CODESTASTICS](CODESTASTICS.md) for details.
+See [CODE_STASTICS](CODE_STASTICS.md) for details.
 
 ---
 
