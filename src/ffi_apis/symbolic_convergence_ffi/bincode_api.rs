@@ -15,11 +15,9 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_analyze_convergence(
-
     term_buf: BincodeBuffer,
 
     var_buf: BincodeBuffer,
-
 ) -> BincodeBuffer {
 
     let term: Option<Expr> =

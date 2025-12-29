@@ -40,9 +40,7 @@ struct HessianInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_gradient_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : GradientInput = match from_json_string(input_json) {
@@ -98,9 +96,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_jacobian_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : JacobianInput = match from_json_string(input_json) {
@@ -156,9 +152,7 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_hessian_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : HessianInput = match from_json_string(input_json) {

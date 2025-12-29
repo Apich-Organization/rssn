@@ -50,6 +50,7 @@ use crate::plugins::stable_abi::StablePluginModule;
 use crate::plugins::stable_abi::StablePlugin_TO;
 
 /// Holds the plugin instance and its current health state.
+
 pub struct ManagedPlugin {
     /// The plugin instance
     pub plugin: Box<dyn Plugin>,
@@ -58,6 +59,7 @@ pub struct ManagedPlugin {
 }
 
 /// A plugin that is managed by the plugin manager.
+
 pub struct ManagedStablePlugin {
     /// The plugin instance.
     pub plugin: StablePlugin_TO<
@@ -69,6 +71,7 @@ pub struct ManagedStablePlugin {
 }
 
 /// Manages the lifecycle of all loaded plugins.
+
 pub struct PluginManager {
     /// A map of plugin names to their managed instances.
     pub plugins: Arc<

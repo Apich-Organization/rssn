@@ -9,7 +9,7 @@
 //! inverse operations and various properties (time shift, frequency shift,
 //! scaling, differentiation, and convolution theorems), as well as
 //! partial fraction decomposition.
-//! 
+//!
 //! TODO: replacing *Expr with handle manager based one
 
 pub mod bincode_api;

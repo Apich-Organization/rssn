@@ -26,9 +26,7 @@ struct ActionInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cov_evaluate_action_bincode(
-
     buffer: BincodeBuffer
-
 ) -> BincodeBuffer {
 
     let input : ActionInput = match from_bincode_buffer(&buffer) {

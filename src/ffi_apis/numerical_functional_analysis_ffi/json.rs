@@ -34,9 +34,7 @@ struct GramSchmidtInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fa_l2_norm_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : PointsInput = match from_json_string(input_json) {
@@ -75,9 +73,7 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fa_inner_product_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : InnerProductInput = match from_json_string(input_json) {
@@ -124,9 +120,7 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : GramSchmidtInput = match from_json_string(input_json) {

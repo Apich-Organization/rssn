@@ -1,6 +1,7 @@
 #[macro_export]
 /// Creates a FFI-compatible function that takes a JSON string as input, deserializes it to a single argument,
 /// applies a body of logic, and returns the result as a JSON string.
+
 macro_rules! json_ffi_unary {
     ($name:ident, $input_type:ty, | $arg:ident | $body:expr) => {
         #[no_mangle]
@@ -26,6 +27,7 @@ macro_rules! json_ffi_unary {
 #[macro_export]
 /// Creates a FFI-compatible function that takes two JSON strings as input, deserializes them to two arguments,
 /// applies a body of logic, and returns the result as a JSON string.
+
 macro_rules! json_ffi_binary {
     ($name:ident, $input1_type:ty, $input2_type:ty, | $arg1:ident, $arg2:ident | $body:expr) => {
         #[no_mangle]
@@ -57,6 +59,7 @@ macro_rules! json_ffi_binary {
 #[macro_export]
 /// Creates a FFI-compatible function that takes a raw pointer to a single argument,
 /// dereferences it, applies a body of logic, and returns a raw pointer to the result.
+
 macro_rules! handle_ffi_unary {
     ($name:ident, $input_type:ty, | $arg:ident | $body:expr) => {
         #[no_mangle]
@@ -94,6 +97,7 @@ macro_rules! handle_ffi_unary {
 #[macro_export]
 /// Creates a FFI-compatible function that takes raw pointers to two arguments,
 /// dereferences them, applies a body of logic, and returns a raw pointer to the result.
+
 macro_rules! handle_ffi_binary {
     (
         $name:ident,
@@ -133,6 +137,7 @@ macro_rules! handle_ffi_binary {
 #[macro_export]
 /// Creates a FFI-compatible function that takes a bincode buffer as input, deserializes it to a single argument,
 /// applies a body of logic, and returns the result as a bincode buffer.
+
 macro_rules! bincode_ffi_unary {
     ($name:ident, $input_type:ty, | $arg:ident | $body:expr) => {
         #[no_mangle]
@@ -160,6 +165,7 @@ macro_rules! bincode_ffi_unary {
 #[macro_export]
 /// Creates a FFI-compatible function that takes two bincode buffers as input, deserializes them to two arguments,
 /// applies a body of logic, and returns the result as a bincode buffer.
+
 macro_rules! bincode_ffi_binary {
     ($name:ident, $input1_type:ty, $input2_type:ty, | $arg1:ident, $arg2:ident | $body:expr) => {
         #[no_mangle]

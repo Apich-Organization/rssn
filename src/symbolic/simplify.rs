@@ -505,6 +505,7 @@ pub fn simplify(expr: Expr) -> Expr {
 ///
 /// # Returns
 /// `true` if the expression is numerically 0, `false` otherwise.
+
 pub fn is_zero(expr: &Expr) -> bool {
 
     match expr {
@@ -549,6 +550,7 @@ pub fn is_zero(expr: &Expr) -> bool {
 ///
 /// # Returns
 /// `true` if the expression is numerically 1, `false` otherwise.
+
 pub fn is_one(expr: &Expr) -> bool {
 
     match expr {
@@ -593,6 +595,7 @@ pub fn is_one(expr: &Expr) -> bool {
 ///
 /// # Returns
 /// `Some(f64)` if conversion is possible, `None` otherwise.
+
 pub fn as_f64(
     expr: &Expr
 ) -> Option<f64> {
@@ -1852,6 +1855,7 @@ pub(crate) fn simplify_add(
 ///
 /// A `RewriteRule` consists of a pattern and a replacement expression. When an expression
 /// matches the pattern, it can be replaced by the instantiated replacement expression.
+
 pub struct RewriteRule {
     /// A descriptive name for the rule.
     name: &'static str,
@@ -1870,6 +1874,7 @@ pub struct RewriteRule {
 ///
 /// # Returns
 /// The name of the rule as a `String`.
+
 pub fn get_name(
     rule: &RewriteRule
 ) -> String {
@@ -2107,6 +2112,7 @@ pub(crate) fn get_default_rules(
 ///
 /// # Returns
 /// A new `Expr` with patterns substituted.
+
 pub fn substitute_patterns(
     template: &Expr,
     assignments: &HashMap<String, Expr>,
@@ -2703,6 +2709,7 @@ pub(crate) fn pattern_match_recursive(
 /// # Returns
 /// A tuple `(constant_term, terms)` where `constant_term` is an `Expr` and `terms` is a
 /// `Vec<(Expr, Expr)>` of `(base, coefficient)` pairs.
+
 pub fn collect_and_order_terms(
     expr: &Expr
 ) -> (
@@ -2951,6 +2958,7 @@ pub(crate) fn fold_constants(
 ///
 /// # Returns
 /// `true` if the expression is numeric, `false` otherwise.
+
 pub const fn is_numeric(
     expr: &Expr
 ) -> bool {

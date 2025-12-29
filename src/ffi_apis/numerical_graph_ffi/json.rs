@@ -76,9 +76,7 @@ struct PageRankInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : DijkstraInput = match from_json_string(input_json) {
@@ -124,9 +122,7 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_bfs_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : DijkstraInput = match from_json_string(input_json) {
@@ -167,9 +163,7 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_page_rank_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : PageRankInput = match from_json_string(input_json) {
@@ -214,9 +208,7 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : GraphDef = match from_json_string(input_json) {
@@ -299,9 +291,7 @@ impl GraphDefOut {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : GraphDef = match from_json_string(input_json) {
@@ -339,9 +329,7 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : GraphDef = match from_json_string(input_json) {

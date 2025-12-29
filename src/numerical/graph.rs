@@ -16,6 +16,7 @@ pub struct Graph {
 
 /// Represents a state in Dijkstra's algorithm.
 #[derive(Copy, Clone, PartialEq)]
+
 pub struct State {
     cost: f64,
     position: usize,

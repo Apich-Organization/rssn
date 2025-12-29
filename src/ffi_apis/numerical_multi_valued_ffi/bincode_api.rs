@@ -37,6 +37,7 @@ struct ComplexResult {
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -104,6 +105,7 @@ struct LogSqrtInput {
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -150,6 +152,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -206,6 +209,7 @@ struct PowInput {
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {

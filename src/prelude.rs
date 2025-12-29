@@ -21,6 +21,7 @@
 #[cfg(feature = "ffi_api")]
 
 /// Foreign Function Interface (FFI) APIs for interacting with the library from other languages.
+
 pub mod ffi_apis {
 
     pub use crate::ffi_apis::common::*;
@@ -3454,6 +3455,7 @@ pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_normalize;
 pub use crate::is_exclusive;
 
 /// Numerical computation types and functions.
+
 pub mod numerical {
 
     pub use crate::numerical::calculus::*;
@@ -3680,6 +3682,7 @@ pub mod numerical {
 #[cfg(feature = "output")]
 
 /// Output and plotting utilities.
+
 pub mod output {
 
     pub use crate::output::io::load_npy_as_expr;
@@ -3723,6 +3726,7 @@ pub mod output {
 #[cfg(feature = "physics")]
 
 /// Physics simulation types and functions.
+
 pub mod physics {
 
     pub use crate::physics::physics_bem::simulate_2d_cylinder_scenario;
@@ -3891,6 +3895,7 @@ pub use crate::physics::physics_rkm::simulate_vanderpol_scenario;
 #[cfg(feature = "plugins")]
 
 /// Plugin management and extension points.
+
 pub mod plugins {
 
     pub use crate::plugins::manager::ManagedPlugin;

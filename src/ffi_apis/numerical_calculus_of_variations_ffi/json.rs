@@ -27,9 +27,7 @@ struct ActionInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
-
     input_json: *const c_char
-
 ) -> *mut c_char {
 
     let input : ActionInput = match from_json_string(input_json) {

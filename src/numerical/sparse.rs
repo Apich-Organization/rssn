@@ -10,6 +10,7 @@ use sprs_rssn::CsMat;
 use sprs_rssn::TriMat;
 
 /// Alias for a dynamic-dimensional array of f64.
+
 pub type Array = ArrayD<f64>;
 
 /// Creates a new CSR matrix from a triplet matrix.

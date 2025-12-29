@@ -1167,6 +1167,7 @@ fn separate_factors(
 ///
 /// # Returns
 /// An `Option<Expr>` representing the general solution, or `None` if it's not separable.
+
 pub fn solve_separable_ode(
     equation: &Expr,
     func: &str,
@@ -1367,6 +1368,7 @@ pub fn solve_separable_ode(
 ///
 /// # Returns
 /// An `Option<Expr>` representing the general solution, or `None` if it's not linear.
+
 pub fn solve_first_order_linear_ode(
     equation: &Expr,
     func: &str,
@@ -2337,6 +2339,7 @@ pub fn solve_exact_ode(
     func: &str,
     var: &str,
 ) -> Option<Expr> {
+
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
@@ -2639,6 +2642,7 @@ pub fn solve_ode_by_fourier(
     func: &str,
     var: &str,
 ) -> Option<Expr> {
+
     let omega_var = "w";
 
     let parsed =

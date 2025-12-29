@@ -17,21 +17,26 @@ use crate::plugins::plugin_c::PluginHealth;
 #[allow(non_local_definitions)]
 #[sabi_trait]
 /// This trait defines the stable ABI for plugins.
+
 pub trait StablePlugin:
     Send + Sync
 {
     /// Returns the name of the plugin.
+
     fn name(&self) -> RString;
 
     /// Returns the API version of the plugin.
+
     fn api_version(&self) -> RString;
 
     /// Called when the plugin is loaded.
+
     fn on_load(
         &self
     ) -> RResult<(), RString>;
 
     /// Executes a command on the plugin.
+
     fn execute(
         &self,
         command: RString,
@@ -39,6 +44,7 @@ pub trait StablePlugin:
     ) -> RResult<RVec<u8>, RString>;
 
     /// Performs a health check on the plugin.
+
     fn health_check(
         &self
     ) -> RResult<PluginHealth, RString>;
@@ -49,6 +55,7 @@ pub trait StablePlugin:
 #[sabi(kind(Prefix(prefix_ref = RoVtable)))]
 #[sabi(missing_field(panic))]
 /// This struct defines the stable ABI for a plugin module.
+
 pub struct StablePluginModule {
     /// Returns the name of the plugin.
     pub name : extern "C" fn() -> RString,

@@ -17,11 +17,9 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_json_analyze_convergence(
-
     term_json: *const c_char,
 
     var_json: *const c_char,
-
 ) -> *mut c_char {
 
     let term: Option<Expr> =

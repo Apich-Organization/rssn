@@ -15,13 +15,11 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_point(
-
     point_buf: BincodeBuffer,
 
     from_buf: BincodeBuffer,
 
     to_buf: BincodeBuffer,
-
 ) -> BincodeBuffer {
 
     let point: Option<Vec<Expr>> =
@@ -67,13 +65,11 @@ pub extern "C" fn rssn_bincode_transform_point(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_expression(
-
     expr_buf: BincodeBuffer,
 
     from_buf: BincodeBuffer,
 
     to_buf: BincodeBuffer,
-
 ) -> BincodeBuffer {
 
     let expr: Option<Expr> =
@@ -118,9 +114,7 @@ pub extern "C" fn rssn_bincode_transform_expression(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_coordinates_get_metric_tensor(
-
     system_buf: BincodeBuffer
-
 ) -> BincodeBuffer {
 
     let system: Option<
@@ -160,13 +154,11 @@ pub extern "C" fn rssn_bincode_coordinates_get_metric_tensor(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_contravariant_vector(
-
     comps_buf: BincodeBuffer,
 
     from_buf: BincodeBuffer,
 
     to_buf: BincodeBuffer,
-
 ) -> BincodeBuffer {
 
     let comps: Option<Vec<Expr>> =
@@ -205,13 +197,11 @@ pub extern "C" fn rssn_bincode_transform_contravariant_vector(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_covariant_vector(
-
     comps_buf: BincodeBuffer,
 
     from_buf: BincodeBuffer,
 
     to_buf: BincodeBuffer,
-
 ) -> BincodeBuffer {
 
     let comps: Option<Vec<Expr>> =
@@ -256,11 +246,9 @@ pub extern "C" fn rssn_bincode_transform_covariant_vector(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_divergence(
-
     comps_buf: BincodeBuffer,
 
     from_buf: BincodeBuffer,
-
 ) -> BincodeBuffer {
 
     let comps: Option<Vec<Expr>> =
@@ -302,11 +290,9 @@ pub extern "C" fn rssn_bincode_transform_divergence(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_curl(
-
     comps_buf: BincodeBuffer,
 
     from_buf: BincodeBuffer,
-
 ) -> BincodeBuffer {
 
     let comps: Option<Vec<Expr>> =
@@ -348,7 +334,6 @@ pub extern "C" fn rssn_bincode_transform_curl(
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_transform_gradient(
-
     scalar_buf: BincodeBuffer,
 
     vars_buf: BincodeBuffer,
@@ -356,7 +341,6 @@ pub extern "C" fn rssn_bincode_transform_gradient(
     from_buf: BincodeBuffer,
 
     to_buf: BincodeBuffer,
-
 ) -> BincodeBuffer {
 
     let scalar: Option<Expr> =

@@ -111,6 +111,7 @@ impl<'de> serde::Deserialize<'de>
 )]
 
 /// Represents the different types of operations and leaf nodes in a Directed Acyclic Graph (DAG).
+
 pub enum DagOp {
     // --- Leaf Nodes ---
     /// A double-precision floating-point constant.
@@ -538,6 +539,7 @@ impl From<DagNode> for Expr {
 ///
 /// This manager maintains a cache of `DagNode` instances to ensure that
 /// identical expressions are represented by the same shared memory.
+
 pub struct DagManager {
     nodes: Mutex<
         HashMap<u64, Vec<Arc<DagNode>>>,

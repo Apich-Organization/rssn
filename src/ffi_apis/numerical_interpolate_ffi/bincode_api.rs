@@ -44,9 +44,7 @@ struct BSplineInput {
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_lagrange_interpolation_bincode(
-
     buffer: BincodeBuffer
-
 ) -> BincodeBuffer {
 
     let input : LagrangeInput = match from_bincode_buffer(&buffer) {
@@ -79,9 +77,7 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
-
     buffer: BincodeBuffer
-
 ) -> BincodeBuffer {
 
     let input : CubicSplineInput = match from_bincode_buffer(&buffer) {
@@ -118,9 +114,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(
-
     buffer: BincodeBuffer
-
 ) -> BincodeBuffer {
 
     let input : BezierInput = match from_bincode_buffer(&buffer) {
@@ -148,9 +142,7 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_b_spline_bincode(
-
     buffer: BincodeBuffer
-
 ) -> BincodeBuffer {
 
     let input : BSplineInput = match from_bincode_buffer(&buffer) {

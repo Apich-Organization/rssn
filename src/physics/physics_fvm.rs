@@ -365,6 +365,7 @@ pub fn solve_burgers_1d(
     Serialize,
     Deserialize,
 )]
+
 pub struct SweState {
     /// The height of the water.
     pub h: f64,

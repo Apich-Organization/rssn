@@ -16,6 +16,7 @@ use serde::Serialize;
     Deserialize,
 )]
 /// A 2D vector.
+
 pub struct Vector2D {
     /// The x component of the vector.
     pub x: f64,
@@ -25,6 +26,7 @@ pub struct Vector2D {
 
 impl Vector2D {
     /// Creates a new 2D vector.
+
     pub fn new(
         x: f64,
         y: f64,
@@ -110,6 +112,7 @@ impl Div<f64> for Vector2D {
     Debug, Clone, Serialize, Deserialize,
 )]
 /// A particle in the SPH simulation.
+
 pub struct Particle {
     /// The position of the particle.
     pub pos: Vector2D,
@@ -129,6 +132,7 @@ pub struct Particle {
     Debug, Clone, Serialize, Deserialize,
 )]
 /// The Poly6 kernel for SPH simulations.
+
 pub struct Poly6Kernel {
     /// The squared smoothing radius.
     pub h_sq: f64,
@@ -138,6 +142,7 @@ pub struct Poly6Kernel {
 
 impl Poly6Kernel {
     /// Creates a new Poly6 kernel.
+
     pub fn new(h: f64) -> Self {
 
         Self {
@@ -166,6 +171,7 @@ impl Poly6Kernel {
     Debug, Clone, Serialize, Deserialize,
 )]
 /// The spiky kernel for SPH simulations.
+
 pub struct SpikyKernel {
     /// The smoothing radius.
     pub h: f64,
@@ -175,6 +181,7 @@ pub struct SpikyKernel {
 
 impl SpikyKernel {
     /// Creates a new spiky kernel.
+
     pub fn new(h: f64) -> Self {
 
         Self {
@@ -212,6 +219,7 @@ impl SpikyKernel {
     Debug, Clone, Serialize, Deserialize,
 )]
 /// The SPH system.
+
 pub struct SPHSystem {
     /// The particles in the system.
     pub particles: Vec<Particle>,
@@ -233,6 +241,7 @@ pub struct SPHSystem {
 
 impl SPHSystem {
     /// Computes the density and pressure of each particle.
+
     pub fn compute_density_pressure(
         &mut self
     ) {
@@ -281,6 +290,7 @@ impl SPHSystem {
     }
 
     /// Computes the forces acting on each particle.
+
     pub fn compute_forces(&mut self) {
 
         let spiky = &self.spiky;
@@ -345,6 +355,7 @@ impl SPHSystem {
     }
 
     /// Integrates the equations of motion for each particle.
+
     pub fn integrate(
         &mut self,
         dt: f64,
@@ -395,6 +406,7 @@ impl SPHSystem {
     }
 
     /// Updates the SPH system by one time step.
+
     pub fn update(
         &mut self,
         dt: f64,

@@ -537,6 +537,7 @@ impl Polynomial {
     ///
     /// # Returns
     /// A `Result` containing the new `Polynomial`, or an error if the scalar is zero.
+
     pub fn div_scalar(
         self,
         rhs: f64,

@@ -1960,6 +1960,7 @@ impl Expr {
     /// Normalizes the expression by sorting sub-expressions of commutative operators.
     ///
     /// This helps in identifying identical expressions that differ only in terms of operand order.
+
     pub fn normalize(&self) -> Self {
 
         match self {

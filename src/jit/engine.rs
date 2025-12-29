@@ -51,6 +51,7 @@ pub struct JitEngine {
 #[cfg(feature = "jit")]
 #[derive(Clone)]
 /// Holds the data for a custom operation.
+
 pub struct CustomOpData {
     /// A pointer to the custom function.
     pub func_ptr: *const u8,
@@ -67,6 +68,7 @@ impl Default for JitEngine {
 
 impl JitEngine {
     /// Creates a new JIT engine.
+
     pub fn new() -> Self {
 
         let function_counter =

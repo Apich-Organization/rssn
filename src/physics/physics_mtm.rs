@@ -6,6 +6,7 @@ use serde::Serialize;
     Clone, Debug, Serialize, Deserialize,
 )]
 /// A 1D grid for the multigrid solver.
+
 pub struct Grid {
     /// The solution vector.
     pub u: Vec<f64>,
@@ -295,6 +296,7 @@ pub fn simulate_1d_poisson_multigrid_scenario(
     Clone, Debug, Serialize, Deserialize,
 )]
 /// A 2D grid for the multigrid solver.
+
 pub struct Grid2D {
     /// The solution vector.
     pub u: Vec<f64>,

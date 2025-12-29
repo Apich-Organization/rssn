@@ -292,6 +292,7 @@ pub struct BinomialDist(Binomial);
 
 impl BinomialDist {
     /// Creates a new `BinomialDist` instance.
+
     pub fn new(
         n: u64,
         p: f64,
@@ -461,6 +462,7 @@ pub struct PoissonDist(
 
 impl PoissonDist {
     /// Creates a new `PoissonDist` instance.
+
     pub fn new(
         rate: f64
     ) -> Result<Self, String> {
@@ -501,6 +503,7 @@ pub struct ExponentialDist(
 
 impl ExponentialDist {
     /// Creates a new `ExponentialDist` instance.
+
     pub fn new(
         rate: f64
     ) -> Result<Self, String> {
@@ -543,6 +546,7 @@ pub struct GammaDist(
 
 impl GammaDist {
     /// Creates a new `GammaDist` instance.
+
     pub fn new(
         shape: f64,
         rate: f64,

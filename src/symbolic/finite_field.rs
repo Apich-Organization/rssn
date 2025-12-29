@@ -911,6 +911,7 @@ pub(crate) fn poly_extended_gcd(
 
 impl ExtensionFieldElement {
     /// Adds two extension field elements.
+
     pub fn add(
         self,
         rhs: Self,
@@ -923,6 +924,7 @@ impl ExtensionFieldElement {
     }
 
     /// Subtracts one extension field element from another.
+
     pub fn sub(
         self,
         rhs: Self,
@@ -935,6 +937,7 @@ impl ExtensionFieldElement {
     }
 
     /// Multiplies two extension field elements.
+
     pub fn mul(
         self,
         rhs: Self,
@@ -947,6 +950,7 @@ impl ExtensionFieldElement {
     }
 
     /// Divides one extension field element by another.
+
     pub fn div(
         self,
         rhs: &Self,

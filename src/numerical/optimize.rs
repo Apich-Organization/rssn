@@ -313,6 +313,7 @@ impl LinearRegression {
     #[allow(clippy::suspicious_operation_groupings)]
 
     /// Creates a new `LinearRegression` problem instance.
+
     pub fn new(
         x: Array2<f64>,
         y: Array1<f64>,
@@ -600,6 +601,7 @@ impl EquationOptimizer {
     }
 
     /// Automatically configures and solves a problem using the Conjugate Gradient method.
+
     pub fn auto_solve_conjugate_gradient<
         C,
     >(
@@ -787,6 +789,7 @@ pub struct ResultAnalyzer;
 
 impl ResultAnalyzer {
     /// Prints the optimization results to the console.
+
     pub fn print_optimization_result<
         S: State<
             Param = Array1<f64>,
@@ -859,6 +862,7 @@ impl ResultAnalyzer {
     }
 
     /// Analyzes the convergence state and returns a summary string.
+
     pub fn analyze_convergence<
         S: State<Float = f64>,
     >(

@@ -13,6 +13,7 @@ use serde::Serialize;
     Deserialize,
 )]
 /// The type of a JIT value.
+
 pub enum JitType {
     /// 8-bit integer.
     I8,
