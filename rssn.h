@@ -939,6 +939,22 @@ rssn_
 struct rssn_Expr *complex_modulus(const struct rssn_Expr *aZ)
 ;
 
+/*
+ Computes the modulus \(|z|\) of a complex number encoded as an `Expr` and returns it via bincode.
+
+ # Arguments
+
+ * `z_bincode` - Bincode buffer encoding an `Expr` representing the complex number `z`.
+
+ # Returns
+
+ A bincode buffer encoding an `Expr` for the modulus \(|z|\).
+
+ # Safety
+
+ This function is unsafe because it dereferences a bincode buffer that must contain
+ a valid serialized `Expr`.
+ */
 rssn_
 struct rssn_BincodeBuffer complex_modulus_bincode(struct rssn_BincodeBuffer aZBincode)
 ;
@@ -1864,6 +1880,28 @@ struct rssn_PathContinuation *path_continuation_new(const struct rssn_Expr *aFun
                                                     size_t aOrder)
 ;
 
+/*
+ Constructs a new analytic path continuation object from a function, variable, and start point.
+
+ This initializes a [`PathContinuation`] for analytic continuation of a complex-valued
+ function along a path in the complex plane, using a truncated series of the given order.
+
+ # Arguments
+
+ * `func_bincode` - Bincode buffer encoding an `Expr` for the holomorphic function.
+ * `var` - C string pointer naming the complex variable of the function.
+ * `start_point_bincode` - Bincode buffer encoding an `Expr` for the starting point.
+ * `order` - Truncation order of the local series expansion used for continuation.
+
+ # Returns
+
+ A bincode buffer encoding a [`PathContinuation`] object capturing the initial state.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer and expects
+ valid bincode-encoded `Expr` values.
+ */
 rssn_
 struct rssn_BincodeBuffer path_continuation_new_bincode(struct rssn_BincodeBuffer aFuncBincode,
                                                         const char *aVar,
@@ -2138,6 +2176,24 @@ rssn_
 void rssn_banach_space_free(struct rssn_BanachSpace *aPtr)
 ;
 
+/*
+ Computes the \(n\)-th Bell number symbolically and returns it as an `Expr` pointer.
+
+ Bell numbers count the total number of set partitions of an \(n\)-element set.
+
+ # Arguments
+
+ * `n` - Index of the Bell number to compute.
+
+ # Returns
+
+ A newly allocated `Expr` pointer representing the \(n\)-th Bell number.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point and returns
+ ownership of a heap-allocated `Expr` to the caller.
+ */
 rssn_
 struct rssn_Expr *rssn_bell_number(size_t aN)
 ;
@@ -2385,6 +2441,24 @@ struct rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(struct rssn_BincodeB
                                                             struct rssn_BincodeBuffer aOrderBuf)
 ;
 
+/*
+ Computes the \(n\)-th Bell number symbolically and returns it via bincode.
+
+ Bell numbers count the total number of set partitions of an \(n\)-element set.
+
+ # Arguments
+
+ * `n` - Index of the Bell number to compute.
+
+ # Returns
+
+ A bincode buffer encoding an `Expr` for the \(n\)-th Bell number.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point, but it does
+ not dereference raw pointers.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bell_number(size_t aN)
 ;
@@ -2566,6 +2640,25 @@ struct rssn_BincodeBuffer rssn_bincode_calculate_residue(struct rssn_BincodeBuff
                                                          struct rssn_BincodeBuffer aPoleBuf)
 ;
 
+/*
+ Computes the \(n\)-th Catalan number symbolically and returns it as a bincode-encoded `Expr`.
+
+ Catalan numbers count many combinatorial structures, such as binary trees, Dyck paths,
+ and non-crossing partitions.
+
+ # Arguments
+
+ * `n` - Index of the Catalan number to compute.
+
+ # Returns
+
+ A bincode buffer encoding an `Expr` for the \(n\)-th Catalan number.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point, but it does
+ not dereference raw pointers.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_catalan_number(size_t aN)
 ;
@@ -2646,6 +2739,26 @@ struct rssn_BincodeBuffer rssn_bincode_classify_pde(struct rssn_BincodeBuffer aE
                                                     struct rssn_BincodeBuffer aVarsBuf)
 ;
 
+/*
+ Computes the number of combinations symbolically using bincode-encoded `Expr` arguments.
+
+ This corresponds to the binomial coefficient \( C(n,k) = n! / (k!(n-k)!) \) when
+ `n` and `k` are integers, but operates on general symbolic expressions.
+
+ # Arguments
+
+ * `n_buf` - Bincode buffer encoding an `Expr` representing the population size `n`.
+ * `k_buf` - Bincode buffer encoding an `Expr` representing the selection size `k`.
+
+ # Returns
+
+ A bincode buffer encoding an `Expr` for the symbolic combination count.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw bincode buffers that must
+ contain valid serialized `Expr` values.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_combinations(struct rssn_BincodeBuffer aNBuf,
                                                     struct rssn_BincodeBuffer aKBuf)
@@ -4558,6 +4671,26 @@ struct rssn_BincodeBuffer rssn_bincode_path_integrate(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aContourBuf)
 ;
 
+/*
+ Computes the number of permutations symbolically using bincode-encoded `Expr` arguments.
+
+ This corresponds to the falling factorial \( P(n,k) = n! / (n-k)! \) when `n` and `k`
+ are specialized to integers, but operates on general symbolic expressions.
+
+ # Arguments
+
+ * `n_buf` - Bincode buffer encoding an `Expr` representing the population size `n`.
+ * `k_buf` - Bincode buffer encoding an `Expr` representing the selection size `k`.
+
+ # Returns
+
+ A bincode buffer encoding an `Expr` for the symbolic permutation count.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw bincode buffers that must
+ contain valid serialized `Expr` values.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_permutations(struct rssn_BincodeBuffer aNBuf,
                                                     struct rssn_BincodeBuffer aKBuf)
@@ -5254,6 +5387,26 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_std_dev(struct rssn_BincodeBuffer aDataBuf)
 ;
 
+/*
+ Computes a Stirling number of the second kind symbolically and returns it via bincode.
+
+ Stirling numbers of the second kind \( S(n,k) \) count partitions of an \(n\)-element
+ set into \(k\) non-empty unlabeled blocks.
+
+ # Arguments
+
+ * `n` - Total number of elements.
+ * `k` - Number of non-empty blocks.
+
+ # Returns
+
+ A bincode buffer encoding an `Expr` for \( S(n,k) \).
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point, but it does
+ not dereference raw pointers.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_stirling_number_second_kind(size_t aN,
                                                                    size_t aK)
@@ -5958,6 +6111,25 @@ rssn_
 char *rssn_cas_simplify_with_relations_json(const char *aJsonStr)
 ;
 
+/*
+ Computes the \(n\)-th Catalan number symbolically and returns it as an `Expr` pointer.
+
+ Catalan numbers count many combinatorial structures, such as full binary trees,
+ Dyck paths, and non-crossing partitions.
+
+ # Arguments
+
+ * `n` - Index of the Catalan number to compute.
+
+ # Returns
+
+ A newly allocated `Expr` pointer representing the \(n\)-th Catalan number.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point and returns
+ ownership of a heap-allocated `Expr` to the caller.
+ */
 rssn_
 struct rssn_Expr *rssn_catalan_number(size_t aN)
 ;
@@ -6089,6 +6261,26 @@ int32_t rssn_comb_permutations(uint64_t aN,
                                double *aResult)
 ;
 
+/*
+ Computes the number of combinations symbolically as an `Expr`.
+
+ This corresponds to the binomial coefficient \( C(n,k) = n! / (k!(n-k)!) \) for
+ integer `n` and `k`, but also supports symbolic `Expr` arguments.
+
+ # Arguments
+
+ * `n` - Pointer to an `Expr` representing the population size.
+ * `k` - Pointer to an `Expr` representing the selection size.
+
+ # Returns
+
+ A newly allocated `Expr` pointer representing the symbolic combination count.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw `Expr` pointers and returns
+ ownership of a heap-allocated `Expr` to the caller.
+ */
 rssn_
 struct rssn_Expr *rssn_combinations(const struct rssn_Expr *aN,
                                     const struct rssn_Expr *aK)
@@ -7511,6 +7703,23 @@ rssn_
 void rssn_free_multivector_handle(struct rssn_Multivector *aPtr)
 ;
 
+/*
+ Frees a vector of pole expressions previously returned by `rssn_find_poles`.
+
+ # Arguments
+
+ * `poles` - Mutable pointer to a heap-allocated `Vec<Expr>`.
+
+ # Returns
+
+ This function does not return a value.
+
+ # Safety
+
+ This function is unsafe because it takes ownership of a raw pointer and frees the
+ underlying allocation. The pointer must have been created by this library and must
+ not be used after this call.
+ */
 rssn_
 void rssn_free_poles(struct rssn_Vec_Expr *aPoles)
 ;
@@ -8911,6 +9120,24 @@ char *rssn_json_asymptotic_expansion(const char *aExprJson,
                                      const char *aOrderJson)
 ;
 
+/*
+ Computes the \(n\)-th Bell number symbolically and returns it as JSON-encoded `Expr`.
+
+ Bell numbers count the total number of set partitions of an \(n\)-element set.
+
+ # Arguments
+
+ * `n` - Index of the Bell number to compute.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Expr` for the \(n\)-th Bell number.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point and returns
+ ownership of a heap-allocated C string.
+ */
 rssn_
 char *rssn_json_bell_number(size_t aN)
 ;
@@ -9074,6 +9301,25 @@ char *rssn_json_calculate_residue(const char *aExprJson,
                                   const char *aPoleJson)
 ;
 
+/*
+ Computes the \(n\)-th Catalan number symbolically and returns it as JSON-encoded `Expr`.
+
+ Catalan numbers count many combinatorial structures, such as binary trees, Dyck paths,
+ and non-crossing partitions.
+
+ # Arguments
+
+ * `n` - Index of the Catalan number to compute.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Expr` for the \(n\)-th Catalan number.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point and returns
+ ownership of a heap-allocated C string.
+ */
 rssn_
 char *rssn_json_catalan_number(size_t aN)
 ;
@@ -9147,6 +9393,27 @@ char *rssn_json_classify_pde(const char *aEquationJson,
                              const char *aVarsJson)
 ;
 
+/*
+ Computes the number of combinations symbolically using JSON-encoded `Expr` arguments.
+
+ This corresponds to the binomial coefficient \( C(n,k) = n! / (k!(n-k)!) \) when
+ `n` and `k` are integers, but operates on general symbolic expressions.
+
+ # Arguments
+
+ * `n_json` - C string pointer to JSON encoding an `Expr` for the population size `n`.
+ * `k_json` - C string pointer to JSON encoding an `Expr` for the selection size `k`.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Expr` for the symbolic combination count,
+ or null on deserialization failure.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and returns
+ ownership of a heap-allocated C string.
+ */
 rssn_
 char *rssn_json_combinations(const char *aNJson,
                              const char *aKJson)
@@ -11062,6 +11329,27 @@ char *rssn_json_path_integrate(const char *aExprJson,
                                const char *aContourJson)
 ;
 
+/*
+ Computes the number of permutations symbolically using JSON-encoded `Expr` arguments.
+
+ This corresponds to the falling factorial \( P(n,k) = n! / (n-k)! \) when `n` and `k`
+ are integers, but operates on general symbolic expressions.
+
+ # Arguments
+
+ * `n_json` - C string pointer to JSON encoding an `Expr` for the population size `n`.
+ * `k_json` - C string pointer to JSON encoding an `Expr` for the selection size `k`.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Expr` for the symbolic permutation count,
+ or null on deserialization failure.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and returns
+ ownership of a heap-allocated C string.
+ */
 rssn_
 char *rssn_json_permutations(const char *aNJson,
                              const char *aKJson)
@@ -11784,6 +12072,26 @@ rssn_
 char *rssn_json_std_dev(const char *aDataJson)
 ;
 
+/*
+ Computes a Stirling number of the second kind symbolically and returns it as JSON-encoded `Expr`.
+
+ Stirling numbers of the second kind \( S(n,k) \) count partitions of an \(n\)-element
+ set into \(k\) non-empty unlabeled blocks.
+
+ # Arguments
+
+ * `n` - Total number of elements.
+ * `k` - Number of non-empty blocks.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Expr` for \( S(n,k) \).
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point and returns
+ ownership of a heap-allocated C string.
+ */
 rssn_
 char *rssn_json_stirling_number_second_kind(size_t aN,
                                             size_t aK)
@@ -22342,6 +22650,26 @@ void rssn_pauli_matrices(struct rssn_Expr **aSigmaX,
                          struct rssn_Expr **aSigmaZ)
 ;
 
+/*
+ Computes the number of permutations symbolically as an `Expr`.
+
+ This corresponds to \( P(n,k) = n! / (n-k)! \) for integer `n` and `k`, but also
+ supports symbolic `Expr` arguments.
+
+ # Arguments
+
+ * `n` - Pointer to an `Expr` representing the population size.
+ * `k` - Pointer to an `Expr` representing the selection size.
+
+ # Returns
+
+ A newly allocated `Expr` pointer representing the symbolic permutation count.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw `Expr` pointers and returns
+ ownership of a heap-allocated `Expr` to the caller.
+ */
 rssn_
 struct rssn_Expr *rssn_permutations(const struct rssn_Expr *aN,
                                     const struct rssn_Expr *aK)
@@ -24154,11 +24482,44 @@ struct rssn_CurvePoint *rssn_point_decompress(const char *aXStr,
                                               const struct rssn_EllipticCurve *aCurve)
 ;
 
+/*
+ Returns a cloned pole expression at the given index.
+
+ # Arguments
+
+ * `poles` - Pointer to a vector of pole expressions as returned by `rssn_find_poles`.
+ * `index` - Zero-based index of the pole to retrieve.
+
+ # Returns
+
+ A newly allocated `Expr` pointer to the selected pole, or null if the pointer is
+ null or the index is out of bounds.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>` and
+ returns ownership of a heap-allocated `Expr` to the caller.
+ */
 rssn_
 struct rssn_Expr *rssn_poles_get(const struct rssn_Vec_Expr *aPoles,
                                  size_t aIndex)
 ;
 
+/*
+ Returns the number of poles found for a given expression.
+
+ # Arguments
+
+ * `poles` - Pointer to a vector of pole expressions as returned by `rssn_find_poles`.
+
+ # Returns
+
+ The number of poles in the vector, or 0 if the pointer is null.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>`.
+ */
 rssn_
 size_t rssn_poles_len(const struct rssn_Vec_Expr *aPoles)
 ;
@@ -25718,6 +26079,26 @@ struct rssn_Expr *rssn_std_dev(const struct rssn_Expr *const *aData,
                                size_t aLen)
 ;
 
+/*
+ Computes a Stirling number of the second kind symbolically and returns it as an `Expr` pointer.
+
+ Stirling numbers of the second kind \( S(n,k) \) count partitions of an \(n\)-element
+ set into \(k\) non-empty unlabeled blocks.
+
+ # Arguments
+
+ * `n` - Total number of elements.
+ * `k` - Number of non-empty blocks.
+
+ # Returns
+
+ A newly allocated `Expr` pointer representing \( S(n,k) \).
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point and returns
+ ownership of a heap-allocated `Expr` to the caller.
+ */
 rssn_
 struct rssn_Expr *rssn_stirling_number_second_kind(size_t aN,
                                                    size_t aK)

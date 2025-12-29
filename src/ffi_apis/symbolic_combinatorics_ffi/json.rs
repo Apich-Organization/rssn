@@ -4,6 +4,27 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::combinatorics::*;
 use crate::symbolic::core::Expr;
 
+
+/// Computes the number of permutations symbolically using JSON-encoded `Expr` arguments.
+///
+/// This corresponds to the falling factorial \( P(n,k) = n! / (n-k)! \) when `n` and `k`
+/// are integers, but operates on general symbolic expressions.
+///
+/// # Arguments
+///
+/// * `n_json` - C string pointer to JSON encoding an `Expr` for the population size `n`.
+/// * `k_json` - C string pointer to JSON encoding an `Expr` for the selection size `k`.
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Expr` for the symbolic permutation count,
+/// or null on deserialization failure.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw C string pointers and returns
+/// ownership of a heap-allocated C string.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_permutations(
@@ -34,6 +55,25 @@ pub unsafe extern "C" fn rssn_json_permutations(
     to_json_string(&result)
 }
 
+/// Computes the number of combinations symbolically using JSON-encoded `Expr` arguments.
+///
+/// This corresponds to the binomial coefficient \( C(n,k) = n! / (k!(n-k)!) \) when
+/// `n` and `k` are integers, but operates on general symbolic expressions.
+///
+/// # Arguments
+///
+/// * `n_json` - C string pointer to JSON encoding an `Expr` for the population size `n`.
+/// * `k_json` - C string pointer to JSON encoding an `Expr` for the selection size `k`.
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Expr` for the symbolic combination count,
+/// or null on deserialization failure.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw C string pointers and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_combinations(
@@ -64,6 +104,23 @@ pub unsafe extern "C" fn rssn_json_combinations(
     to_json_string(&result)
 }
 
+/// Computes the \(n\)-th Catalan number symbolically and returns it as JSON-encoded `Expr`.
+///
+/// Catalan numbers count many combinatorial structures, such as binary trees, Dyck paths,
+/// and non-crossing partitions.
+///
+/// # Arguments
+///
+/// * `n` - Index of the Catalan number to compute.
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Expr` for the \(n\)-th Catalan number.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_catalan_number(
@@ -75,6 +132,24 @@ pub unsafe extern "C" fn rssn_json_catalan_number(
     to_json_string(&result)
 }
 
+/// Computes a Stirling number of the second kind symbolically and returns it as JSON-encoded `Expr`.
+///
+/// Stirling numbers of the second kind \( S(n,k) \) count partitions of an \(n\)-element
+/// set into \(k\) non-empty unlabeled blocks.
+///
+/// # Arguments
+///
+/// * `n` - Total number of elements.
+/// * `k` - Number of non-empty blocks.
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Expr` for \( S(n,k) \).
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_stirling_number_second_kind(
@@ -90,6 +165,23 @@ pub unsafe extern "C" fn rssn_json_stirling_number_second_kind(
     to_json_string(&result)
 }
 
+
+/// Computes the \(n\)-th Bell number symbolically and returns it as JSON-encoded `Expr`.
+///
+/// Bell numbers count the total number of set partitions of an \(n\)-element set.
+///
+/// # Arguments
+///
+/// * `n` - Index of the Bell number to compute.
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Expr` for the \(n\)-th Bell number.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bell_number(
