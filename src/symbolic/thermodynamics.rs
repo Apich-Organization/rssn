@@ -119,7 +119,7 @@ pub fn gibbs_free_energy(
     ))
 }
 
-/// Calculates Entropy via Boltzmann's formula: $S = `k_B` \ln(\Omega)$.
+/// Calculates Entropy via Boltzmann's formula: $S = k_B \ln(\Omega)$.
 #[must_use]
 
 pub fn boltzmann_entropy(
@@ -134,7 +134,7 @@ pub fn boltzmann_entropy(
     ))
 }
 
-/// Calculates the efficiency of a Carnot engine: $\eta = 1 - \`frac{T_c}{T_h`}$.
+/// Calculates the efficiency of a Carnot engine: $\eta = 1 - \frac{T_c}{T_h}$.
 #[must_use]
 
 pub fn carnot_efficiency(
@@ -151,7 +151,7 @@ pub fn carnot_efficiency(
     ))
 }
 
-/// Represents the Boltzmann Distribution: $`P_i` = \frac{e^{-E_i / (`k_B` T)}}{Z}$.
+/// Represents the Boltzmann Distribution: $P_i = \frac{e^{-E_i / (k_B T)}}{Z}$.
 #[must_use]
 
 pub fn boltzmann_distribution(
@@ -178,7 +178,7 @@ pub fn boltzmann_distribution(
     ))
 }
 
-/// Calculates the Partition Function: $Z = \`sum_i` e^{-E_i / (`k_B` T)}$.
+/// Calculates the Partition Function: $Z = \sum_i e^{-E_i / (k_B T)}$.
 #[must_use]
 
 pub fn partition_function(
@@ -277,7 +277,7 @@ pub fn bose_einstein_distribution(
     ))
 }
 
-/// Calculates the work done during an isothermal expansion: $W = nRT \`ln(V_2/V_1)`$.
+/// Calculates the work done during an isothermal expansion: $W = nRT \ln(V_2/V_1)$.
 #[must_use]
 
 pub fn work_isothermal_expansion(

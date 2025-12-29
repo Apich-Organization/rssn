@@ -534,7 +534,7 @@ pub unsafe extern "C" fn rssn_json_generalized_laguerre(
     ) = (n, alpha, x)
     {
 
-        to_json_string(&special_functions::generalized_laguerre(n, alpha, x))
+        to_json_string(&special_functions::generalized_laguerre(&n, &alpha, &x))
     } else {
 
         std::ptr::null_mut()
@@ -567,7 +567,7 @@ pub unsafe extern "C" fn rssn_json_hermite_h(
         (degree, arg)
     {
 
-        to_json_string(&special_functions::hermite_h(d, a))
+        to_json_string(&special_functions::hermite_h(&d, a))
     } else {
 
         std::ptr::null_mut()
@@ -598,7 +598,7 @@ pub unsafe extern "C" fn rssn_json_chebyshev_t(
 
     if let (Some(n), Some(x)) = (n, x) {
 
-        to_json_string(&special_functions::chebyshev_t(n, x))
+        to_json_string(&special_functions::chebyshev_t(&n, &x))
     } else {
 
         std::ptr::null_mut()
@@ -629,7 +629,7 @@ pub unsafe extern "C" fn rssn_json_chebyshev_u(
 
     if let (Some(n), Some(x)) = (n, x) {
 
-        to_json_string(&special_functions::chebyshev_u(n, x))
+        to_json_string(&special_functions::chebyshev_u(&n, &x))
     } else {
 
         std::ptr::null_mut()

@@ -480,9 +480,9 @@ pub unsafe extern "C" fn rssn_generalized_laguerre(
 
     Box::into_raw(Box::new(
         special_functions::generalized_laguerre(
-            (*n).clone(),
-            (*alpha).clone(),
-            (*x).clone(),
+            &(*n).clone(),
+            &(*alpha).clone(),
+            &(*x).clone(),
         ),
     ))
 }
@@ -511,7 +511,7 @@ pub unsafe extern "C" fn rssn_hermite_h(
 
     Box::into_raw(Box::new(
         special_functions::hermite_h(
-            (*degree).clone(),
+            &(*degree).clone(),
             (*arg).clone(),
         ),
     ))
@@ -540,8 +540,8 @@ pub unsafe extern "C" fn rssn_chebyshev_t(
 
     Box::into_raw(Box::new(
         special_functions::chebyshev_t(
-            (*n).clone(),
-            (*x).clone(),
+            &(*n).clone(),
+            &(*x).clone(),
         ),
     ))
 }
@@ -569,8 +569,8 @@ pub unsafe extern "C" fn rssn_chebyshev_u(
 
     Box::into_raw(Box::new(
         special_functions::chebyshev_u(
-            (*n).clone(),
-            (*x).clone(),
+            &(*n).clone(),
+            &(*x).clone(),
         ),
     ))
 }

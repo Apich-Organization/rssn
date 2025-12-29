@@ -370,7 +370,7 @@ pub struct SimplicialComplex {
 // Private helper function for recursively adding all faces of a simplex to the complex.
 pub(crate) fn add_faces(
     complex: &mut SimplicialComplex,
-    s: Simplex,
+    s: &Simplex,
 ) {
 
     if complex
@@ -395,7 +395,7 @@ pub(crate) fn add_faces(
 
                 add_faces(
                     complex,
-                    face,
+                    &face,
                 );
             }
         }
@@ -408,7 +408,7 @@ impl SimplicialComplex {
 
     pub fn new() -> Self {
 
-        Default::default()
+        SimplicialComplex::default()
     }
 
     /// Adds a simplex and all its faces (sub-simplices) to the complex.
@@ -427,7 +427,7 @@ impl SimplicialComplex {
         let simplex =
             Simplex::new(vertices);
 
-        add_faces(self, simplex);
+        add_faces(self, &simplex);
     }
 
     /// Returns the dimension of the simplicial complex.

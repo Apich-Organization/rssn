@@ -1022,9 +1022,9 @@ pub fn laguerre_l(
 #[must_use]
 
 pub fn generalized_laguerre(
-    n: Expr,
-    alpha: Expr,
-    x: Expr,
+    n: &Expr,
+    alpha: &Expr,
+    x: &Expr,
 ) -> Expr {
 
     let s_n = simplify(&n);
@@ -1094,7 +1094,7 @@ pub fn generalized_laguerre(
 #[must_use]
 
 pub fn hermite_h(
-    degree: Expr,
+    degree: &Expr,
     arg: Expr,
 ) -> Expr {
 
@@ -1130,7 +1130,7 @@ pub fn hermite_h(
             if n_int <= 10 {
 
                 let h_n = hermite_h(
-                    Expr::Constant(
+                    &Expr::Constant(
                         n - 1.0,
                     ),
                     arg.clone(),
@@ -1138,7 +1138,7 @@ pub fn hermite_h(
 
                 let h_n_minus_1 =
                     hermite_h(
-                        Expr::Constant(
+                        &Expr::Constant(
                             n - 2.0,
                         ),
                         arg.clone(),
@@ -1207,8 +1207,8 @@ pub fn hermite_h(
 #[must_use]
 
 pub fn chebyshev_t(
-    n: Expr,
-    x: Expr,
+    n: &Expr,
+    x: &Expr,
 ) -> Expr {
 
     let s_n = simplify(&n);
@@ -1239,17 +1239,17 @@ pub fn chebyshev_t(
             if n_int <= 10 {
 
                 let t_n1 = chebyshev_t(
-                    Expr::Constant(
+                    &Expr::Constant(
                         n_val - 1.0,
                     ),
-                    s_x.clone(),
+                    &s_x.clone(),
                 );
 
                 let t_n2 = chebyshev_t(
-                    Expr::Constant(
+                    &Expr::Constant(
                         n_val - 2.0,
                     ),
-                    s_x.clone(),
+                    &s_x.clone(),
                 );
 
                 return simplify(&Expr::new_sub(
@@ -1284,8 +1284,8 @@ pub fn chebyshev_t(
 #[must_use]
 
 pub fn chebyshev_u(
-    n: Expr,
-    x: Expr,
+    n: &Expr,
+    x: &Expr,
 ) -> Expr {
 
     let s_n = simplify(&n);
@@ -1323,17 +1323,17 @@ pub fn chebyshev_u(
             if n_int <= 10 {
 
                 let u_n1 = chebyshev_u(
-                    Expr::Constant(
+                    &Expr::Constant(
                         n_val - 1.0,
                     ),
-                    s_x.clone(),
+                    &s_x.clone(),
                 );
 
                 let u_n2 = chebyshev_u(
-                    Expr::Constant(
+                    &Expr::Constant(
                         n_val - 2.0,
                     ),
-                    s_x.clone(),
+                    &s_x.clone(),
                 );
 
                 return simplify(&Expr::new_sub(
@@ -1518,7 +1518,11 @@ pub fn legendre_rodrigues_formula(
     };
 
     let n_factorial = Expr::Constant(
-        factorial(n_f64 as usize),
+        if n_f64 >= 0.0 {
+            factorial(n_f64 as usize)
+        } else {
+            f64::NAN
+        },
     );
 
     Expr::Eq(
@@ -1679,7 +1683,7 @@ pub fn hermite_rodrigues_formula(
 
     Expr::Eq(
         Arc::new(hermite_h(
-            n.clone(),
+            &n.clone(),
             x.clone(),
         )),
         Arc::new(Expr::new_mul(

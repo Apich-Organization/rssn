@@ -93,7 +93,6 @@ pub fn nonlinear_regression_symbolic(
         .copied()
         .unwrap_or("x");
 
-    let _y_var = "y";
 
     for (x_i, y_i) in data {
 

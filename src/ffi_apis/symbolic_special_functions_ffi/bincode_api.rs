@@ -496,7 +496,7 @@ pub extern "C" fn rssn_bincode_generalized_laguerre(
     ) = (n, alpha, x)
     {
 
-        to_bincode_buffer(&special_functions::generalized_laguerre(n, alpha, x))
+        to_bincode_buffer(&special_functions::generalized_laguerre(&n, &alpha, &x))
     } else {
 
         BincodeBuffer::empty()
@@ -530,7 +530,7 @@ pub extern "C" fn rssn_bincode_hermite_h(
         (degree, arg)
     {
 
-        to_bincode_buffer(&special_functions::hermite_h(d, a))
+        to_bincode_buffer(&special_functions::hermite_h(&d, a))
     } else {
 
         BincodeBuffer::empty()
@@ -560,7 +560,7 @@ pub extern "C" fn rssn_bincode_chebyshev_t(
 
     if let (Some(n), Some(x)) = (n, x) {
 
-        to_bincode_buffer(&special_functions::chebyshev_t(n, x))
+        to_bincode_buffer(&special_functions::chebyshev_t(&n, &x))
     } else {
 
         BincodeBuffer::empty()
@@ -590,7 +590,7 @@ pub extern "C" fn rssn_bincode_chebyshev_u(
 
     if let (Some(n), Some(x)) = (n, x) {
 
-        to_bincode_buffer(&special_functions::chebyshev_u(n, x))
+        to_bincode_buffer(&special_functions::chebyshev_u(&n, &x))
     } else {
 
         BincodeBuffer::empty()
