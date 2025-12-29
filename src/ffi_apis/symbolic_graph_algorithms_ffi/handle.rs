@@ -4,7 +4,7 @@ use std::os::raw::c_int;
 
 use crate::ffi_apis::symbolic_graph_ffi::handle::RssnGraph;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_algorithms::*;
+use crate::symbolic::graph_algorithms::{dfs, bfs, connected_components, is_connected, strongly_connected_components, has_cycle, find_bridges_and_articulation_points, kruskal_mst, edmonds_karp_max_flow, dinic_max_flow, is_bipartite, bipartite_maximum_matching, topological_sort};
 
 /// Performs DFS traversal starting from a given node.
 /// Returns a JSON array of node indices in visit order.
@@ -22,8 +22,7 @@ pub extern "C" fn rssn_graph_dfs_api(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         let result = dfs(g, start_node);
 
@@ -55,8 +54,7 @@ pub extern "C" fn rssn_graph_bfs_api(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         let result = bfs(g, start_node);
 
@@ -87,8 +85,7 @@ pub extern "C" fn rssn_graph_connected_components_api(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         let result =
             connected_components(g);
@@ -119,16 +116,9 @@ pub extern "C" fn rssn_graph_is_connected(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
-        if is_connected(g) {
-
-            1
-        } else {
-
-            0
-        }
+        i32::from(is_connected(g))
     }
 }
 
@@ -147,8 +137,7 @@ pub extern "C" fn rssn_graph_strongly_connected_components(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         let result = strongly_connected_components(g);
 
@@ -178,21 +167,14 @@ pub extern "C" fn rssn_graph_has_cycle_api(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
-        if has_cycle(g) {
-
-            1
-        } else {
-
-            0
-        }
+        i32::from(has_cycle(g))
     }
 }
 
 /// Finds bridges and articulation points.
-/// Returns a JSON object with "bridges" and "articulation_points" fields.
+/// Returns a JSON object with "bridges" and "`articulation_points`" fields.
 #[no_mangle]
 
 pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
@@ -206,8 +188,7 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         let (bridges, aps) = find_bridges_and_articulation_points(g);
 
@@ -252,8 +233,7 @@ pub extern "C" fn rssn_graph_kruskal_mst_api(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         let mst_edges = kruskal_mst(g);
 
@@ -279,7 +259,7 @@ pub extern "C" fn rssn_graph_kruskal_mst_api(
 
         Box::into_raw(Box::new(
             mst_graph,
-        )) as *mut RssnGraph
+        )).cast::<RssnGraph>()
     }
 }
 
@@ -299,8 +279,7 @@ pub extern "C" fn rssn_graph_edmonds_karp_max_flow(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         edmonds_karp_max_flow(
             g,
@@ -326,8 +305,7 @@ pub extern "C" fn rssn_graph_dinic_max_flow(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         dinic_max_flow(g, source, sink)
     }
@@ -348,8 +326,7 @@ pub extern "C" fn rssn_graph_is_bipartite_api(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         match is_bipartite(g) {
             | Some(partition) => {
@@ -370,7 +347,7 @@ pub extern "C" fn rssn_graph_is_bipartite_api(
 }
 
 /// Finds maximum matching in a bipartite graph.
-/// partition_json should be a JSON array of 0s and 1s indicating the partition.
+/// `partition_json` should be a JSON array of 0s and 1s indicating the partition.
 /// Returns a JSON array of [u, v] pairs representing the matching.
 #[no_mangle]
 
@@ -388,8 +365,7 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         let partition_str =
             CStr::from_ptr(
@@ -436,8 +412,7 @@ pub extern "C" fn rssn_graph_topological_sort(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         match topological_sort(g) {
             | Some(order) => {

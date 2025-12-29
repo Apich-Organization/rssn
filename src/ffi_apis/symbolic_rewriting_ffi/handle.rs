@@ -2,7 +2,7 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::to_c_string;
 use crate::symbolic::core::Expr;
 use crate::symbolic::rewriting::apply_rules_to_normal_form;
 use crate::symbolic::rewriting::knuth_bendix;
@@ -53,7 +53,7 @@ pub unsafe extern "C" fn rssn_rewrite_rule_free(
 /// Returns a new owned Expr pointer that must be freed by the caller.
 ///
 /// # Safety
-/// The caller must ensure `rule` is a valid RewriteRule pointer.
+/// The caller must ensure `rule` is a valid `RewriteRule` pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(
 /// Returns a new owned Expr pointer that must be freed by the caller.
 ///
 /// # Safety
-/// The caller must ensure `rule` is a valid RewriteRule pointer.
+/// The caller must ensure `rule` is a valid `RewriteRule` pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rewrite_rule_get_rhs(
@@ -213,7 +213,7 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
 /// The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_rules_vec_len(
+pub const unsafe extern "C" fn rssn_rules_vec_len(
     rules: *const Vec<RewriteRule>
 ) -> usize {
 
@@ -228,7 +228,7 @@ pub unsafe extern "C" fn rssn_rules_vec_len(
 
 /// Gets a rule from a rules vector by index.
 ///
-/// Returns a new owned RewriteRule pointer that must be freed by the caller.
+/// Returns a new owned `RewriteRule` pointer that must be freed by the caller.
 ///
 /// # Safety
 /// The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.

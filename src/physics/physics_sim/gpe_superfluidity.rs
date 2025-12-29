@@ -85,8 +85,7 @@ pub fn run_gpe_ground_state_finder(
 
                 *val = 0.5
                     * trap_strength
-                    * (x.powi(2)
-                        + y_sq);
+                    * x.mul_add(x, y_sq);
             }
         });
 
@@ -115,9 +114,7 @@ pub fn run_gpe_ground_state_finder(
                 .enumerate()
             {
 
-                let k_sq = kx[i]
-                    .powi(2)
-                    + ky_sq;
+                let k_sq = kx[i].mul_add(kx[i], ky_sq);
 
                 *val = (-0.5
                     * k_sq
@@ -144,10 +141,8 @@ pub fn run_gpe_ground_state_finder(
             .enumerate()
             .for_each(|(idx, p)| {
 
-                let v_eff = potential
-                    [idx]
-                    + params.g
-                        * p.norm_sqr();
+                let v_eff = params.g.mul_add(p.norm_sqr(), potential
+                    [idx]);
 
                 *p *= (-v_eff
                     * params.d_tau
@@ -165,7 +160,7 @@ pub fn run_gpe_ground_state_finder(
             .zip(&kinetic_operator)
             .for_each(|(p, k_op)| {
 
-                *p *= k_op
+                *p *= k_op;
             });
 
         ifft2d(
@@ -178,10 +173,8 @@ pub fn run_gpe_ground_state_finder(
             .enumerate()
             .for_each(|(idx, p)| {
 
-                let v_eff = potential
-                    [idx]
-                    + params.g
-                        * p.norm_sqr();
+                let v_eff = params.g.mul_add(p.norm_sqr(), potential
+                    [idx]);
 
                 *p *= (-v_eff
                     * params.d_tau
@@ -191,7 +184,7 @@ pub fn run_gpe_ground_state_finder(
 
         let norm: f64 = psi
             .par_iter()
-            .map(|p| p.norm_sqr())
+            .map(num_complex::Complex::norm_sqr)
             .sum();
 
         let norm_factor = (n_total
@@ -201,13 +194,13 @@ pub fn run_gpe_ground_state_finder(
         psi.par_iter_mut()
             .for_each(|p| {
 
-                *p *= norm_factor
+                *p *= norm_factor;
             });
     }
 
     let probability_density: Vec<f64> =
         psi.iter()
-            .map(|p| p.norm_sqr())
+            .map(num_complex::Complex::norm_sqr)
             .collect();
 
     Array2::from_shape_vec(
@@ -248,8 +241,7 @@ pub fn simulate_bose_einstein_vortex_scenario(
 
     println!(
         "Simulation finished. Saving \
-         final density to {}",
-        filename
+         final density to {filename}"
     );
 
     write_npy_file(

@@ -60,7 +60,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(|s| s.as_str())
+        .map(std::string::String::as_str)
         .collect();
 
     let res = calculus::gradient(
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(|s| s.as_str())
+        .map(std::string::String::as_str)
         .collect();
 
     let res = calculus::jacobian(
@@ -172,7 +172,7 @@ pub unsafe extern "C" fn rssn_numerical_hessian_json(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(|s| s.as_str())
+        .map(std::string::String::as_str)
         .collect();
 
     let res = calculus::hessian(

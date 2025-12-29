@@ -1,4 +1,4 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
 use crate::symbolic::number_theory::chinese_remainder;
 use crate::symbolic::number_theory::extended_gcd;
@@ -41,7 +41,7 @@ pub extern "C" fn rssn_bincode_solve_diophantine(
 
         let v_str: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match solve_diophantine(

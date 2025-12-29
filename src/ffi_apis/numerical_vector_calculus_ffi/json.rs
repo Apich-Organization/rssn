@@ -79,7 +79,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(|s| s.as_str())
+        .map(std::string::String::as_str)
         .collect();
 
     let res = vector_calculus::divergence_expr(
@@ -154,7 +154,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(|s| s.as_str())
+        .map(std::string::String::as_str)
         .collect();
 
     let res =
@@ -230,7 +230,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(|s| s.as_str())
+        .map(std::string::String::as_str)
         .collect();
 
     let res =

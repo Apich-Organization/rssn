@@ -1,4 +1,4 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
 
@@ -112,13 +112,13 @@ pub extern "C" fn rssn_bincode_nonlinear_regression(
 
         let vars_refs: Vec<&str> = vars
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         let params_refs: Vec<&str> =
             params
                 .iter()
-                .map(|s| s.as_str())
+                .map(std::string::String::as_str)
                 .collect();
 
         match stats_regression::nonlinear_regression_symbolic(

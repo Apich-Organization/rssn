@@ -1,6 +1,6 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
-use crate::symbolic::topology::*;
+use crate::symbolic::topology::{Simplex, SimplicialComplex, SymbolicChain};
 
 /// Creates a new Simplex (Bincode)
 #[no_mangle]
@@ -48,7 +48,7 @@ pub extern "C" fn rssn_bincode_simplex_dimension(
     }
 }
 
-/// Creates a new SimplicialComplex (Bincode)
+/// Creates a new `SimplicialComplex` (Bincode)
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_simplicial_complex_create(
@@ -60,7 +60,7 @@ pub extern "C" fn rssn_bincode_simplicial_complex_create(
     to_bincode_buffer(&complex)
 }
 
-/// Adds a simplex to a SimplicialComplex (Bincode)
+/// Adds a simplex to a `SimplicialComplex` (Bincode)
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_simplicial_complex_add_simplex(
@@ -118,7 +118,7 @@ pub extern "C" fn rssn_bincode_simplicial_complex_get_symbolic_boundary_matrix(
     }
 }
 
-/// Creates a new SymbolicChain (Bincode)
+/// Creates a new `SymbolicChain` (Bincode)
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_symbolic_chain_create(
@@ -131,7 +131,7 @@ pub extern "C" fn rssn_bincode_symbolic_chain_create(
     to_bincode_buffer(&chain)
 }
 
-/// Adds a term to a SymbolicChain (Bincode)
+/// Adds a term to a `SymbolicChain` (Bincode)
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_symbolic_chain_add_term(
@@ -162,7 +162,7 @@ pub extern "C" fn rssn_bincode_symbolic_chain_add_term(
     ) {
 
         match c.add_term(s, coeff) {
-            | Ok(_) => {
+            | Ok(()) => {
                 to_bincode_buffer(&c)
             },
             | Err(_) => {
@@ -175,7 +175,7 @@ pub extern "C" fn rssn_bincode_symbolic_chain_add_term(
     }
 }
 
-/// Applies the symbolic boundary operator to a SymbolicChain (Bincode)
+/// Applies the symbolic boundary operator to a `SymbolicChain` (Bincode)
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_simplicial_complex_apply_symbolic_boundary_operator(

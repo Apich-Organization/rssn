@@ -26,7 +26,7 @@ use crate::symbolic::error_correction_helper::FiniteField;
 /// Performs addition in GF(2^8) (XOR operation).
 #[no_mangle]
 
-pub extern "C" fn rssn_gf256_add(
+pub const extern "C" fn rssn_gf256_add(
     a: u8,
     b: u8,
 ) -> u8 {
@@ -164,7 +164,7 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
     let boxed =
         result.into_boxed_slice();
 
-    Box::into_raw(boxed) as *mut u8
+    Box::into_raw(boxed).cast::<u8>()
 }
 
 /// Multiplies two polynomials over GF(2^8).
@@ -206,7 +206,7 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
     let boxed =
         result.into_boxed_slice();
 
-    Box::into_raw(boxed) as *mut u8
+    Box::into_raw(boxed).cast::<u8>()
 }
 
 /// Scales a polynomial by a constant in GF(2^8).
@@ -242,7 +242,7 @@ pub unsafe extern "C" fn rssn_poly_scale_gf256(
     let boxed =
         result.into_boxed_slice();
 
-    Box::into_raw(boxed) as *mut u8
+    Box::into_raw(boxed).cast::<u8>()
 }
 
 /// Computes the formal derivative of a polynomial in GF(2^8).
@@ -277,7 +277,7 @@ pub unsafe extern "C" fn rssn_poly_derivative_gf256(
     let boxed =
         result.into_boxed_slice();
 
-    Box::into_raw(boxed) as *mut u8
+    Box::into_raw(boxed).cast::<u8>()
 }
 
 /// Computes the GCD of two polynomials over GF(2^8).
@@ -319,7 +319,7 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
     let boxed =
         result.into_boxed_slice();
 
-    Box::into_raw(boxed) as *mut u8
+    Box::into_raw(boxed).cast::<u8>()
 }
 
 /// Creates a new finite field GF(modulus).

@@ -26,7 +26,7 @@ pub struct NavierStokesParameters {
     pub lid_velocity: f64,
 }
 
-/// Type of NavierStokesOutput.
+/// Type of `NavierStokesOutput`.
 
 pub type NavierStokesOutput = Result<
     (
@@ -292,8 +292,7 @@ pub fn simulate_lid_driven_cavity_scenario(
 
                 eprintln!(
                     "Failed to save \
-                     results: {}",
-                    e
+                     results: {e}"
                 );
             } else {
 
@@ -307,8 +306,7 @@ pub fn simulate_lid_driven_cavity_scenario(
 
             eprintln!(
                 "An error occurred \
-                 during simulation: {}",
-                e
+                 during simulation: {e}"
             );
         },
     }

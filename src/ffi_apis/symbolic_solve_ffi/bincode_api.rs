@@ -1,4 +1,4 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
 use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_linear_system;
@@ -67,7 +67,7 @@ pub extern "C" fn rssn_bincode_solve_system(
 
         let vars_str: Vec<&str> = vs
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match solve_system(

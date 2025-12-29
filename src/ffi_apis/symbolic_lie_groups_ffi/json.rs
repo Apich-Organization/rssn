@@ -1,8 +1,8 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{to_json_string, from_json_string};
 use crate::symbolic::core::Expr;
-use crate::symbolic::lie_groups_and_algebras::*;
+use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponential_map, adjoint_representation_group, adjoint_representation_algebra, LieAlgebra, commutator_table, check_jacobi_identity, so3_generators, su2_generators};
 
 // --- LieAlgebra Creation ---
 

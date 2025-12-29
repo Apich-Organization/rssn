@@ -5,6 +5,7 @@ use crate::symbolic::core::Expr;
 
 /// Converts an expression to a Typst string.
 
+#[must_use] 
 pub fn to_typst(expr: &Expr) -> String {
 
     format!(
@@ -116,11 +117,11 @@ pub(crate) fn to_typst_prec(
                     let body = children.chunks(cols).map(|row| {
                         row.iter().map(|elem| results[elem].content.clone()).collect::<Vec<_>>().join(", ")
                     }).collect::<Vec<_>>().join("; ");
-                    (10, format!("mat({})", body))
+                    (10, format!("mat({body})"))
                 },
                 DagOp::Vector => {
                     let body = children.iter().map(|elem| results[elem].content.clone()).collect::<Vec<_>>().join(", ");
-                    (10, format!("vec({})", body))
+                    (10, format!("vec({body})"))
                 },
                 _ => (10, current_expr.to_string()),
             };

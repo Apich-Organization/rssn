@@ -58,8 +58,7 @@ pub extern "C" fn rssn_num_fea_bulk_modulus(
 
     youngs_modulus
         / (3.0
-            * (1.0
-                - 2.0 * poissons_ratio))
+            * 2.0f64.mul_add(-poissons_ratio, 1.0))
 }
 
 // ============================================================================
@@ -110,7 +109,7 @@ pub extern "C" fn rssn_num_fea_max_shear_stress(
 }
 
 /// Computes principal stresses from stress components.
-/// Returns sigma1 in out_sigma1, sigma2 in out_sigma2, angle in out_angle.
+/// Returns sigma1 in `out_sigma1`, sigma2 in `out_sigma2`, angle in `out_angle`.
 ///
 /// # Safety
 /// Pointers must be valid.

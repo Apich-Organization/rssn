@@ -50,13 +50,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
             .to_str()
         {
             | Ok(s) => {
-                vars_list.push(s)
+                vars_list.push(s);
             },
             | Err(_) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 for variable at index {}",
-                    i
+                    "Invalid UTF-8 for variable at index {i}"
                 ));
 
                 return -1;
@@ -128,13 +127,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
             .to_str()
         {
             | Ok(s) => {
-                vars_list.push(s)
+                vars_list.push(s);
             },
             | Err(_) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 for variable at index {}",
-                    i
+                    "Invalid UTF-8 for variable at index {i}"
                 ));
 
                 return ptr::null_mut();
@@ -195,13 +193,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
             .to_str()
         {
             | Ok(s) => {
-                vars_list.push(s)
+                vars_list.push(s);
             },
             | Err(_) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 for variable at index {}",
-                    i
+                    "Invalid UTF-8 for variable at index {i}"
                 ));
 
                 return -1;
@@ -268,13 +265,12 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
             .to_str()
         {
             | Ok(s) => {
-                vars_list.push(s)
+                vars_list.push(s);
             },
             | Err(_) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 for variable at index {}",
-                    i
+                    "Invalid UTF-8 for variable at index {i}"
                 ));
 
                 return -1;

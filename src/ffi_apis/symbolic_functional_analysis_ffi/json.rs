@@ -1,8 +1,8 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
-use crate::symbolic::functional_analysis::*;
+use crate::symbolic::functional_analysis::{HilbertSpace, inner_product, norm, gram_schmidt};
 
 /// Constructs a Hilbert space from a JSON-encoded description.
 ///

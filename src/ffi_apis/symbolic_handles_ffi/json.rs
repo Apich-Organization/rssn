@@ -5,7 +5,7 @@ use std::os::raw::c_char;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
 use crate::symbolic::handles::HANDLE_MANAGER;
 
@@ -186,8 +186,7 @@ pub extern "C" fn rssn_handle_stats_json(
                 HandleInfo {
                     handle,
                     expression: format!(
-                        "{}",
-                        arc_expr
+                        "{arc_expr}"
                     ),
                 },
             );
@@ -221,7 +220,7 @@ pub extern "C" fn rssn_handle_clear_json(
 /// Clones a handle (JSON).
 ///
 /// Input: JSON object with "handle" field
-/// Output: JSON object with "new_handle" field
+/// Output: JSON object with "`new_handle`" field
 #[no_mangle]
 
 pub extern "C" fn rssn_handle_clone_json(

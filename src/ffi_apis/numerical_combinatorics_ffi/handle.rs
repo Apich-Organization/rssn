@@ -180,7 +180,7 @@ pub unsafe extern "C" fn rssn_num_comb_bell(
     0
 }
 
-/// Computes the Catalan number C_n.
+/// Computes the Catalan number `C_n`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_catalan(

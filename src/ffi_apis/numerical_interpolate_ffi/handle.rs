@@ -157,7 +157,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_free(
 }
 
 /// Evaluates a Bézier curve at parameter t.
-/// control_points is a flattened array of size n_points * dim.
+/// `control_points` is a flattened array of size `n_points` * dim.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_bezier_curve(

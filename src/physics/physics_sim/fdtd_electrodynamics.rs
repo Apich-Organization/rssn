@@ -33,6 +33,7 @@ pub struct FdtdParameters {
 /// # Returns
 /// A `Vec` containing snapshots of the Ez field at specified intervals.
 
+#[must_use] 
 pub fn run_fdtd_simulation(
     params: &FdtdParameters
 ) -> Vec<Array2<f64>> {

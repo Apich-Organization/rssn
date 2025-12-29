@@ -28,7 +28,7 @@ pub struct BuildInfo {
 }
 
 /// Returns all build information as a JSON string.
-/// The caller must free the returned string using rssn_free_string.
+/// The caller must free the returned string using `rssn_free_string`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_build_info_json(
@@ -51,7 +51,7 @@ pub extern "C" fn rssn_get_build_info_json(
 }
 
 /// Returns the build date as a JSON string.
-/// The caller must free the returned string using rssn_free_string.
+/// The caller must free the returned string using `rssn_free_string`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_build_date_json(
@@ -70,7 +70,7 @@ pub extern "C" fn rssn_get_build_date_json(
 }
 
 /// Returns the commit SHA as a JSON string.
-/// The caller must free the returned string using rssn_free_string.
+/// The caller must free the returned string using `rssn_free_string`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_commit_sha_json(

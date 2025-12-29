@@ -156,12 +156,12 @@ where
     // Simpson's rule requires even number of intervals for the strict global formula.
     // If odd, we can warn or adjust. For now, enforce even.
     let steps =
-        if !n_steps.is_multiple_of(2) {
-
-            n_steps + 1
-        } else {
+        if n_steps.is_multiple_of(2) {
 
             n_steps
+        } else {
+
+            n_steps + 1
         };
 
     let h = (b - a) / (steps as f64);

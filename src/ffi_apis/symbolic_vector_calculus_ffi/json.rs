@@ -5,10 +5,10 @@ use std::os::raw::c_char;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
-use crate::symbolic::vector_calculus::*;
+use crate::symbolic::vector_calculus::{ParametricCurve, ParametricSurface, Volume, line_integral_scalar, line_integral_vector, surface_integral, volume_integral};
 
 #[derive(Serialize, Deserialize)]
 

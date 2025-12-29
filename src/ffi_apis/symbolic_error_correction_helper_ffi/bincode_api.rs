@@ -3,7 +3,7 @@
 //! This module provides binary serialization-based FFI functions for GF(2^8) and
 //! general finite field arithmetic operations.
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
 use crate::symbolic::error_correction_helper::gf256_add;
 use crate::symbolic::error_correction_helper::gf256_inv;

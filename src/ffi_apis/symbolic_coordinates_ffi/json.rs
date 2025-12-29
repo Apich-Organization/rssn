@@ -1,7 +1,7 @@
 use std::ffi::c_char;
 
-use crate::ffi_apis::common::*;
-use crate::symbolic::coordinates::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::symbolic::coordinates::{CoordinateSystem, transform_point, transform_expression, get_metric_tensor, transform_contravariant_vector, transform_covariant_vector, transform_divergence, transform_curl, transform_gradient};
 use crate::symbolic::core::Expr;
 
 /// Transforms a point between coordinate systems using JSON-encoded coordinates.

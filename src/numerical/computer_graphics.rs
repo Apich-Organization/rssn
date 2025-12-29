@@ -175,8 +175,7 @@ impl Point3D {
 
         let dz = self.z - other.z;
 
-        (dx.mul_add(dx, dy * dy)
-            + dz * dz)
+        dz.mul_add(dz, dx.mul_add(dx, dy * dy))
             .sqrt()
     }
 
@@ -399,10 +398,10 @@ impl Vector3D {
 
     pub fn magnitude(&self) -> f64 {
 
-        (self.x.mul_add(
+        self.z.mul_add(self.z, self.x.mul_add(
             self.x,
             self.y * self.y,
-        ) + self.z * self.z)
+        ))
             .sqrt()
     }
 
@@ -413,10 +412,10 @@ impl Vector3D {
         &self
     ) -> f64 {
 
-        self.x.mul_add(
+        self.z.mul_add(self.z, self.x.mul_add(
             self.x,
             self.y * self.y,
-        ) + self.z * self.z
+        ))
     }
 
     /// Normalizes the vector to have a magnitude of 1.
@@ -681,8 +680,7 @@ pub fn dot_product(
     v2: &Vector3D,
 ) -> f64 {
 
-    v1.x.mul_add(v2.x, v1.y * v2.y)
-        + v1.z * v2.z
+    v1.z.mul_add(v2.z, v1.x.mul_add(v2.x, v1.y * v2.y))
 }
 
 /// Computes the cross product of two 3D vectors.
@@ -1325,10 +1323,10 @@ impl Quaternion {
 
     pub fn magnitude(&self) -> f64 {
 
-        (self.w.mul_add(
+        (self.y.mul_add(self.y, self.w.mul_add(
             self.w,
             self.x * self.x,
-        ) + self.y * self.y
+        ))
             + self.z * self.z)
             .sqrt()
     }
@@ -1374,11 +1372,10 @@ impl Quaternion {
 
     pub fn inverse(&self) -> Self {
 
-        let mag_sq = self.w.mul_add(
+        let mag_sq = self.y.mul_add(self.y, self.w.mul_add(
             self.w,
             self.x * self.x,
-        ) + self.y
-            * self.y
+        ))
             + self.z * self.z;
 
         let conj = self.conjugate();
@@ -1400,25 +1397,25 @@ impl Quaternion {
     ) -> Self {
 
         Self {
-            w: self.w.mul_add(
+            w: self.y.mul_add(-other.y, self.w.mul_add(
                 other.w,
                 -(self.x * other.x),
-            ) - self.y * other.y
+            ))
                 - self.z * other.z,
-            x: self.w.mul_add(
+            x: self.y.mul_add(other.z, self.w.mul_add(
                 other.x,
                 self.x * other.w,
-            ) + self.y * other.z
+            ))
                 - self.z * other.y,
-            y: self.w.mul_add(
+            y: self.y.mul_add(other.w, self.w.mul_add(
                 other.y,
                 -(self.x * other.z),
-            ) + self.y * other.w
+            ))
                 + self.z * other.x,
-            z: self.w.mul_add(
+            z: self.y.mul_add(-other.x, self.w.mul_add(
                 other.z,
                 self.x * other.y,
-            ) - self.y * other.x
+            ))
                 + self.z * other.w,
         }
     }
@@ -1517,10 +1514,10 @@ impl Quaternion {
         t: f64,
     ) -> Self {
 
-        let dot = self.w.mul_add(
+        let dot = self.y.mul_add(other.y, self.w.mul_add(
             other.w,
             self.x * other.x,
-        ) + self.y * other.y
+        ))
             + self.z * other.z;
 
         // If dot is negative, negate one quaternion to take the shorter path
@@ -2025,21 +2022,21 @@ pub fn bezier_cubic(
     let mt3 = mt2 * mt;
 
     Point3D {
-        x: (3.0 * mt * t2).mul_add(
+        x: t3.mul_add(p3.x, (3.0 * mt * t2).mul_add(
             p2.x,
             mt3 * p0.x
                 + 3.0 * mt2 * t * p1.x,
-        ) + t3 * p3.x,
-        y: (3.0 * mt * t2).mul_add(
+        )),
+        y: t3.mul_add(p3.y, (3.0 * mt * t2).mul_add(
             p2.y,
             mt3 * p0.y
                 + 3.0 * mt2 * t * p1.y,
-        ) + t3 * p3.y,
-        z: (3.0 * mt * t2).mul_add(
+        )),
+        z: t3.mul_add(p3.z, (3.0 * mt * t2).mul_add(
             p2.z,
             mt3 * p0.z
                 + 3.0 * mt2 * t * p1.z,
-        ) + t3 * p3.z,
+        )),
     }
 }
 
@@ -2065,45 +2062,45 @@ pub fn catmull_rom(
             * (2.0f64.mul_add(
                 p1.x,
                 (-p0.x + p2.x) * t,
-            ) + (2.0f64.mul_add(
+            ) + (4.0f64.mul_add(p2.x, 2.0f64.mul_add(
                 p0.x,
                 -(5.0 * p1.x),
-            ) + 4.0 * p2.x
+            ))
                 - p3.x)
                 * t2
-                + (3.0f64.mul_add(
+                + (3.0f64.mul_add(-p2.x, 3.0f64.mul_add(
                     p1.x, -p0.x,
-                ) - 3.0 * p2.x
+                ))
                     + p3.x)
                     * t3),
         y: 0.5
             * (2.0f64.mul_add(
                 p1.y,
                 (-p0.y + p2.y) * t,
-            ) + (2.0f64.mul_add(
+            ) + (4.0f64.mul_add(p2.y, 2.0f64.mul_add(
                 p0.y,
                 -(5.0 * p1.y),
-            ) + 4.0 * p2.y
+            ))
                 - p3.y)
                 * t2
-                + (3.0f64.mul_add(
+                + (3.0f64.mul_add(-p2.y, 3.0f64.mul_add(
                     p1.y, -p0.y,
-                ) - 3.0 * p2.y
+                ))
                     + p3.y)
                     * t3),
         z: 0.5
             * (2.0f64.mul_add(
                 p1.z,
                 (-p0.z + p2.z) * t,
-            ) + (2.0f64.mul_add(
+            ) + (4.0f64.mul_add(p2.z, 2.0f64.mul_add(
                 p0.z,
                 -(5.0 * p1.z),
-            ) + 4.0 * p2.z
+            ))
                 - p3.z)
                 * t2
-                + (3.0f64.mul_add(
+                + (3.0f64.mul_add(-p2.z, 3.0f64.mul_add(
                     p1.z, -p0.z,
-                ) - 3.0 * p2.z
+                ))
                     + p3.z)
                     * t3),
     }
@@ -2116,7 +2113,7 @@ pub fn catmull_rom(
 /// Converts degrees to radians.
 #[must_use]
 
-pub fn degrees_to_radians(
+pub const fn degrees_to_radians(
     degrees: f64
 ) -> f64 {
 
@@ -2126,7 +2123,7 @@ pub fn degrees_to_radians(
 /// Converts radians to degrees.
 #[must_use]
 
-pub fn radians_to_degrees(
+pub const fn radians_to_degrees(
     radians: f64
 ) -> f64 {
 

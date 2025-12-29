@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 use std::sync::Arc;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_probability::Bernoulli;
 use crate::symbolic::stats_probability::Beta;

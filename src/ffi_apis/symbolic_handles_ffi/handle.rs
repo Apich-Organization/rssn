@@ -4,7 +4,7 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{to_json_string, to_c_string};
 use crate::symbolic::core::Expr;
 use crate::symbolic::handles::HANDLE_MANAGER;
 
@@ -160,8 +160,7 @@ pub extern "C" fn rssn_handle_to_string(
     match HANDLE_MANAGER.get(handle) {
         | Some(arc_expr) => {
             to_c_string(format!(
-                "{}",
-                arc_expr
+                "{arc_expr}"
             ))
         },
         | None => std::ptr::null_mut(),

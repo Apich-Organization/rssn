@@ -2,7 +2,7 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::integration::*;
+use crate::symbolic::integration::{risch_norman_integrate, integrate_rational_function_expr};
 
 /// Integrates an expression using the Risch-Norman algorithm (Handle)
 #[no_mangle]

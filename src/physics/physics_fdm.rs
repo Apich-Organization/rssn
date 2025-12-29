@@ -49,12 +49,13 @@ impl<
 {
     /// Creates a new grid from existing data and dimensions.
 
-    pub fn from_data(
+    #[must_use] 
+    pub const fn from_data(
         data: Vec<T>,
         dims: Dimensions,
     ) -> Self {
 
-        FdmGrid {
+        Self {
             data,
             dims,
         }
@@ -62,6 +63,7 @@ impl<
 
     /// Creates a new grid with the given dimensions, initialized with a default value.
 
+    #[must_use] 
     pub fn new(
         dims: Dimensions
     ) -> Self {
@@ -78,7 +80,7 @@ impl<
             ) => x * y * z,
         };
 
-        FdmGrid {
+        Self {
             data: vec![
                 T::default();
                 size
@@ -106,7 +108,7 @@ impl<
             ) => x * y * z,
         };
 
-        FdmGrid {
+        Self {
             data: vec![value; size],
             dims,
         }
@@ -115,7 +117,8 @@ impl<
     /// Returns the dimensions of the grid.
     #[inline]
 
-    pub fn dimensions(
+    #[must_use] 
+    pub const fn dimensions(
         &self
     ) -> &Dimensions {
 
@@ -125,6 +128,7 @@ impl<
     /// Returns a slice to the underlying data.
     #[inline]
 
+    #[must_use] 
     pub fn as_slice(&self) -> &[T] {
 
         &self.data
@@ -142,14 +146,16 @@ impl<
 
     /// Size of the grid.
 
-    pub fn len(&self) -> usize {
+    #[must_use] 
+    pub const fn len(&self) -> usize {
 
         self.data.len()
     }
 
     /// Is the grid empty.
 
-    pub fn is_empty(&self) -> bool {
+    #[must_use] 
+    pub const fn is_empty(&self) -> bool {
 
         self.data.is_empty()
     }
@@ -387,23 +393,19 @@ where
                         return;
                     }
 
-                    let lap_x = grid
-                        [(x + 1, y)]
-                        - 2.0
-                            * grid[(
+                    let lap_x = 2.0f64.mul_add(-grid[(
                                 x, y,
-                            )]
+                            )], grid
+                        [(x + 1, y)])
                         + grid[(
                             x - 1,
                             y,
                         )];
 
-                    let lap_y = grid
-                        [(x, y + 1)]
-                        - 2.0
-                            * grid[(
+                    let lap_y = 2.0f64.mul_add(-grid[(
                                 x, y,
-                            )]
+                            )], grid
+                        [(x, y + 1)])
                         + grid[(
                             x,
                             y - 1,
@@ -450,7 +452,7 @@ where
         FdmGrid::new(dims.clone());
 
     let mut u_next =
-        FdmGrid::new(dims.clone());
+        FdmGrid::new(dims);
 
     u_curr
         .as_mut_slice()
@@ -500,31 +502,25 @@ where
                         return;
                     }
 
-                    let lap_x = u_curr
-                        [(x + 1, y)]
-                        - 2.0
-                            * u_curr[(
+                    let lap_x = 2.0f64.mul_add(-u_curr[(
                                 x, y,
-                            )]
+                            )], u_curr
+                        [(x + 1, y)])
                         + u_curr[(
                             x - 1,
                             y,
                         )];
 
-                    let lap_y = u_curr
-                        [(x, y + 1)]
-                        - 2.0
-                            * u_curr[(
+                    let lap_y = 2.0f64.mul_add(-u_curr[(
                                 x, y,
-                            )]
+                            )], u_curr
+                        [(x, y + 1)])
                         + u_curr[(
                             x,
                             y - 1,
                         )];
 
-                    *next_val = 2.0
-                        * u_curr[i]
-                        - u_prev[i]
+                    *next_val = 2.0f64.mul_add(u_curr[i], -u_prev[i])
                         + s_x * lap_x
                         + s_y * lap_y;
                 },
@@ -546,6 +542,7 @@ where
 
 /// Solves Poisson equation `∇²u = f` using Successive Over-Relaxation (SOR).
 
+#[must_use] 
 pub fn solve_poisson_2d(
     width: usize,
     height: usize,
@@ -615,12 +612,10 @@ pub fn solve_poisson_2d(
                     let old_val : f64 = *val;
 
                     let target = factor
-                        * (get_u(x + 1, y)
-                            + get_u(x - 1, y)
-                            + beta * (get_u(x, y + 1) + get_u(x, y - 1))
+                        * (beta.mul_add(get_u(x, y + 1) + get_u(x, y - 1), get_u(x + 1, y) + get_u(x - 1, y))
                             - dx2 * source[i]);
 
-                    *val = old_val + omega * (target - old_val);
+                    *val = omega.mul_add(target - old_val, old_val);
 
                     let diff : f64 = (*val - old_val).abs();
 
@@ -655,6 +650,7 @@ pub fn solve_poisson_2d(
 
 /// Solves 1D Burgers' equation `u_t + u*u_x = nu*u_xx`.
 
+#[must_use] 
 pub fn solve_burgers_1d(
     initial_u: &[f64],
     dx: f64,
@@ -691,9 +687,9 @@ pub fn solve_burgers_1d(
                 // Central difference for convection and diffusion
                 let convection = u[i] * (u[i + 1] - u[i - 1]) / (2.0 * dx);
 
-                let diffusion = nu * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / dx.powi(2);
+                let diffusion = nu * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]) / dx.powi(2);
 
-                *next_val = u[i] + dt * (diffusion - convection);
+                *next_val = dt.mul_add(diffusion - convection, u[i]);
             });
 
         u.copy_from_slice(&u_next);
@@ -704,6 +700,7 @@ pub fn solve_burgers_1d(
 
 /// Solves a 1D advection-diffusion equation `u_t + c*u_x = d*u_xx` using FDM.
 
+#[must_use] 
 pub fn solve_advection_diffusion_1d(
     initial_cond: &[f64],
     dx: f64,
@@ -747,9 +744,9 @@ pub fn solve_advection_diffusion_1d(
                     -c * (u[i + 1] - u[i]) / dx
                 };
 
-                let diffusion = d * (u[i + 1] - 2.0 * u[i] + u[i - 1]) / dx.powi(2);
+                let diffusion = d * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]) / dx.powi(2);
 
-                *next_val = u[i] + dt * (advection + diffusion);
+                *next_val = dt.mul_add(advection + diffusion, u[i]);
             });
 
         u.copy_from_slice(&u_next);
@@ -764,6 +761,7 @@ pub fn solve_advection_diffusion_1d(
 
 /// Example scenario: Simulates heat conduction on a 100x100 plate.
 
+#[must_use] 
 pub fn simulate_2d_heat_conduction_scenario(
 ) -> FdmGrid<f64> {
 
@@ -797,8 +795,7 @@ pub fn simulate_2d_heat_conduction_scenario(
             let dy_cen = y as f64
                 - (HEIGHT / 2) as f64;
 
-            if dx_cen.powi(2)
-                + dy_cen.powi(2)
+            if dy_cen.mul_add(dy_cen, dx_cen.powi(2))
                 < 25.0
             {
 
@@ -813,6 +810,7 @@ pub fn simulate_2d_heat_conduction_scenario(
 
 /// Example scenario: Simulates wave propagation on a 120x120 grid.
 
+#[must_use] 
 pub fn simulate_2d_wave_propagation_scenario(
 ) -> FdmGrid<f64> {
 
@@ -846,8 +844,7 @@ pub fn simulate_2d_wave_propagation_scenario(
             let dy_cen = y as f64
                 - (HEIGHT / 2) as f64;
 
-            let dist2 = dx_cen.powi(2)
-                + dy_cen.powi(2);
+            let dist2 = dy_cen.mul_add(dy_cen, dx_cen.powi(2));
 
             (-dist2 / 50.0).exp() // Gaussian pulse
         },

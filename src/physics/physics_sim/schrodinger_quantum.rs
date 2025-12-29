@@ -86,9 +86,7 @@ pub fn run_schrodinger_simulation(
                 .enumerate()
             {
 
-                let k_sq = kx[i]
-                    .powi(2)
-                    + ky_sq;
+                let k_sq = kx[i].mul_add(kx[i], ky_sq);
 
                 let phase = -hbar
                     * k_sq
@@ -131,7 +129,7 @@ pub fn run_schrodinger_simulation(
             .zip(&potential_operator)
             .for_each(|(p, v_op)| {
 
-                *p *= v_op
+                *p *= v_op;
             });
 
         fft2d(
@@ -144,7 +142,7 @@ pub fn run_schrodinger_simulation(
             .zip(&kinetic_operator)
             .for_each(|(p, k_op)| {
 
-                *p *= k_op
+                *p *= k_op;
             });
 
         ifft2d(
@@ -157,14 +155,14 @@ pub fn run_schrodinger_simulation(
             .zip(&potential_operator)
             .for_each(|(p, v_op)| {
 
-                *p *= v_op
+                *p *= v_op;
             });
 
         if t_step % 10 == 0 {
 
             let probability_density : Vec<f64> = psi
                 .par_iter()
-                .map(|p| p.norm_sqr())
+                .map(num_complex::Complex::norm_sqr)
                 .collect();
 
             snapshots.push(
@@ -276,11 +274,8 @@ pub fn simulate_double_slit_scenario(
             let norm_sq =
                 dx * dx + dy * dy;
 
-            let phase = initial_momentum
-                .0
-                * dx
-                + initial_momentum.1
-                    * dy;
+            let phase = (initial_momentum.0 as f64)
+                .mul_add(dx, initial_momentum.1 * dy);
 
             let envelope = (-norm_sq
                 / (2.0
@@ -311,8 +306,7 @@ pub fn simulate_double_slit_scenario(
 
         println!(
             "Saving final probability \
-             density to {}",
-            filename
+             density to {filename}"
         );
 
         write_npy_file(

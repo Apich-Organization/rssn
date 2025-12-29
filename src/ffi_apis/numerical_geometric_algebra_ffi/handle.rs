@@ -5,7 +5,7 @@ use std::ptr;
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::geometric_algebra::Multivector3D;
 
-/// Creates a new Multivector3D.
+/// Creates a new `Multivector3D`.
 #[no_mangle]
 #[allow(clippy::too_many_arguments)]
 
@@ -28,7 +28,7 @@ pub unsafe extern "C" fn rssn_num_ga_create(
     Box::into_raw(Box::new(mv))
 }
 
-/// Frees a Multivector3D.
+/// Frees a `Multivector3D`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_free(
@@ -44,7 +44,7 @@ pub unsafe extern "C" fn rssn_num_ga_free(
     }
 }
 
-/// Gets components of a Multivector3D.
+/// Gets components of a `Multivector3D`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_get_components(
@@ -246,7 +246,7 @@ pub unsafe extern "C" fn rssn_num_ga_dot(
     Box::into_raw(Box::new(a.dot(*b)))
 }
 
-/// Returns the reverse of a Multivector3D.
+/// Returns the reverse of a `Multivector3D`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_reverse(
@@ -268,7 +268,7 @@ pub unsafe extern "C" fn rssn_num_ga_reverse(
     ))
 }
 
-/// Returns the norm of a Multivector3D.
+/// Returns the norm of a `Multivector3D`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_norm(
@@ -288,7 +288,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm(
     a.norm()
 }
 
-/// Returns the inverse of a Multivector3D.
+/// Returns the inverse of a `Multivector3D`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_inv(

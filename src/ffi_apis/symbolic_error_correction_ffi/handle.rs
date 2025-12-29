@@ -103,7 +103,7 @@ pub unsafe extern "C" fn rssn_hamming_decode(
     }
 }
 
-/// Encodes data using Reed-Solomon code with n_sym error correction symbols.
+/// Encodes data using Reed-Solomon code with `n_sym` error correction symbols.
 ///
 /// # Safety
 /// Caller must ensure `data` is valid. Returns allocated memory that must be freed.
@@ -137,8 +137,7 @@ pub unsafe extern "C" fn rssn_rs_encode(
             let boxed = codeword
                 .into_boxed_slice();
 
-            Box::into_raw(boxed)
-                as *mut u8
+            Box::into_raw(boxed).cast::<u8>()
         },
         | Err(_) => {
             std::ptr::null_mut()
@@ -180,8 +179,7 @@ pub unsafe extern "C" fn rssn_rs_decode(
             let boxed =
                 data.into_boxed_slice();
 
-            Box::into_raw(boxed)
-                as *mut u8
+            Box::into_raw(boxed).cast::<u8>()
         },
         | Err(_) => {
             std::ptr::null_mut()
@@ -189,10 +187,10 @@ pub unsafe extern "C" fn rssn_rs_decode(
     }
 }
 
-/// Frees memory allocated by rs_encode or rs_decode.
+/// Frees memory allocated by `rs_encode` or `rs_decode`.
 ///
 /// # Safety
-/// Caller must ensure `ptr` was returned by rssn_rs_encode or rssn_rs_decode.
+/// Caller must ensure `ptr` was returned by `rssn_rs_encode` or `rssn_rs_decode`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_rs_free(
@@ -202,7 +200,7 @@ pub unsafe extern "C" fn rssn_rs_free(
 
     if !ptr.is_null() && len > 0 {
 
-        let _ = Box::from_raw(std::slice::from_raw_parts_mut(ptr, len));
+        let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, len));
     }
 }
 
@@ -299,13 +297,7 @@ pub unsafe extern "C" fn rssn_hamming_check(
             7,
         );
 
-    if hamming_check(slice) {
-
-        1
-    } else {
-
-        0
-    }
+    i32::from(hamming_check(slice))
 }
 
 // ============================================================================
@@ -336,13 +328,7 @@ pub unsafe extern "C" fn rssn_rs_check(
             codeword_len,
         );
 
-    if rs_check(slice, n_sym) {
-
-        1
-    } else {
-
-        0
-    }
+    i32::from(rs_check(slice, n_sym))
 }
 
 /// Estimates the number of errors in a Reed-Solomon codeword.
@@ -423,14 +409,7 @@ pub unsafe extern "C" fn rssn_crc32_verify(
             data, len,
         );
 
-    if crc32_verify(slice, expected_crc)
-    {
-
-        1
-    } else {
-
-        0
-    }
+    i32::from(crc32_verify(slice, expected_crc))
 }
 
 /// Updates an existing CRC-32 with additional data (for incremental computation).
@@ -459,10 +438,10 @@ pub unsafe extern "C" fn rssn_crc32_update(
     crc32_update(crc, slice)
 }
 
-/// Finalizes a CRC-32 computation started with crc32_update.
+/// Finalizes a CRC-32 computation started with `crc32_update`.
 #[no_mangle]
 
-pub extern "C" fn rssn_crc32_finalize(
+pub const extern "C" fn rssn_crc32_finalize(
     crc: u32
 ) -> u32 {
 

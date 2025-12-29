@@ -1,5 +1,5 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::multi_valued::*;
+use crate::symbolic::multi_valued::{general_log, general_sqrt, general_power, general_nth_root, general_arcsin, general_arccos, general_arctan, arg, abs};
 
 /// Computes general multi-valued logarithm (Handle)
 #[no_mangle]

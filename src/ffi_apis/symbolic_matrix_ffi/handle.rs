@@ -1,5 +1,5 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::matrix::*;
+use crate::symbolic::matrix::{add_matrices, mul_matrices, transpose_matrix, determinant, inverse_matrix, solve_linear_system};
 
 /// Performs matrix addition using raw pointers to `Expr` objects.
 
@@ -169,8 +169,7 @@ pub extern "C" fn rssn_matrix_solve_linear_system_handle(
             Box::into_raw(Box::new(
                 Expr::Variable(
                     format!(
-                        "Error: {}",
-                        e
+                        "Error: {e}"
                     ),
                 ),
             ))

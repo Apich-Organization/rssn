@@ -5,7 +5,7 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::error_correction::crc32_compute;
 use crate::symbolic::error_correction::crc32_finalize;
 use crate::symbolic::error_correction::crc32_update;
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rssn_json_hamming_encode(
 }
 
 /// Decodes a 7-bit Hamming(7,4) codeword via JSON interface.
-/// Returns JSON object with "data" and "error_pos" fields.
+/// Returns JSON object with "data" and "`error_pos`" fields.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hamming_decode(
@@ -82,7 +82,7 @@ pub unsafe extern "C" fn rssn_json_hamming_decode(
 }
 
 /// Encodes data using Reed-Solomon code via JSON interface.
-/// Input: {"data": [bytes], "n_sym": number}
+/// Input: {"data": [bytes], "`n_sym"`: number}
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_rs_encode(
@@ -321,7 +321,7 @@ pub unsafe extern "C" fn rssn_json_crc32_compute(
 }
 
 /// Verifies CRC-32 checksum via JSON interface.
-/// Input: data as [bytes], expected_crc as u32
+/// Input: data as [bytes], `expected_crc` as u32
 /// Returns: boolean
 #[no_mangle]
 

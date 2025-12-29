@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::group_theory::*;
+use crate::symbolic::group_theory::{Group, GroupElement, Representation, character};
 
 // --- Group ---
 

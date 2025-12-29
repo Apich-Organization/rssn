@@ -352,10 +352,7 @@ pub unsafe extern "C" fn rssn_bezier_curve_new(
         std::slice::from_raw_parts(
             points,
             count,
-        )
-        .iter()
-        .cloned()
-        .collect();
+        ).to_vec();
 
     let degree = count - 1;
 
@@ -405,7 +402,7 @@ pub unsafe extern "C" fn rssn_bezier_curve_derivative(
 }
 
 /// Splits a Bezier curve at parameter t into two curves.
-/// Returns left curve. Use rssn_bezier_curve_split_right for the right curve.
+/// Returns left curve. Use `rssn_bezier_curve_split_right` for the right curve.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bezier_curve_split_left(
@@ -476,10 +473,7 @@ pub unsafe extern "C" fn rssn_polygon_mesh_new(
         std::slice::from_raw_parts(
             vertices,
             vertex_count,
-        )
-        .iter()
-        .cloned()
-        .collect();
+        ).to_vec();
 
     Box::into_raw(Box::new(
         PolygonMesh::new(verts, vec![]),

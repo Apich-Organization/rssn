@@ -42,8 +42,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -91,8 +90,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -140,8 +138,7 @@ pub unsafe extern "C" fn rssn_convergence_wynn_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()

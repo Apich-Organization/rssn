@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rssn_num_poly_eval(
 /// Returns the degree of a polynomial.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_poly_degree(
+pub const unsafe extern "C" fn rssn_num_poly_degree(
     poly: *const Polynomial
 ) -> usize {
 

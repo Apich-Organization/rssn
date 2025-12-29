@@ -7,7 +7,7 @@ use ndarray::Array1;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::numerical::optimize::*;
+use crate::numerical::optimize::{OptimizationConfig, ProblemType, Rosenbrock, EquationOptimizer, Sphere};
 
 #[derive(Serialize, Deserialize)]
 
@@ -98,8 +98,7 @@ pub extern "C" fn numerical_optimize_solve_json(
                             None,
                         error: Some(
                             format!(
-                    "Invalid JSON: {}",
-                    e
+                    "Invalid JSON: {e}"
                 ),
                         ),
                     };

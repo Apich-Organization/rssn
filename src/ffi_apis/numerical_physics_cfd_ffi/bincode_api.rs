@@ -37,7 +37,7 @@ struct Advection1DInput {
 /// Computes the Reynolds number for fluid flow using bincode serialization.
 ///
 /// The Reynolds number is a dimensionless quantity characterizing the flow regime:
-/// Re = (velocity × length) / kinematic_viscosity
+/// Re = (velocity × length) / `kinematic_viscosity`
 ///
 /// # Arguments
 ///

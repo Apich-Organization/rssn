@@ -1358,7 +1358,7 @@ pub(crate) fn solve_cubic(
             ),
             Expr::new_pow(
                 Expr::new_div(
-                    p.clone(),
+                    p,
                     Expr::Constant(3.0),
                 ),
                 Expr::Constant(3.0),
@@ -1383,7 +1383,7 @@ pub(crate) fn solve_cubic(
         simplify(&Expr::new_sub(
             Expr::new_neg(
                 Expr::new_div(
-                    q.clone(),
+                    q,
                     Expr::Constant(2.0),
                 ),
             ),
@@ -1455,11 +1455,11 @@ pub(crate) fn solve_cubic(
             Expr::new_add(
                 Expr::new_mul(
                     omega2,
-                    u.clone(),
+                    u,
                 ),
                 Expr::new_mul(
                     omega,
-                    v.clone(),
+                    v,
                 ),
             ),
             sub_term,
@@ -1589,7 +1589,7 @@ pub(crate) fn solve_quartic(
                 ),
                 Expr::new_mul(
                     Expr::Constant(4.0),
-                    r.clone(),
+                    r,
                 ),
             ));
 
@@ -1614,7 +1614,7 @@ pub(crate) fn solve_quartic(
             simplify(&Expr::new_div(
                 Expr::new_sub(
                     Expr::new_neg(
-                        p.clone(),
+                        p,
                     ),
                     sqrt_disc,
                 ),
@@ -1680,7 +1680,7 @@ pub(crate) fn solve_quartic(
             ),
             Expr::new_mul(
                 Expr::Constant(8.0),
-                r.clone(),
+                r,
             ),
         ),
         Expr::new_neg(Expr::new_pow(
@@ -1701,7 +1701,7 @@ pub(crate) fn solve_quartic(
         ));
 
     let q_over_2sqrt_2m = Expr::new_div(
-        q.clone(),
+        q,
         Expr::new_mul(
             Expr::Constant(2.0),
             sqrt_2m.clone(),
@@ -1954,7 +1954,7 @@ pub(crate) fn contains_var(
 /// Extracts polynomial coefficients from an expression with respect to a variable.
 ///
 /// This function attempts to represent the given expression as a polynomial in `var`
-/// and returns the coefficients in descending order of degree (e.g., [a_n, ..., a_1, a_0]).
+/// and returns the coefficients in descending order of degree (e.g., [`a_n`, ..., `a_1`, `a_0`]).
 ///
 /// # Arguments
 /// * `expr` - The symbolic expression to analyze.

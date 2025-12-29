@@ -6,7 +6,7 @@ use crate::ffi_apis::common::to_bincode_buffer;
 use crate::ffi_apis::common::BincodeBuffer;
 
 /// Creates a new State and returns it as a bincode buffer.
-/// The caller must free the returned buffer using rssn_free_bincode_buffer.
+/// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
 #[no_mangle]
 
 pub extern "C" fn rssn_state_new_bincode(
@@ -19,7 +19,7 @@ pub extern "C" fn rssn_state_new_bincode(
 
 /// Gets the intermediate value from a bincode state buffer.
 /// Returns the value as a bincode buffer containing a String.
-/// The caller must free the returned buffer using rssn_free_bincode_buffer.
+/// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
 #[no_mangle]
 
 pub extern "C" fn rssn_state_get_intermediate_value_bincode(
@@ -44,7 +44,7 @@ pub extern "C" fn rssn_state_get_intermediate_value_bincode(
 }
 
 /// Sets the intermediate value in a bincode state buffer and returns the updated buffer.
-/// The caller must free the returned buffer using rssn_free_bincode_buffer.
+/// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
 #[no_mangle]
 
 pub extern "C" fn rssn_state_set_intermediate_value_bincode(

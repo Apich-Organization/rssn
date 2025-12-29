@@ -43,7 +43,7 @@ struct OdeResult {
 ///   - `rho`: Rayleigh number ρ
 ///   - `beta`: Geometric parameter β
 ///   - `y0`: Initial state [x₀, y₀, z₀]
-///   - `t_span`: Time interval (t_start, t_end)
+///   - `t_span`: Time interval (`t_start`, `t_end`)
 ///   - `dt_initial`: Initial time step size
 ///   - `tol`: Error tolerances (absolute, relative)
 ///

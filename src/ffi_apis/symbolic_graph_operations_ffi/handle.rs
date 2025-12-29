@@ -4,7 +4,7 @@ use std::os::raw::c_char;
 use crate::ffi_apis::symbolic_graph_ffi::handle::RssnGraph;
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_operations::*;
+use crate::symbolic::graph_operations::{induced_subgraph, union, intersection, cartesian_product, tensor_product, complement, disjoint_union, join};
 
 pub(crate) fn convert_expr_graph_to_string_graph(
     g: Graph<Expr>
@@ -24,7 +24,7 @@ pub(crate) fn convert_expr_graph_to_string_graph(
     {
 
         let label_str =
-            format!("{:?}", node_label);
+            format!("{node_label:?}");
 
         let new_id = new_graph
             .add_node(label_str);
@@ -69,7 +69,7 @@ pub extern "C" fn rssn_graph_induced_subgraph(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     let mut labels =
@@ -102,8 +102,7 @@ pub extern "C" fn rssn_graph_induced_subgraph(
         &labels,
     );
 
-    Box::into_raw(Box::new(result))
-        as *mut RssnGraph
+    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
 }
 
 /// Computes the union of two graphs.
@@ -122,18 +121,17 @@ pub extern "C" fn rssn_graph_union(
 
     let g1 = unsafe {
 
-        &*(ptr1 as *const Graph<String>)
+        &*ptr1.cast::<Graph<String>>()
     };
 
     let g2 = unsafe {
 
-        &*(ptr2 as *const Graph<String>)
+        &*ptr2.cast::<Graph<String>>()
     };
 
     let result = union(g1, g2);
 
-    Box::into_raw(Box::new(result))
-        as *mut RssnGraph
+    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
 }
 
 /// Computes the intersection of two graphs.
@@ -152,18 +150,17 @@ pub extern "C" fn rssn_graph_intersection(
 
     let g1 = unsafe {
 
-        &*(ptr1 as *const Graph<String>)
+        &*ptr1.cast::<Graph<String>>()
     };
 
     let g2 = unsafe {
 
-        &*(ptr2 as *const Graph<String>)
+        &*ptr2.cast::<Graph<String>>()
     };
 
     let result = intersection(g1, g2);
 
-    Box::into_raw(Box::new(result))
-        as *mut RssnGraph
+    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
 }
 
 /// Computes the Cartesian product of two graphs.
@@ -182,12 +179,12 @@ pub extern "C" fn rssn_graph_cartesian_product(
 
     let g1 = unsafe {
 
-        &*(ptr1 as *const Graph<String>)
+        &*ptr1.cast::<Graph<String>>()
     };
 
     let g2 = unsafe {
 
-        &*(ptr2 as *const Graph<String>)
+        &*ptr2.cast::<Graph<String>>()
     };
 
     let result_expr =
@@ -195,8 +192,7 @@ pub extern "C" fn rssn_graph_cartesian_product(
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result))
-        as *mut RssnGraph
+    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
 }
 
 /// Computes the Tensor product of two graphs.
@@ -215,12 +211,12 @@ pub extern "C" fn rssn_graph_tensor_product(
 
     let g1 = unsafe {
 
-        &*(ptr1 as *const Graph<String>)
+        &*ptr1.cast::<Graph<String>>()
     };
 
     let g2 = unsafe {
 
-        &*(ptr2 as *const Graph<String>)
+        &*ptr2.cast::<Graph<String>>()
     };
 
     let result_expr =
@@ -228,8 +224,7 @@ pub extern "C" fn rssn_graph_tensor_product(
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result))
-        as *mut RssnGraph
+    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
 }
 
 /// Computes the complement of a graph.
@@ -246,13 +241,12 @@ pub extern "C" fn rssn_graph_complement(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     let result = complement(graph);
 
-    Box::into_raw(Box::new(result))
-        as *mut RssnGraph
+    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
 }
 
 /// Computes the disjoint union of two graphs.
@@ -271,12 +265,12 @@ pub extern "C" fn rssn_graph_disjoint_union(
 
     let g1 = unsafe {
 
-        &*(ptr1 as *const Graph<String>)
+        &*ptr1.cast::<Graph<String>>()
     };
 
     let g2 = unsafe {
 
-        &*(ptr2 as *const Graph<String>)
+        &*ptr2.cast::<Graph<String>>()
     };
 
     let result_expr =
@@ -284,8 +278,7 @@ pub extern "C" fn rssn_graph_disjoint_union(
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result))
-        as *mut RssnGraph
+    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
 }
 
 /// Computes the join of two graphs.
@@ -304,18 +297,17 @@ pub extern "C" fn rssn_graph_join(
 
     let g1 = unsafe {
 
-        &*(ptr1 as *const Graph<String>)
+        &*ptr1.cast::<Graph<String>>()
     };
 
     let g2 = unsafe {
 
-        &*(ptr2 as *const Graph<String>)
+        &*ptr2.cast::<Graph<String>>()
     };
 
     let result_expr = join(g1, g2);
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result))
-        as *mut RssnGraph
+    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
 }

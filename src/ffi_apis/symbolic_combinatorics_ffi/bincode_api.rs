@@ -1,5 +1,5 @@
-use crate::ffi_apis::common::*;
-use crate::symbolic::combinatorics::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
+use crate::symbolic::combinatorics::{permutations, combinations, catalan_number, stirling_number_second_kind, bell_number};
 use crate::symbolic::core::Expr;
 
 /// Computes the number of permutations symbolically using bincode-encoded `Expr` arguments.

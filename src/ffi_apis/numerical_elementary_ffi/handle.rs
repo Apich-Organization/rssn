@@ -58,8 +58,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
 
             update_last_error(format!(
                 "Variable name at \
-                 index {} is null",
-                i
+                 index {i} is null"
             ));
 
             return -1;
@@ -74,8 +73,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
             | Err(e) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 in variable name {}: {}",
-                    i, e
+                    "Invalid UTF-8 in variable name {i}: {e}"
                 ));
 
                 return -1;
@@ -101,7 +99,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
 
             unsafe {
 
-                *result = v
+                *result = v;
             };
 
             0
@@ -231,7 +229,7 @@ pub extern "C" fn rssn_num_pure_tanh(
 
 #[no_mangle]
 
-pub extern "C" fn rssn_num_pure_abs(
+pub const extern "C" fn rssn_num_pure_abs(
     x: f64
 ) -> f64 {
 

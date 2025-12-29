@@ -118,8 +118,9 @@ pub(crate) fn create_k_grid(
     k
 }
 
-/// Solves the 1D advection-diffusion equation (u_t + c*u_x = D*u_xx) using a Fourier spectral method.
+/// Solves the 1D advection-diffusion equation (`u_t` + c*`u_x` = D*`u_xx`) using a Fourier spectral method.
 
+#[must_use] 
 pub fn solve_advection_diffusion_1d(
     initial_condition: &[f64],
     dx: f64,
@@ -173,6 +174,7 @@ pub fn solve_advection_diffusion_1d(
 
 /// Example scenario for the 1D spectral solver.
 
+#[must_use] 
 pub fn simulate_1d_advection_diffusion_scenario(
 ) -> Vec<f64> {
 
@@ -233,6 +235,7 @@ pub struct AdvectionDiffusionConfig {
 
 /// Solves the 2D advection-diffusion equation using a Fourier spectral method.
 
+#[must_use] 
 pub fn solve_advection_diffusion_2d(
     initial_condition: &[f64],
     config: &AdvectionDiffusionConfig,
@@ -280,11 +283,11 @@ pub fn solve_advection_diffusion_2d(
 
                 let advection_term = Complex::new(
                     0.0,
-                    -config.c.0 * kxi - config.c.1 * kyj,
+                    (-config.c.0).mul_add(kxi, -(config.c.1 * kyj)),
                 );
 
                 let diffusion_term = Complex::new(
-                    -config.d * (kxi * kxi + kyj * kyj),
+                    -config.d * kxi.mul_add(kxi, kyj * kyj),
                     0.0,
                 );
 
@@ -308,6 +311,7 @@ pub fn solve_advection_diffusion_2d(
 
 /// Example scenario for the 2D spectrclsal solver.
 
+#[must_use] 
 pub fn simulate_2d_advection_diffusion_scenario(
 ) -> Vec<f64> {
 
@@ -355,11 +359,9 @@ pub fn simulate_2d_advection_diffusion_scenario(
 
             let y = j as f64 * dy;
 
-            let val = (-((x - L
+            let val = (-(y - L / 2.0).mul_add(y - L / 2.0, (x - L
                 / 2.0)
-                .powi(2)
-                + (y - L / 2.0)
-                    .powi(2))
+                .powi(2))
                 / 0.5)
                 .exp();
 
@@ -556,6 +558,7 @@ pub struct AdvectionDiffusionConfig3d {
 
 /// Solves the 3D advection-diffusion equation.
 
+#[must_use] 
 pub fn solve_advection_diffusion_3d(
     initial_condition: &[f64],
     config: &AdvectionDiffusionConfig3d,
@@ -616,11 +619,11 @@ pub fn solve_advection_diffusion_3d(
 
                 let advection = Complex::new(
                     0.0,
-                    -config.c.0 * kxi - config.c.1 * kyj - config.c.2 * kzk,
+                    (-config.c.0).mul_add(kxi, -(config.c.1 * kyj)) - config.c.2 * kzk,
                 );
 
                 let diffusion = Complex::new(
-                    -config.d * (kxi.powi(2) + kyj.powi(2) + kzk.powi(2)),
+                    -config.d * kzk.mul_add(kzk, kxi.powi(2) + kyj.powi(2)),
                     0.0,
                 );
 
@@ -645,6 +648,7 @@ pub fn solve_advection_diffusion_3d(
 
 /// Example scenario for the 3D spectral solver.
 
+#[must_use] 
 pub fn simulate_3d_advection_diffusion_scenario(
 ) -> Vec<f64> {
 
@@ -684,12 +688,9 @@ pub fn simulate_3d_advection_diffusion_scenario(
 
                 let z = k as f64 * d;
 
-                let val = (-((x - L
+                let val = (-(z - L / 2.0).mul_add(z - L / 2.0, (x - L
                     / 2.0)
-                    .powi(2)
-                    + (y - L / 2.0)
-                        .powi(2)
-                    + (z - L / 2.0)
+                    .powi(2) + (y - L / 2.0)
                         .powi(2))
                     / 0.5)
                     .exp();

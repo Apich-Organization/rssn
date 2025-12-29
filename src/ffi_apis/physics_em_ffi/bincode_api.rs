@@ -32,7 +32,7 @@ struct EulerInput {
 ///   - `system_type`: System identifier ("lorenz", "oscillator")
 ///   - `params_bincode`: System parameters encoded with bincode
 ///   - `y0`: Initial state vector
-///   - `t_span`: Time interval (t_start, t_end)
+///   - `t_span`: Time interval (`t_start`, `t_end`)
 ///   - `dt`: Time step size
 ///   - `method`: Integration method ("forward", "midpoint", "heun")
 ///

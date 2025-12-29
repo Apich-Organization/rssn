@@ -596,7 +596,7 @@ pub extern "C" fn rssn_num_special_sigmoid(
 
 /// Computes the softplus function softplus(x) = ln(1 + e^x) via handle-based FFI.
 ///
-/// A smooth approximation to the ReLU activation function.
+/// A smooth approximation to the `ReLU` activation function.
 ///
 /// # Arguments
 ///

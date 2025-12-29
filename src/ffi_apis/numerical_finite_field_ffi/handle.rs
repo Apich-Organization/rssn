@@ -8,7 +8,7 @@ use crate::numerical::finite_field::{
     self,
 };
 
-/// Creates a new PrimeFieldElement.
+/// Creates a new `PrimeFieldElement`.
 #[no_mangle]
 
 pub extern "C" fn rssn_num_ff_pfe_new(
@@ -24,7 +24,7 @@ pub extern "C" fn rssn_num_ff_pfe_new(
     ))
 }
 
-/// Frees a PrimeFieldElement.
+/// Frees a `PrimeFieldElement`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_free(
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_free(
     }
 }
 
-/// Computes the inverse of a PrimeFieldElement.
+/// Computes the inverse of a `PrimeFieldElement`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
@@ -138,7 +138,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul(
 /// GF(2^8) addition.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_ff_gf256_add(
+pub const extern "C" fn rssn_num_ff_gf256_add(
     a: u8,
     b: u8,
 ) -> u8 {

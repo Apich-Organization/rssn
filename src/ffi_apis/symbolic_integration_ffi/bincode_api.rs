@@ -1,6 +1,6 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
-use crate::symbolic::integration::*;
+use crate::symbolic::integration::{risch_norman_integrate, integrate_rational_function_expr};
 
 /// Integrates an expression using the Risch-Norman algorithm (Bincode)
 #[no_mangle]

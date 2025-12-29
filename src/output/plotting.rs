@@ -93,7 +93,7 @@ pub(crate) fn eval_expr(
                 DagOp::Constant(c) => Ok(c.into_inner()),
                 DagOp::BigInt(i) => i.to_f64().ok_or_else(|| "BigInt conversion to f64 failed".to_string()),
                 DagOp::Rational(r) => Ok(r.numer().to_f64().unwrap() / r.denom().to_f64().unwrap()),
-                DagOp::Variable(v) => vars.get(&v).copied().ok_or_else(|| format!("Variable '{}' not found", v)),
+                DagOp::Variable(v) => vars.get(&v).copied().ok_or_else(|| format!("Variable '{v}' not found")),
                 DagOp::Add => Ok(get_child_val(0) + get_child_val(1)),
                 DagOp::Sub => Ok(get_child_val(0) - get_child_val(1)),
                 DagOp::Mul => Ok(get_child_val(0) * get_child_val(1)),
@@ -179,7 +179,7 @@ pub fn plot_function_2d(
 
             let x = range.0
                 + (range.1 - range.0)
-                    * ((i as f64)
+                    * (f64::from(i)
                         / 99.0);
 
             eval_expr(
@@ -201,7 +201,7 @@ pub fn plot_function_2d(
 
             let x = range.0
                 + (range.1 - range.0)
-                    * ((i as f64)
+                    * (f64::from(i)
                         / 99.0);
 
             eval_expr(
@@ -240,7 +240,7 @@ pub fn plot_function_2d(
     chart
         .configure_mesh()
         .light_line_style(
-            &conf.mesh_color,
+            conf.mesh_color,
         )
         .draw()
         .map_err(|e| e.to_string())?;
@@ -248,7 +248,7 @@ pub fn plot_function_2d(
     chart
         .draw_series(LineSeries::new(
             (0..=conf.samples).map(|i| {
-                let x = range.0 + (range.1 - range.0) * ((i as f64) / conf.samples as f64);
+                let x = (range.1 - range.0).mul_add((i as f64) / conf.samples as f64, range.0);
                 let y = eval_expr(expr, &HashMap::from([(var.to_string(), x)])).unwrap_or(0.0);
                 (x, y)
             }),
@@ -307,7 +307,7 @@ pub fn plot_vector_field_2d(
     chart
         .configure_mesh()
         .light_line_style(
-            &conf.mesh_color,
+            conf.mesh_color,
         )
         .draw()
         .map_err(|e| e.to_string())?;
@@ -326,19 +326,11 @@ pub fn plot_vector_field_2d(
 
         for j in 0 .. steps {
 
-            let x = x_range.0
-                + (x_range.1
-                    - x_range.0)
-                    * ((i as f64)
-                        / (steps - 1)
-                            as f64);
+            let x = (x_range.1 - x_range.0).mul_add((i as f64) / (steps - 1)
+                            as f64, x_range.0);
 
-            let y = y_range.0
-                + (y_range.1
-                    - y_range.0)
-                    * ((j as f64)
-                        / (steps - 1)
-                            as f64);
+            let y = (y_range.1 - y_range.0).mul_add((j as f64) / (steps - 1)
+                            as f64, y_range.0);
 
             let mut vars_map =
                 HashMap::new();
@@ -365,8 +357,7 @@ pub fn plot_vector_field_2d(
             ) {
 
                 let magnitude =
-                    (vx * vx + vy * vy)
-                        .sqrt();
+                    vx.hypot(vy);
 
                 if magnitude > 1e-9 {
 
@@ -375,15 +366,11 @@ pub fn plot_vector_field_2d(
                         - x_range.0)
                         * 0.05;
 
-                    let end_x = x + vx
-                        / magnitude
-                        * scale;
+                    let end_x = (vx / magnitude).mul_add(scale, x);
 
-                    let end_y = y + vy
-                        / magnitude
-                        * scale;
+                    let end_y = (vy / magnitude).mul_add(scale, y);
 
-                    arrows.push(PathElement::new(vec![(x, y), (end_x, end_y)], conf.line_color.clone()));
+                    arrows.push(PathElement::new(vec![(x, y), (end_x, end_y)], conf.line_color));
                 }
             }
         }
@@ -561,7 +548,7 @@ pub fn plot_parametric_curve_3d(
     chart
         .draw_series(LineSeries::new(
             (0..=conf.samples).map(|i| {
-                let t = range.0 + (range.1 - range.0) * ((i as f64) / conf.samples as f64);
+                let t = (range.1 - range.0).mul_add((i as f64) / conf.samples as f64, range.0);
                 let mut vars_map = HashMap::new();
                 vars_map.insert(var.to_string(), t);
 
@@ -641,8 +628,7 @@ pub fn plot_vector_field_3d(
 
     let mut arrows = Vec::new();
 
-    let steps = (conf.samples as f64)
-        .powf(1.0 / 3.0)
+    let steps = (conf.samples as f64).cbrt()
         as usize;
 
     for i in 0 .. steps {
@@ -651,29 +637,17 @@ pub fn plot_vector_field_3d(
 
             for k in 0 .. steps {
 
-                let x = x_range.0
-                    + (x_range.1
-                        - x_range.0)
-                        * ((i as f64)
-                            / (steps
+                let x = (x_range.1 - x_range.0).mul_add((i as f64) / (steps
                                 - 1)
-                                as f64);
+                                as f64, x_range.0);
 
-                let y = y_range.0
-                    + (y_range.1
-                        - y_range.0)
-                        * ((j as f64)
-                            / (steps
+                let y = (y_range.1 - y_range.0).mul_add((j as f64) / (steps
                                 - 1)
-                                as f64);
+                                as f64, y_range.0);
 
-                let z = z_range.0
-                    + (z_range.1
-                        - z_range.0)
-                        * ((k as f64)
-                            / (steps
+                let z = (z_range.1 - z_range.0).mul_add((k as f64) / (steps
                                 - 1)
-                                as f64);
+                                as f64, z_range.0);
 
                 let mut vars_map =
                     HashMap::new();
@@ -712,9 +686,7 @@ pub fn plot_vector_field_3d(
                     ),
                 ) {
 
-                    let magnitude = (vx
-                        * vx
-                        + vy * vy
+                    let magnitude = (vx.mul_add(vx, vy * vy)
                         + vz * vz)
                         .sqrt();
 
@@ -723,13 +695,13 @@ pub fn plot_vector_field_3d(
 
                         let scale = (x_range.1 - x_range.0) * 0.05;
 
-                        let end_x = x + vx / magnitude * scale;
+                        let end_x = (vx / magnitude).mul_add(scale, x);
 
-                        let end_y = y + vy / magnitude * scale;
+                        let end_y = (vy / magnitude).mul_add(scale, y);
 
-                        let end_z = z + vz / magnitude * scale;
+                        let end_z = (vz / magnitude).mul_add(scale, z);
 
-                        arrows.push(PathElement::new(vec![(x, y, z), (end_x, end_y, end_z)], conf.line_color.clone()));
+                        arrows.push(PathElement::new(vec![(x, y, z), (end_x, end_y, end_z)], conf.line_color));
                     }
                 }
             }

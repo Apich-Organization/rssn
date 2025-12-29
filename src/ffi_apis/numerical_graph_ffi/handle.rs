@@ -143,7 +143,7 @@ pub unsafe extern "C" fn rssn_num_graph_bfs(
     0
 }
 
-/// Computes PageRank.
+/// Computes `PageRank`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_page_rank(

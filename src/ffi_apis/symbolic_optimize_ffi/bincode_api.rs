@@ -1,6 +1,6 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
-use crate::symbolic::optimize::*;
+use crate::symbolic::optimize::{find_extrema, hessian_matrix, find_constrained_extrema};
 
 /// Finds extrema of a function (Bincode)
 #[no_mangle]
@@ -22,7 +22,7 @@ pub extern "C" fn rssn_bincode_find_extrema(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match find_extrema(
@@ -64,7 +64,7 @@ pub extern "C" fn rssn_bincode_hessian_matrix(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         let hessian = hessian_matrix(
@@ -107,7 +107,7 @@ pub extern "C" fn rssn_bincode_find_constrained_extrema(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match find_constrained_extrema(

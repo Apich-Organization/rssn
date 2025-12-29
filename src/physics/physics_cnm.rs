@@ -26,9 +26,7 @@ pub(crate) fn solve_tridiagonal_system(
     for i in 1 .. n {
 
         let m = 1.0
-            / (b[i]
-                - a[i - 1]
-                    * c_prime[i - 1]);
+            / a[i - 1].mul_add(-c_prime[i - 1], b[i]);
 
         c_prime[i] = if i < n - 1 {
 
@@ -38,8 +36,7 @@ pub(crate) fn solve_tridiagonal_system(
             0.0
         };
 
-        d[i] = (d[i]
-            - a[i - 1] * d[i - 1])
+        d[i] = a[i - 1].mul_add(-d[i - 1], d[i])
             * m;
     }
 
@@ -47,8 +44,7 @@ pub(crate) fn solve_tridiagonal_system(
 
     for i in (0 .. n - 1).rev() {
 
-        x[i] = d[i]
-            - c_prime[i] * x[i + 1];
+        x[i] = c_prime[i].mul_add(-x[i + 1], d[i]);
     }
 
     x
@@ -73,7 +69,7 @@ pub(crate) fn solve_tridiagonal_system_complex(
 
     c_prime[0] = c[0] / b[0];
 
-    d[0] = d[0] / b[0];
+    d[0] /= b[0];
 
     for i in 1 .. n {
 
@@ -106,7 +102,7 @@ pub(crate) fn solve_tridiagonal_system_complex(
     x
 }
 
-/// Solves the 1D Schrödinger equation i * psi_t = -0.5 * psi_xx + V * psi
+/// Solves the 1D Schrödinger equation i * `psi_t` = -0.5 * `psi_xx` + V * psi
 /// using the Crank-Nicolson method.
 ///
 /// # Arguments
@@ -116,6 +112,7 @@ pub(crate) fn solve_tridiagonal_system_complex(
 /// * `dt` - The time step.
 /// * `steps` - The number of time steps.
 
+#[must_use] 
 pub fn solve_schrodinger_1d_cn(
     psi_initial: &[Complex<f64>],
     v: &[f64],
@@ -185,7 +182,7 @@ pub fn solve_schrodinger_1d_cn(
     psi
 }
 
-/// Solves the 1D heat equation u_t = D * u_xx using the Crank-Nicolson method.
+/// Solves the 1D heat equation `u_t` = D * `u_xx` using the Crank-Nicolson method.
 ///
 /// # Arguments
 /// * `initial_condition` - The initial temperature distribution.
@@ -197,6 +194,7 @@ pub fn solve_schrodinger_1d_cn(
 /// # Returns
 /// The final temperature distribution.
 
+#[must_use] 
 pub fn solve_heat_equation_1d_cn(
     initial_condition: &[f64],
     dx: f64,
@@ -216,7 +214,7 @@ pub fn solve_heat_equation_1d_cn(
     let mut a = vec![-alpha; n - 1];
 
     let mut b =
-        vec![1.0 + 2.0 * alpha; n];
+        vec![2.0f64.mul_add(alpha, 1.0); n];
 
     let mut c = vec![-alpha; n - 1];
 
@@ -235,7 +233,7 @@ pub fn solve_heat_equation_1d_cn(
         for i in 1 .. n - 1 {
 
             d[i] = alpha * u[i - 1]
-                + (1.0 - 2.0 * alpha)
+                + 2.0f64.mul_add(-alpha, 1.0)
                     * u[i]
                 + alpha * u[i + 1];
         }
@@ -257,6 +255,7 @@ pub fn solve_heat_equation_1d_cn(
 
 /// Scenario for the 1D Crank-Nicolson solver.
 
+#[must_use] 
 pub fn simulate_1d_heat_conduction_cn_scenario(
 ) -> Vec<f64> {
 
@@ -315,9 +314,10 @@ pub struct HeatEquationSolverConfig {
     pub steps: usize,
 }
 
-/// Solves the 2D heat equation u_t = D * (u_xx + u_yy) using the ADI method.
+/// Solves the 2D heat equation `u_t` = D * (`u_xx` + `u_yy`) using the ADI method.
 /// ADI splits the problem into two half-steps, each solving one dimension implicitly.
 
+#[must_use] 
 pub fn solve_heat_equation_2d_cn_adi(
     initial_condition: &[f64],
     config: &HeatEquationSolverConfig,
@@ -338,8 +338,7 @@ pub fn solve_heat_equation_2d_cn_adi(
         vec![-alpha_x; config.nx - 1];
 
     let mut bx = vec![
-        1.0 + 2.0
-            * alpha_x;
+        2.0f64.mul_add(alpha_x, 1.0);
         config.nx
     ];
 
@@ -358,8 +357,7 @@ pub fn solve_heat_equation_2d_cn_adi(
         vec![-alpha_y; config.ny - 1];
 
     let mut by = vec![
-        1.0 + 2.0
-            * alpha_y;
+        2.0f64.mul_add(alpha_y, 1.0);
         config.ny
     ];
 
@@ -408,7 +406,7 @@ pub fn solve_heat_equation_2d_cn_adi(
 
                     let u_ijp1 = u[(j + 1) * config.nx + i];
 
-                    d[i] = alpha_y * u_ijm1 + (1.0 - 2.0 * alpha_y) * u_ij + alpha_y * u_ijp1;
+                    d[i] = alpha_y * u_ijm1 + 2.0f64.mul_add(-alpha_y, 1.0) * u_ij + alpha_y * u_ijp1;
                 }
 
                 let row_sol = solve_tridiagonal_system(
@@ -473,7 +471,7 @@ pub fn solve_heat_equation_2d_cn_adi(
                     let u_ip1j = u_half_t[(i + 1) * config.ny + j];
 
                     d_transposed[j] =
-                        alpha_x * u_im1j + (1.0 - 2.0 * alpha_x) * u_ij + alpha_x * u_ip1j;
+                        alpha_x * u_im1j + 2.0f64.mul_add(-alpha_x, 1.0) * u_ij + alpha_x * u_ip1j;
                 }
 
                 let col_sol = solve_tridiagonal_system(
@@ -507,6 +505,7 @@ pub fn solve_heat_equation_2d_cn_adi(
 
 /// Scenario for the 2D Crank-Nicolson ADI solver.
 
+#[must_use] 
 pub fn simulate_2d_heat_conduction_cn_adi_scenario(
 ) -> Vec<f64> {
 
@@ -543,8 +542,7 @@ pub fn simulate_2d_heat_conduction_cn_adi_scenario(
 
             let y = j as f64 * dy;
 
-            if (x - 0.5).powi(2)
-                + (y - 0.5).powi(2)
+            if (y - 0.5).mul_add(y - 0.5, (x - 0.5).powi(2))
                 < 0.05
             {
 

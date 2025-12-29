@@ -13,7 +13,7 @@ use crate::numerical::physics;
 /// The speed of light c = 2.998 × 10⁸ m/s.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_speed_of_light(
+pub const extern "C" fn rssn_num_physics_speed_of_light(
 ) -> f64 {
 
     physics::SPEED_OF_LIGHT
@@ -26,7 +26,7 @@ pub extern "C" fn rssn_num_physics_speed_of_light(
 /// Planck's constant h = 6.626 × 10⁻³⁴ J·s.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_planck_constant(
+pub const extern "C" fn rssn_num_physics_planck_constant(
 ) -> f64 {
 
     physics::PLANCK_CONSTANT
@@ -39,20 +39,20 @@ pub extern "C" fn rssn_num_physics_planck_constant(
 /// The gravitational constant G = 6.674 × 10⁻¹¹ N·m²/kg².
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_gravitational_constant(
+pub const extern "C" fn rssn_num_physics_gravitational_constant(
 ) -> f64 {
 
     physics::GRAVITATIONAL_CONSTANT
 }
 
-/// Returns the Boltzmann constant k_B via handle-based FFI.
+/// Returns the Boltzmann constant `k_B` via handle-based FFI.
 ///
 /// # Returns
 ///
-/// The Boltzmann constant k_B = 1.381 × 10⁻²³ J/K.
+/// The Boltzmann constant `k_B` = 1.381 × 10⁻²³ J/K.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_boltzmann_constant(
+pub const extern "C" fn rssn_num_physics_boltzmann_constant(
 ) -> f64 {
 
     physics::BOLTZMANN_CONSTANT
@@ -65,20 +65,20 @@ pub extern "C" fn rssn_num_physics_boltzmann_constant(
 /// The elementary charge e = 1.602 × 10⁻¹⁹ Coulombs.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_elementary_charge(
+pub const extern "C" fn rssn_num_physics_elementary_charge(
 ) -> f64 {
 
     physics::ELEMENTARY_CHARGE
 }
 
-/// Returns the electron rest mass m_e via handle-based FFI.
+/// Returns the electron rest mass `m_e` via handle-based FFI.
 ///
 /// # Returns
 ///
-/// The electron rest mass m_e = 9.109 × 10⁻³¹ kg.
+/// The electron rest mass `m_e` = 9.109 × 10⁻³¹ kg.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_physics_electron_mass(
+pub const extern "C" fn rssn_num_physics_electron_mass(
 ) -> f64 {
 
     physics::ELECTRON_MASS
@@ -159,7 +159,7 @@ pub extern "C" fn rssn_num_physics_damped_harmonic_oscillator(
 
 /// Computes the Coulomb electrostatic force between two point charges via handle-based FFI.
 ///
-/// The force is F = k_e q₁q₂ / r², where k_e = 8.99 × 10⁹ N·m²/C².
+/// The force is F = `k_e` q₁q₂ / r², where `k_e` = 8.99 × 10⁹ N·m²/C².
 ///
 /// # Arguments
 ///
@@ -183,7 +183,7 @@ pub extern "C" fn rssn_num_physics_coulomb_force(
 
 /// Computes the electric field magnitude of a point charge via handle-based FFI.
 ///
-/// The electric field is E = k_e q / r².
+/// The electric field is E = `k_e` q / r².
 ///
 /// # Arguments
 ///
@@ -207,7 +207,7 @@ pub extern "C" fn rssn_num_physics_electric_field_point_charge(
 
 /// Computes the electric potential of a point charge via handle-based FFI.
 ///
-/// The potential is V = k_e q / r.
+/// The potential is V = `k_e` q / r.
 ///
 /// # Arguments
 ///
@@ -391,7 +391,7 @@ pub extern "C" fn rssn_num_physics_ideal_gas_temperature(
 
 /// Computes the Maxwell-Boltzmann speed distribution probability density via handle-based FFI.
 ///
-/// The distribution is f(v) = 4π(m/(2πk_BT))³¹² v² exp(-mv²/(2k_BT)).
+/// The distribution is f(v) = `4π(m/(2πk_BT))³¹²` v² exp(-mv²/(2k_BT)).
 ///
 /// # Arguments
 ///
@@ -415,7 +415,7 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_speed_distribution(
 
 /// Computes the mean speed of particles in a Maxwell-Boltzmann distribution via handle-based FFI.
 ///
-/// The mean speed is ⟨v⟩ = √(8k_BT/(πm)).
+/// The mean speed is ⟨v⟩ = √(`8k_BT/(πm)`).
 ///
 /// # Arguments
 ///
@@ -437,7 +437,7 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed(
 
 /// Computes the root-mean-square speed of particles in a Maxwell-Boltzmann distribution via handle-based FFI.
 ///
-/// The RMS speed is v_rms = √(3k_BT/m).
+/// The RMS speed is `v_rms` = √(`3k_BT/m`).
 ///
 /// # Arguments
 ///
@@ -446,7 +446,7 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed(
 ///
 /// # Returns
 ///
-/// The RMS speed v_rms (m/s).
+/// The RMS speed `v_rms` (m/s).
 #[no_mangle]
 
 pub extern "C" fn rssn_num_physics_maxwell_boltzmann_rms_speed(
@@ -462,7 +462,7 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_rms_speed(
 
 /// Computes the total power radiated by a blackbody via handle-based FFI.
 ///
-/// Uses the Stefan-Boltzmann law P = σAT⁴, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
+/// Uses the Stefan-Boltzmann law P = `σAT⁴`, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
 ///
 /// # Arguments
 ///
@@ -487,7 +487,7 @@ pub extern "C" fn rssn_num_physics_blackbody_power(
 
 /// Computes the peak wavelength of blackbody radiation using Wien's displacement law via handle-based FFI.
 ///
-/// Wien's law states λ_max = b/T, where b = 2.898 × 10⁻³ m·K.
+/// Wien's law states `λ_max` = b/T, where b = 2.898 × 10⁻³ m·K.
 ///
 /// # Arguments
 ///
@@ -495,7 +495,7 @@ pub extern "C" fn rssn_num_physics_blackbody_power(
 ///
 /// # Returns
 ///
-/// The peak wavelength λ_max (meters).
+/// The peak wavelength `λ_max` (meters).
 #[no_mangle]
 
 pub extern "C" fn rssn_num_physics_wien_displacement_wavelength(
@@ -677,7 +677,7 @@ pub extern "C" fn rssn_num_physics_relativistic_velocity_addition(
 
 /// Computes the energy eigenvalue of a quantum harmonic oscillator via handle-based FFI.
 ///
-/// The energy is E_n = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
+/// The energy is `E_n` = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
 ///
 /// # Arguments
 ///
@@ -686,7 +686,7 @@ pub extern "C" fn rssn_num_physics_relativistic_velocity_addition(
 ///
 /// # Returns
 ///
-/// The energy eigenvalue E_n (Joules).
+/// The energy eigenvalue `E_n` (Joules).
 #[no_mangle]
 
 pub extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy(
@@ -699,7 +699,7 @@ pub extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy(
 
 /// Computes the energy level of the hydrogen atom using the Bohr model via handle-based FFI.
 ///
-/// The energy is E_n = -13.6 eV / n², where n is the principal quantum number.
+/// The energy is `E_n` = -13.6 eV / n², where n is the principal quantum number.
 ///
 /// # Arguments
 ///
@@ -707,7 +707,7 @@ pub extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy(
 ///
 /// # Returns
 ///
-/// The energy level E_n (Joules, negative for bound states).
+/// The energy level `E_n` (Joules, negative for bound states).
 #[no_mangle]
 
 pub extern "C" fn rssn_num_physics_hydrogen_energy_level(
@@ -781,7 +781,7 @@ pub extern "C" fn rssn_num_physics_photon_wavelength(
 
 /// Computes the Compton wavelength of a particle via handle-based FFI.
 ///
-/// The Compton wavelength is λ_C = h/(mc), characteristic of quantum scattering.
+/// The Compton wavelength is `λ_C` = h/(mc), characteristic of quantum scattering.
 ///
 /// # Arguments
 ///
@@ -789,7 +789,7 @@ pub extern "C" fn rssn_num_physics_photon_wavelength(
 ///
 /// # Returns
 ///
-/// The Compton wavelength λ_C (meters).
+/// The Compton wavelength `λ_C` (meters).
 #[no_mangle]
 
 pub extern "C" fn rssn_num_physics_compton_wavelength(

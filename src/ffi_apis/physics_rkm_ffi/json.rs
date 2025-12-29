@@ -79,7 +79,7 @@ struct OdeResult {
 ///   - `rho`: Rayleigh number ρ
 ///   - `beta`: Geometric parameter β
 ///   - `y0`: Initial state [x₀, y₀, z₀]
-///   - `t_span`: Time interval [t_start, t_end]
+///   - `t_span`: Time interval [`t_start`, `t_end`]
 ///   - `dt_initial`: Initial time step size
 ///   - `tol`: Error tolerances [absolute, relative]
 ///
@@ -172,7 +172,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(
 ///   - `omega`: Natural frequency ω
 ///   - `zeta`: Damping ratio ζ
 ///   - `y0`: Initial state [x₀, v₀]
-///   - `t_span`: Time interval [t_start, t_end]
+///   - `t_span`: Time interval [`t_start`, `t_end`]
 ///   - `dt`: Time step size
 ///
 /// # Returns
@@ -259,7 +259,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
 /// * `input` - A JSON string pointer containing:
 ///   - `mu`: Nonlinearity parameter μ
 ///   - `y0`: Initial state [x₀, v₀]
-///   - `t_span`: Time interval [t_start, t_end]
+///   - `t_span`: Time interval [`t_start`, `t_end`]
 ///   - `dt_initial`: Initial time step size
 ///   - `tol`: Error tolerances [absolute, relative]
 ///
@@ -352,7 +352,7 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(
 ///   - `delta`: Predator efficiency δ
 ///   - `gamma`: Predator death rate γ
 ///   - `y0`: Initial state [prey₀, predator₀]
-///   - `t_span`: Time interval [t_start, t_end]
+///   - `t_span`: Time interval [`t_start`, `t_end`]
 ///   - `dt_initial`: Initial time step size
 ///   - `tol`: Error tolerances [absolute, relative]
 ///

@@ -69,7 +69,7 @@ pub unsafe extern "C" fn rssn_num_solve_free_solution(
 /// Checks if the solution is unique.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_solve_is_unique(
+pub const unsafe extern "C" fn rssn_num_solve_is_unique(
     ptr: *const LinearSolution
 ) -> bool {
 
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn rssn_num_solve_is_unique(
 
 /// Helper to copy vector data.
 
-unsafe fn copy_vec_to_buffer(
+const unsafe fn copy_vec_to_buffer(
     vec: &[f64],
     buffer: *mut f64,
 ) {
@@ -128,7 +128,7 @@ pub unsafe extern "C" fn rssn_num_solve_get_unique_solution(
 /// Gets the length of the unique solution vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
+pub const unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
     ptr: *const LinearSolution
 ) -> usize {
 
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
 /// Checks if there is no solution.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_solve_is_no_solution(
+pub const unsafe extern "C" fn rssn_num_solve_is_no_solution(
     ptr: *const LinearSolution
 ) -> bool {
 

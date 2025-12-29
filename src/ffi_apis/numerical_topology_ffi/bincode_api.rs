@@ -34,7 +34,7 @@ struct BettiInput {
 /// # Returns
 ///
 /// A bincode-encoded buffer containing `FfiResult<Vec<usize>, String>` with either:
-/// - `ok`: Vector of Betti numbers [β₀, β₁, β₂, ...] up to max_dim
+/// - `ok`: Vector of Betti numbers [β₀, β₁, β₂, ...] up to `max_dim`
 /// - `err`: Error message if computation failed
 ///
 /// # Safety
@@ -62,7 +62,7 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
     let pt_slices: Vec<&[f64]> = input
         .points
         .iter()
-        .map(|v| v.as_slice())
+        .map(std::vec::Vec::as_slice)
         .collect();
 
     let res = topology::betti_numbers_at_radius(

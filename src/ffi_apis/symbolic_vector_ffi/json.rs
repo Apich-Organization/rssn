@@ -1,8 +1,8 @@
 use std::ffi::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
-use crate::symbolic::vector::*;
+use crate::symbolic::vector::{Vector, gradient, divergence, curl};
 
 /// Computes the magnitude of a vector.
 

@@ -32,7 +32,7 @@ struct QuadratureInput {
 ///   "var": "x",
 ///   "a": 0.0,
 ///   "b": 1.0,
-///   "n_steps": 100,
+///   "`n_steps"`: 100,
 ///   "method": "Simpson"
 /// }
 #[no_mangle]
@@ -67,8 +67,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(
                 let res : FfiResult<f64, String> = FfiResult {
                 ok : None,
                 err : Some(format!(
-                    "JSON deserialization error: {}",
-                    e
+                    "JSON deserialization error: {e}"
                 )),
             };
 

@@ -98,9 +98,8 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
         if v_ptr.is_null() {
 
             update_last_error(format!(
-                "Variable at index {} \
-                 is null",
-                i
+                "Variable at index {i} \
+                 is null"
             ));
 
             return ptr::null_mut();
@@ -110,13 +109,12 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
             .to_str()
         {
             | Ok(s) => {
-                vars_list.push(s)
+                vars_list.push(s);
             },
             | Err(_) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 for variable at index {}",
-                    i
+                    "Invalid UTF-8 for variable at index {i}"
                 ));
 
                 return ptr::null_mut();
@@ -190,13 +188,12 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
             .to_str()
         {
             | Ok(s) => {
-                vars_list.push(s)
+                vars_list.push(s);
             },
             | Err(_) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 for variable at index {}",
-                    i
+                    "Invalid UTF-8 for variable at index {i}"
                 ));
 
                 return ptr::null_mut();
@@ -286,13 +283,12 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
             .to_str()
         {
             | Ok(s) => {
-                vars_list.push(s)
+                vars_list.push(s);
             },
             | Err(_) => {
 
                 update_last_error(format!(
-                    "Invalid UTF-8 for variable at index {}",
-                    i
+                    "Invalid UTF-8 for variable at index {i}"
                 ));
 
                 return ptr::null_mut();

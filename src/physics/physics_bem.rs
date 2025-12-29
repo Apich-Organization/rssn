@@ -30,7 +30,8 @@ pub struct Vector2D {
 impl Vector2D {
     /// Creates a new 2D vector.
 
-    pub fn new(
+    #[must_use] 
+    pub const fn new(
         x: f64,
         y: f64,
     ) -> Self {
@@ -43,11 +44,10 @@ impl Vector2D {
 
     /// Calculates the norm of the vector.
 
+    #[must_use] 
     pub fn norm(&self) -> f64 {
 
-        (self.x * self.x
-            + self.y * self.y)
-            .sqrt()
+        self.x.hypot(self.y)
     }
 }
 
@@ -119,7 +119,8 @@ impl Vector3D {
     #[allow(dead_code)]
     /// Creates a new 3D vector.
 
-    pub fn new(
+    #[must_use] 
+    pub const fn new(
         x: f64,
         y: f64,
         z: f64,
@@ -135,10 +136,10 @@ impl Vector3D {
     #[allow(dead_code)]
     /// Calculates the norm of the vector.
 
+    #[must_use] 
     pub fn norm(&self) -> f64 {
 
-        (self.x * self.x
-            + self.y * self.y
+        (self.x.mul_add(self.x, self.y * self.y)
             + self.z * self.z)
             .sqrt()
     }
@@ -202,6 +203,7 @@ pub struct Element2D {
 impl Element2D {
     /// Creates a new 2D boundary element.
 
+    #[must_use] 
     pub fn new(
         p1: Vector2D,
         p2: Vector2D,
@@ -217,8 +219,8 @@ impl Element2D {
         );
 
         let midpoint = Vector2D::new(
-            (p1.x + p2.x) / 2.0,
-            (p1.y + p2.y) / 2.0,
+            f64::midpoint(p1.x, p2.x),
+            f64::midpoint(p1.y, p2.y),
         );
 
         Self {
@@ -314,7 +316,7 @@ pub fn solve_laplace_bem_2d(
 
                     let r = r_vec.norm();
 
-                    let dot = r_vec.x * elements[j].normal.x + r_vec.y * elements[j].normal.y;
+                    let dot = r_vec.x.mul_add(elements[j].normal.x, r_vec.y * elements[j].normal.y);
 
                     let h_ij = -dot / (2.0 * std::f64::consts::PI * r * r);
 
@@ -477,6 +479,7 @@ pub fn simulate_2d_cylinder_scenario(
 /// * `u` - The solved boundary potentials.
 /// * `q` - The solved boundary fluxes.
 
+#[must_use] 
 pub fn evaluate_potential_2d(
     point: (f64, f64),
     elements: &[Element2D],
@@ -496,10 +499,7 @@ pub fn evaluate_potential_2d(
 
         let r = r_vec.norm();
 
-        let dot = r_vec.x
-            * elements[i].normal.x
-            + r_vec.y
-                * elements[i].normal.y;
+        let dot = r_vec.x.mul_add(elements[i].normal.x, r_vec.y * elements[i].normal.y);
 
         let h_ij = -dot
             / (2.0
@@ -512,12 +512,8 @@ pub fn evaluate_potential_2d(
                 * std::f64::consts::PI)
             * r.ln();
 
-        result += g_ij
-            * elements[i].length
-            * q[i]
-            - h_ij
-                * elements[i].length
-                * u[i];
+        result += (g_ij * elements[i].length).mul_add(q[i], -(h_ij
+                * elements[i].length * u[i]));
     }
 
     result

@@ -6,7 +6,7 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 
 /// Returns the build date as a C string.
-/// The caller must free the returned string using rssn_free_string.
+/// The caller must free the returned string using `rssn_free_string`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_build_date(
@@ -25,7 +25,7 @@ pub extern "C" fn rssn_get_build_date(
 }
 
 /// Returns the commit SHA as a C string.
-/// The caller must free the returned string using rssn_free_string.
+/// The caller must free the returned string using `rssn_free_string`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_commit_sha(
@@ -44,7 +44,7 @@ pub extern "C" fn rssn_get_commit_sha(
 }
 
 /// Returns the rustc version as a C string.
-/// The caller must free the returned string using rssn_free_string.
+/// The caller must free the returned string using `rssn_free_string`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_rustc_version(
@@ -61,7 +61,7 @@ pub extern "C" fn rssn_get_rustc_version(
 }
 
 /// Returns the cargo target triple as a C string.
-/// The caller must free the returned string using rssn_free_string.
+/// The caller must free the returned string using `rssn_free_string`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_cargo_target_triple(
@@ -78,7 +78,7 @@ pub extern "C" fn rssn_get_cargo_target_triple(
 }
 
 /// Returns the system info as a C string.
-/// The caller must free the returned string using rssn_free_string.
+/// The caller must free the returned string using `rssn_free_string`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_system_info(

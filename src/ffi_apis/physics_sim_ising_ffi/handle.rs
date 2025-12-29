@@ -40,7 +40,7 @@ pub extern "C" fn rssn_physics_sim_ising_run(
 
     let grid_f64: Vec<f64> = grid
         .into_iter()
-        .map(|s| s as f64)
+        .map(|s| f64::from(s))
         .collect();
 
     let matrix = Matrix::new(

@@ -2,7 +2,7 @@ use std::os::raw::c_char;
 
 use serde::Deserialize;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::cad::cad;
 use crate::symbolic::core::Expr;
 
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn rssn_json_cad(
         let vars_refs: Vec<&str> = data
             .vars
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         let mut sparse_polys =

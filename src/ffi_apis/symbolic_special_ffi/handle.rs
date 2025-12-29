@@ -161,7 +161,7 @@ pub extern "C" fn rssn_factorial(
 /// Computes the double factorial n!!.
 #[no_mangle]
 
-pub extern "C" fn rssn_double_factorial(
+pub const extern "C" fn rssn_double_factorial(
     n: u64
 ) -> u64 {
 

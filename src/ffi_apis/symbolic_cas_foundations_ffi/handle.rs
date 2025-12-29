@@ -2,7 +2,7 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::c_str_to_str;
 use crate::symbolic::cas_foundations;
 use crate::symbolic::core::Expr;
 use crate::symbolic::grobner::MonomialOrder;
@@ -164,8 +164,7 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .map(|s| *s)
+        .iter().copied()
         .collect();
 
     // Convert order

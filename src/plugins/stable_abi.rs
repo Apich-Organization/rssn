@@ -58,9 +58,12 @@ pub trait StablePlugin:
 
 pub struct StablePluginModule {
     /// Returns the name of the plugin.
+     
     pub name : extern "C" fn() -> RString,
     /// Returns the version of the plugin.
+     
     pub version : extern "C" fn() -> RString,
     /// Creates a new instance of the plugin.
+     
     pub new : extern "C" fn() -> StablePlugin_TO<'static, RBox<()>>,
 }

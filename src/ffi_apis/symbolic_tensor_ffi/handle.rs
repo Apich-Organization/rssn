@@ -1,4 +1,4 @@
-use crate::symbolic::tensor::*;
+use crate::symbolic::tensor::Tensor;
 
 /// Performs tensor addition.
 

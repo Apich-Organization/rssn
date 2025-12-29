@@ -1,8 +1,8 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
-use crate::symbolic::fractal_geometry_and_chaos::*;
+use crate::symbolic::fractal_geometry_and_chaos::{IteratedFunctionSystem, ComplexDynamicalSystem, find_fixed_points, analyze_stability, lyapunov_exponent, lorenz_system};
 
-/// Creates a new IteratedFunctionSystem (Bincode)
+/// Creates a new `IteratedFunctionSystem` (Bincode)
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_ifs_create(

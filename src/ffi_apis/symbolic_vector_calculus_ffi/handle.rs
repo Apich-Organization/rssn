@@ -7,7 +7,7 @@ use std::os::raw::c_char;
 use crate::input::parser::parse_expr;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
-use crate::symbolic::vector_calculus::*;
+use crate::symbolic::vector_calculus::{ParametricCurve, ParametricSurface, Volume, line_integral_scalar, line_integral_vector, surface_integral, volume_integral};
 
 // Helper function to parse expression from C string
 fn parse_expr_from_cstr(
@@ -42,7 +42,7 @@ fn parse_expr_from_cstr(
 
 // ===== ParametricCurve Handle Functions =====
 
-/// Creates a new ParametricCurve.
+/// Creates a new `ParametricCurve`.
 #[no_mangle]
 
 pub extern "C" fn rssn_parametric_curve_new(
@@ -109,7 +109,7 @@ pub extern "C" fn rssn_parametric_curve_new(
     Box::into_raw(Box::new(curve))
 }
 
-/// Frees a ParametricCurve handle.
+/// Frees a `ParametricCurve` handle.
 #[no_mangle]
 
 pub extern "C" fn rssn_parametric_curve_free(
@@ -128,7 +128,7 @@ pub extern "C" fn rssn_parametric_curve_free(
 
 // ===== ParametricSurface Handle Functions =====
 
-/// Creates a new ParametricSurface.
+/// Creates a new `ParametricSurface`.
 #[no_mangle]
 
 pub extern "C" fn rssn_parametric_surface_new(
@@ -222,7 +222,7 @@ pub extern "C" fn rssn_parametric_surface_new(
     Box::into_raw(Box::new(surface))
 }
 
-/// Frees a ParametricSurface handle.
+/// Frees a `ParametricSurface` handle.
 #[no_mangle]
 
 pub extern "C" fn rssn_parametric_surface_free(
@@ -390,7 +390,7 @@ pub extern "C" fn rssn_line_integral_scalar(
             );
 
         let result_str =
-            format!("{}", result);
+            format!("{result}");
 
         match CString::new(result_str) {
             | Ok(c_str) => {
@@ -450,7 +450,7 @@ pub extern "C" fn rssn_line_integral_vector(
             );
 
         let result_str =
-            format!("{}", result);
+            format!("{result}");
 
         match CString::new(result_str) {
             | Ok(c_str) => {
@@ -509,7 +509,7 @@ pub extern "C" fn rssn_surface_integral(
         );
 
         let result_str =
-            format!("{}", result);
+            format!("{result}");
 
         match CString::new(result_str) {
             | Ok(c_str) => {
@@ -550,7 +550,7 @@ pub extern "C" fn rssn_volume_integral(
         );
 
         let result_str =
-            format!("{}", result);
+            format!("{result}");
 
         match CString::new(result_str) {
             | Ok(c_str) => {

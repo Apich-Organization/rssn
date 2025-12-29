@@ -68,6 +68,7 @@ pub trait Field:
 
     /// Optional: Multiply two matrices using Faer backend if supported.
 
+    #[must_use] 
     fn faer_mul(
         _lhs: &Matrix<Self>,
         _rhs: &Matrix<Self>,
@@ -78,6 +79,7 @@ pub trait Field:
 
     /// Optional: Invert a matrix using Faer backend if supported.
 
+    #[must_use] 
     fn faer_inverse(
         _matrix: &Matrix<Self>
     ) -> Option<Matrix<Self>> {
@@ -87,6 +89,7 @@ pub trait Field:
 
     /// Optional: Solve Ax = b using Faer backend if supported.
 
+    #[must_use] 
     fn faer_solve(
         _a: &Matrix<Self>,
         _b: &Matrix<Self>,
@@ -364,19 +367,15 @@ impl Field for PrimeFieldElement {
     Deserialize,
 )]
 
+#[derive(Default)]
 pub enum Backend {
     /// Native Rust implementation (default)
+    #[default]
     Native,
     /// Faer backend (high performance BLAS-like) - currently supports f64
     Faer,
 }
 
-impl Default for Backend {
-    fn default() -> Self {
-
-        Self::Native
-    }
-}
 
 /// Types of matrix decompositions supported by Faer
 #[derive(
@@ -506,7 +505,8 @@ impl<T: Field> Matrix<T> {
 
     /// Sets the backend for the matrix.
 
-    pub fn with_backend(
+    #[must_use] 
+    pub const fn with_backend(
         mut self,
         backend: Backend,
     ) -> Self {
@@ -518,7 +518,7 @@ impl<T: Field> Matrix<T> {
 
     /// Updates the backend for the matrix in-place.
 
-    pub fn set_backend(
+    pub const fn set_backend(
         &mut self,
         backend: Backend,
     ) {
@@ -617,6 +617,7 @@ impl<T: Field> Matrix<T> {
     /// Returns None if the backend is not set to Faer, if the decomposition type is unsupported
     /// for the matrix type, or if the decomposition fails (e.g., Cholesky on non-SPD).
 
+    #[must_use] 
     pub fn decompose(
         &self,
         kind: FaerDecompositionType,
@@ -627,8 +628,7 @@ impl<T: Field> Matrix<T> {
         if self.backend == Backend::Faer
         {
 
-            self.data
-                .get(0)
+            self.data.first()
                 .and_then(|e| {
 
                     e.faer_decompose(

@@ -29,6 +29,7 @@ pub struct IsingParameters {
 
 /// Runs an Ising model simulation.
 
+#[must_use] 
 pub fn run_ising_simulation(
     params: &IsingParameters
 ) -> (Vec<i8>, f64) {
@@ -169,7 +170,7 @@ pub fn simulate_ising_phase_transition_scenario(
         ..= 40)
         .map(|i| {
 
-            0.1 + f64::from(i) * 0.1
+            f64::from(i).mul_add(0.1, 0.1)
         })
         .collect();
 
@@ -210,8 +211,7 @@ pub fn simulate_ising_phase_transition_scenario(
 
         writeln!(
             results,
-            "{},{}",
-            temp, mag
+            "{temp},{mag}"
         )
         .expect(
             "String transition failed.",

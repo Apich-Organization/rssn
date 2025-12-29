@@ -5,7 +5,7 @@ use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::vector;
 
 /// Creates a new numerical vector from a raw array of doubles.
-/// The caller is responsible for freeing the returned pointer using rssn_num_vec_free.
+/// The caller is responsible for freeing the returned pointer using `rssn_num_vec_free`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vec_create(
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn rssn_num_vec_free(
 /// Returns the length of a numerical vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_vec_len(
+pub const unsafe extern "C" fn rssn_num_vec_len(
     v: *const Vec<f64>
 ) -> usize {
 
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_num_vec_len(
 /// Returns a pointer to the underlying data of a numerical vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_vec_data(
+pub const unsafe extern "C" fn rssn_num_vec_data(
     v: *const Vec<f64>
 ) -> *const f64 {
 

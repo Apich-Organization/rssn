@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::lie_groups_and_algebras::*;
+use crate::symbolic::lie_groups_and_algebras::{LieAlgebra, so3, su2, lie_bracket, exponential_map, adjoint_representation_group, adjoint_representation_algebra, commutator_table, check_jacobi_identity, so3_generators, su2_generators};
 
 // --- LieAlgebra ---
 
@@ -107,7 +107,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_free(
 /// This function is unsafe because it dereferences a raw pointer; the caller must
 /// ensure `ptr` points to a valid `LieAlgebra`.
 
-pub unsafe extern "C" fn rssn_lie_algebra_get_dimension(
+pub const unsafe extern "C" fn rssn_lie_algebra_get_dimension(
     ptr: *const LieAlgebra
 ) -> usize {
 

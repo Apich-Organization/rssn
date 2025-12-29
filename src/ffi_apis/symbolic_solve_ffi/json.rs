@@ -1,6 +1,6 @@
 use std::ffi::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
 use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_linear_system;
@@ -69,7 +69,7 @@ pub extern "C" fn rssn_json_solve_system(
 
         let vars_str: Vec<&str> = vs
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match solve_system(

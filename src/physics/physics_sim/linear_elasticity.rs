@@ -42,6 +42,7 @@ pub struct ElasticityParameters {
 
 /// Calculates the element stiffness matrix for a 2D quadrilateral element (plane stress).
 
+#[must_use] 
 pub fn element_stiffness_matrix(
     _p1: (f64, f64),
     _p2: (f64, f64),
@@ -77,7 +78,7 @@ pub fn element_stiffness_matrix(
         ]
     ];
 
-    let c_mat = (e / (1.0 - nu * nu))
+    let c_mat = (e / nu.mul_add(-nu, 1.0))
         * array![
             [1.0, nu, 0.0],
             [nu, 1.0, 0.0],

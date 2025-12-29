@@ -35,7 +35,7 @@ struct EulerInput {
 ///   - `system_type`: System identifier ("lorenz", "oscillator", "orbital")
 ///   - `params`: System parameters as JSON object
 ///   - `y0`: Initial state vector
-///   - `t_span`: Time interval [t_start, t_end]
+///   - `t_span`: Time interval [`t_start`, `t_end`]
 ///   - `dt`: Time step size
 ///   - `method`: Integration method ("forward", "midpoint", "heun")
 ///

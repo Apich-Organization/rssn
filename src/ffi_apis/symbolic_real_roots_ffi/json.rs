@@ -1,11 +1,11 @@
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::expr_to_sparse_poly;
 use crate::symbolic::polynomial::sparse_poly_to_expr;
-use crate::symbolic::real_roots::*;
+use crate::symbolic::real_roots::{sturm_sequence, count_real_roots_in_interval, isolate_real_roots};
 
 /// Generates the Sturm sequence for a given polynomial (JSON)
 #[no_mangle]

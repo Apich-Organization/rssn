@@ -5,6 +5,7 @@ use crate::symbolic::core::Expr;
 
 /// Converts an expression to a LaTeX string.
 
+#[must_use] 
 pub fn to_latex(expr: &Expr) -> String {
 
     to_latex_prec(expr, 0)
@@ -115,11 +116,11 @@ pub(crate) fn to_latex_prec(
                     let body = children.chunks(cols).map(|row| {
                         row.iter().map(|elem| results[elem].content.clone()).collect::<Vec<_>>().join(" & ")
                     }).collect::<Vec<_>>().join(r" \\ ");
-                    (10, format!(r"\begin{{pmatrix}} {} \end{{pmatrix}}", body))
+                    (10, format!(r"\begin{{pmatrix}} {body} \end{{pmatrix}}"))
                 },
                 DagOp::Vector => {
                     let body = children.iter().map(|elem| results[elem].content.clone()).collect::<Vec<_>>().join(r" \\ ");
-                    (10, format!(r"\begin{{pmatrix}} {} \end{{pmatrix}}", body))
+                    (10, format!(r"\begin{{pmatrix}} {body} \end{{pmatrix}}"))
                 },
                 _ => (10, current_expr.to_string()),
             };
@@ -171,6 +172,7 @@ pub(crate) fn to_latex_prec(
 /// Helper to add parentheses if needed. This function is now simplified as the main
 /// iterative function handles most of the logic.
 
+#[must_use] 
 pub fn to_latex_prec_with_parens(
     expr: &Expr,
     precedence: u8,
@@ -189,8 +191,7 @@ pub fn to_latex_prec_with_parens(
     if op_prec < precedence {
 
         format!(
-            r"\left( {} \right)",
-            s
+            r"\left( {s} \right)"
         )
     } else {
 
@@ -200,6 +201,7 @@ pub fn to_latex_prec_with_parens(
 
 /// Converts common Greek letter names to LaTeX.
 
+#[must_use] 
 pub fn to_greek(s: &str) -> String {
 
     match s {

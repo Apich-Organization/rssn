@@ -6,7 +6,7 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::c_str_to_str;
 use crate::symbolic::core::Expr;
 use crate::symbolic::transforms;
 
@@ -655,7 +655,7 @@ pub unsafe extern "C" fn rssn_partial_fraction_decomposition(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_expr_list_len(
+pub const unsafe extern "C" fn rssn_expr_list_len(
     list: *const ExprList
 ) -> usize {
 
@@ -688,7 +688,7 @@ pub unsafe extern "C" fn rssn_expr_list_get(
     }
 
     if let Some(item) =
-        (&(*list).0).get(index)
+        (*list).0.get(index)
     {
 
         Box::into_raw(Box::new(

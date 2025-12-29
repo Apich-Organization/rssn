@@ -197,16 +197,16 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(
 /// Computes the Morse interaction potential and force between two particles using JSON serialization.
 ///
 /// The Morse potential models chemical bonds:
-/// V(r) = D_e[1 - e⁻ᵃʳʳ⁻ʳᵉ⁾]², where D_e is the dissociation energy.
+/// V(r) = `D_e`[1 - e⁻ᵃʳʳ⁻ʳᵉ⁾]², where `D_e` is the dissociation energy.
 ///
 /// # Arguments
 ///
 /// * `input` - A JSON string pointer containing:
 ///   - `p1_position`: Position vector of first particle [x, y, z]
 ///   - `p2_position`: Position vector of second particle [x, y, z]
-///   - `de`: Dissociation energy D_e
+///   - `de`: Dissociation energy `D_e`
 ///   - `a`: Width parameter a (controls potential curvature)
-///   - `re`: Equilibrium bond distance r_e
+///   - `re`: Equilibrium bond distance `r_e`
 ///
 /// # Returns
 ///
@@ -403,7 +403,7 @@ pub unsafe extern "C" fn rssn_num_md_harmonic_json(
 ///
 /// A C string pointer containing JSON-encoded `FfiResult<SystemPropertiesOutput, String>` with:
 /// - `kinetic_energy`: Total kinetic energy of the system
-/// - `temperature`: System temperature T = 2K/(3Nk_B)
+/// - `temperature`: System temperature T = `2K/(3Nk_B)`
 /// - `center_of_mass`: Center of mass position vector
 /// - `total_momentum`: Total linear momentum vector
 ///
@@ -587,7 +587,7 @@ pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
 /// # Returns
 ///
 /// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
-/// the wrapped position vector within [0, box_size).
+/// the wrapped position vector within [0, `box_size`).
 ///
 /// # Safety
 ///

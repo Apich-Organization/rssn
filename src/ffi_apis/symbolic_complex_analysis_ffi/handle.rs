@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
-use crate::symbolic::complex_analysis::*;
+use crate::ffi_apis::common::to_c_string;
+use crate::symbolic::complex_analysis::{PathContinuation, SingularityType, MobiusTransformation};
 use crate::symbolic::core::Expr;
 
 /// Creates a new `PathContinuation` object.
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
     match pc_ref.continue_along_path(
         &path_points_vec,
     ) {
-        | Ok(_) => {
+        | Ok(()) => {
             to_c_string(
                 "OK".to_string(),
             )

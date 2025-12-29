@@ -66,7 +66,7 @@ impl Mesh {
             })
             .collect();
 
-        Mesh {
+        Self {
             cells,
             dx,
         }
@@ -75,7 +75,8 @@ impl Mesh {
     /// Returns the number of cells in the mesh.
     #[inline]
 
-    pub fn num_cells(&self) -> usize {
+    #[must_use] 
+    pub const fn num_cells(&self) -> usize {
 
         self.cells.len()
     }
@@ -99,7 +100,7 @@ pub(crate) fn upwind_flux(
     }
 }
 
-/// Lax-Friedrichs numerical flux for a general conservation law u_t + f(u)_x = 0.
+/// Lax-Friedrichs numerical flux for a general conservation law `u_t` + f(u)_x = 0.
 #[inline]
 
 pub fn lax_friedrichs_flux<F>(
@@ -113,16 +114,14 @@ where
     F: Fn(f64) -> f64,
 {
 
-    0.5 * (flux_fn(u_left)
-        + flux_fn(u_right))
-        - 0.5
-            * (dx / dt)
-            * (u_right - u_left)
+    0.5f64.mul_add(flux_fn(u_left) + flux_fn(u_right), -(0.5
+            * (dx / dt) * (u_right - u_left)))
 }
 
 /// Minmod limiter for MUSCL reconstruction.
 #[inline]
 
+#[must_use] 
 pub fn minmod(
     a: f64,
     b: f64,
@@ -143,6 +142,7 @@ pub fn minmod(
 /// Van Leer limiter for MUSCL reconstruction.
 #[inline]
 
+#[must_use] 
 pub fn van_leer(
     a: f64,
     b: f64,
@@ -222,7 +222,7 @@ where
                     velocity,
                 );
 
-                *next_val = u_i - (dt / dx) * (flux_right - flux_left);
+                *next_val = (dt / dx).mul_add(-(flux_right - flux_left), u_i);
             });
 
         current_values.copy_from_slice(
@@ -235,6 +235,7 @@ where
 
 /// Example scenario: Simulates the advection of a square wave (top-hat profile).
 
+#[must_use] 
 pub fn simulate_1d_advection_scenario(
 ) -> Vec<f64> {
 
@@ -346,7 +347,7 @@ pub fn solve_burgers_1d(
                     flux_fn,
                 );
 
-                *next_val = u_i - (dt / dx) * (f_right - f_left);
+                *next_val = (dt / dx).mul_add(-(f_right - f_left), u_i);
             });
 
         current_values.copy_from_slice(
@@ -375,6 +376,7 @@ pub struct SweState {
 
 /// Solves 1D Shallow Water Equations using FVM and Lax-Friedrichs flux.
 
+#[must_use] 
 pub fn solve_shallow_water_1d(
     initial_h: Vec<f64>,
     initial_hu: Vec<f64>,
@@ -413,8 +415,7 @@ pub fn solve_shallow_water_1d(
 
         (
             s.hu,
-            s.hu * u
-                + 0.5 * g * s.h * s.h,
+            s.hu.mul_add(u, 0.5 * g * s.h * s.h),
         )
     };
 
@@ -449,8 +450,8 @@ pub fn solve_shallow_water_1d(
                     let fi = flux_fn(s_i);
 
                     (
-                        0.5 * (fl.0 + fi.0) - 0.5 * (dx / dt) * (s_i.h - s_l.h),
-                        0.5 * (fl.1 + fi.1) - 0.5 * (dx / dt) * (s_i.hu - s_l.hu),
+                        0.5f64.mul_add(fl.0 + fi.0, -(0.5 * (dx / dt) * (s_i.h - s_l.h))),
+                        0.5f64.mul_add(fl.1 + fi.1, -(0.5 * (dx / dt) * (s_i.hu - s_l.hu))),
                     )
                 };
 
@@ -461,14 +462,14 @@ pub fn solve_shallow_water_1d(
                     let fr = flux_fn(s_r);
 
                     (
-                        0.5 * (fi.0 + fr.0) - 0.5 * (dx / dt) * (s_r.h - s_i.h),
-                        0.5 * (fi.1 + fr.1) - 0.5 * (dx / dt) * (s_r.hu - s_i.hu),
+                        0.5f64.mul_add(fi.0 + fr.0, -(0.5 * (dx / dt) * (s_r.h - s_i.h))),
+                        0.5f64.mul_add(fi.1 + fr.1, -(0.5 * (dx / dt) * (s_r.hu - s_i.hu))),
                     )
                 };
 
-                next_s.h = s_i.h - (dt / dx) * (f_r_h - f_l_h);
+                next_s.h = (dt / dx).mul_add(-(f_r_h - f_l_h), s_i.h);
 
-                next_s.hu = s_i.hu - (dt / dx) * (f_r_hu - f_l_hu);
+                next_s.hu = (dt / dx).mul_add(-(f_r_hu - f_l_hu), s_i.hu);
             });
 
         current.copy_from_slice(&next);
@@ -537,7 +538,7 @@ impl Mesh2D {
             }
         }
 
-        Mesh2D {
+        Self {
             cells,
             width,
             height,
@@ -634,8 +635,7 @@ where
                     velocity.1,
                 );
 
-                *next_val = u_ij
-                    - (dt / dx) * (flux_east - flux_west)
+                *next_val = (dt / dx).mul_add(-(flux_east - flux_west), u_ij)
                     - (dt / dy) * (flux_north - flux_south);
             });
 
@@ -649,6 +649,7 @@ where
 
 /// Example scenario: Simulates the advection of a 2D Gaussian blob.
 
+#[must_use] 
 pub fn simulate_2d_advection_scenario(
 ) -> Vec<f64> {
 
@@ -689,9 +690,8 @@ pub fn simulate_2d_advection_scenario(
 
             let sigma_sq = 0.005;
 
-            let dist_sq = (x - cx)
-                .powi(2)
-                + (y - cy).powi(2);
+            let dist_sq = (y - cy).mul_add(y - cy, (x - cx)
+                .powi(2));
 
             (-dist_sq
                 / (2.0 * sigma_sq))
@@ -803,7 +803,7 @@ impl Mesh3D {
             }
         }
 
-        Mesh3D {
+        Self {
             cells,
             width,
             height,
@@ -938,8 +938,7 @@ where
                     velocity.2,
                 );
 
-                *next_val = u_ijk
-                    - (dt / dx) * (flux_east - flux_west)
+                *next_val = (dt / dx).mul_add(-(flux_east - flux_west), u_ijk)
                     - (dt / dy) * (flux_north - flux_south)
                     - (dt / dz) * (flux_front - flux_back);
             });
@@ -954,6 +953,7 @@ where
 
 /// Example scenario: Simulates the advection of a 3D Gaussian blob.
 
+#[must_use] 
 pub fn simulate_3d_advection_scenario(
 ) -> Vec<f64> {
 
@@ -1006,10 +1006,8 @@ pub fn simulate_3d_advection_scenario(
 
             let sigma_sq = 0.01;
 
-            let dist_sq = (x - cx)
-                .powi(2)
-                + (y - cy).powi(2)
-                + (z - cz).powi(2);
+            let dist_sq = (z - cz).mul_add(z - cz, (x - cx)
+                .powi(2) + (y - cy).powi(2));
 
             (-dist_sq
                 / (2.0 * sigma_sq))

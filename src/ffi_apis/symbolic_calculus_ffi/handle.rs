@@ -295,7 +295,7 @@ pub unsafe extern "C" fn rssn_find_poles(
 /// This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>`.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_poles_len(
+pub const unsafe extern "C" fn rssn_poles_len(
     poles: *const Vec<Expr>
 ) -> usize {
 
@@ -488,6 +488,7 @@ pub unsafe extern "C" fn rssn_substitute(
 }
 
 /// Gets real and imaginary parts of an expression.
+///
 /// Returns a pointer to a tuple (Expr, Expr) - represented as Vec<Expr> of size 2 for simplicity?
 /// Or return two out pointers?
 /// I'll return a Vec<Expr> of size 2.

@@ -2,7 +2,7 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string, to_c_string};
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary;
 
@@ -187,7 +187,6 @@ pub extern "C" fn rssn_binomial_coefficient_json(
     let result = elementary::binomial_coefficient(n, k);
 
     to_c_string(format!(
-        "{{\"result\":\"{}\"}}",
-        result
+        "{{\"result\":\"{result}\"}}"
     ))
 }

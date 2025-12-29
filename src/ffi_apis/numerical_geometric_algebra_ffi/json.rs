@@ -22,7 +22,7 @@ struct TwoGaInput {
     mv2: Multivector3D,
 }
 
-/// JSON FFI for ga_add.
+/// JSON FFI for `ga_add`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_add_json(
@@ -49,8 +49,7 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -71,7 +70,7 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(
     .into_raw()
 }
 
-/// JSON FFI for ga_sub.
+/// JSON FFI for `ga_sub`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_sub_json(
@@ -98,8 +97,7 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -120,7 +118,7 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(
     .into_raw()
 }
 
-/// JSON FFI for ga_mul.
+/// JSON FFI for `ga_mul`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_mul_json(
@@ -147,8 +145,7 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -169,7 +166,7 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(
     .into_raw()
 }
 
-/// JSON FFI for ga_wedge.
+/// JSON FFI for `ga_wedge`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_wedge_json(
@@ -196,8 +193,7 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -222,7 +218,7 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(
     .into_raw()
 }
 
-/// JSON FFI for ga_dot.
+/// JSON FFI for `ga_dot`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_dot_json(
@@ -249,8 +245,7 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -275,7 +270,7 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(
     .into_raw()
 }
 
-/// JSON FFI for ga_reverse.
+/// JSON FFI for `ga_reverse`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_reverse_json(
@@ -302,8 +297,7 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -324,7 +318,7 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(
     .into_raw()
 }
 
-/// JSON FFI for ga_norm.
+/// JSON FFI for `ga_norm`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_norm_json(
@@ -351,8 +345,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -373,7 +366,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(
     .into_raw()
 }
 
-/// JSON FFI for ga_inv.
+/// JSON FFI for `ga_inv`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_inv_json(
@@ -400,8 +393,7 @@ pub unsafe extern "C" fn rssn_num_ga_inv_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()

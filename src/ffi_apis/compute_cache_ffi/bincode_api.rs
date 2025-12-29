@@ -13,7 +13,7 @@ use crate::symbolic::core::Expr;
 
 // --- ParsingCache ---
 
-/// Retrieves an expression from the ParsingCache as a bincode buffer.
+/// Retrieves an expression from the `ParsingCache` as a bincode buffer.
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_get_bincode(
@@ -48,7 +48,7 @@ pub extern "C" fn rssn_parsing_cache_get_bincode(
     }
 }
 
-/// Stores an expression in the ParsingCache from a bincode buffer.
+/// Stores an expression in the `ParsingCache` from a bincode buffer.
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_set_bincode(
@@ -93,7 +93,7 @@ pub extern "C" fn rssn_parsing_cache_set_bincode(
 
 // --- ComputationResultCache ---
 
-/// Retrieves a value from the ComputationResultCache using a bincode expression key.
+/// Retrieves a value from the `ComputationResultCache` using a bincode expression key.
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_get_bincode(
@@ -135,7 +135,7 @@ pub extern "C" fn rssn_computation_result_cache_get_bincode(
     }
 }
 
-/// Stores a value in the ComputationResultCache using bincode buffers.
+/// Stores a value in the `ComputationResultCache` using bincode buffers.
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_set_bincode(

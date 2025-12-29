@@ -118,7 +118,7 @@ struct MeshOutput {
 ///   - `density`: Material density ρ (kg/m³)
 ///   - `thermal_conductivity`: Thermal conductivity k (W/(m·K))
 ///   - `thermal_expansion`: Thermal expansion coefficient α (1/K)
-///   - `yield_strength`: Yield strength σ_y (Pa)
+///   - `yield_strength`: Yield strength `σ_y` (Pa)
 ///
 /// # Returns
 ///
@@ -181,7 +181,7 @@ pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
 
 /// Returns standard material properties for structural steel using JSON serialization.
 ///
-/// Provides reference properties for mild steel (E ≈ 200 GPa, ν ≈ 0.3, ρ ≈ 7850 kg/m³).
+/// Provides reference properties for mild steel (E ≈ 200 `GPa`, ν ≈ 0.3, ρ ≈ 7850 kg/m³).
 ///
 /// # Arguments
 ///
@@ -363,7 +363,7 @@ pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
 /// Computes the thermal conductivity coefficient for a 1D thermal element using JSON serialization.
 ///
 /// The thermal conductivity represents the heat flow-temperature relationship:
-/// k_thermal = (k × A) / L, where k is thermal conductivity, A is area, and L is length.
+/// `k_thermal` = (k × A) / L, where k is thermal conductivity, A is area, and L is length.
 ///
 /// # Arguments
 ///
@@ -424,19 +424,19 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
 /// Computes the von Mises equivalent stress from a 2D stress state using JSON serialization.
 ///
 /// The von Mises stress is a scalar measure of stress intensity used in yield criteria:
-/// σ_vm = √(σ_x² - σ_xσ_y + σ_y² + 3τ_xy²)
+/// `σ_vm` = √(`σ_x²` - `σ_xσ_y` + `σ_y²` + `3τ_xy²`)
 ///
 /// # Arguments
 ///
 /// * `input` - A JSON string pointer containing:
-///   - `sx`: Normal stress in x-direction σ_x (Pa)
-///   - `sy`: Normal stress in y-direction σ_y (Pa)
-///   - `txy`: Shear stress τ_xy (Pa)
+///   - `sx`: Normal stress in x-direction `σ_x` (Pa)
+///   - `sy`: Normal stress in y-direction `σ_y` (Pa)
+///   - `txy`: Shear stress `τ_xy` (Pa)
 ///
 /// # Returns
 ///
 /// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
-/// the von Mises stress σ_vm (Pa).
+/// the von Mises stress `σ_vm` (Pa).
 ///
 /// # Safety
 ///
@@ -488,9 +488,9 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
 /// # Arguments
 ///
 /// * `input` - A JSON string pointer containing:
-///   - `sx`: Normal stress in x-direction σ_x (Pa)
-///   - `sy`: Normal stress in y-direction σ_y (Pa)
-///   - `txy`: Shear stress τ_xy (Pa)
+///   - `sx`: Normal stress in x-direction `σ_x` (Pa)
+///   - `sy`: Normal stress in y-direction `σ_y` (Pa)
+///   - `txy`: Shear stress `τ_xy` (Pa)
 ///
 /// # Returns
 ///
@@ -554,15 +554,15 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
 /// Computes the factor of safety against yielding using the von Mises criterion and JSON serialization.
 ///
 /// The safety factor is the ratio of yield strength to equivalent stress:
-/// SF = σ_yield / σ_vm. A value > 1 indicates the material will not yield.
+/// SF = `σ_yield` / `σ_vm`. A value > 1 indicates the material will not yield.
 ///
 /// # Arguments
 ///
 /// * `input` - A JSON string pointer containing:
-///   - `sx`: Normal stress in x-direction σ_x (Pa)
-///   - `sy`: Normal stress in y-direction σ_y (Pa)
-///   - `txy`: Shear stress τ_xy (Pa)
-///   - `yield_strength`: Material yield strength σ_y (Pa)
+///   - `sx`: Normal stress in x-direction `σ_x` (Pa)
+///   - `sy`: Normal stress in y-direction `σ_y` (Pa)
+///   - `txy`: Shear stress `τ_xy` (Pa)
+///   - `yield_strength`: Material yield strength `σ_y` (Pa)
 ///
 /// # Returns
 ///

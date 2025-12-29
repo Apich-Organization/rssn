@@ -705,8 +705,7 @@ impl TriangleElement2D {
 
         let txy = stress[2];
 
-        ((sx.mul_add(sx, -(sx * sy))
-            + sy * sy)
+        (sy.mul_add(sy, sx.mul_add(sx, -(sx * sy)))
             + 3.0 * txy * txy)
             .sqrt()
     }

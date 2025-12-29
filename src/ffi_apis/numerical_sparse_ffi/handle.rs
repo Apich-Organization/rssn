@@ -20,7 +20,7 @@ use crate::numerical::sparse::{
 /// * `nnz` - Number of non-zero elements (length of the input arrays).
 ///
 /// # Returns
-/// A raw pointer to the CsMat object, or null on error.
+/// A raw pointer to the `CsMat` object, or null on error.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_sparse_create(
@@ -278,7 +278,7 @@ pub unsafe extern "C" fn rssn_num_sparse_trace(
 
             unsafe {
 
-                *out_trace = t
+                *out_trace = t;
             };
 
             0

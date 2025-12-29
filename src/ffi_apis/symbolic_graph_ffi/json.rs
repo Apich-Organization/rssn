@@ -1,12 +1,12 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_algorithms::*;
+use crate::symbolic::graph_algorithms::{bfs, dfs, connected_components, edmonds_karp_max_flow, kruskal_mst, has_cycle, is_bipartite};
 
 /// Creates a new graph from JSON specification.
-/// JSON format: {"is_directed": true/false}
+/// JSON format: {"`is_directed"`: true/false}
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_new(
@@ -31,7 +31,7 @@ pub extern "C" fn rssn_json_graph_new(
 }
 
 /// Adds a node to the graph.
-/// Input JSON: {"graph": <graph>, "label": "node_label"}
+/// Input JSON: {"graph": <graph>, "label": "`node_label`"}
 /// Returns updated graph as JSON.
 #[no_mangle]
 
@@ -130,7 +130,7 @@ pub extern "C" fn rssn_json_graph_laplacian_matrix(
 }
 
 /// Performs BFS traversal.
-/// Input JSON: {"graph": <graph>, "start_node": <index>}
+/// Input JSON: {"graph": <graph>, "`start_node"`: <index>}
 #[no_mangle]
 
 pub extern "C" fn rssn_json_graph_bfs(

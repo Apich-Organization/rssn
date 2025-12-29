@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
-use crate::symbolic::complex_analysis::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string, to_c_string};
+use crate::symbolic::complex_analysis::{PathContinuation, MobiusTransformation};
 use crate::symbolic::core::Expr;
 
 /// Creates a new `PathContinuation` object.
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_json(
     match pc.continue_along_path(
         &path_points,
     ) {
-        | Ok(_) => {
+        | Ok(()) => {
             to_c_string(
                 "OK".to_string(),
             )

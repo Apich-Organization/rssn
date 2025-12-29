@@ -1,9 +1,9 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_algorithms::*;
+use crate::symbolic::graph_algorithms::{dfs, bfs, connected_components, is_connected, strongly_connected_components, has_cycle, find_bridges_and_articulation_points, kruskal_mst, edmonds_karp_max_flow, dinic_max_flow, is_bipartite, bipartite_maximum_matching, topological_sort};
 
 /// Performs DFS traversal.
-/// Input: {"graph": Graph, "start_node": usize}
+/// Input: {"graph": Graph, "`start_node"`: usize}
 /// Output: [usize] (array of node indices)
 #[no_mangle]
 
@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rssn_json_graph_dfs_api(
 }
 
 /// Performs BFS traversal.
-/// Input: {"graph": Graph, "start_node": usize}
+/// Input: {"graph": Graph, "`start_node"`: usize}
 /// Output: [usize]
 #[no_mangle]
 
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rssn_json_graph_has_cycle_api(
 
 /// Finds bridges and articulation points.
 /// Input: Graph
-/// Output: {"bridges": [(usize, usize)], "articulation_points": [usize]}
+/// Output: {"bridges": [(usize, usize)], "`articulation_points"`: [usize]}
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(

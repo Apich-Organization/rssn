@@ -52,7 +52,7 @@ struct LerpInput {
     t: f64,
 }
 
-/// JSON FFI for vec_add.
+/// JSON FFI for `vec_add`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_add_json(
@@ -79,8 +79,7 @@ pub unsafe extern "C" fn rssn_vec_add_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -114,7 +113,7 @@ pub unsafe extern "C" fn rssn_vec_add_json(
     .into_raw()
 }
 
-/// JSON FFI for vec_sub.
+/// JSON FFI for `vec_sub`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_sub_json(
@@ -141,8 +140,7 @@ pub unsafe extern "C" fn rssn_vec_sub_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -176,7 +174,7 @@ pub unsafe extern "C" fn rssn_vec_sub_json(
     .into_raw()
 }
 
-/// JSON FFI for scalar_mul.
+/// JSON FFI for `scalar_mul`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_scalar_mul_json(
@@ -203,8 +201,7 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -230,7 +227,7 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_json(
     .into_raw()
 }
 
-/// JSON FFI for dot_product.
+/// JSON FFI for `dot_product`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_dot_product_json(
@@ -257,8 +254,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -292,7 +288,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product_json(
     .into_raw()
 }
 
-/// JSON FFI for norm ($L_2$).
+/// JSON FFI for norm ($`L_2`$).
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_norm_json(
@@ -319,8 +315,7 @@ pub unsafe extern "C" fn rssn_vec_norm_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -343,7 +338,7 @@ pub unsafe extern "C" fn rssn_vec_norm_json(
     .into_raw()
 }
 
-/// JSON FFI for lp_norm.
+/// JSON FFI for `lp_norm`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_lp_norm_json(
@@ -370,8 +365,7 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -424,8 +418,7 @@ pub unsafe extern "C" fn rssn_vec_normalize_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -458,7 +451,7 @@ pub unsafe extern "C" fn rssn_vec_normalize_json(
     .into_raw()
 }
 
-/// JSON FFI for cross_product.
+/// JSON FFI for `cross_product`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_cross_product_json(
@@ -485,8 +478,7 @@ pub unsafe extern "C" fn rssn_vec_cross_product_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -548,8 +540,7 @@ pub unsafe extern "C" fn rssn_vec_distance_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -610,8 +601,7 @@ pub unsafe extern "C" fn rssn_vec_angle_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -672,8 +662,7 @@ pub unsafe extern "C" fn rssn_vec_project_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -734,8 +723,7 @@ pub unsafe extern "C" fn rssn_vec_reflect_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -796,8 +784,7 @@ pub unsafe extern "C" fn rssn_vec_lerp_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -832,7 +819,7 @@ pub unsafe extern "C" fn rssn_vec_lerp_json(
     .into_raw()
 }
 
-/// JSON FFI for is_orthogonal.
+/// JSON FFI for `is_orthogonal`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(
@@ -859,8 +846,7 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -896,7 +882,7 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(
     .into_raw()
 }
 
-/// JSON FFI for is_parallel.
+/// JSON FFI for `is_parallel`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_is_parallel_json(
@@ -923,8 +909,7 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()
@@ -959,7 +944,7 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_json(
     .into_raw()
 }
 
-/// JSON FFI for cosine_similarity.
+/// JSON FFI for `cosine_similarity`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_cosine_similarity_json(
@@ -986,8 +971,7 @@ pub unsafe extern "C" fn rssn_vec_cosine_similarity_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()

@@ -1,8 +1,8 @@
 use std::ffi::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
-use crate::symbolic::integration::*;
+use crate::symbolic::integration::{risch_norman_integrate, integrate_rational_function_expr};
 
 /// Integrates an expression using the Risch-Norman algorithm (JSON)
 #[no_mangle]

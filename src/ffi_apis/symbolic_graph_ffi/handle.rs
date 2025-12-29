@@ -5,7 +5,7 @@ use std::os::raw::c_int;
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_algorithms::*;
+use crate::symbolic::graph_algorithms::{bfs, dfs, connected_components, edmonds_karp_max_flow, kruskal_mst, has_cycle, is_bipartite};
 
 /// Opaque type for Graph<String> to work with cbindgen
 #[repr(C)]
@@ -25,8 +25,7 @@ pub extern "C" fn rssn_graph_new(
         is_directed != 0,
     );
 
-    Box::into_raw(Box::new(graph))
-        as *mut RssnGraph
+    Box::into_raw(Box::new(graph)).cast::<RssnGraph>()
 }
 
 /// Frees a graph.
@@ -41,9 +40,9 @@ pub extern "C" fn rssn_graph_free(
         unsafe {
 
             drop(Box::from_raw(
-                ptr as *mut Graph<
+                ptr.cast::<Graph<
                     String,
-                >,
+                >>(),
             ))
         };
     }
@@ -65,9 +64,9 @@ pub extern "C" fn rssn_graph_add_node(
 
     let graph = unsafe {
 
-        &mut *(ptr as *mut Graph<
+        &mut *ptr.cast::<Graph<
             String,
-        >)
+        >>()
     };
 
     let label_str = unsafe {
@@ -101,9 +100,9 @@ pub extern "C" fn rssn_graph_add_edge(
 
     let graph = unsafe {
 
-        &mut *(ptr as *mut Graph<
+        &mut *ptr.cast::<Graph<
             String,
-        >)
+        >>()
     };
 
     let from = unsafe {
@@ -135,7 +134,7 @@ pub extern "C" fn rssn_graph_add_edge(
 /// Gets the number of nodes in the graph.
 #[no_mangle]
 
-pub extern "C" fn rssn_graph_node_count(
+pub const extern "C" fn rssn_graph_node_count(
     ptr: *const RssnGraph
 ) -> usize {
 
@@ -146,7 +145,7 @@ pub extern "C" fn rssn_graph_node_count(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     graph.node_count()
@@ -166,7 +165,7 @@ pub extern "C" fn rssn_graph_adjacency_matrix(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     Box::into_raw(Box::new(
@@ -188,7 +187,7 @@ pub extern "C" fn rssn_graph_incidence_matrix(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     Box::into_raw(Box::new(
@@ -210,7 +209,7 @@ pub extern "C" fn rssn_graph_laplacian_matrix(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     Box::into_raw(Box::new(
@@ -234,7 +233,7 @@ pub extern "C" fn rssn_graph_bfs(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     let result = bfs(graph, start_node);
@@ -268,7 +267,7 @@ pub extern "C" fn rssn_graph_dfs(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     let result = dfs(graph, start_node);
@@ -301,7 +300,7 @@ pub extern "C" fn rssn_graph_connected_components(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     let result =
@@ -336,7 +335,7 @@ pub extern "C" fn rssn_graph_max_flow(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     edmonds_karp_max_flow(
@@ -361,7 +360,7 @@ pub extern "C" fn rssn_graph_kruskal_mst(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
     let mst = kruskal_mst(graph);
@@ -378,7 +377,7 @@ pub extern "C" fn rssn_graph_kruskal_mst(
             (
                 *u,
                 *v,
-                format!("{}", w),
+                format!("{w}"),
             )
         })
         .collect();
@@ -410,16 +409,10 @@ pub extern "C" fn rssn_graph_has_cycle(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
-    if has_cycle(graph) {
-
-        1
-    } else {
-
-        0
-    }
+    i32::from(has_cycle(graph))
 }
 
 /// Checks if the graph is bipartite.
@@ -437,14 +430,8 @@ pub extern "C" fn rssn_graph_is_bipartite(
 
     let graph = unsafe {
 
-        &*(ptr as *const Graph<String>)
+        &*ptr.cast::<Graph<String>>()
     };
 
-    if is_bipartite(graph).is_some() {
-
-        1
-    } else {
-
-        0
-    }
+    i32::from(is_bipartite(graph).is_some())
 }

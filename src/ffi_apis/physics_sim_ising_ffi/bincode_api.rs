@@ -28,7 +28,7 @@ struct IsingOutput {
 ///
 /// * `buffer` - A bincode-encoded buffer containing `IsingParameters` with:
 ///   - `width`, `height`: Grid dimensions
-///   - `temperature`: Temperature T in units of J/k_B
+///   - `temperature`: Temperature T in units of `J/k_B`
 ///   - `mc_steps`: Number of Monte Carlo sweeps to perform
 ///
 /// # Returns

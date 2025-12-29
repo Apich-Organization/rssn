@@ -7,7 +7,7 @@ use crate::symbolic::core::Expr;
 
 /// Computes CAD for a set of polynomials (Handle).
 ///
-/// Expects an array of Expr handles (which must be SparsePolynomial variants)
+/// Expects an array of Expr handles (which must be `SparsePolynomial` variants)
 /// and an array of variable name strings.
 #[no_mangle]
 
@@ -123,7 +123,7 @@ pub extern "C" fn rssn_free_cad_handle(
 /// Gets the number of cells in a CAD.
 #[no_mangle]
 
-pub extern "C" fn rssn_cad_get_cell_count(
+pub const extern "C" fn rssn_cad_get_cell_count(
     ptr: *const Cad
 ) -> usize {
 

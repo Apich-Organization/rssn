@@ -1,6 +1,6 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
-use crate::symbolic::differential_geometry::*;
+use crate::symbolic::differential_geometry::{DifferentialForm, exterior_derivative, wedge_product, boundary, generalized_stokes_theorem, gauss_theorem, stokes_theorem, greens_theorem};
 use crate::symbolic::vector::Vector;
 
 /// Computes the exterior derivative of a differential form (JSON)
@@ -23,7 +23,7 @@ pub extern "C" fn rssn_json_exterior_derivative(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         let result =
@@ -117,7 +117,7 @@ pub extern "C" fn rssn_json_generalized_stokes_theorem(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         let result =

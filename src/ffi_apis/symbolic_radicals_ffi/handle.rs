@@ -1,5 +1,5 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::radicals::*;
+use crate::symbolic::radicals::{simplify_radicals, denest_sqrt};
 
 /// Simplifies radical expressions (Handle)
 #[no_mangle]

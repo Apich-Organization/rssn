@@ -594,7 +594,7 @@ impl Tensor {
 /// contravariant inverse `g_inv`, enabling efficient index raising and lowering.
 
 pub struct MetricTensor {
-    /// The covariant metric tensor (typically with lower indices, g_ij).
+    /// The covariant metric tensor (typically with lower indices, `g_ij`).
     pub g: Tensor,
     /// The contravariant inverse metric tensor (typically with upper indices, g^ij).
     pub g_inv: Tensor,

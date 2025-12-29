@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
-use crate::symbolic::discrete_groups::*;
+use crate::ffi_apis::common::to_json_string;
+use crate::symbolic::discrete_groups::{cyclic_group, dihedral_group, symmetric_group, klein_four_group};
 
 /// Creates a cyclic group of order `n` and returns it as a JSON string.
 ///
@@ -24,7 +24,7 @@ pub unsafe extern "C" fn rssn_json_cyclic_group_create(
 /// Creates a dihedral group of order `2n` and returns it as a JSON string.
 ///
 /// # Arguments
-/// * `n` - The parameter defining the dihedral group $D_n$.
+/// * `n` - The parameter defining the dihedral group $`D_n`$.
 ///
 /// # Returns
 /// A raw pointer to a JSON string representing the group.

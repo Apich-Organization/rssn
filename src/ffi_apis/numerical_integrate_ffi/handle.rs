@@ -66,8 +66,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
                 update_last_error(
                     format!(
                 "Invalid UTF-8 in \
-                 variable name: {}",
-                e
+                 variable name: {e}"
             ),
                 );
 
@@ -84,8 +83,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
         | _ => {
 
             update_last_error(format!(
-                "Invalid quadrature method: {}",
-                method
+                "Invalid quadrature method: {method}"
             ));
 
             return -1;

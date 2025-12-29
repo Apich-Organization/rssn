@@ -4,7 +4,7 @@ use std::slice;
 use argmin::core::State;
 use ndarray::Array1;
 
-use crate::numerical::optimize::*;
+use crate::numerical::optimize::{Rosenbrock, OptimizationConfig, ProblemType, EquationOptimizer, Sphere};
 
 /// FFI-compatible optimization result containing the solution and convergence information.
 ///
@@ -205,7 +205,7 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
 
 /// Optimizes the sphere function using gradient descent via handle-based FFI.
 ///
-/// The sphere function is a convex test function: f(x) = Σx_i², commonly used
+/// The sphere function is a convex test function: f(x) = `Σx_i²`, commonly used
 /// to verify that optimization algorithms can find the global minimum at the origin.
 ///
 /// # Arguments
@@ -298,7 +298,7 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
 /// The minimum cost achieved, or `NaN` if the handle is null.
 #[no_mangle]
 
-pub extern "C" fn numerical_optimize_get_result_cost_handle(
+pub const extern "C" fn numerical_optimize_get_result_cost_handle(
     handle : *const FfiOptimizationResult
 ) -> f64 {
 
@@ -324,7 +324,7 @@ pub extern "C" fn numerical_optimize_get_result_cost_handle(
 /// The number of iterations performed, or 0 if the handle is null.
 #[no_mangle]
 
-pub extern "C" fn numerical_optimize_get_result_iterations_handle(
+pub const extern "C" fn numerical_optimize_get_result_iterations_handle(
     handle : *const FfiOptimizationResult
 ) -> u64 {
 
@@ -350,7 +350,7 @@ pub extern "C" fn numerical_optimize_get_result_iterations_handle(
 /// The length of the optimal parameter vector, or 0 if the handle is null.
 #[no_mangle]
 
-pub extern "C" fn numerical_optimize_get_result_param_len_handle(
+pub const extern "C" fn numerical_optimize_get_result_param_len_handle(
     handle : *const FfiOptimizationResult
 ) -> usize {
 
@@ -384,7 +384,7 @@ pub extern "C" fn numerical_optimize_get_result_param_len_handle(
 /// to hold the parameter vector (obtainable via `numerical_optimize_get_result_param_len_handle`).
 #[no_mangle]
 
-pub extern "C" fn numerical_optimize_get_result_param_handle(
+pub const extern "C" fn numerical_optimize_get_result_param_handle(
     handle : *const FfiOptimizationResult,
     buffer: *mut f64,
 ) -> bool {

@@ -11,8 +11,8 @@ use crate::symbolic::core::Expr;
 
 // --- ParsingCache ---
 
-/// Creates a new ParsingCache.
-/// The caller is responsible for freeing the memory using rssn_parsing_cache_free.
+/// Creates a new `ParsingCache`.
+/// The caller is responsible for freeing the memory using `rssn_parsing_cache_free`.
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_new(
@@ -23,7 +23,7 @@ pub extern "C" fn rssn_parsing_cache_new(
     ))
 }
 
-/// Frees a ParsingCache.
+/// Frees a `ParsingCache`.
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_free(
@@ -41,7 +41,7 @@ pub extern "C" fn rssn_parsing_cache_free(
     }
 }
 
-/// Clears a ParsingCache.
+/// Clears a `ParsingCache`.
 #[no_mangle]
 
 pub extern "C" fn rssn_parsing_cache_clear(
@@ -59,7 +59,8 @@ pub extern "C" fn rssn_parsing_cache_clear(
     }
 }
 
-/// Retrieves an expression from the ParsingCache.
+/// Retrieves an expression from the `ParsingCache`.
+///
 /// Returns a pointer to the Expr (Arc<Expr> with incremented refcount), or null if not found.
 /// The caller is responsible for freeing the returned Expr (using the appropriate Expr free function).
 #[no_mangle]
@@ -109,7 +110,7 @@ pub extern "C" fn rssn_parsing_cache_get(
     }
 }
 
-/// Stores an expression in the ParsingCache.
+/// Stores an expression in the `ParsingCache`.
 /// The expr pointer is cloned (deep copy of the structure, but DAG nodes are shared).
 #[no_mangle]
 
@@ -149,8 +150,8 @@ pub extern "C" fn rssn_parsing_cache_set(
 
 // --- ComputationResultCache ---
 
-/// Creates a new ComputationResultCache.
-/// The caller is responsible for freeing the memory using rssn_computation_result_cache_free.
+/// Creates a new `ComputationResultCache`.
+/// The caller is responsible for freeing the memory using `rssn_computation_result_cache_free`.
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_new(
@@ -161,7 +162,7 @@ pub extern "C" fn rssn_computation_result_cache_new(
     ))
 }
 
-/// Frees a ComputationResultCache.
+/// Frees a `ComputationResultCache`.
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_free(
@@ -179,7 +180,7 @@ pub extern "C" fn rssn_computation_result_cache_free(
     }
 }
 
-/// Clears a ComputationResultCache.
+/// Clears a `ComputationResultCache`.
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_clear(
@@ -197,8 +198,8 @@ pub extern "C" fn rssn_computation_result_cache_clear(
     }
 }
 
-/// Retrieves a value from the ComputationResultCache.
-/// Returns a C string (char*) which must be freed by the caller using rssn_free_string.
+/// Retrieves a value from the `ComputationResultCache`.
+/// Returns a C string (char*) which must be freed by the caller using `rssn_free_string`.
 /// Returns null if not found.
 #[no_mangle]
 
@@ -233,7 +234,7 @@ pub extern "C" fn rssn_computation_result_cache_get(
     }
 }
 
-/// Stores a value in the ComputationResultCache.
+/// Stores a value in the `ComputationResultCache`.
 #[no_mangle]
 
 pub extern "C" fn rssn_computation_result_cache_set(

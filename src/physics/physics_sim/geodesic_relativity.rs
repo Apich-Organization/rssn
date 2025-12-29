@@ -26,8 +26,9 @@ pub struct GeodesicParameters {
 
 impl GeodesicParameters {
     /// Calculates the effective potential for a Schwarzschild black hole.
-    /// V_eff(r) = -M/r + L^2/(2r^2) - ML^2/r^3
+    /// `V_eff(r)` = -M/r + L^2/(2r^2) - ML^2/r^3
 
+    #[must_use] 
     pub fn effective_potential(
         &self,
         r: f64,
@@ -101,6 +102,7 @@ impl OdeSystem for SchwarzschildSystem {
 /// A `Vec` of `(f64, f64)` tuples, where each tuple is an `(x, y)` coordinate
 /// in Cartesian space, representing the simulated orbit.
 
+#[must_use] 
 pub fn run_geodesic_simulation(
     params: &GeodesicParameters
 ) -> Vec<(f64, f64)> {
@@ -212,8 +214,7 @@ pub fn simulate_black_hole_orbits_scenario(
         .for_each(|(name, params)| {
 
             println!(
-                "Simulating {}...",
-                name
+                "Simulating {name}..."
             );
 
             let path =
@@ -222,8 +223,7 @@ pub fn simulate_black_hole_orbits_scenario(
                 );
 
             let filename = format!(
-                "orbit_{}.csv",
-                name
+                "orbit_{name}.csv"
             );
 
             if let Ok(mut file) =
@@ -239,14 +239,12 @@ pub fn simulate_black_hole_orbits_scenario(
 
                     let _ = writeln!(
                         file,
-                        "{},{}",
-                        x, y
+                        "{x},{y}"
                     );
                 }
 
                 println!(
-                    "Saved path to {}",
-                    filename
+                    "Saved path to {filename}"
                 );
             }
         });

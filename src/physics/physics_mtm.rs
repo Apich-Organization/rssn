@@ -22,14 +22,14 @@ impl Grid {
         h: f64,
     ) -> Self {
 
-        Grid {
+        Self {
             u: vec![0.0; size],
             f: vec![0.0; size],
             h,
         }
     }
 
-    pub(crate) fn size(&self) -> usize {
+    pub(crate) const fn size(&self) -> usize {
 
         self.u.len()
     }
@@ -55,8 +55,7 @@ pub(crate) fn calculate_residual(
         .skip(1)
     {
 
-        let a_u = (-grid.u[i - 1]
-            + 2.0 * grid.u[i]
+        let a_u = (2.0f64.mul_add(grid.u[i], -grid.u[i - 1])
             - grid.u[i + 1])
             * h_sq_inv;
 
@@ -92,13 +91,9 @@ pub(crate) fn smooth(
             let f_i = grid.f[i];
 
             let new_u_i = 0.5
-                * (prev
-                    + next
-                    + h_sq * f_i);
+                * h_sq.mul_add(f_i, prev + next);
 
-            grid.u[i] = (1.0 - omega)
-                * u_old[i]
-                + omega * new_u_i;
+            grid.u[i] = (1.0_f64 - omega).mul_add(u_old[i], omega * new_u_i);
         }
     }
 }
@@ -125,9 +120,7 @@ pub(crate) fn restrict(
 
         let j = 2 * i;
 
-        *vars = 0.25
-            * fine_residual[j - 1]
-            + 0.5 * fine_residual[j]
+        *vars = 0.25f64.mul_add(fine_residual[j - 1], 0.5 * fine_residual[j])
             + 0.25
                 * fine_residual[j + 1];
     }
@@ -314,7 +307,7 @@ impl Grid2D {
         h: f64,
     ) -> Self {
 
-        Grid2D {
+        Self {
             u: vec![0.0; n * n],
             f: vec![0.0; n * n],
             n,
@@ -322,7 +315,7 @@ impl Grid2D {
         }
     }
 
-    pub(crate) fn idx(
+    pub(crate) const fn idx(
         &self,
         i: usize,
         j: usize,
@@ -365,7 +358,7 @@ pub(crate) fn smooth_2d(
                                 + *u.add(i * n + (j - 1))
                                 + *u.add(i * n + (j + 1));
 
-                            *u.add(i * n + j) = 0.25 * (u_neighbors + h_sq * grid.f[i * n + j]);
+                            *u.add(i * n + j) = 0.25 * h_sq.mul_add(grid.f[i * n + j], u_neighbors);
                         }
                     }
                 }
@@ -388,7 +381,7 @@ pub(crate) fn smooth_2d(
                                 + *u.add(i * n + (j - 1))
                                 + *u.add(i * n + (j + 1));
 
-                            *u.add(i * n + j) = 0.25 * (u_neighbors + h_sq * grid.f[i * n + j]);
+                            *u.add(i * n + j) = 0.25 * h_sq.mul_add(grid.f[i * n + j], u_neighbors);
                         }
                     }
                 }
@@ -419,12 +412,10 @@ pub(crate) fn calculate_residual_2d(
 
             for j in 1 .. n - 1 {
 
-                let a_u = (4.0
-                    * grid.u
-                        [i * n + j]
-                    - grid.u[(i - 1)
+                let a_u = (4.0f64.mul_add(grid.u
+                        [i * n + j], -grid.u[(i - 1)
                         * n
-                        + j]
+                        + j])
                     - grid.u[(i + 1)
                         * n
                         + j]
@@ -468,9 +459,7 @@ pub(crate) fn restrict_2d(
 
             let val = (fine_grid.f
                 [fine_grid
-                    .idx(fi, fj)]
-                * 4.0
-                + (fine_grid.f
+                    .idx(fi, fj)].mul_add(4.0, (fine_grid.f
                     [fine_grid.idx(
                         fi - 1,
                         fj,
@@ -492,8 +481,7 @@ pub(crate) fn restrict_2d(
                             .idx(
                                 fi,
                                 fj + 1,
-                            )])
-                    * 2.0
+                            )]) * 2.0)
                 + (fine_grid.f
                     [fine_grid.idx(
                         fi - 1,

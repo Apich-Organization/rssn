@@ -8,7 +8,7 @@ use crate::physics::physics_sim::schrodinger_quantum::{
     self,
 };
 
-/// Runs a Schrodinger simulation and returns the final probability density as a Matrix handle (NxxNy).
+/// Runs a Schrodinger simulation and returns the final probability density as a Matrix handle (`NxxNy`).
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(

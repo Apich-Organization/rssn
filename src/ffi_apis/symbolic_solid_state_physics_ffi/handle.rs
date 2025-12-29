@@ -1,10 +1,10 @@
 //! Handle-based FFI API for solid-state physics functions.
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::solid_state_physics::*;
+use crate::symbolic::solid_state_physics::{CrystalLattice, density_of_states_3d, fermi_energy_3d, drude_conductivity, hall_coefficient};
 use crate::symbolic::vector::Vector;
 
-/// Creates a new CrystalLattice.
+/// Creates a new `CrystalLattice`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_crystal_lattice_new(
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn rssn_crystal_lattice_new(
     ))
 }
 
-/// Frees a CrystalLattice.
+/// Frees a `CrystalLattice`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_crystal_lattice_free(

@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(
 
             let dy_cen = y as f64 - (input.height / 2) as f64;
 
-            let dist2 = dx_cen.powi(2) + dy_cen.powi(2);
+            let dist2 = dy_cen.mul_add(dy_cen, dx_cen.powi(2));
 
             (-dist2 / 20.0).exp()
         },

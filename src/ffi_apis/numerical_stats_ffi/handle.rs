@@ -247,7 +247,7 @@ pub unsafe extern "C" fn rssn_num_stats_correlation(
 }
 
 /// Performs a two-sample t-test.
-/// Returns t-statistic via out_t and p-value via out_p.
+/// Returns t-statistic via `out_t` and p-value via `out_p`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test(
@@ -291,7 +291,7 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test(
 }
 
 /// Performs Welch's t-test.
-/// Returns t-statistic via out_t and p-value via out_p.
+/// Returns t-statistic via `out_t` and p-value via `out_p`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_welch_t_test(
@@ -333,7 +333,7 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test(
 }
 
 /// Performs a chi-squared test.
-/// Returns chi-squared statistic via out_chi and p-value via out_p.
+/// Returns chi-squared statistic via `out_chi` and p-value via `out_p`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_chi_squared_test(
@@ -376,7 +376,7 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test(
 }
 
 /// Performs simple linear regression.
-/// Returns slope via out_slope and intercept via out_intercept.
+/// Returns slope via `out_slope` and intercept via `out_intercept`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_linear_regression(

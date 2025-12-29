@@ -1,4 +1,4 @@
-use crate::symbolic::combinatorics::*;
+use crate::symbolic::combinatorics::{permutations, combinations, catalan_number, stirling_number_second_kind, bell_number};
 use crate::symbolic::core::Expr;
 
 /// Computes the number of permutations symbolically as an `Expr`.

@@ -55,8 +55,7 @@ pub unsafe extern "C" fn rssn_num_matrix_create_nightly(
         slice.to_vec(),
     );
 
-    Box::into_raw(Box::new(matrix))
-        as *mut RssnMatrixHandle
+    Box::into_raw(Box::new(matrix)).cast::<RssnMatrixHandle>()
 }
 
 /// Frees a previously allocated Matrix.
@@ -71,8 +70,7 @@ pub unsafe extern "C" fn rssn_num_matrix_free_nightly(
         unsafe {
 
             let _ = Box::from_raw(
-                matrix
-                    as *mut Matrix<f64>,
+                matrix.cast::<Matrix<f64>>(),
             );
         }
     }
@@ -82,7 +80,7 @@ pub unsafe extern "C" fn rssn_num_matrix_free_nightly(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_get_rows_nightly(
+pub const unsafe extern "C" fn rssn_num_matrix_get_rows_nightly(
     matrix: *const RssnMatrixHandle
 ) -> usize {
 
@@ -93,8 +91,7 @@ pub unsafe extern "C" fn rssn_num_matrix_get_rows_nightly(
 
     unsafe {
 
-        (*(matrix
-            as *const Matrix<f64>))
+        (*matrix.cast::<Matrix<f64>>())
             .rows()
     }
 }
@@ -103,7 +100,7 @@ pub unsafe extern "C" fn rssn_num_matrix_get_rows_nightly(
 
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_num_matrix_get_cols_nightly(
+pub const unsafe extern "C" fn rssn_num_matrix_get_cols_nightly(
     matrix: *const RssnMatrixHandle
 ) -> usize {
 
@@ -114,8 +111,7 @@ pub unsafe extern "C" fn rssn_num_matrix_get_cols_nightly(
 
     unsafe {
 
-        (*(matrix
-            as *const Matrix<f64>))
+        (*matrix.cast::<Matrix<f64>>())
             .cols()
     }
 }
@@ -145,7 +141,7 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data_nightly(
 
     let m = unsafe {
 
-        &*(matrix as *const Matrix<f64>)
+        &*matrix.cast::<Matrix<f64>>()
     };
 
     let data = m.data();
@@ -179,12 +175,12 @@ pub unsafe extern "C" fn rssn_num_matrix_add_nightly(
 
     let v1 = unsafe {
 
-        &*(m1 as *const Matrix<f64>)
+        &*m1.cast::<Matrix<f64>>()
     };
 
     let v2 = unsafe {
 
-        &*(m2 as *const Matrix<f64>)
+        &*m2.cast::<Matrix<f64>>()
     };
 
     if v1.rows() != v2.rows()
@@ -202,8 +198,7 @@ pub unsafe extern "C" fn rssn_num_matrix_add_nightly(
 
     let res = v1.clone() + v2.clone();
 
-    Box::into_raw(Box::new(res))
-        as *mut RssnMatrixHandle
+    Box::into_raw(Box::new(res)).cast::<RssnMatrixHandle>()
 }
 
 /// Multiplies two matrices.
@@ -223,12 +218,12 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_nightly(
 
     let v1 = unsafe {
 
-        &*(m1 as *const Matrix<f64>)
+        &*m1.cast::<Matrix<f64>>()
     };
 
     let v2 = unsafe {
 
-        &*(m2 as *const Matrix<f64>)
+        &*m2.cast::<Matrix<f64>>()
     };
 
     if v1.cols() != v2.rows() {
@@ -244,8 +239,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_nightly(
 
     let res = v1.clone() * v2.clone();
 
-    Box::into_raw(Box::new(res))
-        as *mut RssnMatrixHandle
+    Box::into_raw(Box::new(res)).cast::<RssnMatrixHandle>()
 }
 
 /// Transposes a matrix.
@@ -263,13 +257,12 @@ pub unsafe extern "C" fn rssn_num_matrix_transpose_nightly(
 
     let m = unsafe {
 
-        &*(matrix as *const Matrix<f64>)
+        &*matrix.cast::<Matrix<f64>>()
     };
 
     let res = m.transpose();
 
-    Box::into_raw(Box::new(res))
-        as *mut RssnMatrixHandle
+    Box::into_raw(Box::new(res)).cast::<RssnMatrixHandle>()
 }
 
 /// Computes the determinant of a matrix.
@@ -291,7 +284,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant_nightly(
 
     let m = unsafe {
 
-        &*(matrix as *const Matrix<f64>)
+        &*matrix.cast::<Matrix<f64>>()
     };
 
     match m.determinant() {
@@ -299,7 +292,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant_nightly(
 
             unsafe {
 
-                *result = d
+                *result = d;
             };
 
             0
@@ -328,13 +321,12 @@ pub unsafe extern "C" fn rssn_num_matrix_inverse_nightly(
 
     let m = unsafe {
 
-        &*(matrix as *const Matrix<f64>)
+        &*matrix.cast::<Matrix<f64>>()
     };
 
     match m.inverse() {
         | Some(inv) => {
-            Box::into_raw(Box::new(inv))
-                as *mut RssnMatrixHandle
+            Box::into_raw(Box::new(inv)).cast::<RssnMatrixHandle>()
         },
         | None => {
 
@@ -359,8 +351,7 @@ pub unsafe extern "C" fn rssn_num_matrix_identity_nightly(
     let m =
         Matrix::<f64>::identity(size);
 
-    Box::into_raw(Box::new(m))
-        as *mut RssnMatrixHandle
+    Box::into_raw(Box::new(m)).cast::<RssnMatrixHandle>()
 }
 
 /// Checks if it's identity.
@@ -378,16 +369,10 @@ pub unsafe extern "C" fn rssn_num_matrix_is_identity_nightly(
 
     let m = unsafe {
 
-        &*(matrix as *const Matrix<f64>)
+        &*matrix.cast::<Matrix<f64>>()
     };
 
-    if m.is_identity(epsilon) {
-
-        1
-    } else {
-
-        0
-    }
+    i32::from(m.is_identity(epsilon))
 }
 
 /// Checks if it's orthogonal.
@@ -405,16 +390,10 @@ pub unsafe extern "C" fn rssn_num_matrix_is_orthogonal_nightly(
 
     let m = unsafe {
 
-        &*(matrix as *const Matrix<f64>)
+        &*matrix.cast::<Matrix<f64>>()
     };
 
-    if m.is_orthogonal(epsilon) {
-
-        1
-    } else {
-
-        0
-    }
+    i32::from(m.is_orthogonal(epsilon))
 }
 
 /// Returns the rank.
@@ -434,7 +413,7 @@ pub unsafe extern "C" fn rssn_num_matrix_rank_nightly(
 
     let m = unsafe {
 
-        &*(matrix as *const Matrix<f64>)
+        &*matrix.cast::<Matrix<f64>>()
     };
 
     match m.rank() {
@@ -442,7 +421,7 @@ pub unsafe extern "C" fn rssn_num_matrix_rank_nightly(
 
             unsafe {
 
-                *out_rank = r
+                *out_rank = r;
             };
 
             0
@@ -473,7 +452,7 @@ pub unsafe extern "C" fn rssn_num_matrix_trace_nightly(
 
     let m = unsafe {
 
-        &*(matrix as *const Matrix<f64>)
+        &*matrix.cast::<Matrix<f64>>()
     };
 
     match m.trace() {
@@ -481,7 +460,7 @@ pub unsafe extern "C" fn rssn_num_matrix_trace_nightly(
 
             unsafe {
 
-                *out_trace = t
+                *out_trace = t;
             };
 
             0
@@ -509,7 +488,7 @@ pub unsafe extern "C" fn rssn_num_matrix_frobenius_norm_nightly(
 
     let m = unsafe {
 
-        &*(matrix as *const Matrix<f64>)
+        &*matrix.cast::<Matrix<f64>>()
     };
 
     m.frobenius_norm()
@@ -529,17 +508,16 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend_nightly(
         return -1;
     }
 
-    let m = &mut *(matrix
-        as *mut Matrix<f64>);
+    let m = &mut *matrix.cast::<Matrix<f64>>();
 
     match backend_id {
         | 0 => {
             m.set_backend(
                 Backend::Native,
-            )
+            );
         },
         | 1 => {
-            m.set_backend(Backend::Faer)
+            m.set_backend(Backend::Faer);
         },
         | _ => return -1,
     }
@@ -567,8 +545,7 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd_nightly(
         return -1;
     }
 
-    let m = &*(matrix
-        as *const Matrix<f64>);
+    let m = &*matrix.cast::<Matrix<f64>>();
 
     if let Some(res) = m.decompose(
         FaerDecompositionType::Svd,
@@ -577,9 +554,9 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd_nightly(
         if let FaerDecompositionResult::Svd { u, s, v } = res {
             let s_mat = Matrix::new(s.len(), 1, s).with_backend(m.backend);
 
-            *out_u = Box::into_raw(Box::new(u)) as *mut RssnMatrixHandle;
-            *out_s = Box::into_raw(Box::new(s_mat)) as *mut RssnMatrixHandle;
-            *out_v = Box::into_raw(Box::new(v)) as *mut RssnMatrixHandle;
+            *out_u = Box::into_raw(Box::new(u)).cast::<RssnMatrixHandle>();
+            *out_s = Box::into_raw(Box::new(s_mat)).cast::<RssnMatrixHandle>();
+            *out_v = Box::into_raw(Box::new(v)).cast::<RssnMatrixHandle>();
             return 0;
         }
     }
@@ -602,15 +579,14 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_cholesky_nightly(
         return -1;
     }
 
-    let m = &*(matrix
-        as *const Matrix<f64>);
+    let m = &*matrix.cast::<Matrix<f64>>();
 
     if let Some(res) = m.decompose(
         FaerDecompositionType::Cholesky,
     ) {
 
         if let FaerDecompositionResult::Cholesky { l } = res {
-             *out_l = Box::into_raw(Box::new(l)) as *mut RssnMatrixHandle;
+             *out_l = Box::into_raw(Box::new(l)).cast::<RssnMatrixHandle>();
              return 0;
         }
     }
@@ -635,14 +611,13 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_eigen_symmetric_nightly(
         return -1;
     }
 
-    let m = &*(matrix
-        as *const Matrix<f64>);
+    let m = &*matrix.cast::<Matrix<f64>>();
 
     if let Some(res) = m.decompose(FaerDecompositionType::EigenSymmetric) {
         if let FaerDecompositionResult::EigenSymmetric { values, vectors } = res {
              let val_mat = Matrix::new(values.len(), 1, values).with_backend(m.backend);
-             *out_values = Box::into_raw(Box::new(val_mat)) as *mut RssnMatrixHandle;
-             *out_vectors = Box::into_raw(Box::new(vectors)) as *mut RssnMatrixHandle;
+             *out_values = Box::into_raw(Box::new(val_mat)).cast::<RssnMatrixHandle>();
+             *out_vectors = Box::into_raw(Box::new(vectors)).cast::<RssnMatrixHandle>();
              return 0;
         }
     }

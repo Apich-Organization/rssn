@@ -1,4 +1,4 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
 use crate::symbolic::special_functions;
 
@@ -266,13 +266,13 @@ pub extern "C" fn rssn_bincode_polygamma(
     }
 }
 
-/// Computes the Bessel function of the first kind J_n(x).
+/// Computes the Bessel function of the first kind `J_n(x)`.
 
 ///
 
 /// Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
 
-/// and returns a bincode-serialized `Expr` representing J_n(x).
+/// and returns a bincode-serialized `Expr` representing `J_n(x)`.
 
 #[no_mangle]
 
@@ -298,13 +298,13 @@ pub extern "C" fn rssn_bincode_bessel_j(
     }
 }
 
-/// Computes the Bessel function of the second kind Y_n(x).
+/// Computes the Bessel function of the second kind `Y_n(x)`.
 
 ///
 
 /// Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
 
-/// and returns a bincode-serialized `Expr` representing Y_n(x).
+/// and returns a bincode-serialized `Expr` representing `Y_n(x)`.
 
 #[no_mangle]
 
@@ -330,13 +330,13 @@ pub extern "C" fn rssn_bincode_bessel_y(
     }
 }
 
-/// Computes the modified Bessel function of the first kind I_n(x).
+/// Computes the modified Bessel function of the first kind `I_n(x)`.
 
 ///
 
 /// Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
 
-/// and returns a bincode-serialized `Expr` representing I_n(x).
+/// and returns a bincode-serialized `Expr` representing `I_n(x)`.
 
 #[no_mangle]
 
@@ -362,13 +362,13 @@ pub extern "C" fn rssn_bincode_bessel_i(
     }
 }
 
-/// Computes the modified Bessel function of the second kind K_n(x).
+/// Computes the modified Bessel function of the second kind `K_n(x)`.
 
 ///
 
 /// Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
 
-/// and returns a bincode-serialized `Expr` representing K_n(x).
+/// and returns a bincode-serialized `Expr` representing `K_n(x)`.
 
 #[no_mangle]
 
@@ -394,13 +394,13 @@ pub extern "C" fn rssn_bincode_bessel_k(
     }
 }
 
-/// Computes the Legendre polynomial P_n(x).
+/// Computes the Legendre polynomial `P_n(x)`.
 
 ///
 
 /// Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
 
-/// and returns a bincode-serialized `Expr` representing P_n(x).
+/// and returns a bincode-serialized `Expr` representing `P_n(x)`.
 
 #[no_mangle]
 
@@ -428,13 +428,13 @@ pub extern "C" fn rssn_bincode_legendre_p(
     }
 }
 
-/// Computes the Laguerre polynomial L_n(x).
+/// Computes the Laguerre polynomial `L_n(x)`.
 
 ///
 
 /// Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
 
-/// and returns a bincode-serialized `Expr` representing L_n(x).
+/// and returns a bincode-serialized `Expr` representing `L_n(x)`.
 
 #[no_mangle]
 
@@ -462,13 +462,13 @@ pub extern "C" fn rssn_bincode_laguerre_l(
     }
 }
 
-/// Computes the generalized Laguerre polynomial L_n^α(x).
+/// Computes the generalized Laguerre polynomial `L_n^α(x)`.
 
 ///
 
 /// Takes bincode-serialized `Expr` representing `n`, `alpha`, and `x` as inputs,
 
-/// and returns a bincode-serialized `Expr` representing L_n^α(x).
+/// and returns a bincode-serialized `Expr` representing `L_n^α(x)`.
 
 #[no_mangle]
 
@@ -501,13 +501,13 @@ pub extern "C" fn rssn_bincode_generalized_laguerre(
     }
 }
 
-/// Computes the Hermite polynomial H_n(x).
+/// Computes the Hermite polynomial `H_n(x)`.
 
 ///
 
 /// Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
 
-/// and returns a bincode-serialized `Expr` representing H_n(x).
+/// and returns a bincode-serialized `Expr` representing `H_n(x)`.
 
 #[no_mangle]
 
@@ -535,13 +535,13 @@ pub extern "C" fn rssn_bincode_hermite_h(
     }
 }
 
-/// Computes the Chebyshev polynomial of the first kind T_n(x).
+/// Computes the Chebyshev polynomial of the first kind `T_n(x)`.
 
 ///
 
 /// Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
 
-/// and returns a bincode-serialized `Expr` representing T_n(x).
+/// and returns a bincode-serialized `Expr` representing `T_n(x)`.
 
 #[no_mangle]
 
@@ -565,13 +565,13 @@ pub extern "C" fn rssn_bincode_chebyshev_t(
     }
 }
 
-/// Computes the Chebyshev polynomial of the second kind U_n(x).
+/// Computes the Chebyshev polynomial of the second kind `U_n(x)`.
 
 ///
 
 /// Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
 
-/// and returns a bincode-serialized `Expr` representing U_n(x).
+/// and returns a bincode-serialized `Expr` representing `U_n(x)`.
 
 #[no_mangle]
 

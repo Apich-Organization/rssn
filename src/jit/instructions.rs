@@ -96,7 +96,7 @@ pub enum Instruction {
     /// Drop the top value from the stack.
     Drop,
 
-    /// Call helper: Pop args_count, Pop function_ptr. Call(fn_ptr, args...).
+    /// Call helper: Pop `args_count`, Pop `function_ptr`. `Call(fn_ptr`, args...).
     /// Note: Assumes signature (args...) -> f64. Arguments must be on stack.
     /// Used for calling helper C functions.
     Call(usize), // arg count

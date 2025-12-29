@@ -24,7 +24,7 @@ pub extern "C" fn rssn_num_graphics_dot_product(
 }
 
 /// Computes the cross product of two 3D vectors.
-/// Result is stored in out_x, out_y, out_z.
+/// Result is stored in `out_x`, `out_y`, `out_z`.
 ///
 /// # Safety
 /// Pointers must be valid.

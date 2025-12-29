@@ -54,6 +54,7 @@ pub fn evaluate_numerical(
 /// # Returns
 /// An `Option<Complex64>` containing the complex numerical value if successful.
 #[must_use]
+#[allow(clippy::suboptimal_flops)]
 
 pub fn evaluate_complex(
     expr: &Expr

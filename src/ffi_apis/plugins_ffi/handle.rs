@@ -2,7 +2,7 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{c_str_to_str, to_json_string};
 use crate::plugins::manager::GLOBAL_PLUGIN_MANAGER;
 use crate::symbolic::handles::HANDLE_MANAGER;
 
@@ -36,14 +36,13 @@ pub unsafe extern "C" fn rssn_plugins_load(
         match manager
             .load_plugins(path_str)
         {
-            | Ok(_) => true,
+            | Ok(()) => true,
             | Err(e) => {
 
                 // Ideally log error
                 eprintln!(
                     "Failed to load \
-                     plugins: {}",
-                    e
+                     plugins: {e}"
                 );
 
                 false
@@ -162,8 +161,7 @@ pub unsafe extern "C" fn rssn_plugins_execute(
 
             eprintln!(
                 "Plugin execution \
-                 failed: {}",
-                e
+                 failed: {e}"
             );
 
             0

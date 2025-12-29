@@ -2,7 +2,7 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
 use crate::symbolic::pde;
 
@@ -48,12 +48,12 @@ pub extern "C" fn rssn_bincode_solve_pde(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         let result = pde::solve_pde(
             &pde,
-            &f,
+            f,
             &vars_refs,
             None,
         );
@@ -109,7 +109,7 @@ pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match pde::solve_pde_by_characteristics(&eq, f, &vars_refs) {
@@ -166,7 +166,7 @@ pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match pde::solve_wave_equation_1d_dalembert(&eq, f, &vars_refs) {
@@ -223,7 +223,7 @@ pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match pde::solve_heat_equation_1d(&eq, f, &vars_refs) {
@@ -280,7 +280,7 @@ pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match pde::solve_laplace_equation_2d(&eq, f, &vars_refs) {
@@ -337,7 +337,7 @@ pub extern "C" fn rssn_bincode_classify_pde(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         let classification =

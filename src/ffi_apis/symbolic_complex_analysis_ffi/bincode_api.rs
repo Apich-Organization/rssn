@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
-use crate::symbolic::complex_analysis::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
+use crate::symbolic::complex_analysis::{PathContinuation, MobiusTransformation};
 use crate::symbolic::core::Expr;
 
 /// Constructs a new analytic path continuation object from a function, variable, and start point.
@@ -89,7 +89,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
     match pc.continue_along_path(
         &path_points,
     ) {
-        | Ok(_) => {
+        | Ok(()) => {
             to_bincode_buffer(
                 &"OK".to_string(),
             )

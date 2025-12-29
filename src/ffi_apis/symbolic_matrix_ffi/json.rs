@@ -1,8 +1,8 @@
 use std::ffi::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
-use crate::symbolic::matrix::*;
+use crate::symbolic::matrix::{add_matrices, mul_matrices, transpose_matrix, determinant, inverse_matrix, solve_linear_system};
 
 /// Performs matrix addition.
 

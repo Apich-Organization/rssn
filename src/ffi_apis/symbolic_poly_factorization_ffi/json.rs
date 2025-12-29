@@ -1,8 +1,8 @@
 use std::ffi::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::finite_field::FiniteFieldPolynomial;
-use crate::symbolic::poly_factorization::*;
+use crate::symbolic::poly_factorization::{factor_gf, square_free_factorization_gf, poly_gcd_gf, poly_derivative_gf};
 
 /// Factors a polynomial over a finite field (JSON)
 #[no_mangle]

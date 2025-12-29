@@ -1,5 +1,5 @@
 use crate::symbolic::finite_field::FiniteFieldPolynomial;
-use crate::symbolic::poly_factorization::*;
+use crate::symbolic::poly_factorization::{factor_gf, square_free_factorization_gf, poly_gcd_gf, poly_derivative_gf};
 
 /// Factors a polynomial over a finite field (Handle)
 #[no_mangle]

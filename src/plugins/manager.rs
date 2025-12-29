@@ -103,9 +103,10 @@ pub struct PluginManager {
 impl PluginManager {
     /// Creates a new `PluginManager` without loading any plugins.
 
+    #[must_use] 
     pub fn empty() -> Self {
 
-        PluginManager {
+        Self {
             plugins: Arc::new(
                 RwLock::new(
                     HashMap::new(),
@@ -131,7 +132,7 @@ impl PluginManager {
     ) -> Result<Self, Box<dyn Error>>
     {
 
-        let mut manager = PluginManager {
+        let mut manager = Self {
             plugins : Arc::new(RwLock::new(
                 HashMap::new(),
             )),
@@ -224,8 +225,7 @@ impl PluginManager {
         Err(PluginError::new(
             PluginErrorKind::NotFound,
             &format!(
-                "Plugin '{}' not found",
-                plugin_name
+                "Plugin '{plugin_name}' not found"
             ),
         ))
     }
@@ -259,6 +259,7 @@ impl PluginManager {
 
     /// Returns a list of all loaded plugin names.
 
+    #[must_use] 
     pub fn get_loaded_plugin_names(
         &self
     ) -> Vec<String> {
@@ -286,6 +287,7 @@ impl PluginManager {
 
     /// Unloads a plugin by name.
 
+    #[must_use] 
     pub fn unload_plugin(
         &self,
         name: &str,
@@ -316,6 +318,7 @@ impl PluginManager {
 
     /// Gets metadata for all plugins.
 
+    #[must_use] 
     pub fn get_plugin_metadata(
         &self
     ) -> HashMap<
@@ -444,24 +447,19 @@ impl PluginManager {
         {
 
             return Err(format!(
-                "Plugin '{}' has \
+                "Plugin '{plugin_name}' has \
                  incompatible API \
-                 version {}. Expected \
+                 version {plugin_api_version}. Expected \
                  a version compatible \
-                 with {}.",
-                plugin_name,
-                plugin_api_version,
-                crate_version
+                 with {crate_version}."
             )
             .into());
         }
 
         println!(
             "Successfully loaded \
-             stable plugin: {} (API \
-             version: {})",
-            plugin_name,
-            plugin_api_version
+             stable plugin: {plugin_name} (API \
+             version: {plugin_api_version})"
         );
 
         plugin

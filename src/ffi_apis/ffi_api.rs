@@ -19,7 +19,6 @@ use std::os::raw::c_char;
 use std::ptr;
 use std::sync::Mutex;
 
-use once_cell::sync::Lazy;
 
 use crate::plugins::manager::PluginManager;
 
@@ -257,8 +256,7 @@ pub unsafe extern "C" fn rssn_expr_create(
 
             update_last_error(format!(
                 "Invalid UTF-8 in \
-                 input string: {}",
-                e
+                 input string: {e}"
             ));
 
             return 0;
@@ -274,8 +272,7 @@ pub unsafe extern "C" fn rssn_expr_create(
 
             update_last_error(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             ));
 
             0
@@ -331,8 +328,7 @@ pub unsafe extern "C" fn rssn_expr_simplify(
         | None => {
 
             update_last_error(format!(
-                "Invalid handle passed to rssn_expr_simplify: {}",
-                handle
+                "Invalid handle passed to rssn_expr_simplify: {handle}"
             ));
 
             0
@@ -353,7 +349,7 @@ pub struct FfiResult<T, E> {
 impl<T, E> FfiResult<T, E> {
     /// Creates a new `FfiResult` with a successful value.
 
-    pub fn ok(val: T) -> Self {
+    pub const fn ok(val: T) -> Self {
 
         Self {
             ok: Some(val),
@@ -363,7 +359,7 @@ impl<T, E> FfiResult<T, E> {
 
     /// Creates a new `FfiResult` with an error.
 
-    pub fn err(err: E) -> Self {
+    pub const fn err(err: E) -> Self {
 
         Self {
             ok: None,
@@ -690,8 +686,7 @@ pub unsafe extern "C" fn interpolate_lagrange(
             FfiResult {
                 ok : None,
                 err : Some(format!(
-                    "JSON deserialization error: {}",
-                    e
+                    "JSON deserialization error: {e}"
                 )),
             }
         },
@@ -778,8 +773,7 @@ pub unsafe extern "C" fn interpolate_bezier_curve(
                 ok: None,
                 err: Some(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             )),
             }
         },
@@ -1264,8 +1258,7 @@ pub unsafe extern "C" fn vector_scalar_mul(
             FfiResult {
                 ok: None,
                 err: Some(format!(
-                    "JSON error: {}",
-                    e
+                    "JSON error: {e}"
                 )),
             }
         },
@@ -1360,7 +1353,7 @@ pub unsafe extern "C" fn rssn_vec_norm(
     unsafe {
 
         *result =
-            vector::norm(vec_slice)
+            vector::norm(vec_slice);
     };
 
     0
@@ -1430,7 +1423,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
 
             unsafe {
 
-                *result = val
+                *result = val;
             };
 
             0
@@ -1482,7 +1475,7 @@ pub unsafe extern "C" fn rssn_comb_factorial(
     unsafe {
 
         *result =
-            combinatorics::factorial(n)
+            combinatorics::factorial(n);
     };
 
     0
@@ -1530,7 +1523,7 @@ pub unsafe extern "C" fn rssn_comb_permutations(
         *result =
             combinatorics::permutations(
                 n, k,
-            )
+            );
     };
 
     0
@@ -1578,7 +1571,7 @@ pub unsafe extern "C" fn rssn_comb_combinations(
         *result =
             combinatorics::combinations(
                 n, k,
-            )
+            );
     };
 
     0
@@ -1802,8 +1795,7 @@ pub unsafe extern "C" fn nt_mod_pow(
             FfiResult {
                 ok: None,
                 err: Some(format!(
-                    "JSON error: {}",
-                    e
+                    "JSON error: {e}"
                 )),
             }
         },
@@ -1882,8 +1874,7 @@ pub unsafe extern "C" fn nt_mod_inverse(
             FfiResult {
                 ok: None,
                 err: Some(format!(
-                    "JSON error: {}",
-                    e
+                    "JSON error: {e}"
                 )),
             }
         },
@@ -2299,8 +2290,7 @@ pub unsafe extern "C" fn transforms_fft(
                 ok: None,
                 err: Some(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             )),
             }
         },
@@ -2391,8 +2381,7 @@ pub unsafe extern "C" fn transforms_ifft(
                 ok: None,
                 err: Some(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             )),
             }
         },
@@ -2717,8 +2706,7 @@ pub unsafe extern "C" fn poly_long_division(
                 ok: None,
                 err: Some(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             )),
             }
         },
@@ -2811,8 +2799,7 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(
                 ok: None,
                 err: Some(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             )),
             }
         },
@@ -2939,8 +2926,7 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
 
             update_last_error(format!(
                 "Invalid UTF-8 in \
-                 var_ptr: {}",
-                e
+                 var_ptr: {e}"
             ));
 
             return -1;
@@ -2954,7 +2940,7 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
 
             unsafe {
 
-                *result = poly_module::is_polynomial(&expr, var)
+                *result = poly_module::is_polynomial(&expr, var);
             };
 
             0
@@ -2962,8 +2948,7 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
         | None => {
 
             update_last_error(format!(
-                "Invalid handle passed to rssn_poly_is_polynomial: {}",
-                expr_handle
+                "Invalid handle passed to rssn_poly_is_polynomial: {expr_handle}"
             ));
 
             -1
@@ -3020,8 +3005,7 @@ pub unsafe extern "C" fn rssn_poly_degree(
 
             update_last_error(format!(
                 "Invalid UTF-8 in \
-                 var_ptr: {}",
-                e
+                 var_ptr: {e}"
             ));
 
             return -1;
@@ -3035,7 +3019,7 @@ pub unsafe extern "C" fn rssn_poly_degree(
 
             unsafe {
 
-                *result = poly_module::polynomial_degree(&expr, var)
+                *result = poly_module::polynomial_degree(&expr, var);
             };
 
             0
@@ -3043,8 +3027,7 @@ pub unsafe extern "C" fn rssn_poly_degree(
         | None => {
 
             update_last_error(format!(
-                "Invalid handle passed to rssn_poly_degree: {}",
-                expr_handle
+                "Invalid handle passed to rssn_poly_degree: {expr_handle}"
             ));
 
             -1
@@ -3106,8 +3089,7 @@ pub unsafe extern "C" fn rssn_poly_long_division(
 
             update_last_error(format!(
                 "Invalid UTF-8 in \
-                 var_ptr: {}",
-                e
+                 var_ptr: {e}"
             ));
 
             return -1;
@@ -3367,8 +3349,7 @@ pub unsafe extern "C" fn stats_percentile(
                 ok: None,
                 err: Some(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             )),
             }
         },
@@ -3548,8 +3529,7 @@ pub unsafe extern "C" fn stats_simple_linear_regression(
                 ok: None,
                 err: Some(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             )),
             }
         },
@@ -3624,7 +3604,7 @@ pub unsafe extern "C" fn rssn_stats_mean(
 
         *result = stats_module::mean(
             data_slice,
-        )
+        );
     };
 
     0
@@ -3681,7 +3661,7 @@ pub unsafe extern "C" fn rssn_stats_variance(
 
         *result = stats_module::variance(
             data_slice,
-        )
+        );
     };
 
     0
@@ -3738,7 +3718,7 @@ pub unsafe extern "C" fn rssn_stats_std_dev(
 
         *result = stats_module::std_dev(
             data_slice,
-        )
+        );
     };
 
     0
@@ -3798,7 +3778,7 @@ pub unsafe extern "C" fn rssn_stats_covariance(
         *result =
             stats_module::covariance(
                 s1, s2,
-            )
+            );
     };
 
     0
@@ -4950,7 +4930,7 @@ pub unsafe extern "C" fn numerical_gradient(
                 grad_input
                     .vars
                     .iter()
-                    .map(|s| s.as_str())
+                    .map(std::string::String::as_str)
                     .collect();
 
             let grad_result = gradient(
@@ -4981,8 +4961,7 @@ pub unsafe extern "C" fn numerical_gradient(
                 ok: None,
                 err: Some(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             )),
             }
         },
@@ -5113,8 +5092,7 @@ pub unsafe extern "C" fn numerical_integrate(
                 ok: None,
                 err: Some(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             )),
             }
         },
@@ -5219,8 +5197,7 @@ pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
                 ok: None,
                 err: Some(format!(
                 "JSON deserialization \
-                 error: {}",
-                e
+                 error: {e}"
             )),
             }
         },
@@ -5308,7 +5285,7 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
 
             unsafe {
 
-                *result_handle = HANDLE_MANAGER.insert(poly_expr)
+                *result_handle = HANDLE_MANAGER.insert(poly_expr);
             };
 
             0
@@ -5441,8 +5418,7 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
 
             update_last_error(format!(
                 "Invalid UTF-8 in \
-                 var: {}",
-                e
+                 var: {e}"
             ));
 
             return -1;
@@ -5473,7 +5449,7 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
 
                     unsafe {
 
-                        *result = val
+                        *result = val;
                     };
 
                     0
@@ -5491,8 +5467,7 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
         | None => {
 
             update_last_error(format!(
-                "Invalid handle passed to rssn_numerical_integrate: {}",
-                expr_h
+                "Invalid handle passed to rssn_numerical_integrate: {expr_h}"
             ));
 
             -1
@@ -5543,7 +5518,7 @@ pub unsafe extern "C" fn rssn_matrix_sub(
 
                 *result_h =
                     HANDLE_MANAGER
-                        .insert(result)
+                        .insert(result);
             };
 
             0
@@ -5600,7 +5575,7 @@ pub unsafe extern "C" fn rssn_matrix_mul(
 
                 *result_h =
                     HANDLE_MANAGER
-                        .insert(result)
+                        .insert(result);
             };
 
             0
@@ -5653,7 +5628,7 @@ pub unsafe extern "C" fn rssn_matrix_transpose(
 
                 *result_h =
                     HANDLE_MANAGER
-                        .insert(result)
+                        .insert(result);
             };
 
             0
@@ -5706,7 +5681,7 @@ pub unsafe extern "C" fn rssn_matrix_determinant(
 
                 *result_h =
                     HANDLE_MANAGER
-                        .insert(result)
+                        .insert(result);
             };
 
             0
@@ -5759,7 +5734,7 @@ pub unsafe extern "C" fn rssn_matrix_inverse(
 
                 *result_h =
                     HANDLE_MANAGER
-                        .insert(result)
+                        .insert(result);
             };
 
             0
@@ -5807,7 +5782,7 @@ pub unsafe extern "C" fn rssn_matrix_identity(
     unsafe {
 
         *result_h = HANDLE_MANAGER
-            .insert(result)
+            .insert(result);
     };
 
     0
@@ -5862,7 +5837,7 @@ pub unsafe extern "C" fn rssn_matrix_scalar_mul(
 
                 *result_h =
                     HANDLE_MANAGER
-                        .insert(result)
+                        .insert(result);
             };
 
             0
@@ -5927,7 +5902,7 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
                     HANDLE_MANAGER
                         .insert(
                             derivative,
-                        )
+                        );
             };
 
             0
@@ -5935,8 +5910,7 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
         | None => {
 
             update_last_error(format!(
-                "Invalid handle passed to rssn_calculus_differentiate: {}",
-                expr_h
+                "Invalid handle passed to rssn_calculus_differentiate: {expr_h}"
             ));
 
             -1
@@ -6002,7 +5976,7 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
 
                 *result_h =
                     HANDLE_MANAGER
-                        .insert(result)
+                        .insert(result);
             };
 
             0
@@ -6072,7 +6046,7 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
                     HANDLE_MANAGER
                         .insert(
                             integral,
-                        )
+                        );
             };
 
             0
@@ -6080,8 +6054,7 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
         | None => {
 
             update_last_error(format!(
-                "Invalid handle passed to rssn_calculus_integrate: {}",
-                expr_h
+                "Invalid handle passed to rssn_calculus_integrate: {expr_h}"
             ));
 
             -1
@@ -6152,7 +6125,7 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
                     HANDLE_MANAGER
                         .insert(
                             integral,
-                        )
+                        );
             };
 
             0
@@ -6225,7 +6198,7 @@ pub unsafe extern "C" fn rssn_calculus_limit(
 
                 *result_h =
                     HANDLE_MANAGER
-                        .insert(result)
+                        .insert(result);
             };
 
             0
@@ -6287,8 +6260,7 @@ pub unsafe extern "C" fn rssn_solve(
             return handle_error(
                 format!(
                     "Invalid UTF-8 in \
-                     variable name: {}",
-                    e
+                     variable name: {e}"
                 ),
             )
         },
@@ -6302,8 +6274,7 @@ pub unsafe extern "C" fn rssn_solve(
             return handle_error(
                 format!(
                     "Invalid handle: \
-                     {}",
-                    expr_h
+                     {expr_h}"
                 ),
             )
         },
@@ -6315,7 +6286,7 @@ pub unsafe extern "C" fn rssn_solve(
 
         unsafe {
 
-            *result_h = 0
+            *result_h = 0;
         };
     } else {
 
@@ -6326,7 +6297,7 @@ pub unsafe extern "C" fn rssn_solve(
                 .insert(
                     solutions[0]
                         .clone(),
-                )
+                );
         };
     }
 
@@ -6371,8 +6342,7 @@ pub unsafe extern "C" fn rssn_matrix_add(
             | None => {
                 return handle_error(
                     format!(
-                "Invalid handle h1: {}",
-                h1
+                "Invalid handle h1: {h1}"
             ),
                 )
             },
@@ -6384,8 +6354,7 @@ pub unsafe extern "C" fn rssn_matrix_add(
             | None => {
                 return handle_error(
                     format!(
-                "Invalid handle h2: {}",
-                h2
+                "Invalid handle h2: {h2}"
             ),
                 )
             },
@@ -6396,7 +6365,7 @@ pub unsafe extern "C" fn rssn_matrix_add(
     unsafe {
 
         *result_h =
-            HANDLE_MANAGER.insert(res)
+            HANDLE_MANAGER.insert(res);
     };
 
     0
@@ -6454,8 +6423,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
             return handle_error(
                 format!(
                     "Invalid handle: \
-                     {}",
-                    expr_h
+                     {expr_h}"
                 ),
             )
         },
@@ -6487,8 +6455,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
             | Ok(s) => s,
             | Err(e) => {
                 return handle_error(format!(
-                    "Invalid UTF-8 in var {}: {}",
-                    i, e
+                    "Invalid UTF-8 in var {i}: {e}"
                 ))
             },
         };
@@ -6753,7 +6720,7 @@ pub unsafe extern "C" fn rssn_nt_mod_inverse(
 
             unsafe {
 
-                *result = inverse
+                *result = inverse;
             };
 
             0
@@ -6762,9 +6729,8 @@ pub unsafe extern "C" fn rssn_nt_mod_inverse(
 
             update_last_error(format!(
                 "Modular inverse of \
-                 {} modulo {} does \
-                 not exist.",
-                a, b
+                 {a} modulo {b} does \
+                 not exist."
             ));
 
             -1
@@ -6772,9 +6738,9 @@ pub unsafe extern "C" fn rssn_nt_mod_inverse(
     }
 }
 
-static PLUGIN_MANAGER: Lazy<
+static PLUGIN_MANAGER: std::sync::LazyLock<
     Mutex<Option<PluginManager>>,
-> = Lazy::new(|| Mutex::new(None));
+> = std::sync::LazyLock::new(|| Mutex::new(None));
 
 /// Initializes the plugin manager with a specified plugin directory.
 ///
@@ -6816,8 +6782,7 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(
             return handle_error(
                 format!(
                     "Invalid UTF-8 in \
-                     plugin_dir: {}",
-                    e
+                     plugin_dir: {e}"
                 ),
             )
         },
@@ -6838,8 +6803,7 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(
         | Err(e) => {
             handle_error(format!(
                 "Failed to initialize \
-                 PluginManager: {}",
-                e
+                 PluginManager: {e}"
             ))
         },
     }
@@ -6901,8 +6865,7 @@ pub unsafe extern "C" fn rssn_plugin_execute(
             return handle_error(
                 format!(
                     "Invalid UTF-8 in \
-                     plugin_name: {}",
-                    e
+                     plugin_name: {e}"
                 ),
             )
         },
@@ -6918,8 +6881,7 @@ pub unsafe extern "C" fn rssn_plugin_execute(
             return handle_error(
                 format!(
                     "Invalid UTF-8 in \
-                     command: {}",
-                    e
+                     command: {e}"
                 ),
             )
         },
@@ -6933,8 +6895,7 @@ pub unsafe extern "C" fn rssn_plugin_execute(
             return handle_error(
                 format!(
                     "Invalid handle \
-                     for args: {}",
-                    args_handle
+                     for args: {args_handle}"
                 ),
             )
         },
@@ -6952,8 +6913,7 @@ pub unsafe extern "C" fn rssn_plugin_execute(
         | Err(e) => {
             handle_error(format!(
                 "Plugin execution \
-                 failed for '{}': {}",
-                plugin_name, e
+                 failed for '{plugin_name}': {e}"
             ))
         },
     }

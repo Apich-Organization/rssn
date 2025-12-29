@@ -3,10 +3,10 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
-use crate::symbolic::vector_calculus::*;
+use crate::symbolic::vector_calculus::{ParametricCurve, ParametricSurface, Volume, line_integral_scalar, line_integral_vector, surface_integral, volume_integral};
 
 #[derive(Serialize, Deserialize)]
 
@@ -45,7 +45,7 @@ pub extern "C" fn rssn_line_integral_scalar_bincode(
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
+        data: input_ptr.cast_mut(),
         len: input_len,
     };
 
@@ -80,7 +80,7 @@ pub extern "C" fn rssn_line_integral_vector_bincode(
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
+        data: input_ptr.cast_mut(),
         len: input_len,
     };
 
@@ -115,7 +115,7 @@ pub extern "C" fn rssn_surface_integral_bincode(
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
+        data: input_ptr.cast_mut(),
         len: input_len,
     };
 
@@ -150,7 +150,7 @@ pub extern "C" fn rssn_volume_integral_bincode(
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
+        data: input_ptr.cast_mut(),
         len: input_len,
     };
 

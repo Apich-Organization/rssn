@@ -1,4 +1,4 @@
-use crate::symbolic::discrete_groups::*;
+use crate::symbolic::discrete_groups::{cyclic_group, dihedral_group, symmetric_group, klein_four_group};
 use crate::symbolic::group_theory::Group;
 
 /// Creates a cyclic group of order `n` and returns a raw pointer to it.
@@ -22,7 +22,7 @@ pub unsafe extern "C" fn rssn_cyclic_group_create(
 /// Creates a dihedral group of order `2n` and returns a raw pointer to it.
 ///
 /// # Arguments
-/// * `n` - The parameter defining the dihedral group $D_n$.
+/// * `n` - The parameter defining the dihedral group $`D_n`$.
 ///
 /// # Returns
 /// A raw pointer (`*mut Group`) to the newly created group.

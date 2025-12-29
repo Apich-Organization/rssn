@@ -58,7 +58,7 @@ fn encode<T: Serialize>(
     }
 }
 
-/// Bincode FFI for ga_add.
+/// Bincode FFI for `ga_add`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_add_bincode(
@@ -89,7 +89,7 @@ pub unsafe extern "C" fn rssn_num_ga_add_bincode(
     })
 }
 
-/// Bincode FFI for ga_sub.
+/// Bincode FFI for `ga_sub`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_sub_bincode(
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn rssn_num_ga_sub_bincode(
     })
 }
 
-/// Bincode FFI for ga_mul.
+/// Bincode FFI for `ga_mul`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_mul_bincode(
@@ -151,7 +151,7 @@ pub unsafe extern "C" fn rssn_num_ga_mul_bincode(
     })
 }
 
-/// Bincode FFI for ga_wedge.
+/// Bincode FFI for `ga_wedge`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_wedge_bincode(
@@ -186,7 +186,7 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_bincode(
     })
 }
 
-/// Bincode FFI for ga_dot.
+/// Bincode FFI for `ga_dot`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_dot_bincode(
@@ -221,7 +221,7 @@ pub unsafe extern "C" fn rssn_num_ga_dot_bincode(
     })
 }
 
-/// Bincode FFI for ga_reverse.
+/// Bincode FFI for `ga_reverse`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_reverse_bincode(
@@ -252,7 +252,7 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_bincode(
     })
 }
 
-/// Bincode FFI for ga_norm.
+/// Bincode FFI for `ga_norm`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_norm_bincode(
@@ -283,7 +283,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm_bincode(
     })
 }
 
-/// Bincode FFI for ga_inv.
+/// Bincode FFI for `ga_inv`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ga_inv_bincode(

@@ -5,7 +5,7 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
 use crate::symbolic::special_functions;
 
@@ -226,7 +226,7 @@ pub unsafe extern "C" fn rssn_json_zeta(
 // Bessel Functions
 // ============================================================================
 
-/// Computes the symbolic Bessel function J_n(x) via JSON interface.
+/// Computes the symbolic Bessel function `J_n(x)` via JSON interface.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_j(
@@ -251,7 +251,7 @@ pub unsafe extern "C" fn rssn_json_bessel_j(
     }
 }
 
-/// Computes the symbolic Bessel function Y_n(x) via JSON interface.
+/// Computes the symbolic Bessel function `Y_n(x)` via JSON interface.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_y(
@@ -276,7 +276,7 @@ pub unsafe extern "C" fn rssn_json_bessel_y(
     }
 }
 
-/// Computes the symbolic modified Bessel function I_n(x) via JSON interface.
+/// Computes the symbolic modified Bessel function `I_n(x)` via JSON interface.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_i(
@@ -301,7 +301,7 @@ pub unsafe extern "C" fn rssn_json_bessel_i(
     }
 }
 
-/// Computes the symbolic modified Bessel function K_n(x) via JSON interface.
+/// Computes the symbolic modified Bessel function `K_n(x)` via JSON interface.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_bessel_k(
@@ -330,7 +330,7 @@ pub unsafe extern "C" fn rssn_json_bessel_k(
 // Orthogonal Polynomials
 // ============================================================================
 
-/// Computes the symbolic Legendre polynomial P_n(x) via JSON interface.
+/// Computes the symbolic Legendre polynomial `P_n(x)` via JSON interface.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_legendre_p(
@@ -355,7 +355,7 @@ pub unsafe extern "C" fn rssn_json_legendre_p(
     }
 }
 
-/// Computes the symbolic Laguerre polynomial L_n(x) via JSON interface.
+/// Computes the symbolic Laguerre polynomial `L_n(x)` via JSON interface.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_laguerre_l(
@@ -380,7 +380,7 @@ pub unsafe extern "C" fn rssn_json_laguerre_l(
     }
 }
 
-/// Computes the symbolic Generalized Laguerre polynomial L_n^α(x) via JSON interface.
+/// Computes the symbolic Generalized Laguerre polynomial `L_n^α(x)` via JSON interface.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_generalized_laguerre(
@@ -412,7 +412,7 @@ pub unsafe extern "C" fn rssn_json_generalized_laguerre(
     }
 }
 
-/// Computes the symbolic Hermite polynomial H_n(x) via JSON interface.
+/// Computes the symbolic Hermite polynomial `H_n(x)` via JSON interface.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_hermite_h(
@@ -437,7 +437,7 @@ pub unsafe extern "C" fn rssn_json_hermite_h(
     }
 }
 
-/// Computes the symbolic Chebyshev polynomial T_n(x) via JSON interface.
+/// Computes the symbolic Chebyshev polynomial `T_n(x)` via JSON interface.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_chebyshev_t(
@@ -460,7 +460,7 @@ pub unsafe extern "C" fn rssn_json_chebyshev_t(
     }
 }
 
-/// Computes the symbolic Chebyshev polynomial U_n(x) via JSON interface.
+/// Computes the symbolic Chebyshev polynomial `U_n(x)` via JSON interface.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_chebyshev_u(

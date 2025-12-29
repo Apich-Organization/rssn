@@ -103,13 +103,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check(
             codeword_len,
         );
 
-    if error_correction::reed_solomon_check(codeword, n_parity) {
-
-        1
-    } else {
-
-        0
-    }
+    i32::from(error_correction::reed_solomon_check(codeword, n_parity))
 }
 
 /// Hamming encode a 4-bit data block.
@@ -218,13 +212,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(
             7,
         );
 
-    if error_correction::hamming_check_numerical(codeword) {
-
-        1
-    } else {
-
-        0
-    }
+    i32::from(error_correction::hamming_check_numerical(codeword))
 }
 
 /// Compute Hamming distance between two byte arrays.
@@ -330,13 +318,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
             len,
         );
 
-    if error_correction::crc32_verify_numerical(data, expected_crc) {
-
-        1
-    } else {
-
-        0
-    }
+    i32::from(error_correction::crc32_verify_numerical(data, expected_crc))
 }
 
 /// Compute CRC-16 checksum.
@@ -487,7 +469,7 @@ pub extern "C" fn rssn_num_error_correction_code_rate(
 /// Compute error correction capability from minimum distance.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_error_correction_capability(
+pub const extern "C" fn rssn_num_error_correction_capability(
     min_distance: usize
 ) -> usize {
 
@@ -497,7 +479,7 @@ pub extern "C" fn rssn_num_error_correction_capability(
 /// Compute error detection capability from minimum distance.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_error_detection_capability(
+pub const extern "C" fn rssn_num_error_detection_capability(
     min_distance: usize
 ) -> usize {
 

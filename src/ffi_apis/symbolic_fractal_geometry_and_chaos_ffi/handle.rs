@@ -1,9 +1,9 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::fractal_geometry_and_chaos::*;
+use crate::symbolic::fractal_geometry_and_chaos::{IteratedFunctionSystem, ComplexDynamicalSystem, find_fixed_points, analyze_stability, lyapunov_exponent, lorenz_system};
 
 // --- IteratedFunctionSystem ---
 
-/// Creates a new IteratedFunctionSystem (Handle)
+/// Creates a new `IteratedFunctionSystem` (Handle)
 #[no_mangle]
 
 pub extern "C" fn rssn_ifs_create(
@@ -66,7 +66,7 @@ pub extern "C" fn rssn_ifs_create(
                     std::ffi::CStr::from_ptr(p)
                         .to_str()
                         .ok()
-                        .map(|s| s.to_string())
+                        .map(std::string::ToString::to_string)
                 }
             })
             .collect();
@@ -82,7 +82,7 @@ pub extern "C" fn rssn_ifs_create(
     }
 }
 
-/// Frees an IteratedFunctionSystem handle
+/// Frees an `IteratedFunctionSystem` handle
 #[no_mangle]
 
 pub extern "C" fn rssn_ifs_free(
@@ -154,7 +154,7 @@ pub extern "C" fn rssn_complex_system_new_mandelbrot(
     }
 }
 
-/// Frees a ComplexDynamicalSystem handle
+/// Frees a `ComplexDynamicalSystem` handle
 #[no_mangle]
 
 pub extern "C" fn rssn_complex_system_free(
@@ -233,8 +233,7 @@ pub extern "C" fn rssn_complex_system_fixed_points(
             })
             .collect();
 
-        let ptr = boxed_points.as_ptr()
-            as *mut *mut Expr;
+        let ptr = boxed_points.as_ptr().cast_mut();
 
         std::mem::forget(boxed_points);
 
@@ -291,8 +290,7 @@ pub extern "C" fn rssn_find_fixed_points(
             })
             .collect();
 
-        let ptr = boxed_points.as_ptr()
-            as *mut *mut Expr;
+        let ptr = boxed_points.as_ptr().cast_mut();
 
         std::mem::forget(boxed_points);
 

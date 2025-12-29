@@ -82,7 +82,7 @@ fn encode<T: Serialize>(
     }
 }
 
-/// Bincode FFI for vec_add.
+/// Bincode FFI for `vec_add`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_add_bincode(
@@ -122,7 +122,7 @@ pub unsafe extern "C" fn rssn_vec_add_bincode(
     encode(res)
 }
 
-/// Bincode FFI for vec_sub.
+/// Bincode FFI for `vec_sub`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_sub_bincode(
@@ -162,7 +162,7 @@ pub unsafe extern "C" fn rssn_vec_sub_bincode(
     encode(res)
 }
 
-/// Bincode FFI for scalar_mul.
+/// Bincode FFI for `scalar_mul`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_scalar_mul_bincode(
@@ -192,7 +192,7 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_bincode(
     })
 }
 
-/// Bincode FFI for dot_product.
+/// Bincode FFI for `dot_product`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_dot_product_bincode(
@@ -263,7 +263,7 @@ pub unsafe extern "C" fn rssn_vec_norm_bincode(
     })
 }
 
-/// Bincode FFI for lp_norm.
+/// Bincode FFI for `lp_norm`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_lp_norm_bincode(
@@ -336,7 +336,7 @@ pub unsafe extern "C" fn rssn_vec_normalize_bincode(
     encode(res)
 }
 
-/// Bincode FFI for cross_product.
+/// Bincode FFI for `cross_product`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_cross_product_bincode(
@@ -580,7 +580,7 @@ pub unsafe extern "C" fn rssn_vec_lerp_bincode(
     encode(res)
 }
 
-/// Bincode FFI for is_orthogonal.
+/// Bincode FFI for `is_orthogonal`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_is_orthogonal_bincode(
@@ -620,7 +620,7 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_bincode(
     encode(res)
 }
 
-/// Bincode FFI for is_parallel.
+/// Bincode FFI for `is_parallel`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_is_parallel_bincode(
@@ -659,7 +659,7 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_bincode(
     encode(res)
 }
 
-/// Bincode FFI for cosine_similarity.
+/// Bincode FFI for `cosine_similarity`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_vec_cosine_similarity_bincode(

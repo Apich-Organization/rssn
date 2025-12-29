@@ -4,7 +4,7 @@
 //! Reed-Solomon codes, and CRC-32, offering efficient binary data interchange for
 //! high-performance applications.
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::error_correction::crc32_compute;
 use crate::symbolic::error_correction::crc32_finalize;
 use crate::symbolic::error_correction::crc32_update;
@@ -48,7 +48,7 @@ pub extern "C" fn rssn_bincode_hamming_encode(
 }
 
 /// Decodes a 7-bit Hamming(7,4) codeword via Bincode interface.
-/// Returns tuple of (data, error_pos).
+/// Returns tuple of (data, `error_pos`).
 #[no_mangle]
 
 pub extern "C" fn rssn_bincode_hamming_decode(
@@ -233,7 +233,7 @@ pub extern "C" fn rssn_bincode_hamming_check(
 // ============================================================================
 
 /// Checks if a Reed-Solomon codeword is valid via Bincode interface.
-/// Input: (codeword: Vec<u8>, n_sym: usize)
+/// Input: (codeword: Vec<u8>, `n_sym`: usize)
 /// Returns: bool
 #[no_mangle]
 
@@ -264,7 +264,7 @@ pub extern "C" fn rssn_bincode_rs_check(
 }
 
 /// Estimates error count in a Reed-Solomon codeword via Bincode interface.
-/// Input: (codeword: Vec<u8>, n_sym: usize)
+/// Input: (codeword: Vec<u8>, `n_sym`: usize)
 /// Returns: usize
 #[no_mangle]
 
@@ -323,7 +323,7 @@ pub extern "C" fn rssn_bincode_crc32_compute(
 }
 
 /// Verifies CRC-32 checksum via Bincode interface.
-/// Input: (data: Vec<u8>, expected_crc: u32)
+/// Input: (data: Vec<u8>, `expected_crc`: u32)
 /// Returns: bool
 #[no_mangle]
 

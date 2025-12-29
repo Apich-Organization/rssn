@@ -5,8 +5,8 @@
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::constant_ffi::json::BuildInfo;
 
-/// Returns all build information as a bincode_next buffer.
-/// The caller must free the returned buffer using rssn_free_bincode_buffer.
+/// Returns all build information as a `bincode_next` buffer.
+/// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_build_info_bincode(
@@ -29,8 +29,8 @@ pub extern "C" fn rssn_get_build_info_bincode(
     }
 }
 
-/// Returns the build date as a bincode_next buffer.
-/// The caller must free the returned buffer using rssn_free_bincode_buffer.
+/// Returns the build date as a `bincode_next` buffer.
+/// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_build_date_bincode(
@@ -41,7 +41,7 @@ pub extern "C" fn rssn_get_build_date_bincode(
         );
 
     match bincode_next::serde::encode_to_vec(
-        &date,
+        date,
         bincode_next::config::standard(),
     ) {
         | Ok(bytes) => BincodeBuffer::from_vec(bytes),
@@ -49,8 +49,8 @@ pub extern "C" fn rssn_get_build_date_bincode(
     }
 }
 
-/// Returns the commit SHA as a bincode_next buffer.
-/// The caller must free the returned buffer using rssn_free_bincode_buffer.
+/// Returns the commit SHA as a `bincode_next` buffer.
+/// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
 #[no_mangle]
 
 pub extern "C" fn rssn_get_commit_sha_bincode(
@@ -61,7 +61,7 @@ pub extern "C" fn rssn_get_commit_sha_bincode(
         );
 
     match bincode_next::serde::encode_to_vec(
-        &sha,
+        sha,
         bincode_next::config::standard(),
     ) {
         | Ok(bytes) => BincodeBuffer::from_vec(bytes),

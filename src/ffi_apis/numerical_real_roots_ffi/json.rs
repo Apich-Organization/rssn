@@ -62,8 +62,7 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()

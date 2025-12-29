@@ -139,7 +139,7 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(
     })
 }
 
-/// Computes the PageRank scores for nodes in a graph using bincode for serialization.
+/// Computes the `PageRank` scores for nodes in a graph using bincode for serialization.
 
 #[no_mangle]
 

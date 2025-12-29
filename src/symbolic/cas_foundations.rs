@@ -228,7 +228,7 @@ pub(crate) fn flatten_product(
             );
         },
         | Expr::Constant(n) => {
-            numeric_factors.push(n)
+            numeric_factors.push(n);
         },
         | _ => other_factors.push(expr),
     }

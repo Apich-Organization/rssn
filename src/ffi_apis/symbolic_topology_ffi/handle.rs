@@ -1,7 +1,7 @@
 use std::os::raw::c_int;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::topology::*;
+use crate::symbolic::topology::{Simplex, SimplicialComplex, SymbolicChain, create_grid_complex, create_torus_complex};
 
 // --- Simplex ---
 
@@ -69,7 +69,7 @@ pub extern "C" fn rssn_simplex_dimension(
 
 // --- SimplicialComplex ---
 
-/// Creates a new SimplicialComplex (Handle)
+/// Creates a new `SimplicialComplex` (Handle)
 #[no_mangle]
 
 pub extern "C" fn rssn_simplicial_complex_create(
@@ -81,7 +81,7 @@ pub extern "C" fn rssn_simplicial_complex_create(
     Box::into_raw(Box::new(complex))
 }
 
-/// Frees a SimplicialComplex handle
+/// Frees a `SimplicialComplex` handle
 #[no_mangle]
 
 pub extern "C" fn rssn_simplicial_complex_free(
@@ -97,7 +97,7 @@ pub extern "C" fn rssn_simplicial_complex_free(
     }
 }
 
-/// Adds a simplex to a SimplicialComplex
+/// Adds a simplex to a `SimplicialComplex`
 #[no_mangle]
 
 pub extern "C" fn rssn_simplicial_complex_add_simplex(
@@ -127,7 +127,7 @@ pub extern "C" fn rssn_simplicial_complex_add_simplex(
     }
 }
 
-/// Gets the dimension of a SimplicialComplex
+/// Gets the dimension of a `SimplicialComplex`
 #[no_mangle]
 
 pub extern "C" fn rssn_simplicial_complex_dimension(
@@ -190,7 +190,7 @@ pub extern "C" fn rssn_simplicial_complex_get_symbolic_boundary_matrix(
 
 // --- SymbolicChain ---
 
-/// Creates a new SymbolicChain (Handle)
+/// Creates a new `SymbolicChain` (Handle)
 #[no_mangle]
 
 pub extern "C" fn rssn_symbolic_chain_create(
@@ -203,7 +203,7 @@ pub extern "C" fn rssn_symbolic_chain_create(
     Box::into_raw(Box::new(chain))
 }
 
-/// Frees a SymbolicChain handle
+/// Frees a `SymbolicChain` handle
 #[no_mangle]
 
 pub extern "C" fn rssn_symbolic_chain_free(
@@ -219,7 +219,7 @@ pub extern "C" fn rssn_symbolic_chain_free(
     }
 }
 
-/// Adds a term to a SymbolicChain
+/// Adds a term to a `SymbolicChain`
 #[no_mangle]
 
 pub extern "C" fn rssn_symbolic_chain_add_term(
@@ -248,13 +248,13 @@ pub extern "C" fn rssn_symbolic_chain_add_term(
             simplex.clone(),
             coeff.clone(),
         ) {
-            | Ok(_) => true,
+            | Ok(()) => true,
             | Err(_) => false,
         }
     }
 }
 
-/// Applies the symbolic boundary operator to a SymbolicChain
+/// Applies the symbolic boundary operator to a `SymbolicChain`
 #[no_mangle]
 
 pub extern "C" fn rssn_simplicial_complex_apply_symbolic_boundary_operator(

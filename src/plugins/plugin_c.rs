@@ -20,7 +20,7 @@ use crate::symbolic::core::Expr;
     abi_stable::StableAbi,
     Debug,
     Clone,
-    PartialEq,
+    PartialEq, Eq,
 )]
 /// Represents the health status of a plugin.
 
@@ -40,7 +40,7 @@ pub enum PluginHealth {
 }
 
 /// Represents the kind of error that a plugin can encounter.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 
 pub enum PluginErrorKind {
     /// The plugin was not found.
@@ -70,12 +70,13 @@ pub struct PluginError {
 impl PluginError {
     /// Creates a new `PluginError`.
 
+    #[must_use] 
     pub fn new(
         kind: PluginErrorKind,
         msg: &str,
     ) -> Self {
 
-        PluginError {
+        Self {
             kind,
             message: msg.to_string(),
         }
@@ -105,7 +106,7 @@ impl Error for PluginError {
 /// covering identity, lifecycle, execution, and health monitoring.
 
 pub trait Plugin: Send + Sync {
-    /// Returns the unique, machine-readable name of the plugin (e.g., "fortran_solver").
+    /// Returns the unique, machine-readable name of the plugin (e.g., "`fortran_solver`").
 
     fn name(&self) -> &'static str;
 
@@ -119,7 +120,7 @@ pub trait Plugin: Send + Sync {
     }
 
     /// Returns the semantic version of the RSSN API the plugin was built against.
-    /// The PluginManager will use this to ensure compatibility.
+    /// The `PluginManager` will use this to ensure compatibility.
     /// Example: `"0.1.0"`
 
     fn api_version(

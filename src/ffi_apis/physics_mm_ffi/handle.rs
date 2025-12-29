@@ -125,7 +125,7 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update(
 /// Returns the number of particles in the SPH system.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
+pub const unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
     system: *mut physics_mm::SPHSystem
 ) -> usize {
 

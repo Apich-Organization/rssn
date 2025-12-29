@@ -3,7 +3,7 @@ use std::os::raw::c_int;
 
 use crate::ffi_apis::symbolic_graph_ffi::handle::RssnGraph;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_isomorphism_and_coloring::*;
+use crate::symbolic::graph_isomorphism_and_coloring::{are_isomorphic_heuristic, greedy_coloring, chromatic_number_exact};
 
 /// Checks if two graphs are potentially isomorphic using WL test.
 #[no_mangle]
@@ -20,22 +20,14 @@ pub extern "C" fn rssn_are_isomorphic_heuristic(
 
     unsafe {
 
-        let graph1 = &*(g1
-            as *const Graph<String>);
+        let graph1 = &*g1.cast::<Graph<String>>();
 
-        let graph2 = &*(g2
-            as *const Graph<String>);
+        let graph2 = &*g2.cast::<Graph<String>>();
 
-        if are_isomorphic_heuristic(
+        i32::from(are_isomorphic_heuristic(
             graph1,
             graph2,
-        ) {
-
-            1
-        } else {
-
-            0
-        }
+        ))
     }
 }
 
@@ -54,8 +46,7 @@ pub extern "C" fn rssn_greedy_coloring(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         let colors = greedy_coloring(g);
 
@@ -85,8 +76,7 @@ pub extern "C" fn rssn_chromatic_number_exact(
 
     unsafe {
 
-        let g = &*(graph
-            as *const Graph<String>);
+        let g = &*graph.cast::<Graph<String>>();
 
         chromatic_number_exact(g)
     }

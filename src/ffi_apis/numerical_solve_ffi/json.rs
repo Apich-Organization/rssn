@@ -46,8 +46,7 @@ pub unsafe extern "C" fn rssn_solve_linear_system_json(
                 return CString::new(
                     format!(
                         "{{\"err\": \
-                         \"{}\"}}",
-                        e
+                         \"{e}\"}}"
                     ),
                 )
                 .unwrap()

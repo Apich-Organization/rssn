@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 use num_bigint::BigInt;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::cryptography::ecdsa_sign;
 use crate::symbolic::cryptography::ecdsa_verify;
 use crate::symbolic::cryptography::generate_keypair;
@@ -20,7 +20,7 @@ use crate::symbolic::cryptography::EllipticCurve;
 use crate::symbolic::finite_field::PrimeField;
 use crate::symbolic::finite_field::PrimeFieldElement;
 
-/// Helper to parse BigInt from string or JSON string.
+/// Helper to parse `BigInt` from string or JSON string.
 
 fn parse_bigint(
     s: Option<String>

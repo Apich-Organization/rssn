@@ -132,7 +132,7 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
 /// # Returns
 ///
 /// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
-/// - `ok`: Wrapped position vector within [0, box_size)
+/// - `ok`: Wrapped position vector within [0, `box_size`)
 /// - `err`: Error message if input invalid
 ///
 /// # Safety

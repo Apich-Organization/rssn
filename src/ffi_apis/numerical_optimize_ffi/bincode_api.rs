@@ -6,7 +6,7 @@ use serde::Serialize;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
 use crate::ffi_apis::common::BincodeBuffer;
-use crate::numerical::optimize::*;
+use crate::numerical::optimize::{OptimizationConfig, ProblemType, Rosenbrock, EquationOptimizer, Sphere};
 
 #[derive(Serialize, Deserialize)]
 

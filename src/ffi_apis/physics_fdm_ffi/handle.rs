@@ -8,7 +8,7 @@ use crate::physics::physics_fdm::{
     self,
 };
 
-/// Creates a new FdmGrid handle with the given dimensions.
+/// Creates a new `FdmGrid` handle with the given dimensions.
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_fdm_grid_new(
@@ -33,7 +33,7 @@ pub extern "C" fn rssn_physics_fdm_grid_new(
     ))
 }
 
-/// Frees a FdmGrid handle.
+/// Frees a `FdmGrid` handle.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_grid_free(
@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_data(
         .as_mut_ptr()
 }
 
-/// Simulates 2D heat conduction and returns a new FdmGrid handle.
+/// Simulates 2D heat conduction and returns a new `FdmGrid` handle.
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_fdm_simulate_heat_2d(
@@ -89,7 +89,7 @@ pub extern "C" fn rssn_physics_fdm_simulate_heat_2d(
     ))
 }
 
-/// Simulates 2D wave propagation and returns a new FdmGrid handle.
+/// Simulates 2D wave propagation and returns a new `FdmGrid` handle.
 #[no_mangle]
 
 pub extern "C" fn rssn_physics_fdm_simulate_wave_2d(

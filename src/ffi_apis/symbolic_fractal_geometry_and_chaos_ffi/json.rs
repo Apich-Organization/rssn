@@ -1,8 +1,8 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
-use crate::symbolic::fractal_geometry_and_chaos::*;
+use crate::symbolic::fractal_geometry_and_chaos::{IteratedFunctionSystem, ComplexDynamicalSystem, find_fixed_points, analyze_stability, lyapunov_exponent, lorenz_system};
 
-/// Creates a new IteratedFunctionSystem (JSON)
+/// Creates a new `IteratedFunctionSystem` (JSON)
 #[no_mangle]
 
 pub extern "C" fn rssn_json_ifs_create(

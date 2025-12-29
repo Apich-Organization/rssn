@@ -10,8 +10,8 @@ use std::fmt::{
 
 use num_traits::ToPrimitive;
 
-use super::dag_mgr::*;
-use super::expr::*;
+use super::dag_mgr::DagOp;
+use super::expr::Expr;
 
 impl Clone for Expr {
     fn clone(&self) -> Self {

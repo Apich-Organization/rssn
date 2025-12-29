@@ -264,7 +264,7 @@ pub unsafe extern "C" fn rssn_num_physics_damped_harmonic_oscillator_json(
 
 /// Computes the Coulomb electrostatic force between two point charges using JSON serialization.
 ///
-/// The force is F = k_e q₁q₂ / r², where k_e = 8.99 × 10⁹ N·m²/C².
+/// The force is F = `k_e` q₁q₂ / r², where `k_e` = 8.99 × 10⁹ N·m²/C².
 ///
 /// # Arguments
 ///
@@ -322,7 +322,7 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_json(
 
 /// Computes the electric field magnitude of a point charge using JSON serialization.
 ///
-/// The electric field is E = k_e q / r².
+/// The electric field is E = `k_e` q / r².
 ///
 /// # Arguments
 ///
@@ -438,7 +438,7 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
 
 /// Computes the mean speed of particles in a Maxwell-Boltzmann distribution using JSON serialization.
 ///
-/// The mean speed is ⟨v⟩ = √(8k_BT/(πm)).
+/// The mean speed is ⟨v⟩ = √(`8k_BT/(πm)`).
 ///
 /// # Arguments
 ///
@@ -494,7 +494,7 @@ pub unsafe extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed_json(
 
 /// Computes the total power radiated by a blackbody using JSON serialization.
 ///
-/// Uses the Stefan-Boltzmann law P = σAT⁴, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
+/// Uses the Stefan-Boltzmann law P = `σAT⁴`, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
 ///
 /// # Arguments
 ///
@@ -551,7 +551,7 @@ pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
 
 /// Computes the peak wavelength of blackbody radiation using Wien's displacement law and JSON serialization.
 ///
-/// Wien's law states λ_max = b/T, where b = 2.898 × 10⁻³ m·K.
+/// Wien's law states `λ_max` = b/T, where b = 2.898 × 10⁻³ m·K.
 ///
 /// # Arguments
 ///
@@ -561,7 +561,7 @@ pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
 /// # Returns
 ///
 /// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
-/// the peak wavelength λ_max (meters).
+/// the peak wavelength `λ_max` (meters).
 ///
 /// # Safety
 ///
@@ -829,7 +829,7 @@ pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
 
 /// Computes the energy eigenvalue of a quantum harmonic oscillator using JSON serialization.
 ///
-/// The energy is E_n = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
+/// The energy is `E_n` = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
 ///
 /// # Arguments
 ///
@@ -840,7 +840,7 @@ pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
 /// # Returns
 ///
 /// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
-/// the energy eigenvalue E_n (Joules).
+/// the energy eigenvalue `E_n` (Joules).
 ///
 /// # Safety
 ///
@@ -882,7 +882,7 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_jso
 
 /// Computes the energy level of the hydrogen atom using the Bohr model and JSON serialization.
 ///
-/// The energy is E_n = -13.6 eV / n², where n is the principal quantum number.
+/// The energy is `E_n` = -13.6 eV / n², where n is the principal quantum number.
 ///
 /// # Arguments
 ///
@@ -892,7 +892,7 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_jso
 /// # Returns
 ///
 /// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
-/// the energy level E_n (Joules, negative for bound states).
+/// the energy level `E_n` (Joules, negative for bound states).
 ///
 /// # Safety
 ///

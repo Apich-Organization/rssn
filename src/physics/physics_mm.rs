@@ -27,7 +27,8 @@ pub struct Vector2D {
 impl Vector2D {
     /// Creates a new 2D vector.
 
-    pub fn new(
+    #[must_use] 
+    pub const fn new(
         x: f64,
         y: f64,
     ) -> Self {
@@ -42,8 +43,7 @@ impl Vector2D {
         &self
     ) -> f64 {
 
-        self.x * self.x
-            + self.y * self.y
+        self.x.mul_add(self.x, self.y * self.y)
     }
 }
 
@@ -143,6 +143,7 @@ pub struct Poly6Kernel {
 impl Poly6Kernel {
     /// Creates a new Poly6 kernel.
 
+    #[must_use] 
     pub fn new(h: f64) -> Self {
 
         Self {
@@ -182,6 +183,7 @@ pub struct SpikyKernel {
 impl SpikyKernel {
     /// Creates a new spiky kernel.
 
+    #[must_use] 
     pub fn new(h: f64) -> Self {
 
         Self {
@@ -339,7 +341,7 @@ impl SPHSystem {
 
                     if r_norm < spiky.h {
 
-                        let avg_pressure = (p_i.pressure + p_j.pressure) / 2.0;
+                        let avg_pressure = f64::midpoint(p_i.pressure, p_j.pressure);
 
                         force =
                             force - spiky.gradient(r_vec, r_norm) * (avg_pressure / p_j.density);
@@ -429,6 +431,7 @@ impl SPHSystem {
 /// # Returns
 /// A `Vec` of tuples `(x, y)` representing the final positions of the particles.
 
+#[must_use] 
 pub fn simulate_dam_break_2d_scenario(
 ) -> Vec<(f64, f64)> {
 

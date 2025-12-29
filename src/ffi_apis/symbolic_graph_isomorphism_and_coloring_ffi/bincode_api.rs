@@ -1,6 +1,6 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_isomorphism_and_coloring::*;
+use crate::symbolic::graph_isomorphism_and_coloring::{are_isomorphic_heuristic, greedy_coloring, chromatic_number_exact};
 
 /// Checks if two graphs are isomorphic.
 #[no_mangle]

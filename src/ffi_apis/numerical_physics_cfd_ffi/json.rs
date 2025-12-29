@@ -94,7 +94,7 @@ struct Burgers1DInput {
 
 /// Computes derived fluid properties from fundamental properties using JSON serialization.
 ///
-/// This function calculates kinematic viscosity (ν = μ/ρ), thermal diffusivity (α = k/(ρc_p)),
+/// This function calculates kinematic viscosity (ν = μ/ρ), thermal diffusivity (α = `k/(ρc_p)`),
 /// and Prandtl number (Pr = ν/α) from input material properties.
 ///
 /// # Arguments
@@ -103,7 +103,7 @@ struct Burgers1DInput {
 ///   - `density`: Fluid density ρ (kg/m³)
 ///   - `dynamic_viscosity`: Dynamic viscosity μ (Pa·s)
 ///   - `thermal_conductivity`: Thermal conductivity k (W/(m·K))
-///   - `specific_heat`: Specific heat capacity c_p (J/(kg·K))
+///   - `specific_heat`: Specific heat capacity `c_p` (J/(kg·K))
 ///
 /// # Returns
 ///
@@ -266,7 +266,7 @@ pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(
 /// Computes the Reynolds number for fluid flow using JSON serialization.
 ///
 /// The Reynolds number characterizes the flow regime (laminar vs. turbulent):
-/// Re = (velocity × length) / kinematic_viscosity
+/// Re = (velocity × length) / `kinematic_viscosity`
 ///
 /// # Arguments
 ///

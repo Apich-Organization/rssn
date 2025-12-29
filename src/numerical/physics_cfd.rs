@@ -523,7 +523,7 @@ pub fn solve_poisson_2d_gauss_seidel(
                     *u.get(i, j);
 
                 let new_val =
-                    (dy2.mul_add(
+                    (dx2 * dy2).mul_add(-*f.get(i, j), dy2.mul_add(
                         *u.get(
                             i + 1,
                             j,
@@ -539,9 +539,7 @@ pub fn solve_poisson_2d_gauss_seidel(
                                 i,
                                 j - 1,
                             )),
-                    ) - dx2
-                        * dy2
-                        * *f.get(i, j))
+                    ))
                         / factor;
 
                 *u.get_mut(i, j) =
@@ -607,7 +605,7 @@ pub fn solve_poisson_2d_sor(
                     *u.get(i, j);
 
                 let gs_val =
-                    (dy2.mul_add(
+                    (dx2 * dy2).mul_add(-*f.get(i, j), dy2.mul_add(
                         *u.get(
                             i + 1,
                             j,
@@ -623,9 +621,7 @@ pub fn solve_poisson_2d_sor(
                                 i,
                                 j - 1,
                             )),
-                    ) - dx2
-                        * dy2
-                        * *f.get(i, j))
+                    ))
                         / factor;
 
                 let new_val = omega
@@ -1186,8 +1182,7 @@ pub fn lid_driven_cavity_simple(
                         .get(i, j - 1))
                         / (dy * dy);
 
-                *omega_new.get_mut(i, j) = *omega.get(i, j)
-                    + dt * nu.mul_add(d2omega_dx2 + d2omega_dy2, -(u * domega_dx + v * domega_dy));
+                *omega_new.get_mut(i, j) = dt.mul_add(nu.mul_add(d2omega_dx2 + d2omega_dy2, -(u * domega_dx + v * domega_dy)), *omega.get(i, j));
             }
         }
 

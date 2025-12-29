@@ -63,15 +63,15 @@ pub extern "C" fn rssn_num_nt_is_prime(
 /// Computes Euler's totient function φ(n).
 #[no_mangle]
 
-pub extern "C" fn rssn_num_nt_phi(
+pub const extern "C" fn rssn_num_nt_phi(
     n: u64
 ) -> u64 {
 
     nt::phi(n)
 }
 
-/// Returns the number of prime factors and writes them to out_factors.
-/// out_factors must be large enough.
+/// Returns the number of prime factors and writes them to `out_factors`.
+/// `out_factors` must be large enough.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_nt_factorize(

@@ -7,7 +7,7 @@ use std::os::raw::c_char;
 use crate::compute::state::State;
 
 /// Creates a new State.
-/// The caller is responsible for freeing the memory using rssn_state_free.
+/// The caller is responsible for freeing the memory using `rssn_state_free`.
 #[no_mangle]
 
 pub extern "C" fn rssn_state_new(
@@ -37,7 +37,7 @@ pub extern "C" fn rssn_state_free(
 }
 
 /// Gets the intermediate value from the state.
-/// The returned string must be freed by the caller using rssn_free_string.
+/// The returned string must be freed by the caller using `rssn_free_string`.
 #[no_mangle]
 
 pub extern "C" fn rssn_state_get_intermediate_value(

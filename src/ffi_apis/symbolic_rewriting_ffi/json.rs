@@ -5,7 +5,7 @@ use std::os::raw::c_char;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
 use crate::symbolic::rewriting::apply_rules_to_normal_form;
 use crate::symbolic::rewriting::knuth_bendix;
@@ -49,8 +49,8 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_json(
 
 /// Applies the Knuth-Bendix completion algorithm (JSON).
 ///
-/// Input: JSON array of equations (Expr::Eq)
-/// Output: JSON array of RewriteRule objects
+/// Input: JSON array of equations (`Expr::Eq`)
+/// Output: JSON array of `RewriteRule` objects
 #[no_mangle]
 
 pub extern "C" fn rssn_knuth_bendix_json(
@@ -85,7 +85,7 @@ pub extern "C" fn rssn_knuth_bendix_json(
 /// Creates a rewrite rule from JSON.
 ///
 /// Input: JSON object with "lhs" and "rhs" fields (both Expr)
-/// Output: JSON-serialized RewriteRule
+/// Output: JSON-serialized `RewriteRule`
 #[no_mangle]
 
 pub extern "C" fn rssn_rewrite_rule_new_json(
@@ -119,7 +119,7 @@ pub extern "C" fn rssn_rewrite_rule_new_json(
 
 /// Converts a rewrite rule to a human-readable string (JSON).
 ///
-/// Input: JSON-serialized RewriteRule
+/// Input: JSON-serialized `RewriteRule`
 /// Output: JSON object with "string" field
 #[no_mangle]
 

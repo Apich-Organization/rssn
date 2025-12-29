@@ -5,9 +5,9 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 #[cfg(feature = "jit")]
-use cranelift_codegen::ir::condcodes::*;
+use cranelift_codegen::ir::condcodes::{IntCC, FloatCC};
 #[cfg(feature = "jit")]
-use cranelift_codegen::ir::*;
+use cranelift_codegen::ir::{AbiParam, types, StackSlotData, StackSlotKind, InstBuilder, MemFlags, Type, Value};
 #[cfg(feature = "jit")]
 use cranelift_codegen::Context;
 #[cfg(feature = "jit")]
@@ -65,6 +65,7 @@ impl Default for JitEngine {
 impl JitEngine {
     /// Creates a new JIT engine.
 
+    #[must_use] 
     pub fn new() -> Self {
 
         let function_counter =
@@ -138,8 +139,7 @@ impl JitEngine {
                 );
 
             let name = format!(
-                "jit_fn_{}",
-                id
+                "jit_fn_{id}"
             );
 
             // Setup signature: () -> f64
@@ -561,7 +561,7 @@ impl JitEngine {
 
 #[cfg(feature = "jit")]
 
-fn type_to_clif(
+const fn type_to_clif(
     ty: JitType
 ) -> (Type, Type) {
 
@@ -621,9 +621,8 @@ fn cast_to_storage(
 
     if ty.is_int()
         && storage_ty.is_int()
-    {
 
-        if ty.bits() < storage_ty.bits()
+        && ty.bits() < storage_ty.bits()
         {
 
             return builder
@@ -633,7 +632,6 @@ fn cast_to_storage(
                     val,
                 );
         }
-    }
 
     if ty.is_float()
         && storage_ty == types::I64

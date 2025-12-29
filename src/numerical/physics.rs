@@ -208,10 +208,10 @@ impl Particle3D {
     ) -> f64 {
 
         0.5 * self.mass
-            * (self.vx.mul_add(
+            * self.vz.mul_add(self.vz, self.vx.mul_add(
                 self.vx,
                 self.vy * self.vy,
-            ) + self.vz * self.vz)
+            ))
     }
 
     /// Momentum magnitude.
@@ -220,10 +220,10 @@ impl Particle3D {
     pub fn momentum(&self) -> f64 {
 
         self.mass
-            * (self.vx.mul_add(
+            * self.vz.mul_add(self.vz, self.vx.mul_add(
                 self.vx,
                 self.vy * self.vy,
-            ) + self.vz * self.vz)
+            ))
                 .sqrt()
     }
 }
@@ -1424,10 +1424,10 @@ pub fn simulate_n_body(
                             .z;
 
                     let r_sq =
-                        dx.mul_add(
+                        dz.mul_add(dz, dx.mul_add(
                             dx,
                             dy * dy,
-                        ) + dz * dz
+                        ))
                             + 1e-10; // Softening
                     let r = r_sq.sqrt();
 
@@ -1499,9 +1499,8 @@ pub fn gravitational_potential_energy(
             let dz = particles[j].z
                 - particles[i].z;
 
-            let r = (dx
-                .mul_add(dx, dy * dy)
-                + dz * dz)
+            let r = dz.mul_add(dz, dx
+                .mul_add(dx, dy * dy))
                 .sqrt();
 
             if r > 1e-10 {

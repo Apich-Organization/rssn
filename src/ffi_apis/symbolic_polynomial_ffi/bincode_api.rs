@@ -2,9 +2,9 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
-use crate::symbolic::polynomial::*;
+use crate::symbolic::polynomial::{is_polynomial, polynomial_degree, polynomial_long_division, leading_coefficient, to_polynomial_coeffs_vec, contains_var};
 
 /// Checks if an expression is a polynomial in the given variable (bincode)
 #[no_mangle]

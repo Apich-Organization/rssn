@@ -356,7 +356,7 @@ pub fn eval_complex_expr<
                 .to_expr()
                 .map_err(|e| {
 
-                    e.clone()
+                    e
                 })?;
 
             eval_complex_expr(

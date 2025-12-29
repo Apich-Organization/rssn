@@ -1,6 +1,6 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
-use crate::symbolic::topology::*;
+use crate::symbolic::topology::{Simplex, SimplicialComplex, SymbolicChain};
 
 /// Creates a new Simplex (JSON)
 #[no_mangle]
@@ -42,7 +42,7 @@ pub extern "C" fn rssn_json_simplex_dimension(
     }
 }
 
-/// Creates a new SimplicialComplex (JSON)
+/// Creates a new `SimplicialComplex` (JSON)
 #[no_mangle]
 
 pub extern "C" fn rssn_json_simplicial_complex_create(
@@ -54,7 +54,7 @@ pub extern "C" fn rssn_json_simplicial_complex_create(
     to_json_string(&complex)
 }
 
-/// Adds a simplex to a SimplicialComplex (JSON)
+/// Adds a simplex to a `SimplicialComplex` (JSON)
 #[no_mangle]
 
 pub extern "C" fn rssn_json_simplicial_complex_add_simplex(
@@ -106,7 +106,7 @@ pub extern "C" fn rssn_json_simplicial_complex_get_symbolic_boundary_matrix(
     }
 }
 
-/// Creates a new SymbolicChain (JSON)
+/// Creates a new `SymbolicChain` (JSON)
 #[no_mangle]
 
 pub extern "C" fn rssn_json_symbolic_chain_create(
@@ -119,7 +119,7 @@ pub extern "C" fn rssn_json_symbolic_chain_create(
     to_json_string(&chain)
 }
 
-/// Adds a term to a SymbolicChain (JSON)
+/// Adds a term to a `SymbolicChain` (JSON)
 #[no_mangle]
 
 pub extern "C" fn rssn_json_symbolic_chain_add_term(
@@ -148,7 +148,7 @@ pub extern "C" fn rssn_json_symbolic_chain_add_term(
     ) {
 
         match c.add_term(s, coeff) {
-            | Ok(_) => {
+            | Ok(()) => {
                 to_json_string(&c)
             },
             | Err(_) => {
@@ -161,7 +161,7 @@ pub extern "C" fn rssn_json_symbolic_chain_add_term(
     }
 }
 
-/// Applies the symbolic boundary operator to a SymbolicChain (JSON)
+/// Applies the symbolic boundary operator to a `SymbolicChain` (JSON)
 #[no_mangle]
 
 pub extern "C" fn rssn_json_simplicial_complex_apply_symbolic_boundary_operator(

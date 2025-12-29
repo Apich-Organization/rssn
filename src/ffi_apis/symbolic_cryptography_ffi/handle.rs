@@ -23,7 +23,7 @@ use crate::symbolic::cryptography::EllipticCurve;
 use crate::symbolic::finite_field::PrimeField;
 use crate::symbolic::finite_field::PrimeFieldElement;
 
-/// Use standard decimal string parsing for BigInts.
+/// Use standard decimal string parsing for `BigInts`.
 
 unsafe fn parse_bigint(
     s: *const c_char
@@ -40,7 +40,7 @@ unsafe fn parse_bigint(
     }
 }
 
-/// Helper to convert BigInt to C string (decimal).
+/// Helper to convert `BigInt` to C string (decimal).
 
 fn bigint_to_string(
     b: &BigInt
@@ -142,7 +142,7 @@ pub extern "C" fn rssn_curve_point_infinity(
 /// Checks if a point is the point at infinity.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_curve_point_is_infinity(
+pub const unsafe extern "C" fn rssn_curve_point_is_infinity(
     point: *const CurvePoint
 ) -> bool {
 
@@ -664,7 +664,7 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_free(
 
 // --- Compression ---
 
-/// Compresses a point. Returns the x-coordinate string. sets *is_odd to the parity.
+/// Compresses a point. Returns the x-coordinate string. sets *`is_odd` to the parity.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_point_compress(

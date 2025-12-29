@@ -35,7 +35,7 @@ struct BettiInput {
 /// # Returns
 ///
 /// A C string pointer containing JSON-encoded `FfiResult<Vec<usize>, String>` with
-/// a vector of Betti numbers [β₀, β₁, β₂, ...] up to max_dim.
+/// a vector of Betti numbers [β₀, β₁, β₂, ...] up to `max_dim`.
 ///
 /// # Safety
 ///
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
     let pt_slices: Vec<&[f64]> = input
         .points
         .iter()
-        .map(|v| v.as_slice())
+        .map(std::vec::Vec::as_slice)
         .collect();
 
     let res = topology::betti_numbers_at_radius(

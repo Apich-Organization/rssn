@@ -3,7 +3,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::cas_foundations;
 use crate::symbolic::core::Expr;
 use crate::symbolic::grobner::MonomialOrder;
@@ -116,7 +116,7 @@ pub extern "C" fn rssn_cas_simplify_with_relations_bincode(
         input_data
             .vars
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
     let result = cas_foundations::simplify_with_relations(

@@ -11,8 +11,8 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use ordered_float::OrderedFloat;
 
-use super::dag_mgr::*;
-use super::expr::*;
+use super::dag_mgr::{DAG_MANAGER, DagOp};
+use super::expr::{Expr, SparsePolynomial};
 
 impl AsRef<Self> for Expr {
     fn as_ref(&self) -> &Self {
@@ -756,7 +756,7 @@ impl Expr {
         Self::Dag(node)
     }
 
-    /// Creates a new ForAll quantifier expression, managed by the DAG.
+    /// Creates a new `ForAll` quantifier expression, managed by the DAG.
 
     pub fn new_forall<A>(
         var: &str,
@@ -853,7 +853,7 @@ impl Expr {
         Self::Dag(node)
     }
 
-    /// Creates a new SparsePolynomial expression, managed by the DAG.
+    /// Creates a new `SparsePolynomial` expression, managed by the DAG.
     #[must_use]
 
     pub fn new_sparse_polynomial(
@@ -873,7 +873,7 @@ impl Expr {
     }
 
     // --- Custom Constructors ---
-    /// Creates a new CustomZero expression (deprecated).
+    /// Creates a new `CustomZero` expression (deprecated).
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -894,7 +894,7 @@ impl Expr {
         Self::Dag(node)
     }
 
-    /// Creates a new CustomString expression (deprecated).
+    /// Creates a new `CustomString` expression (deprecated).
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -919,7 +919,7 @@ impl Expr {
         Self::Dag(node)
     }
 
-    /// Creates a new CustomArcThree expression (deprecated).
+    /// Creates a new `CustomArcThree` expression (deprecated).
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -967,7 +967,7 @@ impl Expr {
         Self::Dag(node)
     }
 
-    /// Creates a new CustomArcFour expression (deprecated).
+    /// Creates a new `CustomArcFour` expression (deprecated).
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -1023,7 +1023,7 @@ impl Expr {
         Self::Dag(node)
     }
 
-    /// Creates a new CustomArcFive expression (deprecated).
+    /// Creates a new `CustomArcFive` expression (deprecated).
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -1403,7 +1403,7 @@ impl Expr {
     /// Returns the logarithm of the expression with a specified base.
     #[must_use]
 
-    pub fn log<B: AsRef<Expr>>(
+    pub fn log<B: AsRef<Self>>(
         &self,
         base: B,
     ) -> Self {
@@ -1430,7 +1430,7 @@ impl Expr {
     /// Returns the expression raised to the power of another expression.
     #[must_use]
 
-    pub fn pow<E: AsRef<Expr>>(
+    pub fn pow<E: AsRef<Self>>(
         &self,
         exponent: E,
     ) -> Self {
@@ -1637,11 +1637,11 @@ impl_binary_op!(Mul, mul, new_mul);
 impl_binary_op!(Div, div, new_div);
 
 impl Neg for Expr {
-    type Output = Expr;
+    type Output = Self;
 
     fn neg(self) -> Self::Output {
 
-        Expr::new_neg(&self)
+        Self::new_neg(&self)
     }
 }
 
@@ -1677,14 +1677,14 @@ impl ToConstant for f64 {
 impl ToConstant for f32 {
     fn constant(&self) -> Expr {
 
-        Expr::new_constant(*self as f64)
+        Expr::new_constant(f64::from(*self))
     }
 }
 
 impl ToConstant for i32 {
     fn constant(&self) -> Expr {
 
-        Expr::new_constant(*self as f64)
+        Expr::new_constant(f64::from(*self))
     }
 }
 

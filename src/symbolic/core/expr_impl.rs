@@ -15,9 +15,9 @@ use num_rational::BigRational;
 use num_traits::ToPrimitive;
 use ordered_float::OrderedFloat;
 
-use super::api::*;
-use super::dag_mgr::*;
-use super::expr::*;
+use super::api::get_dynamic_op_properties;
+use super::dag_mgr::DagOp;
+use super::expr::Expr;
 
 impl PartialEq for Expr {
     fn eq(

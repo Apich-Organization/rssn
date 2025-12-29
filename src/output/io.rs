@@ -116,7 +116,7 @@ pub fn write_csv_file<
             .collect::<Vec<_>>()
             .join(",");
 
-        writeln!(file, "{}", line)
+        writeln!(file, "{line}")
             .map_err(|e| {
 
                 e.to_string()
@@ -563,8 +563,7 @@ pub fn save_expr_as_npy<
                     .ok_or_else(|| {
 
                         format!(
-                            "Matrix element at ({},{}) is not a number",
-                            i, j
+                            "Matrix element at ({i},{j}) is not a number"
                         )
                     })?;
 
@@ -819,7 +818,7 @@ pub fn save_expr<P: AsRef<Path>>(
     let extension = path_ref
         .extension()
         .and_then(|s| s.to_str())
-        .map(|s| s.to_lowercase())
+        .map(str::to_lowercase)
         .unwrap_or_default();
 
     match extension.as_str() {
@@ -837,8 +836,7 @@ pub fn save_expr<P: AsRef<Path>>(
         | _ => {
             Err(format!(
                 "Unsupported file \
-                 format: .{}",
-                extension
+                 format: .{extension}"
             ))
         },
     }
@@ -855,7 +853,7 @@ pub fn load_expr<P: AsRef<Path>>(
     let extension = path_ref
         .extension()
         .and_then(|s| s.to_str())
-        .map(|s| s.to_lowercase())
+        .map(str::to_lowercase)
         .unwrap_or_default();
 
     match extension.as_str() {
@@ -871,8 +869,7 @@ pub fn load_expr<P: AsRef<Path>>(
         | _ => {
             Err(format!(
                 "Unsupported file \
-                 format: .{}",
-                extension
+                 format: .{extension}"
             ))
         },
     }

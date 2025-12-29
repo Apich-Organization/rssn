@@ -4,7 +4,7 @@ use std::os::raw::c_char;
 use std::os::raw::c_int;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::optimize::*;
+use crate::symbolic::optimize::{CriticalPoint, find_extrema, hessian_matrix, find_constrained_extrema};
 
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
@@ -32,7 +32,7 @@ unsafe fn parse_c_str_array(
 
         match c_str.to_str() {
             | Ok(s) => {
-                vars.push(s.to_string())
+                vars.push(s.to_string());
             },
             | Err(_) => return None,
         }
@@ -70,7 +70,7 @@ pub extern "C" fn rssn_find_extrema_handle(
         let vars_refs: Vec<&str> =
             vars_strings
                 .iter()
-                .map(|s| s.as_str())
+                .map(std::string::String::as_str)
                 .collect();
 
         match find_extrema(
@@ -118,7 +118,7 @@ pub extern "C" fn rssn_hessian_matrix_handle(
         let vars_refs: Vec<&str> =
             vars_strings
                 .iter()
-                .map(|s| s.as_str())
+                .map(std::string::String::as_str)
                 .collect();
 
         let hessian = hessian_matrix(
@@ -165,7 +165,7 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
         let vars_refs: Vec<&str> =
             vars_strings
                 .iter()
-                .map(|s| s.as_str())
+                .map(std::string::String::as_str)
                 .collect();
 
         match find_constrained_extrema(
@@ -201,7 +201,7 @@ pub extern "C" fn rssn_free_critical_point_vec_handle(
     }
 }
 
-/// Frees a Vec<HashMap<Expr, Expr>> handle
+/// Frees a Vec<`HashMap`<Expr, Expr>> handle
 #[no_mangle]
 
 pub extern "C" fn rssn_free_solution_vec_handle(

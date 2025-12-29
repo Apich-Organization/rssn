@@ -69,7 +69,7 @@ pub extern "C" fn rssn_solve_system_handle(
 
     let vars_str: Vec<&str> = vars_ref
         .iter()
-        .map(|s| s.as_str())
+        .map(std::string::String::as_str)
         .collect();
 
     match solve_system(

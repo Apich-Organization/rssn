@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
-use crate::symbolic::combinatorics::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::symbolic::combinatorics::{permutations, combinations, catalan_number, stirling_number_second_kind, bell_number};
 use crate::symbolic::core::Expr;
 
 

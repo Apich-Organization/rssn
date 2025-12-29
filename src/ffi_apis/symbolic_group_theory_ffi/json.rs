@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
-use crate::symbolic::group_theory::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::symbolic::group_theory::{Group, GroupElement, Representation, character};
 
 #[no_mangle]
 

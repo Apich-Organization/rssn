@@ -29,7 +29,7 @@ struct IsingOutput {
 ///
 /// * `input` - A JSON string pointer containing:
 ///   - `width`, `height`: Grid dimensions
-///   - `temperature`: Temperature T in units of J/k_B
+///   - `temperature`: Temperature T in units of `J/k_B`
 ///   - `mc_steps`: Number of Monte Carlo sweeps to perform
 ///
 /// # Returns

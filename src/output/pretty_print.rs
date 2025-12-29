@@ -14,6 +14,7 @@ pub struct PrintBox {
 
 /// Main entry point. Converts an expression to a formatted string.
 
+#[must_use] 
 pub fn pretty_print(
     expr: &Expr
 ) -> String {
@@ -25,7 +26,7 @@ pub fn pretty_print(
         .join("\n")
 }
 
-/// Converts an expression to a PrintBox iteratively.
+/// Converts an expression to a `PrintBox` iteratively.
 
 pub(crate) fn to_box(
     root_expr: &Expr
@@ -197,8 +198,7 @@ pub(crate) fn to_box(
                     for line in &inner_box.lines {
 
                         lines.push(format!(
-                            " {} ",
-                            line
+                            " {line} "
                         ));
                     }
 
@@ -386,7 +386,7 @@ pub(crate) fn to_box(
                         }
                     }
 
-                    let width = matrix_lines.get(0).map_or(0, |l| l.len());
+                    let width = matrix_lines.first().map_or(0, std::string::String::len);
                     wrap_in_parens(&PrintBox { width, height: matrix_lines.len(), lines: matrix_lines }, '[', ']')
                 },
                 | DagOp::Binomial => {
@@ -400,7 +400,7 @@ pub(crate) fn to_box(
                 },
                 | DagOp::Derivative(var) => {
                     let inner = get_child_box(0);
-                    let pref = format!("d/d{} ", var);
+                    let pref = format!("d/d{var} ");
                     inner.clone().prefix(&pref)
                 },
                 | DagOp::Factorial => {
@@ -498,7 +498,7 @@ pub(crate) fn to_box(
         .expect("Remove Failed")
 }
 
-/// Horizontally combines two PrintBoxes with an operator in between.
+/// Horizontally combines two `PrintBoxes` with an operator in between.
 
 pub(crate) fn combine_horizontal(
     box_a: &PrintBox,
@@ -538,8 +538,7 @@ pub(crate) fn combine_horizontal(
             });
 
         *vars = format!(
-            "{}{}{}",
-            line_a, op, line_b
+            "{line_a}{op}{line_b}"
         );
     }
 
@@ -575,7 +574,7 @@ pub(crate) fn center_text(
     )
 }
 
-/// Wraps a PrintBox in parentheses or other delimiters.
+/// Wraps a `PrintBox` in parentheses or other delimiters.
 
 pub(crate) fn wrap_in_parens(
     inner_box: &PrintBox,
@@ -594,8 +593,7 @@ pub(crate) fn wrap_in_parens(
         if i == inner_box.height / 2 {
 
             lines.push(format!(
-                "{}{}{}",
-                open, line, close
+                "{open}{line}{close}"
             ));
         } else {
 
@@ -635,14 +633,12 @@ impl PrintBox {
             if i == mid {
 
                 *line = format!(
-                    "{}{}",
-                    s, line
+                    "{s}{line}"
                 );
             } else {
 
                 *line = format!(
-                    "{}{}",
-                    padding, line
+                    "{padding}{line}"
                 );
             }
         }

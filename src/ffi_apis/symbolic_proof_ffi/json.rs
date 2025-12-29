@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::from_json_string;
 use crate::symbolic::core::Expr;
 use crate::symbolic::proof;
 
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rssn_json_verify_equation_solution(
 
         let free_refs: Vec<&str> = free
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         proof::verify_equation_solution(

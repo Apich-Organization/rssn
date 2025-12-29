@@ -115,7 +115,7 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
 /// Computes the Coulomb electrostatic force between two point charges using bincode serialization.
 ///
 /// The Coulomb force is the electrostatic interaction between charged particles:
-/// F = k_e q₁q₂ / r², where k_e is Coulomb's constant (8.99×10⁹ N·m²/C²).
+/// F = `k_e` q₁q₂ / r², where `k_e` is Coulomb's constant (8.99×10⁹ N·m²/C²).
 ///
 /// # Arguments
 ///
@@ -317,7 +317,7 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
 /// Computes the energy eigenvalue of a quantum harmonic oscillator using bincode serialization.
 ///
 /// The quantum harmonic oscillator has discrete energy levels given by:
-/// E_n = ℏω(n + 1/2), where n is the quantum number, ℏ is the reduced Planck constant,
+/// `E_n` = ℏω(n + 1/2), where n is the quantum number, ℏ is the reduced Planck constant,
 /// and ω is the angular frequency.
 ///
 /// # Arguments
@@ -329,7 +329,7 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
 /// # Returns
 ///
 /// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
-/// - `ok`: The energy eigenvalue E_n (Joules)
+/// - `ok`: The energy eigenvalue `E_n` (Joules)
 /// - `err`: Error message if deserialization failed
 ///
 /// # Safety
@@ -365,7 +365,7 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bin
 /// Computes the energy level of the hydrogen atom using the Bohr model and bincode serialization.
 ///
 /// The Bohr model gives hydrogen atom energy levels as:
-/// E_n = -13.6 eV / n², where n is the principal quantum number (n ≥ 1).
+/// `E_n` = -13.6 eV / n², where n is the principal quantum number (n ≥ 1).
 /// Energy is negative, indicating a bound state.
 ///
 /// # Arguments
@@ -376,7 +376,7 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bin
 /// # Returns
 ///
 /// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
-/// - `ok`: The energy level E_n (Joules, negative for bound states)
+/// - `ok`: The energy level `E_n` (Joules, negative for bound states)
 /// - `err`: Error message if deserialization failed
 ///
 /// # Safety

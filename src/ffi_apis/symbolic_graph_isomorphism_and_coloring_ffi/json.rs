@@ -1,6 +1,6 @@
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_isomorphism_and_coloring::*;
+use crate::symbolic::graph_isomorphism_and_coloring::{are_isomorphic_heuristic, greedy_coloring, chromatic_number_exact};
 
 /// Checks if two graphs are isomorphic.
 /// Input: {"g1": Graph, "g2": Graph}
@@ -34,7 +34,7 @@ pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
 
 /// Greedy coloring.
 /// Input: Graph
-/// Output: {node_id: color_id}
+/// Output: {`node_id`: `color_id`}
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_json_greedy_coloring(

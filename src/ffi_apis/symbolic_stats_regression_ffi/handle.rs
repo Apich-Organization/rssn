@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 use std::sync::Arc;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::c_str_to_str;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
 

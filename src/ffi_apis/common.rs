@@ -24,7 +24,8 @@ pub struct BincodeBuffer {
 impl BincodeBuffer {
     /// Creates a new empty buffer.
 
-    pub fn empty() -> Self {
+    #[must_use] 
+    pub const fn empty() -> Self {
 
         Self {
             data: std::ptr::null_mut(),
@@ -34,6 +35,7 @@ impl BincodeBuffer {
 
     /// Creates a buffer from a Vec<u8>.
 
+    #[must_use] 
     pub fn from_vec(
         bytes: Vec<u8>
     ) -> Self {
@@ -42,7 +44,7 @@ impl BincodeBuffer {
 
         let data = Box::into_raw(
             bytes.into_boxed_slice(),
-        ) as *mut u8;
+        ).cast::<u8>();
 
         Self {
             data,
@@ -52,7 +54,8 @@ impl BincodeBuffer {
 
     /// Checks if the buffer is null/empty.
 
-    pub fn is_null(&self) -> bool {
+    #[must_use] 
+    pub const fn is_null(&self) -> bool {
 
         self.data.is_null()
             || self.len == 0
@@ -63,6 +66,7 @@ impl BincodeBuffer {
     /// # Safety
     /// The buffer must be valid and not yet freed.
 
+    #[must_use] 
     pub unsafe fn as_slice(
         &self
     ) -> &[u8] {
@@ -117,10 +121,7 @@ pub extern "C" fn rssn_free_bincode_buffer(
         unsafe {
 
             let _ = Box::from_raw(
-                std::slice::from_raw_parts_mut(
-                    buffer.data,
-                    buffer.len,
-                ),
+                std::ptr::slice_from_raw_parts_mut(buffer.data, buffer.len),
             );
         }
     }
@@ -130,6 +131,7 @@ pub extern "C" fn rssn_free_bincode_buffer(
 ///
 /// Returns null on error.
 
+#[must_use] 
 pub fn to_c_string(
     s: String
 ) -> *mut c_char {
@@ -164,6 +166,7 @@ pub fn to_json_string<
 ///
 /// Returns None on error.
 
+#[must_use] 
 pub fn from_json_string<
     T: serde::de::DeserializeOwned,
 >(
@@ -193,7 +196,7 @@ pub fn from_json_string<
     }
 }
 
-/// Helper function to serialize to bincode_next and return as buffer.
+/// Helper function to serialize to `bincode_next` and return as buffer.
 ///
 /// Returns empty buffer on error.
 
@@ -216,6 +219,7 @@ pub fn to_bincode_buffer<
 ///
 /// Returns None on error.
 
+#[must_use] 
 pub fn from_bincode_buffer<
     T: serde::de::DeserializeOwned,
 >(
@@ -244,6 +248,7 @@ pub fn from_bincode_buffer<
 ///
 /// Returns None if the pointer is null or the string is not valid UTF-8.
 
+#[must_use] 
 pub unsafe fn c_str_to_str<'a>(
     s: *const c_char
 ) -> Option<&'a str> {

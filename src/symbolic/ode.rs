@@ -1756,7 +1756,7 @@ pub fn solve_riccati_ode(
                 );
             },
             | _ => {
-                terms.push(expr.clone())
+                terms.push(expr.clone());
             },
         }
     }

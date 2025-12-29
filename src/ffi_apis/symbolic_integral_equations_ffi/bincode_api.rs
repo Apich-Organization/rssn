@@ -3,7 +3,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
 use crate::symbolic::integral_equations::solve_airfoil_equation;
 use crate::symbolic::integral_equations::FredholmEquation;
@@ -48,7 +48,7 @@ pub extern "C" fn rssn_fredholm_solve_neumann_bincode(
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
+        data: input_ptr.cast_mut(),
         len: input_len,
     };
 
@@ -84,7 +84,7 @@ pub extern "C" fn rssn_fredholm_solve_separable_bincode(
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
+        data: input_ptr.cast_mut(),
         len: input_len,
     };
 
@@ -126,7 +126,7 @@ pub extern "C" fn rssn_volterra_solve_successive_bincode(
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
+        data: input_ptr.cast_mut(),
         len: input_len,
     };
 
@@ -160,7 +160,7 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation_bincode(
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
+        data: input_ptr.cast_mut(),
         len: input_len,
     };
 
@@ -199,7 +199,7 @@ pub extern "C" fn rssn_solve_airfoil_equation_bincode(
 ) -> BincodeBuffer {
 
     let input_buffer = BincodeBuffer {
-        data: input_ptr as *mut u8,
+        data: input_ptr.cast_mut(),
         len: input_len,
     };
 

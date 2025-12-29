@@ -66,7 +66,7 @@ pub unsafe extern "C" fn rssn_real_roots_free_vec(
 /// Gets the length of the roots vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_real_roots_get_vec_len(
+pub const unsafe extern "C" fn rssn_real_roots_get_vec_len(
     ptr: *const Vec<f64>
 ) -> usize {
 
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rssn_real_roots_get_vec_len(
 /// Gets the data of the roots vector.
 #[no_mangle]
 
-pub unsafe extern "C" fn rssn_real_roots_get_vec_data(
+pub const unsafe extern "C" fn rssn_real_roots_get_vec_data(
     ptr: *const Vec<f64>,
     buffer: *mut f64,
 ) {

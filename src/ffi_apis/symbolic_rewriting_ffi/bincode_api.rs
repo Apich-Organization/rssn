@@ -3,7 +3,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::core::Expr;
 use crate::symbolic::rewriting::apply_rules_to_normal_form;
 use crate::symbolic::rewriting::knuth_bendix;

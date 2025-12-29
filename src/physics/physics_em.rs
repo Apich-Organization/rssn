@@ -120,15 +120,12 @@ pub fn solve_midpoint_euler<
             .for_each(
                 |((ym, &yi), &k1i)| {
 
-                    *ym = yi
-                        + 0.5
-                            * dt
-                            * k1i;
+                    *ym = (0.5 * dt).mul_add(k1i, yi);
                 },
             );
 
         system.eval(
-            t + 0.5 * dt,
+            0.5f64.mul_add(dt, t),
             &y_mid,
             &mut k2,
         );
@@ -193,7 +190,7 @@ pub fn solve_heun_euler<
             .for_each(
                 |((yp, &yi), &k1i)| {
 
-                    *yp = yi + dt * k1i;
+                    *yp = dt.mul_add(k1i, yi);
                 },
             );
 
@@ -337,6 +334,7 @@ use crate::physics::physics_rkm::DampedOscillatorSystem;
 /// # Returns
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
 
+#[must_use] 
 pub fn simulate_oscillator_forward_euler_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 
@@ -390,7 +388,7 @@ impl MechanicalSystem
         let (px, py) = (x[0], x[1]);
 
         let dist_sq =
-            px.powi(2) + py.powi(2);
+            py.mul_add(py, px.powi(2));
 
         let dist_cubed = dist_sq
             .sqrt()
@@ -456,7 +454,7 @@ pub trait LinearOdeSystem {
 
 /// Solves a linear ODE system y' = Ay using the backward (implicit) Euler method.
 /// This method is A-stable, making it excellent for stiff equations.
-/// The update rule is y_{n+1} = (I - dt*A)^-1 * y_n.
+/// The update rule is y_{n+1} = (I - dt*A)^-1 * `y_n`.
 ///
 /// # Returns
 /// A `Result` containing the solution path, or an error string if matrix inversion fails.

@@ -1,8 +1,8 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
 use crate::symbolic::core::Expr;
-use crate::symbolic::optimize::*;
+use crate::symbolic::optimize::{find_extrema, hessian_matrix, find_constrained_extrema};
 
 /// Finds extrema of a function (JSON)
 #[no_mangle]
@@ -24,7 +24,7 @@ pub extern "C" fn rssn_json_find_extrema(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match find_extrema(
@@ -64,7 +64,7 @@ pub extern "C" fn rssn_json_hessian_matrix(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         let hessian = hessian_matrix(
@@ -107,7 +107,7 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
 
         let vars_refs: Vec<&str> = v
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         match find_constrained_extrema(

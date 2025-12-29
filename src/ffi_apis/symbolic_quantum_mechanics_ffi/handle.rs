@@ -232,7 +232,7 @@ pub unsafe extern "C" fn rssn_hamiltonian_harmonic_oscillator(
     ))
 }
 
-/// Pauli matrices σ_x, σ_y, σ_z.
+/// Pauli matrices `σ_x`, `σ_y`, `σ_z`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_pauli_matrices(

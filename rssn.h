@@ -1778,7 +1778,7 @@ char *numerical_optimize_solve_json(const char *aJsonPtr)
 /*
  Optimizes the sphere function using gradient descent via handle-based FFI.
 
- The sphere function is a convex test function: f(x) = Σx_i², commonly used
+ The sphere function is a convex test function: f(x) = `Σx_i²`, commonly used
  to verify that optimization algorithms can find the global minimum at the origin.
 
  # Arguments
@@ -2289,7 +2289,7 @@ struct rssn_Expr *rssn_bessel_differential_equation(const struct rssn_Expr *aY,
 ;
 
 /*
- Computes the symbolic modified Bessel function of the first kind I_n(x).
+ Computes the symbolic modified Bessel function of the first kind `I_n(x)`.
  */
 rssn_
 struct rssn_Expr *rssn_bessel_i(const struct rssn_Expr *aOrder,
@@ -2311,7 +2311,7 @@ double rssn_bessel_i1(double aX)
 ;
 
 /*
- Computes the symbolic Bessel function of the first kind J_n(x).
+ Computes the symbolic Bessel function of the first kind `J_n(x)`.
  */
 rssn_
 struct rssn_Expr *rssn_bessel_j(const struct rssn_Expr *aOrder,
@@ -2333,7 +2333,7 @@ double rssn_bessel_j1(double aX)
 ;
 
 /*
- Computes the symbolic modified Bessel function of the second kind K_n(x).
+ Computes the symbolic modified Bessel function of the second kind `K_n(x)`.
  */
 rssn_
 struct rssn_Expr *rssn_bessel_k(const struct rssn_Expr *aOrder,
@@ -2355,7 +2355,7 @@ double rssn_bessel_k1(double aX)
 ;
 
 /*
- Computes the symbolic Bessel function of the second kind Y_n(x).
+ Computes the symbolic Bessel function of the second kind `Y_n(x)`.
  */
 rssn_
 struct rssn_Expr *rssn_bessel_y(const struct rssn_Expr *aOrder,
@@ -2425,7 +2425,7 @@ struct rssn_BezierCurve *rssn_bezier_curve_new(const rssn_Vector *aPoints,
 
 /*
  Splits a Bezier curve at parameter t into two curves.
- Returns left curve. Use rssn_bezier_curve_split_right for the right curve.
+ Returns left curve. Use `rssn_bezier_curve_split_right` for the right curve.
  */
 rssn_
 struct rssn_BezierCurve *rssn_bezier_curve_split_left(const struct rssn_BezierCurve *aCurve,
@@ -2600,10 +2600,10 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_differential_equation(struct rssn_
 ;
 
 /*
- Computes the modified Bessel function of the first kind I_n(x).
+ Computes the modified Bessel function of the first kind `I_n(x)`.
 
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
- and returns a bincode-serialized `Expr` representing I_n(x).
+ and returns a bincode-serialized `Expr` representing `I_n(x)`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_i(struct rssn_BincodeBuffer aOrderBuf,
@@ -2625,10 +2625,10 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_i1(struct rssn_BincodeBuffer aValB
 ;
 
 /*
- Computes the Bessel function of the first kind J_n(x).
+ Computes the Bessel function of the first kind `J_n(x)`.
 
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
- and returns a bincode-serialized `Expr` representing J_n(x).
+ and returns a bincode-serialized `Expr` representing `J_n(x)`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_j(struct rssn_BincodeBuffer aOrderBuf,
@@ -2650,10 +2650,10 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_j1(struct rssn_BincodeBuffer aValB
 ;
 
 /*
- Computes the modified Bessel function of the second kind K_n(x).
+ Computes the modified Bessel function of the second kind `K_n(x)`.
 
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
- and returns a bincode-serialized `Expr` representing K_n(x).
+ and returns a bincode-serialized `Expr` representing `K_n(x)`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_k(struct rssn_BincodeBuffer aOrderBuf,
@@ -2675,10 +2675,10 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_k1(struct rssn_BincodeBuffer aValB
 ;
 
 /*
- Computes the Bessel function of the second kind Y_n(x).
+ Computes the Bessel function of the second kind `Y_n(x)`.
 
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
- and returns a bincode-serialized `Expr` representing Y_n(x).
+ and returns a bincode-serialized `Expr` representing `Y_n(x)`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_bessel_y(struct rssn_BincodeBuffer aOrderBuf,
@@ -2845,10 +2845,10 @@ struct rssn_BincodeBuffer rssn_bincode_chebyshev_differential_equation(struct rs
 ;
 
 /*
- Computes the Chebyshev polynomial of the first kind T_n(x).
+ Computes the Chebyshev polynomial of the first kind `T_n(x)`.
 
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
- and returns a bincode-serialized `Expr` representing T_n(x).
+ and returns a bincode-serialized `Expr` representing `T_n(x)`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_chebyshev_t(struct rssn_BincodeBuffer aNBuf,
@@ -2856,10 +2856,10 @@ struct rssn_BincodeBuffer rssn_bincode_chebyshev_t(struct rssn_BincodeBuffer aNB
 ;
 
 /*
- Computes the Chebyshev polynomial of the second kind U_n(x).
+ Computes the Chebyshev polynomial of the second kind `U_n(x)`.
 
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
- and returns a bincode-serialized `Expr` representing U_n(x).
+ and returns a bincode-serialized `Expr` representing `U_n(x)`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_chebyshev_u(struct rssn_BincodeBuffer aNBuf,
@@ -3097,7 +3097,7 @@ struct rssn_BincodeBuffer rssn_bincode_crc32_update(struct rssn_BincodeBuffer aC
 
 /*
  Verifies CRC-32 checksum via Bincode interface.
- Input: (data: Vec<u8>, expected_crc: u32)
+ Input: (data: Vec<u8>, `expected_crc`: u32)
  Returns: bool
  */
 rssn_
@@ -3242,7 +3242,7 @@ struct rssn_BincodeBuffer rssn_bincode_digamma_numerical(struct rssn_BincodeBuff
  Creates a dihedral group of order `2n` and returns it as a Bincode buffer.
 
  # Arguments
- * `n` - The parameter defining the dihedral group $D_n$.
+ * `n` - The parameter defining the dihedral group $`D_n`$.
 
  # Returns
  A `BincodeBuffer` containing the serialized representation of the group.
@@ -3848,10 +3848,10 @@ struct rssn_BincodeBuffer rssn_bincode_general_sqrt(struct rssn_BincodeBuffer aZ
 ;
 
 /*
- Computes the generalized Laguerre polynomial L_n^α(x).
+ Computes the generalized Laguerre polynomial `L_n^α(x)`.
 
  Takes bincode-serialized `Expr` representing `n`, `alpha`, and `x` as inputs,
- and returns a bincode-serialized `Expr` representing L_n^α(x).
+ and returns a bincode-serialized `Expr` representing `L_n^α(x)`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_generalized_laguerre(struct rssn_BincodeBuffer aNBuf,
@@ -4400,7 +4400,7 @@ struct rssn_BincodeBuffer rssn_bincode_hamming_check(struct rssn_BincodeBuffer a
 
 /*
  Decodes a 7-bit Hamming(7,4) codeword via Bincode interface.
- Returns tuple of (data, error_pos).
+ Returns tuple of (data, `error_pos`).
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_hamming_decode(struct rssn_BincodeBuffer aCodewordBuf)
@@ -4445,10 +4445,10 @@ struct rssn_BincodeBuffer rssn_bincode_hermite_differential_equation(struct rssn
 ;
 
 /*
- Computes the Hermite polynomial H_n(x).
+ Computes the Hermite polynomial `H_n(x)`.
 
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
- and returns a bincode-serialized `Expr` representing H_n(x).
+ and returns a bincode-serialized `Expr` representing `H_n(x)`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_hermite_h(struct rssn_BincodeBuffer aDegreeBuf,
@@ -4518,7 +4518,7 @@ struct rssn_BincodeBuffer rssn_bincode_ideal_gas_law(struct rssn_BincodeBuffer a
 ;
 
 /*
- Creates a new IteratedFunctionSystem (Bincode)
+ Creates a new `IteratedFunctionSystem` (Bincode)
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_ifs_create(struct rssn_BincodeBuffer aFunctionsBuf,
@@ -4711,10 +4711,10 @@ struct rssn_BincodeBuffer rssn_bincode_laguerre_differential_equation(struct rss
 ;
 
 /*
- Computes the Laguerre polynomial L_n(x).
+ Computes the Laguerre polynomial `L_n(x)`.
 
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
- and returns a bincode-serialized `Expr` representing L_n(x).
+ and returns a bincode-serialized `Expr` representing `L_n(x)`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_laguerre_l(struct rssn_BincodeBuffer aDegreeBuf,
@@ -4823,10 +4823,10 @@ struct rssn_BincodeBuffer rssn_bincode_legendre_differential_equation(struct rss
 ;
 
 /*
- Computes the Legendre polynomial P_n(x).
+ Computes the Legendre polynomial `P_n(x)`.
 
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
- and returns a bincode-serialized `Expr` representing P_n(x).
+ and returns a bincode-serialized `Expr` representing `P_n(x)`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_legendre_p(struct rssn_BincodeBuffer aDegreeBuf,
@@ -5616,7 +5616,7 @@ struct rssn_BincodeBuffer rssn_bincode_rotation_axis_angle(struct rssn_BincodeBu
 
 /*
  Checks if a Reed-Solomon codeword is valid via Bincode interface.
- Input: (codeword: Vec<u8>, n_sym: usize)
+ Input: (codeword: Vec<u8>, `n_sym`: usize)
  Returns: bool
  */
 rssn_
@@ -5642,7 +5642,7 @@ struct rssn_BincodeBuffer rssn_bincode_rs_encode(struct rssn_BincodeBuffer aData
 
 /*
  Estimates error count in a Reed-Solomon codeword via Bincode interface.
- Input: (codeword: Vec<u8>, n_sym: usize)
+ Input: (codeword: Vec<u8>, `n_sym`: usize)
  Returns: usize
  */
 rssn_
@@ -5725,7 +5725,7 @@ struct rssn_BincodeBuffer rssn_bincode_simplex_dimension(struct rssn_BincodeBuff
 ;
 
 /*
- Adds a simplex to a SimplicialComplex (Bincode)
+ Adds a simplex to a `SimplicialComplex` (Bincode)
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_simplicial_complex_add_simplex(struct rssn_BincodeBuffer aComplexBuf,
@@ -5733,7 +5733,7 @@ struct rssn_BincodeBuffer rssn_bincode_simplicial_complex_add_simplex(struct rss
 ;
 
 /*
- Applies the symbolic boundary operator to a SymbolicChain (Bincode)
+ Applies the symbolic boundary operator to a `SymbolicChain` (Bincode)
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_simplicial_complex_apply_symbolic_boundary_operator(struct rssn_BincodeBuffer aComplexBuf,
@@ -5741,7 +5741,7 @@ struct rssn_BincodeBuffer rssn_bincode_simplicial_complex_apply_symbolic_boundar
 ;
 
 /*
- Creates a new SimplicialComplex (Bincode)
+ Creates a new `SimplicialComplex` (Bincode)
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_simplicial_complex_create(void)
@@ -6083,7 +6083,7 @@ struct rssn_BincodeBuffer rssn_bincode_summation(struct rssn_BincodeBuffer aExpr
 ;
 
 /*
- Adds a term to a SymbolicChain (Bincode)
+ Adds a term to a `SymbolicChain` (Bincode)
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_symbolic_chain_add_term(struct rssn_BincodeBuffer aChainBuf,
@@ -6092,7 +6092,7 @@ struct rssn_BincodeBuffer rssn_bincode_symbolic_chain_add_term(struct rssn_Binco
 ;
 
 /*
- Creates a new SymbolicChain (Bincode)
+ Creates a new `SymbolicChain` (Bincode)
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_symbolic_chain_create(size_t aDimension)
@@ -6555,7 +6555,7 @@ size_t rssn_cad_get_cell_count(const struct rssn_Cad *aPtr)
 /*
  Computes CAD for a set of polynomials (Handle).
 
- Expects an array of Expr handles (which must be SparsePolynomial variants)
+ Expects an array of Expr handles (which must be `SparsePolynomial` variants)
  and an array of variable name strings.
  */
 rssn_
@@ -6831,7 +6831,7 @@ struct rssn_Expr *rssn_chebyshev_differential_equation(const struct rssn_Expr *a
 ;
 
 /*
- Computes the symbolic Chebyshev polynomial of the first kind T_n(x).
+ Computes the symbolic Chebyshev polynomial of the first kind `T_n(x)`.
  */
 rssn_
 struct rssn_Expr *rssn_chebyshev_t(const struct rssn_Expr *aN,
@@ -6839,7 +6839,7 @@ struct rssn_Expr *rssn_chebyshev_t(const struct rssn_Expr *aN,
 ;
 
 /*
- Computes the symbolic Chebyshev polynomial of the second kind U_n(x).
+ Computes the symbolic Chebyshev polynomial of the second kind `U_n(x)`.
  */
 rssn_
 struct rssn_Expr *rssn_chebyshev_u(const struct rssn_Expr *aN,
@@ -7031,7 +7031,7 @@ struct rssn_Expr **rssn_complex_system_fixed_points(const struct rssn_ComplexDyn
 ;
 
 /*
- Frees a ComplexDynamicalSystem handle
+ Frees a `ComplexDynamicalSystem` handle
  */
 rssn_
 void rssn_complex_system_free(struct rssn_ComplexDynamicalSystem *aPtr)
@@ -7053,22 +7053,22 @@ struct rssn_ComplexDynamicalSystem *rssn_complex_system_new_mandelbrot(const str
 ;
 
 /*
- Clears a ComputationResultCache.
+ Clears a `ComputationResultCache`.
  */
 rssn_
 void rssn_computation_result_cache_clear(struct rssn_ComputationResultCache *aCache)
 ;
 
 /*
- Frees a ComputationResultCache.
+ Frees a `ComputationResultCache`.
  */
 rssn_
 void rssn_computation_result_cache_free(struct rssn_ComputationResultCache *aCache)
 ;
 
 /*
- Retrieves a value from the ComputationResultCache.
- Returns a C string (char*) which must be freed by the caller using rssn_free_string.
+ Retrieves a value from the `ComputationResultCache`.
+ Returns a C string (char*) which must be freed by the caller using `rssn_free_string`.
  Returns null if not found.
  */
 rssn_
@@ -7077,7 +7077,7 @@ char *rssn_computation_result_cache_get(struct rssn_ComputationResultCache *aCac
 ;
 
 /*
- Retrieves a value from the ComputationResultCache using a bincode expression key.
+ Retrieves a value from the `ComputationResultCache` using a bincode expression key.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_computation_result_cache_get_bincode(struct rssn_ComputationResultCache *aCache,
@@ -7085,7 +7085,7 @@ struct rssn_BincodeBuffer rssn_computation_result_cache_get_bincode(struct rssn_
 ;
 
 /*
- Retrieves a value from the ComputationResultCache using a JSON expression key.
+ Retrieves a value from the `ComputationResultCache` using a JSON expression key.
  Returns the value as a JSON string (e.g. "\"result\"").
  */
 rssn_
@@ -7094,15 +7094,15 @@ char *rssn_computation_result_cache_get_json(struct rssn_ComputationResultCache 
 ;
 
 /*
- Creates a new ComputationResultCache.
- The caller is responsible for freeing the memory using rssn_computation_result_cache_free.
+ Creates a new `ComputationResultCache`.
+ The caller is responsible for freeing the memory using `rssn_computation_result_cache_free`.
  */
 rssn_
 struct rssn_ComputationResultCache *rssn_computation_result_cache_new(void)
 ;
 
 /*
- Stores a value in the ComputationResultCache.
+ Stores a value in the `ComputationResultCache`.
  */
 rssn_
 void rssn_computation_result_cache_set(struct rssn_ComputationResultCache *aCache,
@@ -7111,7 +7111,7 @@ void rssn_computation_result_cache_set(struct rssn_ComputationResultCache *aCach
 ;
 
 /*
- Stores a value in the ComputationResultCache using bincode buffers.
+ Stores a value in the `ComputationResultCache` using bincode buffers.
  */
 rssn_
 void rssn_computation_result_cache_set_bincode(struct rssn_ComputationResultCache *aCache,
@@ -7120,7 +7120,7 @@ void rssn_computation_result_cache_set_bincode(struct rssn_ComputationResultCach
 ;
 
 /*
- Stores a value in the ComputationResultCache using JSON strings.
+ Stores a value in the `ComputationResultCache` using JSON strings.
  */
 rssn_
 void rssn_computation_result_cache_set_json(struct rssn_ComputationResultCache *aCache,
@@ -7376,7 +7376,7 @@ uint32_t rssn_crc32_compute(const uint8_t *aData,
 ;
 
 /*
- Finalizes a CRC-32 computation started with crc32_update.
+ Finalizes a CRC-32 computation started with `crc32_update`.
  */
 rssn_
 uint32_t rssn_crc32_finalize(uint32_t aCrc)
@@ -7438,14 +7438,14 @@ struct rssn_Expr *rssn_cross_entropy(const struct rssn_Expr *const *aPProbs,
 ;
 
 /*
- Frees a CrystalLattice.
+ Frees a `CrystalLattice`.
  */
 rssn_
 void rssn_crystal_lattice_free(struct rssn_CrystalLattice *aPtr)
 ;
 
 /*
- Creates a new CrystalLattice.
+ Creates a new `CrystalLattice`.
  */
 rssn_
 struct rssn_CrystalLattice *rssn_crystal_lattice_new(const rssn_Vector *aA1,
@@ -7653,7 +7653,7 @@ double rssn_digamma_numerical(double aX)
  Creates a dihedral group of order `2n` and returns a raw pointer to it.
 
  # Arguments
- * `n` - The parameter defining the dihedral group $D_n$.
+ * `n` - The parameter defining the dihedral group $`D_n`$.
 
  # Returns
  A raw pointer (`*mut Group`) to the newly created group.
@@ -8519,7 +8519,7 @@ void rssn_free_critical_point_vec_handle(struct rssn_Vec_CriticalPoint *aPtr)
 ;
 
 /*
- Frees a DifferentialForm handle
+ Frees a `DifferentialForm` handle
  */
 rssn_
 void rssn_free_differential_form_handle(struct rssn_DifferentialForm *aPtr)
@@ -8602,7 +8602,7 @@ void rssn_free_poly_vec_handle(struct rssn_Vec_FiniteFieldPolynomial *aPtr)
 ;
 
 /*
- Frees a Vec<HashMap<Expr, Expr>> handle
+ Frees a Vec<`HashMap`<Expr, Expr>> handle
  */
 rssn_
 void rssn_free_solution_vec_handle(struct rssn_Vec_HashMap_Expr__Expr *aPtr)
@@ -8718,7 +8718,7 @@ struct rssn_Expr *rssn_general_sqrt_handle(const struct rssn_Expr *aZ,
 ;
 
 /*
- Computes the symbolic Generalized Laguerre polynomial L_n^α(x).
+ Computes the symbolic Generalized Laguerre polynomial `L_n^α(x)`.
  */
 rssn_
 struct rssn_Expr *rssn_generalized_laguerre(const struct rssn_Expr *aN,
@@ -8770,15 +8770,15 @@ struct rssn_CurvePoint *rssn_generate_shared_secret(const struct rssn_EllipticCu
 
 /*
  Returns the build date as a C string.
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_get_build_date(void)
 ;
 
 /*
- Returns the build date as a bincode_next buffer.
- The caller must free the returned buffer using rssn_free_bincode_buffer.
+ Returns the build date as a `bincode_next` buffer.
+ The caller must free the returned buffer using `rssn_free_bincode_buffer`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_get_build_date_bincode(void)
@@ -8786,15 +8786,15 @@ struct rssn_BincodeBuffer rssn_get_build_date_bincode(void)
 
 /*
  Returns the build date as a JSON string.
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_get_build_date_json(void)
 ;
 
 /*
- Returns all build information as a bincode_next buffer.
- The caller must free the returned buffer using rssn_free_bincode_buffer.
+ Returns all build information as a `bincode_next` buffer.
+ The caller must free the returned buffer using `rssn_free_bincode_buffer`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_get_build_info_bincode(void)
@@ -8802,7 +8802,7 @@ struct rssn_BincodeBuffer rssn_get_build_info_bincode(void)
 
 /*
  Returns all build information as a JSON string.
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_get_build_info_json(void)
@@ -8810,7 +8810,7 @@ char *rssn_get_build_info_json(void)
 
 /*
  Returns the cargo target triple as a C string.
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_get_cargo_target_triple(void)
@@ -8818,15 +8818,15 @@ char *rssn_get_cargo_target_triple(void)
 
 /*
  Returns the commit SHA as a C string.
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_get_commit_sha(void)
 ;
 
 /*
- Returns the commit SHA as a bincode_next buffer.
- The caller must free the returned buffer using rssn_free_bincode_buffer.
+ Returns the commit SHA as a `bincode_next` buffer.
+ The caller must free the returned buffer using `rssn_free_bincode_buffer`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_get_commit_sha_bincode(void)
@@ -8834,7 +8834,7 @@ struct rssn_BincodeBuffer rssn_get_commit_sha_bincode(void)
 
 /*
  Returns the commit SHA as a JSON string.
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_get_commit_sha_json(void)
@@ -8852,6 +8852,7 @@ const char *rssn_get_last_error(void)
 
 /*
  Gets real and imaginary parts of an expression.
+
  Returns a pointer to a tuple (Expr, Expr) - represented as Vec<Expr> of size 2 for simplicity?
  Or return two out pointers?
  I'll return a Vec<Expr> of size 2.
@@ -8862,7 +8863,7 @@ struct rssn_Vec_Expr *rssn_get_real_imag_parts(const struct rssn_Expr *aExpr)
 
 /*
  Returns the rustc version as a C string.
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_get_rustc_version(void)
@@ -8870,7 +8871,7 @@ char *rssn_get_rustc_version(void)
 
 /*
  Returns the system info as a C string.
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_get_system_info(void)
@@ -9016,7 +9017,7 @@ char *rssn_graph_bfs_api(const struct rssn_RssnGraph *aGraph,
 
 /*
  Finds maximum matching in a bipartite graph.
- partition_json should be a JSON array of 0s and 1s indicating the partition.
+ `partition_json` should be a JSON array of 0s and 1s indicating the partition.
  Returns a JSON array of [u, v] pairs representing the matching.
  */
 rssn_
@@ -9026,7 +9027,7 @@ char *rssn_graph_bipartite_maximum_matching(const struct rssn_RssnGraph *aGraph,
 
 /*
  Finds bridges and articulation points.
- Returns a JSON object with "bridges" and "articulation_points" fields.
+ Returns a JSON object with "bridges" and "`articulation_points`" fields.
  */
 rssn_
 char *rssn_graph_bridges_and_articulation_points_api(const struct rssn_RssnGraph *aGraph)
@@ -9611,7 +9612,7 @@ struct rssn_BincodeBuffer rssn_handle_clone_bincode(struct rssn_BincodeBuffer aI
  Clones a handle (JSON).
 
  Input: JSON object with "handle" field
- Output: JSON object with "new_handle" field
+ Output: JSON object with "`new_handle`" field
  */
 rssn_
 char *rssn_handle_clone_json(const char *aJsonStr)
@@ -9789,7 +9790,7 @@ struct rssn_Expr *rssn_hermite_differential_equation(const struct rssn_Expr *aY,
 ;
 
 /*
- Computes the symbolic Hermite polynomial H_n(x).
+ Computes the symbolic Hermite polynomial `H_n(x)`.
  */
 rssn_
 struct rssn_Expr *rssn_hermite_h(const struct rssn_Expr *aDegree,
@@ -9871,7 +9872,7 @@ int32_t rssn_ifft(rssn_Complex<double> *aData,
 ;
 
 /*
- Creates a new IteratedFunctionSystem (Handle)
+ Creates a new `IteratedFunctionSystem` (Handle)
  */
 rssn_
 struct rssn_IteratedFunctionSystem *rssn_ifs_create(struct rssn_Expr *const *aFunctionsPtr,
@@ -9883,7 +9884,7 @@ struct rssn_IteratedFunctionSystem *rssn_ifs_create(struct rssn_Expr *const *aFu
 ;
 
 /*
- Frees an IteratedFunctionSystem handle
+ Frees an `IteratedFunctionSystem` handle
  */
 rssn_
 void rssn_ifs_free(struct rssn_IteratedFunctionSystem *aPtr)
@@ -10267,7 +10268,7 @@ char *rssn_json_bessel_differential_equation(const char *aYJson,
 ;
 
 /*
- Computes the symbolic modified Bessel function I_n(x) via JSON interface.
+ Computes the symbolic modified Bessel function `I_n(x)` via JSON interface.
  */
 rssn_
 char *rssn_json_bessel_i(const char *aOrderJson,
@@ -10289,7 +10290,7 @@ char *rssn_json_bessel_i1(const char *aXJson)
 ;
 
 /*
- Computes the symbolic Bessel function J_n(x) via JSON interface.
+ Computes the symbolic Bessel function `J_n(x)` via JSON interface.
  */
 rssn_
 char *rssn_json_bessel_j(const char *aOrderJson,
@@ -10311,7 +10312,7 @@ char *rssn_json_bessel_j1(const char *aXJson)
 ;
 
 /*
- Computes the symbolic modified Bessel function K_n(x) via JSON interface.
+ Computes the symbolic modified Bessel function `K_n(x)` via JSON interface.
  */
 rssn_
 char *rssn_json_bessel_k(const char *aOrderJson,
@@ -10333,7 +10334,7 @@ char *rssn_json_bessel_k1(const char *aXJson)
 ;
 
 /*
- Computes the symbolic Bessel function Y_n(x) via JSON interface.
+ Computes the symbolic Bessel function `Y_n(x)` via JSON interface.
  */
 rssn_
 char *rssn_json_bessel_y(const char *aOrderJson,
@@ -10491,7 +10492,7 @@ char *rssn_json_chebyshev_differential_equation(const char *aYJson,
 ;
 
 /*
- Computes the symbolic Chebyshev polynomial T_n(x) via JSON interface.
+ Computes the symbolic Chebyshev polynomial `T_n(x)` via JSON interface.
  */
 rssn_
 char *rssn_json_chebyshev_t(const char *aNJson,
@@ -10499,7 +10500,7 @@ char *rssn_json_chebyshev_t(const char *aNJson,
 ;
 
 /*
- Computes the symbolic Chebyshev polynomial U_n(x) via JSON interface.
+ Computes the symbolic Chebyshev polynomial `U_n(x)` via JSON interface.
  */
 rssn_
 char *rssn_json_chebyshev_u(const char *aNJson,
@@ -10750,7 +10751,7 @@ char *rssn_json_crc32_update(const char *aCrcJson,
 
 /*
  Verifies CRC-32 checksum via JSON interface.
- Input: data as [bytes], expected_crc as u32
+ Input: data as [bytes], `expected_crc` as u32
  Returns: boolean
  */
 rssn_
@@ -10893,7 +10894,7 @@ char *rssn_json_digamma_numerical(const char *aXJson)
  Creates a dihedral group of order `2n` and returns it as a JSON string.
 
  # Arguments
- * `n` - The parameter defining the dihedral group $D_n$.
+ * `n` - The parameter defining the dihedral group $`D_n`$.
 
  # Returns
  A raw pointer to a JSON string representing the group.
@@ -11501,7 +11502,7 @@ char *rssn_json_general_sqrt(const char *aZJson,
 ;
 
 /*
- Computes the symbolic Generalized Laguerre polynomial L_n^α(x) via JSON interface.
+ Computes the symbolic Generalized Laguerre polynomial `L_n^α(x)` via JSON interface.
  */
 rssn_
 char *rssn_json_generalized_laguerre(const char *aNJson,
@@ -11620,7 +11621,7 @@ char *rssn_json_graph_add_edge(const char *aJson)
 
 /*
  Adds a node to the graph.
- Input JSON: {"graph": <graph>, "label": "node_label"}
+ Input JSON: {"graph": <graph>, "label": "`node_label`"}
  Returns updated graph as JSON.
  */
 rssn_
@@ -11638,7 +11639,7 @@ char *rssn_json_graph_adjacency_matrix(const char *aJson)
 
 /*
  Performs BFS traversal.
- Input JSON: {"graph": <graph>, "start_node": <index>}
+ Input JSON: {"graph": <graph>, "`start_node"`: <index>}
  */
 rssn_
 char *rssn_json_graph_bfs(const char *aJson)
@@ -11646,7 +11647,7 @@ char *rssn_json_graph_bfs(const char *aJson)
 
 /*
  Performs BFS traversal.
- Input: {"graph": Graph, "start_node": usize}
+ Input: {"graph": Graph, "`start_node"`: usize}
  Output: [usize]
  */
 rssn_
@@ -11665,7 +11666,7 @@ char *rssn_json_graph_bipartite_maximum_matching(const char *aJson)
 /*
  Finds bridges and articulation points.
  Input: Graph
- Output: {"bridges": [(usize, usize)], "articulation_points": [usize]}
+ Output: {"bridges": [(usize, usize)], "`articulation_points"`: [usize]}
  */
 rssn_
 char *rssn_json_graph_bridges_and_articulation_points(const char *aJson)
@@ -11710,7 +11711,7 @@ char *rssn_json_graph_dfs(const char *aJson)
 
 /*
  Performs DFS traversal.
- Input: {"graph": Graph, "start_node": usize}
+ Input: {"graph": Graph, "`start_node"`: usize}
  Output: [usize] (array of node indices)
  */
 rssn_
@@ -11838,7 +11839,7 @@ char *rssn_json_graph_max_flow(const char *aJson)
 
 /*
  Creates a new graph from JSON specification.
- JSON format: {"is_directed": true/false}
+ JSON format: {"`is_directed"`: true/false}
  */
 rssn_
 char *rssn_json_graph_new(const char *aJson)
@@ -11880,7 +11881,7 @@ char *rssn_json_graph_union(const char *aJson)
 /*
  Greedy coloring.
  Input: Graph
- Output: {node_id: color_id}
+ Output: {`node_id`: `color_id`}
  */
 rssn_
 char *rssn_json_greedy_coloring(const char *aJson)
@@ -12082,7 +12083,7 @@ char *rssn_json_hamming_check(const char *aCodewordJson)
 
 /*
  Decodes a 7-bit Hamming(7,4) codeword via JSON interface.
- Returns JSON object with "data" and "error_pos" fields.
+ Returns JSON object with "data" and "`error_pos`" fields.
  */
 rssn_
 char *rssn_json_hamming_decode(const char *aCodewordJson)
@@ -12124,7 +12125,7 @@ char *rssn_json_hermite_differential_equation(const char *aYJson,
 ;
 
 /*
- Computes the symbolic Hermite polynomial H_n(x) via JSON interface.
+ Computes the symbolic Hermite polynomial `H_n(x)` via JSON interface.
  */
 rssn_
 char *rssn_json_hermite_h(const char *aDegreeJson,
@@ -12191,7 +12192,7 @@ char *rssn_json_ideal_gas_law(const char *aPJson,
 ;
 
 /*
- Creates a new IteratedFunctionSystem (JSON)
+ Creates a new `IteratedFunctionSystem` (JSON)
  */
 rssn_
 char *rssn_json_ifs_create(const char *aFunctionsJson,
@@ -12381,7 +12382,7 @@ char *rssn_json_laguerre_differential_equation(const char *aYJson,
 ;
 
 /*
- Computes the symbolic Laguerre polynomial L_n(x) via JSON interface.
+ Computes the symbolic Laguerre polynomial `L_n(x)` via JSON interface.
  */
 rssn_
 char *rssn_json_laguerre_l(const char *aDegreeJson,
@@ -12487,7 +12488,7 @@ char *rssn_json_legendre_differential_equation(const char *aYJson,
 ;
 
 /*
- Computes the symbolic Legendre polynomial P_n(x) via JSON interface.
+ Computes the symbolic Legendre polynomial `P_n(x)` via JSON interface.
  */
 rssn_
 char *rssn_json_legendre_p(const char *aDegreeJson,
@@ -13309,7 +13310,7 @@ char *rssn_json_rs_decode(const char *aCodewordJson,
 
 /*
  Encodes data using Reed-Solomon code via JSON interface.
- Input: {"data": [bytes], "n_sym": number}
+ Input: {"data": [bytes], "`n_sym"`: number}
  */
 rssn_
 char *rssn_json_rs_encode(const char *aDataJson,
@@ -13400,7 +13401,7 @@ char *rssn_json_simplex_dimension(const char *aSimplexJson)
 ;
 
 /*
- Adds a simplex to a SimplicialComplex (JSON)
+ Adds a simplex to a `SimplicialComplex` (JSON)
  */
 rssn_
 char *rssn_json_simplicial_complex_add_simplex(const char *aComplexJson,
@@ -13408,7 +13409,7 @@ char *rssn_json_simplicial_complex_add_simplex(const char *aComplexJson,
 ;
 
 /*
- Applies the symbolic boundary operator to a SymbolicChain (JSON)
+ Applies the symbolic boundary operator to a `SymbolicChain` (JSON)
  */
 rssn_
 char *rssn_json_simplicial_complex_apply_symbolic_boundary_operator(const char *aComplexJson,
@@ -13416,7 +13417,7 @@ char *rssn_json_simplicial_complex_apply_symbolic_boundary_operator(const char *
 ;
 
 /*
- Creates a new SimplicialComplex (JSON)
+ Creates a new `SimplicialComplex` (JSON)
  */
 rssn_
 char *rssn_json_simplicial_complex_create(void)
@@ -13753,7 +13754,7 @@ char *rssn_json_summation(const char *aExprJson,
 ;
 
 /*
- Adds a term to a SymbolicChain (JSON)
+ Adds a term to a `SymbolicChain` (JSON)
  */
 rssn_
 char *rssn_json_symbolic_chain_add_term(const char *aChainJson,
@@ -13762,7 +13763,7 @@ char *rssn_json_symbolic_chain_add_term(const char *aChainJson,
 ;
 
 /*
- Creates a new SymbolicChain (JSON)
+ Creates a new `SymbolicChain` (JSON)
  */
 rssn_
 char *rssn_json_symbolic_chain_create(size_t aDimension)
@@ -14385,8 +14386,8 @@ struct rssn_BincodeBuffer rssn_knuth_bendix_bincode(struct rssn_BincodeBuffer aI
 /*
  Applies the Knuth-Bendix completion algorithm (JSON).
 
- Input: JSON array of equations (Expr::Eq)
- Output: JSON array of RewriteRule objects
+ Input: JSON array of equations (`Expr::Eq`)
+ Output: JSON array of `RewriteRule` objects
  */
 rssn_
 char *rssn_knuth_bendix_json(const char *aJsonStr)
@@ -14410,7 +14411,7 @@ struct rssn_Expr *rssn_laguerre_differential_equation(const struct rssn_Expr *aY
 ;
 
 /*
- Computes the symbolic Laguerre polynomial L_n(x).
+ Computes the symbolic Laguerre polynomial `L_n(x)`.
  */
 rssn_
 struct rssn_Expr *rssn_laguerre_l(const struct rssn_Expr *aDegree,
@@ -14518,7 +14519,7 @@ struct rssn_Expr *rssn_legendre_differential_equation(const struct rssn_Expr *aY
 ;
 
 /*
- Computes the symbolic Legendre polynomial P_n(x).
+ Computes the symbolic Legendre polynomial `P_n(x)`.
  */
 rssn_
 struct rssn_Expr *rssn_legendre_p(const struct rssn_Expr *aDegree,
@@ -15270,7 +15271,7 @@ char *rssn_num_b_spline_json(const char *aInputPtr)
 
 /*
  Evaluates a Bézier curve at parameter t.
- control_points is a flattened array of size n_points * dim.
+ `control_points` is a flattened array of size `n_points` * dim.
  */
 rssn_
 int32_t rssn_num_bezier_curve(const double *aControlPoints,
@@ -15464,7 +15465,7 @@ double rssn_num_cfd_diffusion_number(double aAlpha,
 /*
  Computes derived fluid properties from fundamental properties using JSON serialization.
 
- This function calculates kinematic viscosity (ν = μ/ρ), thermal diffusivity (α = k/(ρc_p)),
+ This function calculates kinematic viscosity (ν = μ/ρ), thermal diffusivity (α = `k/(ρc_p)`),
  and Prandtl number (Pr = ν/α) from input material properties.
 
  # Arguments
@@ -15473,7 +15474,7 @@ double rssn_num_cfd_diffusion_number(double aAlpha,
    - `density`: Fluid density ρ (kg/m³)
    - `dynamic_viscosity`: Dynamic viscosity μ (Pa·s)
    - `thermal_conductivity`: Thermal conductivity k (W/(m·K))
-   - `specific_heat`: Specific heat capacity c_p (J/(kg·K))
+   - `specific_heat`: Specific heat capacity `c_p` (J/(kg·K))
 
  # Returns
 
@@ -15521,7 +15522,7 @@ double rssn_num_cfd_reynolds_number(double aVelocity,
  Computes the Reynolds number for fluid flow using bincode serialization.
 
  The Reynolds number is a dimensionless quantity characterizing the flow regime:
- Re = (velocity × length) / kinematic_viscosity
+ Re = (velocity × length) / `kinematic_viscosity`
 
  # Arguments
 
@@ -15549,7 +15550,7 @@ struct rssn_BincodeBuffer rssn_num_cfd_reynolds_number_bincode(struct rssn_Binco
  Computes the Reynolds number for fluid flow using JSON serialization.
 
  The Reynolds number characterizes the flow regime (laminar vs. turbulent):
- Re = (velocity × length) / kinematic_viscosity
+ Re = (velocity × length) / `kinematic_viscosity`
 
  # Arguments
 
@@ -15784,7 +15785,7 @@ char *rssn_num_comb_bell_json(const char *aInputJson)
 ;
 
 /*
- Computes the Catalan number C_n.
+ Computes the Catalan number `C_n`.
  */
 rssn_
 int32_t rssn_num_comb_catalan(uint64_t aN,
@@ -16987,7 +16988,7 @@ double rssn_num_fea_material_copper_shear_modulus(void)
    - `density`: Material density ρ (kg/m³)
    - `thermal_conductivity`: Thermal conductivity k (W/(m·K))
    - `thermal_expansion`: Thermal expansion coefficient α (1/K)
-   - `yield_strength`: Yield strength σ_y (Pa)
+   - `yield_strength`: Yield strength `σ_y` (Pa)
 
  # Returns
 
@@ -17007,7 +17008,7 @@ char *rssn_num_fea_material_properties_json(const char *aInput)
 /*
  Returns standard material properties for structural steel using JSON serialization.
 
- Provides reference properties for mild steel (E ≈ 200 GPa, ν ≈ 0.3, ρ ≈ 7850 kg/m³).
+ Provides reference properties for mild steel (E ≈ 200 `GPa`, ν ≈ 0.3, ρ ≈ 7850 kg/m³).
 
  # Arguments
 
@@ -17044,7 +17045,7 @@ double rssn_num_fea_max_shear_stress(double aSigma1,
 
 /*
  Computes principal stresses from stress components.
- Returns sigma1 in out_sigma1, sigma2 in out_sigma2, angle in out_angle.
+ Returns sigma1 in `out_sigma1`, sigma2 in `out_sigma2`, angle in `out_angle`.
 
  # Safety
  Pointers must be valid.
@@ -17067,9 +17068,9 @@ int32_t rssn_num_fea_principal_stresses(double aSx,
  # Arguments
 
  * `buffer` - A bincode-encoded buffer containing `StressInput` with:
-   - `sx`: Normal stress in x-direction σ_x (Pa)
-   - `sy`: Normal stress in y-direction σ_y (Pa)
-   - `txy`: Shear stress τ_xy (Pa)
+   - `sx`: Normal stress in x-direction `σ_x` (Pa)
+   - `sy`: Normal stress in y-direction `σ_y` (Pa)
+   - `txy`: Shear stress `τ_xy` (Pa)
 
  # Returns
 
@@ -17098,9 +17099,9 @@ struct rssn_BincodeBuffer rssn_num_fea_principal_stresses_bincode(struct rssn_Bi
  # Arguments
 
  * `input` - A JSON string pointer containing:
-   - `sx`: Normal stress in x-direction σ_x (Pa)
-   - `sy`: Normal stress in y-direction σ_y (Pa)
-   - `txy`: Shear stress τ_xy (Pa)
+   - `sx`: Normal stress in x-direction `σ_x` (Pa)
+   - `sy`: Normal stress in y-direction `σ_y` (Pa)
+   - `txy`: Shear stress `τ_xy` (Pa)
 
  # Returns
 
@@ -17122,15 +17123,15 @@ char *rssn_num_fea_principal_stresses_json(const char *aInput)
  Computes the factor of safety against yielding using the von Mises criterion and JSON serialization.
 
  The safety factor is the ratio of yield strength to equivalent stress:
- SF = σ_yield / σ_vm. A value > 1 indicates the material will not yield.
+ SF = `σ_yield` / `σ_vm`. A value > 1 indicates the material will not yield.
 
  # Arguments
 
  * `input` - A JSON string pointer containing:
-   - `sx`: Normal stress in x-direction σ_x (Pa)
-   - `sy`: Normal stress in y-direction σ_y (Pa)
-   - `txy`: Shear stress τ_xy (Pa)
-   - `yield_strength`: Material yield strength σ_y (Pa)
+   - `sx`: Normal stress in x-direction `σ_x` (Pa)
+   - `sy`: Normal stress in y-direction `σ_y` (Pa)
+   - `txy`: Shear stress `τ_xy` (Pa)
+   - `yield_strength`: Material yield strength `σ_y` (Pa)
 
  # Returns
 
@@ -17178,7 +17179,7 @@ double rssn_num_fea_thermal_element_1d_conductivity(double aLength,
  Computes the thermal conductivity coefficient for a 1D thermal element using JSON serialization.
 
  The thermal conductivity represents the heat flow-temperature relationship:
- k_thermal = (k × A) / L, where k is thermal conductivity, A is area, and L is length.
+ `k_thermal` = (k × A) / L, where k is thermal conductivity, A is area, and L is length.
 
  # Arguments
 
@@ -17214,19 +17215,19 @@ double rssn_num_fea_von_mises_stress(double aSx,
  Computes the von Mises equivalent stress from a 2D stress state using bincode serialization.
 
  The von Mises stress is a scalar measure of stress intensity used in yield criteria:
- σ_vm = √(σ_x² - σ_xσ_y + σ_y² + 3τ_xy²)
+ `σ_vm` = √(`σ_x²` - `σ_xσ_y` + `σ_y²` + `3τ_xy²`)
 
  # Arguments
 
  * `buffer` - A bincode-encoded buffer containing `StressInput` with:
-   - `sx`: Normal stress in x-direction σ_x (Pa)
-   - `sy`: Normal stress in y-direction σ_y (Pa)
-   - `txy`: Shear stress τ_xy (Pa)
+   - `sx`: Normal stress in x-direction `σ_x` (Pa)
+   - `sy`: Normal stress in y-direction `σ_y` (Pa)
+   - `txy`: Shear stress `τ_xy` (Pa)
 
  # Returns
 
  A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
- - `ok`: The von Mises stress σ_vm (Pa)
+ - `ok`: The von Mises stress `σ_vm` (Pa)
  - `err`: Error message if deserialization failed
 
  # Safety
@@ -17242,19 +17243,19 @@ struct rssn_BincodeBuffer rssn_num_fea_von_mises_stress_bincode(struct rssn_Binc
  Computes the von Mises equivalent stress from a 2D stress state using JSON serialization.
 
  The von Mises stress is a scalar measure of stress intensity used in yield criteria:
- σ_vm = √(σ_x² - σ_xσ_y + σ_y² + 3τ_xy²)
+ `σ_vm` = √(`σ_x²` - `σ_xσ_y` + `σ_y²` + `3τ_xy²`)
 
  # Arguments
 
  * `input` - A JSON string pointer containing:
-   - `sx`: Normal stress in x-direction σ_x (Pa)
-   - `sy`: Normal stress in y-direction σ_y (Pa)
-   - `txy`: Shear stress τ_xy (Pa)
+   - `sx`: Normal stress in x-direction `σ_x` (Pa)
+   - `sy`: Normal stress in y-direction `σ_y` (Pa)
+   - `txy`: Shear stress `τ_xy` (Pa)
 
  # Returns
 
  A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
- the von Mises stress σ_vm (Pa).
+ the von Mises stress `σ_vm` (Pa).
 
  # Safety
 
@@ -17321,14 +17322,14 @@ char *rssn_num_ff_pfe_add_json(const char *aJsonPtr)
 ;
 
 /*
- Frees a PrimeFieldElement.
+ Frees a `PrimeFieldElement`.
  */
 rssn_
 void rssn_num_ff_pfe_free(struct rssn_PrimeFieldElement *aPfe)
 ;
 
 /*
- Computes the inverse of a PrimeFieldElement.
+ Computes the inverse of a `PrimeFieldElement`.
  */
 rssn_
 struct rssn_PrimeFieldElement *rssn_num_ff_pfe_inverse(const struct rssn_PrimeFieldElement *aPfe)
@@ -17358,7 +17359,7 @@ char *rssn_num_ff_pfe_mul_json(const char *aJsonPtr)
 ;
 
 /*
- Creates a new PrimeFieldElement.
+ Creates a new `PrimeFieldElement`.
  */
 rssn_
 struct rssn_PrimeFieldElement *rssn_num_ff_pfe_new(uint64_t aValue,
@@ -17729,21 +17730,21 @@ struct rssn_Multivector3D *rssn_num_ga_add(const struct rssn_Multivector3D *aMv1
 ;
 
 /*
- Bincode FFI for ga_add.
+ Bincode FFI for `ga_add`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_num_ga_add_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for ga_add.
+ JSON FFI for `ga_add`.
  */
 rssn_
 char *rssn_num_ga_add_json(const char *aJsonPtr)
 ;
 
 /*
- Creates a new Multivector3D.
+ Creates a new `Multivector3D`.
  */
 rssn_
 struct rssn_Multivector3D *rssn_num_ga_create(double aS,
@@ -17765,28 +17766,28 @@ struct rssn_Multivector3D *rssn_num_ga_dot(const struct rssn_Multivector3D *aMv1
 ;
 
 /*
- Bincode FFI for ga_dot.
+ Bincode FFI for `ga_dot`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_num_ga_dot_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for ga_dot.
+ JSON FFI for `ga_dot`.
  */
 rssn_
 char *rssn_num_ga_dot_json(const char *aJsonPtr)
 ;
 
 /*
- Frees a Multivector3D.
+ Frees a `Multivector3D`.
  */
 rssn_
 void rssn_num_ga_free(struct rssn_Multivector3D *aMv)
 ;
 
 /*
- Gets components of a Multivector3D.
+ Gets components of a `Multivector3D`.
  */
 rssn_
 int32_t rssn_num_ga_get_components(const struct rssn_Multivector3D *aMv,
@@ -17801,21 +17802,21 @@ int32_t rssn_num_ga_get_components(const struct rssn_Multivector3D *aMv,
 ;
 
 /*
- Returns the inverse of a Multivector3D.
+ Returns the inverse of a `Multivector3D`.
  */
 rssn_
 struct rssn_Multivector3D *rssn_num_ga_inv(const struct rssn_Multivector3D *aMv)
 ;
 
 /*
- Bincode FFI for ga_inv.
+ Bincode FFI for `ga_inv`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_num_ga_inv_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for ga_inv.
+ JSON FFI for `ga_inv`.
  */
 rssn_
 char *rssn_num_ga_inv_json(const char *aJsonPtr)
@@ -17830,56 +17831,56 @@ struct rssn_Multivector3D *rssn_num_ga_mul(const struct rssn_Multivector3D *aMv1
 ;
 
 /*
- Bincode FFI for ga_mul.
+ Bincode FFI for `ga_mul`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_num_ga_mul_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for ga_mul.
+ JSON FFI for `ga_mul`.
  */
 rssn_
 char *rssn_num_ga_mul_json(const char *aJsonPtr)
 ;
 
 /*
- Returns the norm of a Multivector3D.
+ Returns the norm of a `Multivector3D`.
  */
 rssn_
 double rssn_num_ga_norm(const struct rssn_Multivector3D *aMv)
 ;
 
 /*
- Bincode FFI for ga_norm.
+ Bincode FFI for `ga_norm`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_num_ga_norm_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for ga_norm.
+ JSON FFI for `ga_norm`.
  */
 rssn_
 char *rssn_num_ga_norm_json(const char *aJsonPtr)
 ;
 
 /*
- Returns the reverse of a Multivector3D.
+ Returns the reverse of a `Multivector3D`.
  */
 rssn_
 struct rssn_Multivector3D *rssn_num_ga_reverse(const struct rssn_Multivector3D *aMv)
 ;
 
 /*
- Bincode FFI for ga_reverse.
+ Bincode FFI for `ga_reverse`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_num_ga_reverse_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for ga_reverse.
+ JSON FFI for `ga_reverse`.
  */
 rssn_
 char *rssn_num_ga_reverse_json(const char *aJsonPtr)
@@ -17894,14 +17895,14 @@ struct rssn_Multivector3D *rssn_num_ga_sub(const struct rssn_Multivector3D *aMv1
 ;
 
 /*
- Bincode FFI for ga_sub.
+ Bincode FFI for `ga_sub`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_num_ga_sub_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for ga_sub.
+ JSON FFI for `ga_sub`.
  */
 rssn_
 char *rssn_num_ga_sub_json(const char *aJsonPtr)
@@ -17916,14 +17917,14 @@ struct rssn_Multivector3D *rssn_num_ga_wedge(const struct rssn_Multivector3D *aM
 ;
 
 /*
- Bincode FFI for ga_wedge.
+ Bincode FFI for `ga_wedge`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_num_ga_wedge_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for ga_wedge.
+ JSON FFI for `ga_wedge`.
  */
 rssn_
 char *rssn_num_ga_wedge_json(const char *aJsonPtr)
@@ -18068,7 +18069,7 @@ char *rssn_num_graph_minimum_spanning_tree_json(const char *aInputJson)
 ;
 
 /*
- Computes PageRank.
+ Computes `PageRank`.
  */
 rssn_
 int32_t rssn_num_graph_page_rank(struct rssn_Graph *aGraph,
@@ -18079,14 +18080,14 @@ int32_t rssn_num_graph_page_rank(struct rssn_Graph *aGraph,
 ;
 
 /*
- Computes the PageRank scores for nodes in a graph using bincode for serialization.
+ Computes the `PageRank` scores for nodes in a graph using bincode for serialization.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graph_page_rank_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- Computes the PageRank scores for nodes in a graph using JSON for serialization.
+ Computes the `PageRank` scores for nodes in a graph using JSON for serialization.
  */
 rssn_
 char *rssn_num_graph_page_rank_json(const char *aInputJson)
@@ -18145,7 +18146,7 @@ char *rssn_num_graphics_bezier_cubic_json(const char *aInput)
 
 /*
  Computes the cross product of two 3D vectors.
- Result is stored in out_x, out_y, out_z.
+ Result is stored in `out_x`, `out_y`, `out_z`.
 
  # Safety
  Pointers must be valid.
@@ -19048,7 +19049,7 @@ double rssn_num_md_apply_pbc_1d(double aX,
  # Returns
 
  A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
- - `ok`: Wrapped position vector within [0, box_size)
+ - `ok`: Wrapped position vector within [0, `box_size`)
  - `err`: Error message if input invalid
 
  # Safety
@@ -19074,7 +19075,7 @@ struct rssn_BincodeBuffer rssn_num_md_apply_pbc_bincode(struct rssn_BincodeBuffe
  # Returns
 
  A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
- the wrapped position vector within [0, box_size).
+ the wrapped position vector within [0, `box_size`).
 
  # Safety
 
@@ -19258,16 +19259,16 @@ char *rssn_num_md_minimum_image_json(const char *aInput)
  Computes the Morse interaction potential and force between two particles using JSON serialization.
 
  The Morse potential models chemical bonds:
- V(r) = D_e[1 - e⁻ᵃʳʳ⁻ʳᵉ⁾]², where D_e is the dissociation energy.
+ V(r) = `D_e`[1 - e⁻ᵃʳʳ⁻ʳᵉ⁾]², where `D_e` is the dissociation energy.
 
  # Arguments
 
  * `input` - A JSON string pointer containing:
    - `p1_position`: Position vector of first particle [x, y, z]
    - `p2_position`: Position vector of second particle [x, y, z]
-   - `de`: Dissociation energy D_e
+   - `de`: Dissociation energy `D_e`
    - `a`: Width parameter a (controls potential curvature)
-   - `re`: Equilibrium bond distance r_e
+   - `re`: Equilibrium bond distance `r_e`
 
  # Returns
 
@@ -19296,7 +19297,7 @@ char *rssn_num_md_morse_json(const char *aInput)
 
  A C string pointer containing JSON-encoded `FfiResult<SystemPropertiesOutput, String>` with:
  - `kinetic_energy`: Total kinetic energy of the system
- - `temperature`: System temperature T = 2K/(3Nk_B)
+ - `temperature`: System temperature T = `2K/(3Nk_B)`
  - `center_of_mass`: Center of mass position vector
  - `total_momentum`: Total linear momentum vector
 
@@ -19516,8 +19517,8 @@ char *rssn_num_mv_newton_method_complex_json(const char *aInputJson)
 ;
 
 /*
- Returns the number of prime factors and writes them to out_factors.
- out_factors must be large enough.
+ Returns the number of prime factors and writes them to `out_factors`.
+ `out_factors` must be large enough.
  */
 rssn_
 size_t rssn_num_nt_factorize(uint64_t aN,
@@ -19666,7 +19667,7 @@ char *rssn_num_ode_solve_json(const char *aInputJson)
 /*
  Computes the total power radiated by a blackbody via handle-based FFI.
 
- Uses the Stefan-Boltzmann law P = σAT⁴, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
+ Uses the Stefan-Boltzmann law P = `σAT⁴`, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
 
  # Arguments
 
@@ -19685,7 +19686,7 @@ double rssn_num_physics_blackbody_power(double aArea,
 /*
  Computes the total power radiated by a blackbody using JSON serialization.
 
- Uses the Stefan-Boltzmann law P = σAT⁴, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
+ Uses the Stefan-Boltzmann law P = `σAT⁴`, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
 
  # Arguments
 
@@ -19708,11 +19709,11 @@ char *rssn_num_physics_blackbody_power_json(const char *aInput)
 ;
 
 /*
- Returns the Boltzmann constant k_B via handle-based FFI.
+ Returns the Boltzmann constant `k_B` via handle-based FFI.
 
  # Returns
 
- The Boltzmann constant k_B = 1.381 × 10⁻²³ J/K.
+ The Boltzmann constant `k_B` = 1.381 × 10⁻²³ J/K.
  */
 rssn_
 double rssn_num_physics_boltzmann_constant(void)
@@ -19721,7 +19722,7 @@ double rssn_num_physics_boltzmann_constant(void)
 /*
  Computes the Compton wavelength of a particle via handle-based FFI.
 
- The Compton wavelength is λ_C = h/(mc), characteristic of quantum scattering.
+ The Compton wavelength is `λ_C` = h/(mc), characteristic of quantum scattering.
 
  # Arguments
 
@@ -19729,7 +19730,7 @@ double rssn_num_physics_boltzmann_constant(void)
 
  # Returns
 
- The Compton wavelength λ_C (meters).
+ The Compton wavelength `λ_C` (meters).
  */
 rssn_
 double rssn_num_physics_compton_wavelength(double aMass)
@@ -19738,7 +19739,7 @@ double rssn_num_physics_compton_wavelength(double aMass)
 /*
  Computes the Coulomb electrostatic force between two point charges via handle-based FFI.
 
- The force is F = k_e q₁q₂ / r², where k_e = 8.99 × 10⁹ N·m²/C².
+ The force is F = `k_e` q₁q₂ / r², where `k_e` = 8.99 × 10⁹ N·m²/C².
 
  # Arguments
 
@@ -19760,7 +19761,7 @@ double rssn_num_physics_coulomb_force(double aQ1,
  Computes the Coulomb electrostatic force between two point charges using bincode serialization.
 
  The Coulomb force is the electrostatic interaction between charged particles:
- F = k_e q₁q₂ / r², where k_e is Coulomb's constant (8.99×10⁹ N·m²/C²).
+ F = `k_e` q₁q₂ / r², where `k_e` is Coulomb's constant (8.99×10⁹ N·m²/C²).
 
  # Arguments
 
@@ -19787,7 +19788,7 @@ struct rssn_BincodeBuffer rssn_num_physics_coulomb_force_bincode(struct rssn_Bin
 /*
  Computes the Coulomb electrostatic force between two point charges using JSON serialization.
 
- The force is F = k_e q₁q₂ / r², where k_e = 8.99 × 10⁹ N·m²/C².
+ The force is F = `k_e` q₁q₂ / r², where `k_e` = 8.99 × 10⁹ N·m²/C².
 
  # Arguments
 
@@ -19930,7 +19931,7 @@ char *rssn_num_physics_de_broglie_wavelength_json(const char *aInput)
 /*
  Computes the electric field magnitude of a point charge via handle-based FFI.
 
- The electric field is E = k_e q / r².
+ The electric field is E = `k_e` q / r².
 
  # Arguments
 
@@ -19949,7 +19950,7 @@ double rssn_num_physics_electric_field_point_charge(double aQ,
 /*
  Computes the electric field magnitude of a point charge using JSON serialization.
 
- The electric field is E = k_e q / r².
+ The electric field is E = `k_e` q / r².
 
  # Arguments
 
@@ -19974,7 +19975,7 @@ char *rssn_num_physics_electric_field_point_charge_json(const char *aInput)
 /*
  Computes the electric potential of a point charge via handle-based FFI.
 
- The potential is V = k_e q / r.
+ The potential is V = `k_e` q / r.
 
  # Arguments
 
@@ -19991,11 +19992,11 @@ double rssn_num_physics_electric_potential_point_charge(double aQ,
 ;
 
 /*
- Returns the electron rest mass m_e via handle-based FFI.
+ Returns the electron rest mass `m_e` via handle-based FFI.
 
  # Returns
 
- The electron rest mass m_e = 9.109 × 10⁻³¹ kg.
+ The electron rest mass `m_e` = 9.109 × 10⁻³¹ kg.
  */
 rssn_
 double rssn_num_physics_electron_mass(void)
@@ -20026,7 +20027,7 @@ double rssn_num_physics_gravitational_constant(void)
 /*
  Computes the energy level of the hydrogen atom using the Bohr model via handle-based FFI.
 
- The energy is E_n = -13.6 eV / n², where n is the principal quantum number.
+ The energy is `E_n` = -13.6 eV / n², where n is the principal quantum number.
 
  # Arguments
 
@@ -20034,7 +20035,7 @@ double rssn_num_physics_gravitational_constant(void)
 
  # Returns
 
- The energy level E_n (Joules, negative for bound states).
+ The energy level `E_n` (Joules, negative for bound states).
  */
 rssn_
 double rssn_num_physics_hydrogen_energy_level(uint64_t aN)
@@ -20044,7 +20045,7 @@ double rssn_num_physics_hydrogen_energy_level(uint64_t aN)
  Computes the energy level of the hydrogen atom using the Bohr model and bincode serialization.
 
  The Bohr model gives hydrogen atom energy levels as:
- E_n = -13.6 eV / n², where n is the principal quantum number (n ≥ 1).
+ `E_n` = -13.6 eV / n², where n is the principal quantum number (n ≥ 1).
  Energy is negative, indicating a bound state.
 
  # Arguments
@@ -20055,7 +20056,7 @@ double rssn_num_physics_hydrogen_energy_level(uint64_t aN)
  # Returns
 
  A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
- - `ok`: The energy level E_n (Joules, negative for bound states)
+ - `ok`: The energy level `E_n` (Joules, negative for bound states)
  - `err`: Error message if deserialization failed
 
  # Safety
@@ -20070,7 +20071,7 @@ struct rssn_BincodeBuffer rssn_num_physics_hydrogen_energy_level_bincode(struct 
 /*
  Computes the energy level of the hydrogen atom using the Bohr model and JSON serialization.
 
- The energy is E_n = -13.6 eV / n², where n is the principal quantum number.
+ The energy is `E_n` = -13.6 eV / n², where n is the principal quantum number.
 
  # Arguments
 
@@ -20080,7 +20081,7 @@ struct rssn_BincodeBuffer rssn_num_physics_hydrogen_energy_level_bincode(struct 
  # Returns
 
  A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
- the energy level E_n (Joules, negative for bound states).
+ the energy level `E_n` (Joules, negative for bound states).
 
  # Safety
 
@@ -20406,7 +20407,7 @@ char *rssn_num_physics_mass_energy_json(const char *aInput)
 /*
  Computes the mean speed of particles in a Maxwell-Boltzmann distribution via handle-based FFI.
 
- The mean speed is ⟨v⟩ = √(8k_BT/(πm)).
+ The mean speed is ⟨v⟩ = √(`8k_BT/(πm)`).
 
  # Arguments
 
@@ -20425,7 +20426,7 @@ double rssn_num_physics_maxwell_boltzmann_mean_speed(double aMass,
 /*
  Computes the mean speed of particles in a Maxwell-Boltzmann distribution using JSON serialization.
 
- The mean speed is ⟨v⟩ = √(8k_BT/(πm)).
+ The mean speed is ⟨v⟩ = √(`8k_BT/(πm)`).
 
  # Arguments
 
@@ -20450,7 +20451,7 @@ char *rssn_num_physics_maxwell_boltzmann_mean_speed_json(const char *aInput)
 /*
  Computes the root-mean-square speed of particles in a Maxwell-Boltzmann distribution via handle-based FFI.
 
- The RMS speed is v_rms = √(3k_BT/m).
+ The RMS speed is `v_rms` = √(`3k_BT/m`).
 
  # Arguments
 
@@ -20459,7 +20460,7 @@ char *rssn_num_physics_maxwell_boltzmann_mean_speed_json(const char *aInput)
 
  # Returns
 
- The RMS speed v_rms (m/s).
+ The RMS speed `v_rms` (m/s).
  */
 rssn_
 double rssn_num_physics_maxwell_boltzmann_rms_speed(double aMass,
@@ -20469,7 +20470,7 @@ double rssn_num_physics_maxwell_boltzmann_rms_speed(double aMass,
 /*
  Computes the Maxwell-Boltzmann speed distribution probability density via handle-based FFI.
 
- The distribution is f(v) = 4π(m/(2πk_BT))³¹² v² exp(-mv²/(2k_BT)).
+ The distribution is f(v) = `4π(m/(2πk_BT))³¹²` v² exp(-mv²/(2k_BT)).
 
  # Arguments
 
@@ -20583,7 +20584,7 @@ double rssn_num_physics_planck_constant(void)
 /*
  Computes the energy eigenvalue of a quantum harmonic oscillator via handle-based FFI.
 
- The energy is E_n = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
+ The energy is `E_n` = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
 
  # Arguments
 
@@ -20592,7 +20593,7 @@ double rssn_num_physics_planck_constant(void)
 
  # Returns
 
- The energy eigenvalue E_n (Joules).
+ The energy eigenvalue `E_n` (Joules).
  */
 rssn_
 double rssn_num_physics_quantum_harmonic_oscillator_energy(uint64_t aN,
@@ -20603,7 +20604,7 @@ double rssn_num_physics_quantum_harmonic_oscillator_energy(uint64_t aN,
  Computes the energy eigenvalue of a quantum harmonic oscillator using bincode serialization.
 
  The quantum harmonic oscillator has discrete energy levels given by:
- E_n = ℏω(n + 1/2), where n is the quantum number, ℏ is the reduced Planck constant,
+ `E_n` = ℏω(n + 1/2), where n is the quantum number, ℏ is the reduced Planck constant,
  and ω is the angular frequency.
 
  # Arguments
@@ -20615,7 +20616,7 @@ double rssn_num_physics_quantum_harmonic_oscillator_energy(uint64_t aN,
  # Returns
 
  A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
- - `ok`: The energy eigenvalue E_n (Joules)
+ - `ok`: The energy eigenvalue `E_n` (Joules)
  - `err`: Error message if deserialization failed
 
  # Safety
@@ -20630,7 +20631,7 @@ struct rssn_BincodeBuffer rssn_num_physics_quantum_harmonic_oscillator_energy_bi
 /*
  Computes the energy eigenvalue of a quantum harmonic oscillator using JSON serialization.
 
- The energy is E_n = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
+ The energy is `E_n` = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
 
  # Arguments
 
@@ -20641,7 +20642,7 @@ struct rssn_BincodeBuffer rssn_num_physics_quantum_harmonic_oscillator_energy_bi
  # Returns
 
  A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
- the energy eigenvalue E_n (Joules).
+ the energy eigenvalue `E_n` (Joules).
 
  # Safety
 
@@ -20871,7 +20872,7 @@ char *rssn_num_physics_time_dilation_json(const char *aInput)
 /*
  Computes the peak wavelength of blackbody radiation using Wien's displacement law via handle-based FFI.
 
- Wien's law states λ_max = b/T, where b = 2.898 × 10⁻³ m·K.
+ Wien's law states `λ_max` = b/T, where b = 2.898 × 10⁻³ m·K.
 
  # Arguments
 
@@ -20879,7 +20880,7 @@ char *rssn_num_physics_time_dilation_json(const char *aInput)
 
  # Returns
 
- The peak wavelength λ_max (meters).
+ The peak wavelength `λ_max` (meters).
  */
 rssn_
 double rssn_num_physics_wien_displacement_wavelength(double aTemperature)
@@ -20888,7 +20889,7 @@ double rssn_num_physics_wien_displacement_wavelength(double aTemperature)
 /*
  Computes the peak wavelength of blackbody radiation using Wien's displacement law and JSON serialization.
 
- Wien's law states λ_max = b/T, where b = 2.898 × 10⁻³ m·K.
+ Wien's law states `λ_max` = b/T, where b = 2.898 × 10⁻³ m·K.
 
  # Arguments
 
@@ -20898,7 +20899,7 @@ double rssn_num_physics_wien_displacement_wavelength(double aTemperature)
  # Returns
 
  A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
- the peak wavelength λ_max (meters).
+ the peak wavelength `λ_max` (meters).
 
  # Safety
 
@@ -21373,7 +21374,7 @@ struct rssn_LinearSolution *rssn_num_solve_linear_system_handle(const struct rss
  * `nnz` - Number of non-zero elements (length of the input arrays).
 
  # Returns
- A raw pointer to the CsMat object, or null on error.
+ A raw pointer to the `CsMat` object, or null on error.
  */
 rssn_
 rssn_CsMat<double> *rssn_num_sparse_create(size_t aRows,
@@ -22781,7 +22782,7 @@ char *rssn_num_special_sinc_json(const char *aInput)
 /*
  Computes the softplus function softplus(x) = ln(1 + e^x) via handle-based FFI.
 
- A smooth approximation to the ReLU activation function.
+ A smooth approximation to the `ReLU` activation function.
 
  # Arguments
 
@@ -22833,7 +22834,7 @@ double rssn_num_special_zeta(double aS)
 
 /*
  Performs a chi-squared test.
- Returns chi-squared statistic via out_chi and p-value via out_p.
+ Returns chi-squared statistic via `out_chi` and p-value via `out_p`.
  */
 rssn_
 int32_t rssn_num_stats_chi_squared_test(const double *aObserved,
@@ -23094,7 +23095,7 @@ char *rssn_num_stats_harmonic_mean_json(const char *aInput)
 
 /*
  Performs simple linear regression.
- Returns slope via out_slope and intercept via out_intercept.
+ Returns slope via `out_slope` and intercept via `out_intercept`.
  */
 rssn_
 int32_t rssn_num_stats_linear_regression(const double *aX,
@@ -23346,7 +23347,7 @@ char *rssn_num_stats_std_dev_json(const char *aInput)
 
 /*
  Performs a two-sample t-test.
- Returns t-statistic via out_t and p-value via out_p.
+ Returns t-statistic via `out_t` and p-value via `out_p`.
  */
 rssn_
 int32_t rssn_num_stats_two_sample_t_test(const double *aSample1,
@@ -23469,7 +23470,7 @@ char *rssn_num_stats_variance_json(const char *aInput)
 
 /*
  Performs Welch's t-test.
- Returns t-statistic via out_t and p-value via out_p.
+ Returns t-statistic via `out_t` and p-value via `out_p`.
  */
 rssn_
 int32_t rssn_num_stats_welch_t_test(const double *aSample1,
@@ -23693,7 +23694,7 @@ int32_t rssn_num_topology_betti_numbers(const double *const *aPoints,
  # Returns
 
  A bincode-encoded buffer containing `FfiResult<Vec<usize>, String>` with either:
- - `ok`: Vector of Betti numbers [β₀, β₁, β₂, ...] up to max_dim
+ - `ok`: Vector of Betti numbers [β₀, β₁, β₂, ...] up to `max_dim`
  - `err`: Error message if computation failed
 
  # Safety
@@ -23721,7 +23722,7 @@ struct rssn_BincodeBuffer rssn_num_topology_betti_numbers_bincode(struct rssn_Bi
  # Returns
 
  A C string pointer containing JSON-encoded `FfiResult<Vec<usize>, String>` with
- a vector of Betti numbers [β₀, β₁, β₂, ...] up to max_dim.
+ a vector of Betti numbers [β₀, β₁, β₂, ...] up to `max_dim`.
 
  # Safety
 
@@ -23824,7 +23825,7 @@ int32_t rssn_num_vec_angle(const struct rssn_Vec_f64 *aV1,
 
 /*
  Creates a new numerical vector from a raw array of doubles.
- The caller is responsible for freeing the returned pointer using rssn_num_vec_free.
+ The caller is responsible for freeing the returned pointer using `rssn_num_vec_free`.
  */
 rssn_
 struct rssn_Vec_f64 *rssn_num_vec_create(const double *aData,
@@ -24267,7 +24268,7 @@ struct rssn_BincodeBuffer rssn_numerical_quadrature_bincode(struct rssn_BincodeB
    "var": "x",
    "a": 0.0,
    "b": 1.0,
-   "n_steps": 100,
+   "`n_steps"`: 100,
    "method": "Simpson"
  }
  */
@@ -24450,14 +24451,14 @@ struct rssn_Expr *rssn_orthographic_projection(const struct rssn_Expr *aLeft,
 ;
 
 /*
- Frees a ParametricCurve handle.
+ Frees a `ParametricCurve` handle.
  */
 rssn_
 void rssn_parametric_curve_free(struct rssn_ParametricCurve *aCurve)
 ;
 
 /*
- Creates a new ParametricCurve.
+ Creates a new `ParametricCurve`.
  */
 rssn_
 struct rssn_ParametricCurve *rssn_parametric_curve_new(const char *aRX,
@@ -24469,14 +24470,14 @@ struct rssn_ParametricCurve *rssn_parametric_curve_new(const char *aRX,
 ;
 
 /*
- Frees a ParametricSurface handle.
+ Frees a `ParametricSurface` handle.
  */
 rssn_
 void rssn_parametric_surface_free(struct rssn_ParametricSurface *aSurface)
 ;
 
 /*
- Creates a new ParametricSurface.
+ Creates a new `ParametricSurface`.
  */
 rssn_
 struct rssn_ParametricSurface *rssn_parametric_surface_new(const char *aRX,
@@ -24491,21 +24492,22 @@ struct rssn_ParametricSurface *rssn_parametric_surface_new(const char *aRX,
 ;
 
 /*
- Clears a ParsingCache.
+ Clears a `ParsingCache`.
  */
 rssn_
 void rssn_parsing_cache_clear(struct rssn_ParsingCache *aCache)
 ;
 
 /*
- Frees a ParsingCache.
+ Frees a `ParsingCache`.
  */
 rssn_
 void rssn_parsing_cache_free(struct rssn_ParsingCache *aCache)
 ;
 
 /*
- Retrieves an expression from the ParsingCache.
+ Retrieves an expression from the `ParsingCache`.
+
  Returns a pointer to the Expr (Arc<Expr> with incremented refcount), or null if not found.
  The caller is responsible for freeing the returned Expr (using the appropriate Expr free function).
  */
@@ -24515,7 +24517,7 @@ struct rssn_Expr *rssn_parsing_cache_get(struct rssn_ParsingCache *aCache,
 ;
 
 /*
- Retrieves an expression from the ParsingCache as a bincode buffer.
+ Retrieves an expression from the `ParsingCache` as a bincode buffer.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_parsing_cache_get_bincode(struct rssn_ParsingCache *aCache,
@@ -24523,7 +24525,7 @@ struct rssn_BincodeBuffer rssn_parsing_cache_get_bincode(struct rssn_ParsingCach
 ;
 
 /*
- Retrieves an expression from the ParsingCache as a JSON string.
+ Retrieves an expression from the `ParsingCache` as a JSON string.
  Returns null if not found or error.
  */
 rssn_
@@ -24532,15 +24534,15 @@ char *rssn_parsing_cache_get_json(struct rssn_ParsingCache *aCache,
 ;
 
 /*
- Creates a new ParsingCache.
- The caller is responsible for freeing the memory using rssn_parsing_cache_free.
+ Creates a new `ParsingCache`.
+ The caller is responsible for freeing the memory using `rssn_parsing_cache_free`.
  */
 rssn_
 struct rssn_ParsingCache *rssn_parsing_cache_new(void)
 ;
 
 /*
- Stores an expression in the ParsingCache.
+ Stores an expression in the `ParsingCache`.
  The expr pointer is cloned (deep copy of the structure, but DAG nodes are shared).
  */
 rssn_
@@ -24550,7 +24552,7 @@ void rssn_parsing_cache_set(struct rssn_ParsingCache *aCache,
 ;
 
 /*
- Stores an expression in the ParsingCache from a bincode buffer.
+ Stores an expression in the `ParsingCache` from a bincode buffer.
  */
 rssn_
 void rssn_parsing_cache_set_bincode(struct rssn_ParsingCache *aCache,
@@ -24559,7 +24561,7 @@ void rssn_parsing_cache_set_bincode(struct rssn_ParsingCache *aCache,
 ;
 
 /*
- Stores an expression in the ParsingCache from a JSON string.
+ Stores an expression in the `ParsingCache` from a JSON string.
  */
 rssn_
 void rssn_parsing_cache_set_json(struct rssn_ParsingCache *aCache,
@@ -24588,7 +24590,7 @@ struct rssn_Expr *rssn_path_integrate(const struct rssn_Expr *aExpr,
 ;
 
 /*
- Pauli matrices σ_x, σ_y, σ_z.
+ Pauli matrices `σ_x`, `σ_y`, `σ_z`.
  */
 rssn_
 void rssn_pauli_matrices(struct rssn_Expr **aSigmaX,
@@ -24725,7 +24727,7 @@ char *rssn_physics_bem_solve_laplace_2d_json(const char *aInput)
 
 /*
  Solves 1D heat equation using CN and returns a flat array of doubles.
- The caller is responsible for freeing the memory using rssn_free_f64_array.
+ The caller is responsible for freeing the memory using `rssn_free_f64_array`.
  */
 rssn_
 double *rssn_physics_cnm_solve_heat_1d(const double *aInitialCondition,
@@ -24825,7 +24827,7 @@ struct rssn_Matrix_f64 *rssn_physics_em_simulate_stiff_decay_backward(void)
    - `system_type`: System identifier ("lorenz", "oscillator")
    - `params_bincode`: System parameters encoded with bincode
    - `y0`: Initial state vector
-   - `t_span`: Time interval (t_start, t_end)
+   - `t_span`: Time interval (`t_start`, `t_end`)
    - `dt`: Time step size
    - `method`: Integration method ("forward", "midpoint", "heun")
 
@@ -24856,7 +24858,7 @@ struct rssn_BincodeBuffer rssn_physics_em_solve_bincode(struct rssn_BincodeBuffe
    - `system_type`: System identifier ("lorenz", "oscillator", "orbital")
    - `params`: System parameters as JSON object
    - `y0`: Initial state vector
-   - `t_span`: Time interval [t_start, t_end]
+   - `t_span`: Time interval [`t_start`, `t_end`]
    - `dt`: Time step size
    - `method`: Integration method ("forward", "midpoint", "heun")
 
@@ -24911,7 +24913,7 @@ double *rssn_physics_fdm_grid_data(rssn_FdmGrid<double> *aGrid)
 ;
 
 /*
- Frees a FdmGrid handle.
+ Frees a `FdmGrid` handle.
  */
 rssn_
 void rssn_physics_fdm_grid_free(rssn_FdmGrid<double> *aGrid)
@@ -24925,7 +24927,7 @@ size_t rssn_physics_fdm_grid_len(rssn_FdmGrid<double> *aGrid)
 ;
 
 /*
- Creates a new FdmGrid handle with the given dimensions.
+ Creates a new `FdmGrid` handle with the given dimensions.
  */
 rssn_
 rssn_FdmGrid<double> *rssn_physics_fdm_grid_new(size_t aD1,
@@ -24998,14 +25000,14 @@ char *rssn_physics_fdm_poisson_json(const char *aInput)
 ;
 
 /*
- Simulates 2D heat conduction and returns a new FdmGrid handle.
+ Simulates 2D heat conduction and returns a new `FdmGrid` handle.
  */
 rssn_
 rssn_FdmGrid<double> *rssn_physics_fdm_simulate_heat_2d(void)
 ;
 
 /*
- Simulates 2D wave propagation and returns a new FdmGrid handle.
+ Simulates 2D wave propagation and returns a new `FdmGrid` handle.
  */
 rssn_
 rssn_FdmGrid<double> *rssn_physics_fdm_simulate_wave_2d(void)
@@ -25076,7 +25078,7 @@ char *rssn_physics_fdm_wave_json(const char *aInput)
 
 /*
  Solves 1D Poisson using FEM and returns a flat array of doubles.
- The caller is responsible for freeing the memory using rssn_free_f64_array.
+ The caller is responsible for freeing the memory using `rssn_free_f64_array`.
  */
 rssn_
 double *rssn_physics_fem_solve_poisson_1d(size_t aNElements,
@@ -25389,8 +25391,9 @@ char *rssn_physics_mm_sph_update_json(const char *aInput)
 
 /*
  Solves 1D Poisson using Multigrid and returns a flat array of doubles.
+
  The `out_size` will be set to `n + 2` (including boundaries).
- The caller is responsible for freeing the memory using rssn_free_f64_mtm_array.
+ The caller is responsible for freeing the memory using `rssn_free_f64_mtm_array`.
  */
 rssn_
 double *rssn_physics_mtm_solve_poisson_1d(size_t aNInterior,
@@ -25504,7 +25507,7 @@ char *rssn_physics_mtm_solve_poisson_2d_json(const char *aInput)
    - `omega`: Natural frequency ω
    - `zeta`: Damping ratio ζ
    - `y0`: Initial state [x₀, v₀]
-   - `t_span`: Time interval [t_start, t_end]
+   - `t_span`: Time interval [`t_start`, `t_end`]
    - `dt`: Time step size
 
  # Returns
@@ -25534,7 +25537,7 @@ char *rssn_physics_rkm_damped_oscillator_json(const char *aInput)
    - `rho`: Rayleigh number ρ
    - `beta`: Geometric parameter β
    - `y0`: Initial state [x₀, y₀, z₀]
-   - `t_span`: Time interval (t_start, t_end)
+   - `t_span`: Time interval (`t_start`, `t_end`)
    - `dt_initial`: Initial time step size
    - `tol`: Error tolerances (absolute, relative)
 
@@ -25566,7 +25569,7 @@ struct rssn_BincodeBuffer rssn_physics_rkm_lorenz_bincode(struct rssn_BincodeBuf
    - `rho`: Rayleigh number ρ
    - `beta`: Geometric parameter β
    - `y0`: Initial state [x₀, y₀, z₀]
-   - `t_span`: Time interval [t_start, t_end]
+   - `t_span`: Time interval [`t_start`, `t_end`]
    - `dt_initial`: Initial time step size
    - `tol`: Error tolerances [absolute, relative]
 
@@ -25598,7 +25601,7 @@ char *rssn_physics_rkm_lorenz_json(const char *aInput)
    - `delta`: Predator efficiency δ
    - `gamma`: Predator death rate γ
    - `y0`: Initial state [prey₀, predator₀]
-   - `t_span`: Time interval [t_start, t_end]
+   - `t_span`: Time interval [`t_start`, `t_end`]
    - `dt_initial`: Initial time step size
    - `tol`: Error tolerances [absolute, relative]
 
@@ -25655,7 +25658,7 @@ struct rssn_Matrix_f64 *rssn_physics_rkm_simulate_vanderpol(void)
  * `input` - A JSON string pointer containing:
    - `mu`: Nonlinearity parameter μ
    - `y0`: Initial state [x₀, v₀]
-   - `t_span`: Time interval [t_start, t_end]
+   - `t_span`: Time interval [`t_start`, `t_end`]
    - `dt_initial`: Initial time step size
    - `tol`: Error tolerances [absolute, relative]
 
@@ -25674,7 +25677,7 @@ char *rssn_physics_rkm_vanderpol_json(const char *aInput)
 ;
 
 /*
- Runs a 2D FDTD simulation and returns the final Ez field as a Matrix handle (WxH).
+ Runs a 2D FDTD simulation and returns the final Ez field as a Matrix handle (`WxH`).
  */
 rssn_
 struct rssn_Matrix_f64 *rssn_physics_sim_fdtd_run_2d(size_t aWidth,
@@ -25921,7 +25924,7 @@ struct rssn_IsingResultHandle rssn_physics_sim_ising_run(size_t aWidth,
 
  * `buffer` - A bincode-encoded buffer containing `IsingParameters` with:
    - `width`, `height`: Grid dimensions
-   - `temperature`: Temperature T in units of J/k_B
+   - `temperature`: Temperature T in units of `J/k_B`
    - `mc_steps`: Number of Monte Carlo sweeps to perform
 
  # Returns
@@ -25952,7 +25955,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_ising_run_bincode(struct rssn_Bincode
 
  * `input` - A JSON string pointer containing:
    - `width`, `height`: Grid dimensions
-   - `temperature`: Temperature T in units of J/k_B
+   - `temperature`: Temperature T in units of `J/k_B`
    - `mc_steps`: Number of Monte Carlo sweeps to perform
 
  # Returns
@@ -26121,7 +26124,7 @@ struct rssn_NavierStokesResultHandles rssn_physics_sim_navier_stokes_run_lid_dri
 ;
 
 /*
- Runs a Schrodinger simulation and returns the final probability density as a Matrix handle (NxxNy).
+ Runs a Schrodinger simulation and returns the final probability density as a Matrix handle (`NxxNy`).
  */
 rssn_
 struct rssn_Matrix_f64 *rssn_physics_sim_schrodinger_run_2d(size_t aNx,
@@ -26211,7 +26214,7 @@ struct rssn_Matrix_f64 *rssn_physics_sm_simulate_1d_advection(void)
 ;
 
 /*
- Simulates the 2D advection-diffusion scenario and returns the results as a Matrix handle (WxH).
+ Simulates the 2D advection-diffusion scenario and returns the results as a Matrix handle (`WxH`).
  */
 rssn_
 struct rssn_Matrix_f64 *rssn_physics_sm_simulate_2d_advection(void)
@@ -26412,7 +26415,7 @@ bool rssn_plugins_unload(const char *aName)
 ;
 
 /*
- Compresses a point. Returns the x-coordinate string. sets *is_odd to the parity.
+ Compresses a point. Returns the x-coordinate string. sets *`is_odd` to the parity.
  */
 rssn_
 char *rssn_point_compress(const struct rssn_CurvePoint *aPoint,
@@ -27093,7 +27096,7 @@ void rssn_rewrite_rule_free(struct rssn_RewriteRule *aRule)
  Returns a new owned Expr pointer that must be freed by the caller.
 
  # Safety
- The caller must ensure `rule` is a valid RewriteRule pointer.
+ The caller must ensure `rule` is a valid `RewriteRule` pointer.
  */
 rssn_
 struct rssn_Expr *rssn_rewrite_rule_get_lhs(const struct rssn_RewriteRule *aRule)
@@ -27105,7 +27108,7 @@ struct rssn_Expr *rssn_rewrite_rule_get_lhs(const struct rssn_RewriteRule *aRule
  Returns a new owned Expr pointer that must be freed by the caller.
 
  # Safety
- The caller must ensure `rule` is a valid RewriteRule pointer.
+ The caller must ensure `rule` is a valid `RewriteRule` pointer.
  */
 rssn_
 struct rssn_Expr *rssn_rewrite_rule_get_rhs(const struct rssn_RewriteRule *aRule)
@@ -27133,7 +27136,7 @@ struct rssn_BincodeBuffer rssn_rewrite_rule_new_bincode(struct rssn_BincodeBuffe
  Creates a rewrite rule from JSON.
 
  Input: JSON object with "lhs" and "rhs" fields (both Expr)
- Output: JSON-serialized RewriteRule
+ Output: JSON-serialized `RewriteRule`
  */
 rssn_
 char *rssn_rewrite_rule_new_json(const char *aJsonStr)
@@ -27161,7 +27164,7 @@ struct rssn_BincodeBuffer rssn_rewrite_rule_to_string_bincode(struct rssn_Bincod
 /*
  Converts a rewrite rule to a human-readable string (JSON).
 
- Input: JSON-serialized RewriteRule
+ Input: JSON-serialized `RewriteRule`
  Output: JSON object with "string" field
  */
 rssn_
@@ -27247,7 +27250,7 @@ uint8_t *rssn_rs_decode(const uint8_t *aCodeword,
 ;
 
 /*
- Encodes data using Reed-Solomon code with n_sym error correction symbols.
+ Encodes data using Reed-Solomon code with `n_sym` error correction symbols.
 
  # Safety
  Caller must ensure `data` is valid. Returns allocated memory that must be freed.
@@ -27273,10 +27276,10 @@ int32_t rssn_rs_error_count(const uint8_t *aCodeword,
 ;
 
 /*
- Frees memory allocated by rs_encode or rs_decode.
+ Frees memory allocated by `rs_encode` or `rs_decode`.
 
  # Safety
- Caller must ensure `ptr` was returned by rssn_rs_encode or rssn_rs_decode.
+ Caller must ensure `ptr` was returned by `rssn_rs_encode` or `rssn_rs_decode`.
  */
 rssn_
 void rssn_rs_free(uint8_t *aPtr,
@@ -27296,7 +27299,7 @@ void rssn_rules_vec_free(struct rssn_Vec_RewriteRule *aRules)
 /*
  Gets a rule from a rules vector by index.
 
- Returns a new owned RewriteRule pointer that must be freed by the caller.
+ Returns a new owned `RewriteRule` pointer that must be freed by the caller.
 
  # Safety
  The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
@@ -27444,7 +27447,7 @@ void rssn_simplex_free(rssn_Simplex *aPtr)
 ;
 
 /*
- Adds a simplex to a SimplicialComplex
+ Adds a simplex to a `SimplicialComplex`
  */
 rssn_
 void rssn_simplicial_complex_add_simplex(struct rssn_SimplicialComplex *aComplexPtr,
@@ -27453,7 +27456,7 @@ void rssn_simplicial_complex_add_simplex(struct rssn_SimplicialComplex *aComplex
 ;
 
 /*
- Applies the symbolic boundary operator to a SymbolicChain
+ Applies the symbolic boundary operator to a `SymbolicChain`
  */
 rssn_
 struct rssn_SymbolicChain *rssn_simplicial_complex_apply_symbolic_boundary_operator(const struct rssn_SimplicialComplex *aComplexPtr,
@@ -27461,14 +27464,14 @@ struct rssn_SymbolicChain *rssn_simplicial_complex_apply_symbolic_boundary_opera
 ;
 
 /*
- Creates a new SimplicialComplex (Handle)
+ Creates a new `SimplicialComplex` (Handle)
  */
 rssn_
 struct rssn_SimplicialComplex *rssn_simplicial_complex_create(void)
 ;
 
 /*
- Gets the dimension of a SimplicialComplex
+ Gets the dimension of a `SimplicialComplex`
  */
 rssn_
 int rssn_simplicial_complex_dimension(const struct rssn_SimplicialComplex *aPtr)
@@ -27482,7 +27485,7 @@ ptrdiff_t rssn_simplicial_complex_euler_characteristic(const struct rssn_Simplic
 ;
 
 /*
- Frees a SimplicialComplex handle
+ Frees a `SimplicialComplex` handle
  */
 rssn_
 void rssn_simplicial_complex_free(struct rssn_SimplicialComplex *aPtr)
@@ -27950,7 +27953,7 @@ void rssn_state_free(struct rssn_State *aState)
 
 /*
  Gets the intermediate value from the state.
- The returned string must be freed by the caller using rssn_free_string.
+ The returned string must be freed by the caller using `rssn_free_string`.
  */
 rssn_
 char *rssn_state_get_intermediate_value(const struct rssn_State *aState)
@@ -27959,7 +27962,7 @@ char *rssn_state_get_intermediate_value(const struct rssn_State *aState)
 /*
  Gets the intermediate value from a bincode state buffer.
  Returns the value as a bincode buffer containing a String.
- The caller must free the returned buffer using rssn_free_bincode_buffer.
+ The caller must free the returned buffer using `rssn_free_bincode_buffer`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_state_get_intermediate_value_bincode(struct rssn_BincodeBuffer aStateBuffer)
@@ -27968,7 +27971,7 @@ struct rssn_BincodeBuffer rssn_state_get_intermediate_value_bincode(struct rssn_
 /*
  Gets the intermediate value from a JSON state string.
  Returns the value as a plain string (not JSON-encoded).
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_state_get_intermediate_value_json(const char *aJsonState)
@@ -27976,7 +27979,7 @@ char *rssn_state_get_intermediate_value_json(const char *aJsonState)
 
 /*
  Creates a new State.
- The caller is responsible for freeing the memory using rssn_state_free.
+ The caller is responsible for freeing the memory using `rssn_state_free`.
  */
 rssn_
 struct rssn_State *rssn_state_new(void)
@@ -27984,7 +27987,7 @@ struct rssn_State *rssn_state_new(void)
 
 /*
  Creates a new State and returns it as a bincode buffer.
- The caller must free the returned buffer using rssn_free_bincode_buffer.
+ The caller must free the returned buffer using `rssn_free_bincode_buffer`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_state_new_bincode(void)
@@ -27992,7 +27995,7 @@ struct rssn_BincodeBuffer rssn_state_new_bincode(void)
 
 /*
  Creates a new State and returns it as a JSON string.
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_state_new_json(void)
@@ -28008,7 +28011,7 @@ void rssn_state_set_intermediate_value(struct rssn_State *aState,
 
 /*
  Sets the intermediate value in a bincode state buffer and returns the updated buffer.
- The caller must free the returned buffer using rssn_free_bincode_buffer.
+ The caller must free the returned buffer using `rssn_free_bincode_buffer`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_state_set_intermediate_value_bincode(struct rssn_BincodeBuffer aStateBuffer,
@@ -28017,7 +28020,7 @@ struct rssn_BincodeBuffer rssn_state_set_intermediate_value_bincode(struct rssn_
 
 /*
  Sets the intermediate value in a JSON state string and returns the updated JSON.
- The caller must free the returned string using rssn_free_string.
+ The caller must free the returned string using `rssn_free_string`.
  */
 rssn_
 char *rssn_state_set_intermediate_value_json(const char *aJsonState,
@@ -28228,7 +28231,7 @@ char *rssn_surface_integral_json(const char *aInputJson)
 ;
 
 /*
- Adds a term to a SymbolicChain
+ Adds a term to a `SymbolicChain`
  */
 rssn_
 bool rssn_symbolic_chain_add_term(struct rssn_SymbolicChain *aChainPtr,
@@ -28237,14 +28240,14 @@ bool rssn_symbolic_chain_add_term(struct rssn_SymbolicChain *aChainPtr,
 ;
 
 /*
- Creates a new SymbolicChain (Handle)
+ Creates a new `SymbolicChain` (Handle)
  */
 rssn_
 struct rssn_SymbolicChain *rssn_symbolic_chain_create(size_t aDimension)
 ;
 
 /*
- Frees a SymbolicChain handle
+ Frees a `SymbolicChain` handle
  */
 rssn_
 void rssn_symbolic_chain_free(struct rssn_SymbolicChain *aPtr)
@@ -28651,14 +28654,14 @@ struct rssn_Expr *rssn_variance(const struct rssn_Expr *const *aData,
 ;
 
 /*
- Bincode FFI for vec_add.
+ Bincode FFI for `vec_add`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_vec_add_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for vec_add.
+ JSON FFI for `vec_add`.
  */
 rssn_
 char *rssn_vec_add_json(const char *aJsonPtr)
@@ -28679,28 +28682,28 @@ char *rssn_vec_angle_json(const char *aJsonPtr)
 ;
 
 /*
- Bincode FFI for cosine_similarity.
+ Bincode FFI for `cosine_similarity`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_vec_cosine_similarity_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for cosine_similarity.
+ JSON FFI for `cosine_similarity`.
  */
 rssn_
 char *rssn_vec_cosine_similarity_json(const char *aJsonPtr)
 ;
 
 /*
- Bincode FFI for cross_product.
+ Bincode FFI for `cross_product`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_vec_cross_product_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for cross_product.
+ JSON FFI for `cross_product`.
  */
 rssn_
 char *rssn_vec_cross_product_json(const char *aJsonPtr)
@@ -28747,42 +28750,42 @@ int32_t rssn_vec_dot_product(const double *aD1,
 ;
 
 /*
- Bincode FFI for dot_product.
+ Bincode FFI for `dot_product`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_vec_dot_product_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for dot_product.
+ JSON FFI for `dot_product`.
  */
 rssn_
 char *rssn_vec_dot_product_json(const char *aJsonPtr)
 ;
 
 /*
- Bincode FFI for is_orthogonal.
+ Bincode FFI for `is_orthogonal`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_vec_is_orthogonal_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for is_orthogonal.
+ JSON FFI for `is_orthogonal`.
  */
 rssn_
 char *rssn_vec_is_orthogonal_json(const char *aJsonPtr)
 ;
 
 /*
- Bincode FFI for is_parallel.
+ Bincode FFI for `is_parallel`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_vec_is_parallel_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for is_parallel.
+ JSON FFI for `is_parallel`.
  */
 rssn_
 char *rssn_vec_is_parallel_json(const char *aJsonPtr)
@@ -28803,14 +28806,14 @@ char *rssn_vec_lerp_json(const char *aJsonPtr)
 ;
 
 /*
- Bincode FFI for lp_norm.
+ Bincode FFI for `lp_norm`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_vec_lp_norm_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for lp_norm.
+ JSON FFI for `lp_norm`.
  */
 rssn_
 char *rssn_vec_lp_norm_json(const char *aJsonPtr)
@@ -28846,7 +28849,7 @@ struct rssn_BincodeBuffer rssn_vec_norm_bincode(struct rssn_BincodeBuffer aBuffe
 ;
 
 /*
- JSON FFI for norm ($L_2$).
+ JSON FFI for norm ($`L_2`$).
  */
 rssn_
 char *rssn_vec_norm_json(const char *aJsonPtr)
@@ -28895,28 +28898,28 @@ char *rssn_vec_reflect_json(const char *aJsonPtr)
 ;
 
 /*
- Bincode FFI for scalar_mul.
+ Bincode FFI for `scalar_mul`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_vec_scalar_mul_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for scalar_mul.
+ JSON FFI for `scalar_mul`.
  */
 rssn_
 char *rssn_vec_scalar_mul_json(const char *aJsonPtr)
 ;
 
 /*
- Bincode FFI for vec_sub.
+ Bincode FFI for `vec_sub`.
  */
 rssn_
 struct rssn_BincodeBuffer rssn_vec_sub_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
 /*
- JSON FFI for vec_sub.
+ JSON FFI for `vec_sub`.
  */
 rssn_
 char *rssn_vec_sub_json(const char *aJsonPtr)

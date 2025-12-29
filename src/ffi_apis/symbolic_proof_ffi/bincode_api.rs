@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer};
 use crate::symbolic::core::Expr;
 use crate::symbolic::proof;
 
@@ -41,7 +41,7 @@ pub unsafe extern "C" fn rssn_bincode_verify_equation_solution(
 
         let free_refs: Vec<&str> = free
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         proof::verify_equation_solution(

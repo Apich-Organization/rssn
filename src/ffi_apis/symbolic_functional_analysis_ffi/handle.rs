@@ -2,7 +2,7 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::functional_analysis::*;
+use crate::symbolic::functional_analysis::{HilbertSpace, BanachSpace, LinearOperator, inner_product, norm, banach_norm, are_orthogonal, project, gram_schmidt};
 
 // --- HilbertSpace ---
 

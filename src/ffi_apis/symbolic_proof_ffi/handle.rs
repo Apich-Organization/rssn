@@ -32,7 +32,7 @@ unsafe fn parse_c_str_array(
 
         match c_str.to_str() {
             | Ok(s) => {
-                vars.push(s.to_string())
+                vars.push(s.to_string());
             },
             | Err(_) => return None,
         }
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
     let free_vars: Vec<&str> =
         free_vars_strings
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
     proof::verify_equation_solution(

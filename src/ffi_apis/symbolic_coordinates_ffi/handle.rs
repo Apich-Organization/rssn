@@ -1,4 +1,4 @@
-use crate::symbolic::coordinates::*;
+use crate::symbolic::coordinates::{CoordinateSystem, transform_point, transform_expression, get_metric_tensor, transform_contravariant_vector, transform_covariant_vector, transform_divergence, transform_curl, transform_gradient};
 use crate::symbolic::core::Expr;
 
 /// Transforms a point between coordinate systems and returns its components in the target system.

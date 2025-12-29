@@ -45,8 +45,7 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
 
             update_last_error(format!(
                 "Invalid ODE solver \
-                 method code: {}",
-                method
+                 method code: {method}"
             ));
 
             return ptr::null_mut();
@@ -64,8 +63,7 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
 
             update_last_error(format!(
                 "Null function \
-                 pointer at index {}",
-                i
+                 pointer at index {i}"
             ));
 
             return ptr::null_mut();

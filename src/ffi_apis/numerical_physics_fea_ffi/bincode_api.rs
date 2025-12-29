@@ -87,19 +87,19 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
 /// Computes the von Mises equivalent stress from a 2D stress state using bincode serialization.
 ///
 /// The von Mises stress is a scalar measure of stress intensity used in yield criteria:
-/// σ_vm = √(σ_x² - σ_xσ_y + σ_y² + 3τ_xy²)
+/// `σ_vm` = √(`σ_x²` - `σ_xσ_y` + `σ_y²` + `3τ_xy²`)
 ///
 /// # Arguments
 ///
 /// * `buffer` - A bincode-encoded buffer containing `StressInput` with:
-///   - `sx`: Normal stress in x-direction σ_x (Pa)
-///   - `sy`: Normal stress in y-direction σ_y (Pa)
-///   - `txy`: Shear stress τ_xy (Pa)
+///   - `sx`: Normal stress in x-direction `σ_x` (Pa)
+///   - `sy`: Normal stress in y-direction `σ_y` (Pa)
+///   - `txy`: Shear stress `τ_xy` (Pa)
 ///
 /// # Returns
 ///
 /// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
-/// - `ok`: The von Mises stress σ_vm (Pa)
+/// - `ok`: The von Mises stress `σ_vm` (Pa)
 /// - `err`: Error message if deserialization failed
 ///
 /// # Safety
@@ -144,9 +144,9 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
 /// # Arguments
 ///
 /// * `buffer` - A bincode-encoded buffer containing `StressInput` with:
-///   - `sx`: Normal stress in x-direction σ_x (Pa)
-///   - `sy`: Normal stress in y-direction σ_y (Pa)
-///   - `txy`: Shear stress τ_xy (Pa)
+///   - `sx`: Normal stress in x-direction `σ_x` (Pa)
+///   - `sy`: Normal stress in y-direction `σ_y` (Pa)
+///   - `txy`: Shear stress `τ_xy` (Pa)
 ///
 /// # Returns
 ///

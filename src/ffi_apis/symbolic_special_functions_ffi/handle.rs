@@ -197,7 +197,7 @@ pub unsafe extern "C" fn rssn_zeta(
 // Bessel Functions
 // ============================================================================
 
-/// Computes the symbolic Bessel function of the first kind J_n(x).
+/// Computes the symbolic Bessel function of the first kind `J_n(x)`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bessel_j(
@@ -219,7 +219,7 @@ pub unsafe extern "C" fn rssn_bessel_j(
     ))
 }
 
-/// Computes the symbolic Bessel function of the second kind Y_n(x).
+/// Computes the symbolic Bessel function of the second kind `Y_n(x)`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bessel_y(
@@ -241,7 +241,7 @@ pub unsafe extern "C" fn rssn_bessel_y(
     ))
 }
 
-/// Computes the symbolic modified Bessel function of the first kind I_n(x).
+/// Computes the symbolic modified Bessel function of the first kind `I_n(x)`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bessel_i(
@@ -263,7 +263,7 @@ pub unsafe extern "C" fn rssn_bessel_i(
     ))
 }
 
-/// Computes the symbolic modified Bessel function of the second kind K_n(x).
+/// Computes the symbolic modified Bessel function of the second kind `K_n(x)`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bessel_k(
@@ -289,7 +289,7 @@ pub unsafe extern "C" fn rssn_bessel_k(
 // Orthogonal Polynomials
 // ============================================================================
 
-/// Computes the symbolic Legendre polynomial P_n(x).
+/// Computes the symbolic Legendre polynomial `P_n(x)`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_legendre_p(
@@ -311,7 +311,7 @@ pub unsafe extern "C" fn rssn_legendre_p(
     ))
 }
 
-/// Computes the symbolic Laguerre polynomial L_n(x).
+/// Computes the symbolic Laguerre polynomial `L_n(x)`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_laguerre_l(
@@ -333,7 +333,7 @@ pub unsafe extern "C" fn rssn_laguerre_l(
     ))
 }
 
-/// Computes the symbolic Generalized Laguerre polynomial L_n^α(x).
+/// Computes the symbolic Generalized Laguerre polynomial `L_n^α(x)`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_generalized_laguerre(
@@ -359,7 +359,7 @@ pub unsafe extern "C" fn rssn_generalized_laguerre(
     ))
 }
 
-/// Computes the symbolic Hermite polynomial H_n(x).
+/// Computes the symbolic Hermite polynomial `H_n(x)`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_hermite_h(
@@ -381,7 +381,7 @@ pub unsafe extern "C" fn rssn_hermite_h(
     ))
 }
 
-/// Computes the symbolic Chebyshev polynomial of the first kind T_n(x).
+/// Computes the symbolic Chebyshev polynomial of the first kind `T_n(x)`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_chebyshev_t(
@@ -402,7 +402,7 @@ pub unsafe extern "C" fn rssn_chebyshev_t(
     ))
 }
 
-/// Computes the symbolic Chebyshev polynomial of the second kind U_n(x).
+/// Computes the symbolic Chebyshev polynomial of the second kind `U_n(x)`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_chebyshev_u(

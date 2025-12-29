@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::ffi_apis::common::*;
+use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
 use crate::symbolic::cad::cad;
 use crate::symbolic::core::Expr;
 
@@ -28,7 +28,7 @@ pub extern "C" fn rssn_bincode_cad(
         let vars_refs: Vec<&str> = data
             .vars
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         let mut sparse_polys =

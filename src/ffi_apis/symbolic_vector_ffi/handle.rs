@@ -1,4 +1,4 @@
-use crate::symbolic::vector::*;
+use crate::symbolic::vector::Vector;
 
 /// Computes the magnitude of a vector.
 

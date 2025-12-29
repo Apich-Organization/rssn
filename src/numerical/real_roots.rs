@@ -362,8 +362,7 @@ pub fn find_roots(
     let intervals = isolate_real_roots(
         poly,
         isolation_precision,
-    )
-    .map_err(|e| e)?;
+    )?;
 
     let mut roots = Vec::with_capacity(
         intervals.len(),

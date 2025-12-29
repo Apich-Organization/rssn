@@ -2,8 +2,8 @@ use std::ffi::c_char;
 
 use num_bigint::BigInt;
 
-use crate::ffi_apis::common::*;
-use crate::symbolic::finite_field::*;
+use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::symbolic::finite_field::{PrimeField, PrimeFieldElement, FiniteFieldPolynomial};
 
 /// Creates a new prime field element (JSON)
 #[no_mangle]

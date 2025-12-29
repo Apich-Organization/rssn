@@ -3,7 +3,7 @@ use std::os::raw::c_char;
 use std::os::raw::c_int;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::differential_geometry::*;
+use crate::symbolic::differential_geometry::{DifferentialForm, exterior_derivative, wedge_product, boundary, generalized_stokes_theorem, gauss_theorem, stokes_theorem, greens_theorem};
 use crate::symbolic::vector::Vector;
 
 unsafe fn parse_c_str_array(
@@ -32,7 +32,7 @@ unsafe fn parse_c_str_array(
 
         match c_str.to_str() {
             | Ok(s) => {
-                vars.push(s.to_string())
+                vars.push(s.to_string());
             },
             | Err(_) => return None,
         }
@@ -70,7 +70,7 @@ pub extern "C" fn rssn_exterior_derivative_handle(
         let vars_refs: Vec<&str> =
             vars_strings
                 .iter()
-                .map(|s| s.as_str())
+                .map(std::string::String::as_str)
                 .collect();
 
         let result =
@@ -167,7 +167,7 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
         let vars_refs: Vec<&str> =
             vars_strings
                 .iter()
-                .map(|s| s.as_str())
+                .map(std::string::String::as_str)
                 .collect();
 
         let result =
@@ -278,7 +278,7 @@ pub extern "C" fn rssn_greens_theorem_handle(
     }
 }
 
-/// Frees a DifferentialForm handle
+/// Frees a `DifferentialForm` handle
 #[no_mangle]
 
 pub extern "C" fn rssn_free_differential_form_handle(
