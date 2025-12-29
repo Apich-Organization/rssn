@@ -34,6 +34,28 @@ struct Advection1DInput {
     num_steps: usize,
 }
 
+/// Computes the Reynolds number for fluid flow using bincode serialization.
+///
+/// The Reynolds number is a dimensionless quantity characterizing the flow regime:
+/// Re = (velocity × length) / kinematic_viscosity
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `ReynoldsInput` with:
+///   - `velocity`: Flow velocity (m/s)
+///   - `length`: Characteristic length scale (m)
+///   - `kinematic_viscosity`: Kinematic viscosity (ν = μ/ρ, m²/s)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The computed Reynolds number (dimensionless)
+/// - `err`: Error message if deserialization failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
@@ -65,6 +87,30 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
     })
 }
 
+/// Computes the Courant-Friedrichs-Lewy (CFL) number for numerical stability using bincode serialization.
+///
+/// The CFL number is a stability criterion for explicit time-stepping schemes:
+/// CFL = (velocity × dt) / dx
+///
+/// For numerical stability in explicit schemes, CFL ≤ 1 is typically required.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `CflInput` with:
+///   - `velocity`: Flow velocity or wave speed (m/s)
+///   - `dt`: Time step size (s)
+///   - `dx`: Spatial grid spacing (m)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The computed CFL number (dimensionless)
+/// - `err`: Error message if deserialization failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(
@@ -95,6 +141,32 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(
     })
 }
 
+/// Solves the 1D advection equation using a finite difference scheme and bincode serialization.
+///
+/// The advection equation describes the transport of a scalar quantity by a velocity field:
+/// ∂u/∂t + c ∂u/∂x = 0
+///
+/// This function uses an explicit finite difference method to time-step the solution.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `Advection1DInput` with:
+///   - `u0`: Initial condition as a spatial array of values
+///   - `c`: Advection velocity (constant)
+///   - `dx`: Spatial grid spacing
+///   - `dt`: Time step size
+///   - `num_steps`: Number of time steps to compute
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<Vec<f64>>, String>` with either:
+/// - `ok`: Solution history where each inner vector is the solution at one time step
+/// - `err`: Error message if deserialization failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_bincode(
