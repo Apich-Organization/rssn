@@ -394,6 +394,7 @@ impl From<&ArrayD<f64>> for TensorData {
 
 impl TensorData {
     /// Converts back to an `ndarray::ArrayD`.
+
     pub fn to_arrayd(
         &self
     ) -> Result<ArrayD<f64>, String>

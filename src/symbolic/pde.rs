@@ -154,6 +154,7 @@ enum BoundaryConditionType {
 #[derive(Debug, Clone)]
 
 /// Represents the set of boundary and initial conditions for a 1D PDE.
+
 pub struct BoundaryConditions {
     /// The type of boundary condition at x=0.
     at_zero: BoundaryConditionType,
@@ -559,6 +560,7 @@ pub enum PDEType {
 )]
 
 /// Contains the results of a PDE classification.
+
 pub struct PDEClassification {
     /// The identified type of the PDE (e.g., Wave, Heat).
     pub pde_type: PDEType,
@@ -1408,6 +1410,7 @@ fn collect_terms(
 ///
 /// # Returns
 /// An `Option<Expr>` containing the solution if found.
+
 pub fn solve_pde_by_characteristics(
     equation: &Expr,
     func: &str,

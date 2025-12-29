@@ -1848,6 +1848,7 @@ impl SparsePolynomial {
     ///
     /// # Returns
     /// The numerical result of the evaluation.
+
     pub fn eval(
         &self,
         vars: &HashMap<String, f64>,
@@ -2034,6 +2035,7 @@ impl SparsePolynomial {
     ///
     /// # Returns
     /// The highest exponent of the variable, or -1 if the polynomial is empty.
+
     pub fn degree(
         &self,
         var: &str,
@@ -2061,6 +2063,7 @@ impl SparsePolynomial {
     ///
     /// # Returns
     /// An `Option` containing the leading monomial and its coefficient.
+
     pub fn leading_term(
         &self,
         var: &str,
@@ -2090,6 +2093,7 @@ impl SparsePolynomial {
     ///
     /// # Returns
     /// A tuple containing the (quotient, remainder).
+
     pub fn long_division(
         self,
         divisor: Self,
@@ -2206,6 +2210,7 @@ impl SparsePolynomial {
     ///
     /// # Returns
     /// A `Vec<Expr>` of coefficients.
+
     pub fn get_coeffs_as_vec(
         &self,
         var: &str,
@@ -2285,6 +2290,7 @@ impl SparsePolynomial {
     ///
     /// # Returns
     /// `Some(Expr)` if the term exists, `None` otherwise.
+
     pub fn get_coeff_for_power(
         &self,
         var: &str,

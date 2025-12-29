@@ -766,6 +766,7 @@ pub fn inverse_z_transform(
 ///
 /// # Returns
 /// An `Option<Vec<Expr>>` containing the terms of the decomposition if successful, or `None` otherwise.
+
 pub fn partial_fraction_decomposition(
     expr: &Expr,
     var: &str,

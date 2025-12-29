@@ -372,7 +372,6 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_new_json(
-
     a_json: *const c_char,
 
     b_json: *const c_char,
@@ -380,7 +379,6 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
     c_json: *const c_char,
 
     d_json: *const c_char,
-
 ) -> *mut c_char {
 
     let a: Expr = match from_json_string(
@@ -436,7 +434,6 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
 #[no_mangle]
 
 pub extern "C" fn mobius_transformation_identity_json(
-
 ) -> *mut c_char {
 
     let mobius =
@@ -457,11 +454,9 @@ pub extern "C" fn mobius_transformation_identity_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_apply_json(
-
     mobius_json: *const c_char,
 
     z_json: *const c_char,
-
 ) -> *mut c_char {
 
     let mobius : MobiusTransformation = match from_json_string(mobius_json) {
@@ -494,11 +489,9 @@ pub unsafe extern "C" fn mobius_transformation_apply_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_compose_json(
-
     mobius1_json: *const c_char,
 
     mobius2_json: *const c_char,
-
 ) -> *mut c_char {
 
     let mobius1 : MobiusTransformation = match from_json_string(mobius1_json) {
@@ -528,9 +521,7 @@ pub unsafe extern "C" fn mobius_transformation_compose_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn mobius_transformation_inverse_json(
-
     mobius_json: *const c_char
-
 ) -> *mut c_char {
 
     let mobius : MobiusTransformation = match from_json_string(mobius_json) {
@@ -556,13 +547,11 @@ pub unsafe extern "C" fn mobius_transformation_inverse_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn cauchy_integral_formula_json(
-
     func_json: *const c_char,
 
     var: *const c_char,
 
     z0_json: *const c_char,
-
 ) -> *mut c_char {
 
     let func : Expr = match from_json_string(func_json) {
@@ -598,7 +587,6 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn cauchy_derivative_formula_json(
-
     func_json: *const c_char,
 
     var: *const c_char,
@@ -606,7 +594,6 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
     z0_json: *const c_char,
 
     n: usize,
-
 ) -> *mut c_char {
 
     let func : Expr = match from_json_string(func_json) {
@@ -645,9 +632,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_exp_json(
-
     z_json: *const c_char
-
 ) -> *mut c_char {
 
     let z: Expr = match from_json_string(
@@ -675,9 +660,7 @@ pub unsafe extern "C" fn complex_exp_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_log_json(
-
     z_json: *const c_char
-
 ) -> *mut c_char {
 
     let z: Expr = match from_json_string(
@@ -705,9 +688,7 @@ pub unsafe extern "C" fn complex_log_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_arg_json(
-
     z_json: *const c_char
-
 ) -> *mut c_char {
 
     let z: Expr = match from_json_string(
@@ -735,9 +716,7 @@ pub unsafe extern "C" fn complex_arg_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_modulus_json(
-
     z_json: *const c_char
-
 ) -> *mut c_char {
 
     let z: Expr = match from_json_string(

@@ -12,6 +12,7 @@ use crate::physics::physics_rkm::OdeSystem;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
+
 pub struct GeodesicParameters {
     /// The mass of the black hole.
     pub black_hole_mass: f64,

@@ -1,4 +1,5 @@
 //! FFI bindings for symbolic unit unification operations.
+
 /// Bincode-based FFI API.
 pub mod bincode_api;
 /// Handle-based FFI API.

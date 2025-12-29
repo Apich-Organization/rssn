@@ -13,6 +13,7 @@ use crate::ffi_apis::common::to_c_string;
 #[derive(
     Debug, Clone, Serialize, Deserialize,
 )]
+
 pub struct BuildInfo {
     /// The date when the library was built.
     pub build_date: String,

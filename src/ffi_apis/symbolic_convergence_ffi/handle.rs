@@ -15,11 +15,9 @@ use crate::symbolic::core::Expr;
 #[no_mangle]
 
 pub extern "C" fn rssn_analyze_convergence_handle(
-
     term: *const Expr,
 
     var: *const std::ffi::c_char,
-
 ) -> ConvergenceResult {
 
     let term_ref = unsafe {

@@ -930,6 +930,7 @@ pub(crate) fn poly_integrate(
 ///
 /// # Returns
 /// A `Result` containing the symbolic integral or an error message.
+
 pub fn hermite_integrate_rational(
     p: &SparsePolynomial,
     q: &SparsePolynomial,
@@ -1230,6 +1231,7 @@ fn substitute_expr_for_var(
 ///
 /// # Returns
 /// A `Result` containing the symbolic integral or an error message.
+
 pub fn integrate_rational_function_expr(
     expr: &Expr,
     x: &str,
@@ -1259,6 +1261,7 @@ pub fn integrate_rational_function_expr(
 ///
 /// # Returns
 /// A `SparsePolynomial` representing the derivative.
+
 pub fn poly_derivative_symbolic(
     p: &SparsePolynomial,
     x: &str,

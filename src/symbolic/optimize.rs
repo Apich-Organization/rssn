@@ -26,6 +26,7 @@ use crate::symbolic::solve::solve_system;
 )]
 
 /// The classification of a critical point of a function.
+
 pub enum ExtremumType {
     /// A point where the function reaches a local minimum.
     LocalMin,
@@ -42,6 +43,7 @@ pub enum ExtremumType {
 )]
 
 /// Represents a critical point of a multivariate function.
+
 pub struct CriticalPoint {
     /// The coordinates of the critical point as a mapping from variables to values.
     pub point: HashMap<Expr, Expr>,

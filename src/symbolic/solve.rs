@@ -1963,6 +1963,7 @@ pub(crate) fn contains_var(
 /// # Returns
 /// An `Option<Vec<Expr>>` containing the coefficients if the expression is a polynomial,
 /// or `None` if it contains transcendental terms or other non-polynomial structures in `var`.
+
 pub fn extract_polynomial_coeffs(
     expr: &Expr,
     var: &str,

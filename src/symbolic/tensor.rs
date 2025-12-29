@@ -27,6 +27,7 @@ use crate::symbolic::simplify_dag::simplify;
 )]
 
 /// Represents a symbolic tensor of arbitrary rank.
+
 pub struct Tensor {
     /// The flattened components of the tensor in row-major order.
     pub components: Vec<Expr>,
@@ -591,6 +592,7 @@ impl Tensor {
 ///
 /// A `MetricTensor` stores both the covariant metric tensor `g` and its
 /// contravariant inverse `g_inv`, enabling efficient index raising and lowering.
+
 pub struct MetricTensor {
     /// The covariant metric tensor (typically with lower indices, g_ij).
     pub g: Tensor,

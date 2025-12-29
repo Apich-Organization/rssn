@@ -13,6 +13,7 @@ use crate::physics::physics_sm::ifft2d;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
+
 pub struct GpeParameters {
     /// The number of grid points in the x-direction.
     pub nx: usize,

@@ -738,6 +738,7 @@ impl Expr {
     }
 
     /// Creates a new Predicate expression, managed by the DAG.
+
     pub fn new_predicate<I, T>(
         name: &str,
         args: I,
@@ -771,6 +772,7 @@ impl Expr {
     }
 
     /// Creates a new ForAll quantifier expression, managed by the DAG.
+
     pub fn new_forall<A>(
         var: &str,
         expr: A,
@@ -798,6 +800,7 @@ impl Expr {
     }
 
     /// Creates a new Exists quantifier expression, managed by the DAG.
+
     pub fn new_exists<A>(
         var: &str,
         expr: A,
@@ -825,6 +828,7 @@ impl Expr {
     }
 
     /// Creates a new Interval expression, managed by the DAG.
+
     pub fn new_interval<A, B>(
         lower: A,
         upper: B,

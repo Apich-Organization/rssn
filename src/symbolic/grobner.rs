@@ -350,6 +350,7 @@ pub(crate) fn subtract_monomials(
 ///
 /// # Returns
 /// A `SparsePolynomial` representing `p1 - p2`.
+
 pub fn subtract_poly(
     p1: &SparsePolynomial,
     p2: &SparsePolynomial,

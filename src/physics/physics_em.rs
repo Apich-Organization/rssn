@@ -8,6 +8,7 @@ use crate::physics::physics_rkm::OdeSystem;
     Clone, Debug, Serialize, Deserialize,
 )]
 /// Configuration for the Euler solver.
+
 pub struct EulerSolverConfig {
     /// The time step.
     pub dt: f64,
@@ -364,6 +365,7 @@ pub fn simulate_oscillator_forward_euler_scenario(
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
+
 pub struct OrbitalSystem {
     /// The gravitational constant.
     pub gravitational_constant: f64,

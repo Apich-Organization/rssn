@@ -16,6 +16,7 @@ use crate::output::io::write_npy_file;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
+
 pub struct IsingParameters {
     /// The width of the simulation grid.
     pub width: usize,
@@ -28,6 +29,7 @@ pub struct IsingParameters {
 }
 
 /// Runs an Ising model simulation.
+
 pub fn run_ising_simulation(
     params: &IsingParameters
 ) -> (Vec<i8>, f64) {

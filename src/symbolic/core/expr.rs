@@ -32,34 +32,41 @@ use crate::symbolic::unit_unification::UnitQuantity;
 // --- Distribution Trait ---
 // Moved here to break circular dependency
 /// Trait representing a probability distribution.
+
 pub trait Distribution:
     Debug + Send + Sync
 {
     /// Probability Density Function (PDF).
+
     fn pdf(
         &self,
         x: &Expr,
     ) -> Expr;
 
     /// Cumulative Distribution Function (CDF).
+
     fn cdf(
         &self,
         x: &Expr,
     ) -> Expr;
 
     /// Calculates the expected value of the distribution.
+
     fn expectation(&self) -> Expr;
 
     /// Calculates the variance of the distribution.
+
     fn variance(&self) -> Expr;
 
     /// Moment Generating Function (MGF).
+
     fn mgf(
         &self,
         t: &Expr,
     ) -> Expr;
 
     /// Creates a boxed clone of the distribution.
+
     fn clone_box(
         &self
     ) -> Arc<dyn Distribution>;

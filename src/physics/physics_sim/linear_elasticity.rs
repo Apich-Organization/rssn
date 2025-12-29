@@ -24,6 +24,7 @@ pub type Elements = Vec<[usize; 4]>;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
+
 pub struct ElasticityParameters {
     /// The nodes of the mesh.
     pub nodes: Nodes,

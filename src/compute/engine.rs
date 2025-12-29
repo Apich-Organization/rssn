@@ -621,21 +621,28 @@ impl ComputeEngine {
             .get(id)
             .cloned();
 
-        if let Some(computation) = computation {
+        if let Some(computation) =
+            computation
+        {
 
             let pause = {
+
                 let comp = computation
                     .lock()
                     .expect(
-                        "Computation lock \
-                         poisoned",
+                        "Computation \
+                         lock poisoned",
                     );
+
                 comp.pause.clone()
             };
 
             {
-                let mut paused =
-                    pause.0.lock().expect(
+
+                let mut paused = pause
+                    .0
+                    .lock()
+                    .expect(
                         "Pause lock \
                          poisoned",
                     );
@@ -690,21 +697,28 @@ impl ComputeEngine {
             .get(id)
             .cloned();
 
-        if let Some(computation) = computation {
+        if let Some(computation) =
+            computation
+        {
 
             let pause = {
+
                 let comp = computation
                     .lock()
                     .expect(
-                        "Computation lock \
-                         poisoned",
+                        "Computation \
+                         lock poisoned",
                     );
+
                 comp.pause.clone()
             };
 
             {
-                let mut paused =
-                    pause.0.lock().expect(
+
+                let mut paused = pause
+                    .0
+                    .lock()
+                    .expect(
                         "Pause lock \
                          poisoned",
                     );
@@ -760,14 +774,18 @@ impl ComputeEngine {
             .get(id)
             .cloned();
 
-        if let Some(computation) = computation {
+        if let Some(computation) =
+            computation
+        {
 
             let pause = {
-                let mut comp = computation
-                    .lock()
-                    .expect(
-                        "Computation lock \
-                         poisoned",
+
+                let mut comp =
+                    computation
+                        .lock()
+                        .expect(
+                        "Computation \
+                         lock poisoned",
                     );
 
                 comp.status =
@@ -775,12 +793,16 @@ impl ComputeEngine {
                         "Cancelled"
                             .to_string(),
                     );
+
                 comp.pause.clone()
             };
 
             {
-                let mut paused =
-                    pause.0.lock().expect(
+
+                let mut paused = pause
+                    .0
+                    .lock()
+                    .expect(
                         "Pause lock \
                          poisoned",
                     );

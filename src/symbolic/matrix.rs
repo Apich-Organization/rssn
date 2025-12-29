@@ -69,6 +69,7 @@ pub fn get_matrix_dims(
 ///
 /// # Returns
 /// A 2D vector of `Expr` representing the zero matrix.
+
 pub fn create_empty_matrix(
     rows: usize,
     cols: usize,

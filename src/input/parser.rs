@@ -25,6 +25,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::core::PathType;
 
 /// Checks if a character is a valid identifier character.
+
 fn is_identifier_char(c: char) -> bool {
 
     c.is_alphanumeric()
@@ -64,6 +65,7 @@ pub(crate) fn parse_rational_structure(
 ///
 /// # Returns
 /// A `Result` containing the remaining input and the parsed `Expr`.
+
 pub fn parse_expr(
     input: &str
 ) -> IResult<&str, Expr> {

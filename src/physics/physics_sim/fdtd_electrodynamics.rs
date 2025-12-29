@@ -10,6 +10,7 @@ use crate::output::io::write_npy_file;
 #[derive(
     Clone, Debug, Serialize, Deserialize,
 )]
+
 pub struct FdtdParameters {
     /// The width of the simulation grid.
     pub width: usize,

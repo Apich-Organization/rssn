@@ -146,6 +146,7 @@ struct DimensionInput {
 // Mandelbrot set
 /// Generates the Mandelbrot set as an image (iterations per pixel) using JSON for serialization.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -189,9 +190,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
-
     input: *const c_char
-
 ) -> *mut c_char {
 
     let input : MandelbrotPointInput = match from_json_string(input) {
@@ -229,6 +228,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
 // Julia set
 /// Generates the Julia set as an image (iterations per pixel) using JSON for serialization.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -273,9 +273,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
-
     input: *const c_char
-
 ) -> *mut c_char {
 
     let input : JuliaPointInput = match from_json_string(input) {
@@ -315,6 +313,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
 // Lorenz attractor
 /// Generates data points for the Lorenz attractor using JSON for serialization.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -356,9 +355,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
-
     input: *const c_char
-
 ) -> *mut c_char {
 
     let input : LorenzCustomInput = match from_json_string(input) {
@@ -399,6 +396,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
 // Rossler attractor
 /// Generates data points for the Rossler attractor using JSON for serialization.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -441,6 +439,7 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
 // Henon map
 /// Generates data points for the Henon map using JSON for serialization.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -481,6 +480,7 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
 // Tinkerbell map
 /// Generates data points for the Tinkerbell map using JSON for serialization.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -523,6 +523,7 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
 // Logistic map
 /// Computes iterations of the logistic map using JSON for serialization.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -562,6 +563,7 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
 // Bifurcation diagram
 /// Generates data for a bifurcation diagram of the logistic map using JSON for serialization.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -603,6 +605,7 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
 // Lyapunov exponents
 /// Computes the Lyapunov exponent for the logistic map using JSON for serialization.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -645,9 +648,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
-
     input: *const c_char
-
 ) -> *mut c_char {
 
     let input : LyapunovLorenzInput = match from_json_string(input) {
@@ -688,6 +689,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
 // Dimension estimation
 /// Computes the box-counting dimension of a set of points using JSON for serialization.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -728,9 +730,7 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
-
     input: *const c_char
-
 ) -> *mut c_char {
 
     let input : DimensionInput = match from_json_string(input) {

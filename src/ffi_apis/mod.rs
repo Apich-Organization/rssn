@@ -10,6 +10,7 @@
 
 #[macro_use]
 /// FFI macros.
+
 pub mod macros;
 
 /// Common FFI utilities.

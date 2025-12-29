@@ -378,6 +378,7 @@ pub(crate) fn root_bound(
 ///
 /// # Returns
 /// The numerical result as an `f64`.
+
 pub fn eval_expr(
     expr: &Expr,
     vars: &HashMap<String, f64>,

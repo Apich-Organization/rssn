@@ -57,9 +57,11 @@ pub trait Field:
     + One
 {
     /// Checks if the element is invertible.
+
     fn is_invertible(&self) -> bool;
 
     /// Returns the inverse of the element.
+
     fn inverse(
         &self
     ) -> Result<Self, String>;

@@ -23,6 +23,7 @@ use crate::symbolic::core::Expr;
     PartialEq,
 )]
 /// Represents the health status of a plugin.
+
 pub enum PluginHealth {
     /// The plugin is operating correctly.
     Ok,
@@ -40,6 +41,7 @@ pub enum PluginHealth {
 
 /// Represents the kind of error that a plugin can encounter.
 #[derive(Debug, Clone, PartialEq)]
+
 pub enum PluginErrorKind {
     /// The plugin was not found.
     NotFound,
@@ -57,6 +59,7 @@ pub enum PluginErrorKind {
 
 /// A specialized error type for plugin-related failures.
 #[derive(Debug, Clone)]
+
 pub struct PluginError {
     /// The kind of error.
     pub kind: PluginErrorKind,
@@ -66,6 +69,7 @@ pub struct PluginError {
 
 impl PluginError {
     /// Creates a new `PluginError`.
+
     pub fn new(
         kind: PluginErrorKind,
         msg: &str,

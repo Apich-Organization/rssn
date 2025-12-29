@@ -259,6 +259,7 @@ gen_ffi_handle!(rssn_get_muon_magnetic_moment, crate::constant::get_muon_magneti
 ///
 /// # Safety
 /// The `ptr` must be a valid C string pointer allocated by this module.
+
 pub unsafe extern "C" fn rssn_free_string_constant(
     ptr: *mut c_char
 ) {

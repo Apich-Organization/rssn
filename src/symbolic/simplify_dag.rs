@@ -3578,6 +3578,7 @@ pub(crate) fn pattern_match_recursive(
 ///
 /// # Returns
 /// A new `Expr` with patterns substituted.
+
 pub fn substitute_patterns(
     template: &Expr,
     assignments: &HashMap<String, Expr>,

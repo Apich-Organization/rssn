@@ -17,6 +17,7 @@ use crate::symbolic::matrix::transpose_matrix;
 use crate::symbolic::simplify_dag::simplify;
 
 /// A tuple representing coordinate transformation rules: (source_vars, target_vars, formulas).
+
 pub type TransformationRules = (
     Vec<String>,
     Vec<String>,
@@ -39,6 +40,7 @@ use serde::Serialize;
 #[repr(C)]
 
 /// Supported coordinate systems for symbolic transformations.
+
 pub enum CoordinateSystem {
     /// Standard 3D Cartesian coordinates (x, y, z).
     Cartesian,
@@ -859,6 +861,7 @@ pub(crate) fn symbolic_mat_vec_mul(
 )]
 
 /// Classification of tensor transformation behavior.
+
 pub enum TensorType {
     /// Transforms with the Jacobian matrix.
     Contravariant,

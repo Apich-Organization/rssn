@@ -8,6 +8,7 @@ use crate::symbolic::core::Expr;
 
 /// Configuration for plotting.
 #[derive(Clone, Debug)]
+
 pub struct PlotConfig {
     /// The width of the plot in pixels.
     pub width: u32,

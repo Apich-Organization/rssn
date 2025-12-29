@@ -297,6 +297,7 @@ pub fn simulate_1d_heat_conduction_cn_scenario(
     Clone, Debug, Serialize, Deserialize,
 )]
 /// Configuration for the 2D heat equation solver.
+
 pub struct HeatEquationSolverConfig {
     /// The number of grid points in the x direction.
     pub nx: usize,
