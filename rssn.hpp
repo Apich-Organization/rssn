@@ -6647,6 +6647,25 @@ rssn_Expr *rssn_convolution_laplace(const rssn_Expr *aF,
                                     const char *aOutVar)
 ;
 
+/*
+ Returns the metric tensor for a given coordinate system as a symbolic expression.
+
+ The metric tensor encodes the inner product and volume element for the coordinate
+ system, and is typically represented as a matrix-valued `Expr`.
+
+ # Arguments
+
+ * `system` - [`CoordinateSystem`] for which to compute the metric tensor.
+
+ # Returns
+
+ A newly allocated `Expr` pointer representing the metric tensor, or null on failure.
+
+ # Safety
+
+ This function is unsafe at the FFI boundary; the returned pointer must be eventually
+ freed by the caller using the appropriate deallocation routine.
+ */
 rssn_
 rssn_Expr *rssn_coordinates_get_metric_tensor_handle(rssn_CoordinateSystem aSystem)
 ;
@@ -26570,34 +26589,162 @@ rssn_Vector *rssn_torque(const rssn_Vector *aR,
                          const rssn_Vector *aForce)
 ;
 
+/*
+ Transforms contravariant vector components between coordinate systems.
+
+ Contravariant components transform with the Jacobian of the coordinate change, corresponding
+ to vector components with upper indices.
+
+ # Arguments
+
+ * `comps` - Pointer to a `Vec<Expr>` containing contravariant components in the `from` system.
+ * `from` - Source [`CoordinateSystem`].
+ * `to` - Target [`CoordinateSystem`].
+
+ # Returns
+
+ A newly allocated `Vec<Expr>` pointer with contravariant components in the `to` system, or
+ null on failure.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer to a vector and returns
+ ownership of a heap-allocated vector to the caller.
+ */
 rssn_
 rssn_Vec<rssn_Expr> *rssn_transform_contravariant_vector_handle(const rssn_Vec<rssn_Expr> *aComps,
                                                                 rssn_CoordinateSystem aFrom,
                                                                 rssn_CoordinateSystem aTo)
 ;
 
+/*
+ Transforms covariant vector components between coordinate systems.
+
+ Covariant components transform with the inverse Jacobian and correspond to components
+ with lower indices (1-forms).
+
+ # Arguments
+
+ * `comps` - Pointer to a `Vec<Expr>` containing covariant components in the `from` system.
+ * `from` - Source [`CoordinateSystem`].
+ * `to` - Target [`CoordinateSystem`].
+
+ # Returns
+
+ A newly allocated `Vec<Expr>` pointer with covariant components in the `to` system, or
+ null on failure.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer to a vector and returns
+ ownership of a heap-allocated vector to the caller.
+ */
 rssn_
 rssn_Vec<rssn_Expr> *rssn_transform_covariant_vector_handle(const rssn_Vec<rssn_Expr> *aComps,
                                                             rssn_CoordinateSystem aFrom,
                                                             rssn_CoordinateSystem aTo)
 ;
 
+/*
+ Computes the curl of a vector field in a given coordinate system.
+
+ The curl is computed using the metric and Levi-Civita tensor of the `from` system,
+ yielding a vector-valued `Expr` representing \(\nabla \times \vec{v}\).
+
+ # Arguments
+
+ * `comps` - Pointer to a `Vec<Expr>` containing the vector components in the `from` system.
+ * `from` - [`CoordinateSystem`] with respect to which the curl is taken.
+
+ # Returns
+
+ A newly allocated `Vec<Expr>` pointer representing the curl, or null on failure.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw vector pointer and returns
+ ownership of a heap-allocated vector to the caller.
+ */
 rssn_
 rssn_Vec<rssn_Expr> *rssn_transform_curl_handle(const rssn_Vec<rssn_Expr> *aComps,
                                                 rssn_CoordinateSystem aFrom)
 ;
 
+/*
+ Computes the divergence of a vector field in a given coordinate system.
+
+ The divergence is computed using the metric and Christoffel symbols associated with
+ `from`, yielding a scalar `Expr` representing \(\nabla \cdot \vec{v}\).
+
+ # Arguments
+
+ * `comps` - Pointer to a `Vec<Expr>` containing the vector components in the `from` system.
+ * `from` - [`CoordinateSystem`] with respect to which the divergence is taken.
+
+ # Returns
+
+ A newly allocated `Expr` pointer representing the divergence, or null on failure.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw vector pointer and returns
+ ownership of a heap-allocated `Expr` to the caller.
+ */
 rssn_
 rssn_Expr *rssn_transform_divergence_handle(const rssn_Vec<rssn_Expr> *aComps,
                                             rssn_CoordinateSystem aFrom)
 ;
 
+/*
+ Transforms a scalar expression between coordinate systems.
+
+ This replaces the variables of `expr` according to the mapping between the `from` and
+ `to` coordinate systems, yielding an equivalent symbolic expression in the target system.
+
+ # Arguments
+
+ * `expr` - Pointer to an `Expr` representing the scalar field in the `from` system.
+ * `from` - Source [`CoordinateSystem`] of the variables in `expr`.
+ * `to` - Target [`CoordinateSystem`] to which the expression is transformed.
+
+ # Returns
+
+ A newly allocated `Expr` pointer representing the transformed expression, or null on failure.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw `Expr` pointer and returns
+ ownership of a heap-allocated `Expr` to the caller.
+ */
 rssn_
 rssn_Expr *rssn_transform_expression_handle(const rssn_Expr *aExpr,
                                             rssn_CoordinateSystem aFrom,
                                             rssn_CoordinateSystem aTo)
 ;
 
+/*
+ Computes the gradient of a scalar field and transforms it between coordinate systems.
+
+ The gradient is first formed with respect to the variables `vars` in the `from` system,
+ then mapped into the `to` system as a vector of symbolic components.
+
+ # Arguments
+
+ * `scalar` - Pointer to an `Expr` representing the scalar field.
+ * `vars` - Pointer to a `Vec<String>` listing the coordinate variables.
+ * `from` - Source [`CoordinateSystem`].
+ * `to` - Target [`CoordinateSystem`].
+
+ # Returns
+
+ A newly allocated `Vec<Expr>` pointer representing the gradient components in the `to`
+ system, or null on failure.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers and returns ownership
+ of a heap-allocated vector to the caller.
+ */
 rssn_
 rssn_Vec<rssn_Expr> *rssn_transform_gradient_handle(const rssn_Expr *aScalar,
                                                     const rssn_Vec<rssn_String> *aVars,
