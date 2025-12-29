@@ -8,7 +8,6 @@ use serde::Deserialize;
 
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::matrix::Matrix;
-use crate::numerical::solve::LinearSolution;
 use crate::numerical::solve::{
     self,
 };

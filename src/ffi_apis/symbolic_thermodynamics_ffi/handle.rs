@@ -1,7 +1,5 @@
 //! Handle-based FFI API for thermodynamics functions.
 
-use std::os::raw::c_char;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::thermodynamics;
 

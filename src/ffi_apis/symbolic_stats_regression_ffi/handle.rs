@@ -1,5 +1,4 @@
 use std::os::raw::c_char;
-use std::os::raw::c_int;
 use std::sync::Arc;
 
 use crate::ffi_apis::common::*;

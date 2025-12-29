@@ -4,7 +4,6 @@
 //! including their inverse transforms and related properties (time shift, frequency shift,
 //! scaling, differentiation, and convolution theorems).
 
-use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use crate::ffi_apis::common::*;

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;

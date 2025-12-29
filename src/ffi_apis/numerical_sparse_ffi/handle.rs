@@ -5,7 +5,6 @@ use std::ptr;
 use sprs_rssn::CsMat;
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::sparse::SparseMatrixData;
 use crate::numerical::sparse::{
     self,
 };
