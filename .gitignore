@@ -249,6 +249,9 @@ cython_debug/
 *.zip
 *.tar.gz
 *.rar
+.kate-swp
+.tmp.kate-swp
+.missdoc.tmp.kate-swp
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
