@@ -29,8 +29,14 @@ struct ComplexResult {
     im: f64,
 }
 
+/// Newton's method for complex roots using Bincode for FFI communication.
+///
+/// # Arguments
+/// * `buffer` - Bincode-encoded `NewtonInput`.
+///
+/// # Returns
+/// Bincode-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -90,8 +96,14 @@ struct LogSqrtInput {
     k: i32,
 }
 
+/// Computes the k-th branch of the complex logarithm using Bincode.
+///
+/// # Arguments
+/// * `buffer` - Bincode-encoded `LogSqrtInput`.
+///
+/// # Returns
+/// Bincode-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -130,8 +142,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
     })
 }
 
+/// Computes the k-th branch of the complex square root using Bincode.
+///
+/// # Arguments
+/// * `buffer` - Bincode-encoded `LogSqrtInput`.
+///
+/// # Returns
+/// Bincode-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -180,8 +198,14 @@ struct PowInput {
     k: i32,
 }
 
+/// Computes the k-th branch of complex power using Bincode.
+///
+/// # Arguments
+/// * `buffer` - Bincode-encoded `PowInput`.
+///
+/// # Returns
+/// Bincode-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {

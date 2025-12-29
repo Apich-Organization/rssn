@@ -30,8 +30,14 @@ struct ComplexResult {
     im: f64,
 }
 
+/// Newton's method for complex roots using JSON for FFI communication.
+///
+/// # Arguments
+/// * `input_json` - JSON-encoded `NewtonInput`.
+///
+/// # Returns
+/// JSON-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -100,8 +106,14 @@ struct LogSqrtInput {
     k: i32,
 }
 
+/// Computes the k-th branch of the complex logarithm using JSON.
+///
+/// # Arguments
+/// * `json` - JSON-encoded `LogSqrtInput`.
+///
+/// # Returns
+/// JSON-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
     json: *const c_char
 ) -> *mut c_char {
@@ -148,8 +160,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
     )
 }
 
+/// Computes the k-th branch of the complex square root using JSON.
+///
+/// # Arguments
+/// * `json` - JSON-encoded `LogSqrtInput`.
+///
+/// # Returns
+/// JSON-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(
     json: *const c_char
 ) -> *mut c_char {
@@ -206,8 +224,14 @@ struct PowInput {
     k: i32,
 }
 
+/// Computes the k-th branch of complex power using JSON.
+///
+/// # Arguments
+/// * `json` - JSON-encoded `PowInput`.
+///
+/// # Returns
+/// JSON-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(
     json: *const c_char
 ) -> *mut c_char {

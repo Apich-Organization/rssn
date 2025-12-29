@@ -127,8 +127,15 @@ pub unsafe extern "C" fn rssn_num_matrix_get_cols(
     }
 }
 
+/// Copies the matrix data into a provided buffer.
+///
+/// # Arguments
+/// * `matrix` - Handle to the matrix.
+/// * `buffer` - Pointer to a buffer of size `rows * cols`.
+///
+/// # Returns
+/// 0 on success, -1 on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_matrix_get_data(
     matrix: *const RssnMatrixHandle,
     buffer: *mut f64,
@@ -166,8 +173,15 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data(
     0
 }
 
+/// Adds two numerical matrices.
+///
+/// # Arguments
+/// * `m1` - Handle to the first matrix.
+/// * `m2` - Handle to the second matrix.
+///
+/// # Returns
+/// A handle to the resulting matrix, or null on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_matrix_add(
     m1: *const RssnMatrixHandle,
     m2: *const RssnMatrixHandle,
@@ -207,8 +221,15 @@ pub unsafe extern "C" fn rssn_num_matrix_add(
         as *mut RssnMatrixHandle
 }
 
+/// Multiplies two numerical matrices.
+///
+/// # Arguments
+/// * `m1` - Handle to the first matrix.
+/// * `m2` - Handle to the second matrix.
+///
+/// # Returns
+/// A handle to the resulting matrix, or null on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_matrix_mul(
     m1: *const RssnMatrixHandle,
     m2: *const RssnMatrixHandle,
@@ -246,8 +267,14 @@ pub unsafe extern "C" fn rssn_num_matrix_mul(
         as *mut RssnMatrixHandle
 }
 
+/// Transposes a numerical matrix.
+///
+/// # Arguments
+/// * `matrix` - Handle to the matrix.
+///
+/// # Returns
+/// A handle to the transposed matrix, or null on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_matrix_transpose(
     matrix: *const RssnMatrixHandle
 ) -> *mut RssnMatrixHandle {
@@ -268,8 +295,15 @@ pub unsafe extern "C" fn rssn_num_matrix_transpose(
         as *mut RssnMatrixHandle
 }
 
+/// Computes the determinant of a numerical matrix.
+///
+/// # Arguments
+/// * `matrix` - Handle to the matrix.
+/// * `result` - Pointer to store the result.
+///
+/// # Returns
+/// 0 on success, -1 on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_matrix_determinant(
     matrix: *const RssnMatrixHandle,
     result: *mut f64,
@@ -306,8 +340,14 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
     }
 }
 
+/// Computes the inverse of a numerical matrix.
+///
+/// # Arguments
+/// * `matrix` - Handle to the matrix.
+///
+/// # Returns
+/// A handle to the inverse matrix, or null if the matrix is singular or not square.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_matrix_inverse(
     matrix: *const RssnMatrixHandle
 ) -> *mut RssnMatrixHandle {
