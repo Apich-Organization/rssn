@@ -29,10 +29,14 @@ struct RecurrenceInput {
     target_n: usize,
 }
 
+/// Computes the factorial of a number using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : NInput = match from_bincode_buffer(&buffer) {
@@ -57,10 +61,14 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(
     })
 }
 
+/// Computes the number of permutations using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : NKInput = match from_bincode_buffer(&buffer) {
@@ -87,10 +95,14 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
     })
 }
 
+/// Computes the number of combinations using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : NKInput = match from_bincode_buffer(&buffer) {
@@ -117,10 +129,14 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
     })
 }
 
+/// Solves a linear recurrence relation using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : RecurrenceInput = match from_bincode_buffer(&buffer) {
@@ -164,10 +180,14 @@ struct XNInput {
     n: u64,
 }
 
+/// Computes the Stirling number of the second kind using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : NKInput = match from_bincode_buffer(&buffer) {
@@ -194,10 +214,14 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
     })
 }
 
+/// Computes the Bell number using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_bell_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : NInput = match from_bincode_buffer(&buffer) {
@@ -221,10 +245,14 @@ pub unsafe extern "C" fn rssn_num_comb_bell_bincode(
     })
 }
 
+/// Computes the Catalan number using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : NInput = match from_bincode_buffer(&buffer) {
@@ -248,10 +276,14 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(
     })
 }
 
+/// Computes the rising factorial using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : XNInput = match from_bincode_buffer(&buffer) {
@@ -278,10 +310,14 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
     })
 }
 
+/// Computes the falling factorial using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : XNInput = match from_bincode_buffer(&buffer) {

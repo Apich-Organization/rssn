@@ -59,6 +59,7 @@ pub unsafe extern "C" fn rssn_num_matrix_create_nightly(
         as *mut RssnMatrixHandle
 }
 
+/// Frees a previously allocated Matrix.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_free_nightly(
@@ -77,10 +78,14 @@ pub unsafe extern "C" fn rssn_num_matrix_free_nightly(
     }
 }
 
+/// Returns the number of rows of a given matrix.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_get_rows_nightly(
+
     matrix: *const RssnMatrixHandle
+
 ) -> usize {
 
     if matrix.is_null() {
@@ -96,10 +101,14 @@ pub unsafe extern "C" fn rssn_num_matrix_get_rows_nightly(
     }
 }
 
+/// Returns the number of columns of a given matrix.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_get_cols_nightly(
+
     matrix: *const RssnMatrixHandle
+
 ) -> usize {
 
     if matrix.is_null() {
@@ -115,11 +124,16 @@ pub unsafe extern "C" fn rssn_num_matrix_get_cols_nightly(
     }
 }
 
+/// Retrieves the raw data of a given matrix.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_get_data_nightly(
+
     matrix: *const RssnMatrixHandle,
+
     buffer: *mut f64,
+
 ) -> i32 {
 
     if matrix.is_null()
@@ -154,11 +168,16 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data_nightly(
     0
 }
 
+/// Adds two matrices.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_add_nightly(
+
     m1: *const RssnMatrixHandle,
+
     m2: *const RssnMatrixHandle,
+
 ) -> *mut RssnMatrixHandle {
 
     if m1.is_null() || m2.is_null() {
@@ -195,11 +214,16 @@ pub unsafe extern "C" fn rssn_num_matrix_add_nightly(
         as *mut RssnMatrixHandle
 }
 
+/// Multiplies two matrices.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_mul_nightly(
+
     m1: *const RssnMatrixHandle,
+
     m2: *const RssnMatrixHandle,
+
 ) -> *mut RssnMatrixHandle {
 
     if m1.is_null() || m2.is_null() {
@@ -234,10 +258,14 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_nightly(
         as *mut RssnMatrixHandle
 }
 
+/// Transposes a matrix.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_transpose_nightly(
+
     matrix: *const RssnMatrixHandle
+
 ) -> *mut RssnMatrixHandle {
 
     if matrix.is_null() {
@@ -256,11 +284,16 @@ pub unsafe extern "C" fn rssn_num_matrix_transpose_nightly(
         as *mut RssnMatrixHandle
 }
 
+/// Computes the determinant of a matrix.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_determinant_nightly(
+
     matrix: *const RssnMatrixHandle,
+
     result: *mut f64,
+
 ) -> i32 {
 
     if matrix.is_null()
@@ -294,10 +327,14 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant_nightly(
     }
 }
 
+/// Computes the inverse of a matrix.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_inverse_nightly(
+
     matrix: *const RssnMatrixHandle
+
 ) -> *mut RssnMatrixHandle {
 
     if matrix.is_null() {

@@ -40,10 +40,14 @@ struct BSplineInput {
     t: f64,
 }
 
+/// Computes the Lagrange interpolation polynomial for a given set of points using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
+
     input_ptr: *const c_char
+
 ) -> *mut c_char {
 
     let input : LagrangeInput = match from_json_string(input_ptr) {
@@ -76,10 +80,14 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
     )
 }
 
+/// Computes the cubic spline interpolation for a given set of points using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
+
     input_ptr: *const c_char
+
 ) -> *mut c_char {
 
     let input : CubicSplineInput = match from_json_string(input_ptr) {
@@ -116,10 +124,14 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
     )
 }
 
+/// Computes a point on a Bezier curve given control points and a parameter t, using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_bezier_curve_json(
+
     input_ptr: *const c_char
+
 ) -> *mut c_char {
 
     let input : BezierInput = match from_json_string(input_ptr) {
@@ -147,10 +159,14 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_json(
     )
 }
 
+/// Computes a point on a B-spline curve given control points, degree, knots, and a parameter t, using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_b_spline_json(
+
     input_ptr: *const c_char
+
 ) -> *mut c_char {
 
     let input : BSplineInput = match from_json_string(input_ptr) {

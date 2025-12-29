@@ -116,8 +116,8 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
 }
 
 /// Pure numerical functions exposed via FFI.
+/// Computes the sine of a f64 value.
 #[no_mangle]
-
 pub extern "C" fn rssn_num_pure_sin(
     x: f64
 ) -> f64 {
@@ -125,129 +125,187 @@ pub extern "C" fn rssn_num_pure_sin(
     elementary::pure::sin(x)
 }
 
+/// Computes the cosine of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_cos(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::cos(x)
 }
 
+/// Computes the tangent of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_tan(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::tan(x)
 }
 
+/// Computes the arcsine of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_asin(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::asin(x)
 }
 
+/// Computes the arccosine of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_acos(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::acos(x)
 }
 
+/// Computes the arctangent of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_atan(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::atan(x)
 }
 
+/// Computes the arctangent of y/x using the signs of the arguments to determine the correct quadrant.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_atan2(
+
     y: f64,
+
     x: f64,
+
 ) -> f64 {
 
     elementary::pure::atan2(y, x)
 }
 
+/// Computes the hyperbolic sine of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_sinh(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::sinh(x)
 }
 
+/// Computes the hyperbolic cosine of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_cosh(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::cosh(x)
 }
 
+/// Computes the hyperbolic tangent of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_tanh(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::tanh(x)
 }
 
+/// Computes the absolute value of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_abs(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::abs(x)
 }
 
+/// Computes the square root of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_sqrt(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::sqrt(x)
 }
 
+/// Computes the natural logarithm of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_ln(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::ln(x)
 }
 
+/// Computes e raised to the power of a f64 value.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_exp(
+
     x: f64
+
 ) -> f64 {
 
     elementary::pure::exp(x)
 }
 
+/// Computes `base` raised to the power of `exp`.
+
 #[no_mangle]
 
 pub extern "C" fn rssn_num_pure_pow(
+
     base: f64,
+
     exp: f64,
+
 ) -> f64 {
 
     elementary::pure::pow(base, exp)

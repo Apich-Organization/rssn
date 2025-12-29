@@ -28,10 +28,14 @@ struct GramSchmidtInput {
     basis: Vec<Vec<(f64, f64)>>,
 }
 
+/// Computes the L2 norm of a function (represented by a series of points) using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fa_l2_norm_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : PointsInput = match from_bincode_buffer(&buffer) {
@@ -59,10 +63,14 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm_bincode(
     to_bincode_buffer(&ffi_res)
 }
 
+/// Computes the inner product of two functions (represented by series of points) using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fa_inner_product_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : InnerProductInput = match from_bincode_buffer(&buffer) {
@@ -95,10 +103,14 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product_bincode(
     }
 }
 
+/// Applies the Gram-Schmidt orthonormalization process to a set of basis functions using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fa_gram_schmidt_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : GramSchmidtInput = match from_bincode_buffer(&buffer) {

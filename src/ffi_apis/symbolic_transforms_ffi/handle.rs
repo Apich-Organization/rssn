@@ -44,8 +44,12 @@ pub unsafe extern "C" fn rssn_fourier_transform(
     ))
 }
 
+/// Computes the symbolic inverse Fourier transform of an expression.
+///
+/// # Safety
+/// Caller must ensure `expr` is a valid pointer to an `Expr`.
+/// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_inverse_fourier_transform(
     expr: *const Expr,
     in_var: *const c_char,
@@ -68,8 +72,12 @@ pub unsafe extern "C" fn rssn_inverse_fourier_transform(
     ))
 }
 
+/// Computes the symbolic Laplace transform of an expression.
+///
+/// # Safety
+/// Caller must ensure `expr` is a valid pointer to an `Expr`.
+/// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_laplace_transform(
     expr: *const Expr,
     in_var: *const c_char,
@@ -96,8 +104,12 @@ pub unsafe extern "C" fn rssn_laplace_transform(
     ))
 }
 
+/// Computes the symbolic inverse Laplace transform of an expression.
+///
+/// # Safety
+/// Caller must ensure `expr` is a valid pointer to an `Expr`.
+/// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_inverse_laplace_transform(
     expr: *const Expr,
     in_var: *const c_char,
@@ -120,8 +132,12 @@ pub unsafe extern "C" fn rssn_inverse_laplace_transform(
     ))
 }
 
+/// Computes the symbolic Z-transform of an expression.
+///
+/// # Safety
+/// Caller must ensure `expr` is a valid pointer to an `Expr`.
+/// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_z_transform(
     expr: *const Expr,
     in_var: *const c_char,
@@ -148,8 +164,12 @@ pub unsafe extern "C" fn rssn_z_transform(
     ))
 }
 
+/// Computes the symbolic inverse Z-transform of an expression.
+///
+/// # Safety
+/// Caller must ensure `expr` is a valid pointer to an `Expr`.
+/// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_inverse_z_transform(
     expr: *const Expr,
     in_var: *const c_char,
@@ -176,8 +196,12 @@ pub unsafe extern "C" fn rssn_inverse_z_transform(
     ))
 }
 
+/// Applies the time shift property of the Fourier transform.
+///
+/// # Safety
+/// Caller must ensure `f_omega` and `a` are valid pointers to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_fourier_time_shift(
     f_omega: *const Expr,
     a: *const Expr,
@@ -202,8 +226,12 @@ pub unsafe extern "C" fn rssn_fourier_time_shift(
     ))
 }
 
+/// Applies the frequency shift property of the Fourier transform.
+///
+/// # Safety
+/// Caller must ensure `f_omega` and `a` are valid pointers to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_fourier_frequency_shift(
     f_omega: *const Expr,
     a: *const Expr,
@@ -228,8 +256,12 @@ pub unsafe extern "C" fn rssn_fourier_frequency_shift(
     ))
 }
 
+/// Applies the scaling property of the Fourier transform.
+///
+/// # Safety
+/// Caller must ensure `f_omega` and `a` are valid pointers to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_fourier_scaling(
     f_omega: *const Expr,
     a: *const Expr,
@@ -254,8 +286,12 @@ pub unsafe extern "C" fn rssn_fourier_scaling(
     ))
 }
 
+/// Applies the differentiation property of the Fourier transform.
+///
+/// # Safety
+/// Caller must ensure `f_omega` is a valid pointer to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_fourier_differentiation(
     f_omega: *const Expr,
     out_var: *const c_char,
@@ -274,8 +310,12 @@ pub unsafe extern "C" fn rssn_fourier_differentiation(
     ))
 }
 
+/// Applies the time shift property of the Laplace transform.
+///
+/// # Safety
+/// Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_laplace_time_shift(
     f_s: *const Expr,
     a: *const Expr,
@@ -297,8 +337,12 @@ pub unsafe extern "C" fn rssn_laplace_time_shift(
     ))
 }
 
+/// Applies the differentiation property of the Laplace transform.
+///
+/// # Safety
+/// Caller must ensure `f_s` and `f_zero` are valid pointers to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_laplace_differentiation(
     f_s: *const Expr,
     out_var: *const c_char,
@@ -323,8 +367,12 @@ pub unsafe extern "C" fn rssn_laplace_differentiation(
     ))
 }
 
+/// Computes the convolution of two expressions in the Fourier domain.
+///
+/// # Safety
+/// Caller must ensure `f` and `g` are valid pointers to an `Expr`.
+/// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_convolution_fourier(
     f: *const Expr,
     g: *const Expr,
@@ -350,8 +398,12 @@ pub unsafe extern "C" fn rssn_convolution_fourier(
     ))
 }
 
+/// Computes the convolution of two expressions in the Laplace domain.
+///
+/// # Safety
+/// Caller must ensure `f` and `g` are valid pointers to an `Expr`.
+/// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_convolution_laplace(
     f: *const Expr,
     g: *const Expr,
@@ -377,8 +429,12 @@ pub unsafe extern "C" fn rssn_convolution_laplace(
     ))
 }
 
+/// Applies the frequency shift property of the Laplace transform.
+///
+/// # Safety
+/// Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_laplace_frequency_shift(
     f_s: *const Expr,
     a: *const Expr,
@@ -398,8 +454,12 @@ pub unsafe extern "C" fn rssn_laplace_frequency_shift(
     ))
 }
 
+/// Applies the scaling property of the Laplace transform.
+///
+/// # Safety
+/// Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_laplace_scaling(
     f_s: *const Expr,
     a: *const Expr,
@@ -421,8 +481,12 @@ pub unsafe extern "C" fn rssn_laplace_scaling(
     ))
 }
 
+/// Applies the integration property of the Laplace transform.
+///
+/// # Safety
+/// Caller must ensure `f_s` is a valid pointer to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_laplace_integration(
     f_s: *const Expr,
     out_var: *const c_char,
@@ -443,8 +507,12 @@ pub unsafe extern "C" fn rssn_laplace_integration(
     ))
 }
 
+/// Applies the time shift property of the Z-transform.
+///
+/// # Safety
+/// Caller must ensure `f_z` and `k` are valid pointers to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_z_time_shift(
     f_z: *const Expr,
     k: *const Expr,
@@ -466,8 +534,12 @@ pub unsafe extern "C" fn rssn_z_time_shift(
     ))
 }
 
+/// Applies the scaling property of the Z-transform.
+///
+/// # Safety
+/// Caller must ensure `f_z` and `a` are valid pointers to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_z_scaling(
     f_z: *const Expr,
     a: *const Expr,
@@ -489,8 +561,12 @@ pub unsafe extern "C" fn rssn_z_scaling(
     ))
 }
 
+/// Applies the differentiation property of the Z-transform.
+///
+/// # Safety
+/// Caller must ensure `f_z` is a valid pointer to an `Expr`.
+/// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_z_differentiation(
     f_z: *const Expr,
     out_var: *const c_char,

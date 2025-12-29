@@ -564,6 +564,9 @@ typedef struct rssn_RssnGraph {
     uint8_t mPrivate[0];
 } rssn_RssnGraph;
 
+/*
+ A point in 2D space for FFI communication.
+ */
 typedef struct rssn_FfiPoint {
     double mX;
     double mY;
@@ -1474,11 +1477,21 @@ DEPRECATED_WITH_NOTE
 char *nt_mod_pow(const char *aJsonPtr)
 ;
 
+/*
+ Computes the numerical gradient of an expression.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 char *numerical_gradient(const char *aJsonPtr)
 ;
 
+/*
+ Performs numerical integration of an expression.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 char *numerical_integrate(const char *aJsonPtr)
@@ -1641,6 +1654,11 @@ char *path_continuation_new_json(const char *aFuncJson,
                                  size_t aOrder)
 ;
 
+/*
+ Solves the 1D advection-diffusion equation.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 char *physics_solve_advection_diffusion_1d(const char *aJsonPtr)
@@ -5519,6 +5537,13 @@ struct rssn_Expr *rssn_calculate_residue(const struct rssn_Expr *aExpr,
                                          const struct rssn_Expr *aPole)
 ;
 
+/*
+ Computes the definite integral of an expression using handles.
+
+ # Safety
+ * `var` must be a valid null-terminated C string.
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_calculus_definite_integrate(size_t aExprH,
@@ -5528,6 +5553,13 @@ int32_t rssn_calculus_definite_integrate(size_t aExprH,
                                          size_t *aResultH)
 ;
 
+/*
+ Differentiates an expression with respect to a variable using handles.
+
+ # Safety
+ * `var` must be a valid null-terminated C string.
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_calculus_differentiate(size_t aExprH,
@@ -5535,6 +5567,13 @@ int32_t rssn_calculus_differentiate(size_t aExprH,
                                     size_t *aResultH)
 ;
 
+/*
+ Integrates an expression with respect to a variable using handles (indefinite).
+
+ # Safety
+ * `var` must be a valid null-terminated C string.
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_calculus_integrate(size_t aExprH,
@@ -5542,6 +5581,13 @@ int32_t rssn_calculus_integrate(size_t aExprH,
                                 size_t *aResultH)
 ;
 
+/*
+ Computes the limit of an expression as a variable approaches a value using handles.
+
+ # Safety
+ * `var` must be a valid null-terminated C string.
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_calculus_limit(size_t aExprH,
@@ -5550,6 +5596,13 @@ int32_t rssn_calculus_limit(size_t aExprH,
                             size_t *aResultH)
 ;
 
+/*
+ Substitutes a variable with another expression in an expression using handles.
+
+ # Safety
+ * `var` must be a valid null-terminated C string.
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_calculus_substitute(size_t aExprH,
@@ -6052,6 +6105,13 @@ rssn_
 char *rssn_convergence_wynn_json(const char *aJsonPtr)
 ;
 
+/*
+ Computes the convolution of two expressions in the Fourier domain.
+
+ # Safety
+ Caller must ensure `f` and `g` are valid pointers to an `Expr`.
+ `in_var` and `out_var` must be valid C strings or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_convolution_fourier(const struct rssn_Expr *aF,
                                            const struct rssn_Expr *aG,
@@ -6059,6 +6119,13 @@ struct rssn_Expr *rssn_convolution_fourier(const struct rssn_Expr *aF,
                                            const char *aOutVar)
 ;
 
+/*
+ Computes the convolution of two expressions in the Laplace domain.
+
+ # Safety
+ Caller must ensure `f` and `g` are valid pointers to an `Expr`.
+ `in_var` and `out_var` must be valid C strings or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_convolution_laplace(const struct rssn_Expr *aF,
                                            const struct rssn_Expr *aG,
@@ -6986,17 +7053,38 @@ struct rssn_Expr *rssn_first_order_energy_correction(const struct rssn_Operator 
                                                      const struct rssn_Ket *aUnperturbedState)
 ;
 
+/*
+ Applies the differentiation property of the Fourier transform.
+
+ # Safety
+ Caller must ensure `f_omega` is a valid pointer to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_fourier_differentiation(const struct rssn_Expr *aFOmega,
                                                const char *aOutVar)
 ;
 
+/*
+ Applies the frequency shift property of the Fourier transform.
+
+ # Safety
+ Caller must ensure `f_omega` and `a` are valid pointers to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_fourier_frequency_shift(const struct rssn_Expr *aFOmega,
                                                const struct rssn_Expr *aA,
                                                const char *aOutVar)
 ;
 
+/*
+ Applies the scaling property of the Fourier transform.
+
+ # Safety
+ Caller must ensure `f_omega` and `a` are valid pointers to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_fourier_scaling(const struct rssn_Expr *aFOmega,
                                        const struct rssn_Expr *aA,
@@ -7017,6 +7105,13 @@ struct rssn_Expr *rssn_fourier_series_handle(const struct rssn_Expr *aExpr,
                                              size_t aOrder)
 ;
 
+/*
+ Applies the time shift property of the Fourier transform.
+
+ # Safety
+ Caller must ensure `f_omega` and `a` are valid pointers to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_fourier_time_shift(const struct rssn_Expr *aFOmega,
                                           const struct rssn_Expr *aA,
@@ -8381,18 +8476,39 @@ rssn_
 double rssn_inverse_erfc(double aX)
 ;
 
+/*
+ Computes the symbolic inverse Fourier transform of an expression.
+
+ # Safety
+ Caller must ensure `expr` is a valid pointer to an `Expr`.
+ `in_var` and `out_var` must be valid C strings or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_inverse_fourier_transform(const struct rssn_Expr *aExpr,
                                                  const char *aInVar,
                                                  const char *aOutVar)
 ;
 
+/*
+ Computes the symbolic inverse Laplace transform of an expression.
+
+ # Safety
+ Caller must ensure `expr` is a valid pointer to an `Expr`.
+ `in_var` and `out_var` must be valid C strings or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_inverse_laplace_transform(const struct rssn_Expr *aExpr,
                                                  const char *aInVar,
                                                  const char *aOutVar)
 ;
 
+/*
+ Computes the symbolic inverse Z-transform of an expression.
+
+ # Safety
+ Caller must ensure `expr` is a valid pointer to an `Expr`.
+ `in_var` and `out_var` must be valid C strings or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_inverse_z_transform(const struct rssn_Expr *aExpr,
                                            const char *aInVar,
@@ -11988,35 +12104,77 @@ struct rssn_Expr *rssn_laguerre_l(const struct rssn_Expr *aDegree,
                                   const struct rssn_Expr *aArg)
 ;
 
+/*
+ Applies the differentiation property of the Laplace transform.
+
+ # Safety
+ Caller must ensure `f_s` and `f_zero` are valid pointers to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_laplace_differentiation(const struct rssn_Expr *aFS,
                                                const char *aOutVar,
                                                const struct rssn_Expr *aFZero)
 ;
 
+/*
+ Applies the frequency shift property of the Laplace transform.
+
+ # Safety
+ Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_laplace_frequency_shift(const struct rssn_Expr *aFS,
                                                const struct rssn_Expr *aA,
                                                const char *aOutVar)
 ;
 
+/*
+ Applies the integration property of the Laplace transform.
+
+ # Safety
+ Caller must ensure `f_s` is a valid pointer to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_laplace_integration(const struct rssn_Expr *aFS,
                                            const char *aOutVar)
 ;
 
+/*
+ Applies the scaling property of the Laplace transform.
+
+ # Safety
+ Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_laplace_scaling(const struct rssn_Expr *aFS,
                                        const struct rssn_Expr *aA,
                                        const char *aOutVar)
 ;
 
+/*
+ Applies the time shift property of the Laplace transform.
+
+ # Safety
+ Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_laplace_time_shift(const struct rssn_Expr *aFS,
                                           const struct rssn_Expr *aA,
                                           const char *aOutVar)
 ;
 
+/*
+ Computes the symbolic Laplace transform of an expression.
+
+ # Safety
+ Caller must ensure `expr` is a valid pointer to an `Expr`.
+ `in_var` and `out_var` must be valid C strings or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_laplace_transform(const struct rssn_Expr *aExpr,
                                          const char *aInVar,
@@ -12282,6 +12440,12 @@ rssn_
 struct rssn_Expr *rssn_mass_energy_equivalence(const struct rssn_Expr *aMass)
 ;
 
+/*
+ Adds two matrices using handles.
+
+ # Safety
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_add(size_t aH1,
@@ -12300,6 +12464,12 @@ struct rssn_Expr *rssn_matrix_add_handle(const struct rssn_Expr *aM1,
                                          const struct rssn_Expr *aM2)
 ;
 
+/*
+ Computes the determinant of a matrix using a handle.
+
+ # Safety
+ * `result_h` must be a valid pointer to store the resulting handle to the determinant expression.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_determinant(size_t aH,
@@ -12316,12 +12486,24 @@ rssn_
 struct rssn_Expr *rssn_matrix_determinant_handle(const struct rssn_Expr *aMatrix)
 ;
 
+/*
+ Creates an identity matrix of the specified size.
+
+ # Safety
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_identity(size_t aSize,
                              size_t *aResultH)
 ;
 
+/*
+ Computes the inverse of a matrix using a handle.
+
+ # Safety
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_inverse(size_t aH,
@@ -12338,6 +12520,12 @@ rssn_
 struct rssn_Expr *rssn_matrix_inverse_handle(const struct rssn_Expr *aMatrix)
 ;
 
+/*
+ Multiplies two matrices using handles.
+
+ # Safety
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_mul(size_t aH1,
@@ -12356,6 +12544,12 @@ struct rssn_Expr *rssn_matrix_mul_handle(const struct rssn_Expr *aM1,
                                          const struct rssn_Expr *aM2)
 ;
 
+/*
+ Multiplies a matrix by a scalar expression using handles.
+
+ # Safety
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_scalar_mul(size_t aScalarH,
@@ -12374,6 +12568,12 @@ struct rssn_Expr *rssn_matrix_solve_linear_system_handle(const struct rssn_Expr 
                                                          const struct rssn_Expr *aB)
 ;
 
+/*
+ Subtracts two matrices using handles.
+
+ # Safety
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_sub(size_t aH1,
@@ -12381,6 +12581,12 @@ int32_t rssn_matrix_sub(size_t aH1,
                         size_t *aResultH)
 ;
 
+/*
+ Transposes a matrix using a handle.
+
+ # Safety
+ * `result_h` must be a valid pointer to store the resulting handle.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_transpose(size_t aH,
@@ -12564,10 +12770,16 @@ int32_t rssn_num_b_spline(const double *aControlPoints,
                           double *aOutPoint)
 ;
 
+/*
+ Computes a point on a B-spline curve given control points, degree, knots, and a parameter t, using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_b_spline_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes a point on a B-spline curve given control points, degree, knots, and a parameter t, using JSON for serialization.
+ */
 rssn_
 char *rssn_num_b_spline_json(const char *aInputPtr)
 ;
@@ -12584,10 +12796,16 @@ int32_t rssn_num_bezier_curve(const double *aControlPoints,
                               double *aOutPoint)
 ;
 
+/*
+ Computes a point on a Bezier curve given control points and a parameter t, using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_bezier_curve_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes a point on a Bezier curve given control points and a parameter t, using JSON for serialization.
+ */
 rssn_
 char *rssn_num_bezier_curve_json(const char *aInputPtr)
 ;
@@ -12774,10 +12992,16 @@ int32_t rssn_num_comb_bell(uint64_t aN,
                            double *aResult)
 ;
 
+/*
+ Computes the Bell number using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_comb_bell_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Bell number using JSON for serialization.
+ */
 rssn_
 char *rssn_num_comb_bell_json(const char *aInputJson)
 ;
@@ -12790,10 +13014,16 @@ int32_t rssn_num_comb_catalan(uint64_t aN,
                               double *aResult)
 ;
 
+/*
+ Computes the Catalan number using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_comb_catalan_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Catalan number using JSON for serialization.
+ */
 rssn_
 char *rssn_num_comb_catalan_json(const char *aInputJson)
 ;
@@ -12807,10 +13037,16 @@ int32_t rssn_num_comb_combinations(uint64_t aN,
                                    double *aResult)
 ;
 
+/*
+ Computes the number of combinations using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_comb_combinations_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the number of combinations using JSON for serialization.
+ */
 rssn_
 char *rssn_num_comb_combinations_json(const char *aInputJson)
 ;
@@ -12823,10 +13059,16 @@ int32_t rssn_num_comb_factorial(uint64_t aN,
                                 double *aResult)
 ;
 
+/*
+ Computes the factorial of a number using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_comb_factorial_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the factorial of a number using JSON for serialization.
+ */
 rssn_
 char *rssn_num_comb_factorial_json(const char *aInputJson)
 ;
@@ -12840,10 +13082,16 @@ int32_t rssn_num_comb_falling_factorial(double aX,
                                         double *aResult)
 ;
 
+/*
+ Computes the falling factorial using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_comb_falling_factorial_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the falling factorial using JSON for serialization.
+ */
 rssn_
 char *rssn_num_comb_falling_factorial_json(const char *aInputJson)
 ;
@@ -12857,10 +13105,16 @@ int32_t rssn_num_comb_permutations(uint64_t aN,
                                    double *aResult)
 ;
 
+/*
+ Computes the number of permutations using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_comb_permutations_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the number of permutations using JSON for serialization.
+ */
 rssn_
 char *rssn_num_comb_permutations_json(const char *aInputJson)
 ;
@@ -12874,10 +13128,16 @@ int32_t rssn_num_comb_rising_factorial(double aX,
                                        double *aResult)
 ;
 
+/*
+ Computes the rising factorial using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_comb_rising_factorial_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the rising factorial using JSON for serialization.
+ */
 rssn_
 char *rssn_num_comb_rising_factorial_json(const char *aInputJson)
 ;
@@ -12894,10 +13154,16 @@ int32_t rssn_num_comb_solve_recurrence(const double *aCoeffs,
                                        double *aResult)
 ;
 
+/*
+ Solves a linear recurrence relation using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_comb_solve_recurrence_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves a linear recurrence relation using JSON for serialization.
+ */
 rssn_
 char *rssn_num_comb_solve_recurrence_json(const char *aInputJson)
 ;
@@ -12911,10 +13177,16 @@ int32_t rssn_num_comb_stirling_second(uint64_t aN,
                                       double *aResult)
 ;
 
+/*
+ Computes the Stirling number of the second kind using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_comb_stirling_second_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Stirling number of the second kind using JSON for serialization.
+ */
 rssn_
 char *rssn_num_comb_stirling_second_json(const char *aInputJson)
 ;
@@ -12932,10 +13204,16 @@ int32_t rssn_num_complex_contour_integral(const struct rssn_Expr *aExprPtr,
                                           double *aResIm)
 ;
 
+/*
+ Computes the contour integral of a complex expression using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_complex_contour_integral_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the contour integral of a complex expression using JSON for serialization.
+ */
 rssn_
 char *rssn_num_complex_contour_integral_json(const char *aInputJson)
 ;
@@ -12953,10 +13231,16 @@ int32_t rssn_num_complex_eval(const struct rssn_Expr *aExprPtr,
                               double *aResIm)
 ;
 
+/*
+ Evaluates a complex expression using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_complex_eval_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Evaluates a complex expression using JSON for serialization.
+ */
 rssn_
 char *rssn_num_complex_eval_json(const char *aInputJson)
 ;
@@ -13083,10 +13367,16 @@ int32_t rssn_num_cov_evaluate_action(const struct rssn_Expr *aLagrangian,
                                      double *aResult)
 ;
 
+/*
+ Evaluates the action for a given Lagrangian and path using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_cov_evaluate_action_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Evaluates the action for a given Lagrangian and path using JSON for serialization.
+ */
 rssn_
 char *rssn_num_cov_evaluate_action_json(const char *aInputJson)
 ;
@@ -13115,10 +13405,16 @@ struct rssn_CubicSplineHandle *rssn_num_cubic_spline_interpolation(const double 
                                                                    size_t aLen)
 ;
 
+/*
+ Computes the cubic spline interpolation for a given set of points using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_cubic_spline_interpolation_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the cubic spline interpolation for a given set of points using JSON for serialization.
+ */
 rssn_
 char *rssn_num_cubic_spline_interpolation_json(const char *aInputPtr)
 ;
@@ -13133,10 +13429,16 @@ struct rssn_Vec_f64 *rssn_num_dg_christoffel_symbols(enum rssn_CoordinateSystem 
                                                      size_t aNVars)
 ;
 
+/*
+ Computes the Christoffel symbols at a given point using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_dg_christoffel_symbols_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Christoffel symbols at a given point using JSON for serialization.
+ */
 rssn_
 char *rssn_num_dg_christoffel_symbols_json(const char *aInputJson)
 ;
@@ -13150,10 +13452,16 @@ struct rssn_Matrix_f64 *rssn_num_dg_metric_tensor(enum rssn_CoordinateSystem aSy
                                                   size_t aNVars)
 ;
 
+/*
+ Computes the metric tensor at a given point using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_dg_metric_tensor_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the metric tensor at a given point using JSON for serialization.
+ */
 rssn_
 char *rssn_num_dg_metric_tensor_json(const char *aInputJson)
 ;
@@ -13168,10 +13476,16 @@ int32_t rssn_num_dg_ricci_scalar(enum rssn_CoordinateSystem aSystem,
                                  double *aResult)
 ;
 
+/*
+ Computes the Ricci scalar at a given point using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_dg_ricci_scalar_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Ricci scalar at a given point using JSON for serialization.
+ */
 rssn_
 char *rssn_num_dg_ricci_scalar_json(const char *aInputJson)
 ;
@@ -13185,10 +13499,16 @@ struct rssn_Matrix_f64 *rssn_num_dg_ricci_tensor(enum rssn_CoordinateSystem aSys
                                                  size_t aNVars)
 ;
 
+/*
+ Computes the Ricci tensor at a given point using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_dg_ricci_tensor_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Ricci tensor at a given point using JSON for serialization.
+ */
 rssn_
 char *rssn_num_dg_ricci_tensor_json(const char *aInputJson)
 ;
@@ -13200,10 +13520,16 @@ rssn_
 size_t rssn_num_error_correction_capability(size_t aMinDistance)
 ;
 
+/*
+ Computes the error correction capability of a code given its minimum distance, using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_capability_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the error correction capability of a code given its minimum distance, using JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_capability_json(const char *aInput)
 ;
@@ -13216,10 +13542,16 @@ double rssn_num_error_correction_code_rate(size_t aK,
                                            size_t aN)
 ;
 
+/*
+ Computes the code rate (k/n) of a code with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_code_rate_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the code rate (k/n) of a code with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_code_rate_json(const char *aInput)
 ;
@@ -13235,10 +13567,16 @@ uint16_t rssn_num_error_correction_crc16(const uint8_t *aDataPtr,
                                          size_t aLen)
 ;
 
+/*
+ Computes the CRC16 checksum of a byte vector with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_crc16_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the CRC16 checksum of a byte vector with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_crc16_json(const char *aInput)
 ;
@@ -13254,10 +13592,16 @@ uint32_t rssn_num_error_correction_crc32(const uint8_t *aDataPtr,
                                          size_t aLen)
 ;
 
+/*
+ Computes the CRC32 checksum of a byte vector with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_crc32_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the CRC32 checksum of a byte vector with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_crc32_json(const char *aInput)
 ;
@@ -13274,10 +13618,16 @@ int32_t rssn_num_error_correction_crc32_verify(const uint8_t *aDataPtr,
                                                uint32_t aExpectedCrc)
 ;
 
+/*
+ Verifies the CRC32 checksum of a byte vector with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_crc32_verify_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Verifies the CRC32 checksum of a byte vector with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_crc32_verify_json(const char *aInput)
 ;
@@ -13293,10 +13643,16 @@ uint8_t rssn_num_error_correction_crc8(const uint8_t *aDataPtr,
                                        size_t aLen)
 ;
 
+/*
+ Computes the CRC8 checksum of a byte vector with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_crc8_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the CRC8 checksum of a byte vector with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_crc8_json(const char *aInput)
 ;
@@ -13315,10 +13671,16 @@ int32_t rssn_num_error_correction_deinterleave(const uint8_t *aDataPtr,
                                                uint8_t *aOutPtr)
 ;
 
+/*
+ Deinterleaves a byte vector with a given depth using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_deinterleave_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Deinterleaves a byte vector with a given depth using JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_deinterleave_json(const char *aInput)
 ;
@@ -13333,10 +13695,16 @@ rssn_
 int32_t rssn_num_error_correction_hamming_check(const uint8_t *aCodewordPtr)
 ;
 
+/*
+ Checks a Hamming codeword for errors with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_hamming_check_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Checks a Hamming codeword for errors with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_hamming_check_json(const char *aInput)
 ;
@@ -13355,10 +13723,16 @@ int32_t rssn_num_error_correction_hamming_decode(const uint8_t *aCodewordPtr,
                                                  int32_t *aErrorPosPtr)
 ;
 
+/*
+ Decodes a Hamming codeword and corrects errors with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_hamming_decode_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Decodes a Hamming codeword and corrects errors with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_hamming_decode_json(const char *aInput)
 ;
@@ -13375,10 +13749,16 @@ int32_t rssn_num_error_correction_hamming_distance(const uint8_t *aAPtr,
                                                    size_t aLen)
 ;
 
+/*
+ Computes the Hamming distance between two byte vectors with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_hamming_distance_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Hamming distance between two byte vectors with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_hamming_distance_json(const char *aInput)
 ;
@@ -13395,10 +13775,16 @@ int32_t rssn_num_error_correction_hamming_encode(const uint8_t *aDataPtr,
                                                  uint8_t *aOutPtr)
 ;
 
+/*
+ Encodes a message using Hamming codes with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_hamming_encode_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Encodes a message using Hamming codes with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_hamming_encode_json(const char *aInput)
 ;
@@ -13414,10 +13800,16 @@ int32_t rssn_num_error_correction_hamming_weight(const uint8_t *aDataPtr,
                                                  size_t aLen)
 ;
 
+/*
+ Computes the Hamming weight of a byte vector with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_hamming_weight_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Hamming weight of a byte vector with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_hamming_weight_json(const char *aInput)
 ;
@@ -13436,10 +13828,16 @@ int32_t rssn_num_error_correction_interleave(const uint8_t *aDataPtr,
                                              uint8_t *aOutPtr)
 ;
 
+/*
+ Interleaves a byte vector with a given depth using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_interleave_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Interleaves a byte vector with a given depth using JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_interleave_json(const char *aInput)
 ;
@@ -13456,10 +13854,16 @@ int32_t rssn_num_error_correction_rs_check(const uint8_t *aCodewordPtr,
                                            size_t aNParity)
 ;
 
+/*
+ Checks if a Reed-Solomon codeword is valid with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_rs_check_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Checks if a Reed-Solomon codeword is valid with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_rs_check_json(const char *aInput)
 ;
@@ -13476,10 +13880,16 @@ int32_t rssn_num_error_correction_rs_decode(uint8_t *aCodewordPtr,
                                             size_t aNParity)
 ;
 
+/*
+ Decodes a Reed-Solomon codeword with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_rs_decode_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Decodes a Reed-Solomon codeword with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_rs_decode_json(const char *aInput)
 ;
@@ -13498,10 +13908,16 @@ int32_t rssn_num_error_correction_rs_encode(const uint8_t *aMessagePtr,
                                             size_t *aOutLen)
 ;
 
+/*
+ Encodes a message using Reed-Solomon codes with bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_error_correction_rs_encode_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Encodes a message using Reed-Solomon codes with JSON for serialization.
+ */
 rssn_
 char *rssn_num_error_correction_rs_encode_json(const char *aInput)
 ;
@@ -13551,10 +13967,16 @@ rssn_
 char *rssn_num_eval_json(const char *aJsonPtr)
 ;
 
+/*
+ Applies the Gram-Schmidt orthonormalization process to a set of basis functions using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fa_gram_schmidt_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Applies the Gram-Schmidt orthonormalization process to a set of basis functions using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fa_gram_schmidt_json(const char *aInputJson)
 ;
@@ -13581,10 +14003,16 @@ int32_t rssn_num_fa_inner_product(const double *aX1,
                                   double *aResult)
 ;
 
+/*
+ Computes the inner product of two functions (represented by series of points) using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fa_inner_product_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the inner product of two functions (represented by series of points) using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fa_inner_product_json(const char *aInputJson)
 ;
@@ -13607,10 +14035,16 @@ double rssn_num_fa_l2_norm(const double *aX,
                            size_t aLen)
 ;
 
+/*
+ Computes the L2 norm of a function (represented by a series of points) using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fa_l2_norm_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the L2 norm of a function (represented by a series of points) using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fa_l2_norm_json(const char *aInputJson)
 ;
@@ -13896,6 +14330,9 @@ rssn_
 char *rssn_num_fft_json(const char *aInputJson)
 ;
 
+/*
+ Generates data for a bifurcation diagram of the logistic map using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_bifurcation_json(const char *aInput)
 ;
@@ -13912,10 +14349,16 @@ double rssn_num_fractal_box_counting_dim(const double *aPointsPtr,
                                          size_t aNumScales)
 ;
 
+/*
+ Computes the box-counting dimension of a set of points using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fractal_box_counting_dim_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the box-counting dimension of a set of points using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_box_counting_dim_json(const char *aInput)
 ;
@@ -13932,10 +14375,16 @@ double rssn_num_fractal_correlation_dim(const double *aPointsPtr,
                                         size_t aNumRadii)
 ;
 
+/*
+ Computes the correlation dimension of a set of points using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fractal_correlation_dim_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the correlation dimension of a set of points using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_correlation_dim_json(const char *aInput)
 ;
@@ -13955,10 +14404,16 @@ int32_t rssn_num_fractal_henon_map(double aX0,
                                    double *aOutPtr)
 ;
 
+/*
+ Generates data points for the Henon map using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fractal_henon_map_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Generates data points for the Henon map using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_henon_map_json(const char *aInput)
 ;
@@ -13974,14 +14429,23 @@ uint32_t rssn_num_fractal_julia_escape_time(double aZReal,
                                             uint32_t aMaxIter)
 ;
 
+/*
+ Computes the escape time for a single point in the Julia set using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_julia_escape_time_json(const char *aInput)
 ;
 
+/*
+ Generates the Julia set as an image (iterations per pixel) using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fractal_julia_set_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Generates the Julia set as an image (iterations per pixel) using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_julia_set_json(const char *aInput)
 ;
@@ -13999,10 +14463,16 @@ int32_t rssn_num_fractal_logistic_map(double aX0,
                                       double *aOutPtr)
 ;
 
+/*
+ Computes iterations of the logistic map using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fractal_logistic_map_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes iterations of the logistic map using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_logistic_map_json(const char *aInput)
 ;
@@ -14022,14 +14492,23 @@ int32_t rssn_num_fractal_lorenz_attractor(double aX0,
                                           double *aOutPtr)
 ;
 
+/*
+ Generates data points for the Lorenz attractor using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fractal_lorenz_attractor_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Generates data points for the Lorenz attractor with custom parameters using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_lorenz_attractor_custom_json(const char *aInput)
 ;
 
+/*
+ Generates data points for the Lorenz attractor using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_lorenz_attractor_json(const char *aInput)
 ;
@@ -14044,10 +14523,16 @@ double rssn_num_fractal_lyapunov_logistic(double aR,
                                           size_t aNumIterations)
 ;
 
+/*
+ Computes the Lyapunov exponent for the logistic map using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fractal_lyapunov_logistic_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Lyapunov exponent for the logistic map using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_lyapunov_logistic_json(const char *aInput)
 ;
@@ -14066,6 +14551,9 @@ double rssn_num_fractal_lyapunov_lorenz(double aX0,
                                         double aBeta)
 ;
 
+/*
+ Computes the Lyapunov exponent for the Lorenz attractor using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_lyapunov_lorenz_json(const char *aInput)
 ;
@@ -14079,26 +14567,44 @@ uint32_t rssn_num_fractal_mandelbrot_escape_time(double aCReal,
                                                  uint32_t aMaxIter)
 ;
 
+/*
+ Computes the escape time for a single point in the Mandelbrot set using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fractal_mandelbrot_escape_time_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the escape time for a single point in the Mandelbrot set using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_mandelbrot_escape_time_json(const char *aInput)
 ;
 
+/*
+ Generates the Mandelbrot set as an image (iterations per pixel) using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fractal_mandelbrot_set_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Generates the Mandelbrot set as an image (iterations per pixel) using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_mandelbrot_set_json(const char *aInput)
 ;
 
+/*
+ Generates data points for the Rossler attractor using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_rossler_attractor_json(const char *aInput)
 ;
 
+/*
+ Generates data points for the Tinkerbell map using JSON for serialization.
+ */
 rssn_
 char *rssn_num_fractal_tinkerbell_map_json(const char *aInput)
 ;
@@ -14331,10 +14837,16 @@ int32_t rssn_num_graph_bfs(struct rssn_Graph *aGraph,
                            size_t *aDist)
 ;
 
+/*
+ Computes Breadth-First Search (BFS) on a graph using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graph_bfs_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes Breadth-First Search (BFS) on a graph using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graph_bfs_json(const char *aInputJson)
 ;
@@ -14348,10 +14860,16 @@ int32_t rssn_num_graph_connected_components(struct rssn_Graph *aGraph,
                                             size_t *aComponents)
 ;
 
+/*
+ Computes the connected components of a graph using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graph_connected_components_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the connected components of a graph using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graph_connected_components_json(const char *aInputJson)
 ;
@@ -14373,10 +14891,16 @@ int32_t rssn_num_graph_dijkstra(struct rssn_Graph *aGraph,
                                 ptrdiff_t *aPrev)
 ;
 
+/*
+ Computes Dijkstra's shortest path algorithm on a graph using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graph_dijkstra_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes Dijkstra's shortest path algorithm on a graph using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graph_dijkstra_json(const char *aInputJson)
 ;
@@ -14389,10 +14913,16 @@ int32_t rssn_num_graph_floyd_warshall(struct rssn_Graph *aGraph,
                                       double *aDistMatrix)
 ;
 
+/*
+ Computes the Floyd-Warshall all-pairs shortest path algorithm on a graph using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graph_floyd_warshall_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Floyd-Warshall all-pairs shortest path algorithm on a graph using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graph_floyd_warshall_json(const char *aInputJson)
 ;
@@ -14412,10 +14942,16 @@ rssn_
 struct rssn_Graph *rssn_num_graph_minimum_spanning_tree(struct rssn_Graph *aGraph)
 ;
 
+/*
+ Computes the Minimum Spanning Tree (MST) of a graph using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graph_minimum_spanning_tree_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Minimum Spanning Tree (MST) of a graph using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graph_minimum_spanning_tree_json(const char *aInputJson)
 ;
@@ -14431,10 +14967,16 @@ int32_t rssn_num_graph_page_rank(struct rssn_Graph *aGraph,
                                  double *aScores)
 ;
 
+/*
+ Computes the PageRank scores for nodes in a graph using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graph_page_rank_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the PageRank scores for nodes in a graph using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graph_page_rank_json(const char *aInputJson)
 ;
@@ -14451,6 +14993,9 @@ double rssn_num_graphics_angle_between(double aX1,
                                        double aZ2)
 ;
 
+/*
+ Computes the angle between two 3D vectors using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_angle_between_json(const char *aInput)
 ;
@@ -14480,6 +15025,9 @@ int32_t rssn_num_graphics_bezier_cubic(double aP0x,
                                        double *aOutZ)
 ;
 
+/*
+ Computes a point on a cubic Bezier curve using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_bezier_cubic_json(const char *aInput)
 ;
@@ -14503,10 +15051,16 @@ int32_t rssn_num_graphics_cross_product(double aX1,
                                         double *aOutZ)
 ;
 
+/*
+ Computes the cross product of two 3D vectors using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graphics_cross_product_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the cross product of two 3D vectors using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_cross_product_json(const char *aInput)
 ;
@@ -14530,14 +15084,23 @@ double rssn_num_graphics_dot_product(double aX1,
                                      double aZ2)
 ;
 
+/*
+ Computes the dot product of two 3D vectors using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graphics_dot_product_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the dot product of two 3D vectors using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_dot_product_json(const char *aInput)
 ;
 
+/*
+ Creates a look-at matrix using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_look_at_matrix_json(const char *aInput)
 ;
@@ -14551,6 +15114,9 @@ double rssn_num_graphics_magnitude(double aX,
                                    double aZ)
 ;
 
+/*
+ Computes the magnitude of a 3D vector using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_magnitude_json(const char *aInput)
 ;
@@ -14570,14 +15136,23 @@ int32_t rssn_num_graphics_normalize(double aX,
                                     double *aOutZ)
 ;
 
+/*
+ Normalizes a 3D vector using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graphics_normalize_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Normalizes a 3D vector using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_normalize_json(const char *aInput)
 ;
 
+/*
+ Creates a perspective projection matrix using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_perspective_matrix_json(const char *aInput)
 ;
@@ -14603,14 +15178,23 @@ int32_t rssn_num_graphics_quaternion_multiply(double aW1,
                                               double *aOutZ)
 ;
 
+/*
+ Multiplies two quaternions using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graphics_quaternion_multiply_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Multiplies two quaternions using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_quaternion_multiply_json(const char *aInput)
 ;
 
+/*
+ Computes the spherical linear interpolation (SLERP) between two quaternions using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_quaternion_slerp_json(const char *aInput)
 ;
@@ -14639,6 +15223,9 @@ double rssn_num_graphics_ray_sphere_intersection(double aRayOx,
                                                  double aSphereR)
 ;
 
+/*
+ Computes the intersection of a ray with a sphere using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_ray_sphere_intersection_json(const char *aInput)
 ;
@@ -14661,10 +15248,16 @@ int32_t rssn_num_graphics_reflect(double aIx,
                                   double *aOutZ)
 ;
 
+/*
+ Computes the reflection of an incident vector across a normal vector using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_reflect_json(const char *aInput)
 ;
 
+/*
+ Creates a 3D rotation matrix around an arbitrary axis using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_rotation_matrix_axis_json(const char *aInput)
 ;
@@ -14681,30 +15274,51 @@ int32_t rssn_num_graphics_rotation_matrix_x(double aAngleRad,
                                             double *aOutPtr)
 ;
 
+/*
+ Creates a 3D rotation matrix around the X-axis using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graphics_rotation_matrix_x_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Creates a 3D rotation matrix around the X-axis using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_rotation_matrix_x_json(const char *aInput)
 ;
 
+/*
+ Creates a 3D rotation matrix around the Y-axis using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_rotation_matrix_y_json(const char *aInput)
 ;
 
+/*
+ Creates a 3D rotation matrix around the Z-axis using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_rotation_matrix_z_json(const char *aInput)
 ;
 
+/*
+ Creates a 3D scaling matrix using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_scaling_matrix_json(const char *aInput)
 ;
 
+/*
+ Creates a 3D translation matrix using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_graphics_translation_matrix_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Creates a 3D translation matrix using JSON for serialization.
+ */
 rssn_
 char *rssn_num_graphics_translation_matrix_json(const char *aInput)
 ;
@@ -14735,10 +15349,16 @@ struct rssn_Polynomial *rssn_num_lagrange_interpolation(const double *aXCoords,
                                                         size_t aLen)
 ;
 
+/*
+ Computes the Lagrange interpolation polynomial for a given set of points using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_lagrange_interpolation_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Lagrange interpolation polynomial for a given set of points using JSON for serialization.
+ */
 rssn_
 char *rssn_num_lagrange_interpolation_json(const char *aInputPtr)
 ;
@@ -14778,6 +15398,9 @@ rssn_
 char *rssn_num_matrix_add_json_nightly(const char *aJsonPtr)
 ;
 
+/*
+ Adds two matrices.
+ */
 rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_add_nightly(const struct rssn_RssnMatrixHandle *aM1,
                                                           const struct rssn_RssnMatrixHandle *aM2)
@@ -14922,15 +15545,24 @@ int32_t rssn_num_matrix_determinant(const struct rssn_RssnMatrixHandle *aMatrix,
                                     double *aResult)
 ;
 
+/*
+ Computes the determinant of a matrix.
+ */
 rssn_
 int32_t rssn_num_matrix_determinant_nightly(const struct rssn_RssnMatrixHandle *aMatrix,
                                             double *aResult)
 ;
 
+/*
+ Frees a previously allocated Matrix.
+ */
 rssn_
 void rssn_num_matrix_free(struct rssn_RssnMatrixHandle *aMatrix)
 ;
 
+/*
+ Frees a previously allocated Matrix.
+ */
 rssn_
 void rssn_num_matrix_free_nightly(struct rssn_RssnMatrixHandle *aMatrix)
 ;
@@ -14949,10 +15581,16 @@ rssn_
 double rssn_num_matrix_frobenius_norm_nightly(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
 
+/*
+ Returns the number of columns of a given matrix.
+ */
 rssn_
 size_t rssn_num_matrix_get_cols(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
 
+/*
+ Returns the number of columns of a given matrix.
+ */
 rssn_
 size_t rssn_num_matrix_get_cols_nightly(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
@@ -14962,15 +15600,24 @@ int32_t rssn_num_matrix_get_data(const struct rssn_RssnMatrixHandle *aMatrix,
                                  double *aBuffer)
 ;
 
+/*
+ Retrieves the raw data of a given matrix.
+ */
 rssn_
 int32_t rssn_num_matrix_get_data_nightly(const struct rssn_RssnMatrixHandle *aMatrix,
                                          double *aBuffer)
 ;
 
+/*
+ Returns the number of rows of a given matrix.
+ */
 rssn_
 size_t rssn_num_matrix_get_rows(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
 
+/*
+ Returns the number of rows of a given matrix.
+ */
 rssn_
 size_t rssn_num_matrix_get_rows_nightly(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
@@ -14993,6 +15640,9 @@ rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_inverse(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
 
+/*
+ Computes the inverse of a matrix.
+ */
 rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_inverse_nightly(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
@@ -15064,6 +15714,9 @@ rssn_
 char *rssn_num_matrix_mul_json_nightly(const char *aJsonPtr)
 ;
 
+/*
+ Multiplies two matrices.
+ */
 rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_mul_nightly(const struct rssn_RssnMatrixHandle *aM1,
                                                           const struct rssn_RssnMatrixHandle *aM2)
@@ -15153,6 +15806,9 @@ rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_transpose(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
 
+/*
+ Transposes a matrix.
+ */
 rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_transpose_nightly(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
@@ -15828,43 +16484,73 @@ struct rssn_Polynomial *rssn_num_poly_sub(const struct rssn_Polynomial *aA,
                                           const struct rssn_Polynomial *aB)
 ;
 
+/*
+ Computes the absolute value of a f64 value.
+ */
 rssn_
 double rssn_num_pure_abs(double aX)
 ;
 
+/*
+ Computes the arccosine of a f64 value.
+ */
 rssn_
 double rssn_num_pure_acos(double aX)
 ;
 
+/*
+ Computes the arcsine of a f64 value.
+ */
 rssn_
 double rssn_num_pure_asin(double aX)
 ;
 
+/*
+ Computes the arctangent of a f64 value.
+ */
 rssn_
 double rssn_num_pure_atan(double aX)
 ;
 
+/*
+ Computes the arctangent of y/x using the signs of the arguments to determine the correct quadrant.
+ */
 rssn_
 double rssn_num_pure_atan2(double aY,
                            double aX)
 ;
 
+/*
+ Computes the cosine of a f64 value.
+ */
 rssn_
 double rssn_num_pure_cos(double aX)
 ;
 
+/*
+ Computes the hyperbolic cosine of a f64 value.
+ */
 rssn_
 double rssn_num_pure_cosh(double aX)
 ;
 
+/*
+ Computes e raised to the power of a f64 value.
+ */
 rssn_
 double rssn_num_pure_exp(double aX)
 ;
 
+/*
+ Computes the natural logarithm of a f64 value.
+ */
 rssn_
 double rssn_num_pure_ln(double aX)
 ;
 
+/*
+ Computes `base` raised to the power of `exp`.
+ */
 rssn_
 double rssn_num_pure_pow(double aBase,
                          double aExp)
@@ -15872,23 +16558,36 @@ double rssn_num_pure_pow(double aBase,
 
 /*
  Pure numerical functions exposed via FFI.
+ Computes the sine of a f64 value.
  */
 rssn_
 double rssn_num_pure_sin(double aX)
 ;
 
+/*
+ Computes the hyperbolic sine of a f64 value.
+ */
 rssn_
 double rssn_num_pure_sinh(double aX)
 ;
 
+/*
+ Computes the square root of a f64 value.
+ */
 rssn_
 double rssn_num_pure_sqrt(double aX)
 ;
 
+/*
+ Computes the tangent of a f64 value.
+ */
 rssn_
 double rssn_num_pure_tan(double aX)
 ;
 
+/*
+ Computes the hyperbolic tangent of a f64 value.
+ */
 rssn_
 double rssn_num_pure_tanh(double aX)
 ;
@@ -16934,6 +17633,14 @@ double rssn_numerical_evaluate_power_series(const struct rssn_Vec_f64 *aCoeffs,
                                             double aX)
 ;
 
+/*
+ Computes the numerical gradient of an expression at a point.
+
+ # Safety
+ * `vars` must be a valid pointer to an array of `num_vars` null-terminated strings.
+ * `point` must be a valid pointer to an array of `point_len` f64 elements.
+ * `result_vec` must point to a buffer of size at least `point_len` f64 elements.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_numerical_gradient(size_t aExprH,
@@ -16944,22 +17651,41 @@ int32_t rssn_numerical_gradient(size_t aExprH,
                                 double *aResultVec)
 ;
 
+/*
+ Computes the gradient of an expression at a given point using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_numerical_gradient_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the gradient of an expression at a given point using JSON for serialization.
+ */
 rssn_
 char *rssn_numerical_gradient_json(const char *aInputJson)
 ;
 
+/*
+ Computes the Hessian matrix of an expression at a given point using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_numerical_hessian_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Hessian matrix of an expression at a given point using JSON for serialization.
+ */
 rssn_
 char *rssn_numerical_hessian_json(const char *aInputJson)
 ;
 
+/*
+ Computes the numerical definite integral of an expression using handles.
+
+ # Safety
+ * `var` must be a valid null-terminated C string.
+ * `result` must be a valid pointer to store the f64 result.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_numerical_integrate(size_t aExprH,
@@ -16971,10 +17697,16 @@ int32_t rssn_numerical_integrate(size_t aExprH,
                                  double *aResult)
 ;
 
+/*
+ Computes the Jacobian matrix of a set of expressions at a given point using bincode for serialization.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_numerical_jacobian_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Jacobian matrix of a set of expressions at a given point using JSON for serialization.
+ */
 rssn_
 char *rssn_numerical_jacobian_json(const char *aInputJson)
 ;
@@ -17273,6 +18005,13 @@ struct rssn_Expr *rssn_perspective_projection(const struct rssn_Expr *aFovy,
                                               const struct rssn_Expr *aFar)
 ;
 
+/*
+ Solves the 1D advection-diffusion equation numerically.
+
+ # Safety
+ * `initial_cond` must be a valid pointer to an array of `len` f64 elements.
+ * `result_ptr` must point to a buffer of size at least `len` f64 elements.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_physics_advection_diffusion_1d(const double *aInitialCond,
@@ -18935,6 +19674,13 @@ rssn_
 struct rssn_Expr **rssn_so3_generators(size_t *aOutLen)
 ;
 
+/*
+ Solves an equation or searches for zeros of an expression.
+
+ # Safety
+ * `var` must be a valid null-terminated C string.
+ * `result_h` must be a valid pointer to store the handle of the solution.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_solve(size_t aExprH,
@@ -19354,6 +20100,13 @@ char *rssn_state_set_intermediate_value_json(const char *aJsonState,
                                              const char *aValue)
 ;
 
+/*
+ Computes the covariance between two datasets.
+
+ # Safety
+ * `d1` and `d2` must be valid pointers to arrays of length `len`.
+ * `result` must be a valid pointer to store the f64 result.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int32_t rssn_stats_covariance(const double *aD1,
@@ -20293,11 +21046,25 @@ struct rssn_Expr *rssn_work_line_integral(const rssn_Vector *aForceField,
                                           const struct rssn_ParametricCurve *aPath)
 ;
 
+/*
+ Applies the differentiation property of the Z-transform.
+
+ # Safety
+ Caller must ensure `f_z` is a valid pointer to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_z_differentiation(const struct rssn_Expr *aFZ,
                                          const char *aOutVar)
 ;
 
+/*
+ Applies the scaling property of the Z-transform.
+
+ # Safety
+ Caller must ensure `f_z` and `a` are valid pointers to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_z_scaling(const struct rssn_Expr *aFZ,
                                  const struct rssn_Expr *aA,
@@ -20319,12 +21086,26 @@ struct rssn_Expr *rssn_z_test(const struct rssn_Expr *const *aData,
                               const struct rssn_Expr *aPopStdDev)
 ;
 
+/*
+ Applies the time shift property of the Z-transform.
+
+ # Safety
+ Caller must ensure `f_z` and `k` are valid pointers to an `Expr`.
+ `out_var` must be a valid C string or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_z_time_shift(const struct rssn_Expr *aFZ,
                                     const struct rssn_Expr *aK,
                                     const char *aOutVar)
 ;
 
+/*
+ Computes the symbolic Z-transform of an expression.
+
+ # Safety
+ Caller must ensure `expr` is a valid pointer to an `Expr`.
+ `in_var` and `out_var` must be valid C strings or null (defaults apply).
+ */
 rssn_
 struct rssn_Expr *rssn_z_transform(const struct rssn_Expr *aExpr,
                                    const char *aInVar,
@@ -20381,6 +21162,11 @@ DEPRECATED_WITH_NOTE
 char *transforms_ifft(const char *aJsonPtr)
 ;
 
+/*
+ Multiplies a vector by a scalar.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 char *vector_scalar_mul(const char *aJsonPtr)

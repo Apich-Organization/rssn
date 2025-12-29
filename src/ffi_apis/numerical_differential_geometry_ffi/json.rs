@@ -18,10 +18,14 @@ struct DgPointInput {
     point: Vec<f64>,
 }
 
+/// Computes the metric tensor at a given point using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : DgPointInput = match from_json_string(input_json) {
@@ -64,10 +68,14 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(
     }
 }
 
+/// Computes the Christoffel symbols at a given point using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : DgPointInput = match from_json_string(input_json) {
@@ -110,10 +118,14 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_json(
     }
 }
 
+/// Computes the Ricci tensor at a given point using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : DgPointInput = match from_json_string(input_json) {
@@ -156,10 +168,14 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_json(
     }
 }
 
+/// Computes the Ricci scalar at a given point using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : DgPointInput = match from_json_string(input_json) {

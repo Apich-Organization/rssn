@@ -22,10 +22,14 @@ struct ActionInput {
     t_range: (f64, f64),
 }
 
+/// Evaluates the action for a given Lagrangian and path using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cov_evaluate_action_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : ActionInput = match from_json_string(input_json) {

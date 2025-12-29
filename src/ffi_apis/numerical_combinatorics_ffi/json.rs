@@ -30,10 +30,14 @@ struct RecurrenceInput {
     target_n: usize,
 }
 
+/// Computes the factorial of a number using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_factorial_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : NInput = match from_json_string(input_json) {
@@ -66,10 +70,14 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_json(
     )
 }
 
+/// Computes the number of permutations using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_permutations_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : NKInput = match from_json_string(input_json) {
@@ -104,10 +112,14 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_json(
     )
 }
 
+/// Computes the number of combinations using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_combinations_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : NKInput = match from_json_string(input_json) {
@@ -142,10 +154,14 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_json(
     )
 }
 
+/// Solves a linear recurrence relation using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : RecurrenceInput = match from_json_string(input_json) {
@@ -198,10 +214,14 @@ struct XNInput {
     n: u64,
 }
 
+/// Computes the Stirling number of the second kind using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : NKInput = match from_json_string(input_json) {
@@ -236,10 +256,14 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
     )
 }
 
+/// Computes the Bell number using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_bell_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : NInput = match from_json_string(input_json) {
@@ -271,10 +295,14 @@ pub unsafe extern "C" fn rssn_num_comb_bell_json(
     )
 }
 
+/// Computes the Catalan number using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_catalan_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : NInput = match from_json_string(input_json) {
@@ -306,10 +334,14 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_json(
     )
 }
 
+/// Computes the rising factorial using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : XNInput = match from_json_string(input_json) {
@@ -344,10 +376,14 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
     )
 }
 
+/// Computes the falling factorial using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : XNInput = match from_json_string(input_json) {

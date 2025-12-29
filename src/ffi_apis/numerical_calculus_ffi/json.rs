@@ -35,10 +35,14 @@ struct HessianInput {
     point: Vec<f64>,
 }
 
+/// Computes the gradient of an expression at a given point using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_gradient_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : GradientInput = match from_json_string(input_json) {
@@ -89,10 +93,14 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(
     )
 }
 
+/// Computes the Jacobian matrix of a set of expressions at a given point using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_jacobian_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : JacobianInput = match from_json_string(input_json) {
@@ -143,10 +151,14 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(
     )
 }
 
+/// Computes the Hessian matrix of an expression at a given point using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_hessian_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : HessianInput = match from_json_string(input_json) {

@@ -79,8 +79,8 @@ struct DimensionInput {
 }
 
 // Mandelbrot set
+/// Generates the Mandelbrot set as an image (iterations per pixel) using bincode for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -111,10 +111,14 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
     })
 }
 
+/// Computes the escape time for a single point in the Mandelbrot set using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : MandelbrotPointInput = match from_bincode_buffer(&buffer) {
@@ -142,8 +146,8 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
 }
 
 // Julia set
+/// Generates the Julia set as an image (iterations per pixel) using bincode for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -176,8 +180,8 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
 }
 
 // Lorenz attractor
+/// Generates data points for the Lorenz attractor using bincode for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -207,8 +211,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
 }
 
 // Henon map
+/// Generates data points for the Henon map using bincode for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -239,8 +243,8 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
 }
 
 // Logistic map
+/// Computes iterations of the logistic map using bincode for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -270,8 +274,8 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
 }
 
 // Lyapunov exponent for logistic map
+/// Computes the Lyapunov exponent for the logistic map using bincode for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -302,8 +306,8 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
 }
 
 // Box-counting dimension
+/// Computes the box-counting dimension of a set of points using bincode for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -332,8 +336,8 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
 }
 
 // Correlation dimension
+/// Computes the correlation dimension of a set of points using bincode for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {

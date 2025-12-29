@@ -71,10 +71,14 @@ struct PageRankInput {
     max_iter: usize,
 }
 
+/// Computes Dijkstra's shortest path algorithm on a graph using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : DijkstraInput = match from_json_string(input_json) {
@@ -115,10 +119,14 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(
     )
 }
 
+/// Computes Breadth-First Search (BFS) on a graph using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_bfs_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : DijkstraInput = match from_json_string(input_json) {
@@ -154,10 +162,14 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_json(
     )
 }
 
+/// Computes the PageRank scores for nodes in a graph using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_page_rank_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : PageRankInput = match from_json_string(input_json) {
@@ -197,10 +209,14 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_json(
     )
 }
 
+/// Computes the Floyd-Warshall all-pairs shortest path algorithm on a graph using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : GraphDef = match from_json_string(input_json) {
@@ -278,10 +294,14 @@ impl GraphDefOut {
     }
 }
 
+/// Computes the connected components of a graph using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : GraphDef = match from_json_string(input_json) {
@@ -314,10 +334,14 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
     )
 }
 
+/// Computes the Minimum Spanning Tree (MST) of a graph using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : GraphDef = match from_json_string(input_json) {

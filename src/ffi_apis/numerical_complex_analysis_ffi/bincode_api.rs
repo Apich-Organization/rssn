@@ -20,10 +20,14 @@ struct EvalInput {
     vars: HashMap<String, Complex<f64>>,
 }
 
+/// Evaluates a complex expression using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_eval_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : EvalInput = match from_bincode_buffer(&buffer) {
@@ -67,10 +71,14 @@ struct ContourInput {
     path: Vec<Complex<f64>>,
 }
 
+/// Computes the contour integral of a complex expression using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_contour_integral_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : ContourInput = match from_bincode_buffer(&buffer) {
