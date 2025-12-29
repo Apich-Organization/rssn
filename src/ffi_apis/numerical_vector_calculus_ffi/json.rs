@@ -35,6 +35,27 @@ struct LaplacianInput {
     point: Vec<f64>,
 }
 
+/// Computes the divergence of a vector field at a point via JSON serialization.
+///
+/// The divergence measures the net outward flux of a vector field:
+/// div(F) = ∂F₁/∂x₁ + ∂F₂/∂x₂ + ... + ∂Fₙ/∂xₙ.
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `funcs`: Vector field components as symbolic expressions
+///   - `vars`: Variable names corresponding to coordinates
+///   - `point`: Point at which to evaluate divergence
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the divergence value (scalar).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
@@ -89,6 +110,27 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
     )
 }
 
+/// Computes the curl of a vector field at a point via JSON serialization.
+///
+/// The curl measures the rotational tendency of a vector field. In 3D:
+/// curl(F) = (∂F₃/∂x₂ - ∂F₂/∂x₃, ∂F₁/∂x₃ - ∂F₃/∂x₁, ∂F₂/∂x₁ - ∂F₁/∂x₂).
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `funcs`: Vector field components as symbolic expressions
+///   - `vars`: Variable names corresponding to coordinates
+///   - `point`: Point at which to evaluate curl
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the curl vector.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
@@ -144,6 +186,27 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
     )
 }
 
+/// Computes the Laplacian of a scalar field at a point via JSON serialization.
+///
+/// The Laplacian is the divergence of the gradient:
+/// ∇²f = ∂²f/∂x₁² + ∂²f/∂x₂² + ... + ∂²f/∂xₙ².
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `f`: Scalar field as a symbolic expression
+///   - `vars`: Variable names corresponding to coordinates
+///   - `point`: Point at which to evaluate Laplacian
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the Laplacian value (scalar).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(

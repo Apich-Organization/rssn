@@ -16,6 +16,26 @@ struct TransformInput {
     data: Vec<Complex<f64>>,
 }
 
+/// Computes the Fast Fourier Transform (FFT) in-place using bincode serialization.
+///
+/// The FFT converts a sequence from the time/space domain to the frequency domain,
+/// computing X(k) = Σx(n)e^(-2πikn/N) for k = 0, ..., N-1.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `TransformInput` with:
+///   - `data`: Vector of complex numbers to transform
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<Complex<f64>>, String>` with either:
+/// - `ok`: FFT-transformed data in frequency domain
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fft_bincode(
@@ -44,6 +64,26 @@ pub unsafe extern "C" fn rssn_num_fft_bincode(
     to_bincode_buffer(&ffi_res)
 }
 
+/// Computes the Inverse Fast Fourier Transform (IFFT) in-place using bincode serialization.
+///
+/// The IFFT converts a sequence from the frequency domain back to the time/space domain,
+/// computing x(n) = (1/N) ΣX(k)e^(2πikn/N) for n = 0, ..., N-1.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `TransformInput` with:
+///   - `data`: Vector of complex numbers in frequency domain
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<Complex<f64>>, String>` with either:
+/// - `ok`: IFFT-transformed data in time/space domain
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ifft_bincode(

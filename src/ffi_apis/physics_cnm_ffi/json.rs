@@ -20,6 +20,27 @@ struct Heat2DInput {
     config: HeatEquationSolverConfig,
 }
 
+/// Solves the 2D heat equation using Crank-Nicolson ADI method via JSON serialization.
+///
+/// The heat equation ∂u/∂t = α∇²u is solved using the Crank-Nicolson Alternating
+/// Direction Implicit (ADI) method, which is unconditionally stable and second-order
+/// accurate in both space and time.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `initial_condition`: Initial temperature distribution (flattened 2D grid)
+///   - `config`: Solver configuration (grid size, time step, thermal diffusivity, etc.)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the final temperature distribution after time evolution.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_json(

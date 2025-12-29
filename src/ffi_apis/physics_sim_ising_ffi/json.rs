@@ -20,6 +20,28 @@ struct IsingOutput {
     pub magnetization: f64,
 }
 
+/// Runs a 2D Ising model Monte Carlo simulation using the Metropolis algorithm via JSON serialization.
+///
+/// The Ising model with Hamiltonian H = -J∑⟨i,j⟩sᵢsⱼ - h∑ᵢsᵢ describes phase transitions
+/// in magnetic systems. The simulation uses Metropolis-Hastings sampling to evolve spin
+/// configurations toward thermal equilibrium.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `width`, `height`: Grid dimensions
+///   - `temperature`: Temperature T in units of J/k_B
+///   - `mc_steps`: Number of Monte Carlo sweeps to perform
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<IsingOutput, String>` with:
+/// - `grid`: Final spin configuration (±1 values)
+/// - `magnetization`: Average magnetization M = ⟨∑ᵢsᵢ⟩/N
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(

@@ -11,6 +11,31 @@ use crate::physics::physics_sim::fdtd_electrodynamics::{
     self,
 };
 
+/// Runs a Finite-Difference Time-Domain (FDTD) electromagnetic simulation via bincode serialization.
+///
+/// FDTD solves Maxwell's equations ∇×E = -∂B/∂t and ∇×H = ∂D/∂t + J using a staggered
+/// Yee lattice grid, advancing the electric field Ez and magnetic field components in time.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `FdtdParameters` with:
+///   - `width`, `height`: Grid dimensions
+///   - `dx`, `dy`: Spatial discretization steps
+///   - `dt`: Time step size (must satisfy Courant-Friedrichs-Lewy stability condition)
+///   - `steps`: Number of time steps to simulate
+///   - `source_x`, `source_y`: Position of electromagnetic source
+///   - `source_frequency`: Angular frequency ω of the source
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Array2<f64>, String>` with either:
+/// - `ok`: Final Ez field as a 2D array
+/// - `err`: Error message if computation failed or no snapshots were produced
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_bincode(

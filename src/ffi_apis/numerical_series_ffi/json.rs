@@ -29,6 +29,28 @@ struct SumInput {
     end: i64,
 }
 
+/// Computes Taylor series coefficients for a symbolic expression using JSON serialization.
+///
+/// Evaluates the derivatives of the expression at a point to obtain Taylor expansion coefficients:
+/// f(x) ≈ Σ [fⁿⁿⁿ(a)/n!](x-a)ⁿ for n = 0 to order.
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `expr`: Symbolic expression to expand
+///   - `var`: Variable name for expansion
+///   - `at_point`: Point a around which to expand
+///   - `order`: Maximum order of Taylor expansion
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// an array of Taylor coefficients [c₀, c₁, ..., cₙ].
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
@@ -79,6 +101,27 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
     )
 }
 
+/// Computes the numerical sum of a symbolic series using JSON serialization.
+///
+/// Evaluates Σ f(var) for var from start to end, where f is a symbolic expression.
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `expr`: Symbolic expression to sum
+///   - `var`: Summation index variable name
+///   - `start`: Lower limit of summation (inclusive)
+///   - `end`: Upper limit of summation (inclusive)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the computed sum value.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_sum_series_json(

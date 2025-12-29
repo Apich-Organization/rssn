@@ -22,6 +22,31 @@ struct NavierStokesOutputData {
     pub p: Array2<f64>,
 }
 
+/// Solves the incompressible Navier-Stokes equations for fluid flow in a lid-driven cavity via JSON serialization.
+///
+/// The Navier-Stokes equations ∂u/∂t + (u·∇)u = -∇p/ρ + ν∇²u with incompressibility
+/// constraint ∇·u = 0 govern viscous fluid dynamics. This solver uses a projection method
+/// to enforce divergence-free velocity fields.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `nx`, `ny`: Grid dimensions
+///   - `re`: Reynolds number Re = UL/ν (ratio of inertial to viscous forces)
+///   - `dt`: Time step size
+///   - `n_iter`: Number of time iterations
+///   - `lid_velocity`: Velocity of the moving lid boundary
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<NavierStokesOutputData, String>` with:
+/// - `u`: Horizontal velocity field u(x,y)
+/// - `v`: Vertical velocity field v(x,y)
+/// - `p`: Pressure field p(x,y)
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(

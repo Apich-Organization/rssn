@@ -20,6 +20,28 @@ struct BettiInput {
     max_dim: usize,
 }
 
+/// Computes Betti numbers at a fixed radius for topological data analysis using bincode serialization.
+///
+/// Betti numbers characterize topological features: β₀ (connected components),
+/// β₁ (holes/loops), β₂ (voids), etc., in the Vietoris-Rips complex.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `BettiInput` with:
+///   - `points`: Point cloud data as vectors of coordinates
+///   - `epsilon`: Radius parameter for Vietoris-Rips complex
+///   - `max_dim`: Maximum homology dimension to compute
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<usize>, String>` with either:
+/// - `ok`: Vector of Betti numbers [β₀, β₁, β₂, ...] up to max_dim
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
@@ -67,6 +89,29 @@ struct PersistenceInput {
     max_dim: usize,
 }
 
+/// Computes persistent homology for topological data analysis using bincode serialization.
+///
+/// Tracks the birth and death of topological features (components, holes, voids)
+/// across multiple scales, producing persistence diagrams.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `PersistenceInput` with:
+///   - `points`: Point cloud data as vectors of coordinates
+///   - `max_epsilon`: Maximum radius to analyze
+///   - `steps`: Number of radius values to sample
+///   - `max_dim`: Maximum homology dimension to compute
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<PersistenceDiagram>, String>` with either:
+/// - `ok`: Persistence diagrams for each dimension
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_persistence_bincode(

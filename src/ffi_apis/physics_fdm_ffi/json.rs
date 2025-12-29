@@ -62,6 +62,32 @@ struct BurgersInput {
     steps: usize,
 }
 
+/// Solves the 2D heat equation using Finite Difference Method (FDM) via JSON serialization.
+///
+/// The heat equation ∂u/∂t = α∇²u is solved using explicit finite differences with
+/// a square heat source at the center of the domain.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `width`: Grid width (number of cells in x-direction)
+///   - `height`: Grid height (number of cells in y-direction)
+///   - `alpha`: Thermal diffusivity coefficient α
+///   - `dx`: Spatial step size in x-direction
+///   - `dy`: Spatial step size in y-direction
+///   - `dt`: Time step size
+///   - `steps`: Number of time steps to simulate
+///   - `initial_temp`: Temperature of the central heat source
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<FdmGrid<f64>, String>` with
+/// the final temperature field grid.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_heat_json(
@@ -117,6 +143,31 @@ pub unsafe extern "C" fn rssn_physics_fdm_heat_json(
     )
 }
 
+/// Solves the 2D wave equation using Finite Difference Method (FDM) via JSON serialization.
+///
+/// The wave equation ∂²u/∂t² = c²∇²u is solved using explicit finite differences with
+/// a Gaussian initial condition centered at the grid midpoint.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `width`: Grid width (number of cells in x-direction)
+///   - `height`: Grid height (number of cells in y-direction)
+///   - `c`: Wave speed
+///   - `dx`: Spatial step size in x-direction
+///   - `dy`: Spatial step size in y-direction
+///   - `dt`: Time step size
+///   - `steps`: Number of time steps to simulate
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<FdmGrid<f64>, String>` with
+/// the final wave field grid.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_wave_json(
@@ -169,6 +220,32 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_json(
     )
 }
 
+/// Solves the 2D Poisson equation using Finite Difference Method with SOR via JSON serialization.
+///
+/// The Poisson equation ∇²u = f is solved using Successive Over-Relaxation (SOR)
+/// iteration to find the steady-state potential field given a source distribution.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `width`: Grid width (number of cells in x-direction)
+///   - `height`: Grid height (number of cells in y-direction)
+///   - `source`: Source term f (flattened 2D array)
+///   - `dx`: Spatial step size in x-direction
+///   - `dy`: Spatial step size in y-direction
+///   - `omega`: SOR relaxation parameter (1 < ω < 2 for optimal convergence)
+///   - `max_iter`: Maximum number of iterations
+///   - `tolerance`: Convergence tolerance for residual norm
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<FdmGrid<f64>, String>` with
+/// the solution grid u.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(
@@ -222,6 +299,29 @@ pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(
     )
 }
 
+/// Solves the 1D Burgers' equation using Finite Difference Method via JSON serialization.
+///
+/// Burgers' equation ∂u/∂t + u∂u/∂x = ν∂²u/∂x² combines nonlinear convection
+/// with diffusion, modeling shock wave formation and viscous fluid flow.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `initial_u`: Initial velocity field
+///   - `dx`: Spatial step size
+///   - `nu`: Kinematic viscosity coefficient ν
+///   - `dt`: Time step size
+///   - `steps`: Number of time steps to simulate
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the final velocity field.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_burgers_json(

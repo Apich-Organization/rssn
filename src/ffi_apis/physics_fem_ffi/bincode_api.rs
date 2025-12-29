@@ -15,6 +15,27 @@ struct Poisson1DInput {
     domain_length: f64,
 }
 
+/// Solves the 1D Poisson equation using Finite Element Method (FEM) via bincode serialization.
+///
+/// The Poisson equation -d²u/dx² = f(x) is solved using linear finite elements
+/// with homogeneous Dirichlet boundary conditions (u = 0 at boundaries).
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `Poisson1DInput` with:
+///   - `n_elements`: Number of finite elements in the mesh
+///   - `domain_length`: Total length of the 1D domain
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+/// - `ok`: Solution vector u at nodal points
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_bincode(

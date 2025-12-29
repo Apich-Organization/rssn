@@ -25,6 +25,32 @@ struct WaveEquationInput {
     steps: usize,
 }
 
+/// Solves the 2D wave equation using Finite Difference Method (FDM) via bincode serialization.
+///
+/// The wave equation ∂²u/∂t² = c²∇²u is solved using explicit finite differences with
+/// a Gaussian initial condition centered at the grid midpoint.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `WaveEquationInput` with:
+///   - `width`: Grid width (number of cells in x-direction)
+///   - `height`: Grid height (number of cells in y-direction)
+///   - `c`: Wave speed
+///   - `dx`: Spatial step size in x-direction
+///   - `dy`: Spatial step size in y-direction
+///   - `dt`: Time step size
+///   - `steps`: Number of time steps to simulate
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<FdmGrid<f64>, String>` with either:
+/// - `ok`: Final wave field grid after time evolution
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(

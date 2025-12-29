@@ -26,6 +26,27 @@ struct Multigrid2DInput {
     num_cycles: usize,
 }
 
+/// Solves the 1D Poisson equation using Multigrid Method via JSON serialization.
+///
+/// The Poisson equation -d²u/dx² = f is solved using the multigrid method, which achieves
+/// optimal O(N) complexity through hierarchical coarse-grid correction.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n_interior`: Number of interior grid points
+///   - `f`: Right-hand side source term
+///   - `num_cycles`: Number of V-cycles or W-cycles to perform
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the solution vector u.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
@@ -77,6 +98,27 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
     }
 }
 
+/// Solves the 2D Poisson equation using Multigrid Method via JSON serialization.
+///
+/// The Poisson equation ∇²u = f is solved using the multigrid method, which achieves
+/// optimal O(N) complexity through hierarchical coarse-grid correction.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n`: Grid size (n×n interior points)
+///   - `f`: Right-hand side source term (flattened 2D array)
+///   - `num_cycles`: Number of V-cycles or W-cycles to perform
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the solution vector u (flattened 2D array).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(

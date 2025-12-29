@@ -6,10 +6,16 @@ use crate::physics::physics_sim::ising_statistical::{
     self,
 };
 
+/// Result handle for the Ising model simulation containing spin grid and magnetization.
+///
+/// This C-compatible struct encapsulates the output of an Ising model Monte Carlo
+/// simulation, providing both the final spin configuration and the computed magnetization.
 #[repr(C)]
 
 pub struct IsingResultHandle {
+    /// Pointer to a Matrix containing the final spin configuration as f64 values (±1.0).
     pub grid: *mut Matrix<f64>,
+    /// Average magnetization M = ⟨∑ᵢsᵢ⟩/N, ranging from -1 (all spins down) to +1 (all spins up).
     pub magnetization: f64,
 }
 

@@ -16,6 +16,27 @@ struct SphInput {
     dt: f64,
 }
 
+/// Updates a Smoothed Particle Hydrodynamics (SPH) system by one time step via bincode serialization.
+///
+/// SPH is a meshfree Lagrangian method for simulating fluid dynamics by representing
+/// the continuum as a set of particles with smoothed properties.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `SphInput` with:
+///   - `system`: SPH system state (particles with positions, velocities, densities, etc.)
+///   - `dt`: Time step size
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<SPHSystem, String>` with either:
+/// - `ok`: Updated SPH system state after time step
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_update_bincode(

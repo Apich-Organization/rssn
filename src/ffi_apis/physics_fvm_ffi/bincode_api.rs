@@ -23,6 +23,31 @@ struct SweInput {
     g: f64,
 }
 
+/// Solves the 1D shallow water equations using Finite Volume Method (FVM) via bincode serialization.
+///
+/// The shallow water equations model conservation of mass and momentum in free-surface flows:
+/// ∂h/∂t + ∂(hu)/∂x = 0 and ∂(hu)/∂t + ∂(hu² + gh²/2)/∂x = 0.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `SweInput` with:
+///   - `h`: Initial water depth distribution
+///   - `hu`: Initial momentum (h×velocity) distribution
+///   - `dx`: Spatial step size
+///   - `dt`: Time step size
+///   - `steps`: Number of time steps to simulate
+///   - `g`: Gravitational acceleration
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<SweState>, String>` with either:
+/// - `ok`: Time series of shallow water states (h, hu)
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fvm_swe_bincode(

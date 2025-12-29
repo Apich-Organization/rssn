@@ -32,6 +32,31 @@ struct PbcInput {
     box_size: Vec<f64>,
 }
 
+/// Computes the Lennard-Jones interaction potential and force between two particles using bincode serialization.
+///
+/// The Lennard-Jones potential models van der Waals interactions:
+/// V(r) = 4ε[(σ/r)¹² - (σ/r)⁶], where ε is the depth of the potential well and σ is the finite distance at which the potential is zero.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `LennardJonesInput` with:
+///   - `p1_position`: Position vector of first particle (x, y, z)
+///   - `p2_position`: Position vector of second particle (x, y, z)
+///   - `epsilon`: Well depth ε (energy units)
+///   - `sigma`: Finite distance σ at which V=0 (length units)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<InteractionOutput, String>` with either:
+/// - `ok`: Object containing:
+///   - `potential`: Interaction potential energy V(r)
+///   - `force`: Force vector acting on particle 1
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
@@ -93,6 +118,27 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
     }
 }
 
+/// Applies periodic boundary conditions (PBC) to wrap particle coordinates into the simulation box using bincode serialization.
+///
+/// Periodic boundary conditions create an infinite tiling of the simulation box,
+/// ensuring particles that exit one side re-enter from the opposite side.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `PbcInput` with:
+///   - `position`: Position vector to wrap (x, y, z)
+///   - `box_size`: Simulation box dimensions (Lx, Ly, Lz)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+/// - `ok`: Wrapped position vector within [0, box_size)
+/// - `err`: Error message if input invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(

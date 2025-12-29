@@ -68,6 +68,31 @@ struct OdeResult {
     states: Vec<Vec<f64>>,
 }
 
+/// Solves the Lorenz system using adaptive Dormand-Prince RK5(4) method via JSON serialization.
+///
+/// The Lorenz system is a chaotic dynamical system defined by:
+/// dx/dt = σ(y - x), dy/dt = x(ρ - z) - y, dz/dt = xy - βz.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `sigma`: Prandtl number σ
+///   - `rho`: Rayleigh number ρ
+///   - `beta`: Geometric parameter β
+///   - `y0`: Initial state [x₀, y₀, z₀]
+///   - `t_span`: Time interval [t_start, t_end]
+///   - `dt_initial`: Initial time step size
+///   - `tol`: Error tolerances [absolute, relative]
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<OdeResult, String>` with
+/// `time` and `states` arrays.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(
@@ -137,6 +162,29 @@ pub unsafe extern "C" fn rssn_physics_rkm_lorenz_json(
     )
 }
 
+/// Solves the damped oscillator system using RK4 method via JSON serialization.
+///
+/// The damped harmonic oscillator is defined by:
+/// d²x/dt² + 2ζωdx/dt + ω²x = 0.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `omega`: Natural frequency ω
+///   - `zeta`: Damping ratio ζ
+///   - `y0`: Initial state [x₀, v₀]
+///   - `t_span`: Time interval [t_start, t_end]
+///   - `dt`: Time step size
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<OdeResult, String>` with
+/// `time` and `states` arrays.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
@@ -202,6 +250,29 @@ pub unsafe extern "C" fn rssn_physics_rkm_damped_oscillator_json(
     )
 }
 
+/// Solves the Van der Pol oscillator using adaptive Cash-Karp RK4(5) method via JSON serialization.
+///
+/// The Van der Pol equation models nonlinear oscillations with self-excitation:
+/// d²x/dt² - μ(1 - x²)dx/dt + x = 0.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `mu`: Nonlinearity parameter μ
+///   - `y0`: Initial state [x₀, v₀]
+///   - `t_span`: Time interval [t_start, t_end]
+///   - `dt_initial`: Initial time step size
+///   - `tol`: Error tolerances [absolute, relative]
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<OdeResult, String>` with
+/// `time` and `states` arrays.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(
@@ -269,6 +340,32 @@ pub unsafe extern "C" fn rssn_physics_rkm_vanderpol_json(
     )
 }
 
+/// Solves the Lotka-Volterra predator-prey system using Bogacki-Shampine RK2(3) via JSON serialization.
+///
+/// The Lotka-Volterra equations model population dynamics:
+/// dx/dt = αx - βxy, dy/dt = δxy - γy.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `alpha`: Prey growth rate α
+///   - `beta`: Predation rate β
+///   - `delta`: Predator efficiency δ
+///   - `gamma`: Predator death rate γ
+///   - `y0`: Initial state [prey₀, predator₀]
+///   - `t_span`: Time interval [t_start, t_end]
+///   - `dt_initial`: Initial time step size
+///   - `tol`: Error tolerances [absolute, relative]
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<OdeResult, String>` with
+/// `time` and `states` arrays.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_lotka_volterra_json(

@@ -17,6 +17,25 @@ struct FindRootsInput {
     tolerance: f64,
 }
 
+/// Finds all real roots of a polynomial using numerical methods and JSON serialization.
+///
+/// Uses root-finding algorithms to locate all real zeros of the polynomial.
+///
+/// # Arguments
+///
+/// * `json_ptr` - A JSON string pointer containing:
+///   - `coeffs`: Polynomial coefficients [a₀, a₁, ..., aₙ] for a₀ + a₁x + ... + aₙxⁿ
+///   - `tolerance`: Convergence tolerance for root finding
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// an array of real roots found.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_real_roots_find_roots_json(

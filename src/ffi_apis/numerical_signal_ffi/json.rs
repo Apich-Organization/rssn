@@ -24,6 +24,25 @@ struct ConvolveInput {
     v: Vec<f64>,
 }
 
+/// Computes the Fast Fourier Transform (FFT) of complex data using JSON serialization.
+///
+/// The FFT converts a signal from time/space domain to frequency domain using the
+/// Cooley-Tukey algorithm in O(N log N) time.
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `data`: Array of complex numbers to transform
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<Complex<f64>>, String>` with
+/// the frequency domain representation.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_fft_json(
@@ -59,6 +78,26 @@ pub unsafe extern "C" fn rssn_num_signal_fft_json(
     )
 }
 
+/// Computes the discrete convolution of two signals using JSON serialization.
+///
+/// The convolution is defined as (a * v)[n] = Σ a[k]v[n-k], representing the
+/// combined effect of two systems or filtering operation.
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `a`: First signal array
+///   - `v`: Second signal array (kernel)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the convolution result.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_convolve_json(
@@ -96,6 +135,26 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_json(
     )
 }
 
+/// Computes the cross-correlation of two signals using JSON serialization.
+///
+/// Cross-correlation measures similarity between signals as a function of lag:
+/// (a ⋆ v)[n] = Σ a[k]v[n+k].
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `a`: First signal array
+///   - `v`: Second signal array
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the cross-correlation result.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_cross_correlation_json(

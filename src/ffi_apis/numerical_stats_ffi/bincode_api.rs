@@ -43,6 +43,25 @@ struct TestOutput {
     p_value: f64,
 }
 
+/// Computes the arithmetic mean (average) of a dataset using bincode serialization.
+///
+/// The arithmetic mean is defined as μ = (1/n) Σxᵢ.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `DataInput` with:
+///   - `data`: Vector of numerical values
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The mean value μ
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_mean_bincode(
@@ -70,6 +89,25 @@ pub unsafe extern "C" fn rssn_num_stats_mean_bincode(
     })
 }
 
+/// Computes the sample variance of a dataset using bincode serialization.
+///
+/// The sample variance is defined as s² = (1/(n-1)) Σ(xᵢ - μ)².
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `DataInput` with:
+///   - `data`: Vector of numerical values
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The variance s²
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_variance_bincode(
@@ -97,6 +135,25 @@ pub unsafe extern "C" fn rssn_num_stats_variance_bincode(
     })
 }
 
+/// Computes the sample standard deviation of a dataset using bincode serialization.
+///
+/// The standard deviation is defined as s = √(s²) where s² is the sample variance.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `DataInput` with:
+///   - `data`: Vector of numerical values
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The standard deviation s
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_std_dev_bincode(
@@ -124,6 +181,26 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev_bincode(
     })
 }
 
+/// Computes the covariance between two datasets using bincode serialization.
+///
+/// The sample covariance is defined as Cov(X,Y) = (1/(n-1)) Σ(xᵢ - μₓ)(yᵢ - μᵧ).
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `TwoDataInput` with:
+///   - `data1`: First dataset
+///   - `data2`: Second dataset (must have same length as data1)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The covariance Cov(X,Y)
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_covariance_bincode(
@@ -153,6 +230,26 @@ pub unsafe extern "C" fn rssn_num_stats_covariance_bincode(
     })
 }
 
+/// Computes the Pearson correlation coefficient between two datasets using bincode serialization.
+///
+/// The Pearson correlation is defined as ρ = Cov(X,Y) / (σₓσᵧ), ranging from -1 to 1.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `TwoDataInput` with:
+///   - `data1`: First dataset
+///   - `data2`: Second dataset (must have same length as data1)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The correlation coefficient ρ ∈ [-1, 1]
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_correlation_bincode(
@@ -182,6 +279,27 @@ pub unsafe extern "C" fn rssn_num_stats_correlation_bincode(
     })
 }
 
+/// Performs a two-sample t-test for equal means using bincode serialization.
+///
+/// Tests the null hypothesis that two independent samples have equal means,
+/// assuming equal variances (pooled variance).
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `TwoDataInput` with:
+///   - `data1`: First sample
+///   - `data2`: Second sample
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<TestOutput, String>` with either:
+/// - `ok`: Object containing `statistic` (t-statistic) and `p_value`
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_bincode(
@@ -215,6 +333,27 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_bincode(
     })
 }
 
+/// Performs Welch's t-test for unequal variances using bincode serialization.
+///
+/// Tests the null hypothesis that two independent samples have equal means,
+/// without assuming equal variances (Welch-Satterthwaite correction).
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `TwoDataInput` with:
+///   - `data1`: First sample
+///   - `data2`: Second sample
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<TestOutput, String>` with either:
+/// - `ok`: Object containing `statistic` (t-statistic) and `p_value`
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_welch_t_test_bincode(
@@ -247,6 +386,27 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test_bincode(
     })
 }
 
+/// Performs a chi-squared goodness-of-fit test using bincode serialization.
+///
+/// Tests whether observed frequencies match expected frequencies according to
+/// the test statistic χ² = Σ(Oᵢ - Eᵢ)² / Eᵢ.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `TwoDataInput` with:
+///   - `data1`: Observed frequencies
+///   - `data2`: Expected frequencies
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<TestOutput, String>` with either:
+/// - `ok`: Object containing `statistic` (χ²-statistic) and `p_value`
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_bincode(
@@ -280,6 +440,26 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_bincode(
     })
 }
 
+/// Computes simple linear regression using least squares method via bincode serialization.
+///
+/// Fits a line y = mx + b to the data by minimizing Σ(yᵢ - (mxᵢ + b))².
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `RegressionInput` with:
+///   - `x`: Independent variable values
+///   - `y`: Dependent variable values (must have same length as x)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<RegressionOutput, String>` with either:
+/// - `ok`: Object containing `slope` (m) and `intercept` (b)
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_linear_regression_bincode(
@@ -319,6 +499,26 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_bincode(
     })
 }
 
+/// Computes standardized z-scores for a dataset using bincode serialization.
+///
+/// The z-score is defined as z = (x - μ) / σ, representing the number of
+/// standard deviations each value is from the mean.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `DataInput` with:
+///   - `data`: Vector of numerical values
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+/// - `ok`: Vector of z-scores
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_z_scores_bincode(
@@ -346,6 +546,26 @@ pub unsafe extern "C" fn rssn_num_stats_z_scores_bincode(
     })
 }
 
+/// Computes Shannon entropy of a probability distribution using bincode serialization.
+///
+/// Shannon entropy is defined as H(X) = -Σ p(xᵢ) log₂(p(xᵢ)), measuring
+/// the average information content or uncertainty in the distribution.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `DataInput` with:
+///   - `data`: Probability distribution (values should sum to 1)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: Shannon entropy H(X) in bits
+/// - `err`: Error message if input is invalid
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_shannon_entropy_bincode(

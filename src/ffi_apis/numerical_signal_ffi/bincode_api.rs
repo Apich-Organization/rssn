@@ -23,6 +23,25 @@ struct ConvolveInput {
     v: Vec<f64>,
 }
 
+/// Computes the Fast Fourier Transform (FFT) of complex data using bincode serialization.
+///
+/// The FFT converts a signal from time/space domain to frequency domain using the
+/// Cooley-Tukey algorithm in O(N log N) time.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `FftInput` with:
+///   - `data`: Array of complex numbers to transform
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<Complex<f64>>, String>` with
+/// the frequency domain representation.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_fft_bincode(
@@ -52,6 +71,26 @@ pub unsafe extern "C" fn rssn_num_signal_fft_bincode(
     to_bincode_buffer(&ffi_res)
 }
 
+/// Computes the discrete convolution of two signals using bincode serialization.
+///
+/// The convolution is defined as (a * v)[n] = Σ a[k]v[n-k], representing the
+/// combined effect of two systems or filtering operation.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `ConvolveInput` with:
+///   - `a`: First signal array
+///   - `v`: Second signal array (kernel)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with
+/// the convolution result.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_convolve_bincode(
@@ -83,6 +122,26 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_bincode(
     to_bincode_buffer(&ffi_res)
 }
 
+/// Computes the cross-correlation of two signals using bincode serialization.
+///
+/// Cross-correlation measures similarity between signals as a function of lag:
+/// (a ⋆ v)[n] = Σ a[k]v[n+k].
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `ConvolveInput` with:
+///   - `a`: First signal array
+///   - `v`: Second signal array
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with
+/// the cross-correlation result.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_signal_cross_correlation_bincode(

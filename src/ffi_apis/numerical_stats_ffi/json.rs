@@ -44,6 +44,24 @@ struct TestOutput {
     p_value: f64,
 }
 
+/// Computes the arithmetic mean (average) of a dataset via JSON serialization.
+///
+/// The arithmetic mean is defined as μ = (1/n) Σxᵢ.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data`: Array of numerical values
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the mean value μ.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_mean_json(
@@ -79,6 +97,24 @@ pub unsafe extern "C" fn rssn_num_stats_mean_json(
     )
 }
 
+/// Computes the sample variance of a dataset via JSON serialization.
+///
+/// The sample variance is defined as s² = (1/(n-1)) Σ(xᵢ - μ)².
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data`: Array of numerical values
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the variance s².
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_variance_json(
@@ -114,6 +150,24 @@ pub unsafe extern "C" fn rssn_num_stats_variance_json(
     )
 }
 
+/// Computes the sample standard deviation of a dataset via JSON serialization.
+///
+/// The standard deviation is defined as s = √(s²) where s² is the sample variance.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data`: Array of numerical values
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the standard deviation s.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_std_dev_json(
@@ -149,6 +203,25 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev_json(
     )
 }
 
+/// Computes the geometric mean of a dataset via JSON serialization.
+///
+/// The geometric mean is defined as (∏xᵢ)^(1/n), useful for quantities with
+/// multiplicative relationships (e.g., growth rates).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data`: Array of positive numerical values
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the geometric mean.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_geometric_mean_json(
@@ -185,6 +258,25 @@ pub unsafe extern "C" fn rssn_num_stats_geometric_mean_json(
     )
 }
 
+/// Computes the harmonic mean of a dataset via JSON serialization.
+///
+/// The harmonic mean is defined as n / Σ(1/xᵢ), useful for averaging rates
+/// and ratios.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data`: Array of positive numerical values
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the harmonic mean.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_harmonic_mean_json(
@@ -221,6 +313,25 @@ pub unsafe extern "C" fn rssn_num_stats_harmonic_mean_json(
     )
 }
 
+/// Computes the covariance between two datasets via JSON serialization.
+///
+/// The sample covariance is defined as Cov(X,Y) = (1/(n-1)) Σ(xᵢ - μₓ)(yᵢ - μᵧ).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data1`: First dataset
+///   - `data2`: Second dataset (must have same length as data1)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the covariance Cov(X,Y).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_covariance_json(
@@ -258,6 +369,25 @@ pub unsafe extern "C" fn rssn_num_stats_covariance_json(
     )
 }
 
+/// Computes the Pearson correlation coefficient between two datasets via JSON serialization.
+///
+/// The Pearson correlation is defined as ρ = Cov(X,Y) / (σₓσᵧ), ranging from -1 to 1.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data1`: First dataset
+///   - `data2`: Second dataset (must have same length as data1)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the correlation coefficient ρ ∈ [-1, 1].
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_correlation_json(
@@ -295,6 +425,26 @@ pub unsafe extern "C" fn rssn_num_stats_correlation_json(
     )
 }
 
+/// Performs a two-sample t-test for equal means via JSON serialization.
+///
+/// Tests the null hypothesis that two independent samples have equal means,
+/// assuming equal variances (pooled variance).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data1`: First sample
+///   - `data2`: Second sample
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<TestOutput, String>` with
+/// `statistic` (t-statistic) and `p_value`.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_json(
@@ -336,6 +486,26 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_json(
     )
 }
 
+/// Performs Welch's t-test for unequal variances via JSON serialization.
+///
+/// Tests the null hypothesis that two independent samples have equal means,
+/// without assuming equal variances (Welch-Satterthwaite correction).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data1`: First sample
+///   - `data2`: Second sample
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<TestOutput, String>` with
+/// `statistic` (t-statistic) and `p_value`.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_welch_t_test_json(
@@ -376,6 +546,26 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test_json(
     )
 }
 
+/// Performs a chi-squared goodness-of-fit test via JSON serialization.
+///
+/// Tests whether observed frequencies match expected frequencies according to
+/// the test statistic χ² = Σ(Oᵢ - Eᵢ)² / Eᵢ.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data1`: Observed frequencies
+///   - `data2`: Expected frequencies
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<TestOutput, String>` with
+/// `statistic` (χ²-statistic) and `p_value`.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_json(
@@ -417,6 +607,25 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_json(
     )
 }
 
+/// Computes simple linear regression using least squares method via JSON serialization.
+///
+/// Fits a line y = mx + b to the data by minimizing Σ(yᵢ - (mxᵢ + b))².
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Independent variable values
+///   - `y`: Dependent variable values (must have same length as x)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<RegressionOutput, String>` with
+/// `slope` (m) and `intercept` (b).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_linear_regression_json(
@@ -466,6 +675,25 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_json(
     )
 }
 
+/// Computes standardized z-scores for a dataset via JSON serialization.
+///
+/// The z-score is defined as z = (x - μ) / σ, representing the number of
+/// standard deviations each value is from the mean.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data`: Array of numerical values
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the vector of z-scores.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_z_scores_json(
@@ -501,6 +729,25 @@ pub unsafe extern "C" fn rssn_num_stats_z_scores_json(
     )
 }
 
+/// Computes Shannon entropy of a probability distribution via JSON serialization.
+///
+/// Shannon entropy is defined as H(X) = -Σ p(xᵢ) log₂(p(xᵢ)), measuring
+/// the average information content or uncertainty in the distribution.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `data`: Probability distribution (values should sum to 1)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// Shannon entropy H(X) in bits.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_stats_shannon_entropy_json(

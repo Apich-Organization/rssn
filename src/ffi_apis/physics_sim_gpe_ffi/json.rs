@@ -10,6 +10,30 @@ use crate::physics::physics_sim::gpe_superfluidity::{
     self,
 };
 
+/// Solves the Gross-Pitaevskii equation (GPE) for Bose-Einstein condensate ground state via JSON serialization.
+///
+/// The GPE iℏ∂ψ/∂t = [-ℏ²∇²/(2m) + V(r) + g|ψ|²]ψ describes the macroscopic wavefunction
+/// of a superfluid quantum gas. This solver finds the ground state using imaginary time
+/// evolution or variational methods.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n_points`: Number of spatial grid points
+///   - `dx`: Spatial discretization step
+///   - `g`: Nonlinear interaction strength (proportional to scattering length)
+///   - `v_trap`: External trapping potential coefficients
+///   - `tolerance`: Convergence tolerance for ground state search
+///   - `max_iterations`: Maximum iterations for solver
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the ground state wavefunction ψ(x) as probability density |ψ|².
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_gpe_run_json(

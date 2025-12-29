@@ -31,6 +31,30 @@ struct AdvectionDiffusion2DInput {
     config: AdvectionDiffusionConfig,
 }
 
+/// Solves the 1D advection-diffusion equation using spectral methods via JSON serialization.
+///
+/// The 1D advection-diffusion equation ∂u/∂t + c∂u/∂x = D∂²u/∂x² models scalar transport
+/// with velocity c and diffusivity D. Spectral methods provide exponential convergence
+/// for smooth solutions.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `initial_condition`: Initial scalar field u(x,0)
+///   - `dx`: Spatial step size
+///   - `c`: Advection velocity
+///   - `d`: Diffusion coefficient D
+///   - `dt`: Time step size
+///   - `steps`: Number of time steps
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the final scalar field u(x,t).
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
@@ -72,6 +96,32 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
     )
 }
 
+/// Solves the 2D advection-diffusion equation using spectral methods via JSON serialization.
+///
+/// The 2D advection-diffusion equation ∂u/∂t + c·∇u = D∇²u models transport phenomena
+/// combining convective transport (advection) and diffusive spreading. Spectral methods
+/// use Fourier basis functions for high-order accuracy.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `initial_condition`: Initial scalar field u(x,y,0) as flattened vector
+///   - `config`: Configuration including:
+///     - `nx`, `ny`: Grid dimensions
+///     - `dx`, `dy`: Spatial steps
+///     - `cx`, `cy`: Advection velocities in x and y directions
+///     - `d`: Diffusion coefficient D
+///     - `dt`: Time step size
+///     - `steps`: Number of time steps
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the final scalar field u(x,y,t) as a flattened vector.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(

@@ -31,6 +31,32 @@ struct OdeResult {
     states: Vec<Vec<f64>>,
 }
 
+/// Solves the Lorenz system using adaptive Dormand-Prince RK5(4) method via bincode serialization.
+///
+/// The Lorenz system is a chaotic dynamical system defined by:
+/// dx/dt = σ(y - x), dy/dt = x(ρ - z) - y, dz/dt = xy - βz.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `LorenzInput` with:
+///   - `sigma`: Prandtl number σ
+///   - `rho`: Rayleigh number ρ
+///   - `beta`: Geometric parameter β
+///   - `y0`: Initial state [x₀, y₀, z₀]
+///   - `t_span`: Time interval (t_start, t_end)
+///   - `dt_initial`: Initial time step size
+///   - `tol`: Error tolerances (absolute, relative)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<OdeResult, String>` with either:
+/// - `ok`: Object containing `time` and `states` arrays
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_rkm_lorenz_bincode(

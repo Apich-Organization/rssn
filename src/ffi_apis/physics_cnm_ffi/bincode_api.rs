@@ -19,6 +19,28 @@ struct Heat2DInput {
     config: HeatEquationSolverConfig,
 }
 
+/// Solves the 2D heat equation using Crank-Nicolson ADI method via bincode serialization.
+///
+/// The heat equation ∂u/∂t = α∇²u is solved using the Crank-Nicolson Alternating
+/// Direction Implicit (ADI) method, which is unconditionally stable and second-order
+/// accurate in both space and time.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `Heat2DInput` with:
+///   - `initial_condition`: Initial temperature distribution (flattened 2D grid)
+///   - `config`: Solver configuration (grid size, time step, thermal diffusivity, etc.)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+/// - `ok`: Final temperature distribution after time evolution
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_bincode(
