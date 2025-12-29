@@ -3,6 +3,24 @@ use crate::symbolic::group_theory::*;
 
 #[no_mangle]
 
+/// Creates a group from a bincode-encoded description.
+///
+/// The input buffer encodes a [`Group`] (e.g., its underlying set and operation),
+/// which is deserialized and returned in canonical internal form.
+///
+/// # Arguments
+///
+/// * `buf` - `BincodeBuffer` containing a serialized `Group` description.
+///
+/// # Returns
+///
+/// A `BincodeBuffer` containing the canonicalized `Group`, or an empty buffer if
+/// deserialization fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_group_create(
     buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -17,6 +35,26 @@ pub unsafe extern "C" fn rssn_bincode_group_create(
 
 #[no_mangle]
 
+/// Multiplies two group elements using a bincode-encoded group.
+///
+/// Given a `Group` and two `GroupElement` values, this applies the group
+/// operation to compute their product.
+///
+/// # Arguments
+///
+/// * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+/// * `a_buf` - `BincodeBuffer` encoding a [`GroupElement`] for the left factor.
+/// * `b_buf` - `BincodeBuffer` encoding a [`GroupElement`] for the right factor.
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding the resulting `GroupElement`, or an empty buffer if
+/// any input fails to deserialize.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_group_multiply(
     group_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
@@ -45,6 +83,22 @@ pub unsafe extern "C" fn rssn_bincode_group_multiply(
 
 #[no_mangle]
 
+/// Computes the inverse of a group element using a bincode-encoded group.
+///
+/// # Arguments
+///
+/// * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+/// * `a_buf` - `BincodeBuffer` encoding a [`GroupElement`] whose inverse is sought.
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding the inverse `GroupElement`, or an empty buffer if
+/// deserialization fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_group_inverse(
     group_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
@@ -67,6 +121,24 @@ pub unsafe extern "C" fn rssn_bincode_group_inverse(
 
 #[no_mangle]
 
+/// Tests whether a bincode-encoded group is Abelian.
+///
+/// A group is Abelian if its operation is commutative, i.e., \(ab = ba\) for all
+/// elements \(a, b\).
+///
+/// # Arguments
+///
+/// * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+///
+/// # Returns
+///
+/// `true` if the group is Abelian, `false` if it is non-Abelian or deserialization
+/// fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must ensure the buffer is a valid encoding of a `Group`.
 pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
     group_buf: BincodeBuffer
 ) -> bool {
@@ -84,6 +156,25 @@ pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
 
 #[no_mangle]
 
+/// Computes the order of a group element using a bincode-encoded group.
+///
+/// The order of an element is the smallest positive integer \(n\) such that
+/// \(a^n = e\), where \(e\) is the identity element.
+///
+/// # Arguments
+///
+/// * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+/// * `a_buf` - `BincodeBuffer` encoding a [`GroupElement`].
+///
+/// # Returns
+///
+/// The order of the element as a `usize`, or `0` if the order is undefined or
+/// deserialization fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must ensure the buffers encode a compatible group and element.
 pub unsafe extern "C" fn rssn_bincode_group_element_order(
     group_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
@@ -112,6 +203,24 @@ pub unsafe extern "C" fn rssn_bincode_group_element_order(
 
 #[no_mangle]
 
+/// Computes the conjugacy classes of a bincode-encoded group.
+///
+/// Conjugacy classes partition the group into sets of elements related by
+/// conjugation \(gag^{-1}\).
+///
+/// # Arguments
+///
+/// * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding the conjugacy classes (typically as a collection of
+/// `Vec<GroupElement>`), or an empty buffer if deserialization fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
     group_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -129,6 +238,24 @@ pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
 
 #[no_mangle]
 
+/// Computes the center of a bincode-encoded group.
+///
+/// The center is the subset of elements that commute with every group element,
+/// i.e., \(Z(G) = \{z \in G \mid zg = gz, \forall g \in G\}\).
+///
+/// # Arguments
+///
+/// * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding the center (typically as a collection of
+/// `GroupElement` values), or an empty buffer if deserialization fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_group_center(
     group_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -145,6 +272,24 @@ pub unsafe extern "C" fn rssn_bincode_group_center(
 
 #[no_mangle]
 
+/// Creates a group representation from a bincode-encoded description.
+///
+/// A representation assigns linear operators to each group element, typically as
+/// matrices acting on a vector space.
+///
+/// # Arguments
+///
+/// * `buf` - `BincodeBuffer` containing a serialized [`Representation`].
+///
+/// # Returns
+///
+/// A `BincodeBuffer` containing the canonicalized `Representation`, or an empty
+/// buffer if deserialization fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_representation_create(
     buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -159,6 +304,25 @@ pub unsafe extern "C" fn rssn_bincode_representation_create(
 
 #[no_mangle]
 
+/// Checks whether a representation is valid for a given group using bincode serialization.
+///
+/// A representation is valid if it respects the group operation, i.e., the image
+/// of the group under the representation is a homomorphism.
+///
+/// # Arguments
+///
+/// * `rep_buf` - `BincodeBuffer` encoding a [`Representation`].
+/// * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+///
+/// # Returns
+///
+/// `true` if the representation is valid for the group, `false` otherwise or if
+/// deserialization fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must ensure the buffers encode compatible objects.
 pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
     rep_buf: BincodeBuffer,
     group_buf: BincodeBuffer,
@@ -185,6 +349,24 @@ pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
 
 #[no_mangle]
 
+/// Computes the character of a representation using bincode serialization.
+///
+/// The character is the trace of each representation matrix over the group,
+/// viewed as a class function on the group.
+///
+/// # Arguments
+///
+/// * `rep_buf` - `BincodeBuffer` encoding a [`Representation`].
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding the character values (e.g., as a vector indexed by
+/// group elements or conjugacy classes), or an empty buffer if deserialization fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_character(
     rep_buf: BincodeBuffer
 ) -> BincodeBuffer {

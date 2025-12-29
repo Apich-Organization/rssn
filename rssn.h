@@ -2133,6 +2133,17 @@ int rssn_are_isomorphic_heuristic(const struct rssn_RssnGraph *aG1,
                                   const struct rssn_RssnGraph *aG2)
 ;
 
+/*
+ Checks if two functions are orthogonal in a Hilbert space.
+
+ # Arguments
+ * `space` - Handle to the Hilbert space.
+ * `f` - Handle to the first expression.
+ * `g` - Handle to the second expression.
+
+ # Returns
+ `true` if orthogonal, `false` otherwise.
+ */
 rssn_
 bool rssn_are_orthogonal(const struct rssn_HilbertSpace *aSpace,
                          const struct rssn_Expr *aF,
@@ -2160,11 +2171,33 @@ struct rssn_Expr *rssn_asymptotic_expansion_handle(const struct rssn_Expr *aExpr
                                                    size_t aOrder)
 ;
 
+/*
+ Computes the $L^p$ norm of a function in a Banach space.
+
+ # Arguments
+ * `space` - Handle to the Banach space.
+ * `f` - Handle to the expression.
+
+ # Returns
+ A raw pointer to the symbolic expression representing the norm.
+ */
 rssn_
 struct rssn_Expr *rssn_banach_norm(const struct rssn_BanachSpace *aSpace,
                                    const struct rssn_Expr *aF)
 ;
 
+/*
+ Creates a new Banach space $L^p$ over a specified interval.
+
+ # Arguments
+ * `var` - The name of the independent variable.
+ * `lower_bound` - Symbolic expression for the lower bound.
+ * `upper_bound` - Symbolic expression for the upper bound.
+ * `p` - Symbolic expression representing the $p$ parameter of the $L^p$ norm.
+
+ # Returns
+ A raw pointer to the newly created `BanachSpace`.
+ */
 rssn_
 struct rssn_BanachSpace *rssn_banach_space_create(const char *aVar,
                                                   const struct rssn_Expr *aLowerBound,
@@ -2172,6 +2205,12 @@ struct rssn_BanachSpace *rssn_banach_space_create(const char *aVar,
                                                   const struct rssn_Expr *aP)
 ;
 
+/*
+ Frees a Banach space handle.
+
+ # Arguments
+ * `ptr` - Pointer to the `BanachSpace` to free.
+ */
 rssn_
 void rssn_banach_space_free(struct rssn_BanachSpace *aPtr)
 ;
@@ -2617,6 +2656,27 @@ struct rssn_BincodeBuffer rssn_bincode_bra_ket(struct rssn_BincodeBuffer aBraBuf
                                                struct rssn_BincodeBuffer aKetBuf)
 ;
 
+/*
+ Computes a Gröbner basis using Buchberger's algorithm and returns it via bincode serialization.
+
+ Given a basis of multivariate polynomials and a monomial order, this runs
+ Buchberger's algorithm to produce a Gröbner basis for the ideal they generate.
+
+ # Arguments
+
+ * `basis_buf` - `BincodeBuffer` encoding `Vec<SparsePolynomial>` for the initial basis.
+ * `order_buf` - `BincodeBuffer` encoding the [`MonomialOrder`] to use.
+
+ # Returns
+
+ A `BincodeBuffer` encoding `Vec<SparsePolynomial>` forming a Gröbner basis, or an
+ empty buffer if deserialization fails or the computation encounters an error.
+
+ # Safety
+
+ This function is an FFI entry point; callers must treat the returned buffer as
+ opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_buchberger(struct rssn_BincodeBuffer aBasisBuf,
                                                   struct rssn_BincodeBuffer aOrderBuf)
@@ -2663,6 +2723,26 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_catalan_number(size_t aN)
 ;
 
+/*
+ Computes the character of a representation using bincode serialization.
+
+ The character is the trace of each representation matrix over the group,
+ viewed as a class function on the group.
+
+ # Arguments
+
+ * `rep_buf` - `BincodeBuffer` encoding a [`Representation`].
+
+ # Returns
+
+ A `BincodeBuffer` encoding the character values (e.g., as a vector indexed by
+ group elements or conjugacy classes), or an empty buffer if deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_character(struct rssn_BincodeBuffer aRepBuf)
 ;
@@ -3983,32 +4063,173 @@ struct rssn_BincodeBuffer rssn_bincode_greens_theorem(struct rssn_BincodeBuffer 
                                                       struct rssn_BincodeBuffer aDomainBuf)
 ;
 
+/*
+ Computes the center of a bincode-encoded group.
+
+ The center is the subset of elements that commute with every group element,
+ i.e., \(Z(G) = \{z \in G \mid zg = gz, \forall g \in G\}\).
+
+ # Arguments
+
+ * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+
+ # Returns
+
+ A `BincodeBuffer` encoding the center (typically as a collection of
+ `GroupElement` values), or an empty buffer if deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_group_center(struct rssn_BincodeBuffer aGroupBuf)
 ;
 
+/*
+ Computes the conjugacy classes of a bincode-encoded group.
+
+ Conjugacy classes partition the group into sets of elements related by
+ conjugation \(gag^{-1}\).
+
+ # Arguments
+
+ * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+
+ # Returns
+
+ A `BincodeBuffer` encoding the conjugacy classes (typically as a collection of
+ `Vec<GroupElement>`), or an empty buffer if deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_group_conjugacy_classes(struct rssn_BincodeBuffer aGroupBuf)
 ;
 
+/*
+ Creates a group from a bincode-encoded description.
+
+ The input buffer encodes a [`Group`] (e.g., its underlying set and operation),
+ which is deserialized and returned in canonical internal form.
+
+ # Arguments
+
+ * `buf` - `BincodeBuffer` containing a serialized `Group` description.
+
+ # Returns
+
+ A `BincodeBuffer` containing the canonicalized `Group`, or an empty buffer if
+ deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_group_create(struct rssn_BincodeBuffer aBuf)
 ;
 
+/*
+ Computes the order of a group element using a bincode-encoded group.
+
+ The order of an element is the smallest positive integer \(n\) such that
+ \(a^n = e\), where \(e\) is the identity element.
+
+ # Arguments
+
+ * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+ * `a_buf` - `BincodeBuffer` encoding a [`GroupElement`].
+
+ # Returns
+
+ The order of the element as a `usize`, or `0` if the order is undefined or
+ deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must ensure the buffers encode a compatible group and element.
+ */
 rssn_
 size_t rssn_bincode_group_element_order(struct rssn_BincodeBuffer aGroupBuf,
                                         struct rssn_BincodeBuffer aABuf)
 ;
 
+/*
+ Computes the inverse of a group element using a bincode-encoded group.
+
+ # Arguments
+
+ * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+ * `a_buf` - `BincodeBuffer` encoding a [`GroupElement`] whose inverse is sought.
+
+ # Returns
+
+ A `BincodeBuffer` encoding the inverse `GroupElement`, or an empty buffer if
+ deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_group_inverse(struct rssn_BincodeBuffer aGroupBuf,
                                                      struct rssn_BincodeBuffer aABuf)
 ;
 
+/*
+ Tests whether a bincode-encoded group is Abelian.
+
+ A group is Abelian if its operation is commutative, i.e., \(ab = ba\) for all
+ elements \(a, b\).
+
+ # Arguments
+
+ * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+
+ # Returns
+
+ `true` if the group is Abelian, `false` if it is non-Abelian or deserialization
+ fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must ensure the buffer is a valid encoding of a `Group`.
+ */
 rssn_
 bool rssn_bincode_group_is_abelian(struct rssn_BincodeBuffer aGroupBuf)
 ;
 
+/*
+ Multiplies two group elements using a bincode-encoded group.
+
+ Given a `Group` and two `GroupElement` values, this applies the group
+ operation to compute their product.
+
+ # Arguments
+
+ * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+ * `a_buf` - `BincodeBuffer` encoding a [`GroupElement`] for the left factor.
+ * `b_buf` - `BincodeBuffer` encoding a [`GroupElement`] for the right factor.
+
+ # Returns
+
+ A `BincodeBuffer` encoding the resulting `GroupElement`, or an empty buffer if
+ any input fails to deserialize.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_group_multiply(struct rssn_BincodeBuffer aGroupBuf,
                                                       struct rssn_BincodeBuffer aABuf,
@@ -4846,6 +5067,27 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_poly_derivative_gf(struct rssn_BincodeBuffer aPolyBuf)
 ;
 
+/*
+ Divides a multivariate polynomial by a list of divisors under a given monomial order,
+ returning the quotients and remainder via bincode serialization.
+
+ # Arguments
+
+ * `dividend_buf` - `BincodeBuffer` encoding the dividend `SparsePolynomial`.
+ * `divisors_buf` - `BincodeBuffer` encoding `Vec<SparsePolynomial>` of divisors.
+ * `order_buf` - `BincodeBuffer` encoding the [`MonomialOrder`] to use.
+
+ # Returns
+
+ A `BincodeBuffer` encoding `(Vec<SparsePolynomial>, SparsePolynomial)` containing
+ the quotient polynomials and the remainder, or an empty buffer if deserialization
+ fails or the division fails.
+
+ # Safety
+
+ This function is an FFI entry point; callers must treat the returned buffer as
+ opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_poly_division_multivariate(struct rssn_BincodeBuffer aDividendBuf,
                                                                   struct rssn_BincodeBuffer aDivisorsBuf,
@@ -5068,10 +5310,51 @@ struct rssn_BincodeBuffer rssn_bincode_regularized_incomplete_beta(struct rssn_B
                                                                    struct rssn_BincodeBuffer aXBuf)
 ;
 
+/*
+ Creates a group representation from a bincode-encoded description.
+
+ A representation assigns linear operators to each group element, typically as
+ matrices acting on a vector space.
+
+ # Arguments
+
+ * `buf` - `BincodeBuffer` containing a serialized [`Representation`].
+
+ # Returns
+
+ A `BincodeBuffer` containing the canonicalized `Representation`, or an empty
+ buffer if deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_representation_create(struct rssn_BincodeBuffer aBuf)
 ;
 
+/*
+ Checks whether a representation is valid for a given group using bincode serialization.
+
+ A representation is valid if it respects the group operation, i.e., the image
+ of the group under the representation is a homomorphism.
+
+ # Arguments
+
+ * `rep_buf` - `BincodeBuffer` encoding a [`Representation`].
+ * `group_buf` - `BincodeBuffer` encoding a [`Group`].
+
+ # Returns
+
+ `true` if the representation is valid for the group, `false` otherwise or if
+ deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must ensure the buffers encode compatible objects.
+ */
 rssn_
 bool rssn_bincode_representation_is_valid(struct rssn_BincodeBuffer aRepBuf,
                                           struct rssn_BincodeBuffer aGroupBuf)
@@ -6005,6 +6288,24 @@ rssn_
 struct rssn_Bra *rssn_bra_new(const struct rssn_Expr *aState)
 ;
 
+/*
+ Computes a Gröbner basis using Buchberger's algorithm and returns it as a heap-allocated vector handle.
+
+ # Arguments
+
+ * `basis` - Pointer to a `Vec<SparsePolynomial>` representing the initial basis.
+ * `order` - [`MonomialOrder`] specifying the term ordering.
+
+ # Returns
+
+ A pointer to a heap-allocated `Vec<SparsePolynomial>` representing a Gröbner
+ basis, or null if the computation fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer and returns
+ ownership of a heap-allocated vector that must be freed by the caller.
+ */
 rssn_
 struct rssn_Vec_SparsePolynomial *rssn_buchberger_handle(const struct rssn_Vec_SparsePolynomial *aBasis,
                                                          enum rssn_MonomialOrder aOrder)
@@ -8330,6 +8631,18 @@ struct rssn_Expr *rssn_gini_impurity(const struct rssn_Expr *const *aProbs,
                                      size_t aLen)
 ;
 
+/*
+ Performs the Gram-Schmidt process to produce an orthogonal basis.
+
+ # Arguments
+ * `space` - Handle to the Hilbert space.
+ * `basis_ptr` - Array of handles to the input basis expressions.
+ * `basis_len` - Number of input expressions.
+ * `out_len` - Pointer to store the number of orthogonal expressions produced.
+
+ # Returns
+ A raw pointer to an array of handles to the orthogonalized basis expressions.
+ */
 rssn_
 struct rssn_Expr **rssn_gram_schmidt(const struct rssn_HilbertSpace *aSpace,
                                      const struct rssn_Expr *const *aBasisPtr,
@@ -9049,12 +9362,29 @@ rssn_
 struct rssn_Expr *rssn_heuristic_simplify(const struct rssn_Expr *aExpr)
 ;
 
+/*
+ Creates a new Hilbert space over a specified interval.
+
+ # Arguments
+ * `var` - The name of the independent variable defining the space.
+ * `lower_bound` - Symbolic expression for the lower bound of the interval.
+ * `upper_bound` - Symbolic expression for the upper bound of the interval.
+
+ # Returns
+ A raw pointer to the newly created `HilbertSpace`.
+ */
 rssn_
 struct rssn_HilbertSpace *rssn_hilbert_space_create(const char *aVar,
                                                     const struct rssn_Expr *aLowerBound,
                                                     const struct rssn_Expr *aUpperBound)
 ;
 
+/*
+ Frees a Hilbert space handle.
+
+ # Arguments
+ * `ptr` - Pointer to the `HilbertSpace` to free.
+ */
 rssn_
 void rssn_hilbert_space_free(struct rssn_HilbertSpace *aPtr)
 ;
@@ -9123,6 +9453,17 @@ DEPRECATED_WITH_NOTE
 int32_t rssn_init_plugin_manager(const char *aPluginDirPtr)
 ;
 
+/*
+ Computes the inner product of two functions in a Hilbert space.
+
+ # Arguments
+ * `space` - Handle to the Hilbert space.
+ * `f` - Handle to the first expression.
+ * `g` - Handle to the second expression.
+
+ # Returns
+ A raw pointer to the symbolic expression representing the inner product.
+ */
 rssn_
 struct rssn_Expr *rssn_inner_product(const struct rssn_HilbertSpace *aSpace,
                                      const struct rssn_Expr *aF,
@@ -9547,6 +9888,24 @@ char *rssn_json_bra_ket(const char *aBraJson,
                         const char *aKetJson)
 ;
 
+/*
+ Computes a Gröbner basis using Buchberger's algorithm and returns it as JSON-encoded polynomials.
+
+ # Arguments
+
+ * `basis_json` - C string pointer with JSON-encoded `Vec<SparsePolynomial>` for the initial basis.
+ * `order_json` - C string pointer with JSON-encoded [`MonomialOrder`].
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Vec<SparsePolynomial>` representing a
+ Gröbner basis, or null if deserialization fails or the computation encounters an error.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and returns
+ ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_buchberger(const char *aBasisJson,
                            const char *aOrderJson)
@@ -10642,6 +11001,27 @@ rssn_
 char *rssn_json_gini_impurity(const char *aProbsJson)
 ;
 
+/*
+ Applies the Gram–Schmidt process to produce an orthonormal basis in a Hilbert space using JSON serialization.
+
+ Given a Hilbert space and a list of symbolic basis vectors, this performs the
+ Gram–Schmidt orthonormalization procedure to obtain an orthonormal basis.
+
+ # Arguments
+
+ * `space_json` - C string pointer with JSON-encoded [`HilbertSpace`].
+ * `basis_json` - C string pointer with JSON-encoded `Vec<Expr>` of basis vectors.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Vec<Expr>` for the orthonormal
+ basis, or null if any input cannot be deserialized or the computation fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_gram_schmidt(const char *aSpaceJson,
                              const char *aBasisJson)
@@ -11056,6 +11436,27 @@ rssn_
 char *rssn_json_heuristic_simplify(const char *aExprJson)
 ;
 
+/*
+ Constructs a Hilbert space from a JSON-encoded description.
+
+ The input string encodes a [`HilbertSpace`] specification (e.g., underlying
+ function space, inner product, and measure), which is deserialized and
+ returned in canonical internal form.
+
+ # Arguments
+
+ * `json_str` - C string pointer containing JSON for a `HilbertSpace` description.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `HilbertSpace`, or null if the
+ input cannot be deserialized.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_hilbert_space_create(const char *aJsonStr)
 ;
@@ -11087,6 +11488,29 @@ rssn_
 char *rssn_json_ifs_similarity_dimension(const char *aScalingFactorsJson)
 ;
 
+/*
+ Computes the inner product of two functions in a Hilbert space using JSON serialization.
+
+ Given a Hilbert space and two symbolic functions \(f\) and \(g\), this evaluates
+ the inner product \(\langle f, g \rangle\) according to the space's inner
+ product structure.
+
+ # Arguments
+
+ * `space_json` - C string pointer with JSON-encoded [`HilbertSpace`].
+ * `f_json` - C string pointer with JSON-encoded `Expr` for \(f\).
+ * `g_json` - C string pointer with JSON-encoded `Expr` for \(g\).
+
+ # Returns
+
+ A C string pointer containing JSON-encoded symbolic inner product (typically
+ an `Expr`), or null if any input cannot be deserialized or the computation fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_inner_product(const char *aSpaceJson,
                               const char *aFJson,
@@ -11602,6 +12026,27 @@ char *rssn_json_nonlinear_regression(const char *aDataJson,
                                      const char *aParamsJson)
 ;
 
+/*
+ Computes the norm of a function in a Hilbert space using JSON serialization.
+
+ Given a Hilbert space and a symbolic function \(f\), this evaluates the norm
+ \(\|f\| = \sqrt{\langle f, f \rangle}\) induced by the inner product.
+
+ # Arguments
+
+ * `space_json` - C string pointer with JSON-encoded [`HilbertSpace`].
+ * `f_json` - C string pointer with JSON-encoded `Expr` for \(f\).
+
+ # Returns
+
+ A C string pointer containing JSON-encoded symbolic norm (typically an `Expr`),
+ or null if any input cannot be deserialized or the computation fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_norm(const char *aSpaceJson,
                      const char *aFJson)
@@ -11704,6 +12149,27 @@ rssn_
 char *rssn_json_poly_derivative_gf(const char *aPolyJson)
 ;
 
+/*
+ Divides a multivariate polynomial by a list of divisors under a given monomial order
+ and returns quotients and remainder as JSON-encoded polynomials.
+
+ # Arguments
+
+ * `dividend_json` - C string pointer with JSON-encoded dividend `SparsePolynomial`.
+ * `divisors_json` - C string pointer with JSON-encoded `Vec<SparsePolynomial>` of divisors.
+ * `order_json` - C string pointer with JSON-encoded [`MonomialOrder`].
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `(Vec<SparsePolynomial>, SparsePolynomial)`
+ with quotient polynomials and remainder, or null if deserialization fails or the
+ computation encounters an error.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and returns
+ ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_poly_division_multivariate(const char *aDividendJson,
                                            const char *aDivisorsJson,
@@ -13323,19 +13789,54 @@ rssn_
 char *rssn_line_integral_vector_json(const char *aInputJson)
 ;
 
+/*
+ Applies a linear operator to a symbolic expression.
+
+ # Arguments
+ * `op` - Handle to the linear operator.
+ * `expr` - Handle to the expression to operate on.
+
+ # Returns
+ A raw pointer to the resulting symbolic expression.
+ */
 rssn_
 struct rssn_Expr *rssn_linear_operator_apply(const struct rssn_LinearOperator *aOp,
                                              const struct rssn_Expr *aExpr)
 ;
 
+/*
+ Creates a linear derivative operator handle.
+
+ # Arguments
+ * `var` - The name of the variable with respect to which differentiation is performed.
+
+ # Returns
+ A raw pointer to the `LinearOperator`.
+ */
 rssn_
 struct rssn_LinearOperator *rssn_linear_operator_derivative_create(const char *aVar)
 ;
 
+/*
+ Frees a linear operator handle.
+
+ # Arguments
+ * `ptr` - Pointer to the `LinearOperator` to free.
+ */
 rssn_
 void rssn_linear_operator_free(struct rssn_LinearOperator *aPtr)
 ;
 
+/*
+ Creates a linear integral operator handle.
+
+ # Arguments
+ * `lower_bound` - Symbolic expression for the lower integration limit.
+ * `var` - The integration variable.
+
+ # Returns
+ A raw pointer to the `LinearOperator`.
+ */
 rssn_
 struct rssn_LinearOperator *rssn_linear_operator_integral_create(const struct rssn_Expr *aLowerBound,
                                                                  const char *aVar)
@@ -13712,6 +14213,16 @@ struct rssn_Expr *rssn_nonlinear_regression(const struct rssn_Expr *const *aXDat
                                             size_t aParamsLen)
 ;
 
+/*
+ Computes the $L^2$ norm of a function in a Hilbert space.
+
+ # Arguments
+ * `space` - Handle to the Hilbert space.
+ * `f` - Handle to the expression.
+
+ # Returns
+ A raw pointer to the symbolic expression representing the norm.
+ */
 rssn_
 struct rssn_Expr *rssn_norm(const struct rssn_HilbertSpace *aSpace,
                             const struct rssn_Expr *aF)
@@ -25339,6 +25850,17 @@ struct rssn_Expr *rssn_product_handle(const struct rssn_Expr *aExpr,
                                       const struct rssn_Expr *aUpper)
 ;
 
+/*
+ Projects one function onto another within a Hilbert space.
+
+ # Arguments
+ * `space` - Handle to the Hilbert space.
+ * `f` - Handle to the function to project.
+ * `g` - Handle to the function onto which $f$ is projected.
+
+ # Returns
+ A raw pointer to the resulting projection expression.
+ */
 rssn_
 struct rssn_Expr *rssn_project(const struct rssn_HilbertSpace *aSpace,
                                const struct rssn_Expr *aF,

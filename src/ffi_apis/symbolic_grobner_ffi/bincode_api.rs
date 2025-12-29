@@ -6,6 +6,25 @@ use crate::symbolic::grobner::MonomialOrder;
 
 #[no_mangle]
 
+/// Computes a Gröbner basis using Buchberger's algorithm and returns it via bincode serialization.
+///
+/// Given a basis of multivariate polynomials and a monomial order, this runs
+/// Buchberger's algorithm to produce a Gröbner basis for the ideal they generate.
+///
+/// # Arguments
+///
+/// * `basis_buf` - `BincodeBuffer` encoding `Vec<SparsePolynomial>` for the initial basis.
+/// * `order_buf` - `BincodeBuffer` encoding the [`MonomialOrder`] to use.
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding `Vec<SparsePolynomial>` forming a Gröbner basis, or an
+/// empty buffer if deserialization fails or the computation encounters an error.
+///
+/// # Safety
+///
+/// This function is an FFI entry point; callers must treat the returned buffer as
+/// opaque and only pass it to compatible APIs.
 pub extern "C" fn rssn_bincode_buchberger(
     basis_buf: BincodeBuffer,
     order_buf: BincodeBuffer,
@@ -40,6 +59,25 @@ pub extern "C" fn rssn_bincode_buchberger(
 
 #[no_mangle]
 
+/// Divides a multivariate polynomial by a list of divisors under a given monomial order,
+/// returning the quotients and remainder via bincode serialization.
+///
+/// # Arguments
+///
+/// * `dividend_buf` - `BincodeBuffer` encoding the dividend `SparsePolynomial`.
+/// * `divisors_buf` - `BincodeBuffer` encoding `Vec<SparsePolynomial>` of divisors.
+/// * `order_buf` - `BincodeBuffer` encoding the [`MonomialOrder`] to use.
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding `(Vec<SparsePolynomial>, SparsePolynomial)` containing
+/// the quotient polynomials and the remainder, or an empty buffer if deserialization
+/// fails or the division fails.
+///
+/// # Safety
+///
+/// This function is an FFI entry point; callers must treat the returned buffer as
+/// opaque and only pass it to compatible APIs.
 pub extern "C" fn rssn_bincode_poly_division_multivariate(
     dividend_buf: BincodeBuffer,
     divisors_buf: BincodeBuffer,
