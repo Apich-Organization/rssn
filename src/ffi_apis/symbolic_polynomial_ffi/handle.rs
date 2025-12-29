@@ -13,6 +13,11 @@ use crate::symbolic::polynomial::polynomial_long_division;
 /// Checks if an expression is a polynomial in the given variable (handle-based)
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn polynomial_is_polynomial_handle(
     expr_handle: *const Expr,
     var: *const c_char,
@@ -36,6 +41,11 @@ pub extern "C" fn polynomial_is_polynomial_handle(
 /// Computes the degree of a polynomial (handle-based)
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn polynomial_degree_handle(
     expr_handle: *const Expr,
     var: *const c_char,
@@ -58,6 +68,11 @@ pub extern "C" fn polynomial_degree_handle(
 
 /// Performs polynomial long division (handle-based)
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn polynomial_long_division_handle(
     dividend_handle: *const Expr,
@@ -106,6 +121,11 @@ pub extern "C" fn polynomial_long_division_handle(
 /// Finds the leading coefficient of a polynomial (handle-based)
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn polynomial_leading_coefficient_handle(
     expr_handle: *const Expr,
     var: *const c_char,
@@ -133,6 +153,11 @@ pub extern "C" fn polynomial_leading_coefficient_handle(
 
 /// Checks if an expression contains a variable (handle-based)
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn polynomial_contains_var_handle(
     expr_handle: *const Expr,

@@ -141,6 +141,11 @@ pub extern "C" fn rssn_json_complex_system_fixed_points(
 /// Finds fixed points of a 1D map (JSON)
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn rssn_json_find_fixed_points(
     map_json : *const std::os::raw::c_char,
     var: *const std::os::raw::c_char,
@@ -174,6 +179,11 @@ pub extern "C" fn rssn_json_find_fixed_points(
 
 /// Analyzes stability of a fixed point (JSON)
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn rssn_json_analyze_stability(
     map_json : *const std::os::raw::c_char,
@@ -218,6 +228,11 @@ pub extern "C" fn rssn_json_analyze_stability(
 
 /// Calculates Lyapunov exponent (JSON)
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn rssn_json_lyapunov_exponent(
     map_json : *const std::os::raw::c_char,

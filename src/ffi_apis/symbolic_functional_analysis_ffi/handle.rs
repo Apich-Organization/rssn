@@ -25,6 +25,11 @@ use crate::symbolic::functional_analysis::{HilbertSpace, BanachSpace, LinearOper
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_hilbert_space_create(
     var: *const c_char,
     lower_bound: *const Expr,
@@ -90,6 +95,11 @@ pub unsafe extern "C" fn rssn_hilbert_space_free(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_banach_space_create(
     var: *const c_char,
     lower_bound: *const Expr,
@@ -154,6 +164,11 @@ pub unsafe extern "C" fn rssn_banach_space_free(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
     var: *const c_char
 ) -> *mut LinearOperator {
@@ -186,6 +201,11 @@ pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_linear_operator_integral_create(
     lower_bound: *const Expr,

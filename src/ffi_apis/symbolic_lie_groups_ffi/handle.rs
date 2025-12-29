@@ -173,6 +173,11 @@ pub const unsafe extern "C" fn rssn_lie_algebra_get_dimension(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_lie_algebra_get_name(
     ptr: *const LieAlgebra
 ) -> *mut c_char {

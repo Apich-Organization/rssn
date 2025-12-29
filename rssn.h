@@ -657,6 +657,10 @@ extern "C" {
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_Expr *calculate_residue(const struct rssn_Expr *aFunc,
@@ -677,6 +681,10 @@ struct rssn_Expr *calculate_residue(const struct rssn_Expr *aFunc,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer calculate_residue_bincode(struct rssn_BincodeBuffer aFuncBincode,
@@ -697,6 +705,10 @@ struct rssn_BincodeBuffer calculate_residue_bincode(struct rssn_BincodeBuffer aF
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *calculate_residue_json(const char *aFuncJson,
@@ -717,6 +729,10 @@ char *calculate_residue_json(const char *aFuncJson,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_Expr *cauchy_derivative_formula(const struct rssn_Expr *aFunc,
@@ -738,6 +754,10 @@ struct rssn_Expr *cauchy_derivative_formula(const struct rssn_Expr *aFunc,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer cauchy_derivative_formula_bincode(struct rssn_BincodeBuffer aFuncBincode,
@@ -759,6 +779,10 @@ struct rssn_BincodeBuffer cauchy_derivative_formula_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *cauchy_derivative_formula_json(const char *aFuncJson,
@@ -780,6 +804,10 @@ char *cauchy_derivative_formula_json(const char *aFuncJson,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_Expr *cauchy_integral_formula(const struct rssn_Expr *aFunc,
@@ -800,6 +828,10 @@ struct rssn_Expr *cauchy_integral_formula(const struct rssn_Expr *aFunc,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer cauchy_integral_formula_bincode(struct rssn_BincodeBuffer aFuncBincode,
@@ -820,6 +852,10 @@ struct rssn_BincodeBuffer cauchy_integral_formula_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *cauchy_integral_formula_json(const char *aFuncJson,
@@ -840,6 +876,10 @@ char *cauchy_integral_formula_json(const char *aFuncJson,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_SingularityType *classify_singularity(const struct rssn_Expr *aFunc,
@@ -861,6 +901,10 @@ struct rssn_SingularityType *classify_singularity(const struct rssn_Expr *aFunc,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer classify_singularity_bincode(struct rssn_BincodeBuffer aFuncBincode,
@@ -882,6 +926,10 @@ struct rssn_BincodeBuffer classify_singularity_bincode(struct rssn_BincodeBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *classify_singularity_json(const char *aFuncJson,
@@ -1171,6 +1219,10 @@ char *complex_modulus_json(const char *aZJson)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_Expr *contour_integral_residue_theorem(const struct rssn_Expr *aFunc,
@@ -1192,6 +1244,10 @@ struct rssn_Expr *contour_integral_residue_theorem(const struct rssn_Expr *aFunc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer contour_integral_residue_theorem_bincode(struct rssn_BincodeBuffer aFuncBincode,
@@ -1212,6 +1268,10 @@ struct rssn_BincodeBuffer contour_integral_residue_theorem_bincode(struct rssn_B
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *contour_integral_residue_theorem_json(const char *aFuncJson,
@@ -1232,6 +1292,10 @@ char *contour_integral_residue_theorem_json(const char *aFuncJson,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 double estimate_radius_of_convergence(const struct rssn_Expr *aSeriesExpr,
@@ -1253,6 +1317,10 @@ double estimate_radius_of_convergence(const struct rssn_Expr *aSeriesExpr,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 double estimate_radius_of_convergence_bincode(struct rssn_BincodeBuffer aSeriesExprBincode,
@@ -1274,6 +1342,10 @@ double estimate_radius_of_convergence_bincode(struct rssn_BincodeBuffer aSeriesE
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 double estimate_radius_of_convergence_json(const char *aSeriesExprJson,
@@ -1527,6 +1599,10 @@ char *interpolate_lagrange(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_Expr *laurent_series(const struct rssn_Expr *aFunc,
@@ -1548,6 +1624,10 @@ struct rssn_Expr *laurent_series(const struct rssn_Expr *aFunc,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer laurent_series_bincode(struct rssn_BincodeBuffer aFuncBincode,
@@ -1569,6 +1649,10 @@ struct rssn_BincodeBuffer laurent_series_bincode(struct rssn_BincodeBuffer aFunc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *laurent_series_json(const char *aFuncJson,
@@ -2227,6 +2311,10 @@ size_t numerical_optimize_get_result_param_len_handle(const struct rssn_FfiOptim
  A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
  or null if the input is invalid or optimization fails. The caller must free
  the result using `numerical_optimize_drop_result_handle`.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_bfgs_handle(double aA,
@@ -2257,6 +2345,10 @@ struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_bfgs_handle(dou
  A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
  or null if the input is invalid or optimization fails. The caller must free
  the result using `numerical_optimize_drop_result_handle`.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_gd_handle(double aA,
@@ -2304,6 +2396,10 @@ struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_gd_handle(doubl
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer numerical_optimize_solve_bincode(struct rssn_BincodeBuffer aBuffer)
@@ -2337,6 +2433,10 @@ struct rssn_BincodeBuffer numerical_optimize_solve_bincode(struct rssn_BincodeBu
 
  The caller must free the returned string using `numerical_optimize_free_json`.
  Returns null if the input pointer is invalid.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *numerical_optimize_solve_json(const char *aJsonPtr)
@@ -2360,6 +2460,10 @@ char *numerical_optimize_solve_json(const char *aJsonPtr)
  A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
  or null if the input is invalid or optimization fails. The caller must free
  the result using `numerical_optimize_drop_result_handle`.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_FfiOptimizationResult *numerical_optimize_sphere_gd_handle(const double *aInitParamPtr,
@@ -2488,6 +2592,10 @@ char *path_continuation_get_final_expression_json(const char *aPcJson)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_PathContinuation *path_continuation_new(const struct rssn_Expr *aFunc,
@@ -2524,6 +2632,10 @@ struct rssn_PathContinuation *path_continuation_new(const struct rssn_Expr *aFun
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer path_continuation_new_bincode(struct rssn_BincodeBuffer aFuncBincode,
@@ -2544,6 +2656,10 @@ struct rssn_BincodeBuffer path_continuation_new_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *path_continuation_new_json(const char *aFuncJson,
@@ -2674,6 +2790,10 @@ char *poly_to_coeffs_vec(const char *aJsonPtr)
 
 /*
  Checks if an expression contains a variable (handle-based)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 bool polynomial_contains_var_handle(const struct rssn_Expr *aExprHandle,
@@ -2682,6 +2802,10 @@ bool polynomial_contains_var_handle(const struct rssn_Expr *aExprHandle,
 
 /*
  Computes the degree of a polynomial (handle-based)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 int64_t polynomial_degree_handle(const struct rssn_Expr *aExprHandle,
@@ -2697,6 +2821,10 @@ void polynomial_free_expr_handle(struct rssn_Expr *aExprHandle)
 
 /*
  Checks if an expression is a polynomial in the given variable (handle-based)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 bool polynomial_is_polynomial_handle(const struct rssn_Expr *aExprHandle,
@@ -2705,6 +2833,10 @@ bool polynomial_is_polynomial_handle(const struct rssn_Expr *aExprHandle,
 
 /*
  Finds the leading coefficient of a polynomial (handle-based)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_Expr *polynomial_leading_coefficient_handle(const struct rssn_Expr *aExprHandle,
@@ -2713,6 +2845,10 @@ struct rssn_Expr *polynomial_leading_coefficient_handle(const struct rssn_Expr *
 
 /*
  Performs polynomial long division (handle-based)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 void polynomial_long_division_handle(const struct rssn_Expr *aDividendHandle,
@@ -2960,6 +3096,10 @@ struct rssn_Expr *rssn_banach_norm(const struct rssn_BanachSpace *aSpace,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BanachSpace *rssn_banach_space_create(const char *aVar,
@@ -3363,6 +3503,10 @@ struct rssn_BincodeBuffer rssn_bincode_analyze_convergence(struct rssn_BincodeBu
 
 /*
  Analyzes stability of a fixed point (Bincode)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_analyze_stability(struct rssn_BincodeBuffer aMapBuf,
@@ -4551,6 +4695,10 @@ struct rssn_BincodeBuffer rssn_bincode_find_extrema(struct rssn_BincodeBuffer aE
 
 /*
  Finds fixed points of a 1D map (Bincode)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_find_fixed_points(struct rssn_BincodeBuffer aMapBuf,
@@ -6226,6 +6374,10 @@ struct rssn_BincodeBuffer rssn_bincode_lorenz_system(void)
 
 /*
  Calculates Lyapunov exponent (Bincode)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_lyapunov_exponent(struct rssn_BincodeBuffer aMapBuf,
@@ -7952,6 +8104,10 @@ struct rssn_Expr *rssn_calculate_residue(const struct rssn_Expr *aExpr,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 DEPRECATED_WITH_NOTE
@@ -7975,6 +8131,10 @@ int32_t rssn_calculus_definite_integrate(size_t aExprH,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 DEPRECATED_WITH_NOTE
@@ -7996,6 +8156,10 @@ int32_t rssn_calculus_differentiate(size_t aExprH,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 DEPRECATED_WITH_NOTE
@@ -8017,6 +8181,10 @@ int32_t rssn_calculus_integrate(size_t aExprH,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 DEPRECATED_WITH_NOTE
@@ -8039,6 +8207,10 @@ int32_t rssn_calculus_limit(size_t aExprH,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 DEPRECATED_WITH_NOTE
@@ -8716,6 +8888,10 @@ struct rssn_BincodeBuffer rssn_convergence_aitken_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_convergence_aitken_json(const char *aJsonPtr)
@@ -8810,6 +8986,10 @@ struct rssn_BincodeBuffer rssn_convergence_richardson_bincode(struct rssn_Bincod
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_convergence_richardson_json(const char *aJsonPtr)
@@ -8860,6 +9040,10 @@ struct rssn_BincodeBuffer rssn_convergence_wynn_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_convergence_wynn_json(const char *aJsonPtr)
@@ -11338,6 +11522,10 @@ struct rssn_Expr *rssn_graph_adjacency_matrix(const struct rssn_RssnGraph *aPtr)
 /*
  Performs BFS traversal from a start node.
  Returns a JSON string containing the node IDs in visit order.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_bfs(const struct rssn_RssnGraph *aPtr,
@@ -11347,6 +11535,10 @@ char *rssn_graph_bfs(const struct rssn_RssnGraph *aPtr,
 /*
  Performs BFS traversal starting from a given node.
  Returns a JSON array of node indices in visit order.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_bfs_api(const struct rssn_RssnGraph *aGraph,
@@ -11357,6 +11549,10 @@ char *rssn_graph_bfs_api(const struct rssn_RssnGraph *aGraph,
  Finds maximum matching in a bipartite graph.
  `partition_json` should be a JSON array of 0s and 1s indicating the partition.
  Returns a JSON array of [u, v] pairs representing the matching.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_bipartite_maximum_matching(const struct rssn_RssnGraph *aGraph,
@@ -11366,6 +11562,10 @@ char *rssn_graph_bipartite_maximum_matching(const struct rssn_RssnGraph *aGraph,
 /*
  Finds bridges and articulation points.
  Returns a JSON object with "bridges" and "`articulation_points`" fields.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_bridges_and_articulation_points_api(const struct rssn_RssnGraph *aGraph)
@@ -11389,6 +11589,10 @@ struct rssn_RssnGraph *rssn_graph_complement(const struct rssn_RssnGraph *aPtr)
 /*
  Finds connected components.
  Returns a JSON string containing the components.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_connected_components(const struct rssn_RssnGraph *aPtr)
@@ -11397,6 +11601,10 @@ char *rssn_graph_connected_components(const struct rssn_RssnGraph *aPtr)
 /*
  Finds all connected components in an undirected graph.
  Returns a JSON array of arrays, where each inner array is a component.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_connected_components_api(const struct rssn_RssnGraph *aGraph)
@@ -11405,6 +11613,10 @@ char *rssn_graph_connected_components_api(const struct rssn_RssnGraph *aGraph)
 /*
  Performs DFS traversal from a start node.
  Returns a JSON string containing the node IDs in visit order.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_dfs(const struct rssn_RssnGraph *aPtr,
@@ -11414,6 +11626,10 @@ char *rssn_graph_dfs(const struct rssn_RssnGraph *aPtr,
 /*
  Performs DFS traversal starting from a given node.
  Returns a JSON array of node indices in visit order.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_dfs_api(const struct rssn_RssnGraph *aGraph,
@@ -11502,6 +11718,10 @@ int rssn_graph_is_bipartite(const struct rssn_RssnGraph *aPtr)
 /*
  Checks if a graph is bipartite.
  Returns a JSON array of partition assignments (0 or 1 for each node), or null if not bipartite.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_is_bipartite_api(const struct rssn_RssnGraph *aGraph)
@@ -11525,6 +11745,10 @@ struct rssn_RssnGraph *rssn_graph_join(const struct rssn_RssnGraph *aPtr1,
 /*
  Computes minimum spanning tree using Kruskal's algorithm.
  Returns a JSON string containing the MST edges.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_kruskal_mst(const struct rssn_RssnGraph *aPtr)
@@ -11571,6 +11795,10 @@ size_t rssn_graph_node_count(const struct rssn_RssnGraph *aPtr)
 /*
  Finds all strongly connected components in a directed graph.
  Returns a JSON array of arrays.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_strongly_connected_components(const struct rssn_RssnGraph *aGraph)
@@ -11587,6 +11815,10 @@ struct rssn_RssnGraph *rssn_graph_tensor_product(const struct rssn_RssnGraph *aP
 /*
  Performs topological sort on a DAG.
  Returns a JSON array of node indices in topological order, or null if the graph has a cycle.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_graph_topological_sort(const struct rssn_RssnGraph *aGraph)
@@ -11603,6 +11835,10 @@ struct rssn_RssnGraph *rssn_graph_union(const struct rssn_RssnGraph *aPtr1,
 /*
  Finds a valid vertex coloring using greedy heuristic.
  Returns a JSON object mapping node IDs to colors.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_greedy_coloring(const struct rssn_RssnGraph *aGraph)
@@ -12340,6 +12576,10 @@ struct rssn_Expr *rssn_heuristic_simplify(const struct rssn_Expr *aExpr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_HilbertSpace *rssn_hilbert_space_create(const char *aVar,
@@ -12443,6 +12683,10 @@ struct rssn_Expr *rssn_ifs_similarity_dimension(struct rssn_Expr *const *aScalin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 DEPRECATED_WITH_NOTE
@@ -12644,6 +12888,10 @@ int32_t rssn_is_satisfiable_handle(const struct rssn_Expr *aExpr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_jit_compile_json(struct rssn_JitEngine *aEngine,
@@ -12831,6 +13079,10 @@ char *rssn_json_analyze_convergence(const char *aTermJson,
 
 /*
  Analyzes stability of a fixed point (JSON)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_json_analyze_stability(const char *aMapJson,
@@ -14455,6 +14707,10 @@ char *rssn_json_find_extrema(const char *aExprJson,
 
 /*
  Finds fixed points of a 1D map (JSON)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_json_find_fixed_points(const char *aMapJson,
@@ -16299,6 +16555,10 @@ char *rssn_json_lorenz_system(void)
 
 /*
  Calculates Lyapunov exponent (JSON)
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_json_lyapunov_exponent(const char *aMapJson,
@@ -18872,6 +19132,10 @@ size_t rssn_lie_algebra_get_dimension(const struct rssn_LieAlgebra *aPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_lie_algebra_get_name(const struct rssn_LieAlgebra *aPtr)
@@ -19071,6 +19335,10 @@ struct rssn_Expr *rssn_linear_operator_apply(const struct rssn_LinearOperator *a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_LinearOperator *rssn_linear_operator_derivative_create(const char *aVar)
@@ -19109,6 +19377,10 @@ void rssn_linear_operator_free(struct rssn_LinearOperator *aPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 struct rssn_LinearOperator *rssn_linear_operator_integral_create(const struct rssn_Expr *aLowerBound,
@@ -19709,6 +19981,10 @@ struct rssn_BincodeBuffer rssn_num_b_spline_bincode(struct rssn_BincodeBuffer aB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_b_spline_json(const char *aInputPtr)
@@ -19756,6 +20032,10 @@ struct rssn_BincodeBuffer rssn_num_bezier_curve_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_bezier_curve_json(const char *aInputPtr)
@@ -19873,6 +20153,10 @@ double rssn_num_cfd_air_prandtl_number(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cfd_air_properties_json(const char *aInput)
@@ -19953,6 +20237,10 @@ struct rssn_BincodeBuffer rssn_num_cfd_cfl_number_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cfd_cfl_number_json(const char *aInput)
@@ -20009,6 +20297,10 @@ double rssn_num_cfd_diffusion_number(double aAlpha,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cfd_fluid_properties_json(const char *aInput)
@@ -20104,6 +20396,10 @@ struct rssn_BincodeBuffer rssn_num_cfd_reynolds_number_bincode(struct rssn_Binco
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cfd_reynolds_number_json(const char *aInput)
@@ -20179,6 +20475,10 @@ struct rssn_BincodeBuffer rssn_num_cfd_solve_advection_1d_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cfd_solve_advection_1d_json(const char *aInput)
@@ -20217,6 +20517,10 @@ char *rssn_num_cfd_solve_advection_1d_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cfd_solve_advection_diffusion_1d_json(const char *aInput)
@@ -20254,6 +20558,10 @@ char *rssn_num_cfd_solve_advection_diffusion_1d_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cfd_solve_burgers_1d_json(const char *aInput)
@@ -20290,6 +20598,10 @@ char *rssn_num_cfd_solve_burgers_1d_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cfd_solve_diffusion_1d_json(const char *aInput)
@@ -20335,6 +20647,10 @@ double rssn_num_cfd_water_prandtl_number(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cfd_water_properties_json(const char *aInput)
@@ -20378,6 +20694,10 @@ struct rssn_BincodeBuffer rssn_num_comb_bell_bincode(struct rssn_BincodeBuffer a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_comb_bell_json(const char *aInputJson)
@@ -20421,6 +20741,10 @@ struct rssn_BincodeBuffer rssn_num_comb_catalan_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_comb_catalan_json(const char *aInputJson)
@@ -20465,6 +20789,10 @@ struct rssn_BincodeBuffer rssn_num_comb_combinations_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_comb_combinations_json(const char *aInputJson)
@@ -20508,6 +20836,10 @@ struct rssn_BincodeBuffer rssn_num_comb_factorial_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_comb_factorial_json(const char *aInputJson)
@@ -20552,6 +20884,10 @@ struct rssn_BincodeBuffer rssn_num_comb_falling_factorial_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_comb_falling_factorial_json(const char *aInputJson)
@@ -20596,6 +20932,10 @@ struct rssn_BincodeBuffer rssn_num_comb_permutations_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_comb_permutations_json(const char *aInputJson)
@@ -20640,6 +20980,10 @@ struct rssn_BincodeBuffer rssn_num_comb_rising_factorial_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_comb_rising_factorial_json(const char *aInputJson)
@@ -20687,6 +21031,10 @@ struct rssn_BincodeBuffer rssn_num_comb_solve_recurrence_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_comb_solve_recurrence_json(const char *aInputJson)
@@ -20731,6 +21079,10 @@ struct rssn_BincodeBuffer rssn_num_comb_stirling_second_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_comb_stirling_second_json(const char *aInputJson)
@@ -20779,6 +21131,10 @@ struct rssn_BincodeBuffer rssn_num_complex_contour_integral_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_complex_contour_integral_json(const char *aInputJson)
@@ -20827,6 +21183,10 @@ struct rssn_BincodeBuffer rssn_num_complex_eval_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_complex_eval_json(const char *aInputJson)
@@ -20912,6 +21272,10 @@ struct rssn_BincodeBuffer rssn_num_coord_transform_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_coord_transform_json(const char *aJsonPtr)
@@ -20987,6 +21351,10 @@ struct rssn_BincodeBuffer rssn_num_coord_transform_pure_bincode(const uint8_t *a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_coord_transform_pure_json(const char *aJsonPtr)
@@ -21054,6 +21422,10 @@ struct rssn_BincodeBuffer rssn_num_cov_evaluate_action_bincode(struct rssn_Binco
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cov_evaluate_action_json(const char *aInputJson)
@@ -21127,6 +21499,10 @@ struct rssn_BincodeBuffer rssn_num_cubic_spline_interpolation_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_cubic_spline_interpolation_json(const char *aInputPtr)
@@ -21172,6 +21548,10 @@ struct rssn_BincodeBuffer rssn_num_dg_christoffel_symbols_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_dg_christoffel_symbols_json(const char *aInputJson)
@@ -21216,6 +21596,10 @@ struct rssn_BincodeBuffer rssn_num_dg_metric_tensor_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_dg_metric_tensor_json(const char *aInputJson)
@@ -21261,6 +21645,10 @@ struct rssn_BincodeBuffer rssn_num_dg_ricci_scalar_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_dg_ricci_scalar_json(const char *aInputJson)
@@ -21305,6 +21693,10 @@ struct rssn_BincodeBuffer rssn_num_dg_ricci_tensor_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_dg_ricci_tensor_json(const char *aInputJson)
@@ -21340,6 +21732,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_capability_bincode(struct rs
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_capability_json(const char *aInput)
@@ -21376,6 +21772,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_code_rate_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_code_rate_json(const char *aInput)
@@ -21422,6 +21822,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc16_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_crc16_json(const char *aInput)
@@ -21468,6 +21872,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc32_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_crc32_json(const char *aInput)
@@ -21515,6 +21923,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc32_verify_bincode(struct 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_crc32_verify_json(const char *aInput)
@@ -21561,6 +21973,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc8_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_crc8_json(const char *aInput)
@@ -21610,6 +22026,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_deinterleave_bincode(struct 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_deinterleave_json(const char *aInput)
@@ -21655,6 +22075,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_check_bincode(struct
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_hamming_check_json(const char *aInput)
@@ -21704,6 +22128,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_decode_bincode(struc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_hamming_decode_json(const char *aInput)
@@ -21751,6 +22179,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_distance_bincode(str
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_hamming_distance_json(const char *aInput)
@@ -21798,6 +22230,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_encode_bincode(struc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_hamming_encode_json(const char *aInput)
@@ -21844,6 +22280,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_weight_bincode(struc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_hamming_weight_json(const char *aInput)
@@ -21893,6 +22333,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_interleave_bincode(struct rs
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_interleave_json(const char *aInput)
@@ -21940,6 +22384,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_rs_check_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_rs_check_json(const char *aInput)
@@ -21987,6 +22435,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_rs_decode_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_rs_decode_json(const char *aInput)
@@ -22036,6 +22488,10 @@ struct rssn_BincodeBuffer rssn_num_error_correction_rs_encode_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_error_correction_rs_encode_json(const char *aInput)
@@ -22102,6 +22558,10 @@ int32_t rssn_num_eval_expr(const struct rssn_Expr *aExprPtr,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_eval_json(const char *aJsonPtr)
@@ -22130,6 +22590,10 @@ struct rssn_BincodeBuffer rssn_num_fa_gram_schmidt_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fa_gram_schmidt_json(const char *aInputJson)
@@ -22194,6 +22658,10 @@ struct rssn_BincodeBuffer rssn_num_fa_inner_product_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fa_inner_product_json(const char *aInputJson)
@@ -22254,6 +22722,10 @@ struct rssn_BincodeBuffer rssn_num_fa_l2_norm_bincode(struct rssn_BincodeBuffer 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fa_l2_norm_json(const char *aInputJson)
@@ -22290,6 +22762,10 @@ char *rssn_num_fa_l2_norm_json(const char *aInputJson)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fea_beam_element_2d_stiffness_json(const char *aInput)
@@ -22336,6 +22812,10 @@ double rssn_num_fea_bulk_modulus(double aYoungsModulus,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fea_create_rectangular_mesh_json(const char *aInput)
@@ -22415,6 +22895,10 @@ struct rssn_BincodeBuffer rssn_num_fea_linear_element_1d_stiffness_bincode(struc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fea_linear_element_1d_stiffness_json(const char *aInput)
@@ -22467,6 +22951,10 @@ double rssn_num_fea_material_copper_shear_modulus(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fea_material_properties_json(const char *aInput)
@@ -22497,6 +22985,10 @@ char *rssn_num_fea_material_properties_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fea_material_steel_json(const char *aInput)
@@ -22609,6 +23101,10 @@ struct rssn_BincodeBuffer rssn_num_fea_principal_stresses_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fea_principal_stresses_json(const char *aInput)
@@ -22644,6 +23140,10 @@ char *rssn_num_fea_principal_stresses_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fea_safety_factor_json(const char *aInput)
@@ -22706,6 +23206,10 @@ double rssn_num_fea_thermal_element_1d_conductivity(double aLength,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fea_thermal_element_1d_conductivity_json(const char *aInput)
@@ -22784,6 +23288,10 @@ struct rssn_BincodeBuffer rssn_num_fea_von_mises_stress_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fea_von_mises_stress_json(const char *aInput)
@@ -22823,6 +23331,10 @@ uint8_t rssn_num_ff_gf256_mul(uint8_t aA,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ff_gf256_mul_json(const char *aJsonPtr)
@@ -22867,6 +23379,10 @@ struct rssn_BincodeBuffer rssn_num_ff_pfe_add_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ff_pfe_add_json(const char *aJsonPtr)
@@ -22939,6 +23455,10 @@ struct rssn_BincodeBuffer rssn_num_ff_pfe_mul_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ff_pfe_mul_json(const char *aJsonPtr)
@@ -23051,6 +23571,10 @@ int32_t rssn_num_fft_inplace(double *aReal,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fft_json(const char *aInputJson)
@@ -23065,6 +23589,10 @@ char *rssn_num_fft_json(const char *aInputJson)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_bifurcation_json(const char *aInput)
@@ -23112,6 +23640,10 @@ struct rssn_BincodeBuffer rssn_num_fractal_box_counting_dim_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_box_counting_dim_json(const char *aInput)
@@ -23159,6 +23691,10 @@ struct rssn_BincodeBuffer rssn_num_fractal_correlation_dim_bincode(struct rssn_B
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_correlation_dim_json(const char *aInput)
@@ -23209,6 +23745,10 @@ struct rssn_BincodeBuffer rssn_num_fractal_henon_map_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_henon_map_json(const char *aInput)
@@ -23234,6 +23774,10 @@ uint32_t rssn_num_fractal_julia_escape_time(double aZReal,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_julia_escape_time_json(const char *aInput)
@@ -23262,6 +23806,10 @@ struct rssn_BincodeBuffer rssn_num_fractal_julia_set_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_julia_set_json(const char *aInput)
@@ -23310,6 +23858,10 @@ struct rssn_BincodeBuffer rssn_num_fractal_logistic_map_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_logistic_map_json(const char *aInput)
@@ -23360,6 +23912,10 @@ struct rssn_BincodeBuffer rssn_num_fractal_lorenz_attractor_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_lorenz_attractor_custom_json(const char *aInput)
@@ -23374,6 +23930,10 @@ char *rssn_num_fractal_lorenz_attractor_custom_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_lorenz_attractor_json(const char *aInput)
@@ -23412,6 +23972,10 @@ struct rssn_BincodeBuffer rssn_num_fractal_lyapunov_logistic_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_lyapunov_logistic_json(const char *aInput)
@@ -23440,6 +24004,10 @@ double rssn_num_fractal_lyapunov_lorenz(double aX0,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_lyapunov_lorenz_json(const char *aInput)
@@ -23477,6 +24045,10 @@ struct rssn_BincodeBuffer rssn_num_fractal_mandelbrot_escape_time_bincode(struct
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_mandelbrot_escape_time_json(const char *aInput)
@@ -23505,6 +24077,10 @@ struct rssn_BincodeBuffer rssn_num_fractal_mandelbrot_set_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_mandelbrot_set_json(const char *aInput)
@@ -23519,6 +24095,10 @@ char *rssn_num_fractal_mandelbrot_set_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_rossler_attractor_json(const char *aInput)
@@ -23533,6 +24113,10 @@ char *rssn_num_fractal_rossler_attractor_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_fractal_tinkerbell_map_json(const char *aInput)
@@ -23576,6 +24160,10 @@ struct rssn_BincodeBuffer rssn_num_ga_add_bincode(struct rssn_BincodeBuffer aBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ga_add_json(const char *aJsonPtr)
@@ -23640,6 +24228,10 @@ struct rssn_BincodeBuffer rssn_num_ga_dot_bincode(struct rssn_BincodeBuffer aBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ga_dot_json(const char *aJsonPtr)
@@ -23718,6 +24310,10 @@ struct rssn_BincodeBuffer rssn_num_ga_inv_bincode(struct rssn_BincodeBuffer aBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ga_inv_json(const char *aJsonPtr)
@@ -23761,6 +24357,10 @@ struct rssn_BincodeBuffer rssn_num_ga_mul_bincode(struct rssn_BincodeBuffer aBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ga_mul_json(const char *aJsonPtr)
@@ -23803,6 +24403,10 @@ struct rssn_BincodeBuffer rssn_num_ga_norm_bincode(struct rssn_BincodeBuffer aBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ga_norm_json(const char *aJsonPtr)
@@ -23845,6 +24449,10 @@ struct rssn_BincodeBuffer rssn_num_ga_reverse_bincode(struct rssn_BincodeBuffer 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ga_reverse_json(const char *aJsonPtr)
@@ -23888,6 +24496,10 @@ struct rssn_BincodeBuffer rssn_num_ga_sub_bincode(struct rssn_BincodeBuffer aBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ga_sub_json(const char *aJsonPtr)
@@ -23931,6 +24543,10 @@ struct rssn_BincodeBuffer rssn_num_ga_wedge_bincode(struct rssn_BincodeBuffer aB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ga_wedge_json(const char *aJsonPtr)
@@ -23992,6 +24608,10 @@ struct rssn_BincodeBuffer rssn_num_graph_bfs_bincode(struct rssn_BincodeBuffer a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graph_bfs_json(const char *aInputJson)
@@ -24036,6 +24656,10 @@ struct rssn_BincodeBuffer rssn_num_graph_connected_components_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graph_connected_components_json(const char *aInputJson)
@@ -24095,6 +24719,10 @@ struct rssn_BincodeBuffer rssn_num_graph_dijkstra_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graph_dijkstra_json(const char *aInputJson)
@@ -24138,6 +24766,10 @@ struct rssn_BincodeBuffer rssn_num_graph_floyd_warshall_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graph_floyd_warshall_json(const char *aInputJson)
@@ -24195,6 +24827,10 @@ struct rssn_BincodeBuffer rssn_num_graph_minimum_spanning_tree_bincode(struct rs
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graph_minimum_spanning_tree_json(const char *aInputJson)
@@ -24241,6 +24877,10 @@ struct rssn_BincodeBuffer rssn_num_graph_page_rank_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graph_page_rank_json(const char *aInputJson)
@@ -24267,6 +24907,10 @@ double rssn_num_graphics_angle_between(double aX1,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_angle_between_json(const char *aInput)
@@ -24313,6 +24957,10 @@ int32_t rssn_num_graphics_bezier_cubic(double aP0x,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_bezier_cubic_json(const char *aInput)
@@ -24367,6 +25015,10 @@ struct rssn_BincodeBuffer rssn_num_graphics_cross_product_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_cross_product_json(const char *aInput)
@@ -24414,6 +25066,10 @@ struct rssn_BincodeBuffer rssn_num_graphics_dot_product_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_dot_product_json(const char *aInput)
@@ -24428,6 +25084,10 @@ char *rssn_num_graphics_dot_product_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_look_at_matrix_json(const char *aInput)
@@ -24451,6 +25111,10 @@ double rssn_num_graphics_magnitude(double aX,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_magnitude_json(const char *aInput)
@@ -24501,6 +25165,10 @@ struct rssn_BincodeBuffer rssn_num_graphics_normalize_bincode(struct rssn_Bincod
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_normalize_json(const char *aInput)
@@ -24515,6 +25183,10 @@ char *rssn_num_graphics_normalize_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_perspective_matrix_json(const char *aInput)
@@ -24571,6 +25243,10 @@ struct rssn_BincodeBuffer rssn_num_graphics_quaternion_multiply_bincode(struct r
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_quaternion_multiply_json(const char *aInput)
@@ -24585,6 +25261,10 @@ char *rssn_num_graphics_quaternion_multiply_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_quaternion_slerp_json(const char *aInput)
@@ -24623,6 +25303,10 @@ double rssn_num_graphics_ray_sphere_intersection(double aRayOx,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_ray_sphere_intersection_json(const char *aInput)
@@ -24662,6 +25346,10 @@ int32_t rssn_num_graphics_reflect(double aIx,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_reflect_json(const char *aInput)
@@ -24676,6 +25364,10 @@ char *rssn_num_graphics_reflect_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_rotation_matrix_axis_json(const char *aInput)
@@ -24723,6 +25415,10 @@ struct rssn_BincodeBuffer rssn_num_graphics_rotation_matrix_x_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_rotation_matrix_x_json(const char *aInput)
@@ -24737,6 +25433,10 @@ char *rssn_num_graphics_rotation_matrix_x_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_rotation_matrix_y_json(const char *aInput)
@@ -24751,6 +25451,10 @@ char *rssn_num_graphics_rotation_matrix_y_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_rotation_matrix_z_json(const char *aInput)
@@ -24765,6 +25469,10 @@ char *rssn_num_graphics_rotation_matrix_z_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_scaling_matrix_json(const char *aInput)
@@ -24793,6 +25501,10 @@ struct rssn_BincodeBuffer rssn_num_graphics_translation_matrix_bincode(struct rs
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_graphics_translation_matrix_json(const char *aInput)
@@ -24874,6 +25586,10 @@ int32_t rssn_num_ifft_inplace(double *aReal,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ifft_json(const char *aInputJson)
@@ -24918,6 +25634,10 @@ struct rssn_BincodeBuffer rssn_num_lagrange_interpolation_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_lagrange_interpolation_json(const char *aInputPtr)
@@ -24984,6 +25704,10 @@ struct rssn_BincodeBuffer rssn_num_matrix_add_bincode_nightly(const uint8_t *aDa
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_matrix_add_json(const char *aJsonPtr)
@@ -24998,6 +25722,10 @@ char *rssn_num_matrix_add_json(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_matrix_add_json_nightly(const char *aJsonPtr)
@@ -25167,6 +25895,10 @@ int32_t rssn_num_matrix_decompose_eigen_symmetric_nightly(const struct rssn_Rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_matrix_decompose_json(const char *aJsonPtr)
@@ -25181,6 +25913,10 @@ char *rssn_num_matrix_decompose_json(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_matrix_decompose_json_nightly(const char *aJsonPtr)
@@ -25231,6 +25967,10 @@ int32_t rssn_num_matrix_decompose_svd_nightly(const struct rssn_RssnMatrixHandle
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_matrix_det_json(const char *aJsonPtr)
@@ -25245,6 +25985,10 @@ char *rssn_num_matrix_det_json(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_matrix_det_json_nightly(const char *aJsonPtr)
@@ -25619,6 +26363,10 @@ struct rssn_BincodeBuffer rssn_num_matrix_mul_bincode_nightly(const uint8_t *aDa
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_matrix_mul_json(const char *aJsonPtr)
@@ -25633,6 +26381,10 @@ char *rssn_num_matrix_mul_json(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_matrix_mul_json_nightly(const char *aJsonPtr)
@@ -25738,6 +26490,10 @@ struct rssn_BincodeBuffer rssn_num_matrix_set_backend_bincode_nightly(const uint
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_matrix_set_backend_json(const char *aJsonPtr)
@@ -25752,6 +26508,10 @@ char *rssn_num_matrix_set_backend_json(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_matrix_set_backend_json_nightly(const char *aJsonPtr)
@@ -25906,6 +26666,10 @@ struct rssn_BincodeBuffer rssn_num_md_apply_pbc_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_md_apply_pbc_json(const char *aInput)
@@ -25963,6 +26727,10 @@ double rssn_num_md_cfl_check(double aVelocity,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_md_create_cubic_lattice_json(const char *aInput)
@@ -25997,6 +26765,10 @@ char *rssn_num_md_create_cubic_lattice_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_md_harmonic_json(const char *aInput)
@@ -26069,6 +26841,10 @@ struct rssn_BincodeBuffer rssn_num_md_lennard_jones_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_md_lennard_jones_json(const char *aInput)
@@ -26110,6 +26886,10 @@ double rssn_num_md_minimum_image_1d(double aDx,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_md_minimum_image_json(const char *aInput)
@@ -26145,6 +26925,10 @@ char *rssn_num_md_minimum_image_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_md_morse_json(const char *aInput)
@@ -26179,6 +26963,10 @@ char *rssn_num_md_morse_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_md_system_properties_json(const char *aInput)
@@ -26299,6 +27087,10 @@ struct rssn_BincodeBuffer rssn_num_mv_complex_log_k_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_mv_complex_log_k_json(const char *aJson)
@@ -26378,6 +27170,10 @@ struct rssn_BincodeBuffer rssn_num_mv_complex_pow_k_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_mv_complex_pow_k_json(const char *aJson)
@@ -26436,6 +27232,10 @@ struct rssn_BincodeBuffer rssn_num_mv_complex_sqrt_k_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_mv_complex_sqrt_k_json(const char *aJson)
@@ -26497,6 +27297,10 @@ struct rssn_BincodeBuffer rssn_num_mv_newton_method_complex_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_mv_newton_method_complex_json(const char *aInputJson)
@@ -26542,6 +27346,10 @@ struct rssn_BincodeBuffer rssn_num_nt_factorize_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_nt_factorize_json(const char *aJsonPtr)
@@ -26588,6 +27396,10 @@ int64_t rssn_num_nt_mod_inverse(int64_t aA,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_nt_mod_inverse_json(const char *aJsonPtr)
@@ -26694,6 +27506,10 @@ struct rssn_BincodeBuffer rssn_num_ode_solve_bincode(struct rssn_BincodeBuffer a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_ode_solve_json(const char *aInputJson)
@@ -26745,6 +27561,10 @@ double rssn_num_physics_blackbody_power(double aArea,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_blackbody_power_json(const char *aInput)
@@ -26862,6 +27682,10 @@ struct rssn_BincodeBuffer rssn_num_physics_coulomb_force_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_coulomb_force_json(const char *aInput)
@@ -26945,6 +27769,10 @@ double rssn_num_physics_damped_harmonic_oscillator(double aAmplitude,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_damped_harmonic_oscillator_json(const char *aInput)
@@ -26993,6 +27821,10 @@ double rssn_num_physics_de_broglie_wavelength(double aMomentum)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_de_broglie_wavelength_json(const char *aInput)
@@ -27044,6 +27876,10 @@ double rssn_num_physics_electric_field_point_charge(double aQ,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_electric_field_point_charge_json(const char *aInput)
@@ -27178,6 +28014,10 @@ struct rssn_BincodeBuffer rssn_num_physics_hydrogen_energy_level_bincode(struct 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_hydrogen_energy_level_json(const char *aInput)
@@ -27267,6 +28107,10 @@ struct rssn_BincodeBuffer rssn_num_physics_ideal_gas_pressure_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_ideal_gas_pressure_json(const char *aInput)
@@ -27409,6 +28253,10 @@ struct rssn_BincodeBuffer rssn_num_physics_lorentz_factor_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_lorentz_factor_json(const char *aInput)
@@ -27532,6 +28380,10 @@ struct rssn_BincodeBuffer rssn_num_physics_mass_energy_bincode(struct rssn_Binco
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_mass_energy_json(const char *aInput)
@@ -27583,6 +28435,10 @@ double rssn_num_physics_maxwell_boltzmann_mean_speed(double aMass,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_maxwell_boltzmann_mean_speed_json(const char *aInput)
@@ -27671,6 +28527,10 @@ double rssn_num_physics_photon_energy(double aWavelength)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_photon_energy_json(const char *aInput)
@@ -27719,6 +28579,10 @@ double rssn_num_physics_photon_wavelength(double aEnergy)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_photon_wavelength_json(const char *aInput)
@@ -27816,6 +28680,10 @@ struct rssn_BincodeBuffer rssn_num_physics_quantum_harmonic_oscillator_energy_bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_quantum_harmonic_oscillator_energy_json(const char *aInput)
@@ -27905,6 +28773,10 @@ double rssn_num_physics_relativistic_velocity_addition(double aV,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_relativistic_velocity_addition_json(const char *aInput)
@@ -27998,6 +28870,10 @@ struct rssn_BincodeBuffer rssn_num_physics_simple_harmonic_oscillator_bincode(st
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_simple_harmonic_oscillator_json(const char *aInput)
@@ -28060,6 +28936,10 @@ double rssn_num_physics_time_dilation(double aProperTime,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_time_dilation_json(const char *aInput)
@@ -28108,6 +28988,10 @@ double rssn_num_physics_wien_displacement_wavelength(double aTemperature)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_physics_wien_displacement_wavelength_json(const char *aInput)
@@ -28152,6 +29036,10 @@ struct rssn_BincodeBuffer rssn_num_poly_add_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_poly_add_json(const char *aJsonPtr)
@@ -28267,6 +29155,10 @@ struct rssn_Polynomial *rssn_num_poly_mul(const struct rssn_Polynomial *aA,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_poly_mul_json(const char *aJsonPtr)
@@ -28473,6 +29365,10 @@ struct rssn_BincodeBuffer rssn_num_signal_convolve_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_signal_convolve_json(const char *aInputJson)
@@ -28556,6 +29452,10 @@ struct rssn_BincodeBuffer rssn_num_signal_cross_correlation_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_signal_cross_correlation_json(const char *aInputJson)
@@ -28636,6 +29536,10 @@ struct rssn_BincodeBuffer rssn_num_signal_fft_bincode(struct rssn_BincodeBuffer 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_signal_fft_json(const char *aInputJson)
@@ -28899,6 +29803,10 @@ size_t rssn_num_sparse_get_rows(const rssn_CsMat<double> *aMatrix)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_sparse_solve_cg_json(const char *aJsonPtr)
@@ -28947,6 +29855,10 @@ struct rssn_BincodeBuffer rssn_num_sparse_spmv_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_sparse_spmv_json(const char *aJsonPtr)
@@ -29077,6 +29989,10 @@ struct rssn_BincodeBuffer rssn_num_special_bessel_j0_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_bessel_j0_json(const char *aInput)
@@ -29158,6 +30074,10 @@ struct rssn_BincodeBuffer rssn_num_special_bessel_j1_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_bessel_j1_json(const char *aInput)
@@ -29273,6 +30193,10 @@ struct rssn_BincodeBuffer rssn_num_special_beta_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_beta_json(const char *aInput)
@@ -29358,6 +30282,10 @@ struct rssn_BincodeBuffer rssn_num_special_binomial_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_binomial_json(const char *aInput)
@@ -29443,6 +30371,10 @@ struct rssn_BincodeBuffer rssn_num_special_chebyshev_t_bincode(struct rssn_Binco
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_chebyshev_t_json(const char *aInput)
@@ -29543,6 +30475,10 @@ struct rssn_BincodeBuffer rssn_num_special_digamma_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_digamma_json(const char *aInput)
@@ -29642,6 +30578,10 @@ struct rssn_BincodeBuffer rssn_num_special_erf_bincode(struct rssn_BincodeBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_erf_json(const char *aInput)
@@ -29723,6 +30663,10 @@ struct rssn_BincodeBuffer rssn_num_special_erfc_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_erfc_json(const char *aInput)
@@ -29804,6 +30748,10 @@ struct rssn_BincodeBuffer rssn_num_special_factorial_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_factorial_json(const char *aInput)
@@ -29885,6 +30833,10 @@ struct rssn_BincodeBuffer rssn_num_special_gamma_bincode(struct rssn_BincodeBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_gamma_json(const char *aInput)
@@ -29971,6 +30923,10 @@ struct rssn_BincodeBuffer rssn_num_special_hermite_h_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_hermite_h_json(const char *aInput)
@@ -30093,6 +31049,10 @@ struct rssn_BincodeBuffer rssn_num_special_legendre_p_bincode(struct rssn_Bincod
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_legendre_p_json(const char *aInput)
@@ -30193,6 +31153,10 @@ struct rssn_BincodeBuffer rssn_num_special_ln_gamma_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_ln_gamma_json(const char *aInput)
@@ -30319,6 +31283,10 @@ struct rssn_BincodeBuffer rssn_num_special_regularized_beta_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_regularized_beta_json(const char *aInput)
@@ -30400,6 +31368,10 @@ struct rssn_BincodeBuffer rssn_num_special_sigmoid_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_sigmoid_json(const char *aInput)
@@ -30481,6 +31453,10 @@ struct rssn_BincodeBuffer rssn_num_special_sinc_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_special_sinc_json(const char *aInput)
@@ -30620,6 +31596,10 @@ struct rssn_BincodeBuffer rssn_num_stats_chi_squared_test_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_chi_squared_test_json(const char *aInput)
@@ -30702,6 +31682,10 @@ struct rssn_BincodeBuffer rssn_num_stats_correlation_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_correlation_json(const char *aInput)
@@ -30784,6 +31768,10 @@ struct rssn_BincodeBuffer rssn_num_stats_covariance_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_covariance_json(const char *aInput)
@@ -30846,6 +31834,10 @@ double rssn_num_stats_geometric_mean(const double *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_geometric_mean_json(const char *aInput)
@@ -30893,6 +31885,10 @@ double rssn_num_stats_harmonic_mean(const double *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_harmonic_mean_json(const char *aInput)
@@ -30977,6 +31973,10 @@ struct rssn_BincodeBuffer rssn_num_stats_linear_regression_bincode(struct rssn_B
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_linear_regression_json(const char *aInput)
@@ -31055,6 +32055,10 @@ struct rssn_BincodeBuffer rssn_num_stats_mean_bincode(struct rssn_BincodeBuffer 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_mean_json(const char *aInput)
@@ -31150,6 +32154,10 @@ struct rssn_BincodeBuffer rssn_num_stats_shannon_entropy_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_shannon_entropy_json(const char *aInput)
@@ -31243,6 +32251,10 @@ struct rssn_BincodeBuffer rssn_num_stats_std_dev_bincode(struct rssn_BincodeBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_std_dev_json(const char *aInput)
@@ -31330,6 +32342,10 @@ struct rssn_BincodeBuffer rssn_num_stats_two_sample_t_test_bincode(struct rssn_B
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_two_sample_t_test_json(const char *aInput)
@@ -31408,6 +32424,10 @@ struct rssn_BincodeBuffer rssn_num_stats_variance_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_variance_json(const char *aInput)
@@ -31495,6 +32515,10 @@ struct rssn_BincodeBuffer rssn_num_stats_welch_t_test_bincode(struct rssn_Bincod
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_welch_t_test_json(const char *aInput)
@@ -31560,6 +32584,10 @@ struct rssn_BincodeBuffer rssn_num_stats_z_scores_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_stats_z_scores_json(const char *aInput)
@@ -31663,6 +32691,10 @@ rssn_ArrayD<double> *rssn_num_tensor_outer_product(const rssn_ArrayD<double> *aA
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_tensor_outer_product_json(const char *aJsonPtr)
@@ -31711,6 +32743,10 @@ struct rssn_BincodeBuffer rssn_num_tensor_tensordot_bincode(const uint8_t *aData
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_tensor_tensordot_json(const char *aJsonPtr)
@@ -31799,6 +32835,10 @@ struct rssn_BincodeBuffer rssn_num_topology_betti_numbers_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_topology_betti_numbers_json(const char *aInputJson)
@@ -31900,6 +32940,10 @@ struct rssn_BincodeBuffer rssn_num_topology_persistence_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_topology_persistence_json(const char *aInputJson)
@@ -32210,6 +33254,10 @@ struct rssn_BincodeBuffer rssn_num_vector_calculus_curl_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_vector_calculus_curl_json(const char *aInputJson)
@@ -32317,6 +33365,10 @@ struct rssn_BincodeBuffer rssn_num_vector_calculus_divergence_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_vector_calculus_divergence_json(const char *aInputJson)
@@ -32404,6 +33456,10 @@ struct rssn_BincodeBuffer rssn_num_vector_calculus_laplacian_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_num_vector_calculus_laplacian_json(const char *aInputJson)
@@ -32473,6 +33529,10 @@ struct rssn_BincodeBuffer rssn_numerical_gradient_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_numerical_gradient_json(const char *aInputJson)
@@ -32501,6 +33561,10 @@ struct rssn_BincodeBuffer rssn_numerical_hessian_bincode(struct rssn_BincodeBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_numerical_hessian_json(const char *aInputJson)
@@ -32554,6 +33618,10 @@ struct rssn_BincodeBuffer rssn_numerical_jacobian_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_numerical_jacobian_json(const char *aInputJson)
@@ -32629,6 +33697,10 @@ struct rssn_BincodeBuffer rssn_numerical_quadrature_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_numerical_quadrature_json(const char *aJsonPtr)
@@ -32716,6 +33788,10 @@ struct rssn_BincodeBuffer rssn_numerical_sum_series_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_numerical_sum_series_json(const char *aInputJson)
@@ -32805,6 +33881,10 @@ struct rssn_BincodeBuffer rssn_numerical_taylor_coefficients_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_numerical_taylor_coefficients_json(const char *aInputJson)
@@ -33211,6 +34291,10 @@ struct rssn_BincodeBuffer rssn_physics_bem_solve_laplace_2d_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_bem_solve_laplace_2d_json(const char *aInput)
@@ -33301,6 +34385,10 @@ struct rssn_BincodeBuffer rssn_physics_cnm_solve_heat_2d_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_cnm_solve_heat_2d_json(const char *aInput)
@@ -33397,6 +34485,10 @@ struct rssn_BincodeBuffer rssn_physics_em_solve_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_em_solve_json(const char *aInput)
@@ -33433,6 +34525,10 @@ char *rssn_physics_em_solve_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_fdm_burgers_json(const char *aInput)
@@ -33523,6 +34619,10 @@ rssn_FdmGrid<double> *rssn_physics_fdm_grid_new(size_t aD1,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_fdm_heat_json(const char *aInput)
@@ -33562,6 +34662,10 @@ char *rssn_physics_fdm_heat_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_fdm_poisson_json(const char *aInput)
@@ -33653,6 +34757,10 @@ struct rssn_BincodeBuffer rssn_physics_fdm_wave_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_fdm_wave_json(const char *aInput)
@@ -33730,6 +34838,10 @@ struct rssn_BincodeBuffer rssn_physics_fem_solve_poisson_1d_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_fem_solve_poisson_1d_json(const char *aInput)
@@ -33767,6 +34879,10 @@ char *rssn_physics_fem_solve_poisson_1d_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_fvm_advection_json(const char *aInput)
@@ -33885,6 +35001,10 @@ struct rssn_BincodeBuffer rssn_physics_fvm_swe_bincode(struct rssn_BincodeBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_fvm_swe_json(const char *aInput)
@@ -33919,6 +35039,10 @@ struct rssn_Matrix_f64 *rssn_physics_mm_simulate_dam_break(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_mm_simulate_dam_break_json(void)
@@ -34071,6 +35195,10 @@ struct rssn_BincodeBuffer rssn_physics_mm_sph_update_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_mm_sph_update_json(const char *aInput)
@@ -34125,6 +35253,10 @@ double *rssn_physics_mtm_solve_poisson_1d(size_t aNInterior,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_mtm_solve_poisson_1d_json(const char *aInput)
@@ -34212,6 +35344,10 @@ struct rssn_BincodeBuffer rssn_physics_mtm_solve_poisson_2d_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_mtm_solve_poisson_2d_json(const char *aInput)
@@ -34248,6 +35384,10 @@ char *rssn_physics_mtm_solve_poisson_2d_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_rkm_damped_oscillator_json(const char *aInput)
@@ -34325,6 +35465,10 @@ struct rssn_BincodeBuffer rssn_physics_rkm_lorenz_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_rkm_lorenz_json(const char *aInput)
@@ -34364,6 +35508,10 @@ char *rssn_physics_rkm_lorenz_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_rkm_lotka_volterra_json(const char *aInput)
@@ -34428,6 +35576,10 @@ struct rssn_Matrix_f64 *rssn_physics_rkm_simulate_vanderpol(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_rkm_vanderpol_json(const char *aInput)
@@ -34514,6 +35666,10 @@ struct rssn_BincodeBuffer rssn_physics_sim_fdtd_run_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_sim_fdtd_run_json(const char *aInput)
@@ -34600,6 +35756,10 @@ struct rssn_BincodeBuffer rssn_physics_sim_geodesic_run_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_sim_geodesic_run_json(const char *aInput)
@@ -34690,6 +35850,10 @@ struct rssn_Matrix_f64 *rssn_physics_sim_gpe_run_ground_state_finder(size_t aNx,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_sim_gpe_run_json(const char *aInput)
@@ -34787,6 +35951,10 @@ struct rssn_BincodeBuffer rssn_physics_sim_ising_run_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_sim_ising_run_json(const char *aInput)
@@ -34861,6 +36029,10 @@ struct rssn_BincodeBuffer rssn_physics_sim_linear_elasticity_run_bincode(struct 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_sim_linear_elasticity_run_json(const char *aInput)
@@ -34961,6 +36133,10 @@ struct rssn_BincodeBuffer rssn_physics_sim_navier_stokes_run_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_sim_navier_stokes_run_json(const char *aInput)
@@ -35077,6 +36253,10 @@ struct rssn_BincodeBuffer rssn_physics_sim_schrodinger_run_bincode(struct rssn_B
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_sim_schrodinger_run_json(const char *aInput)
@@ -35128,6 +36308,10 @@ struct rssn_Matrix_f64 *rssn_physics_sm_simulate_2d_advection(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_sm_solve_advection_1d_json(const char *aInput)
@@ -35207,6 +36391,10 @@ struct rssn_BincodeBuffer rssn_physics_sm_solve_advection_2d_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_physics_sm_solve_advection_2d_json(const char *aInput)
@@ -35249,6 +36437,10 @@ rssn_ char *rssn_pi_json(void) ;
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 DEPRECATED_WITH_NOTE
@@ -35305,6 +36497,10 @@ struct rssn_BincodeBuffer rssn_plugins_execute_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_plugins_execute_json(const char *aJsonPtr)
@@ -36103,6 +37299,10 @@ struct rssn_BincodeBuffer rssn_real_roots_find_roots_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_real_roots_find_roots_json(const char *aJsonPtr)
@@ -37342,6 +38542,10 @@ struct rssn_Vec_Expr *rssn_solve_linear_system_handle(const struct rssn_Expr *aS
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_solve_linear_system_json(const char *aJsonPtr)
@@ -38420,6 +39624,10 @@ struct rssn_BincodeBuffer rssn_vec_add_bincode(struct rssn_BincodeBuffer aBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_add_json(const char *aJsonPtr)
@@ -38448,6 +39656,10 @@ struct rssn_BincodeBuffer rssn_vec_angle_bincode(struct rssn_BincodeBuffer aBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_angle_json(const char *aJsonPtr)
@@ -38476,6 +39688,10 @@ struct rssn_BincodeBuffer rssn_vec_cosine_similarity_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_cosine_similarity_json(const char *aJsonPtr)
@@ -38504,6 +39720,10 @@ struct rssn_BincodeBuffer rssn_vec_cross_product_bincode(struct rssn_BincodeBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_cross_product_json(const char *aJsonPtr)
@@ -38532,6 +39752,10 @@ struct rssn_BincodeBuffer rssn_vec_distance_bincode(struct rssn_BincodeBuffer aB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_distance_json(const char *aJsonPtr)
@@ -38593,6 +39817,10 @@ struct rssn_BincodeBuffer rssn_vec_dot_product_bincode(struct rssn_BincodeBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_dot_product_json(const char *aJsonPtr)
@@ -38621,6 +39849,10 @@ struct rssn_BincodeBuffer rssn_vec_is_orthogonal_bincode(struct rssn_BincodeBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_is_orthogonal_json(const char *aJsonPtr)
@@ -38649,6 +39881,10 @@ struct rssn_BincodeBuffer rssn_vec_is_parallel_bincode(struct rssn_BincodeBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_is_parallel_json(const char *aJsonPtr)
@@ -38677,6 +39913,10 @@ struct rssn_BincodeBuffer rssn_vec_lerp_bincode(struct rssn_BincodeBuffer aBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_lerp_json(const char *aJsonPtr)
@@ -38705,6 +39945,10 @@ struct rssn_BincodeBuffer rssn_vec_lp_norm_bincode(struct rssn_BincodeBuffer aBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_lp_norm_json(const char *aJsonPtr)
@@ -38762,6 +40006,10 @@ struct rssn_BincodeBuffer rssn_vec_norm_bincode(struct rssn_BincodeBuffer aBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_norm_json(const char *aJsonPtr)
@@ -38790,6 +40038,10 @@ struct rssn_BincodeBuffer rssn_vec_normalize_bincode(struct rssn_BincodeBuffer a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_normalize_json(const char *aJsonPtr)
@@ -38818,6 +40070,10 @@ struct rssn_BincodeBuffer rssn_vec_project_bincode(struct rssn_BincodeBuffer aBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_project_json(const char *aJsonPtr)
@@ -38846,6 +40102,10 @@ struct rssn_BincodeBuffer rssn_vec_reflect_bincode(struct rssn_BincodeBuffer aBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_reflect_json(const char *aJsonPtr)
@@ -38874,6 +40134,10 @@ struct rssn_BincodeBuffer rssn_vec_scalar_mul_bincode(struct rssn_BincodeBuffer 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_scalar_mul_json(const char *aJsonPtr)
@@ -38902,6 +40166,10 @@ struct rssn_BincodeBuffer rssn_vec_sub_bincode(struct rssn_BincodeBuffer aBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+ # Panics
+
+ This function may panic if the FFI input is malformed, null where not expected,
+ or if internal state synchronization fails (e.g., poisoned locks).
  */
 rssn_
 char *rssn_vec_sub_json(const char *aJsonPtr)

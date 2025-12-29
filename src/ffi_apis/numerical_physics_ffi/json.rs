@@ -167,6 +167,11 @@ struct TemperatureInput {
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -235,6 +240,11 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_physics_damped_harmonic_oscillator_json(
     input: *const c_char
@@ -308,6 +318,11 @@ pub unsafe extern "C" fn rssn_num_physics_damped_harmonic_oscillator_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_physics_coulomb_force_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -372,6 +387,11 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_physics_electric_field_point_charge_json(
     input: *const c_char
@@ -439,6 +459,11 @@ pub unsafe extern "C" fn rssn_num_physics_electric_field_point_charge_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -505,6 +530,11 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -568,6 +598,11 @@ pub unsafe extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
     input: *const c_char
@@ -633,6 +668,11 @@ pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_physics_wien_displacement_wavelength_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -696,6 +736,11 @@ pub unsafe extern "C" fn rssn_num_physics_wien_displacement_wavelength_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_json(
     input: *const c_char
@@ -761,6 +806,11 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_physics_time_dilation_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -824,6 +874,11 @@ pub unsafe extern "C" fn rssn_num_physics_time_dilation_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_physics_mass_energy_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -886,6 +941,11 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
     input: *const c_char
@@ -952,6 +1012,11 @@ pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -1011,6 +1076,11 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_jso
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_json(
     input: *const c_char
@@ -1075,6 +1145,11 @@ pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_physics_de_broglie_wavelength_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -1138,6 +1213,11 @@ pub unsafe extern "C" fn rssn_num_physics_de_broglie_wavelength_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_physics_photon_energy_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -1199,6 +1279,11 @@ pub unsafe extern "C" fn rssn_num_physics_photon_energy_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_physics_photon_wavelength_json(
     input: *const c_char

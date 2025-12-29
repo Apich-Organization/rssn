@@ -174,6 +174,11 @@ struct PerspectiveInput {
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_graphics_dot_product_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -232,6 +237,11 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_graphics_cross_product_json(
     input: *const c_char
@@ -295,6 +305,11 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_graphics_normalize_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -351,6 +366,11 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_graphics_magnitude_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -400,6 +420,11 @@ pub unsafe extern "C" fn rssn_num_graphics_magnitude_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_graphics_reflect_json(
     input: *const c_char
@@ -467,6 +492,11 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_graphics_angle_between_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -523,6 +553,11 @@ pub unsafe extern "C" fn rssn_num_graphics_angle_between_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -570,6 +605,11 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_graphics_scaling_matrix_json(
     input: *const c_char
@@ -619,6 +659,11 @@ pub unsafe extern "C" fn rssn_num_graphics_scaling_matrix_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -662,6 +707,11 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_y_json(
     input: *const c_char
@@ -707,6 +757,11 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_y_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_z_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -750,6 +805,11 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_z_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
     input: *const c_char
@@ -800,6 +860,11 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_json(
     input: *const c_char
@@ -866,6 +931,11 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_slerp_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -930,6 +1000,11 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_slerp_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
     input: *const c_char
@@ -1026,6 +1101,11 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -1111,6 +1191,11 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -1172,6 +1257,11 @@ pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_graphics_perspective_matrix_json(
     input: *const c_char

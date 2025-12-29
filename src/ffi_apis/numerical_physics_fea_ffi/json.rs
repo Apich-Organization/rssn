@@ -140,6 +140,11 @@ struct MeshOutput {
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -214,6 +219,11 @@ pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fea_material_steel_json(
     _input: *const c_char
 ) -> *mut c_char {
@@ -273,6 +283,11 @@ pub unsafe extern "C" fn rssn_num_fea_material_steel_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
     input: *const c_char
@@ -350,6 +365,11 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -423,6 +443,11 @@ pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -492,6 +517,11 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -560,6 +590,11 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
     input: *const c_char
@@ -639,6 +674,11 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -716,6 +756,11 @@ pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_fea_create_rectangular_mesh_json(
     input: *const c_char

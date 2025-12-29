@@ -37,6 +37,11 @@ use crate::symbolic::core::Expr;
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn path_continuation_new_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
@@ -171,6 +176,11 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
     series_expr_bincode: BincodeBuffer,
     var: *const c_char,
@@ -270,6 +280,11 @@ pub unsafe extern "C" fn complex_distance_bincode(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn classify_singularity_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
@@ -321,6 +336,11 @@ pub unsafe extern "C" fn classify_singularity_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn laurent_series_bincode(
     func_bincode: BincodeBuffer,
@@ -374,6 +394,11 @@ pub unsafe extern "C" fn laurent_series_bincode(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn calculate_residue_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
@@ -423,6 +448,11 @@ pub unsafe extern "C" fn calculate_residue_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
     func_bincode: BincodeBuffer,
@@ -654,6 +684,11 @@ pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn cauchy_integral_formula_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
@@ -699,6 +734,11 @@ pub unsafe extern "C" fn cauchy_integral_formula_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
     func_bincode: BincodeBuffer,

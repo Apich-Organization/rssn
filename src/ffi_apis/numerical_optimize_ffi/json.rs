@@ -63,6 +63,11 @@ struct OptimizeResponse {
 /// Returns null if the input pointer is invalid.
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn numerical_optimize_solve_json(
     json_ptr: *const c_char
 ) -> *mut c_char {

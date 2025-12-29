@@ -56,6 +56,11 @@ struct NavierStokesOutputData {
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
     input: *const c_char
 ) -> *mut c_char {

@@ -147,6 +147,11 @@ pub extern "C" fn rssn_bincode_complex_system_fixed_points(
 /// Finds fixed points of a 1D map (Bincode)
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn rssn_bincode_find_fixed_points(
     map_buf: BincodeBuffer,
     var: *const std::os::raw::c_char,
@@ -180,6 +185,11 @@ pub extern "C" fn rssn_bincode_find_fixed_points(
 
 /// Analyzes stability of a fixed point (Bincode)
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn rssn_bincode_analyze_stability(
     map_buf: BincodeBuffer,
@@ -224,6 +234,11 @@ pub extern "C" fn rssn_bincode_analyze_stability(
 
 /// Calculates Lyapunov exponent (Bincode)
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn rssn_bincode_lyapunov_exponent(
     map_buf: BincodeBuffer,

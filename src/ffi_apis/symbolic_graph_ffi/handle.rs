@@ -226,6 +226,11 @@ pub extern "C" fn rssn_graph_laplacian_matrix(
 /// Returns a JSON string containing the node IDs in visit order.
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn rssn_graph_bfs(
     ptr: *const RssnGraph,
     start_node: usize,
@@ -260,6 +265,11 @@ pub extern "C" fn rssn_graph_bfs(
 /// Returns a JSON string containing the node IDs in visit order.
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn rssn_graph_dfs(
     ptr: *const RssnGraph,
     start_node: usize,
@@ -293,6 +303,11 @@ pub extern "C" fn rssn_graph_dfs(
 /// Finds connected components.
 /// Returns a JSON string containing the components.
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn rssn_graph_connected_components(
     ptr: *const RssnGraph
@@ -353,6 +368,11 @@ pub extern "C" fn rssn_graph_max_flow(
 /// Computes minimum spanning tree using Kruskal's algorithm.
 /// Returns a JSON string containing the MST edges.
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn rssn_graph_kruskal_mst(
     ptr: *const RssnGraph

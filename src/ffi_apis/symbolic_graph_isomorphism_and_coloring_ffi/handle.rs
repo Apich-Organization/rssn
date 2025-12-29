@@ -39,6 +39,11 @@ pub extern "C" fn rssn_are_isomorphic_heuristic(
 /// Returns a JSON object mapping node IDs to colors.
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn rssn_greedy_coloring(
     graph: *const RssnGraph
 ) -> *mut c_char {

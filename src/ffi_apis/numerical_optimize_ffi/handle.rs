@@ -45,6 +45,11 @@ pub struct FfiOptimizationResult {
 /// the result using `numerical_optimize_drop_result_handle`.
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
     a: f64,
     b: f64,
@@ -137,6 +142,11 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
 /// the result using `numerical_optimize_drop_result_handle`.
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
     a: f64,
     b: f64,
@@ -225,6 +235,11 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
 /// or null if the input is invalid or optimization fails. The caller must free
 /// the result using `numerical_optimize_drop_result_handle`.
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn numerical_optimize_sphere_gd_handle(
     init_param_ptr: *const f64,

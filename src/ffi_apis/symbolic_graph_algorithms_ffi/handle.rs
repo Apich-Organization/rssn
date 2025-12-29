@@ -10,6 +10,11 @@ use crate::symbolic::graph_algorithms::{dfs, bfs, connected_components, is_conne
 /// Returns a JSON array of node indices in visit order.
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn rssn_graph_dfs_api(
     graph: *const RssnGraph,
     start_node: usize,
@@ -43,6 +48,11 @@ pub extern "C" fn rssn_graph_dfs_api(
 /// Returns a JSON array of node indices in visit order.
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn rssn_graph_bfs_api(
     graph: *const RssnGraph,
     start_node: usize,
@@ -75,6 +85,11 @@ pub extern "C" fn rssn_graph_bfs_api(
 /// Finds all connected components in an undirected graph.
 /// Returns a JSON array of arrays, where each inner array is a component.
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn rssn_graph_connected_components_api(
     graph: *const RssnGraph
@@ -130,6 +145,11 @@ pub extern "C" fn rssn_graph_is_connected(
 /// Returns a JSON array of arrays.
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn rssn_graph_strongly_connected_components(
     graph: *const RssnGraph
 ) -> *mut c_char {
@@ -182,6 +202,11 @@ pub extern "C" fn rssn_graph_has_cycle_api(
 /// Finds bridges and articulation points.
 /// Returns a JSON object with "bridges" and "`articulation_points`" fields.
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
     graph: *const RssnGraph
@@ -326,6 +351,11 @@ pub extern "C" fn rssn_graph_dinic_max_flow(
 /// Returns a JSON array of partition assignments (0 or 1 for each node), or null if not bipartite.
 #[no_mangle]
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub extern "C" fn rssn_graph_is_bipartite_api(
     graph: *const RssnGraph
 ) -> *mut c_char {
@@ -362,6 +392,11 @@ pub extern "C" fn rssn_graph_is_bipartite_api(
 /// `partition_json` should be a JSON array of 0s and 1s indicating the partition.
 /// Returns a JSON array of [u, v] pairs representing the matching.
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn rssn_graph_bipartite_maximum_matching(
     graph: *const RssnGraph,
@@ -413,6 +448,11 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
 /// Performs topological sort on a DAG.
 /// Returns a JSON array of node indices in topological order, or null if the graph has a cycle.
 #[no_mangle]
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub extern "C" fn rssn_graph_topological_sort(
     graph: *const RssnGraph

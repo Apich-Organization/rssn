@@ -89,6 +89,11 @@ struct HammingDecodeResult {
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -146,6 +151,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
     input: *const c_char
@@ -207,6 +217,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -253,6 +268,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
     input: *const c_char
@@ -308,6 +328,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
     input: *const c_char
@@ -369,6 +394,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -412,6 +442,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
     input: *const c_char
@@ -468,6 +503,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -512,6 +552,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -555,6 +600,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
     input: *const c_char
@@ -603,6 +653,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -650,6 +705,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -696,6 +756,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
     input: *const c_char
@@ -745,6 +810,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -793,6 +863,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -840,6 +915,11 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_error_correction_capability_json(
     input: *const c_char

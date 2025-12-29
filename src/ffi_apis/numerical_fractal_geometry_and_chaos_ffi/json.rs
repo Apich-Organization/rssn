@@ -155,6 +155,11 @@ struct DimensionInput {
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -205,6 +210,11 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -252,6 +262,11 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
     input: *const c_char
@@ -304,6 +319,11 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -354,6 +374,11 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -401,6 +426,11 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
     input: *const c_char
@@ -453,6 +483,11 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -504,6 +539,11 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -552,6 +592,11 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
     input: *const c_char
@@ -604,6 +649,11 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -651,6 +701,11 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
     input: *const c_char
@@ -702,6 +757,11 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -750,6 +810,11 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
     input: *const c_char
@@ -802,6 +867,11 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
+
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -848,6 +918,11 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
+/// # Panics
+///
+/// This function may panic if the FFI input is malformed, null where not expected,
+/// or if internal state synchronization fails (e.g., poisoned locks).
 
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
     input: *const c_char
