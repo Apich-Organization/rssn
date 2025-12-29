@@ -2,6 +2,24 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::combinatorics::*;
 use crate::symbolic::core::Expr;
 
+/// Computes the number of permutations symbolically using bincode-encoded `Expr` arguments.
+///
+/// This corresponds to the falling factorial \( P(n,k) = n! / (n-k)! \) when `n` and `k`
+/// are specialized to integers, but operates on general symbolic expressions.
+///
+/// # Arguments
+///
+/// * `n_buf` - Bincode buffer encoding an `Expr` representing the population size `n`.
+/// * `k_buf` - Bincode buffer encoding an `Expr` representing the selection size `k`.
+///
+/// # Returns
+///
+/// A bincode buffer encoding an `Expr` for the symbolic permutation count.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw bincode buffers that must
+/// contain valid serialized `Expr` values.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_permutations(
@@ -24,6 +42,24 @@ pub unsafe extern "C" fn rssn_bincode_permutations(
     to_bincode_buffer(&result)
 }
 
+/// Computes the number of combinations symbolically using bincode-encoded `Expr` arguments.
+///
+/// This corresponds to the binomial coefficient \( C(n,k) = n! / (k!(n-k)!) \) when
+/// `n` and `k` are integers, but operates on general symbolic expressions.
+///
+/// # Arguments
+///
+/// * `n_buf` - Bincode buffer encoding an `Expr` representing the population size `n`.
+/// * `k_buf` - Bincode buffer encoding an `Expr` representing the selection size `k`.
+///
+/// # Returns
+///
+/// A bincode buffer encoding an `Expr` for the symbolic combination count.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw bincode buffers that must
+/// contain valid serialized `Expr` values.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_combinations(
@@ -46,6 +82,24 @@ pub unsafe extern "C" fn rssn_bincode_combinations(
     to_bincode_buffer(&result)
 }
 
+/// Computes the \(n\)-th Catalan number symbolically and returns it as a bincode-encoded `Expr`.
+///
+/// Catalan numbers count many combinatorial structures, such as binary trees, Dyck paths,
+/// and non-crossing partitions.
+///
+/// # Arguments
+///
+/// * `n` - Index of the Catalan number to compute.
+///
+/// # Returns
+///
+/// A bincode buffer encoding an `Expr` for the \(n\)-th Catalan number.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point, but it does
+/// not dereference raw pointers.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_catalan_number(
@@ -59,6 +113,25 @@ pub unsafe extern "C" fn rssn_bincode_catalan_number(
 
 #[no_mangle]
 
+/// Computes a Stirling number of the second kind symbolically and returns it via bincode.
+///
+/// Stirling numbers of the second kind \( S(n,k) \) count partitions of an \(n\)-element
+/// set into \(k\) non-empty unlabeled blocks.
+///
+/// # Arguments
+///
+/// * `n` - Total number of elements.
+/// * `k` - Number of non-empty blocks.
+///
+/// # Returns
+///
+/// A bincode buffer encoding an `Expr` for \( S(n,k) \).
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point, but it does
+/// not dereference raw pointers.
+#[no_mangle]
 pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
     n: usize,
     k: usize,
@@ -72,6 +145,22 @@ pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
     to_bincode_buffer(&result)
 }
 
+/// Computes the \(n\)-th Bell number symbolically and returns it via bincode.
+///
+/// Bell numbers count the total number of set partitions of an \(n\)-element set.
+///
+/// # Arguments
+///
+/// * `n` - Index of the Bell number to compute.
+///
+/// # Returns
+///
+/// A bincode buffer encoding an `Expr` for the \(n\)-th Bell number.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point, but it does
+/// not dereference raw pointers.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_bincode_bell_number(

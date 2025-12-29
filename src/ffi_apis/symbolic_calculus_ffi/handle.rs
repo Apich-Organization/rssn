@@ -280,6 +280,19 @@ pub unsafe extern "C" fn rssn_find_poles(
     ))
 }
 
+/// Returns the number of poles found for a given expression.
+///
+/// # Arguments
+///
+/// * `poles` - Pointer to a vector of pole expressions as returned by `rssn_find_poles`.
+///
+/// # Returns
+///
+/// The number of poles in the vector, or 0 if the pointer is null.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>`.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poles_len(
@@ -295,6 +308,22 @@ pub unsafe extern "C" fn rssn_poles_len(
     }
 }
 
+/// Returns a cloned pole expression at the given index.
+///
+/// # Arguments
+///
+/// * `poles` - Pointer to a vector of pole expressions as returned by `rssn_find_poles`.
+/// * `index` - Zero-based index of the pole to retrieve.
+///
+/// # Returns
+///
+/// A newly allocated `Expr` pointer to the selected pole, or null if the pointer is
+/// null or the index is out of bounds.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>` and
+/// returns ownership of a heap-allocated `Expr` to the caller.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_poles_get(
@@ -319,6 +348,21 @@ pub unsafe extern "C" fn rssn_poles_get(
     ))
 }
 
+/// Frees a vector of pole expressions previously returned by `rssn_find_poles`.
+///
+/// # Arguments
+///
+/// * `poles` - Mutable pointer to a heap-allocated `Vec<Expr>`.
+///
+/// # Returns
+///
+/// This function does not return a value.
+///
+/// # Safety
+///
+/// This function is unsafe because it takes ownership of a raw pointer and frees the
+/// underlying allocation. The pointer must have been created by this library and must
+/// not be used after this call.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_free_poles(

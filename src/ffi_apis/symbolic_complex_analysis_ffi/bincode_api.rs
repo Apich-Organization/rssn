@@ -4,6 +4,26 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::complex_analysis::*;
 use crate::symbolic::core::Expr;
 
+/// Constructs a new analytic path continuation object from a function, variable, and start point.
+///
+/// This initializes a [`PathContinuation`] for analytic continuation of a complex-valued
+/// function along a path in the complex plane, using a truncated series of the given order.
+///
+/// # Arguments
+///
+/// * `func_bincode` - Bincode buffer encoding an `Expr` for the holomorphic function.
+/// * `var` - C string pointer naming the complex variable of the function.
+/// * `start_point_bincode` - Bincode buffer encoding an `Expr` for the starting point.
+/// * `order` - Truncation order of the local series expansion used for continuation.
+///
+/// # Returns
+///
+/// A bincode buffer encoding a [`PathContinuation`] object capturing the initial state.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer and expects
+/// valid bincode-encoded `Expr` values.
 #[no_mangle]
 
 pub unsafe extern "C" fn path_continuation_new_bincode(
@@ -661,6 +681,20 @@ pub unsafe extern "C" fn complex_arg_bincode(
     to_bincode_buffer(&result)
 }
 
+/// Computes the modulus \(|z|\) of a complex number encoded as an `Expr` and returns it via bincode.
+///
+/// # Arguments
+///
+/// * `z_bincode` - Bincode buffer encoding an `Expr` representing the complex number `z`.
+///
+/// # Returns
+///
+/// A bincode buffer encoding an `Expr` for the modulus \(|z|\).
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a bincode buffer that must contain
+/// a valid serialized `Expr`.
 #[no_mangle]
 
 pub unsafe extern "C" fn complex_modulus_bincode(
