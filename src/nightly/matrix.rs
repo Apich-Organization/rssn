@@ -61,6 +61,10 @@ pub trait Field:
     fn is_invertible(&self) -> bool;
 
     /// Returns the inverse of the element.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the element is not invertible (e.g., zero in most fields).
 
     fn inverse(
         &self
@@ -711,6 +715,10 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// The rank of the matrix (number of non-zero rows in RREF).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a pivot element encountered during elimination is not invertible.
 
     pub fn rref(
         &mut self
@@ -860,6 +868,11 @@ impl<T: Field> Matrix<T> {
     ///
     /// ## Returns
     /// A new `Matrix` representing the product of the two matrices, or an error if multiplication is not possible.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the number of columns in the left matrix does not match
+    /// the number of rows in the right matrix.
 
     pub fn mul_strassen(
         &self,
@@ -1159,6 +1172,11 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// The determinant of the matrix, or an error if the matrix is not square.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the matrix is not square.
+    /// May also return an error if a numerical issue occurs during the block decomposition.
 
     pub fn determinant(
         &self
@@ -1238,6 +1256,10 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A tuple containing the LU matrix and the number of row swaps.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the matrix is not square.
 
     pub fn lu_decomposition(
         &self
@@ -1351,6 +1373,11 @@ impl<T: Field> Matrix<T> {
     ///
     /// Computes the determinant using block matrix decomposition (Schur complement).
     /// This is efficient for large matrices.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the matrix is not square.
+    /// May also return an error if a numerical issue occurs during the block decomposition.
     #[allow(clippy::suspicious_operation_groupings)]
 
     pub fn determinant_block(
@@ -1434,6 +1461,10 @@ impl<T: Field> Matrix<T> {
     }
 
     /// Computes the determinant using LU decomposition.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the matrix is not square or if LU decomposition fails.
 
     pub fn determinant_lu(
         &self
@@ -1565,6 +1596,10 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A `Matrix` whose columns form a basis for the null space.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RREF computation fails.
 
     pub fn null_space(
         &self
@@ -1683,6 +1718,10 @@ impl<T: Field> Matrix<T> {
     }
 
     /// Computes the rank of the matrix.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RREF computation fails.
 
     pub fn rank(
         &self
@@ -1695,6 +1734,10 @@ impl<T: Field> Matrix<T> {
     }
 
     /// Computes the trace of the matrix (sum of diagonal elements).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the matrix is not square.
 
     pub fn trace(
         &self
@@ -2054,6 +2097,10 @@ impl Matrix<f64> {
     /// # Returns
     /// A `Result` containing a tuple `(eigenvalues, eigenvectors)` where `eigenvalues` is a `Vec<f64>`
     /// and `eigenvectors` is a `Matrix<f64>` (columns are eigenvectors), or an error string if the matrix is not square.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the matrix is not square.
 
     pub fn jacobi_eigen_decomposition(
         &self,

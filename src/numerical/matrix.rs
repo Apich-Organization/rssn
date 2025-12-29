@@ -1709,11 +1709,10 @@ impl<T: Field> Matrix<T> {
     }
 
     /// Computes the rank of the matrix.
+    ///
     /// # Errors
     ///
-    /// This function will return an error if:
-    /// - The matrix is not square.
-    /// - The matrix is singular or reduction fails.
+    /// Returns an error if the RREF computation fails.
     pub fn rank(
         &self
     ) -> Result<usize, String> {
