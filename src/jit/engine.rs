@@ -15,13 +15,9 @@ use cranelift_frontend::FunctionBuilder;
 #[cfg(feature = "jit")]
 use cranelift_frontend::FunctionBuilderContext;
 #[cfg(feature = "jit")]
-use cranelift_frontend::Variable;
-#[cfg(feature = "jit")]
 use cranelift_jit::JITBuilder;
 #[cfg(feature = "jit")]
 use cranelift_jit::JITModule;
-#[cfg(feature = "jit")]
-use cranelift_module::DataDescription;
 #[cfg(feature = "jit")]
 use cranelift_module::Linkage;
 #[cfg(feature = "jit")]

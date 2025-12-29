@@ -17,13 +17,8 @@ use std::ops::Sub;
 use std::ops::SubAssign;
 
 use faer::linalg::solvers::DenseSolveCore;
-use faer::linalg::solvers::Solve;
 // Faer imports
 use faer::{
-    get_global_parallelism,
-    set_global_parallelism,
-    Mat,
-    MatMut,
     MatRef,
     Side,
 };
