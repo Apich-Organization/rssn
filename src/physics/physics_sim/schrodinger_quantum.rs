@@ -43,6 +43,11 @@ pub struct SchrodingerParameters {
 ///
 /// # Returns
 /// A `Vec` containing snapshots of the probability density `|psi|^2`.
+///
+/// # Errors
+///
+/// This function will return an error if the probability density cannot be converted
+/// into an `Array2<f64>` due to incompatible dimensions during snapshot creation.
 
 pub fn run_schrodinger_simulation(
     params: &SchrodingerParameters,
@@ -185,6 +190,11 @@ pub fn run_schrodinger_simulation(
 }
 
 /// An example scenario simulating a wave packet hitting a double slit.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying `run_schrodinger_simulation` fails
+/// or if the final state cannot be written to the NPY file.
 
 pub fn simulate_double_slit_scenario(
 ) -> Result<(), String> {

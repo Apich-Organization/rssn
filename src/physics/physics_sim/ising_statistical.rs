@@ -157,6 +157,11 @@ pub fn run_ising_simulation(
 
 /// An example scenario that simulates the Ising model across a range of temperatures
 /// to observe the phase transition.
+///
+/// # Errors
+///
+/// This function will return an error if it fails to reshape the `Array2<f64>` for NPY
+/// output or if it fails to create or write to the output files (CSV or NPY).
 
 pub fn simulate_ising_phase_transition_scenario(
 ) -> Result<(), String> {

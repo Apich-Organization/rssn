@@ -12,6 +12,12 @@ use crate::symbolic::polynomial::sparse_poly_to_expr;
 const ERROR_MARGIN: f64 = 1e-9;
 
 /// Breaks a single term (like `2*x^2*y`) into a map of its base factors and their counts.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn get_term_factors(
@@ -161,6 +167,11 @@ pub fn build_expr_from_factors<
 
 /// Flattens a nested chain of `Add` expressions into a vector of terms.
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn flatten_sum(
     expr: Expr,
     terms: &mut Vec<Expr>,
@@ -195,6 +206,11 @@ pub(crate) fn flatten_sum(
 
 /// Flattens a nested chain of `Mul` expressions into two vectors: numeric and other factors.
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn flatten_product(
     expr: Expr,
     numeric_factors: &mut Vec<f64>,

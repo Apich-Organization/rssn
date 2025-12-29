@@ -45,7 +45,7 @@ pub struct CadCell {
 )]
 
 pub struct Cad {
-    /// The collection of cells in the decomposition.
+    /// The collection of [`CadCell`]s in the decomposition.
     pub cells: Vec<CadCell>,
     /// The dimension of the space (n).
     pub dim: usize,
@@ -59,6 +59,11 @@ pub struct Cad {
 ///
 /// # Returns
 /// A `Result` containing the `Cad` structure or an error message.
+///
+/// # Errors
+///
+/// This function will return an error if the variable list is empty, or if an
+/// error occurs during the projection or lifting phases (e.g., during root isolation).
 
 pub fn cad(
     polys: &[SparsePolynomial],

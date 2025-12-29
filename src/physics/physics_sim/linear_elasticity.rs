@@ -104,8 +104,12 @@ pub fn element_stiffness_matrix(
 /// * `params` - An `ElasticityParameters` struct containing all simulation inputs.
 ///
 /// # Returns
-/// A `Result` containing a `Vec<f64>` of nodal displacements (u, v for each node),
-/// or an error string if the linear system cannot be solved.
+/// A `Result` containing a `Vec<f64>` of nodal displacements (u, v for each node).
+///
+/// # Errors
+///
+/// This function will return an error if the Conjugate Gradient solver fails to converge
+/// or if the global stiffness matrix is ill-conditioned.
 
 pub fn run_elasticity_simulation(
     params: &ElasticityParameters
@@ -250,6 +254,11 @@ pub fn run_elasticity_simulation(
 /// conditions at one end and applies a point load at the free end. It then runs
 /// the elasticity simulation and saves the original and deformed node positions
 /// to CSV files for visualization.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying `run_elasticity_simulation`
+/// fails or if it cannot create or write to the output CSV files.
 
 pub fn simulate_cantilever_beam_scenario(
 ) -> Result<(), String> {

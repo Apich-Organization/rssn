@@ -75,6 +75,16 @@ impl PathContinuation {
     }
 
     /// Continues the function along a given path.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The `PathContinuation` has not been initialized with `new`.
+/// - It fails to estimate the radius of convergence for a series piece.
+/// - It fails to calculate the distance between complex points.
+/// - A `path_point` is found to be outside the radius of convergence of the
+///   current series expansion, indicating a potential singularity or
+///   insufficient overlap between series patches.
 
     pub fn continue_along_path(
         &mut self,

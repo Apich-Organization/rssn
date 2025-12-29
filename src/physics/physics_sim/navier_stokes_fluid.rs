@@ -38,6 +38,11 @@ pub type NavierStokesOutput = Result<
 >;
 
 /// Main solver for the 2D lid-driven cavity problem.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying Poisson solver fails,
+/// or if there are issues reshaping the pressure correction array.
 
 pub fn run_lid_driven_cavity(
     params: &NavierStokesParameters

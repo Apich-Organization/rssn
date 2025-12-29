@@ -37,6 +37,12 @@ const ERROR_MARGIN: f64 = 1e-9;
 ///
 /// # Returns
 /// A new `Expr` with all occurrences of `var` replaced by `replacement`.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn substitute(
@@ -497,6 +503,12 @@ pub(crate) fn get_real_imag_parts(
 ///
 /// # Returns
 /// A new `Expr` representing the symbolic derivative.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn differentiate(
@@ -1845,6 +1857,11 @@ pub(crate) fn get_u_candidates(
     }
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn u_substitution(
     expr: &Expr,
     var: &str,
@@ -1965,6 +1982,11 @@ pub(crate) fn u_substitution(
     None
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn handle_trig_sub_sum(
     a_sq: &Expr,
     x_sq: &Expr,
@@ -2081,6 +2103,11 @@ pub(crate) fn handle_trig_sub_sum(
     None
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn trig_substitution(
     expr: &Expr,
     var: &str,
@@ -2615,6 +2642,12 @@ pub(crate) fn find_pole_order(
 ///
 /// # Returns
 /// An `Expr` representing the calculated residue.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn calculate_residue(
@@ -2711,6 +2744,11 @@ pub fn calculate_residue(
     ))
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn integrate_by_parts(
     expr: &Expr,
     var: &str,

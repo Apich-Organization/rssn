@@ -37,6 +37,11 @@ pub struct GpeParameters {
 ///
 /// # Returns
 /// The final wave function `psi` representing the ground state.
+///
+/// # Errors
+///
+/// This function will return an error if the computed probability density
+/// cannot be converted into an `Array2<f64>` due to incompatible dimensions.
 
 pub fn run_gpe_ground_state_finder(
     params: &GpeParameters
@@ -211,6 +216,11 @@ pub fn run_gpe_ground_state_finder(
 }
 
 /// An example scenario that finds the ground state of a BEC, which may contain a vortex.
+///
+/// # Errors
+///
+/// This function will return an error if the GPE ground state finder fails
+/// or if the final density cannot be written to the NPY file.
 
 pub fn simulate_bose_einstein_vortex_scenario(
 ) -> Result<(), String> {

@@ -61,8 +61,13 @@ pub enum CoordinateSystem {
 /// * `to` - The target `CoordinateSystem`.
 ///
 /// # Returns
-/// A `Result` containing a `Vec<Expr>` of the transformed coordinates, or an error string
-/// if the input is invalid or transformation is not supported.
+/// A `Result` containing a `Vec<Expr>` of the transformed coordinates.
+///
+/// # Errors
+///
+/// This function will return an error if the input `point` has an invalid number
+/// of components for the given `from` coordinate system, or if an underlying
+/// transformation (e.g., `to_cartesian`, `from_cartesian`) fails.
 
 pub fn transform_point(
     point: &[Expr],
@@ -268,8 +273,12 @@ pub(crate) fn from_cartesian(
 /// * `to` - The target `CoordinateSystem`.
 ///
 /// # Returns
-/// A `Result` containing the transformed `Expr`, or an error string if the transformation
-/// is not supported or rules cannot be found.
+/// A `Result` containing the transformed `Expr`.
+///
+/// # Errors
+///
+/// This function will return an error if the transformation rules for the specified
+/// `from` and `to` coordinate systems cannot be found or are not supported.
 
 pub fn transform_expression(
     expr: &Expr,
@@ -318,6 +327,11 @@ pub fn transform_expression(
 /// `from_vars` are the variable names of the source system.
 /// `to_vars` are the variable names of the target system.
 /// `rules` are the expressions for `from_vars` in terms of `to_vars`.
+///
+/// # Errors
+///
+/// This function will return an error if a direct transformation between two
+/// non-Cartesian systems is requested, as this is not yet supported.
 
 pub fn get_transform_rules(
     from: CoordinateSystem,
@@ -619,16 +633,15 @@ pub(crate) fn get_from_cartesian_rules(
 /// Transforms a contravariant vector field (e.g., velocity) from one coordinate system to another.
 ///
 /// Contravariant vectors transform with the Jacobian matrix of the coordinate transformation.
-/// `V'_i = (∂x'_i / ∂x_j) * V_j`.
-///
-/// # Arguments
-/// * `components` - A slice of `Expr` representing the components of the vector field.
-/// * `from` - The source `CoordinateSystem`.
-/// * `to` - The target `CoordinateSystem`.
-///
 /// # Returns
-/// A `Result` containing a `Vec<Expr>` of the transformed components, or an error string
-/// if the transformation is not supported or computation fails.
+/// A `Result` containing a `Vec<Expr>` of the transformed components.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The `get_from_cartesian_rules` function fails to provide transformation rules.
+/// - The symbolic matrix-vector multiplication fails due to incompatible dimensions.
+
 
 pub fn transform_contravariant_vector(
     components: &[Expr],
@@ -695,8 +708,15 @@ pub fn transform_contravariant_vector(
 /// * `to` - The target `CoordinateSystem`.
 ///
 /// # Returns
-/// A `Result` containing a `Vec<Expr>` of the transformed components, or an error string
-/// if the transformation is not supported or computation fails.
+/// A `Result` containing a `Vec<Expr>` of the transformed components.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The `get_transform_rules` function fails to provide transformation rules.
+/// - The Jacobian matrix is singular and cannot be inverted.
+/// - The symbolic matrix multiplication results in a non-vector expression,
+///   indicating an issue with the transformation or simplification.
 
 pub fn transform_covariant_vector(
     components: &[Expr],
@@ -802,6 +822,11 @@ pub(crate) fn compute_jacobian(
 }
 
 /// Performs symbolic matrix-vector multiplication.
+///
+/// # Errors
+///
+/// This function will return an error if the dimensions of the `matrix` and `vector`
+/// are incompatible for multiplication.
 
 pub(crate) fn symbolic_mat_vec_mul(
     matrix: &[Vec<Expr>],
@@ -885,8 +910,14 @@ pub enum TensorType {
 /// * `tensor_type` - The `TensorType` (Contravariant, Covariant, Mixed).
 ///
 /// # Returns
-/// A `Result` containing the transformed `Expr::Matrix`, or an error string
-/// if the transformation is not supported or computation fails.
+/// A `Result` containing the transformed `Expr::Matrix`.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The `get_transform_rules` function fails to provide transformation rules.
+/// - The Jacobian matrix is singular and cannot be inverted.
+/// - An underlying symbolic matrix multiplication operation fails.
 
 pub fn transform_tensor2(
     tensor: &Expr,
@@ -948,6 +979,12 @@ pub fn transform_tensor2(
 }
 
 /// Performs symbolic matrix-matrix multiplication.
+///
+/// # Errors
+///
+/// This function will return an error if the dimensions of `m1` and `m2` are
+/// incompatible for multiplication (i.e., number of columns in `m1` does not
+/// equal number of rows in `m2`).
 
 pub fn symbolic_mat_mat_mul(
     m1: &[Vec<Expr>],
@@ -1035,8 +1072,12 @@ pub fn symbolic_mat_mat_mul(
 /// * `system` - The `CoordinateSystem` for which to compute the metric tensor.
 ///
 /// # Returns
-/// A `Result` containing an `Expr::Matrix` representing the metric tensor,
-/// or an error string if the system is not supported or computation fails.
+/// A `Result` containing an `Expr::Matrix` representing the metric tensor.
+///
+/// # Errors
+///
+/// This function will return an error if `get_to_cartesian_rules` fails to provide
+/// transformation rules for the given coordinate system.
 
 pub fn get_metric_tensor(
     system: CoordinateSystem
@@ -1091,8 +1132,12 @@ pub fn get_metric_tensor(
 /// * `from` - The `CoordinateSystem` of the vector field.
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the divergence, or an error string
-/// if the system is not supported or computation fails.
+/// A `Result` containing an `Expr` representing the divergence.
+///
+/// # Errors
+///
+/// This function will return an error if `get_metric_tensor` fails to retrieve
+/// the metric tensor for the given coordinate system.
 
 pub fn transform_divergence(
     vector_comps: &[Expr],
@@ -1154,8 +1199,14 @@ pub fn transform_divergence(
 /// * `from` - The `CoordinateSystem` of the vector field.
 ///
 /// # Returns
-/// A `Result` containing a `Vec<Expr>` of the transformed components, or an error string
-/// if the system is not supported or computation fails.
+/// A `Result` containing a `Vec<Expr>` of the transformed components.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The `vector_comps` length is not 3 (curl is only defined for 3D vectors).
+/// - `get_metric_tensor` fails to retrieve the metric tensor.
+/// - The metric tensor is not an `Expr::Matrix`.
 
 pub fn transform_curl(
     vector_comps: &[Expr],

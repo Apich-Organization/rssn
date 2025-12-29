@@ -129,6 +129,11 @@ pub trait Plugin: Send + Sync {
 
     /// Called once when the plugin is loaded by the `PluginManager`.
     /// Use this for any necessary setup or initialization.
+///
+/// # Errors
+///
+/// This function will return a `PluginError` if the plugin fails to initialize
+/// or encounters an unrecoverable error during setup.
 
     fn on_load(
         &self
@@ -142,6 +147,11 @@ pub trait Plugin: Send + Sync {
     ///
     /// # Returns
     /// A `Result` containing either a resulting `Expr` on success or a `PluginError` on failure.
+///
+/// # Errors
+///
+/// This function will return a `PluginError` if the specified `command` is not
+/// recognized or if an error occurs during the execution of the plugin's logic.
 
     fn execute(
         &self,

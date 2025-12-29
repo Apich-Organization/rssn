@@ -201,6 +201,11 @@ pub fn run_fdtd_simulation(
 }
 
 /// An example scenario that runs an FDTD simulation and saves the final state.
+///
+/// # Errors
+///
+/// This function will return an error if the `ez` array cannot be reshaped
+/// or if the final state cannot be written to the file.
 
 pub fn simulate_and_save_final_state(
     grid_size: usize,

@@ -541,6 +541,12 @@ where
 }
 
 /// Solves Poisson equation `∇²u = f` using Successive Over-Relaxation (SOR).
+///
+/// # Panics
+///
+/// Panics if the `source` grid's dimensions do not match the `width` and `height` provided.
+/// Panics if internal indexing operations go out of bounds due to incorrect `FdmGrid` usage,
+/// though typical usage within this function should prevent this.
 
 #[must_use] 
 pub fn solve_poisson_2d(

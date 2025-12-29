@@ -247,11 +247,15 @@ pub trait MechanicalSystem {
 /// # Arguments
 /// * `system` - The mechanical system to solve, implementing the `MechanicalSystem` trait.
 /// * `y0` - The initial state `[initial_positions..., initial_velocities...]`.
-/// * `t_span` - The time interval `(t_start, t_end)`.
 /// * `dt` - The fixed time step.
 ///
 /// # Returns
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
+///
+/// # Errors
+///
+/// This function will return an error if the length of the initial state vector `y0`
+/// is not twice the spatial dimension of the system.
 
 pub fn solve_semi_implicit_euler<
     S: MechanicalSystem,
@@ -413,6 +417,11 @@ impl MechanicalSystem
 ///
 /// # Returns
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying `solve_semi_implicit_euler`
+/// function encounters an error, e.g., if the initial state vector dimensions are incorrect.
 
 pub fn simulate_gravity_semi_implicit_euler_scenario(
 ) -> Result<Vec<(f64, Vec<f64>)>, String>
@@ -467,10 +476,13 @@ pub trait LinearOdeSystem {
 /// * `system` - The linear ODE system to solve, implementing the `LinearOdeSystem` trait.
 /// * `y0` - The initial state vector.
 /// * `t_span` - The time interval `(t_start, t_end)`.
-/// * `dt` - The fixed time step.
-///
 /// # Returns
-/// A `Result` containing the solution path as `Vec<(f64, Vec<f64>)>`, or an error string if matrix inversion fails.
+/// A `Result` containing the solution path as `Vec<(f64, Vec<f64>)>`.
+///
+/// # Errors
+///
+/// This function will return an error if the matrix `(I - dt*A)` is not invertible,
+/// which can occur if the system is singular for the given time step `dt`.
 
 pub fn solve_backward_euler_linear<
     S: LinearOdeSystem,
@@ -566,7 +578,12 @@ impl LinearOdeSystem
 /// with relatively large time steps, whereas a forward method would become unstable.
 ///
 /// # Returns
-/// A `Result` containing the solution path as `Vec<(f64, Vec<f64>)>`, or an error string if matrix inversion fails.
+/// A `Result` containing the solution path as `Vec<(f64, Vec<f64>)>`.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying `solve_backward_euler_linear`
+/// function encounters an error, e.g., if matrix inversion fails.
 
 pub fn simulate_stiff_decay_scenario(
 ) -> Result<Vec<(f64, Vec<f64>)>, String>

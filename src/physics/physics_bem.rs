@@ -247,6 +247,11 @@ impl Element2D {
 /// A `Result` containing a tuple `(u, q)`, where `u` is a `Vec<f64>` of potentials
 /// and `q` is a `Vec<f64>` of normal fluxes on each element. Returns an `Err` string
 /// if the system is ill-posed or has no unique solution.
+///
+/// # Errors
+///
+/// This function will return an error if the number of points and boundary conditions
+/// do not match, or if the BEM system has no unique solution.
 
 pub fn solve_laplace_bem_2d(
     points: &[(f64, f64)],
@@ -438,6 +443,11 @@ pub fn solve_laplace_bem_2d(
 /// # Returns
 /// A `Result` containing a tuple `(u, q)` of potentials and fluxes on the cylinder surface,
 /// or an error string if the BEM system cannot be solved.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying `solve_laplace_bem_2d`
+/// function encounters an error.
 
 pub fn simulate_2d_cylinder_scenario(
 ) -> Result<(Vec<f64>, Vec<f64>), String>
@@ -520,6 +530,11 @@ pub fn evaluate_potential_2d(
 }
 
 /// Solves a 3D Laplace problem on a cubic domain using a simplified BEM approach.
+///
+/// # Errors
+///
+/// This is currently a placeholder function and will always succeed, but in a full
+/// implementation, it would return an error if the 3D BEM system cannot be solved.
 
 pub fn solve_laplace_bem_3d(
 ) -> Result<(), String> {

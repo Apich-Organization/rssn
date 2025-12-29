@@ -221,6 +221,10 @@ pub(crate) fn v_cycle(
 ///
 /// # Returns
 /// The solution vector `u`.
+///
+/// # Errors
+///
+/// This function will return an error if the grid size `n` is not of the form `2^k - 1`.
 
 pub fn solve_poisson_1d_multigrid(
     n: usize,
@@ -265,6 +269,11 @@ pub fn solve_poisson_1d_multigrid(
 
 /// Solves a 1D Poisson problem with a known analytical solution.
 /// `-u_xx = 2` on `[0, 1]` with `u(0)=u(1)=0`. Exact solution is `u(x) = x(1-x)`.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying `solve_poisson_1d_multigrid` function
+/// encounters an error, e.g., if the grid size is invalid.
 
 pub fn simulate_1d_poisson_multigrid_scenario(
 ) -> Result<Vec<f64>, String> {
@@ -661,6 +670,10 @@ pub(crate) fn v_cycle_2d(
 }
 
 /// Solves the 2D Poisson equation `-∇²u = f` using the multigrid method.
+///
+/// # Errors
+///
+/// This function will return an error if the grid size `n` is not of the form `2^k + 1`.
 
 pub fn solve_poisson_2d_multigrid(
     n: usize,
@@ -705,6 +718,11 @@ pub fn solve_poisson_2d_multigrid(
 }
 
 /// Solves a 2D Poisson problem with a known analytical solution.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying `solve_poisson_2d_multigrid` function
+/// encounters an error, e.g., if the grid size is invalid.
 
 pub fn simulate_2d_poisson_multigrid_scenario(
 ) -> Result<Vec<f64>, String> {

@@ -126,6 +126,11 @@ impl PluginManager {
     }
 
     /// Creates a new `PluginManager` and loads plugins from a specified directory.
+///
+/// # Errors
+///
+/// This function will return an error if it fails to load plugins from the
+/// specified directory.
 
     pub fn new(
         plugin_dir: &str
@@ -165,6 +170,18 @@ impl PluginManager {
     ///
     /// # Returns
     /// A `Result` containing the output `Expr` or a `PluginError`.
+///
+/// # Errors
+///
+/// This function will return a `PluginError` if:
+/// - The plugin with `plugin_name` is not found.
+/// - Serialization of arguments or deserialization of results fails.
+/// - The plugin's execution of the command fails.
+///
+/// # Panics
+///
+/// This function may panic if the internal `RwLock` protecting the plugin maps
+/// is poisoned (e.g., a thread holding the lock has panicked).
 
     pub fn execute_plugin(
         &self,
@@ -395,6 +412,21 @@ impl PluginManager {
         Ok(())
     }
 
+/// Loads a stable plugin from a dynamic library file.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The library cannot be loaded.
+/// - The `STABLE_PLUGIN_MODULE` symbol cannot be found.
+/// - The plugin's API version is incompatible with the current crate version.
+/// - The plugin's `on_load` method returns an error.
+///
+/// # Panics
+///
+/// This function will panic if:
+/// - `self.libraries.last()` returns `None`, indicating an internal logic error where a library was added but not found.
+/// - The `RwLock` for `self.stable_plugins` is poisoned.
     unsafe fn load_stable_plugin(
         &mut self,
         library_path: &std::path::Path,
@@ -491,6 +523,21 @@ impl PluginManager {
 
     /// Loads a single plugin from a dynamic library file.
 
+/// Loads a standard plugin from a dynamic library file.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The library cannot be loaded.
+/// - The `_plugin_create` symbol cannot be found.
+/// - The plugin's API version is incompatible with the current crate version.
+/// - The plugin's `on_load` method returns an error.
+///
+/// # Panics
+///
+/// This function will panic if:
+/// - `self.libraries.last()` returns `None`, indicating an internal logic error where a library was added but not found.
+/// - The `RwLock` for `self.plugins` is poisoned.
     unsafe fn load_plugin(
         &mut self,
         library_path: &std::path::Path,

@@ -169,6 +169,11 @@ where
 }
 
 /// Example scenario for the 1D FEM Poisson solver.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying `solve_poisson_1d` function
+/// encounters an error.
 
 pub fn simulate_1d_poisson_scenario(
 ) -> Result<Vec<f64>, String> {
@@ -187,6 +192,11 @@ pub fn simulate_1d_poisson_scenario(
 }
 
 /// Solves the 2D Poisson equation on a unit square with zero Dirichlet boundaries.
+///
+/// # Errors
+///
+/// This function will return an error if the Conjugate Gradient solver fails to converge
+/// or if the linear system is ill-conditioned.
 
 pub fn solve_poisson_2d<F>(
     n_elements_x: usize,
@@ -403,6 +413,11 @@ where
 }
 
 /// Example scenario for the 2D FEM Poisson solver.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying `solve_poisson_2d` function
+/// encounters an error.
 #[allow(clippy::unnecessary_cast)]
 
 pub fn simulate_2d_poisson_scenario(
@@ -430,6 +445,11 @@ pub fn simulate_2d_poisson_scenario(
 }
 
 /// Solves the 3D Poisson equation on a unit cube with zero Dirichlet boundaries.
+///
+/// # Errors
+///
+/// This function will return an error if the Conjugate Gradient solver fails to converge
+/// or if the linear system is ill-conditioned.
 
 pub fn solve_poisson_3d<F>(
     n_elements: usize,
@@ -719,6 +739,11 @@ where
 }
 
 /// Example scenario for the 3D FEM Poisson solver.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying `solve_poisson_3d` function
+/// encounters an error.
 #[allow(clippy::unnecessary_cast)]
 
 pub fn simulate_3d_poisson_scenario(

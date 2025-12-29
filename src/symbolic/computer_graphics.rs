@@ -1051,6 +1051,10 @@ impl PolygonMesh {
     ///
     /// # Panics
     /// Panics if the provided `transformation` is not a matrix.
+///
+/// # Errors
+///
+/// This function will return an error if the `transformation` expression is not an `Expr::Matrix`.
 
     pub fn apply_transformation(
         &self,

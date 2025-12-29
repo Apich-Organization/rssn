@@ -153,6 +153,10 @@ pub fn run_geodesic_simulation(
 /// - A photon orbit (light bending).
 ///
 /// The results are saved to `.csv` files for external visualization.
+///
+/// # Errors
+///
+/// This function will return an error if it fails to create or write to the output CSV files.
 
 pub fn simulate_black_hole_orbits_scenario(
 ) -> std::io::Result<()> {
