@@ -4,6 +4,7 @@
 //! - Handle-based API (C-style functions)
 //! - JSON-based API (string serialization)
 //! - Bincode-based API (binary serialization)
+
 /// bincode-based FFI bindings for symbolic stats regression operations using serialized `Expr` values.
 pub mod bincode_api;
 /// Handle-based FFI bindings for symbolic stats regression operations using opaque `Expr` handles.

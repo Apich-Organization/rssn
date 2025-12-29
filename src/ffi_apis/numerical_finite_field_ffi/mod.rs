@@ -4,6 +4,7 @@
 //! - Handle-based API (C-style functions)
 //! - JSON-based API (string serialization)
 //! - Bincode-based API (binary serialization)
+
 /// bincode-based FFI bindings for numerical finite field arithmetic.
 pub mod bincode_api;
 /// Handle-based FFI bindings for numerical finite field using opaque handles.

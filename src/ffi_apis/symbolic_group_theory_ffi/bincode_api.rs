@@ -21,6 +21,7 @@ use crate::symbolic::group_theory::*;
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
 pub unsafe extern "C" fn rssn_bincode_group_create(
     buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -55,6 +56,7 @@ pub unsafe extern "C" fn rssn_bincode_group_create(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
 pub unsafe extern "C" fn rssn_bincode_group_multiply(
     group_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
@@ -99,6 +101,7 @@ pub unsafe extern "C" fn rssn_bincode_group_multiply(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
 pub unsafe extern "C" fn rssn_bincode_group_inverse(
     group_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
@@ -139,6 +142,7 @@ pub unsafe extern "C" fn rssn_bincode_group_inverse(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffer is a valid encoding of a `Group`.
+
 pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
     group_buf: BincodeBuffer
 ) -> bool {
@@ -175,6 +179,7 @@ pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffers encode a compatible group and element.
+
 pub unsafe extern "C" fn rssn_bincode_group_element_order(
     group_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
@@ -221,6 +226,7 @@ pub unsafe extern "C" fn rssn_bincode_group_element_order(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
 pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
     group_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -256,6 +262,7 @@ pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
 pub unsafe extern "C" fn rssn_bincode_group_center(
     group_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -290,6 +297,7 @@ pub unsafe extern "C" fn rssn_bincode_group_center(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
 pub unsafe extern "C" fn rssn_bincode_representation_create(
     buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -323,6 +331,7 @@ pub unsafe extern "C" fn rssn_bincode_representation_create(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffers encode compatible objects.
+
 pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
     rep_buf: BincodeBuffer,
     group_buf: BincodeBuffer,
@@ -367,6 +376,7 @@ pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
 pub unsafe extern "C" fn rssn_bincode_character(
     rep_buf: BincodeBuffer
 ) -> BincodeBuffer {

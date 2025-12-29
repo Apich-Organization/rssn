@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
                     >::ok(
                         final_state
                             .clone()
-                            .into_raw_vec(),
+                            .into_raw_vec_and_offset().0,
                     ))
                     .unwrap(),
                 )

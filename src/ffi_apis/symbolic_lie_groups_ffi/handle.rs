@@ -24,6 +24,7 @@ use crate::symbolic::lie_groups_and_algebras::*;
 ///
 /// This function is unsafe because it returns ownership of a heap-allocated
 /// `LieAlgebra` that must later be freed with [`rssn_lie_algebra_free`].
+
 pub unsafe extern "C" fn rssn_lie_algebra_so3_create(
 ) -> *mut LieAlgebra {
 
@@ -51,6 +52,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_so3_create(
 ///
 /// This function is unsafe because it returns ownership of a heap-allocated
 /// `LieAlgebra` that must later be freed with [`rssn_lie_algebra_free`].
+
 pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
 ) -> *mut LieAlgebra {
 
@@ -77,6 +79,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
 /// This function is unsafe because it takes ownership of a raw pointer. The pointer
 /// must either be null or have been allocated by the corresponding constructor, and
 /// must not be used after this call.
+
 pub unsafe extern "C" fn rssn_lie_algebra_free(
     ptr: *mut LieAlgebra
 ) {
@@ -103,6 +106,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_free(
 ///
 /// This function is unsafe because it dereferences a raw pointer; the caller must
 /// ensure `ptr` points to a valid `LieAlgebra`.
+
 pub unsafe extern "C" fn rssn_lie_algebra_get_dimension(
     ptr: *const LieAlgebra
 ) -> usize {
@@ -128,6 +132,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_dimension(
 ///
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of a heap-allocated C string.
+
 pub unsafe extern "C" fn rssn_lie_algebra_get_name(
     ptr: *const LieAlgebra
 ) -> *mut c_char {
@@ -159,6 +164,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_name(
 ///
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
     ptr: *const LieAlgebra,
     index: usize,
@@ -198,6 +204,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_lie_bracket(
     x: *const Expr,
     y: *const Expr,
@@ -237,6 +244,7 @@ pub unsafe extern "C" fn rssn_lie_bracket(
 ///
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_exponential_map(
     x: *const Expr,
     order: usize,
@@ -277,6 +285,7 @@ pub unsafe extern "C" fn rssn_exponential_map(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_adjoint_representation_group(
     g: *const Expr,
     x: *const Expr,
@@ -317,6 +326,7 @@ pub unsafe extern "C" fn rssn_adjoint_representation_group(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
     x: *const Expr,
     y: *const Expr,
@@ -359,6 +369,7 @@ pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of heap-allocated memory. The caller must ensure all pointers are
 /// valid and must correctly free the returned expressions and array.
+
 pub unsafe extern "C" fn rssn_commutator_table(
     algebra: *const LieAlgebra,
     out_rows: *mut usize,
@@ -441,6 +452,7 @@ pub unsafe extern "C" fn rssn_commutator_table(
 ///
 /// This function is unsafe because it dereferences a raw pointer; the caller must
 /// ensure `algebra` points to a valid `LieAlgebra`.
+
 pub unsafe extern "C" fn rssn_check_jacobi_identity(
     algebra: *const LieAlgebra
 ) -> bool {
@@ -473,6 +485,7 @@ pub unsafe extern "C" fn rssn_check_jacobi_identity(
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of heap-allocated memory. The caller must ensure `out_len` is valid
 /// and correctly free the returned memory.
+
 pub unsafe extern "C" fn rssn_so3_generators(
     out_len: *mut usize
 ) -> *mut *mut Expr {
@@ -517,6 +530,7 @@ pub unsafe extern "C" fn rssn_so3_generators(
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of heap-allocated memory. The caller must ensure `out_len` is valid
 /// and correctly free the returned memory.
+
 pub unsafe extern "C" fn rssn_su2_generators(
     out_len: *mut usize
 ) -> *mut *mut Expr {

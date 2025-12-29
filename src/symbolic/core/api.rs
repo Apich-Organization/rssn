@@ -4,15 +4,12 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::hash::Hasher;
-
 use std::sync::RwLock;
 
 use lazy_static::lazy_static;
 use num_bigint::BigInt;
 use num_rational::BigRational;
-
 use ordered_float::OrderedFloat;
-
 
 use super::dag_mgr::*;
 use super::expr::*;

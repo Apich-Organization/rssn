@@ -58,6 +58,7 @@ pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; the caller
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
 pub unsafe extern "C" fn rssn_bincode_inner_product(
     space_buf: BincodeBuffer,
     f_buf: BincodeBuffer,
@@ -106,6 +107,7 @@ pub unsafe extern "C" fn rssn_bincode_inner_product(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; the caller
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
 pub unsafe extern "C" fn rssn_bincode_norm(
     space_buf: BincodeBuffer,
     f_buf: BincodeBuffer,
@@ -147,6 +149,7 @@ pub unsafe extern "C" fn rssn_bincode_norm(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; the caller
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
 pub unsafe extern "C" fn rssn_bincode_gram_schmidt(
     space_buf: BincodeBuffer,
     basis_buf: BincodeBuffer,

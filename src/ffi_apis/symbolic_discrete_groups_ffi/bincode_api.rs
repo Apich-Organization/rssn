@@ -9,6 +9,7 @@ use crate::symbolic::discrete_groups::*;
 /// # Returns
 /// A `BincodeBuffer` containing the serialized representation of the group.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_cyclic_group_create(
     n: usize
 ) -> BincodeBuffer {
@@ -26,6 +27,7 @@ pub unsafe extern "C" fn rssn_bincode_cyclic_group_create(
 /// # Returns
 /// A `BincodeBuffer` containing the serialized representation of the group.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_dihedral_group_create(
     n: usize
 ) -> BincodeBuffer {
@@ -43,6 +45,7 @@ pub unsafe extern "C" fn rssn_bincode_dihedral_group_create(
 /// # Returns
 /// A `BincodeBuffer` containing the serialized representation of the group, or an empty buffer if `n` is invalid.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_symmetric_group_create(
     n: usize
 ) -> BincodeBuffer {
@@ -62,6 +65,7 @@ pub unsafe extern "C" fn rssn_bincode_symmetric_group_create(
 /// # Returns
 /// A `BincodeBuffer` containing the serialized representation of the group.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_bincode_klein_four_group_create(
 ) -> BincodeBuffer {
 

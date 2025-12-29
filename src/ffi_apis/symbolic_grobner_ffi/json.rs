@@ -24,6 +24,7 @@ use crate::symbolic::grobner::MonomialOrder;
 ///
 /// This function is unsafe because it dereferences raw C string pointers and returns
 /// ownership of a heap-allocated C string that must be freed by the caller.
+
 pub extern "C" fn rssn_json_buchberger(
     basis_json: *const c_char,
     order_json: *const c_char,
@@ -75,6 +76,7 @@ pub extern "C" fn rssn_json_buchberger(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and returns
 /// ownership of a heap-allocated C string that must be freed by the caller.
+
 pub extern "C" fn rssn_json_poly_division_multivariate(
     dividend_json: *const c_char,
     divisors_json: *const c_char,

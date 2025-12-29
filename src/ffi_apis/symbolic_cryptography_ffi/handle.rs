@@ -220,6 +220,7 @@ pub unsafe extern "C" fn rssn_curve_point_free(
 /// # Returns
 /// `true` if the point is on the curve, `false` otherwise.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_curve_is_on_curve(
     curve: *const EllipticCurve,
     point: *const CurvePoint,
@@ -244,6 +245,7 @@ pub unsafe extern "C" fn rssn_curve_is_on_curve(
 /// # Returns
 /// A handle to the negated point, or NULL on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_curve_negate(
     curve: *const EllipticCurve,
     point: *const CurvePoint,
@@ -271,6 +273,7 @@ pub unsafe extern "C" fn rssn_curve_negate(
 /// # Returns
 /// A handle to the doubled point, or NULL on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_curve_double(
     curve: *const EllipticCurve,
     point: *const CurvePoint,
@@ -299,6 +302,7 @@ pub unsafe extern "C" fn rssn_curve_double(
 /// # Returns
 /// A handle to the resulting point, or NULL on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_curve_add(
     curve: *const EllipticCurve,
     p1: *const CurvePoint,
@@ -361,6 +365,7 @@ pub unsafe extern "C" fn rssn_curve_scalar_mult(
 /// # Returns
 /// A handle to the generated key pair, or NULL on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_generate_keypair(
     curve: *const EllipticCurve,
     generator: *const CurvePoint,
@@ -389,6 +394,7 @@ pub unsafe extern "C" fn rssn_generate_keypair(
 /// # Returns
 /// A decimal string representing the private key, or NULL on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_keypair_get_private_key(
     kp: *const EcdhKeyPair
 ) -> *mut c_char {
@@ -425,6 +431,7 @@ pub unsafe extern "C" fn rssn_keypair_get_public_key(
 /// # Arguments
 /// * `keypair` - Handle to the key pair to free.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_keypair_free(
     keypair: *mut EcdhKeyPair
 ) {
@@ -447,6 +454,7 @@ pub unsafe extern "C" fn rssn_keypair_free(
 /// # Returns
 /// A handle to the shared secret point, or NULL on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_generate_shared_secret(
     curve: *const EllipticCurve,
     private_key_str: *const c_char,
@@ -492,6 +500,7 @@ pub unsafe extern "C" fn rssn_generate_shared_secret(
 /// # Returns
 /// A handle to the ECDSA signature, or NULL on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_ecdsa_sign(
     message_hash_str: *const c_char,
     private_key_str: *const c_char,
@@ -553,6 +562,7 @@ pub unsafe extern "C" fn rssn_ecdsa_sign(
 /// # Returns
 /// `true` if the signature is valid, `false` otherwise.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_ecdsa_verify(
     message_hash_str: *const c_char,
     signature: *const EcdsaSignature,
@@ -600,6 +610,7 @@ pub unsafe extern "C" fn rssn_ecdsa_verify(
 /// # Returns
 /// A decimal string representing 'r', or NULL on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_ecdsa_signature_get_r(
     sig: *const EcdsaSignature
 ) -> *mut c_char {
@@ -621,6 +632,7 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_get_r(
 /// # Returns
 /// A decimal string representing 's', or NULL on error.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_ecdsa_signature_get_s(
     sig: *const EcdsaSignature
 ) -> *mut c_char {
@@ -639,6 +651,7 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_get_s(
 /// # Arguments
 /// * `sig` - Handle to the signature to free.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_ecdsa_signature_free(
     sig: *mut EcdsaSignature
 ) {

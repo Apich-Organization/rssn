@@ -5,11 +5,8 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;
 
-
-
 use super::dag_mgr::*;
 use super::expr::*;
-
 use crate::symbolic::unit_unification::UnitQuantity;
 
 impl DagNode {

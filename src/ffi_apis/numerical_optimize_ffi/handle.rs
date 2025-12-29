@@ -10,6 +10,7 @@ use crate::numerical::optimize::*;
 ///
 /// This structure holds the outcome of a numerical optimization procedure and is designed
 /// to be safely passed across FFI boundaries.
+
 pub struct FfiOptimizationResult {
     /// Optimal parameter vector that minimizes the objective function.
     pub best_param: Vec<f64>,

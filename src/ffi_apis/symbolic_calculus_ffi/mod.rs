@@ -4,6 +4,7 @@
 //! - Handle-based API (C-style functions)
 //! - JSON-based API (string serialization)
 //! - Bincode-based API (binary serialization)
+
 /// bincode-based FFI bindings for symbolic calculus.
 pub mod bincode_api;
 /// Handle-based FFI bindings for symbolic calculus using opaque handles.

@@ -1,20 +1,16 @@
 #![allow(deprecated)]
 
 use std::collections::BTreeMap;
-
 use std::fmt::Debug;
 use std::fmt::Write;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;
 
-
 use num_bigint::BigInt;
 use num_rational::BigRational;
 
-
 use super::dag_mgr::*;
-
 use crate::symbolic::unit_unification::UnitQuantity;
 
 // --- Distribution Trait ---

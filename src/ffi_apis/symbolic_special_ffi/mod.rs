@@ -40,6 +40,7 @@
 //! ### Other Functions
 //! - `sinc` - Normalized sinc function sin(πx)/(πx)
 //! - `zeta` - Riemann zeta function ζ(s)
+
 /// bincode-based FFI bindings for numerical special functions using serialized `Expr` values.
 pub mod bincode_api;
 /// Handle-based FFI bindings for numerical special functions using opaque `Expr` handles.

@@ -131,6 +131,7 @@ pub unsafe extern "C" fn rssn_bincode_catalan_number(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point, but it does
 /// not dereference raw pointers.
+
 pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
     n: usize,
     k: usize,

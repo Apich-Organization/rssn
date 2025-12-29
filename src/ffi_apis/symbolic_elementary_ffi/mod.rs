@@ -4,6 +4,7 @@
 //! - **Handle-based**: Traditional C-style functions with opaque pointers
 //! - **JSON-based**: String serialization for easy language interop
 //! - **Bincode-based**: Binary serialization for high performance
+
 /// bincode-based FFI bindings for symbolic elementary operations using serialized `Expr` values.
 pub mod bincode_api;
 /// Handle-based FFI bindings for symbolic elementary operations using opaque `Expr` handles.

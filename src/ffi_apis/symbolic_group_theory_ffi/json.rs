@@ -23,6 +23,7 @@ use crate::symbolic::group_theory::*;
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_group_create(
     json_str: *const c_char
 ) -> *mut c_char {
@@ -54,6 +55,7 @@ pub unsafe extern "C" fn rssn_json_group_create(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_group_multiply(
     group_json: *const c_char,
     a_json: *const c_char,
@@ -98,6 +100,7 @@ pub unsafe extern "C" fn rssn_json_group_multiply(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_group_inverse(
     group_json: *const c_char,
     a_json: *const c_char,
@@ -136,6 +139,7 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer; the
 /// caller must ensure it points to a valid JSON string.
+
 pub unsafe extern "C" fn rssn_json_group_is_abelian(
     group_json: *const c_char
 ) -> bool {
@@ -172,6 +176,7 @@ pub unsafe extern "C" fn rssn_json_group_is_abelian(
 ///
 /// This function is unsafe because it dereferences raw C string pointers; the
 /// caller must ensure they point to valid JSON strings.
+
 pub unsafe extern "C" fn rssn_json_group_element_order(
     group_json: *const c_char,
     a_json: *const c_char,
@@ -216,6 +221,7 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
     group_json: *const c_char
 ) -> *mut c_char {
@@ -250,6 +256,7 @@ pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_group_center(
     group_json: *const c_char
 ) -> *mut c_char {
@@ -284,6 +291,7 @@ pub unsafe extern "C" fn rssn_json_group_center(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_representation_create(
     json_str: *const c_char
 ) -> *mut c_char {
@@ -317,6 +325,7 @@ pub unsafe extern "C" fn rssn_json_representation_create(
 ///
 /// This function is unsafe because it dereferences raw C string pointers; the
 /// caller must ensure they point to valid JSON strings.
+
 pub unsafe extern "C" fn rssn_json_representation_is_valid(
     rep_json: *const c_char,
     group_json: *const c_char,
@@ -360,6 +369,7 @@ pub unsafe extern "C" fn rssn_json_representation_is_valid(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_character(
     rep_json: *const c_char
 ) -> *mut c_char {

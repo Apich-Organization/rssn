@@ -2,6 +2,7 @@
 //!
 //! This module exposes foreign function interface (FFI) bindings for graph algorithms
 //! such as shortest paths, connectivity, flows, and centrality measures on symbolic graphs.
+
 /// Bincode-based FFI bindings for symbolic graph algorithm operations.
 pub mod bincode_api;
 /// Handle-based FFI bindings for graph algorithms using opaque graph and result handles.

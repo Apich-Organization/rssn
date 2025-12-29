@@ -4,6 +4,7 @@
 //! - Handle-based API (opaque pointers)
 //! - JSON-based API (string serialization)
 //! - Bincode-based API (binary serialization)
+
 /// bincode-based FFI bindings for symbolic CAS foundations (expansion, factorization, normalization).
 pub mod bincode_api;
 /// Handle-based FFI bindings for symbolic CAS foundations using opaque handles.

@@ -4,6 +4,7 @@
 //! - **Handle-based**: Traditional C-style functions
 //! - **JSON-based**: String serialization for easy language interop
 //! - **Bincode-based**: Binary serialization for high performance
+
 /// bincode-based FFI bindings for compute cache operations.
 pub mod bincode_api;
 /// Handle-based FFI bindings for compute cache using opaque handles.

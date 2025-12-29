@@ -25,6 +25,7 @@ use crate::symbolic::grobner::MonomialOrder;
 ///
 /// This function is an FFI entry point; callers must treat the returned buffer as
 /// opaque and only pass it to compatible APIs.
+
 pub extern "C" fn rssn_bincode_buchberger(
     basis_buf: BincodeBuffer,
     order_buf: BincodeBuffer,
@@ -78,6 +79,7 @@ pub extern "C" fn rssn_bincode_buchberger(
 ///
 /// This function is an FFI entry point; callers must treat the returned buffer as
 /// opaque and only pass it to compatible APIs.
+
 pub extern "C" fn rssn_bincode_poly_division_multivariate(
     dividend_buf: BincodeBuffer,
     divisors_buf: BincodeBuffer,

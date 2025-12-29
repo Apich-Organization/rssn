@@ -1,7 +1,6 @@
 #![allow(deprecated)]
 
 use std::cmp::Ordering;
-
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::fmt::Write;
@@ -11,7 +10,6 @@ use std::fmt::{
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;
-
 
 use num_rational::BigRational;
 use num_traits::ToPrimitive;

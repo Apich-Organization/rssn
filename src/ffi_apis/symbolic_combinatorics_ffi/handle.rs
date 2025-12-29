@@ -55,6 +55,7 @@ pub unsafe extern "C" fn rssn_permutations(
 /// This function is unsafe because it dereferences raw `Expr` pointers and returns
 /// ownership of a heap-allocated `Expr` to the caller.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_combinations(
     n: *const Expr,
     k: *const Expr,

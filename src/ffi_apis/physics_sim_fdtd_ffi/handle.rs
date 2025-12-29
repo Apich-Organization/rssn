@@ -39,9 +39,9 @@ pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
 
         let cols = final_ez.ncols();
 
-        let data = final_ez
+        let (data, _offset) = final_ez
             .clone()
-            .into_raw_vec();
+            .into_raw_vec_and_offset();
 
         Box::into_raw(Box::new(
             Matrix::new(

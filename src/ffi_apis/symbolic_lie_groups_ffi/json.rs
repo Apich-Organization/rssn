@@ -26,6 +26,7 @@ use crate::symbolic::lie_groups_and_algebras::*;
 ///
 /// This function is unsafe because it returns ownership of a heap-allocated C
 /// string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_lie_algebra_so3(
 ) -> *mut c_char {
 
@@ -54,6 +55,7 @@ pub unsafe extern "C" fn rssn_json_lie_algebra_so3(
 ///
 /// This function is unsafe because it returns ownership of a heap-allocated C
 /// string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_lie_algebra_su2(
 ) -> *mut c_char {
 
@@ -82,6 +84,7 @@ pub unsafe extern "C" fn rssn_json_lie_algebra_su2(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_lie_bracket(
     x_json: *const c_char,
     y_json: *const c_char,
@@ -137,6 +140,7 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_exponential_map(
     x_json: *const c_char,
     order: usize,
@@ -185,6 +189,7 @@ pub unsafe extern "C" fn rssn_json_exponential_map(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
     g_json: *const c_char,
     x_json: *const c_char,
@@ -242,6 +247,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
     x_json: *const c_char,
     y_json: *const c_char,
@@ -297,6 +303,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_commutator_table(
     algebra_json: *const c_char
 ) -> *mut c_char {
@@ -338,6 +345,7 @@ pub unsafe extern "C" fn rssn_json_commutator_table(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer; the
 /// caller must ensure it points to a valid JSON string.
+
 pub unsafe extern "C" fn rssn_json_check_jacobi_identity(
     algebra_json: *const c_char
 ) -> bool {
@@ -377,6 +385,7 @@ pub unsafe extern "C" fn rssn_json_check_jacobi_identity(
 ///
 /// This function is unsafe because it returns ownership of a heap-allocated C
 /// string that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_json_so3_generators(
 ) -> *mut c_char {
 

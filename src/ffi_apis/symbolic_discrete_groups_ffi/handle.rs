@@ -9,6 +9,7 @@ use crate::symbolic::group_theory::Group;
 /// # Returns
 /// A raw pointer (`*mut Group`) to the newly created group.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_cyclic_group_create(
     n: usize
 ) -> *mut Group {
@@ -26,6 +27,7 @@ pub unsafe extern "C" fn rssn_cyclic_group_create(
 /// # Returns
 /// A raw pointer (`*mut Group`) to the newly created group.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_dihedral_group_create(
     n: usize
 ) -> *mut Group {
@@ -43,6 +45,7 @@ pub unsafe extern "C" fn rssn_dihedral_group_create(
 /// # Returns
 /// A raw pointer (`*mut Group`) to the newly created group, or NULL if `n` is invalid.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_symmetric_group_create(
     n: usize
 ) -> *mut Group {
@@ -64,6 +67,7 @@ pub unsafe extern "C" fn rssn_symmetric_group_create(
 /// # Returns
 /// A raw pointer (`*mut Group`) to the newly created group.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_klein_four_group_create(
 ) -> *mut Group {
 

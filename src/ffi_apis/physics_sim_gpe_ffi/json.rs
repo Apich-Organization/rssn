@@ -62,7 +62,7 @@ pub unsafe extern "C" fn rssn_physics_sim_gpe_run_json(
                     Vec<f64>,
                     String,
                 >::ok(
-                    res.into_raw_vec(),
+                    res.into_raw_vec_and_offset().0,
                 ))
                 .unwrap(),
             )

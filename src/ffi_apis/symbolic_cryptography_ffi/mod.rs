@@ -11,6 +11,7 @@
 //! - Protocol Operations: ECDH shared secret derivation.
 //! - Digital Signatures: ECDSA signing and verification.
 //! - Serialization: Point compression and decompression.
+
 /// bincode-based FFI bindings for cryptographic operations using serialized `Expr` values.
 pub mod bincode_api;
 /// Handle-based FFI bindings for cryptographic operations using opaque `Expr` handles.

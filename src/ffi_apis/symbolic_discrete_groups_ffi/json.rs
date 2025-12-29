@@ -11,6 +11,7 @@ use crate::symbolic::discrete_groups::*;
 /// # Returns
 /// A raw pointer to a JSON string representing the group.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_cyclic_group_create(
     n: usize
 ) -> *mut c_char {
@@ -28,6 +29,7 @@ pub unsafe extern "C" fn rssn_json_cyclic_group_create(
 /// # Returns
 /// A raw pointer to a JSON string representing the group.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_dihedral_group_create(
     n: usize
 ) -> *mut c_char {
@@ -45,6 +47,7 @@ pub unsafe extern "C" fn rssn_json_dihedral_group_create(
 /// # Returns
 /// A raw pointer to a JSON string representing the group, or NULL if `n` is invalid.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_symmetric_group_create(
     n: usize
 ) -> *mut c_char {
@@ -64,6 +67,7 @@ pub unsafe extern "C" fn rssn_json_symmetric_group_create(
 /// # Returns
 /// A raw pointer to a JSON string representing the group.
 #[no_mangle]
+
 pub unsafe extern "C" fn rssn_json_klein_four_group_create(
 ) -> *mut c_char {
 

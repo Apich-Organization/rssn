@@ -2,6 +2,7 @@
 //!
 //! This module exposes foreign function interface (FFI) bindings for matrix Lie groups,
 //! Lie algebras, exponentials, logarithms, and related structures.
+
 /// Bincode-based FFI bindings for symbolic Lie group and Lie algebra operations.
 pub mod bincode_api;
 /// Handle-based FFI bindings for Lie groups using opaque group and algebra handles.

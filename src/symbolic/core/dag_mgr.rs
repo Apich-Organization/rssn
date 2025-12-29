@@ -2,7 +2,6 @@
 
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
-
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt::Debug;
@@ -12,13 +11,10 @@ use std::hash::Hasher;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-
 use lazy_static::lazy_static;
 use num_bigint::BigInt;
 use num_rational::BigRational;
-
 use ordered_float::OrderedFloat;
-
 
 use super::expr::*;
 

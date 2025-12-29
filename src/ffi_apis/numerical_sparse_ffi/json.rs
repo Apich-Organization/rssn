@@ -6,7 +6,6 @@ use std::os::raw::c_char;
 
 use serde::Deserialize;
 
-
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::sparse::SparseMatrixData;
 use crate::numerical::sparse::{

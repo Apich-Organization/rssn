@@ -31,6 +31,7 @@ use crate::symbolic::group_theory::*;
 /// This function is unsafe because it dereferences multiple raw pointers and assumes
 /// they form consistent arrays of valid `Expr` objects. The returned `Group` must be
 /// freed with [`rssn_group_free`].
+
 pub unsafe extern "C" fn rssn_group_create(
     elements_ptr: *const *const Expr,
     elements_len: usize,
@@ -127,6 +128,7 @@ pub unsafe extern "C" fn rssn_group_create(
 /// This function is unsafe because it takes ownership of a raw pointer. The pointer
 /// must either be null or have been allocated by `rssn_group_create`, and must not
 /// be used after this call.
+
 pub unsafe extern "C" fn rssn_group_free(
     ptr: *mut Group
 ) {
@@ -156,6 +158,7 @@ pub unsafe extern "C" fn rssn_group_free(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_group_multiply(
     group: *const Group,
     a: *const Expr,
@@ -194,6 +197,7 @@ pub unsafe extern "C" fn rssn_group_multiply(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
+
 pub unsafe extern "C" fn rssn_group_inverse(
     group: *const Group,
     a: *const Expr,
@@ -229,6 +233,7 @@ pub unsafe extern "C" fn rssn_group_inverse(
 ///
 /// This function is unsafe because it dereferences a raw pointer; the caller must
 /// ensure `group` points to a valid [`Group`].
+
 pub unsafe extern "C" fn rssn_group_is_abelian(
     group: *const Group
 ) -> bool {
@@ -256,6 +261,7 @@ pub unsafe extern "C" fn rssn_group_is_abelian(
 ///
 /// This function is unsafe because it dereferences raw pointers; the caller must
 /// ensure they point to a valid group and element.
+
 pub unsafe extern "C" fn rssn_group_element_order(
     group: *const Group,
     a: *const Expr,
@@ -290,6 +296,7 @@ pub unsafe extern "C" fn rssn_group_element_order(
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of heap-allocated memory. The caller must ensure `group` and
 /// `out_len` are valid pointers and must correctly manage the returned memory.
+
 pub unsafe extern "C" fn rssn_group_center(
     group: *const Group,
     out_len: *mut usize,
@@ -345,6 +352,7 @@ pub unsafe extern "C" fn rssn_group_center(
 /// This function is unsafe because it dereferences multiple raw pointers and
 /// assumes they form consistent arrays of valid `Expr` objects. The returned
 /// `Representation` must be freed with [`rssn_representation_free`].
+
 pub unsafe extern "C" fn rssn_representation_create(
     elements_ptr: *const *const Expr,
     elements_len: usize,
@@ -421,6 +429,7 @@ pub unsafe extern "C" fn rssn_representation_create(
 /// This function is unsafe because it takes ownership of a raw pointer. The pointer
 /// must either be null or have been allocated by `rssn_representation_create`, and
 /// must not be used after this call.
+
 pub unsafe extern "C" fn rssn_representation_free(
     ptr: *mut Representation
 ) {
@@ -451,6 +460,7 @@ pub unsafe extern "C" fn rssn_representation_free(
 ///
 /// This function is unsafe because it dereferences raw pointers; the caller must
 /// ensure they point to valid objects.
+
 pub unsafe extern "C" fn rssn_representation_is_valid(
     rep: *const Representation,
     group: *const Group,
@@ -485,6 +495,7 @@ pub unsafe extern "C" fn rssn_representation_is_valid(
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of heap-allocated arrays of `Expr`. The caller must ensure all input
 /// pointers are valid and is responsible for freeing the returned memory.
+
 pub unsafe extern "C" fn rssn_character(
     rep: *const Representation,
     out_len: *mut usize,

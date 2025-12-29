@@ -21,6 +21,7 @@ use crate::symbolic::grobner::MonomialOrder;
 ///
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of a heap-allocated vector that must be freed by the caller.
+
 pub extern "C" fn rssn_buchberger_handle(
     basis: *const Vec<SparsePolynomial>,
     order: MonomialOrder,
@@ -63,6 +64,7 @@ pub extern "C" fn rssn_buchberger_handle(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns ownership
 /// of a heap-allocated tuple that must be freed by the caller.
+
 pub extern "C" fn rssn_poly_division_multivariate_handle(
     dividend: *const SparsePolynomial,
     divisors: *const Vec<

@@ -8,10 +8,7 @@ use std::fmt::{
     self,
 };
 
-
-
 use num_traits::ToPrimitive;
-
 
 use super::dag_mgr::*;
 use super::expr::*;

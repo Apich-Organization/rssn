@@ -18,6 +18,7 @@
 //! ### CRC-32 (IEEE 802.3)
 //! - Error detection via cyclic redundancy check
 //! - Functions: `compute`, `verify`, `update`, `finalize`
+
 /// bincode-based FFI bindings for error-correcting codes using serialized `Expr` values.
 pub mod bincode_api;
 /// Handle-based FFI bindings for error-correcting codes using opaque `Expr` handles.

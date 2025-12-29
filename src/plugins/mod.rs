@@ -6,6 +6,7 @@
 //!
 //! ```rust
 //! use rssn::plugins::manager::PluginManager;
+
 /// Plugin manager for loading and managing plugins.
 pub mod manager;
 /// C-style plugin interface.
