@@ -21,10 +21,14 @@ struct ActionInput {
     t_range: (f64, f64),
 }
 
+/// Evaluates the action for a given Lagrangian and path using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_cov_evaluate_action_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : ActionInput = match from_bincode_buffer(&buffer) {

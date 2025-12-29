@@ -17,10 +17,14 @@ struct DgPointInput {
     point: Vec<f64>,
 }
 
+/// Computes the metric tensor at a given point using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_metric_tensor_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : DgPointInput = match from_bincode_buffer(&buffer) {
@@ -60,10 +64,14 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_bincode(
     }
 }
 
+/// Computes the Christoffel symbols at a given point using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : DgPointInput = match from_bincode_buffer(&buffer) {
@@ -103,10 +111,14 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_bincode(
     }
 }
 
+/// Computes the Ricci tensor at a given point using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : DgPointInput = match from_bincode_buffer(&buffer) {
@@ -146,10 +158,14 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_bincode(
     }
 }
 
+/// Computes the Ricci scalar at a given point using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_dg_ricci_scalar_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : DgPointInput = match from_bincode_buffer(&buffer) {

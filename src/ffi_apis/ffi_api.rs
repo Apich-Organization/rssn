@@ -1207,6 +1207,9 @@ impl_ffi_2_vec_in_vec_out!(
 )]
 #[no_mangle]
 
+/// Multiplies a vector by a scalar.
+///
+/// This function is deprecated.
 pub unsafe extern "C" fn vector_scalar_mul(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -3726,6 +3729,11 @@ pub unsafe extern "C" fn rssn_stats_std_dev(
             ffi api modules instead."
 )]
 
+/// Computes the covariance between two datasets.
+///
+/// # Safety
+/// * `d1` and `d2` must be valid pointers to arrays of length `len`.
+/// * `result` must be a valid pointer to store the f64 result.
 pub unsafe extern "C" fn rssn_stats_covariance(
     d1: *const f64,
     d2: *const f64,
@@ -4865,6 +4873,9 @@ struct GradientInput {
 )]
 #[no_mangle]
 
+/// Computes the numerical gradient of an expression.
+///
+/// This function is deprecated.
 pub unsafe extern "C" fn numerical_gradient(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -4996,6 +5007,9 @@ struct IntegrationInput {
 )]
 #[no_mangle]
 
+/// Performs numerical integration of an expression.
+///
+/// This function is deprecated.
 pub unsafe extern "C" fn numerical_integrate(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -5115,6 +5129,9 @@ struct AdvectionDiffusion1DInput {
 )]
 #[no_mangle]
 
+/// Solves the 1D advection-diffusion equation.
+///
+/// This function is deprecated.
 pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -5200,8 +5217,8 @@ pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
     }
 }
 
+/// A point in 2D space for FFI communication.
 #[repr(C)]
-
 pub struct FfiPoint {
     x: f64,
     y: f64,
@@ -5359,6 +5376,11 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
             ffi api modules instead."
 )]
 
+/// Computes the numerical definite integral of an expression using handles.
+///
+/// # Safety
+/// * `var` must be a valid null-terminated C string.
+/// * `result` must be a valid pointer to store the f64 result.
 pub unsafe extern "C" fn rssn_numerical_integrate(
     expr_h: usize,
     var: *const c_char,
@@ -5457,6 +5479,10 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
             ffi api modules instead."
 )]
 
+/// Subtracts two matrices using handles.
+///
+/// # Safety
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_matrix_sub(
     h1: usize,
     h2: usize,
@@ -5509,6 +5535,10 @@ pub unsafe extern "C" fn rssn_matrix_sub(
             ffi api modules instead."
 )]
 
+/// Multiplies two matrices using handles.
+///
+/// # Safety
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_matrix_mul(
     h1: usize,
     h2: usize,
@@ -5561,6 +5591,10 @@ pub unsafe extern "C" fn rssn_matrix_mul(
             ffi api modules instead."
 )]
 
+/// Transposes a matrix using a handle.
+///
+/// # Safety
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_matrix_transpose(
     h: usize,
     result_h: *mut usize,
@@ -5609,6 +5643,10 @@ pub unsafe extern "C" fn rssn_matrix_transpose(
             ffi api modules instead."
 )]
 
+/// Computes the determinant of a matrix using a handle.
+///
+/// # Safety
+/// * `result_h` must be a valid pointer to store the resulting handle to the determinant expression.
 pub unsafe extern "C" fn rssn_matrix_determinant(
     h: usize,
     result_h: *mut usize,
@@ -5657,6 +5695,10 @@ pub unsafe extern "C" fn rssn_matrix_determinant(
             ffi api modules instead."
 )]
 
+/// Computes the inverse of a matrix using a handle.
+///
+/// # Safety
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_matrix_inverse(
     h: usize,
     result_h: *mut usize,
@@ -5705,6 +5747,10 @@ pub unsafe extern "C" fn rssn_matrix_inverse(
             ffi api modules instead."
 )]
 
+/// Creates an identity matrix of the specified size.
+///
+/// # Safety
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_matrix_identity(
     size: usize,
     result_h: *mut usize,
@@ -5740,6 +5786,10 @@ pub unsafe extern "C" fn rssn_matrix_identity(
             ffi api modules instead."
 )]
 
+/// Multiplies a matrix by a scalar expression using handles.
+///
+/// # Safety
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_matrix_scalar_mul(
     scalar_h: usize,
     matrix_h: usize,
@@ -5798,6 +5848,11 @@ pub unsafe extern "C" fn rssn_matrix_scalar_mul(
             ffi api modules instead."
 )]
 
+/// Differentiates an expression with respect to a variable using handles.
+///
+/// # Safety
+/// * `var` must be a valid null-terminated C string.
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_calculus_differentiate(
     expr_h: usize,
     var: *const c_char,
@@ -5860,6 +5915,11 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
             ffi api modules instead."
 )]
 
+/// Substitutes a variable with another expression in an expression using handles.
+///
+/// # Safety
+/// * `var` must be a valid null-terminated C string.
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_calculus_substitute(
     expr_h: usize,
     var: *const c_char,
@@ -5926,6 +5986,11 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
             ffi api modules instead."
 )]
 
+/// Integrates an expression with respect to a variable using handles (indefinite).
+///
+/// # Safety
+/// * `var` must be a valid null-terminated C string.
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_calculus_integrate(
     expr_h: usize,
     var: *const c_char,
@@ -5993,6 +6058,11 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
             ffi api modules instead."
 )]
 
+/// Computes the definite integral of an expression using handles.
+///
+/// # Safety
+/// * `var` must be a valid null-terminated C string.
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_calculus_definite_integrate(
     expr_h: usize,
     var: *const c_char,
@@ -6066,6 +6136,11 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
             ffi api modules instead."
 )]
 
+/// Computes the limit of an expression as a variable approaches a value using handles.
+///
+/// # Safety
+/// * `var` must be a valid null-terminated C string.
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_calculus_limit(
     expr_h: usize,
     var: *const c_char,
@@ -6131,6 +6206,11 @@ pub unsafe extern "C" fn rssn_calculus_limit(
             ffi api modules instead."
 )]
 
+/// Solves an equation or searches for zeros of an expression.
+///
+/// # Safety
+/// * `var` must be a valid null-terminated C string.
+/// * `result_h` must be a valid pointer to store the handle of the solution.
 pub unsafe extern "C" fn rssn_solve(
     expr_h: usize,
     var: *const c_char,
@@ -6219,6 +6299,10 @@ pub unsafe extern "C" fn rssn_solve(
             ffi api modules instead."
 )]
 
+/// Adds two matrices using handles.
+///
+/// # Safety
+/// * `result_h` must be a valid pointer to store the resulting handle.
 pub unsafe extern "C" fn rssn_matrix_add(
     h1: usize,
     h2: usize,
@@ -6283,6 +6367,12 @@ pub unsafe extern "C" fn rssn_matrix_add(
             ffi api modules instead."
 )]
 
+/// Computes the numerical gradient of an expression at a point.
+///
+/// # Safety
+/// * `vars` must be a valid pointer to an array of `num_vars` null-terminated strings.
+/// * `point` must be a valid pointer to an array of `point_len` f64 elements.
+/// * `result_vec` must point to a buffer of size at least `point_len` f64 elements.
 pub unsafe extern "C" fn rssn_numerical_gradient(
     expr_h: usize,
     vars: *const *const c_char,
@@ -6409,6 +6499,11 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
             ffi api modules instead."
 )]
 
+/// Solves the 1D advection-diffusion equation numerically.
+///
+/// # Safety
+/// * `initial_cond` must be a valid pointer to an array of `len` f64 elements.
+/// * `result_ptr` must point to a buffer of size at least `len` f64 elements.
 pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
     initial_cond: *const f64,
     len: usize,

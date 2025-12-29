@@ -71,10 +71,14 @@ struct TwoQuaternionsInput {
     q2: QuaternionInput,
 }
 
+/// Computes the dot product of two 3D vectors using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : TwoVectors3DInput = match from_bincode_buffer(&buffer) {
@@ -112,10 +116,14 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
     })
 }
 
+/// Computes the cross product of two 3D vectors using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : TwoVectors3DInput = match from_bincode_buffer(&buffer) {
@@ -154,10 +162,14 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
     })
 }
 
+/// Normalizes a 3D vector using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : Vector3DInput = match from_bincode_buffer(&buffer) {
@@ -190,10 +202,14 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
     })
 }
 
+/// Creates a 3D rotation matrix around the X-axis using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : AngleInput = match from_bincode_buffer(&buffer) {
@@ -216,10 +232,14 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
     })
 }
 
+/// Creates a 3D translation matrix using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : TransformInput = match from_bincode_buffer(&buffer) {
@@ -246,10 +266,14 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
     })
 }
 
+/// Multiplies two quaternions using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : TwoQuaternionsInput = match from_bincode_buffer(&buffer) {

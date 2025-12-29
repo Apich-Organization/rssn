@@ -20,10 +20,14 @@ struct EvalInput {
     vars: HashMap<String, Complex<f64>>,
 }
 
+/// Evaluates a complex expression using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_eval_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : EvalInput = match from_json_string(input_json) {
@@ -76,10 +80,14 @@ struct ContourInput {
     path: Vec<Complex<f64>>,
 }
 
+/// Computes the contour integral of a complex expression using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_complex_contour_integral_json(
+
     input_json: *const c_char
+
 ) -> *mut c_char {
 
     let input : ContourInput = match from_json_string(input_json) {

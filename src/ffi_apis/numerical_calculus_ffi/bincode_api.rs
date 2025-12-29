@@ -34,10 +34,14 @@ struct HessianInput {
     point: Vec<f64>,
 }
 
+/// Computes the gradient of an expression at a given point using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_gradient_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : GradientInput = match from_bincode_buffer(&buffer) {
@@ -82,10 +86,14 @@ pub unsafe extern "C" fn rssn_numerical_gradient_bincode(
     to_bincode_buffer(&ffi_res)
 }
 
+/// Computes the Jacobian matrix of a set of expressions at a given point using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : JacobianInput = match from_bincode_buffer(&buffer) {
@@ -130,10 +138,14 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(
     to_bincode_buffer(&ffi_res)
 }
 
+/// Computes the Hessian matrix of an expression at a given point using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_hessian_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : HessianInput = match from_bincode_buffer(&buffer) {

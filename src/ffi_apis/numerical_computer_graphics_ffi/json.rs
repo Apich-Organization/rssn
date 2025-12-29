@@ -163,8 +163,8 @@ struct PerspectiveInput {
 }
 
 // Vector operations
+/// Computes the dot product of two 3D vectors using JSON for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_graphics_dot_product_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -212,10 +212,14 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_json(
     )
 }
 
+/// Computes the cross product of two 3D vectors using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_cross_product_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : TwoVectors3DInput = match from_json_string(input) {
@@ -264,10 +268,14 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_json(
     )
 }
 
+/// Normalizes a 3D vector using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_normalize_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : Vector3DInput = match from_json_string(input) {
@@ -310,10 +318,14 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_json(
     )
 }
 
+/// Computes the magnitude of a 3D vector using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_magnitude_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : Vector3DInput = match from_json_string(input) {
@@ -350,10 +362,14 @@ pub unsafe extern "C" fn rssn_num_graphics_magnitude_json(
     )
 }
 
+/// Computes the reflection of an incident vector across a normal vector using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_reflect_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : ReflectInput = match from_json_string(input) {
@@ -406,10 +422,14 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect_json(
     )
 }
 
+/// Computes the angle between two 3D vectors using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_angle_between_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : TwoVectors3DInput = match from_json_string(input) {
@@ -453,8 +473,8 @@ pub unsafe extern "C" fn rssn_num_graphics_angle_between_json(
 }
 
 // Transformation matrices
+/// Creates a 3D translation matrix using JSON for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -491,10 +511,14 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_json(
     )
 }
 
+/// Creates a 3D scaling matrix using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_scaling_matrix_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : ScaleInput = match from_json_string(input) {
@@ -529,10 +553,14 @@ pub unsafe extern "C" fn rssn_num_graphics_scaling_matrix_json(
     )
 }
 
+/// Creates a 3D rotation matrix around the X-axis using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : AngleInput = match from_json_string(input) {
@@ -563,10 +591,14 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_json(
     )
 }
 
+/// Creates a 3D rotation matrix around the Y-axis using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_y_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : AngleInput = match from_json_string(input) {
@@ -597,10 +629,14 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_y_json(
     )
 }
 
+/// Creates a 3D rotation matrix around the Z-axis using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_z_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : AngleInput = match from_json_string(input) {
@@ -631,10 +667,14 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_z_json(
     )
 }
 
+/// Creates a 3D rotation matrix around an arbitrary axis using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : RotationAxisInput = match from_json_string(input) {
@@ -672,8 +712,8 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
 }
 
 // Quaternion operations
+/// Multiplies two quaternions using JSON for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -727,10 +767,14 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_json(
     )
 }
 
+/// Computes the spherical linear interpolation (SLERP) between two quaternions using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_slerp_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : QuaternionSlerpInput = match from_json_string(input) {
@@ -783,8 +827,8 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_slerp_json(
 }
 
 // Ray tracing
+/// Computes the intersection of a ray with a sphere using JSON for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -869,8 +913,8 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
 }
 
 // Curves
+/// Computes a point on a cubic Bezier curve using JSON for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -945,8 +989,8 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(
 }
 
 // View matrices
+/// Creates a look-at matrix using JSON for serialization.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -997,10 +1041,14 @@ pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
     )
 }
 
+/// Creates a perspective projection matrix using JSON for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graphics_perspective_matrix_json(
+
     input: *const c_char
+
 ) -> *mut c_char {
 
     let input : PerspectiveInput = match from_json_string(input) {

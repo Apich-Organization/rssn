@@ -70,10 +70,14 @@ struct PageRankInput {
     max_iter: usize,
 }
 
+/// Computes Dijkstra's shortest path algorithm on a graph using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : DijkstraInput = match from_bincode_buffer(&buffer) {
@@ -104,10 +108,14 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(
     })
 }
 
+/// Computes Breadth-First Search (BFS) on a graph using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : DijkstraInput = match from_bincode_buffer(&buffer) {
@@ -135,10 +143,14 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(
     })
 }
 
+/// Computes the PageRank scores for nodes in a graph using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_page_rank_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : PageRankInput = match from_bincode_buffer(&buffer) {
@@ -170,10 +182,14 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_bincode(
     })
 }
 
+/// Computes the Floyd-Warshall all-pairs shortest path algorithm on a graph using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : GraphDef = match from_bincode_buffer(&buffer) {
@@ -243,10 +259,14 @@ impl GraphDefOut {
     }
 }
 
+/// Computes the connected components of a graph using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_connected_components_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : GraphDef = match from_bincode_buffer(&buffer) {
@@ -271,10 +291,14 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_bincode(
     })
 }
 
+/// Computes the Minimum Spanning Tree (MST) of a graph using bincode for serialization.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_bincode(
+
     buffer: BincodeBuffer
+
 ) -> BincodeBuffer {
 
     let input : GraphDef = match from_bincode_buffer(&buffer) {

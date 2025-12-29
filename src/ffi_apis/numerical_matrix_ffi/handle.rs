@@ -59,10 +59,14 @@ pub unsafe extern "C" fn rssn_num_matrix_create(
         as *mut RssnMatrixHandle
 }
 
+/// Frees a previously allocated Matrix.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_free(
+
     matrix: *mut RssnMatrixHandle
+
 ) {
 
     if !matrix.is_null() {
@@ -77,10 +81,14 @@ pub unsafe extern "C" fn rssn_num_matrix_free(
     }
 }
 
+/// Returns the number of rows of a given matrix.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_get_rows(
+
     matrix: *const RssnMatrixHandle
+
 ) -> usize {
 
     if matrix.is_null() {
@@ -96,10 +104,14 @@ pub unsafe extern "C" fn rssn_num_matrix_get_rows(
     }
 }
 
+/// Returns the number of columns of a given matrix.
+
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_matrix_get_cols(
+
     matrix: *const RssnMatrixHandle
+
 ) -> usize {
 
     if matrix.is_null() {
