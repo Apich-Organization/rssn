@@ -14,6 +14,11 @@ use crate::symbolic::simplify_dag::simplify;
 
 /// Checks if a variable occurs freely in an expression.
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn free_vars(
     expr: &Expr,
     free: &mut BTreeSet<String>,
@@ -138,6 +143,14 @@ pub(crate) fn has_free_var(
 ///
 /// # Returns
 /// A new, simplified logical expression.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
+/// Panics if a unique term cannot be extracted from a `BTreeSet` when `And` or `Or`
+/// clauses are reduced to a single term, indicating a logic error.
 #[must_use]
 
 pub fn simplify_logic(
@@ -435,6 +448,11 @@ pub fn simplify_logic(
     }
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn to_basic_logic_ops(
     expr: &Expr
 ) -> Expr {
@@ -508,6 +526,11 @@ pub(crate) fn to_basic_logic_ops(
     }
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn move_not_inwards(
     expr: &Expr
 ) -> Expr {
@@ -584,6 +607,11 @@ pub(crate) fn move_not_inwards(
     }
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn distribute_or_over_and(
     expr: &Expr
 ) -> Expr {
@@ -1062,6 +1090,11 @@ pub(crate) fn get_unassigned_atom(
     None
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn contains_quantifier(
     expr: &Expr
 ) -> bool {

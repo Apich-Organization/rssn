@@ -1372,6 +1372,11 @@ pub(crate) fn dinic_dfs(
 /// `distances` is a `HashMap` from node ID to shortest distance (as `Expr`).
 /// `predecessors` is a `HashMap` from node ID to its predecessor on the shortest path.
 /// Returns an error string if a negative-weight cycle is detected.
+///
+/// # Errors
+///
+/// This function will return an error if the graph contains a negative-weight cycle
+/// reachable from the `start_node`.
 
 pub fn bellman_ford<
     V: Eq
@@ -1946,8 +1951,11 @@ pub fn prim_mst<
 /// * `graph` - The DAG to sort.
 ///
 /// # Returns
-/// A `Result` containing a `Vec<usize>` of node indices in topological order,
-/// or an error string if the graph has a cycle.
+/// A `Result` containing a `Vec<usize>` of node indices in topological order.
+///
+/// # Errors
+///
+/// This function will return an error if the graph is not directed or contains a cycle.
 
 pub fn topological_sort_kahn<
     V: Eq
@@ -2463,6 +2471,12 @@ pub(crate) fn hopcroft_karp_dfs<
 ///
 /// # Returns
 /// A `Vec<(usize, usize)>` representing the edges `(u, v)` in the maximum matching.
+///
+/// # Errors
+///
+/// This function will return an error if a common ancestor cannot be found during
+/// blossom contraction, indicating an internal inconsistency in the algorithm's
+/// state or an invalid graph structure.
 #[allow(unused_variables)]
 
 pub fn blossom_algorithm<
@@ -2525,6 +2539,10 @@ pub fn blossom_algorithm<
     Ok(result)
 }
 
+/// # Errors
+///
+/// This function will return an error if `find_common_ancestor` fails, indicating
+/// an issue during blossom contraction.
 pub(crate) fn find_augmenting_path_with_blossoms<
     V: Eq
         + std::hash::Hash
@@ -2645,6 +2663,10 @@ pub(crate) fn find_augmenting_path_with_blossoms<
     Ok(vec![])
 }
 
+/// # Errors
+///
+/// This function will return an error if a common ancestor cannot be found,
+/// indicating an internal inconsistency in the blossom algorithm's state.
 pub(crate) fn find_common_ancestor(
     origin: &[usize],
     parent: &[Option<usize>],

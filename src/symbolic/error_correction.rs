@@ -334,6 +334,11 @@ pub fn hamming_decode(
 // ============================================================================
 
 /// Computes the generator polynomial for a Reed-Solomon code with `n_sym` error correction symbols.
+///
+/// # Errors
+///
+/// This function will return an error if `n_sym` is 0, as a positive number of
+/// symbols is required to generate the polynomial.
 
 pub(crate) fn rs_generator_poly(
     n_sym: usize
@@ -374,8 +379,13 @@ pub(crate) fn rs_generator_poly(
 /// * `n_sym` - The number of error correction symbols to add.
 ///
 /// # Returns
-/// A `Result` containing the encoded codeword as a `Vec<u8>`, or an error string
-/// if the message length exceeds the maximum allowed for the chosen code.
+/// A `Result` containing the encoded codeword as a `Vec<u8>`.
+///
+/// # Errors
+///
+/// This function will return an error if the total message length (`data.len() + n_sym`)
+/// exceeds 255 (the maximum for GF(2^8) Reed-Solomon codes), or if the generator
+/// polynomial cannot be computed.
 
 pub fn rs_encode(
     data: &[u8],
@@ -623,8 +633,14 @@ pub(crate) fn rs_find_error_locations(
 /// * `n_sym` - The number of error correction symbols used during encoding.
 ///
 /// # Returns
-/// A `Result` containing the corrected data message as a `Vec<u8>`, or an error string
-/// if error correction fails (e.g., too many errors).
+/// A `Result` containing the corrected data message as a `Vec<u8>`.
+///
+/// # Errors
+///
+/// This function will return an error if `rs_find_error_locations` fails to find
+/// the correct number of error locations, or if there's an issue with Galois
+/// field inversions (`gf256_inv`) or division (`gf256_div`) during error magnitude
+/// calculation.
 
 pub fn rs_decode(
     codeword: &[u8],

@@ -125,6 +125,11 @@ pub(crate) fn compare_monomials(
 /// # Returns
 /// A tuple `(quotients, remainder)` where `quotients` is a `Vec<SparsePolynomial>`
 /// (one for each divisor) and `remainder` is a `SparsePolynomial`.
+///
+/// # Errors
+///
+/// This function will return an error if there is a logic error during term processing,
+/// such as a leading term not being found in the polynomial or divisor terms.
 
 pub fn poly_division_multivariate(
     f: &SparsePolynomial,
@@ -500,6 +505,11 @@ pub(crate) fn s_polynomial(
 ///
 /// # Returns
 /// A `Vec<SparsePolynomial>` representing the Gröbner basis.
+///
+/// # Errors
+///
+/// This function will return an error if `poly_division_multivariate` encounters
+/// an error during the reduction of S-polynomials.
 
 pub fn buchberger(
     basis: &[SparsePolynomial],

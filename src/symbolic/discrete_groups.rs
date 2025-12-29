@@ -277,6 +277,11 @@ pub(crate) fn compose_permutations(
 ///
 /// # Returns
 /// A `Group` struct representing `S_n`.
+///
+/// # Errors
+///
+/// This function will return an error if a composed permutation cannot be found
+/// in the generated group elements, or if the identity element cannot be found.
 
 pub fn symmetric_group(
     n: usize

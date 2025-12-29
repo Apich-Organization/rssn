@@ -39,8 +39,13 @@ use crate::symbolic::solve::solve_system;
 /// * `x` - The variable of integration.
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the integral, or an error string if computation fails.
-
+/// A `Result` containing an `Expr` representing the integral.
+///
+/// # Errors
+///
+/// This function will return an error if `build_and_solve_hermite_system` fails
+/// to solve the linear system for coefficients, or if `integrate_square_free_rational_part`
+/// fails during its integration process.
 pub fn integrate_rational_function(
     p: &SparsePolynomial,
     q: &SparsePolynomial,
@@ -375,6 +380,11 @@ pub fn risch_norman_integrate(
 
 /// Integrates the polynomial part of a transcendental function extension F(t) for the logarithmic case.
 
+/// # Errors
+///
+/// This function will return an error if:
+/// - The recursive integration of a leading coefficient fails.
+/// - The transcendental element `t` is not a logarithmic expression.
 pub(crate) fn integrate_poly_log(
     p_in_t: &SparsePolynomial,
     t: &Expr,
@@ -565,6 +575,12 @@ pub(crate) fn find_outermost_transcendental(
 /// This implementation handles the exponential case, where t = exp(g(x)).
 /// Integrates the polynomial part of a transcendental function extension F(t).
 /// This implementation handles the exponential case, where t = exp(g(x)).
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The transcendental element `t` is not an exponential expression.
+/// - The underlying `solve_ode` call fails for a coefficient equation.
 
 pub fn integrate_poly_exp(
     p_in_t: &SparsePolynomial,
@@ -737,6 +753,10 @@ pub fn poly_from_coeffs(
 
 /// Integrates a proper rational function A/B where B is square-free, using the Rothstein-Trager method.
 
+/// # Errors
+///
+/// This function will return an error if the underlying `solve` function fails to find
+/// roots for the resultant polynomial.
 pub fn partial_fraction_integrate(
     a: &SparsePolynomial,
     b: &SparsePolynomial,
@@ -1230,7 +1250,12 @@ fn substitute_expr_for_var(
 /// * `x` - The variable of integration.
 ///
 /// # Returns
-/// A `Result` containing the symbolic integral or an error message.
+/// A `Result` containing the symbolic integral.
+///
+/// # Errors
+///
+/// This function will return an error if `integrate_rational_function` encounters
+/// an error during the integration process.
 
 pub fn integrate_rational_function_expr(
     expr: &Expr,

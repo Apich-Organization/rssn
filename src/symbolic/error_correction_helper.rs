@@ -242,6 +242,11 @@ impl FieldElement {
 
 impl Add for FieldElement {
     type Output = Result<Self, String>;
+/// # Errors
+///
+/// This function will return an error if `self` and `rhs` belong to different
+/// finite fields.
+
 
     fn add(
         self,
@@ -271,6 +276,11 @@ impl Add for FieldElement {
 
 impl Sub for FieldElement {
     type Output = Result<Self, String>;
+/// # Errors
+///
+/// This function will return an error if `self` and `rhs` belong to different
+/// finite fields.
+
 
     fn sub(
         self,
@@ -301,6 +311,11 @@ impl Sub for FieldElement {
 
 impl Mul for FieldElement {
     type Output = Result<Self, String>;
+/// # Errors
+///
+/// This function will return an error if `self` and `rhs` belong to different
+/// finite fields.
+
 
     fn mul(
         self,
@@ -524,6 +539,10 @@ pub fn gf256_mul(
 /// Computes the multiplicative inverse of an element in GF(2^8).
 ///
 /// The inverse is calculated using the logarithm and exponentiation tables.
+///
+/// # Errors
+///
+/// This function will return an error if `a` is 0, as 0 has no multiplicative inverse.
 #[inline]
 
 pub fn gf256_inv(
@@ -549,6 +568,10 @@ pub fn gf256_inv(
 /// Performs division in GF(2^8).
 ///
 /// Division is implemented as multiplication by the multiplicative inverse of the divisor.
+///
+/// # Errors
+///
+/// This function will return an error if `b` (the divisor) is 0, as division by zero is undefined.
 #[inline]
 
 pub fn gf256_div(
@@ -1001,7 +1024,8 @@ pub(crate) fn field_elements_to_expr(
 ///
 /// # Returns
 /// * `Ok(Expr::Polynomial)` representing the sum.
-/// * `Err(String)` if the input expressions are not valid polynomials or contain invalid coefficients.
+/// * `Err(String)` if the input expressions are not valid polynomials, contain invalid coefficients,
+///   or if the underlying `FieldElement::add` operation fails due to field mismatch.
 
 pub fn poly_add_gf(
     p1_expr: &Expr,
@@ -1074,7 +1098,8 @@ pub fn poly_add_gf(
 ///
 /// # Returns
 /// * `Ok(Expr::Polynomial)` representing the product.
-/// * `Err(String)` if the input expressions are not valid polynomials or contain invalid coefficients.
+/// * `Err(String)` if the input expressions are not valid polynomials, contain invalid coefficients,
+///   or if the underlying `FieldElement::mul` operation fails due to field mismatch.
 
 pub fn poly_mul_gf(
     p1_expr: &Expr,
@@ -1143,7 +1168,7 @@ pub fn poly_mul_gf(
 /// # Returns
 /// * `Ok((Expr::Polynomial, Expr::Polynomial))` representing the quotient and remainder.
 /// * `Err(String)` if the input expressions are not valid polynomials, contain invalid coefficients,
-///   or if division by the zero polynomial is attempted.
+///   if division by the zero polynomial is attempted, or if a leading coefficient is not invertible.
 
 pub fn poly_div_gf(
     p1_expr: &Expr,

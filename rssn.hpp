@@ -349,7 +349,7 @@ struct rssn_HashMap;
 struct rssn_HilbertSpace;
 
 /*
- Represents an Iterated Function System (IFS).
+ Represents an [`IteratedFunctionSystem`] (IFS).
 
  An IFS is a finite set of contraction mappings on a complete metric space.
  It is often used to construct fractals (e.g., Sierpinski triangle, Barnsley fern).

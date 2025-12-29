@@ -758,8 +758,16 @@ pub fn inverse_matrix(
 /// * `b` - An `Expr::Matrix` representing the constant vector `b` (must be a column vector).
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the solution (matrix, system, or no solution),
-/// or an error string if inputs are invalid or dimensions are incompatible.
+/// A `Result` containing an `Expr` representing the solution (matrix, system, or no solution).
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - `A` or `b` are not valid matrices.
+/// - The row dimensions of `A` and `b` are incompatible.
+/// - `b` is not a column vector.
+/// - The `rref` computation fails.
+/// - The `null_space` computation fails.
 
 pub fn solve_linear_system(
     a: &Expr,
@@ -953,7 +961,12 @@ pub fn solve_linear_system(
 /// * `matrix` - The square matrix as an `Expr::Matrix`.
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the trace, or an error string if the matrix is not square.
+/// A `Result` containing an `Expr` representing the trace.
+///
+/// # Errors
+///
+/// This function will return an error if the input `matrix` is not a valid matrix
+/// or if it is not a square matrix.
 
 pub fn trace(
     matrix: &Expr
@@ -1001,8 +1014,12 @@ pub fn trace(
 /// * `lambda_var` - The name of the variable representing the eigenvalue (e.g., "lambda").
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the characteristic polynomial,
-/// or an error string if the matrix is not square.
+/// A `Result` containing an `Expr` representing the characteristic polynomial.
+///
+/// # Errors
+///
+/// This function will return an error if the input `matrix` is not a valid matrix
+/// or if it is not a square matrix.
 
 pub fn characteristic_polynomial(
     matrix: &Expr,
@@ -1045,8 +1062,13 @@ pub fn characteristic_polynomial(
 /// * `matrix` - The square matrix as an `Expr::Matrix`.
 ///
 /// # Returns
-/// A `Result` containing a tuple `(L, U)` as `Expr::Matrix`,
-/// or an error string if the matrix is not square or is singular.
+/// A `Result` containing a tuple `(L, U)` as `Expr::Matrix`.
+///
+/// # Errors
+///
+/// This function will return an error if the input `matrix` is not a valid matrix,
+/// is not a square matrix, or if the matrix is singular (i.e., a pivot element is zero),
+/// preventing decomposition.
 
 pub fn lu_decomposition(
     matrix: &Expr
@@ -1184,8 +1206,14 @@ pub fn lu_decomposition(
 /// * `matrix` - The matrix as an `Expr::Matrix`.
 ///
 /// # Returns
-/// A `Result` containing a tuple `(Q, R)` as `Expr::Matrix`,
-/// or an error string if the matrix is invalid.
+/// A `Result` containing a tuple `(Q, R)` as `Expr::Matrix`.
+///
+/// # Errors
+///
+/// This function will return an error if the input `matrix` is not a valid matrix.
+/// Potential future errors might include issues with normalization (division by zero)
+/// if columns are linearly dependent, but current symbolic implementation may defer
+/// such simplification issues.
 
 pub fn qr_decomposition(
     matrix: &Expr
@@ -1331,8 +1359,11 @@ pub fn qr_decomposition(
 /// * `matrix` - The matrix as an `Expr::Matrix`.
 ///
 /// # Returns
-/// A `Result` containing an `Expr::Matrix` representing the RREF,
-/// or an error string if the matrix is invalid.
+/// A `Result` containing an `Expr::Matrix` representing the RREF.
+///
+/// # Errors
+///
+/// This function will return an error if the input `matrix` is not a valid matrix.
 
 pub fn rref(
     matrix: &Expr
@@ -1443,8 +1474,12 @@ pub fn rref(
 /// * `matrix` - The matrix as an `Expr::Matrix`.
 ///
 /// # Returns
-/// A `Result` containing an `Expr::Matrix` whose columns form a basis for the null space,
-/// or an error string if the matrix is invalid.
+/// A `Result` containing an `Expr::Matrix` whose columns form a basis for the null space.
+///
+/// # Errors
+///
+/// This function will return an error if the input `matrix` is not a valid matrix
+/// or if the `rref` computation fails.
 
 pub fn null_space(
     matrix: &Expr
@@ -1582,6 +1617,14 @@ pub fn null_space(
 /// `eigenvalues` is a column vector of eigenvalues.
 /// `eigenvectors` is a matrix where each column is an eigenvector.
 /// Returns an error string if the matrix is not square or eigenvalues cannot be found.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The input `matrix` is not a valid matrix or is not square.
+/// - `characteristic_polynomial` fails.
+/// - `solve` fails to find any eigenvalues.
+/// - `null_space` fails during the eigenvector computation.
 
 pub fn eigen_decomposition(
     matrix: &Expr
@@ -1719,8 +1762,14 @@ pub fn eigen_decomposition(
 /// * `matrix` - The matrix as an `Expr::Matrix`.
 ///
 /// # Returns
-/// A `Result` containing a tuple `(U, Σ, V_transpose)` as `Expr::Matrix`,
-/// or an error string if the decomposition fails.
+/// A `Result` containing a tuple `(U, Σ, V_transpose)` as `Expr::Matrix`.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The input `matrix` is not a valid matrix.
+/// - `eigen_decomposition` fails during computation of eigenvalues/eigenvectors for `A^T A`.
+/// - Eigenvalues are not returned as a matrix or fail to be computed numerically.
 
 pub fn svd_decomposition(
     matrix: &Expr
@@ -1888,7 +1937,12 @@ pub fn svd_decomposition(
 /// * `matrix` - The matrix as an `Expr::Matrix`.
 ///
 /// # Returns
-/// A `Result` containing the rank as a `usize`, or an error string if the matrix is invalid.
+/// A `Result` containing the rank as a `usize`.
+///
+/// # Errors
+///
+/// This function will return an error if the input `matrix` is invalid or if `rref` computation fails
+/// or does not return a matrix.
 
 pub fn rank(
     matrix: &Expr
@@ -1926,8 +1980,11 @@ pub fn rank(
 /// * `matrix` - The matrix as an `Expr::Matrix`.
 ///
 /// # Returns
-/// A `Result` containing an `Expr::Matrix` in row echelon form,
-/// or an error string if the matrix is invalid.
+/// A `Result` containing an `Expr::Matrix` in row echelon form.
+///
+/// # Errors
+///
+/// This function will return an error if the input `matrix` is invalid.
 
 pub fn gaussian_elimination(
     matrix: &Expr

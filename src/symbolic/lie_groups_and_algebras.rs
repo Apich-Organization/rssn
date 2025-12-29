@@ -51,8 +51,12 @@ pub struct LieAlgebra {
 /// * `y` - The second Lie algebra element (matrix).
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the Lie bracket,
-/// or an error string if operands are not valid matrices.
+/// A `Result` containing an `Expr` representing the Lie bracket.
+///
+/// # Errors
+///
+/// This function will return an error if the operands `x` or `y` are not valid matrices
+/// (i.e., `matrix::mul_matrices` returns a non-matrix `Expr`).
 
 pub fn lie_bracket(
     x: &Expr,
@@ -90,8 +94,12 @@ pub fn lie_bracket(
 /// * `order` - The number of terms to include in the series expansion.
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the Lie group element,
-/// or an error string if the input is not a square matrix.
+/// A `Result` containing an `Expr` representing the Lie group element.
+///
+/// # Errors
+///
+/// This function will return an error if the input `x` is not a valid matrix,
+/// or if it is not a square matrix.
 
 pub fn exponential_map(
     x: &Expr,
@@ -165,8 +173,11 @@ pub fn exponential_map(
 /// * `x` - The Lie algebra element (matrix).
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing `Ad_g(X)`,
-/// or an error string if `g` is not invertible.
+/// A `Result` containing an `Expr` representing `Ad_g(X)`.
+///
+/// # Errors
+///
+/// This function will return an error if the Lie group element `g` is not invertible.
 
 pub fn adjoint_representation_group(
     g: &Expr,
@@ -207,6 +218,11 @@ pub fn adjoint_representation_group(
 ///
 /// # Returns
 /// A `Result` containing an `Expr` representing `ad_X(Y)`.
+///
+/// # Errors
+///
+/// This function will return an error if `lie_bracket` fails, which occurs
+/// if `x` or `y` are not valid matrices.
 
 pub fn adjoint_representation_algebra(
     x: &Expr,
@@ -223,7 +239,12 @@ pub fn adjoint_representation_algebra(
 ///
 /// # Returns
 /// A `Result` containing a vector of vectors (matrix) where the element at `[i][j]`
-/// is the Lie bracket `[basis[i], basis[j]]`, or an error string.
+/// is the Lie bracket `[basis[i], basis[j]]`.
+///
+/// # Errors
+///
+/// This function will return an error if `lie_bracket` fails for any pair of basis elements,
+/// which occurs if the basis elements are not valid matrices.
 
 pub fn commutator_table(
     algebra: &LieAlgebra
@@ -265,7 +286,12 @@ pub fn commutator_table(
 ///
 /// # Returns
 /// `Ok(true)` if the Jacobi identity holds for all basis elements (symbolically simplifies to zero matrix),
-/// `Ok(false)` otherwise, or an error string.
+/// `Ok(false)` otherwise.
+///
+/// # Errors
+///
+/// This function will return an error if `lie_bracket` fails during the computation of any
+/// nested Lie bracket (e.g., due to invalid matrix operands).
 ///
 /// Note: This check relies on symbolic simplification. If simplification is incomplete,
 /// it might return false negatives (but shouldn't return false positives if simplification is correct).

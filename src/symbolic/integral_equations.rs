@@ -156,11 +156,13 @@ impl FredholmEquation {
     ///
     /// # Arguments
     /// * `a_funcs` - A vector of `Expr` representing the `a_i(x)` functions.
-    /// * `b_funcs` - A vector of `Expr` representing the `b_i(t)` functions.
+    /// A `Result<Expr, String>` which is the solution `y(x)` on success.
     ///
-    /// # Returns
-    /// A `Result<Expr, String>` which is the solution `y(x)` on success, or an error message.
-
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// - The number of `a_i(x)` functions does not match the number of `b_i(t)` functions.
+    /// - The underlying `solve_linear_system` call fails (e.g., if the system is singular).
     pub fn solve_separable_kernel(
         &self,
         a_funcs: Vec<Expr>,
@@ -493,7 +495,13 @@ impl VolterraEquation {
     /// results in a solvable ODE.
     ///
     /// # Returns
-    /// A `Result<Expr, String>` which is the solution `y(x)` on success, or an error message.
+    /// A `Result<Expr, String>` which is the solution `y(x)` on success.
+///
+/// # Errors
+///
+/// This function is currently a symbolic representation and does not fully solve the ODE.
+/// It will always return an `Err` containing the symbolic ODE if a solution cannot be found
+/// within the implemented symbolic ODE solver. (Not yet implemented.)
 
     pub fn solve_by_differentiation(
         &self
