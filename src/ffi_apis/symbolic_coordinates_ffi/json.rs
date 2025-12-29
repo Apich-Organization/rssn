@@ -4,6 +4,26 @@ use crate::ffi_apis::common::*;
 use crate::symbolic::coordinates::*;
 use crate::symbolic::core::Expr;
 
+/// Transforms a point between coordinate systems using JSON-encoded coordinates.
+///
+/// The point is represented as a JSON-encoded `Vec<Expr>` (e.g., \([x,y,z]\)), and the
+/// transformation applies the appropriate coordinate mapping.
+///
+/// # Arguments
+///
+/// * `point_json` - C string pointer to JSON encoding a `Vec<Expr>` for the point in the `from` system.
+/// * `from` - Source [`CoordinateSystem`].
+/// * `to` - Target [`CoordinateSystem`].
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Vec<Expr>` for the point in the `to` system,
+/// or null on deserialization or transformation failure.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub extern "C" fn rssn_json_transform_point(
@@ -33,6 +53,23 @@ pub extern "C" fn rssn_json_transform_point(
     }
 }
 
+/// Transforms a scalar expression between coordinate systems using JSON serialization.
+///
+/// # Arguments
+///
+/// * `expr_json` - C string pointer to JSON encoding an `Expr` in the `from` system.
+/// * `from` - Source [`CoordinateSystem`].
+/// * `to` - Target [`CoordinateSystem`].
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Expr` for the transformed expression in
+/// the `to` system, or null on deserialization or transformation failure.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub extern "C" fn rssn_json_transform_expression(
@@ -62,6 +99,20 @@ pub extern "C" fn rssn_json_transform_expression(
     }
 }
 
+/// Returns the metric tensor for a given coordinate system as JSON-encoded `Expr`.
+///
+/// # Arguments
+///
+/// * `system` - [`CoordinateSystem`] for which to compute the metric tensor.
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Expr` for the metric tensor, or null on error.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub extern "C" fn rssn_json_coordinates_get_metric_tensor(
@@ -78,6 +129,24 @@ pub extern "C" fn rssn_json_coordinates_get_metric_tensor(
     }
 }
 
+/// Transforms contravariant vector components between coordinate systems using JSON serialization.
+///
+/// # Arguments
+///
+/// * `comps_json` - C string pointer to JSON encoding a `Vec<Expr>` of contravariant components
+///   in the `from` system.
+/// * `from` - Source [`CoordinateSystem`].
+/// * `to` - Target [`CoordinateSystem`].
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Vec<Expr>` with components in the `to` system,
+/// or null on deserialization or transformation failure.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub extern "C" fn rssn_json_transform_contravariant_vector(
@@ -101,6 +170,24 @@ pub extern "C" fn rssn_json_transform_contravariant_vector(
     }
 }
 
+/// Transforms covariant vector components between coordinate systems using JSON serialization.
+///
+/// # Arguments
+///
+/// * `comps_json` - C string pointer to JSON encoding a `Vec<Expr>` of covariant components
+///   in the `from` system.
+/// * `from` - Source [`CoordinateSystem`].
+/// * `to` - Target [`CoordinateSystem`].
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Vec<Expr>` with components in the `to` system,
+/// or null on deserialization or transformation failure.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub extern "C" fn rssn_json_transform_covariant_vector(
@@ -130,6 +217,21 @@ pub extern "C" fn rssn_json_transform_covariant_vector(
     }
 }
 
+/// Computes the divergence of a vector field in a given coordinate system using JSON serialization.
+///
+/// # Arguments
+///
+/// * `comps_json` - C string pointer to JSON encoding a `Vec<Expr>` of vector components.
+/// * `from` - [`CoordinateSystem`] with respect to which the divergence is taken.
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Expr` for the divergence, or null on failure.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub extern "C" fn rssn_json_transform_divergence(
@@ -160,6 +262,23 @@ pub extern "C" fn rssn_json_transform_divergence(
 
 #[no_mangle]
 
+/// Computes the curl of a vector field in a given coordinate system using JSON serialization.
+///
+/// # Arguments
+///
+/// * `comps_json` - C string pointer to JSON encoding a `Vec<Expr>` of vector components.
+/// * `from` - [`CoordinateSystem`] with respect to which the curl is taken.
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Vec<Expr>` for the curl, or null on failure.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer and returns
+/// ownership of a heap-allocated C string.
+#[no_mangle]
+
 pub extern "C" fn rssn_json_transform_curl(
     comps_json: *const c_char,
     from: CoordinateSystem,
@@ -184,6 +303,27 @@ pub extern "C" fn rssn_json_transform_curl(
     }
 }
 
+#[no_mangle]
+
+/// Computes the gradient of a scalar field and transforms it between coordinate systems
+/// using JSON serialization.
+///
+/// # Arguments
+///
+/// * `scalar_json` - C string pointer to JSON encoding an `Expr` for the scalar field.
+/// * `vars_json` - C string pointer to JSON encoding a `Vec<String>` of coordinate variables.
+/// * `from` - Source [`CoordinateSystem`].
+/// * `to` - Target [`CoordinateSystem`].
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `Vec<Expr>` for the gradient components in
+/// the `to` system, or null on deserialization or transformation failure.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw C string pointers and returns
+/// ownership of a heap-allocated C string.
 #[no_mangle]
 
 pub extern "C" fn rssn_json_transform_gradient(

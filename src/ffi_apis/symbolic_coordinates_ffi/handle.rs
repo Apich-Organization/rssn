@@ -1,6 +1,26 @@
 use crate::symbolic::coordinates::*;
 use crate::symbolic::core::Expr;
 
+/// Transforms a point between coordinate systems and returns its components in the target system.
+///
+/// The point is represented as a vector of symbolic expressions (e.g., \(x,y,z\)), and the
+/// transformation applies the appropriate coordinate mapping (Cartesian, polar, spherical, etc.).
+///
+/// # Arguments
+///
+/// * `point` - Pointer to a `Vec<Expr>` containing the point coordinates in the `from` system.
+/// * `from` - Source [`CoordinateSystem`] in which `point` is expressed.
+/// * `to` - Target [`CoordinateSystem`] to which the point is transformed.
+///
+/// # Returns
+///
+/// A newly allocated `Vec<Expr>` pointer with the point coordinates in the `to` system, or
+/// null on failure.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw pointer and returns ownership
+/// of a heap-allocated vector to the caller.
 #[no_mangle]
 
 pub extern "C" fn rssn_transform_point_handle(

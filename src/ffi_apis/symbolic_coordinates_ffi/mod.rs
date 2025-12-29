@@ -5,6 +5,9 @@
 //! languages. It includes APIs for bincode serialization, handle-based
 //! operations, and JSON serialization.
 
+/// Bincode-based FFI bindings for symbolic coordinate operations.
 pub mod bincode_api;
+/// Handle-based FFI bindings operating on coordinate `Expr` handles.
 pub mod handle;
+/// JSON-based FFI bindings for symbolic coordinate operations.
 pub mod json;
