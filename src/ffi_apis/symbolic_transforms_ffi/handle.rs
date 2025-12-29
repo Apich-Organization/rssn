@@ -688,7 +688,7 @@ pub unsafe extern "C" fn rssn_expr_list_get(
     }
 
     if let Some(item) =
-        (*list).0.get(index)
+        (&(*list).0).get(index)
     {
 
         Box::into_raw(Box::new(
