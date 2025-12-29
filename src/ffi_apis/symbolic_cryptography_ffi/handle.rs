@@ -5,7 +5,6 @@
 
 use std::os::raw::c_char;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use num_bigint::BigInt;
 

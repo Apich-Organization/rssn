@@ -2,7 +2,6 @@
 
 use std::ptr;
 
-use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::graph::Graph;
 use crate::numerical::topology;
 

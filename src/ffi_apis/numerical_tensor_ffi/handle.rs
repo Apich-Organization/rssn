@@ -6,7 +6,6 @@ use ndarray::ArrayD;
 use ndarray::IxDyn;
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::tensor::TensorData;
 use crate::numerical::tensor::{
     self,
 };

@@ -1,7 +1,6 @@
 #![allow(deprecated)]
 
 
-use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;

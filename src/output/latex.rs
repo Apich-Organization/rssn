@@ -229,7 +229,6 @@ pub fn to_greek(s: &str) -> String {
         | "phi" => r"\phi".into(),
         | "chi" => r"\chi".into(),
         | "psi" => r"\psi".into(),
-        | "omega" => r"\omega".into(),
         | "Alpha" => r"A".into(),
         | "Beta" => r"B".into(),
         | "Gamma" => r"\Gamma".into(),

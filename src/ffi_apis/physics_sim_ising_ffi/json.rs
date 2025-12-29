@@ -2,7 +2,6 @@
 
 use std::os::raw::c_char;
 
-use serde::Deserialize;
 use serde::Serialize;
 
 use crate::ffi_apis::common::from_json_string;

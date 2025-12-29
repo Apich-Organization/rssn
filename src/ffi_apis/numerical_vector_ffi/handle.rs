@@ -1,6 +1,5 @@
 //! Raw pointer-based FFI API for numerical vector operations.
 
-use std::os::raw::c_char;
 
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::vector;

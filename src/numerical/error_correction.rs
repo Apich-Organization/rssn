@@ -852,7 +852,7 @@ fn forney_algorithm_extended(
     omega: &[u8],
     sigma: &[u8],
     error_locs: &[usize],
-    codeword_len: usize,
+    _codeword_len: usize,
 ) -> Result<Vec<u8>, String> {
 
     // Compute formal derivative of sigma

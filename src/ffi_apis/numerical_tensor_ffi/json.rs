@@ -5,7 +5,6 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 
 use serde::Deserialize;
-use serde::Serialize;
 
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::tensor::TensorData;

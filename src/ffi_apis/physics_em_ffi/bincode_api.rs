@@ -1,7 +1,6 @@
 //! Bincode-based FFI API for physics EM functions.
 
 use serde::Deserialize;
-use serde::Serialize;
 
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;

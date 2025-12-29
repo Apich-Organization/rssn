@@ -253,7 +253,6 @@ gen_ffi_handle!(rssn_get_electron_charge_to_mass_quotient, crate::constant::get_
 
 gen_ffi_handle!(rssn_get_muon_magnetic_moment, crate::constant::get_muon_magnetic_moment);
 
-#[inline(always)]
 #[no_mangle]
 /// Frees a C string that was allocated by the `rssn_get_*` functions in this module.
 ///

@@ -11,7 +11,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_rkm::BogackiShampine23;
 use crate::physics::physics_rkm::CashKarp45;
 use crate::physics::physics_rkm::DormandPrince54;
-use crate::physics::physics_rkm::OdeSystem;
 use crate::physics::physics_rkm::{
     self,
 };

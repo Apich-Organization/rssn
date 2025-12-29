@@ -2,7 +2,6 @@
 
 use std::ptr;
 
-use crate::physics::physics_fvm::Cell;
 use crate::physics::physics_fvm::Mesh;
 use crate::physics::physics_fvm::{
     self,

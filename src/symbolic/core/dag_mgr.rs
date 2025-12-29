@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::fmt::Write;
-use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;

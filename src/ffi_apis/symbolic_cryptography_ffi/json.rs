@@ -4,7 +4,6 @@
 
 use std::os::raw::c_char;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use num_bigint::BigInt;
 
@@ -16,7 +15,6 @@ use crate::symbolic::cryptography::generate_shared_secret;
 use crate::symbolic::cryptography::point_compress;
 use crate::symbolic::cryptography::point_decompress;
 use crate::symbolic::cryptography::CurvePoint;
-use crate::symbolic::cryptography::EcdhKeyPair;
 use crate::symbolic::cryptography::EcdsaSignature;
 use crate::symbolic::cryptography::EllipticCurve;
 use crate::symbolic::finite_field::PrimeField;

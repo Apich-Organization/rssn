@@ -1,6 +1,5 @@
 //! Bincode-based FFI API for physics sim Ising statistical functions.
 
-use serde::Deserialize;
 use serde::Serialize;
 
 use crate::ffi_apis::common::from_bincode_buffer;

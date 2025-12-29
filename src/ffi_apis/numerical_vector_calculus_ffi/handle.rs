@@ -5,7 +5,6 @@ use std::os::raw::c_char;
 use std::ptr;
 
 use crate::ffi_apis::ffi_api::update_last_error;
-use crate::numerical::matrix::Matrix;
 use crate::numerical::vector_calculus;
 use crate::symbolic::core::Expr;
 

@@ -192,7 +192,10 @@
 //! - [`calculus`](crate::symbolic::calculus) - Symbolic differentiation and integration
 //! - [`elementary`](crate::symbolic::elementary) - Elementary function transformations
 
+// Unavoidable for intermodule functionality issues.
 #![allow(deprecated)]
+// Unavoidable for intermodule functionality development issues.
+#![allow(unused_imports)]
 
 pub use api::*;
 

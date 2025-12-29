@@ -1,7 +1,6 @@
 //! Bincode-based FFI API for physics sim Navier-Stokes functions.
 
 use ndarray::Array2;
-use serde::Deserialize;
 use serde::Serialize;
 
 use crate::ffi_apis::common::from_bincode_buffer;

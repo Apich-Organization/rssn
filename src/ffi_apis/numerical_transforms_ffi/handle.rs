@@ -1,6 +1,5 @@
 //! Handle-based FFI API for numerical transforms (FFT/IFFT).
 
-use std::ptr;
 
 use num_complex::Complex;
 

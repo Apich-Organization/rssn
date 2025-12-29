@@ -5,7 +5,6 @@ use std::io::Write;
 use ndarray::Array2;
 use rand::thread_rng;
 use rand::Rng;
-use rand::SeedableRng;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;

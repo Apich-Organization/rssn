@@ -4,7 +4,6 @@ use std::collections::BTreeMap;
 
 use std::fmt::Debug;
 use std::fmt::Write;
-use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;

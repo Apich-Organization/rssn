@@ -1021,7 +1021,7 @@ pub fn radial_distribution_function(
         .enumerate()
         .map(|(i, &count)| {
 
-            let r =
+            let _r =
                 (i as f64 + 0.5) * dr;
 
             let shell_volume = (4.0
@@ -1103,7 +1103,7 @@ pub fn initialize_velocities_maxwell_boltzmann(
     // Simple pseudo-random generator (LCG)
     let mut rng_state = rng_seed;
 
-    let next_random = || {
+    let _next_random = || {
 
         rng_state = rng_state
             .wrapping_mul(

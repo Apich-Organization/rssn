@@ -1,11 +1,9 @@
 use std::ffi::CStr;
-use std::ffi::CString;
 use std::os::raw::c_char;
 
 use crate::symbolic::cad::cad;
 use crate::symbolic::cad::Cad;
 use crate::symbolic::core::Expr;
-use crate::symbolic::core::SparsePolynomial;
 
 /// Computes CAD for a set of polynomials (Handle).
 ///

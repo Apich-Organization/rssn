@@ -3,7 +3,6 @@
 //! This module provides C-compatible FFI functions for 2D/3D transformations,
 //! projections, Bezier curves, B-splines, and polygon mesh manipulation.
 
-use crate::symbolic::computer_graphics::look_at;
 use crate::symbolic::computer_graphics::orthographic_projection;
 use crate::symbolic::computer_graphics::perspective_projection;
 use crate::symbolic::computer_graphics::reflection_2d;
@@ -18,9 +17,7 @@ use crate::symbolic::computer_graphics::scaling_3d;
 use crate::symbolic::computer_graphics::shear_2d;
 use crate::symbolic::computer_graphics::translation_2d;
 use crate::symbolic::computer_graphics::translation_3d;
-use crate::symbolic::computer_graphics::BSplineCurve;
 use crate::symbolic::computer_graphics::BezierCurve;
-use crate::symbolic::computer_graphics::Polygon;
 use crate::symbolic::computer_graphics::PolygonMesh;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;

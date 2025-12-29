@@ -208,7 +208,7 @@ impl JitEngine {
                     types::I64,
                 );
 
-            let mut var_tmp = builder
+            let var_tmp = builder
                 .ins()
                 .iconst(types::I64, 0);
 

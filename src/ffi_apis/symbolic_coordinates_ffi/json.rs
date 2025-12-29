@@ -277,7 +277,6 @@ pub extern "C" fn rssn_json_transform_divergence(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
 
 pub extern "C" fn rssn_json_transform_curl(
     comps_json: *const c_char,
@@ -324,7 +323,6 @@ pub extern "C" fn rssn_json_transform_curl(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
 
 pub extern "C" fn rssn_json_transform_gradient(
     scalar_json: *const c_char,

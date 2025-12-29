@@ -1,3 +1,8 @@
+//! The JIT compiler for RSSN
+
+// Unavoidable for functionality issues.
+#![allow(unsafe_code)]
+
 #[cfg(feature = "jit")]
 pub mod engine;
 #[cfg(feature = "jit")]
