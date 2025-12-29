@@ -979,13 +979,11 @@ pub(crate) fn lookup_inverse_laplace(
 
                                 if s_exp_val == &BigInt::from(2)
                                     && v == in_var
-                                    && if let Expr::Constant(val) = **w_const {
-
+                                    && (if let Expr::Constant(val) = **w_const {
                                         val
                                     } else {
-
                                         return None;
-                                    } == *w
+                                    } - *w).abs() < 1e-10
                                 {
 
                                     return Some(Expr::new_sin(
