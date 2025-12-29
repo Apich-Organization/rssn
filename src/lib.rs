@@ -302,7 +302,9 @@
     clippy::needless_continue,
     clippy::empty_line_after_doc_comments,
     clippy::empty_line_after_outer_attr,
-    clippy::manual_let_else
+    clippy::manual_let_else,
+    // It is always reporting on normal math writings.
+    clippy::doc_markdown
 )]
 
 /// Computation engine and task management.

@@ -408,7 +408,7 @@ impl SimplicialComplex {
 
     pub fn new() -> Self {
 
-        SimplicialComplex::default()
+        Self::default()
     }
 
     /// Adds a simplex and all its faces (sub-simplices) to the complex.

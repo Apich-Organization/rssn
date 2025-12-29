@@ -1027,11 +1027,11 @@ pub fn generalized_laguerre(
     x: &Expr,
 ) -> Expr {
 
-    let s_n = simplify(&n);
+    let s_n = simplify(n);
 
-    let s_alpha = simplify(&alpha);
+    let s_alpha = simplify(alpha);
 
-    let s_x = simplify(&x);
+    let s_x = simplify(x);
 
     // L_n^0(x) = L_n(x)
     if let Some(a) = s_alpha.to_f64() {
@@ -1098,7 +1098,7 @@ pub fn hermite_h(
     arg: Expr,
 ) -> Expr {
 
-    let s_degree = simplify(&degree);
+    let s_degree = simplify(degree);
 
     if let Some(n) = s_degree.to_f64() {
 
@@ -1211,9 +1211,9 @@ pub fn chebyshev_t(
     x: &Expr,
 ) -> Expr {
 
-    let s_n = simplify(&n);
+    let s_n = simplify(n);
 
-    let s_x = simplify(&x);
+    let s_x = simplify(x);
 
     if let Some(n_val) = s_n.to_f64() {
 
@@ -1242,14 +1242,14 @@ pub fn chebyshev_t(
                     &Expr::Constant(
                         n_val - 1.0,
                     ),
-                    &s_x.clone(),
+                  &s_x,
                 );
 
                 let t_n2 = chebyshev_t(
                     &Expr::Constant(
                         n_val - 2.0,
                     ),
-                    &s_x.clone(),
+                  &s_x,
                 );
 
                 return simplify(&Expr::new_sub(
@@ -1288,9 +1288,9 @@ pub fn chebyshev_u(
     x: &Expr,
 ) -> Expr {
 
-    let s_n = simplify(&n);
+    let s_n = simplify(n);
 
-    let s_x = simplify(&x);
+    let s_x = simplify(x);
 
     if let Some(n_val) = s_n.to_f64() {
 
@@ -1326,14 +1326,14 @@ pub fn chebyshev_u(
                     &Expr::Constant(
                         n_val - 1.0,
                     ),
-                    &s_x.clone(),
+                    &s_x,
                 );
 
                 let u_n2 = chebyshev_u(
                     &Expr::Constant(
                         n_val - 2.0,
                     ),
-                    &s_x.clone(),
+                    &s_x,
                 );
 
                 return simplify(&Expr::new_sub(

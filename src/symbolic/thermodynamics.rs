@@ -277,7 +277,7 @@ pub fn bose_einstein_distribution(
     ))
 }
 
-/// Calculates the work done during an isothermal expansion: $W = nRT \ln(V_2/V_1)$.
+/// Calculates the work done during an isothermal expansion: $$W = nRT \ln\left(\frac{V_2}{V_1}\right)$$.
 #[must_use]
 
 pub fn work_isothermal_expansion(
