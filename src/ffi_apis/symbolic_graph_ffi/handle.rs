@@ -50,7 +50,7 @@ pub extern "C" fn rssn_graph_free(
                 ptr.cast::<Graph<
                     String,
                 >>(),
-            ))
+            ));
         };
     }
 }

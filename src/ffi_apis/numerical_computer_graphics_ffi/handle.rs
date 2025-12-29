@@ -208,7 +208,7 @@ pub extern "C" fn rssn_num_graphics_angle_between(
 /// Converts degrees to radians.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_graphics_degrees_to_radians(
+pub const extern "C" fn rssn_num_graphics_degrees_to_radians(
     degrees: f64
 ) -> f64 {
 
@@ -218,7 +218,7 @@ pub extern "C" fn rssn_num_graphics_degrees_to_radians(
 /// Converts radians to degrees.
 #[no_mangle]
 
-pub extern "C" fn rssn_num_graphics_radians_to_degrees(
+pub const extern "C" fn rssn_num_graphics_radians_to_degrees(
     radians: f64
 ) -> f64 {
 

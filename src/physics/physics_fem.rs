@@ -582,8 +582,7 @@ where
 
                                             for c in 0 .. 8 {
 
-                                                k_local[[r, c]] += (d_n_dx[r].mul_add(d_n_dx[c], d_n_dy[r] * d_n_dy[c])
-                                                    + d_n_dz[r] * d_n_dz[c])
+                                                k_local[[r, c]] += d_n_dz[r].mul_add(d_n_dz[c], d_n_dx[r].mul_add(d_n_dx[c], d_n_dy[r] * d_n_dy[c]))
                                                     * det_j;
                                             }
                                         }

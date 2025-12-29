@@ -627,11 +627,11 @@ pub fn solve_advection_diffusion_3d(
 
                 let advection = Complex::new(
                     0.0,
-                    (-config.c.0).mul_add(kxi, -(config.c.1 * kyj)) - config.c.2 * kzk,
+                    config.c.2.mul_add(-kzk, (-config.c.0).mul_add(kxi, -(config.c.1 * kyj))),
                 );
 
                 let diffusion = Complex::new(
-                    -config.d * kzk.mul_add(kzk, kxi.powi(2) + kyj.powi(2)),
+                    -config.d * kzk.mul_add(kzk, kyj.mul_add(kyj, kxi.powi(2))),
                     0.0,
                 );
 
@@ -701,13 +701,15 @@ pub fn simulate_3d_advection_diffusion_scenario(
                     (-(z - L / 2.0)
                         .mul_add(
                         z - L / 2.0,
-                        (x - L / 2.0)
-                            .powi(2)
-                            + (y - L
+                        (y - L / 2.0)
+                            .mul_add(
+                            y - L / 2.0,
+                            (x - L
                                 / 2.0)
                                 .powi(
                                     2,
                                 ),
+                        ),
                     ) / 0.5)
                         .exp();
 

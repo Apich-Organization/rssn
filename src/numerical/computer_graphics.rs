@@ -1336,13 +1336,17 @@ impl Quaternion {
 
     pub fn magnitude(&self) -> f64 {
 
-        (self.y.mul_add(
-            self.y,
-            self.w.mul_add(
-                self.w,
-                self.x * self.x,
-            ),
-        ) + self.z * self.z)
+        self.z
+            .mul_add(
+                self.z,
+                self.y.mul_add(
+                    self.y,
+                    self.w.mul_add(
+                        self.w,
+                        self.x * self.x,
+                    ),
+                ),
+            )
             .sqrt()
     }
 
@@ -1387,14 +1391,16 @@ impl Quaternion {
 
     pub fn inverse(&self) -> Self {
 
-        let mag_sq = self.y.mul_add(
-            self.y,
-            self.w.mul_add(
-                self.w,
-                self.x * self.x,
+        let mag_sq = self.z.mul_add(
+            self.z,
+            self.y.mul_add(
+                self.y,
+                self.w.mul_add(
+                    self.w,
+                    self.x * self.x,
+                ),
             ),
-        ) + self.z
-            * self.z;
+        );
 
         let conj = self.conjugate();
 
@@ -1415,34 +1421,50 @@ impl Quaternion {
     ) -> Self {
 
         Self {
-            w: self.y.mul_add(
+            w: self.z.mul_add(
+                -other.z,
+                self.y.mul_add(
+                    -other.y,
+                    self.w.mul_add(
+                        other.w,
+                        -(self.x
+                            * other.x),
+                    ),
+                ),
+            ),
+            x: self.z.mul_add(
                 -other.y,
-                self.w.mul_add(
-                    other.w,
-                    -(self.x * other.x),
-                ),
-            ) - self.z * other.z,
-            x: self.y.mul_add(
-                other.z,
-                self.w.mul_add(
-                    other.x,
-                    self.x * other.w,
-                ),
-            ) - self.z * other.y,
-            y: self.y.mul_add(
-                other.w,
-                self.w.mul_add(
-                    other.y,
-                    -(self.x * other.z),
-                ),
-            ) + self.z * other.x,
-            z: self.y.mul_add(
-                -other.x,
-                self.w.mul_add(
+                self.y.mul_add(
                     other.z,
-                    self.x * other.y,
+                    self.w.mul_add(
+                        other.x,
+                        self.x
+                            * other.w,
+                    ),
                 ),
-            ) + self.z * other.w,
+            ),
+            y: self.z.mul_add(
+                other.x,
+                self.y.mul_add(
+                    other.w,
+                    self.w.mul_add(
+                        other.y,
+                        -(self.x
+                            * other.z),
+                    ),
+                ),
+            ),
+            z: self.z.mul_add(
+                other.w,
+                self.y.mul_add(
+                    -other.x,
+                    self.w.mul_add(
+                        other.z,
+                        self.x
+                            * other.y,
+                    ),
+                ),
+            ),
         }
     }
 
@@ -1540,13 +1562,16 @@ impl Quaternion {
         t: f64,
     ) -> Self {
 
-        let dot = self.y.mul_add(
-            other.y,
-            self.w.mul_add(
-                other.w,
-                self.x * other.x,
+        let dot = self.z.mul_add(
+            other.z,
+            self.y.mul_add(
+                other.y,
+                self.w.mul_add(
+                    other.w,
+                    self.x * other.x,
+                ),
             ),
-        ) + self.z * other.z;
+        );
 
         // If dot is negative, negate one quaternion to take the shorter path
         let (q2, dot) = if dot < 0.0 {
@@ -2105,17 +2130,21 @@ pub fn catmull_rom(
 
     Point3D {
         x: 0.5
-            * (2.0f64.mul_add(
-                p1.x,
-                (-p0.x + p2.x) * t,
-            ) + (4.0f64.mul_add(
+            * ((4.0f64.mul_add(
                 p2.x,
                 2.0f64.mul_add(
                     p0.x,
                     -(5.0 * p1.x),
                 ),
             ) - p3.x)
-                * t2
+                .mul_add(
+                    t2,
+                    2.0f64.mul_add(
+                        p1.x,
+                        (-p0.x + p2.x)
+                            * t,
+                    ),
+                )
                 + (3.0f64.mul_add(
                     -p2.x,
                     3.0f64.mul_add(
@@ -2124,17 +2153,21 @@ pub fn catmull_rom(
                 ) + p3.x)
                     * t3),
         y: 0.5
-            * (2.0f64.mul_add(
-                p1.y,
-                (-p0.y + p2.y) * t,
-            ) + (4.0f64.mul_add(
+            * ((4.0f64.mul_add(
                 p2.y,
                 2.0f64.mul_add(
                     p0.y,
                     -(5.0 * p1.y),
                 ),
             ) - p3.y)
-                * t2
+                .mul_add(
+                    t2,
+                    2.0f64.mul_add(
+                        p1.y,
+                        (-p0.y + p2.y)
+                            * t,
+                    ),
+                )
                 + (3.0f64.mul_add(
                     -p2.y,
                     3.0f64.mul_add(
@@ -2143,17 +2176,21 @@ pub fn catmull_rom(
                 ) + p3.y)
                     * t3),
         z: 0.5
-            * (2.0f64.mul_add(
-                p1.z,
-                (-p0.z + p2.z) * t,
-            ) + (4.0f64.mul_add(
+            * ((4.0f64.mul_add(
                 p2.z,
                 2.0f64.mul_add(
                     p0.z,
                     -(5.0 * p1.z),
                 ),
             ) - p3.z)
-                * t2
+                .mul_add(
+                    t2,
+                    2.0f64.mul_add(
+                        p1.z,
+                        (-p0.z + p2.z)
+                            * t,
+                    ),
+                )
                 + (3.0f64.mul_add(
                     -p2.z,
                     3.0f64.mul_add(

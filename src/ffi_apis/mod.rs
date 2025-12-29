@@ -7,6 +7,11 @@
 #![allow(
     clippy::no_mangle_with_rust_abi
 )]
+// In ffi_apis, we use raw pointers to pass data to and from Rust and C.
+// clippy::not_unsafe_ptr_arg_deref is triggered by this.
+#![allow(
+    clippy::not_unsafe_ptr_arg_deref
+)]
 
 #[macro_use]
 /// FFI macros.

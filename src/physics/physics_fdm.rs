@@ -648,8 +648,7 @@ pub fn solve_poisson_2d(
                     let old_val : f64 = *val;
 
                     let target = factor
-                        * (beta.mul_add(get_u(x, y + 1) + get_u(x, y - 1), get_u(x + 1, y) + get_u(x - 1, y))
-                            - dx2 * source[i]);
+                        * dx2.mul_add(-source[i], beta.mul_add(get_u(x, y + 1) + get_u(x, y - 1), get_u(x + 1, y) + get_u(x - 1, y)));
 
                     *val = omega.mul_add(target - old_val, old_val);
 

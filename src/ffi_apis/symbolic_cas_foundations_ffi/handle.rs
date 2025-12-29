@@ -195,10 +195,8 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
         }
     }
 
-    let vars_refs: Vec<&str> = vars_vec
-        .iter()
-        .copied()
-        .collect();
+    let vars_refs: Vec<&str> =
+        vars_vec.to_vec();
 
     // Convert order
     let order = match order_int {

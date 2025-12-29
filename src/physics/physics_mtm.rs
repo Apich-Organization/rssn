@@ -133,10 +133,12 @@ pub(crate) fn restrict(
         let j = 2 * i;
 
         *vars = 0.25f64.mul_add(
-            fine_residual[j - 1],
-            0.5 * fine_residual[j],
-        ) + 0.25
-            * fine_residual[j + 1];
+            fine_residual[j + 1],
+            0.25f64.mul_add(
+                fine_residual[j - 1],
+                0.5 * fine_residual[j],
+            ),
+        );
     }
 
     coarse_f

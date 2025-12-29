@@ -81,7 +81,7 @@ impl BincodeBuffer {
     /// 2. The memory layout of passed structures matches the expected C-ABI layout.
     /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-    pub unsafe fn as_slice(
+    pub const unsafe fn as_slice(
         &self
     ) -> &[u8] {
 

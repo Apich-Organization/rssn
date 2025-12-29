@@ -1010,10 +1010,13 @@ pub fn generate_tinkerbell_map(
 
     for _ in 0 .. num_steps {
 
-        let x_new = a.mul_add(
-            x,
-            x.mul_add(x, -(y * y)),
-        ) + b * y;
+        let x_new = b.mul_add(
+            y,
+            a.mul_add(
+                x,
+                x.mul_add(x, -(y * y)),
+            ),
+        );
 
         let y_new = d.mul_add(
             y,
@@ -1494,10 +1497,10 @@ pub fn correlation_dimension(
         let r = log_r_val.exp();
 
         // Count pairs with distance < r
-        let count = distances
-            .partition_point(|&d| {
-                d < r
-            });
+        let count =
+            distances.partition_point(
+                |&d| d < r,
+            );
 
         let c_r = (2.0 * count as f64)
             / ((n * (n - 1)) as f64);

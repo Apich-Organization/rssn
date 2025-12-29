@@ -181,10 +181,11 @@ pub fn plot_function_2d(
     let y_min = (0 .. 100)
         .map(|i| {
 
-            let x = range.0
-                + (range.1 - range.0)
-                    * (f64::from(i)
-                        / 99.0);
+            let x = (range.1 - range.0)
+                .mul_add(
+                    f64::from(i) / 99.0,
+                    range.0,
+                );
 
             eval_expr(
                 expr,
@@ -203,10 +204,11 @@ pub fn plot_function_2d(
     let y_max = (0 .. 100)
         .map(|i| {
 
-            let x = range.0
-                + (range.1 - range.0)
-                    * (f64::from(i)
-                        / 99.0);
+            let x = (range.1 - range.0)
+                .mul_add(
+                    f64::from(i) / 99.0,
+                    range.0,
+                );
 
             eval_expr(
                 expr,
@@ -745,12 +747,15 @@ pub fn plot_vector_field_3d(
                     ),
                 ) {
 
-                    let magnitude =
-                        (vx.mul_add(
-                            vx,
-                            vy * vy,
-                        ) + vz * vz)
-                            .sqrt();
+                    let magnitude = vz
+                        .mul_add(
+                            vz,
+                            vx.mul_add(
+                                vx,
+                                vy * vy,
+                            ),
+                        )
+                        .sqrt();
 
                     if magnitude > 1e-6
                     {

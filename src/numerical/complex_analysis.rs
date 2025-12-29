@@ -361,9 +361,8 @@ pub fn eval_complex_expr<
     match expr {
         | Expr::Dag(node) => {
 
-            let inner = node
-                .to_expr()
-                .map_err(|e| e)?;
+            let inner =
+                node.to_expr()?;
 
             eval_complex_expr(
                 &inner,

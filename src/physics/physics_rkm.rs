@@ -169,13 +169,11 @@ pub fn solve_rk4<
 
                     *yi += (current_dt
                         / 6.0)
-                        * (2.0f64
+                        * (2.0f64.mul_add(k3i, 2.0f64
                             .mul_add(
                                 k2i,
                                 k1i,
-                            )
-                            + 2.0
-                                * k3i
+                            ))
                             + k4i);
                 },
             );
@@ -959,10 +957,9 @@ impl OdeSystem for VanDerPolSystem {
 
         dy[0] = y[1];
 
-        dy[1] = self.mu
-            * y[0].mul_add(-y[0], 1.0)
-            * y[1]
-            - y[0];
+        dy[1] = (self.mu
+            * y[0].mul_add(-y[0], 1.0))
+        .mul_add(y[1], -y[0]);
     }
 }
 

@@ -647,8 +647,7 @@ where
                     velocity.1,
                 );
 
-                *next_val = (dt / dx).mul_add(-(flux_east - flux_west), u_ij)
-                    - (dt / dy) * (flux_north - flux_south);
+                *next_val = (dt / dy).mul_add(-(flux_north - flux_south), (dt / dx).mul_add(-(flux_east - flux_west), u_ij));
             });
 
         current_values.copy_from_slice(
@@ -954,8 +953,7 @@ where
                     velocity.2,
                 );
 
-                *next_val = (dt / dx).mul_add(-(flux_east - flux_west), u_ijk)
-                    - (dt / dy) * (flux_north - flux_south)
+                *next_val = (dt / dy).mul_add(-(flux_north - flux_south), (dt / dx).mul_add(-(flux_east - flux_west), u_ijk))
                     - (dt / dz) * (flux_front - flux_back);
             });
 
@@ -1026,9 +1024,11 @@ pub fn simulate_3d_advection_scenario(
             let dist_sq = (z - cz)
                 .mul_add(
                     z - cz,
-                    (x - cx).powi(2)
-                        + (y - cy)
+                    (y - cy).mul_add(
+                        y - cy,
+                        (x - cx)
                             .powi(2),
+                    ),
                 );
 
             (-dist_sq

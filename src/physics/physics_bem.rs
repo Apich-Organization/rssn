@@ -143,10 +143,14 @@ impl Vector3D {
 
     pub fn norm(&self) -> f64 {
 
-        (self.x.mul_add(
-            self.x,
-            self.y * self.y,
-        ) + self.z * self.z)
+        self.z
+            .mul_add(
+                self.z,
+                self.x.mul_add(
+                    self.x,
+                    self.y * self.y,
+                ),
+            )
             .sqrt()
     }
 }
