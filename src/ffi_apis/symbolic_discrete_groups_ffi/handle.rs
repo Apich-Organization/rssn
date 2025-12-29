@@ -1,8 +1,14 @@
 use crate::symbolic::discrete_groups::*;
 use crate::symbolic::group_theory::Group;
 
+/// Creates a cyclic group of order `n` and returns a raw pointer to it.
+///
+/// # Arguments
+/// * `n` - The order of the cyclic group.
+///
+/// # Returns
+/// A raw pointer (`*mut Group`) to the newly created group.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_cyclic_group_create(
     n: usize
 ) -> *mut Group {
@@ -12,8 +18,14 @@ pub unsafe extern "C" fn rssn_cyclic_group_create(
     Box::into_raw(Box::new(group))
 }
 
+/// Creates a dihedral group of order `2n` and returns a raw pointer to it.
+///
+/// # Arguments
+/// * `n` - The parameter defining the dihedral group $D_n$.
+///
+/// # Returns
+/// A raw pointer (`*mut Group`) to the newly created group.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_dihedral_group_create(
     n: usize
 ) -> *mut Group {
@@ -23,8 +35,14 @@ pub unsafe extern "C" fn rssn_dihedral_group_create(
     Box::into_raw(Box::new(group))
 }
 
+/// Creates a symmetric group of degree `n` and returns a raw pointer to it.
+///
+/// # Arguments
+/// * `n` - The number of symbols the group acts on.
+///
+/// # Returns
+/// A raw pointer (`*mut Group`) to the newly created group, or NULL if `n` is invalid.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_symmetric_group_create(
     n: usize
 ) -> *mut Group {
@@ -41,8 +59,11 @@ pub unsafe extern "C" fn rssn_symmetric_group_create(
     }
 }
 
+/// Creates a Klein four-group and returns a raw pointer to it.
+///
+/// # Returns
+/// A raw pointer (`*mut Group`) to the newly created group.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_klein_four_group_create(
 ) -> *mut Group {
 

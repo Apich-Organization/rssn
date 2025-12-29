@@ -2971,6 +2971,15 @@ struct rssn_BincodeBuffer rssn_bincode_curve_scalar_mult(struct rssn_BincodeBuff
                                                          struct rssn_BincodeBuffer aPBuf)
 ;
 
+/*
+ Creates a cyclic group of order `n` and returns it as a Bincode buffer.
+
+ # Arguments
+ * `n` - The order of the cyclic group.
+
+ # Returns
+ A `BincodeBuffer` containing the serialized representation of the group.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_cyclic_group_create(size_t aN)
 ;
@@ -3026,6 +3035,15 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_digamma_numerical(struct rssn_BincodeBuffer aValBuf)
 ;
 
+/*
+ Creates a dihedral group of order `2n` and returns it as a Bincode buffer.
+
+ # Arguments
+ * `n` - The parameter defining the dihedral group $D_n$.
+
+ # Returns
+ A `BincodeBuffer` containing the serialized representation of the group.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_dihedral_group_create(size_t aN)
 ;
@@ -3692,6 +3710,27 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_gini_impurity(struct rssn_BincodeBuffer aProbsBuf)
 ;
 
+/*
+ Applies the Gram–Schmidt process to produce an orthonormal basis in a Hilbert space.
+
+ Given a Hilbert space and a list of symbolic basis vectors, this performs the
+ Gram–Schmidt orthonormalization procedure to obtain an orthonormal basis.
+
+ # Arguments
+
+ * `space_buf` - `BincodeBuffer` encoding a [`HilbertSpace`].
+ * `basis_buf` - `BincodeBuffer` encoding a `Vec<Expr>` of basis vectors.
+
+ # Returns
+
+ A `BincodeBuffer` containing a `Vec<Expr>` for the orthonormal basis. Returns an
+ empty buffer if any input fails to deserialize.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; the caller
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_gram_schmidt(struct rssn_BincodeBuffer aSpaceBuf,
                                                     struct rssn_BincodeBuffer aBasisBuf)
@@ -4077,6 +4116,27 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_heuristic_simplify(struct rssn_BincodeBuffer aExprBuf)
 ;
 
+/*
+ Constructs a Hilbert space from a bincode-encoded description.
+
+ The input buffer encodes a [`HilbertSpace`] specification (e.g., underlying
+ function space, inner product, and measure), which is deserialized and
+ returned in canonical internal form.
+
+ # Arguments
+
+ * `buf` - `BincodeBuffer` containing a serialized `HilbertSpace` description.
+
+ # Returns
+
+ A `BincodeBuffer` containing the canonicalized `HilbertSpace`, or an empty
+ buffer if deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; the caller
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_hilbert_space_create(struct rssn_BincodeBuffer aBuf)
 ;
@@ -4108,6 +4168,29 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_ifs_similarity_dimension(struct rssn_BincodeBuffer aScalingFactorsBuf)
 ;
 
+/*
+ Computes the inner product of two functions in a Hilbert space using bincode serialization.
+
+ Given a Hilbert space and two symbolic functions \(f\) and \(g\), this evaluates
+ the inner product \(\langle f, g \rangle\) according to the space's inner
+ product structure.
+
+ # Arguments
+
+ * `space_buf` - `BincodeBuffer` encoding a [`HilbertSpace`].
+ * `f_buf` - `BincodeBuffer` encoding an `Expr` for \(f\).
+ * `g_buf` - `BincodeBuffer` encoding an `Expr` for \(g\).
+
+ # Returns
+
+ A `BincodeBuffer` containing the symbolic inner product value (typically an `Expr`).
+ Returns an empty buffer if any input fails to deserialize.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; the caller
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_inner_product(struct rssn_BincodeBuffer aSpaceBuf,
                                                      struct rssn_BincodeBuffer aFBuf,
@@ -4240,6 +4323,12 @@ struct rssn_BincodeBuffer rssn_bincode_kl_divergence(struct rssn_BincodeBuffer a
                                                      struct rssn_BincodeBuffer aQProbsBuf)
 ;
 
+/*
+ Creates a Klein four-group and returns it as a Bincode buffer.
+
+ # Returns
+ A `BincodeBuffer` containing the serialized representation of the group.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_klein_four_group_create(void)
 ;
@@ -4635,6 +4724,27 @@ struct rssn_BincodeBuffer rssn_bincode_nonlinear_regression(struct rssn_BincodeB
                                                             struct rssn_BincodeBuffer aParamsBuf)
 ;
 
+/*
+ Computes the norm of a function in a Hilbert space using bincode serialization.
+
+ Given a Hilbert space and a symbolic function \(f\), this evaluates the norm
+ \(\|f\| = \sqrt{\langle f, f \rangle}\) induced by the inner product.
+
+ # Arguments
+
+ * `space_buf` - `BincodeBuffer` encoding a [`HilbertSpace`].
+ * `f_buf` - `BincodeBuffer` encoding an `Expr` for \(f\).
+
+ # Returns
+
+ A `BincodeBuffer` containing the symbolic norm value (typically an `Expr`).
+ Returns an empty buffer if any input fails to deserialize.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; the caller
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_norm(struct rssn_BincodeBuffer aSpaceBuf,
                                             struct rssn_BincodeBuffer aFBuf)
@@ -5471,6 +5581,15 @@ rssn_
 struct rssn_BincodeBuffer rssn_bincode_symbolic_chain_create(size_t aDimension)
 ;
 
+/*
+ Creates a symmetric group of degree `n` and returns it as a Bincode buffer.
+
+ # Arguments
+ * `n` - The number of symbols the group acts on.
+
+ # Returns
+ A `BincodeBuffer` containing the serialized representation of the group, or an empty buffer if `n` is invalid.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_bincode_symmetric_group_create(size_t aN)
 ;
@@ -6749,22 +6868,63 @@ rssn_
 struct rssn_Expr *rssn_crystal_lattice_volume(const struct rssn_CrystalLattice *aPtr)
 ;
 
+/*
+ Adds two points on the elliptic curve (P1 + P2).
+
+ # Arguments
+ * `curve` - Handle to the elliptic curve.
+ * `p1` - Handle to the first point.
+ * `p2` - Handle to the second point.
+
+ # Returns
+ A handle to the resulting point, or NULL on error.
+ */
 rssn_
 struct rssn_CurvePoint *rssn_curve_add(const struct rssn_EllipticCurve *aCurve,
                                        const struct rssn_CurvePoint *aP1,
                                        const struct rssn_CurvePoint *aP2)
 ;
 
+/*
+ Doubles a point on the elliptic curve (P -> 2P).
+
+ # Arguments
+ * `curve` - Handle to the elliptic curve.
+ * `point` - Handle to the point to double.
+
+ # Returns
+ A handle to the doubled point, or NULL on error.
+ */
 rssn_
 struct rssn_CurvePoint *rssn_curve_double(const struct rssn_EllipticCurve *aCurve,
                                           const struct rssn_CurvePoint *aPoint)
 ;
 
+/*
+ Checks if a point lies on the given elliptic curve.
+
+ # Arguments
+ * `curve` - Handle to the elliptic curve.
+ * `point` - Handle to the curve point to check.
+
+ # Returns
+ `true` if the point is on the curve, `false` otherwise.
+ */
 rssn_
 bool rssn_curve_is_on_curve(const struct rssn_EllipticCurve *aCurve,
                             const struct rssn_CurvePoint *aPoint)
 ;
 
+/*
+ Negates a point on the elliptic curve (P -> -P).
+
+ # Arguments
+ * `curve` - Handle to the elliptic curve.
+ * `point` - Handle to the point to negate.
+
+ # Returns
+ A handle to the negated point, or NULL on error.
+ */
 rssn_
 struct rssn_CurvePoint *rssn_curve_negate(const struct rssn_EllipticCurve *aCurve,
                                           const struct rssn_CurvePoint *aPoint)
@@ -6823,6 +6983,15 @@ struct rssn_CurvePoint *rssn_curve_scalar_mult(const struct rssn_EllipticCurve *
                                                const struct rssn_CurvePoint *aP)
 ;
 
+/*
+ Creates a cyclic group of order `n` and returns a raw pointer to it.
+
+ # Arguments
+ * `n` - The order of the cyclic group.
+
+ # Returns
+ A raw pointer (`*mut Group`) to the newly created group.
+ */
 rssn_
 struct rssn_Group *rssn_cyclic_group_create(size_t aN)
 ;
@@ -6878,6 +7047,15 @@ rssn_
 double rssn_digamma_numerical(double aX)
 ;
 
+/*
+ Creates a dihedral group of order `2n` and returns a raw pointer to it.
+
+ # Arguments
+ * `n` - The parameter defining the dihedral group $D_n$.
+
+ # Returns
+ A raw pointer (`*mut Group`) to the newly created group.
+ */
 rssn_
 struct rssn_Group *rssn_dihedral_group_create(size_t aN)
 ;
@@ -7081,6 +7259,19 @@ struct rssn_BincodeBuffer rssn_e_bincode(void)
  */
 rssn_ char *rssn_e_json(void) ;
 
+/*
+ Signs a message hash using the Elliptic Curve Digital Signature Algorithm (ECDSA).
+
+ # Arguments
+ * `message_hash_str` - The message hash as a decimal string.
+ * `private_key_str` - The private key as a decimal string.
+ * `curve` - Handle to the elliptic curve.
+ * `generator` - Handle to the base point.
+ * `order_str` - The order of the generator as a decimal string.
+
+ # Returns
+ A handle to the ECDSA signature, or NULL on error.
+ */
 rssn_
 struct rssn_EcdsaSignature *rssn_ecdsa_sign(const char *aMessageHashStr,
                                             const char *aPrivateKeyStr,
@@ -7089,18 +7280,56 @@ struct rssn_EcdsaSignature *rssn_ecdsa_sign(const char *aMessageHashStr,
                                             const char *aOrderStr)
 ;
 
+/*
+ Frees an ECDSA signature handle.
+
+ # Arguments
+ * `sig` - Handle to the signature to free.
+ */
 rssn_
 void rssn_ecdsa_signature_free(struct rssn_EcdsaSignature *aSig)
 ;
 
+/*
+ Gets the 'r' component of an ECDSA signature as a decimal string.
+
+ # Arguments
+ * `sig` - Handle to the ECDSA signature.
+
+ # Returns
+ A decimal string representing 'r', or NULL on error.
+ */
 rssn_
 char *rssn_ecdsa_signature_get_r(const struct rssn_EcdsaSignature *aSig)
 ;
 
+/*
+ Gets the 's' component of an ECDSA signature as a decimal string.
+
+ # Arguments
+ * `sig` - Handle to the ECDSA signature.
+
+ # Returns
+ A decimal string representing 's', or NULL on error.
+ */
 rssn_
 char *rssn_ecdsa_signature_get_s(const struct rssn_EcdsaSignature *aSig)
 ;
 
+/*
+ Verifies an ECDSA signature.
+
+ # Arguments
+ * `message_hash_str` - The message hash as a decimal string.
+ * `signature` - Handle to the ECDSA signature.
+ * `public_key` - Handle to the signer's public key point.
+ * `curve` - Handle to the elliptic curve.
+ * `generator` - Handle to the base point.
+ * `order_str` - The order of the generator as a decimal string.
+
+ # Returns
+ `true` if the signature is valid, `false` otherwise.
+ */
 rssn_
 bool rssn_ecdsa_verify(const char *aMessageHashStr,
                        const struct rssn_EcdsaSignature *aSignature,
@@ -7885,11 +8114,32 @@ struct rssn_Expr *rssn_generalized_stokes_theorem_handle(const struct rssn_Diffe
                                                          int aVarsLen)
 ;
 
+/*
+ Generates an ECDH key pair for the given curve and generator.
+
+ # Arguments
+ * `curve` - Handle to the elliptic curve.
+ * `generator` - Handle to the curve's base point (generator).
+
+ # Returns
+ A handle to the generated key pair, or NULL on error.
+ */
 rssn_
 struct rssn_EcdhKeyPair *rssn_generate_keypair(const struct rssn_EllipticCurve *aCurve,
                                                const struct rssn_CurvePoint *aGenerator)
 ;
 
+/*
+ Generates a shared secret point using elliptic curve Diffie-Hellman (ECDH).
+
+ # Arguments
+ * `curve` - Handle to the elliptic curve.
+ * `private_key_str` - The private key as a decimal string.
+ * `other_public_key` - Handle to the other party's public key point.
+
+ # Returns
+ A handle to the shared secret point, or NULL on error.
+ */
 rssn_
 struct rssn_CurvePoint *rssn_generate_shared_secret(const struct rssn_EllipticCurve *aCurve,
                                                     const char *aPrivateKeyStr,
@@ -9656,6 +9906,15 @@ char *rssn_json_curve_scalar_mult(const char *aCurveJson,
                                   const char *aPJson)
 ;
 
+/*
+ Creates a cyclic group of order `n` and returns it as a JSON string.
+
+ # Arguments
+ * `n` - The order of the cyclic group.
+
+ # Returns
+ A raw pointer to a JSON string representing the group.
+ */
 rssn_
 char *rssn_json_cyclic_group_create(size_t aN)
 ;
@@ -9708,6 +9967,15 @@ rssn_
 char *rssn_json_digamma_numerical(const char *aXJson)
 ;
 
+/*
+ Creates a dihedral group of order `2n` and returns it as a JSON string.
+
+ # Arguments
+ * `n` - The parameter defining the dihedral group $D_n$.
+
+ # Returns
+ A raw pointer to a JSON string representing the group.
+ */
 rssn_
 char *rssn_json_dihedral_group_create(size_t aN)
 ;
@@ -10951,6 +11219,12 @@ char *rssn_json_kl_divergence(const char *aPProbsJson,
                               const char *aQProbsJson)
 ;
 
+/*
+ Creates a Klein four-group and returns it as a JSON string.
+
+ # Returns
+ A raw pointer to a JSON string representing the group.
+ */
 rssn_
 char *rssn_json_klein_four_group_create(void)
 ;
@@ -12194,6 +12468,15 @@ rssn_
 char *rssn_json_symbolic_chain_create(size_t aDimension)
 ;
 
+/*
+ Creates a symmetric group of degree `n` and returns it as a JSON string.
+
+ # Arguments
+ * `n` - The number of symbols the group acts on.
+
+ # Returns
+ A raw pointer to a JSON string representing the group, or NULL if `n` is invalid.
+ */
 rssn_
 char *rssn_json_symmetric_group_create(size_t aN)
 ;
@@ -12710,10 +12993,25 @@ rssn_
 struct rssn_Ket *rssn_ket_new(const struct rssn_Expr *aState)
 ;
 
+/*
+ Frees an ECDH key pair handle.
+
+ # Arguments
+ * `keypair` - Handle to the key pair to free.
+ */
 rssn_
 void rssn_keypair_free(struct rssn_EcdhKeyPair *aKeypair)
 ;
 
+/*
+ Gets the private key from an ECDH key pair as a decimal string.
+
+ # Arguments
+ * `kp` - Handle to the key pair.
+
+ # Returns
+ A decimal string representing the private key, or NULL on error.
+ */
 rssn_
 char *rssn_keypair_get_private_key(const struct rssn_EcdhKeyPair *aKp)
 ;
@@ -12746,6 +13044,12 @@ struct rssn_Expr *rssn_kl_divergence(const struct rssn_Expr *const *aPProbs,
                                      size_t aQLen)
 ;
 
+/*
+ Creates a Klein four-group and returns a raw pointer to it.
+
+ # Returns
+ A raw pointer (`*mut Group`) to the newly created group.
+ */
 rssn_
 struct rssn_Group *rssn_klein_four_group_create(void)
 ;
@@ -26366,6 +26670,15 @@ rssn_
 void rssn_symbolic_chain_free(struct rssn_SymbolicChain *aPtr)
 ;
 
+/*
+ Creates a symmetric group of degree `n` and returns a raw pointer to it.
+
+ # Arguments
+ * `n` - The number of symbols the group acts on.
+
+ # Returns
+ A raw pointer (`*mut Group`) to the newly created group, or NULL if `n` is invalid.
+ */
 rssn_
 struct rssn_Group *rssn_symmetric_group_create(size_t aN)
 ;

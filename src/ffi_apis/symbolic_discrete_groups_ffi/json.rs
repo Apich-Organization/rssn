@@ -3,8 +3,14 @@ use std::os::raw::c_char;
 use crate::ffi_apis::common::*;
 use crate::symbolic::discrete_groups::*;
 
+/// Creates a cyclic group of order `n` and returns it as a JSON string.
+///
+/// # Arguments
+/// * `n` - The order of the cyclic group.
+///
+/// # Returns
+/// A raw pointer to a JSON string representing the group.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_json_cyclic_group_create(
     n: usize
 ) -> *mut c_char {
@@ -14,8 +20,14 @@ pub unsafe extern "C" fn rssn_json_cyclic_group_create(
     to_json_string(&group)
 }
 
+/// Creates a dihedral group of order `2n` and returns it as a JSON string.
+///
+/// # Arguments
+/// * `n` - The parameter defining the dihedral group $D_n$.
+///
+/// # Returns
+/// A raw pointer to a JSON string representing the group.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_json_dihedral_group_create(
     n: usize
 ) -> *mut c_char {
@@ -25,8 +37,14 @@ pub unsafe extern "C" fn rssn_json_dihedral_group_create(
     to_json_string(&group)
 }
 
+/// Creates a symmetric group of degree `n` and returns it as a JSON string.
+///
+/// # Arguments
+/// * `n` - The number of symbols the group acts on.
+///
+/// # Returns
+/// A raw pointer to a JSON string representing the group, or NULL if `n` is invalid.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_json_symmetric_group_create(
     n: usize
 ) -> *mut c_char {
@@ -41,8 +59,11 @@ pub unsafe extern "C" fn rssn_json_symmetric_group_create(
     }
 }
 
+/// Creates a Klein four-group and returns it as a JSON string.
+///
+/// # Returns
+/// A raw pointer to a JSON string representing the group.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_json_klein_four_group_create(
 ) -> *mut c_char {
 

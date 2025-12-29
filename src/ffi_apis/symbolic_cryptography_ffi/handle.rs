@@ -212,8 +212,15 @@ pub unsafe extern "C" fn rssn_curve_point_free(
 
 // --- Curve Operations ---
 
+/// Checks if a point lies on the given elliptic curve.
+///
+/// # Arguments
+/// * `curve` - Handle to the elliptic curve.
+/// * `point` - Handle to the curve point to check.
+///
+/// # Returns
+/// `true` if the point is on the curve, `false` otherwise.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_curve_is_on_curve(
     curve: *const EllipticCurve,
     point: *const CurvePoint,
@@ -229,8 +236,15 @@ pub unsafe extern "C" fn rssn_curve_is_on_curve(
     (*curve).is_on_curve(&*point)
 }
 
+/// Negates a point on the elliptic curve (P -> -P).
+///
+/// # Arguments
+/// * `curve` - Handle to the elliptic curve.
+/// * `point` - Handle to the point to negate.
+///
+/// # Returns
+/// A handle to the negated point, or NULL on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_curve_negate(
     curve: *const EllipticCurve,
     point: *const CurvePoint,
@@ -249,8 +263,15 @@ pub unsafe extern "C" fn rssn_curve_negate(
     Box::into_raw(Box::new(result))
 }
 
+/// Doubles a point on the elliptic curve (P -> 2P).
+///
+/// # Arguments
+/// * `curve` - Handle to the elliptic curve.
+/// * `point` - Handle to the point to double.
+///
+/// # Returns
+/// A handle to the doubled point, or NULL on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_curve_double(
     curve: *const EllipticCurve,
     point: *const CurvePoint,
@@ -269,8 +290,16 @@ pub unsafe extern "C" fn rssn_curve_double(
     Box::into_raw(Box::new(result))
 }
 
+/// Adds two points on the elliptic curve (P1 + P2).
+///
+/// # Arguments
+/// * `curve` - Handle to the elliptic curve.
+/// * `p1` - Handle to the first point.
+/// * `p2` - Handle to the second point.
+///
+/// # Returns
+/// A handle to the resulting point, or NULL on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_curve_add(
     curve: *const EllipticCurve,
     p1: *const CurvePoint,
@@ -324,8 +353,15 @@ pub unsafe extern "C" fn rssn_curve_scalar_mult(
 
 // --- Key Management ---
 
+/// Generates an ECDH key pair for the given curve and generator.
+///
+/// # Arguments
+/// * `curve` - Handle to the elliptic curve.
+/// * `generator` - Handle to the curve's base point (generator).
+///
+/// # Returns
+/// A handle to the generated key pair, or NULL on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_generate_keypair(
     curve: *const EllipticCurve,
     generator: *const CurvePoint,
@@ -346,8 +382,14 @@ pub unsafe extern "C" fn rssn_generate_keypair(
     Box::into_raw(Box::new(keypair))
 }
 
+/// Gets the private key from an ECDH key pair as a decimal string.
+///
+/// # Arguments
+/// * `kp` - Handle to the key pair.
+///
+/// # Returns
+/// A decimal string representing the private key, or NULL on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_keypair_get_private_key(
     kp: *const EcdhKeyPair
 ) -> *mut c_char {
@@ -379,8 +421,11 @@ pub unsafe extern "C" fn rssn_keypair_get_public_key(
     }
 }
 
+/// Frees an ECDH key pair handle.
+///
+/// # Arguments
+/// * `keypair` - Handle to the key pair to free.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_keypair_free(
     keypair: *mut EcdhKeyPair
 ) {
@@ -393,8 +438,16 @@ pub unsafe extern "C" fn rssn_keypair_free(
     }
 }
 
+/// Generates a shared secret point using elliptic curve Diffie-Hellman (ECDH).
+///
+/// # Arguments
+/// * `curve` - Handle to the elliptic curve.
+/// * `private_key_str` - The private key as a decimal string.
+/// * `other_public_key` - Handle to the other party's public key point.
+///
+/// # Returns
+/// A handle to the shared secret point, or NULL on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_generate_shared_secret(
     curve: *const EllipticCurve,
     private_key_str: *const c_char,
@@ -428,8 +481,18 @@ pub unsafe extern "C" fn rssn_generate_shared_secret(
 
 // --- ECDSA ---
 
+/// Signs a message hash using the Elliptic Curve Digital Signature Algorithm (ECDSA).
+///
+/// # Arguments
+/// * `message_hash_str` - The message hash as a decimal string.
+/// * `private_key_str` - The private key as a decimal string.
+/// * `curve` - Handle to the elliptic curve.
+/// * `generator` - Handle to the base point.
+/// * `order_str` - The order of the generator as a decimal string.
+///
+/// # Returns
+/// A handle to the ECDSA signature, or NULL on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_ecdsa_sign(
     message_hash_str: *const c_char,
     private_key_str: *const c_char,
@@ -478,8 +541,19 @@ pub unsafe extern "C" fn rssn_ecdsa_sign(
     }
 }
 
+/// Verifies an ECDSA signature.
+///
+/// # Arguments
+/// * `message_hash_str` - The message hash as a decimal string.
+/// * `signature` - Handle to the ECDSA signature.
+/// * `public_key` - Handle to the signer's public key point.
+/// * `curve` - Handle to the elliptic curve.
+/// * `generator` - Handle to the base point.
+/// * `order_str` - The order of the generator as a decimal string.
+///
+/// # Returns
+/// `true` if the signature is valid, `false` otherwise.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_ecdsa_verify(
     message_hash_str: *const c_char,
     signature: *const EcdsaSignature,
@@ -519,8 +593,14 @@ pub unsafe extern "C" fn rssn_ecdsa_verify(
     }
 }
 
+/// Gets the 'r' component of an ECDSA signature as a decimal string.
+///
+/// # Arguments
+/// * `sig` - Handle to the ECDSA signature.
+///
+/// # Returns
+/// A decimal string representing 'r', or NULL on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_ecdsa_signature_get_r(
     sig: *const EcdsaSignature
 ) -> *mut c_char {
@@ -534,8 +614,14 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_get_r(
     }
 }
 
+/// Gets the 's' component of an ECDSA signature as a decimal string.
+///
+/// # Arguments
+/// * `sig` - Handle to the ECDSA signature.
+///
+/// # Returns
+/// A decimal string representing 's', or NULL on error.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_ecdsa_signature_get_s(
     sig: *const EcdsaSignature
 ) -> *mut c_char {
@@ -549,8 +635,11 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_get_s(
     }
 }
 
+/// Frees an ECDSA signature handle.
+///
+/// # Arguments
+/// * `sig` - Handle to the signature to free.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_ecdsa_signature_free(
     sig: *mut EcdsaSignature
 ) {

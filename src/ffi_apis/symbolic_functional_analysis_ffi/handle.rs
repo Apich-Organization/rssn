@@ -6,8 +6,16 @@ use crate::symbolic::functional_analysis::*;
 
 // --- HilbertSpace ---
 
+/// Creates a new Hilbert space over a specified interval.
+///
+/// # Arguments
+/// * `var` - The name of the independent variable defining the space.
+/// * `lower_bound` - Symbolic expression for the lower bound of the interval.
+/// * `upper_bound` - Symbolic expression for the upper bound of the interval.
+///
+/// # Returns
+/// A raw pointer to the newly created `HilbertSpace`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_hilbert_space_create(
     var: *const c_char,
     lower_bound: *const Expr,
@@ -27,8 +35,11 @@ pub unsafe extern "C" fn rssn_hilbert_space_create(
     Box::into_raw(Box::new(space))
 }
 
+/// Frees a Hilbert space handle.
+///
+/// # Arguments
+/// * `ptr` - Pointer to the `HilbertSpace` to free.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_hilbert_space_free(
     ptr: *mut HilbertSpace
 ) {
@@ -41,8 +52,17 @@ pub unsafe extern "C" fn rssn_hilbert_space_free(
 
 // --- BanachSpace ---
 
+/// Creates a new Banach space $L^p$ over a specified interval.
+///
+/// # Arguments
+/// * `var` - The name of the independent variable.
+/// * `lower_bound` - Symbolic expression for the lower bound.
+/// * `upper_bound` - Symbolic expression for the upper bound.
+/// * `p` - Symbolic expression representing the $p$ parameter of the $L^p$ norm.
+///
+/// # Returns
+/// A raw pointer to the newly created `BanachSpace`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_banach_space_create(
     var: *const c_char,
     lower_bound: *const Expr,
@@ -64,8 +84,11 @@ pub unsafe extern "C" fn rssn_banach_space_create(
     Box::into_raw(Box::new(space))
 }
 
+/// Frees a Banach space handle.
+///
+/// # Arguments
+/// * `ptr` - Pointer to the `BanachSpace` to free.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_banach_space_free(
     ptr: *mut BanachSpace
 ) {
@@ -78,8 +101,14 @@ pub unsafe extern "C" fn rssn_banach_space_free(
 
 // --- LinearOperator ---
 
+/// Creates a linear derivative operator handle.
+///
+/// # Arguments
+/// * `var` - The name of the variable with respect to which differentiation is performed.
+///
+/// # Returns
+/// A raw pointer to the `LinearOperator`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
     var: *const c_char
 ) -> *mut LinearOperator {
@@ -95,8 +124,15 @@ pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
     Box::into_raw(Box::new(op))
 }
 
+/// Creates a linear integral operator handle.
+///
+/// # Arguments
+/// * `lower_bound` - Symbolic expression for the lower integration limit.
+/// * `var` - The integration variable.
+///
+/// # Returns
+/// A raw pointer to the `LinearOperator`.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_linear_operator_integral_create(
     lower_bound: *const Expr,
     var: *const c_char,
@@ -114,8 +150,15 @@ pub unsafe extern "C" fn rssn_linear_operator_integral_create(
     Box::into_raw(Box::new(op))
 }
 
+/// Applies a linear operator to a symbolic expression.
+///
+/// # Arguments
+/// * `op` - Handle to the linear operator.
+/// * `expr` - Handle to the expression to operate on.
+///
+/// # Returns
+/// A raw pointer to the resulting symbolic expression.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_linear_operator_apply(
     op: *const LinearOperator,
     expr: *const Expr,
@@ -126,8 +169,11 @@ pub unsafe extern "C" fn rssn_linear_operator_apply(
     Box::into_raw(Box::new(result))
 }
 
+/// Frees a linear operator handle.
+///
+/// # Arguments
+/// * `ptr` - Pointer to the `LinearOperator` to free.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_linear_operator_free(
     ptr: *mut LinearOperator
 ) {
@@ -140,8 +186,16 @@ pub unsafe extern "C" fn rssn_linear_operator_free(
 
 // --- Functions ---
 
+/// Computes the inner product of two functions in a Hilbert space.
+///
+/// # Arguments
+/// * `space` - Handle to the Hilbert space.
+/// * `f` - Handle to the first expression.
+/// * `g` - Handle to the second expression.
+///
+/// # Returns
+/// A raw pointer to the symbolic expression representing the inner product.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_inner_product(
     space: *const HilbertSpace,
     f: *const Expr,
@@ -157,8 +211,15 @@ pub unsafe extern "C" fn rssn_inner_product(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the $L^2$ norm of a function in a Hilbert space.
+///
+/// # Arguments
+/// * `space` - Handle to the Hilbert space.
+/// * `f` - Handle to the expression.
+///
+/// # Returns
+/// A raw pointer to the symbolic expression representing the norm.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_norm(
     space: *const HilbertSpace,
     f: *const Expr,
@@ -169,8 +230,15 @@ pub unsafe extern "C" fn rssn_norm(
     Box::into_raw(Box::new(result))
 }
 
+/// Computes the $L^p$ norm of a function in a Banach space.
+///
+/// # Arguments
+/// * `space` - Handle to the Banach space.
+/// * `f` - Handle to the expression.
+///
+/// # Returns
+/// A raw pointer to the symbolic expression representing the norm.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_banach_norm(
     space: *const BanachSpace,
     f: *const Expr,
@@ -182,8 +250,16 @@ pub unsafe extern "C" fn rssn_banach_norm(
     Box::into_raw(Box::new(result))
 }
 
+/// Checks if two functions are orthogonal in a Hilbert space.
+///
+/// # Arguments
+/// * `space` - Handle to the Hilbert space.
+/// * `f` - Handle to the first expression.
+/// * `g` - Handle to the second expression.
+///
+/// # Returns
+/// `true` if orthogonal, `false` otherwise.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_are_orthogonal(
     space: *const HilbertSpace,
     f: *const Expr,
@@ -193,8 +269,16 @@ pub unsafe extern "C" fn rssn_are_orthogonal(
     are_orthogonal(&*space, &*f, &*g)
 }
 
+/// Projects one function onto another within a Hilbert space.
+///
+/// # Arguments
+/// * `space` - Handle to the Hilbert space.
+/// * `f` - Handle to the function to project.
+/// * `g` - Handle to the function onto which $f$ is projected.
+///
+/// # Returns
+/// A raw pointer to the resulting projection expression.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_project(
     space: *const HilbertSpace,
     f: *const Expr,
@@ -207,8 +291,17 @@ pub unsafe extern "C" fn rssn_project(
     Box::into_raw(Box::new(result))
 }
 
+/// Performs the Gram-Schmidt process to produce an orthogonal basis.
+///
+/// # Arguments
+/// * `space` - Handle to the Hilbert space.
+/// * `basis_ptr` - Array of handles to the input basis expressions.
+/// * `basis_len` - Number of input expressions.
+/// * `out_len` - Pointer to store the number of orthogonal expressions produced.
+///
+/// # Returns
+/// A raw pointer to an array of handles to the orthogonalized basis expressions.
 #[no_mangle]
-
 pub unsafe extern "C" fn rssn_gram_schmidt(
     space: *const HilbertSpace,
     basis_ptr: *const *const Expr,
