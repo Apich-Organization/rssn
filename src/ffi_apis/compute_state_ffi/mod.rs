@@ -5,8 +5,11 @@
 //! - **JSON-based**: String serialization for easy language interop
 //! - **Bincode-based**: Binary serialization for high performance
 
+/// bincode-based FFI bindings for compute state operations.
 pub mod bincode_api;
+/// Handle-based FFI bindings for compute state using opaque handles.
 pub mod handle;
+/// JSON-based FFI bindings for compute state using serialized data.
 pub mod json;
 
 // Re-export all functions for convenience

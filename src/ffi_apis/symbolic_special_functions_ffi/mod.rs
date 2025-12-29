@@ -55,5 +55,7 @@
 
 /// Bincode API for symbolic special functions.
 pub mod bincode_api;
+/// Handle API for symbolic special functions.
 pub mod handle;
+/// JSON API for symbolic special functions.
 pub mod json;

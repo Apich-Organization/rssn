@@ -27,9 +27,11 @@
 //! // Deserialize binary data
 //! rssn_free_bincode_buffer(buf);
 //! ```
-
+/// Bincode-based FFI bindings for constants.
 pub mod bincode_api;
+/// Handle-based FFI bindings for constants using opaque handles.
 pub mod handle;
+/// JSON-based FFI bindings for constants using serialized data.
 pub mod json;
 
 // Re-export all functions for convenience

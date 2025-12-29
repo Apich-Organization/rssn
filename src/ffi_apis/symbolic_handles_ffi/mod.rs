@@ -5,8 +5,11 @@
 //! - JSON-based API (string serialization)
 //! - Bincode-based API (binary serialization)
 
+/// The bincode based FFI API for symbolic handles.
 pub mod bincode_api;
+/// The handle based FFI API for symbolic handles.
 pub mod handle;
+/// The JSON based FFI API for symbolic handles.
 pub mod json;
 
 pub use bincode_api::*;

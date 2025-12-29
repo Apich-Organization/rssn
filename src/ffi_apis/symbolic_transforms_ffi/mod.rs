@@ -12,6 +12,9 @@
 //!
 //! TODO: replacing *Expr with handle manager based one
 
+/// Bincode-based FFI bindings for symbolic transforms using serialized `Expr` values.
 pub mod bincode_api;
+/// Handle-based FFI bindings for symbolic transforms using opaque `Expr` handles.
 pub mod handle;
+/// JSON-based FFI bindings for symbolic transforms using serialized `Expr` values.
 pub mod json;

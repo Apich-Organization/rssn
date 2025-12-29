@@ -3,6 +3,7 @@
 //! This module exposes foreign function interface (FFI) bindings for constructing
 //! finite discrete groups such as cyclic, dihedral, symmetric, and Klein four groups,
 //! enabling them to be used from other languages.
+/// Bincode-based FFI bindings for symbolic discrete group.
 pub mod bincode_api;
 /// Handle-based FFI bindings for discrete groups using opaque `Group` handles.
 pub mod handle;
