@@ -24,6 +24,28 @@ struct OdeInput {
     method: OdeSolverMethod,
 }
 
+/// Solves a system of ordinary differential equations (ODEs) using JSON serialization.
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `funcs`: Array of differential equations as `Expr`
+///   - `y0`: Initial values for each function
+///   - `x_range`: Integration range as [start, end]
+///   - `num_steps`: Number of steps for the solver
+///   - `method`: ODE solver method to use
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<Vec<f64>>, String>` with either:
+/// - `ok`: Solution matrix where each row represents a step
+/// - `err`: Error message if solving failed
+///
+/// # Safety
+///
+/// This function is unsafe because it:
+/// - Receives a raw C string pointer that must be valid, null-terminated UTF-8
+/// - Returns a raw pointer that the caller must free using `rssn_free_string`
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ode_solve_json(

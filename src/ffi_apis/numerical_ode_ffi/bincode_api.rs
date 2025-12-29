@@ -23,6 +23,27 @@ struct OdeInput {
     method: OdeSolverMethod,
 }
 
+/// Solves a system of ordinary differential equations (ODEs) using bincode serialization.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `OdeInput` with:
+///   - `funcs`: Vector of differential equations as `Expr`
+///   - `y0`: Initial values for each function
+///   - `x_range`: Integration range as (start, end)
+///   - `num_steps`: Number of steps for the solver
+///   - `method`: ODE solver method to use
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<Vec<f64>>, String>` with either:
+/// - `ok`: Solution matrix where each row represents a step
+/// - `err`: Error message if solving failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer is valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ode_solve_bincode(

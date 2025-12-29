@@ -136,6 +136,27 @@ struct TemperatureInput {
 // Classical Mechanics
 // ============================================================================
 
+/// Computes the displacement of a simple harmonic oscillator using JSON serialization.
+///
+/// The displacement is x(t) = A cos(ωt + φ).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `amplitude`: Oscillation amplitude A (m)
+///   - `omega`: Angular frequency ω (rad/s)
+///   - `phase`: Phase angle φ (radians)
+///   - `time`: Time t at which to evaluate displacement (s)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the displacement x(t) (m).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_json(
@@ -175,6 +196,28 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_json(
     )
 }
 
+/// Computes the displacement of a damped harmonic oscillator using JSON serialization.
+///
+/// The displacement is x(t) = A e⁻γᵗ cos(ω't + φ), where ω' = √(ω₀² - γ²).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `amplitude`: Initial amplitude A (m)
+///   - `omega0`: Natural angular frequency ω₀ (rad/s)
+///   - `gamma`: Damping coefficient γ (1/s)
+///   - `phase`: Phase angle φ (radians)
+///   - `time`: Time t at which to evaluate displacement (s)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the displacement x(t) for underdamped oscillation (m).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_damped_harmonic_oscillator_json(
@@ -219,6 +262,26 @@ pub unsafe extern "C" fn rssn_num_physics_damped_harmonic_oscillator_json(
 // Electromagnetism
 // ============================================================================
 
+/// Computes the Coulomb electrostatic force between two point charges using JSON serialization.
+///
+/// The force is F = k_e q₁q₂ / r², where k_e = 8.99 × 10⁹ N·m²/C².
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `q1`: First charge q₁ (Coulombs)
+///   - `q2`: Second charge q₂ (Coulombs)
+///   - `r`: Separation distance r (m)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the Coulomb force magnitude F (Newtons, positive for repulsion).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_coulomb_force_json(
@@ -257,6 +320,25 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_json(
     )
 }
 
+/// Computes the electric field magnitude of a point charge using JSON serialization.
+///
+/// The electric field is E = k_e q / r².
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `q`: Point charge q (Coulombs)
+///   - `r`: Distance from charge r (m)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the electric field magnitude E (N/C or V/m).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_electric_field_point_charge_json(
@@ -295,6 +377,26 @@ pub unsafe extern "C" fn rssn_num_physics_electric_field_point_charge_json(
 // Thermodynamics
 // ============================================================================
 
+/// Computes the pressure of an ideal gas using JSON serialization.
+///
+/// Uses the ideal gas law PV = nRT, where R = 8.314 J/(mol·K).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n`: Amount of substance (moles)
+///   - `t`: Absolute temperature T (Kelvin)
+///   - `v`: Volume V (m³)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the gas pressure P (Pascals).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
@@ -334,6 +436,25 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_json(
     )
 }
 
+/// Computes the mean speed of particles in a Maxwell-Boltzmann distribution using JSON serialization.
+///
+/// The mean speed is ⟨v⟩ = √(8k_BT/(πm)).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `mass`: Particle mass m (kg)
+///   - `temperature`: Absolute temperature T (Kelvin)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the mean speed ⟨v⟩ (m/s).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed_json(
@@ -371,6 +492,25 @@ pub unsafe extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed_json(
     )
 }
 
+/// Computes the total power radiated by a blackbody using JSON serialization.
+///
+/// Uses the Stefan-Boltzmann law P = σAT⁴, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `area`: Surface area A (m²)
+///   - `temperature`: Absolute temperature T (Kelvin)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the radiated power P (Watts).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
@@ -409,6 +549,24 @@ pub unsafe extern "C" fn rssn_num_physics_blackbody_power_json(
     )
 }
 
+/// Computes the peak wavelength of blackbody radiation using Wien's displacement law and JSON serialization.
+///
+/// Wien's law states λ_max = b/T, where b = 2.898 × 10⁻³ m·K.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `temperature`: Absolute temperature T (Kelvin)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the peak wavelength λ_max (meters).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_wien_displacement_wavelength_json(
@@ -447,6 +605,24 @@ pub unsafe extern "C" fn rssn_num_physics_wien_displacement_wavelength_json(
 // Special Relativity
 // ============================================================================
 
+/// Computes the Lorentz factor for relativistic transformations using JSON serialization.
+///
+/// The Lorentz factor is γ = 1 / √(1 - v²/c²).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `velocity`: Velocity v (m/s)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the Lorentz factor γ (dimensionless, ≥ 1).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_json(
@@ -484,6 +660,25 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_json(
     )
 }
 
+/// Computes relativistic time dilation using JSON serialization.
+///
+/// The dilated time is t = γt₀, where γ is the Lorentz factor.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `proper_time`: Proper time t₀ (s)
+///   - `velocity`: Relative velocity v (m/s)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the dilated time t (s).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_time_dilation_json(
@@ -521,6 +716,24 @@ pub unsafe extern "C" fn rssn_num_physics_time_dilation_json(
     )
 }
 
+/// Computes rest mass energy using Einstein's mass-energy equivalence and JSON serialization.
+///
+/// The rest energy is E = mc².
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `mass`: Rest mass m (kg)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the rest energy E (Joules).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_mass_energy_json(
@@ -557,6 +770,25 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_json(
     )
 }
 
+/// Computes relativistic velocity addition using JSON serialization.
+///
+/// The combined velocity is u = (v + w) / (1 + vw/c²).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `v`: First velocity (m/s)
+///   - `w`: Second velocity (m/s)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the combined velocity u (m/s).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
@@ -595,6 +827,25 @@ pub unsafe extern "C" fn rssn_num_physics_relativistic_velocity_addition_json(
 // Quantum Mechanics
 // ============================================================================
 
+/// Computes the energy eigenvalue of a quantum harmonic oscillator using JSON serialization.
+///
+/// The energy is E_n = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n`: Quantum number n (non-negative integer, ground state = 0)
+///   - `omega`: Angular frequency ω (rad/s)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the energy eigenvalue E_n (Joules).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_json(
@@ -629,6 +880,24 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_jso
     )
 }
 
+/// Computes the energy level of the hydrogen atom using the Bohr model and JSON serialization.
+///
+/// The energy is E_n = -13.6 eV / n², where n is the principal quantum number.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n`: Principal quantum number n (positive integer, ground state = 1)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the energy level E_n (Joules, negative for bound states).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_json(
@@ -666,6 +935,24 @@ pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_json(
     )
 }
 
+/// Computes the de Broglie wavelength of a particle using JSON serialization.
+///
+/// The wavelength is λ = h/p, where h is Planck's constant and p is momentum.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `momentum`: Particle momentum p (kg·m/s)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the de Broglie wavelength λ (meters).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_de_broglie_wavelength_json(
@@ -703,6 +990,24 @@ pub unsafe extern "C" fn rssn_num_physics_de_broglie_wavelength_json(
     )
 }
 
+/// Computes the energy of a photon from its wavelength using JSON serialization.
+///
+/// The energy is E = hc/λ.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `wavelength`: Photon wavelength λ (meters)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the photon energy E (Joules).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_photon_energy_json(
@@ -739,6 +1044,24 @@ pub unsafe extern "C" fn rssn_num_physics_photon_energy_json(
     )
 }
 
+/// Computes the wavelength of a photon from its energy using JSON serialization.
+///
+/// The wavelength is λ = hc/E.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `energy`: Photon energy E (Joules)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the photon wavelength λ (meters).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_physics_photon_wavelength_json(

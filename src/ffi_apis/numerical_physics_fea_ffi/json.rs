@@ -105,6 +105,31 @@ struct MeshOutput {
 // Material Functions
 // ============================================================================
 
+/// Computes derived material properties from fundamental elastic constants using JSON serialization.
+///
+/// This function calculates shear modulus G = E/(2(1+ν)) and bulk modulus K = E/(3(1-2ν))
+/// from Young's modulus and Poisson's ratio.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `youngs_modulus`: Young's modulus E (Pa)
+///   - `poissons_ratio`: Poisson's ratio ν (dimensionless)
+///   - `density`: Material density ρ (kg/m³)
+///   - `thermal_conductivity`: Thermal conductivity k (W/(m·K))
+///   - `thermal_expansion`: Thermal expansion coefficient α (1/K)
+///   - `yield_strength`: Yield strength σ_y (Pa)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult` with:
+/// - `shear_modulus`: G (Pa)
+/// - `bulk_modulus`: K (Pa)
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
@@ -154,6 +179,23 @@ pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
     )
 }
 
+/// Returns standard material properties for structural steel using JSON serialization.
+///
+/// Provides reference properties for mild steel (E ≈ 200 GPa, ν ≈ 0.3, ρ ≈ 7850 kg/m³).
+///
+/// # Arguments
+///
+/// * `_input` - Unused parameter for API consistency (can be null)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult` with steel properties:
+/// - `shear_modulus`: G (Pa)
+/// - `bulk_modulus`: K (Pa)
+///
+/// # Safety
+///
+/// This function is unsafe because it returns a raw pointer that the caller must free.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_material_steel_json(
@@ -185,6 +227,27 @@ pub unsafe extern "C" fn rssn_num_fea_material_steel_json(
 // Element Functions
 // ============================================================================
 
+/// Computes the axial stiffness of a 1D linear finite element using JSON serialization.
+///
+/// The axial stiffness represents the force-displacement relationship for a bar element:
+/// k = (E × A) / L, where E is Young's modulus, A is cross-sectional area, and L is length.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `length`: Element length L (m)
+///   - `youngs_modulus`: Young's modulus E (Pa)
+///   - `area`: Cross-sectional area A (m²)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the computed axial stiffness k (N/m).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
@@ -230,6 +293,29 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
     )
 }
 
+/// Computes the global stiffness matrix for a 2D beam element using JSON serialization.
+///
+/// The beam element includes both axial and bending behavior. The stiffness matrix
+/// is transformed from local to global coordinates using the specified angle.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `length`: Element length L (m)
+///   - `youngs_modulus`: Young's modulus E (Pa)
+///   - `area`: Cross-sectional area A (m²)
+///   - `moment_of_inertia`: Second moment of area I (m⁴)
+///   - `angle`: Element orientation angle θ (radians)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the 6×6 global stiffness matrix in row-major format.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
@@ -274,6 +360,27 @@ pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
     )
 }
 
+/// Computes the thermal conductivity coefficient for a 1D thermal element using JSON serialization.
+///
+/// The thermal conductivity represents the heat flow-temperature relationship:
+/// k_thermal = (k × A) / L, where k is thermal conductivity, A is area, and L is length.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `length`: Element length L (m)
+///   - `conductivity`: Material thermal conductivity k (W/(m·K))
+///   - `area`: Cross-sectional area A (m²)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the computed thermal conductivity coefficient (W/K).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
@@ -314,6 +421,27 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
 // Stress Analysis Functions
 // ============================================================================
 
+/// Computes the von Mises equivalent stress from a 2D stress state using JSON serialization.
+///
+/// The von Mises stress is a scalar measure of stress intensity used in yield criteria:
+/// σ_vm = √(σ_x² - σ_xσ_y + σ_y² + 3τ_xy²)
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `sx`: Normal stress in x-direction σ_x (Pa)
+///   - `sy`: Normal stress in y-direction σ_y (Pa)
+///   - `txy`: Shear stress τ_xy (Pa)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the von Mises stress σ_vm (Pa).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
@@ -352,6 +480,29 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
     )
 }
 
+/// Computes the principal stresses and orientation from a 2D stress state using JSON serialization.
+///
+/// Principal stresses are the eigenvalues of the stress tensor, representing maximum and minimum
+/// normal stresses. The angle indicates the orientation of the principal stress axes.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `sx`: Normal stress in x-direction σ_x (Pa)
+///   - `sy`: Normal stress in y-direction σ_y (Pa)
+///   - `txy`: Shear stress τ_xy (Pa)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult` with:
+/// - `sigma1`: Maximum principal stress σ₁ (Pa)
+/// - `sigma2`: Minimum principal stress σ₂ (Pa)
+/// - `angle`: Orientation angle θ (radians)
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
@@ -400,6 +551,28 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
     )
 }
 
+/// Computes the factor of safety against yielding using the von Mises criterion and JSON serialization.
+///
+/// The safety factor is the ratio of yield strength to equivalent stress:
+/// SF = σ_yield / σ_vm. A value > 1 indicates the material will not yield.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `sx`: Normal stress in x-direction σ_x (Pa)
+///   - `sy`: Normal stress in y-direction σ_y (Pa)
+///   - `txy`: Shear stress τ_xy (Pa)
+///   - `yield_strength`: Material yield strength σ_y (Pa)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the computed safety factor (dimensionless).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(
@@ -445,6 +618,31 @@ pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(
 // Mesh Functions
 // ============================================================================
 
+/// Generates a structured triangular mesh for a rectangular domain using JSON serialization.
+///
+/// Creates a finite element mesh by subdividing a rectangle into triangular elements.
+/// The mesh is structured with regular spacing in both x and y directions.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `width`: Domain width (m)
+///   - `height`: Domain height (m)
+///   - `nx`: Number of divisions in x-direction
+///   - `ny`: Number of divisions in y-direction
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult` with:
+/// - `num_nodes`: Total number of mesh nodes
+/// - `num_elements`: Total number of triangular elements
+/// - `nodes`: Array of (x, y) node coordinates
+/// - `elements`: Array of triangular element connectivity (3 node indices per element)
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_create_rectangular_mesh_json(

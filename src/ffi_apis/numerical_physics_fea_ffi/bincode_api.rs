@@ -33,6 +33,28 @@ struct PrincipalStressOutput {
     angle: f64,
 }
 
+/// Computes the axial stiffness of a 1D linear finite element using bincode serialization.
+///
+/// The axial stiffness represents the force-displacement relationship for a bar element:
+/// k = (E × A) / L, where E is Young's modulus, A is cross-sectional area, and L is length.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `LinearElement1DInput` with:
+///   - `length`: Element length L (m)
+///   - `youngs_modulus`: Young's modulus E (Pa)
+///   - `area`: Cross-sectional area A (m²)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The computed axial stiffness k (N/m)
+/// - `err`: Error message if deserialization failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
@@ -62,6 +84,28 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
     })
 }
 
+/// Computes the von Mises equivalent stress from a 2D stress state using bincode serialization.
+///
+/// The von Mises stress is a scalar measure of stress intensity used in yield criteria:
+/// σ_vm = √(σ_x² - σ_xσ_y + σ_y² + 3τ_xy²)
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `StressInput` with:
+///   - `sx`: Normal stress in x-direction σ_x (Pa)
+///   - `sy`: Normal stress in y-direction σ_y (Pa)
+///   - `txy`: Shear stress τ_xy (Pa)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The von Mises stress σ_vm (Pa)
+/// - `err`: Error message if deserialization failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
@@ -92,6 +136,31 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
     })
 }
 
+/// Computes the principal stresses and orientation from a 2D stress state using bincode serialization.
+///
+/// Principal stresses are the eigenvalues of the stress tensor, representing maximum and minimum
+/// normal stresses. The angle indicates the orientation of the principal stress axes.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `StressInput` with:
+///   - `sx`: Normal stress in x-direction σ_x (Pa)
+///   - `sy`: Normal stress in y-direction σ_y (Pa)
+///   - `txy`: Shear stress τ_xy (Pa)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<PrincipalStressOutput, String>` with either:
+/// - `ok`: Object containing:
+///   - `sigma1`: Maximum principal stress σ₁ (Pa)
+///   - `sigma2`: Minimum principal stress σ₂ (Pa)
+///   - `angle`: Orientation angle θ (radians)
+/// - `err`: Error message if deserialization failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(

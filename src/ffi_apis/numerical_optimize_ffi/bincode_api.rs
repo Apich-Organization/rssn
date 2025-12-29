@@ -29,6 +29,35 @@ struct OptimizeResponse {
     error: Option<String>,
 }
 
+/// Solves a numerical optimization problem using bincode serialization.
+///
+/// This function performs gradient descent optimization on well-known test problems
+/// (Rosenbrock, Sphere) via FFI. The optimization configuration and problem parameters
+/// are deserialized from the input buffer.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `OptimizeRequest` with:
+///   - `problem_type`: Name of the optimization problem ("Rosenbrock" or "Sphere")
+///   - `init_param`: Initial parameter vector for optimization
+///   - `max_iters`: Maximum number of iterations allowed
+///   - `tolerance`: Convergence tolerance threshold
+///   - `rosenbrock_a`: Optional parameter `a` for Rosenbrock function (default: 1.0)
+///   - `rosenbrock_b`: Optional parameter `b` for Rosenbrock function (default: 100.0)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `OptimizeResponse` with:
+/// - `success`: Whether optimization succeeded
+/// - `best_param`: Optimal parameter vector found
+/// - `best_cost`: Minimum cost achieved
+/// - `iterations`: Number of iterations performed
+/// - `error`: Error message if optimization failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn numerical_optimize_solve_bincode(

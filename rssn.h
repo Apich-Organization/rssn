@@ -296,6 +296,12 @@ typedef struct rssn_Expr rssn_Expr;
  */
 typedef struct rssn_ExprList rssn_ExprList;
 
+/*
+ FFI-compatible optimization result containing the solution and convergence information.
+
+ This structure holds the outcome of a numerical optimization procedure and is designed
+ to be safely passed across FFI boundaries.
+ */
 typedef struct rssn_FfiOptimizationResult rssn_FfiOptimizationResult;
 
 /*
@@ -1497,31 +1503,128 @@ DEPRECATED_WITH_NOTE
 char *numerical_integrate(const char *aJsonPtr)
 ;
 
+/*
+ Frees an optimization result handle previously allocated by an optimization function.
+
+ # Arguments
+
+ * `handle` - Pointer to an `FfiOptimizationResult` instance to deallocate
+
+ # Safety
+
+ The caller must ensure the handle was previously returned by one of the optimization
+ functions in this module and has not already been freed. Passing a null pointer is safe
+ but has no effect.
+ */
 rssn_
 void numerical_optimize_drop_result_handle(struct rssn_FfiOptimizationResult *aHandle)
 ;
 
+/*
+ Frees a JSON string previously allocated by `numerical_optimize_solve_json`.
+
+ # Arguments
+
+ * `ptr` - Pointer to a C string to deallocate
+
+ # Safety
+
+ The caller must ensure the pointer was previously returned by
+ `numerical_optimize_solve_json` and has not already been freed.
+ Passing a null pointer is safe but has no effect.
+ */
 rssn_
 void numerical_optimize_free_json(char *aPtr)
 ;
 
+/*
+ Retrieves the optimal cost from an optimization result handle.
+
+ # Arguments
+
+ * `handle` - Pointer to an `FfiOptimizationResult` instance
+
+ # Returns
+
+ The minimum cost achieved, or `NaN` if the handle is null.
+ */
 rssn_
 double numerical_optimize_get_result_cost_handle(const struct rssn_FfiOptimizationResult *aHandle)
 ;
 
+/*
+ Retrieves the iteration count from an optimization result handle.
+
+ # Arguments
+
+ * `handle` - Pointer to an `FfiOptimizationResult` instance
+
+ # Returns
+
+ The number of iterations performed, or 0 if the handle is null.
+ */
 rssn_
 uint64_t numerical_optimize_get_result_iterations_handle(const struct rssn_FfiOptimizationResult *aHandle)
 ;
 
+/*
+ Copies the optimal parameter vector from an optimization result handle to a buffer.
+
+ # Arguments
+
+ * `handle` - Pointer to an `FfiOptimizationResult` instance
+ * `buffer` - Pointer to a pre-allocated buffer to receive the parameter data
+
+ # Returns
+
+ `true` if the copy succeeded, `false` if either pointer is null.
+
+ # Safety
+
+ The caller must ensure `buffer` points to an allocation with sufficient capacity
+ to hold the parameter vector (obtainable via `numerical_optimize_get_result_param_len_handle`).
+ */
 rssn_
 bool numerical_optimize_get_result_param_handle(const struct rssn_FfiOptimizationResult *aHandle,
                                                 double *aBuffer)
 ;
 
+/*
+ Retrieves the parameter vector length from an optimization result handle.
+
+ # Arguments
+
+ * `handle` - Pointer to an `FfiOptimizationResult` instance
+
+ # Returns
+
+ The length of the optimal parameter vector, or 0 if the handle is null.
+ */
 rssn_
 size_t numerical_optimize_get_result_param_len_handle(const struct rssn_FfiOptimizationResult *aHandle)
 ;
 
+/*
+ Optimizes the Rosenbrock function using BFGS quasi-Newton method via handle-based FFI.
+
+ The BFGS (Broyden-Fletcher-Goldfarb-Shanno) algorithm is a quasi-Newton method that
+ approximates the Hessian matrix for faster convergence on smooth problems.
+
+ # Arguments
+
+ * `a` - First parameter of the Rosenbrock function (typically 1.0)
+ * `b` - Second parameter of the Rosenbrock function (typically 100.0)
+ * `init_param_ptr` - Pointer to the initial parameter array
+ * `init_param_len` - Length of the initial parameter array
+ * `max_iters` - Maximum number of optimization iterations
+ * `tolerance` - Convergence tolerance for termination
+
+ # Returns
+
+ A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
+ or null if the input is invalid or optimization fails. The caller must free
+ the result using `numerical_optimize_drop_result_handle`.
+ */
 rssn_
 struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_bfgs_handle(double aA,
                                                                              double aB,
@@ -1531,6 +1634,27 @@ struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_bfgs_handle(dou
                                                                              double aTolerance)
 ;
 
+/*
+ Optimizes the Rosenbrock function using gradient descent via handle-based FFI.
+
+ The Rosenbrock function is a non-convex test function commonly used to evaluate
+ optimization algorithms: f(x,y) = (a-x)² + b(y-x²)²
+
+ # Arguments
+
+ * `a` - First parameter of the Rosenbrock function (typically 1.0)
+ * `b` - Second parameter of the Rosenbrock function (typically 100.0)
+ * `init_param_ptr` - Pointer to the initial parameter array
+ * `init_param_len` - Length of the initial parameter array
+ * `max_iters` - Maximum number of optimization iterations
+ * `tolerance` - Convergence tolerance for termination
+
+ # Returns
+
+ A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
+ or null if the input is invalid or optimization fails. The caller must free
+ the result using `numerical_optimize_drop_result_handle`.
+ */
 rssn_
 struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_gd_handle(double aA,
                                                                            double aB,
@@ -1540,14 +1664,93 @@ struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_gd_handle(doubl
                                                                            double aTolerance)
 ;
 
+/*
+ Solves a numerical optimization problem using bincode serialization.
+
+ This function performs gradient descent optimization on well-known test problems
+ (Rosenbrock, Sphere) via FFI. The optimization configuration and problem parameters
+ are deserialized from the input buffer.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `OptimizeRequest` with:
+   - `problem_type`: Name of the optimization problem ("Rosenbrock" or "Sphere")
+   - `init_param`: Initial parameter vector for optimization
+   - `max_iters`: Maximum number of iterations allowed
+   - `tolerance`: Convergence tolerance threshold
+   - `rosenbrock_a`: Optional parameter `a` for Rosenbrock function (default: 1.0)
+   - `rosenbrock_b`: Optional parameter `b` for Rosenbrock function (default: 100.0)
+
+ # Returns
+
+ A bincode-encoded buffer containing `OptimizeResponse` with:
+ - `success`: Whether optimization succeeded
+ - `best_param`: Optimal parameter vector found
+ - `best_cost`: Minimum cost achieved
+ - `iterations`: Number of iterations performed
+ - `error`: Error message if optimization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer numerical_optimize_solve_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves a numerical optimization problem using JSON serialization.
+
+ This function performs gradient descent optimization on well-known test problems
+ (Rosenbrock, Sphere) via FFI. The optimization configuration and problem parameters
+ are deserialized from a JSON string.
+
+ # Arguments
+
+ * `json_ptr` - A null-terminated C string containing JSON with:
+   - `problem_type`: Name of the optimization problem ("Rosenbrock" or "Sphere")
+   - `init_param`: Initial parameter vector for optimization
+   - `max_iters`: Maximum number of iterations allowed
+   - `tolerance`: Convergence tolerance threshold
+   - `rosenbrock_a`: Optional parameter `a` for Rosenbrock function (default: 1.0)
+   - `rosenbrock_b`: Optional parameter `b` for Rosenbrock function (default: 100.0)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `OptimizeResponse` with:
+ - `success`: Whether optimization succeeded
+ - `best_param`: Optimal parameter vector found
+ - `best_cost`: Minimum cost achieved
+ - `iterations`: Number of iterations performed
+ - `error`: Error message if optimization failed
+
+ The caller must free the returned string using `numerical_optimize_free_json`.
+ Returns null if the input pointer is invalid.
+ */
 rssn_
 char *numerical_optimize_solve_json(const char *aJsonPtr)
 ;
 
+/*
+ Optimizes the sphere function using gradient descent via handle-based FFI.
+
+ The sphere function is a convex test function: f(x) = Σx_i², commonly used
+ to verify that optimization algorithms can find the global minimum at the origin.
+
+ # Arguments
+
+ * `init_param_ptr` - Pointer to the initial parameter array
+ * `init_param_len` - Length of the initial parameter array
+ * `max_iters` - Maximum number of optimization iterations
+ * `tolerance` - Convergence tolerance for termination
+
+ # Returns
+
+ A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
+ or null if the input is invalid or optimization fails. The caller must free
+ the result using `numerical_optimize_drop_result_handle`.
+ */
 rssn_
 struct rssn_FfiOptimizationResult *numerical_optimize_sphere_gd_handle(const double *aInitParamPtr,
                                                                        size_t aInitParamLen,
@@ -12868,6 +13071,26 @@ rssn_
 double rssn_num_cfd_air_prandtl_number(void)
 ;
 
+/*
+ Returns standard air properties at sea level and 15°C using JSON serialization.
+
+ Provides reference fluid properties for air (ρ ≈ 1.225 kg/m³, μ ≈ 1.81×10⁻⁵ Pa·s).
+
+ # Arguments
+
+ * `_input` - Unused parameter for API consistency (can be null)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult` with standard air properties:
+ - `kinematic_viscosity`: ν (m²/s)
+ - `thermal_diffusivity`: α (m²/s)
+ - `prandtl_number`: Pr (dimensionless, ≈ 0.71 for air)
+
+ # Safety
+
+ This function is unsafe because it returns a raw pointer that the caller must free.
+ */
 rssn_
 char *rssn_num_cfd_air_properties_json(const char *aInput)
 ;
@@ -12881,10 +13104,59 @@ double rssn_num_cfd_cfl_number(double aVelocity,
                                double aDx)
 ;
 
+/*
+ Computes the Courant-Friedrichs-Lewy (CFL) number for numerical stability using bincode serialization.
+
+ The CFL number is a stability criterion for explicit time-stepping schemes:
+ CFL = (velocity × dt) / dx
+
+ For numerical stability in explicit schemes, CFL ≤ 1 is typically required.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `CflInput` with:
+   - `velocity`: Flow velocity or wave speed (m/s)
+   - `dt`: Time step size (s)
+   - `dx`: Spatial grid spacing (m)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The computed CFL number (dimensionless)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_cfd_cfl_number_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Courant-Friedrichs-Lewy (CFL) number using JSON serialization.
+
+ The CFL condition ensures numerical stability in explicit time-stepping schemes:
+ CFL = (velocity × dt) / dx. For stability, CFL ≤ 1 is typically required.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `velocity`: Flow velocity or wave speed (m/s)
+   - `dt`: Time step size (s)
+   - `dx`: Spatial grid spacing (m)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the computed CFL number (dimensionless).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_cfd_cfl_number_json(const char *aInput)
 ;
@@ -12908,6 +13180,32 @@ double rssn_num_cfd_diffusion_number(double aAlpha,
                                      double aDx)
 ;
 
+/*
+ Computes derived fluid properties from fundamental properties using JSON serialization.
+
+ This function calculates kinematic viscosity (ν = μ/ρ), thermal diffusivity (α = k/(ρc_p)),
+ and Prandtl number (Pr = ν/α) from input material properties.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `density`: Fluid density ρ (kg/m³)
+   - `dynamic_viscosity`: Dynamic viscosity μ (Pa·s)
+   - `thermal_conductivity`: Thermal conductivity k (W/(m·K))
+   - `specific_heat`: Specific heat capacity c_p (J/(kg·K))
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult` with:
+ - `kinematic_viscosity`: ν (m²/s)
+ - `thermal_diffusivity`: α (m²/s)
+ - `prandtl_number`: Pr (dimensionless)
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_cfd_fluid_properties_json(const char *aInput)
 ;
@@ -12938,30 +13236,208 @@ double rssn_num_cfd_reynolds_number(double aVelocity,
                                     double aKinematicViscosity)
 ;
 
+/*
+ Computes the Reynolds number for fluid flow using bincode serialization.
+
+ The Reynolds number is a dimensionless quantity characterizing the flow regime:
+ Re = (velocity × length) / kinematic_viscosity
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `ReynoldsInput` with:
+   - `velocity`: Flow velocity (m/s)
+   - `length`: Characteristic length scale (m)
+   - `kinematic_viscosity`: Kinematic viscosity (ν = μ/ρ, m²/s)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The computed Reynolds number (dimensionless)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_cfd_reynolds_number_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Reynolds number for fluid flow using JSON serialization.
+
+ The Reynolds number characterizes the flow regime (laminar vs. turbulent):
+ Re = (velocity × length) / kinematic_viscosity
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `velocity`: Flow velocity (m/s)
+   - `length`: Characteristic length scale (m)
+   - `kinematic_viscosity`: Kinematic viscosity ν (m²/s)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the computed Reynolds number (dimensionless).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_cfd_reynolds_number_json(const char *aInput)
 ;
 
+/*
+ Solves the 1D advection equation using a finite difference scheme and bincode serialization.
+
+ The advection equation describes the transport of a scalar quantity by a velocity field:
+ ∂u/∂t + c ∂u/∂x = 0
+
+ This function uses an explicit finite difference method to time-step the solution.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `Advection1DInput` with:
+   - `u0`: Initial condition as a spatial array of values
+   - `c`: Advection velocity (constant)
+   - `dx`: Spatial grid spacing
+   - `dt`: Time step size
+   - `num_steps`: Number of time steps to compute
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<Vec<f64>>, String>` with either:
+ - `ok`: Solution history where each inner vector is the solution at one time step
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_cfd_solve_advection_1d_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the 1D advection equation using JSON serialization.
+
+ The advection equation describes transport by a velocity field: ∂u/∂t + c ∂u/∂x = 0.
+ Uses an explicit finite difference scheme to time-step the solution.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `u0`: Initial condition array (spatial distribution)
+   - `c`: Advection velocity (constant, m/s)
+   - `dx`: Spatial grid spacing (m)
+   - `dt`: Time step size (s)
+   - `num_steps`: Number of time steps to compute
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<Vec<f64>>, String>` with
+ the solution history, where each inner vector represents the spatial distribution at one time step.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_cfd_solve_advection_1d_json(const char *aInput)
 ;
 
+/*
+ Solves the 1D advection-diffusion equation using JSON serialization.
+
+ The advection-diffusion equation combines transport and diffusion:
+ ∂u/∂t + c ∂u/∂x = α ∂²u/∂x².
+ This models phenomena like pollutant dispersion in a moving fluid.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `u0`: Initial condition array (spatial distribution)
+   - `c`: Advection velocity (m/s)
+   - `alpha`: Diffusivity coefficient α (m²/s)
+   - `dx`: Spatial grid spacing (m)
+   - `dt`: Time step size (s)
+   - `num_steps`: Number of time steps to compute
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<Vec<f64>>, String>` with
+ the solution history, where each inner vector represents the spatial distribution at one time step.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_cfd_solve_advection_diffusion_1d_json(const char *aInput)
 ;
 
+/*
+ Solves the 1D Burgers equation using JSON serialization.
+
+ The Burgers equation is a nonlinear PDE combining convection and diffusion:
+ ∂u/∂t + u ∂u/∂x = ν ∂²u/∂x².
+ It models shock wave formation and is often used as a simplified model for fluid turbulence.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `u0`: Initial condition array (spatial distribution)
+   - `nu`: Kinematic viscosity ν (m²/s)
+   - `dx`: Spatial grid spacing (m)
+   - `dt`: Time step size (s)
+   - `num_steps`: Number of time steps to compute
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<Vec<f64>>, String>` with
+ the solution history, where each inner vector represents the spatial distribution at one time step.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_cfd_solve_burgers_1d_json(const char *aInput)
 ;
 
+/*
+ Solves the 1D diffusion equation using JSON serialization.
+
+ The diffusion equation models heat conduction or mass diffusion: ∂u/∂t = α ∂²u/∂x².
+ Uses an explicit finite difference scheme for time integration.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `u0`: Initial condition array (spatial distribution)
+   - `alpha`: Diffusivity coefficient α (m²/s)
+   - `dx`: Spatial grid spacing (m)
+   - `dt`: Time step size (s)
+   - `num_steps`: Number of time steps to compute
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<Vec<f64>>, String>` with
+ the solution history, where each inner vector represents the spatial distribution at one time step.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_cfd_solve_diffusion_1d_json(const char *aInput)
 ;
@@ -12980,6 +13456,26 @@ rssn_
 double rssn_num_cfd_water_prandtl_number(void)
 ;
 
+/*
+ Returns standard water properties at 20°C using JSON serialization.
+
+ Provides reference fluid properties for water (ρ ≈ 998 kg/m³, μ ≈ 1.0×10⁻³ Pa·s).
+
+ # Arguments
+
+ * `_input` - Unused parameter for API consistency (can be null)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult` with standard water properties:
+ - `kinematic_viscosity`: ν (m²/s)
+ - `thermal_diffusivity`: α (m²/s)
+ - `prandtl_number`: Pr (dimensionless, ≈ 7 for water)
+
+ # Safety
+
+ This function is unsafe because it returns a raw pointer that the caller must free.
+ */
 rssn_
 char *rssn_num_cfd_water_properties_json(const char *aInput)
 ;
@@ -14049,6 +14545,31 @@ rssn_
 char *rssn_num_fa_l2_norm_json(const char *aInputJson)
 ;
 
+/*
+ Computes the global stiffness matrix for a 2D beam element using JSON serialization.
+
+ The beam element includes both axial and bending behavior. The stiffness matrix
+ is transformed from local to global coordinates using the specified angle.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `length`: Element length L (m)
+   - `youngs_modulus`: Young's modulus E (Pa)
+   - `area`: Cross-sectional area A (m²)
+   - `moment_of_inertia`: Second moment of area I (m⁴)
+   - `angle`: Element orientation angle θ (radians)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the 6×6 global stiffness matrix in row-major format.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_fea_beam_element_2d_stiffness_json(const char *aInput)
 ;
@@ -14061,6 +14582,33 @@ double rssn_num_fea_bulk_modulus(double aYoungsModulus,
                                  double aPoissonsRatio)
 ;
 
+/*
+ Generates a structured triangular mesh for a rectangular domain using JSON serialization.
+
+ Creates a finite element mesh by subdividing a rectangle into triangular elements.
+ The mesh is structured with regular spacing in both x and y directions.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `width`: Domain width (m)
+   - `height`: Domain height (m)
+   - `nx`: Number of divisions in x-direction
+   - `ny`: Number of divisions in y-direction
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult` with:
+ - `num_nodes`: Total number of mesh nodes
+ - `num_elements`: Total number of triangular elements
+ - `nodes`: Array of (x, y) node coordinates
+ - `elements`: Array of triangular element connectivity (3 node indices per element)
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_fea_create_rectangular_mesh_json(const char *aInput)
 ;
@@ -14075,10 +14623,57 @@ double rssn_num_fea_linear_element_1d_stiffness(double aLength,
                                                 double aArea)
 ;
 
+/*
+ Computes the axial stiffness of a 1D linear finite element using bincode serialization.
+
+ The axial stiffness represents the force-displacement relationship for a bar element:
+ k = (E × A) / L, where E is Young's modulus, A is cross-sectional area, and L is length.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `LinearElement1DInput` with:
+   - `length`: Element length L (m)
+   - `youngs_modulus`: Young's modulus E (Pa)
+   - `area`: Cross-sectional area A (m²)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The computed axial stiffness k (N/m)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fea_linear_element_1d_stiffness_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the axial stiffness of a 1D linear finite element using JSON serialization.
+
+ The axial stiffness represents the force-displacement relationship for a bar element:
+ k = (E × A) / L, where E is Young's modulus, A is cross-sectional area, and L is length.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `length`: Element length L (m)
+   - `youngs_modulus`: Young's modulus E (Pa)
+   - `area`: Cross-sectional area A (m²)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the computed axial stiffness k (N/m).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_fea_linear_element_1d_stiffness_json(const char *aInput)
 ;
@@ -14097,10 +14692,56 @@ rssn_
 double rssn_num_fea_material_copper_shear_modulus(void)
 ;
 
+/*
+ Computes derived material properties from fundamental elastic constants using JSON serialization.
+
+ This function calculates shear modulus G = E/(2(1+ν)) and bulk modulus K = E/(3(1-2ν))
+ from Young's modulus and Poisson's ratio.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `youngs_modulus`: Young's modulus E (Pa)
+   - `poissons_ratio`: Poisson's ratio ν (dimensionless)
+   - `density`: Material density ρ (kg/m³)
+   - `thermal_conductivity`: Thermal conductivity k (W/(m·K))
+   - `thermal_expansion`: Thermal expansion coefficient α (1/K)
+   - `yield_strength`: Yield strength σ_y (Pa)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult` with:
+ - `shear_modulus`: G (Pa)
+ - `bulk_modulus`: K (Pa)
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_fea_material_properties_json(const char *aInput)
 ;
 
+/*
+ Returns standard material properties for structural steel using JSON serialization.
+
+ Provides reference properties for mild steel (E ≈ 200 GPa, ν ≈ 0.3, ρ ≈ 7850 kg/m³).
+
+ # Arguments
+
+ * `_input` - Unused parameter for API consistency (can be null)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult` with steel properties:
+ - `shear_modulus`: G (Pa)
+ - `bulk_modulus`: K (Pa)
+
+ # Safety
+
+ This function is unsafe because it returns a raw pointer that the caller must free.
+ */
 rssn_
 char *rssn_num_fea_material_steel_json(const char *aInput)
 ;
@@ -14136,14 +14777,90 @@ int32_t rssn_num_fea_principal_stresses(double aSx,
                                         double *aOutAngle)
 ;
 
+/*
+ Computes the principal stresses and orientation from a 2D stress state using bincode serialization.
+
+ Principal stresses are the eigenvalues of the stress tensor, representing maximum and minimum
+ normal stresses. The angle indicates the orientation of the principal stress axes.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `StressInput` with:
+   - `sx`: Normal stress in x-direction σ_x (Pa)
+   - `sy`: Normal stress in y-direction σ_y (Pa)
+   - `txy`: Shear stress τ_xy (Pa)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<PrincipalStressOutput, String>` with either:
+ - `ok`: Object containing:
+   - `sigma1`: Maximum principal stress σ₁ (Pa)
+   - `sigma2`: Minimum principal stress σ₂ (Pa)
+   - `angle`: Orientation angle θ (radians)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fea_principal_stresses_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the principal stresses and orientation from a 2D stress state using JSON serialization.
+
+ Principal stresses are the eigenvalues of the stress tensor, representing maximum and minimum
+ normal stresses. The angle indicates the orientation of the principal stress axes.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `sx`: Normal stress in x-direction σ_x (Pa)
+   - `sy`: Normal stress in y-direction σ_y (Pa)
+   - `txy`: Shear stress τ_xy (Pa)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult` with:
+ - `sigma1`: Maximum principal stress σ₁ (Pa)
+ - `sigma2`: Minimum principal stress σ₂ (Pa)
+ - `angle`: Orientation angle θ (radians)
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_fea_principal_stresses_json(const char *aInput)
 ;
 
+/*
+ Computes the factor of safety against yielding using the von Mises criterion and JSON serialization.
+
+ The safety factor is the ratio of yield strength to equivalent stress:
+ SF = σ_yield / σ_vm. A value > 1 indicates the material will not yield.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `sx`: Normal stress in x-direction σ_x (Pa)
+   - `sy`: Normal stress in y-direction σ_y (Pa)
+   - `txy`: Shear stress τ_xy (Pa)
+   - `yield_strength`: Material yield strength σ_y (Pa)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the computed safety factor (dimensionless).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_fea_safety_factor_json(const char *aInput)
 ;
@@ -14176,6 +14893,29 @@ double rssn_num_fea_thermal_element_1d_conductivity(double aLength,
                                                     double aArea)
 ;
 
+/*
+ Computes the thermal conductivity coefficient for a 1D thermal element using JSON serialization.
+
+ The thermal conductivity represents the heat flow-temperature relationship:
+ k_thermal = (k × A) / L, where k is thermal conductivity, A is area, and L is length.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `length`: Element length L (m)
+   - `conductivity`: Material thermal conductivity k (W/(m·K))
+   - `area`: Cross-sectional area A (m²)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the computed thermal conductivity coefficient (W/K).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_fea_thermal_element_1d_conductivity_json(const char *aInput)
 ;
@@ -14189,10 +14929,57 @@ double rssn_num_fea_von_mises_stress(double aSx,
                                      double aTxy)
 ;
 
+/*
+ Computes the von Mises equivalent stress from a 2D stress state using bincode serialization.
+
+ The von Mises stress is a scalar measure of stress intensity used in yield criteria:
+ σ_vm = √(σ_x² - σ_xσ_y + σ_y² + 3τ_xy²)
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `StressInput` with:
+   - `sx`: Normal stress in x-direction σ_x (Pa)
+   - `sy`: Normal stress in y-direction σ_y (Pa)
+   - `txy`: Shear stress τ_xy (Pa)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The von Mises stress σ_vm (Pa)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fea_von_mises_stress_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the von Mises equivalent stress from a 2D stress state using JSON serialization.
+
+ The von Mises stress is a scalar measure of stress intensity used in yield criteria:
+ σ_vm = √(σ_x² - σ_xσ_y + σ_y² + 3τ_xy²)
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `sx`: Normal stress in x-direction σ_x (Pa)
+   - `sy`: Normal stress in y-direction σ_y (Pa)
+   - `txy`: Shear stress τ_xy (Pa)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the von Mises stress σ_vm (Pa).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_fea_von_mises_stress_json(const char *aInput)
 ;
@@ -15363,6 +16150,16 @@ rssn_
 char *rssn_num_lagrange_interpolation_json(const char *aInputPtr)
 ;
 
+/*
+ Adds two numerical matrices.
+
+ # Arguments
+ * `m1` - Handle to the first matrix.
+ * `m2` - Handle to the second matrix.
+
+ # Returns
+ A handle to the resulting matrix, or null on error.
+ */
 rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_add(const struct rssn_RssnMatrixHandle *aM1,
                                                   const struct rssn_RssnMatrixHandle *aM2)
@@ -15540,6 +16337,16 @@ rssn_
 char *rssn_num_matrix_det_json_nightly(const char *aJsonPtr)
 ;
 
+/*
+ Computes the determinant of a numerical matrix.
+
+ # Arguments
+ * `matrix` - Handle to the matrix.
+ * `result` - Pointer to store the result.
+
+ # Returns
+ 0 on success, -1 on error.
+ */
 rssn_
 int32_t rssn_num_matrix_determinant(const struct rssn_RssnMatrixHandle *aMatrix,
                                     double *aResult)
@@ -15595,6 +16402,16 @@ rssn_
 size_t rssn_num_matrix_get_cols_nightly(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
 
+/*
+ Copies the matrix data into a provided buffer.
+
+ # Arguments
+ * `matrix` - Handle to the matrix.
+ * `buffer` - Pointer to a buffer of size `rows * cols`.
+
+ # Returns
+ 0 on success, -1 on error.
+ */
 rssn_
 int32_t rssn_num_matrix_get_data(const struct rssn_RssnMatrixHandle *aMatrix,
                                  double *aBuffer)
@@ -15636,6 +16453,15 @@ rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_identity_nightly(size_t aSize)
 ;
 
+/*
+ Computes the inverse of a numerical matrix.
+
+ # Arguments
+ * `matrix` - Handle to the matrix.
+
+ # Returns
+ A handle to the inverse matrix, or null if the matrix is singular or not square.
+ */
 rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_inverse(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
@@ -15679,6 +16505,16 @@ int32_t rssn_num_matrix_is_orthogonal_nightly(const struct rssn_RssnMatrixHandle
                                               double aEpsilon)
 ;
 
+/*
+ Multiplies two numerical matrices.
+
+ # Arguments
+ * `m1` - Handle to the first matrix.
+ * `m2` - Handle to the second matrix.
+
+ # Returns
+ A handle to the resulting matrix, or null on error.
+ */
 rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_mul(const struct rssn_RssnMatrixHandle *aM1,
                                                   const struct rssn_RssnMatrixHandle *aM2)
@@ -15802,6 +16638,15 @@ int32_t rssn_num_matrix_trace_nightly(const struct rssn_RssnMatrixHandle *aMatri
                                       double *aOutTrace)
 ;
 
+/*
+ Transposes a numerical matrix.
+
+ # Arguments
+ * `matrix` - Handle to the matrix.
+
+ # Returns
+ A handle to the transposed matrix, or null on error.
+ */
 rssn_
 struct rssn_RssnMatrixHandle *rssn_num_matrix_transpose(const struct rssn_RssnMatrixHandle *aMatrix)
 ;
@@ -15940,10 +16785,28 @@ void rssn_num_mv_complex_log_k(double aRe,
                                double *aResIm)
 ;
 
+/*
+ Computes the k-th branch of the complex logarithm using Bincode.
+
+ # Arguments
+ * `buffer` - Bincode-encoded `LogSqrtInput`.
+
+ # Returns
+ Bincode-encoded `FfiResult<ComplexResult, String>`.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_mv_complex_log_k_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the k-th branch of the complex logarithm using JSON.
+
+ # Arguments
+ * `json` - JSON-encoded `LogSqrtInput`.
+
+ # Returns
+ JSON-encoded `FfiResult<ComplexResult, String>`.
+ */
 rssn_
 char *rssn_num_mv_complex_log_k_json(const char *aJson)
 ;
@@ -15973,10 +16836,28 @@ void rssn_num_mv_complex_pow_k(double aZRe,
                                double *aResIm)
 ;
 
+/*
+ Computes the k-th branch of complex power using Bincode.
+
+ # Arguments
+ * `buffer` - Bincode-encoded `PowInput`.
+
+ # Returns
+ Bincode-encoded `FfiResult<ComplexResult, String>`.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_mv_complex_pow_k_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the k-th branch of complex power using JSON.
+
+ # Arguments
+ * `json` - JSON-encoded `PowInput`.
+
+ # Returns
+ JSON-encoded `FfiResult<ComplexResult, String>`.
+ */
 rssn_
 char *rssn_num_mv_complex_pow_k_json(const char *aJson)
 ;
@@ -15992,10 +16873,28 @@ void rssn_num_mv_complex_sqrt_k(double aRe,
                                 double *aResIm)
 ;
 
+/*
+ Computes the k-th branch of the complex square root using Bincode.
+
+ # Arguments
+ * `buffer` - Bincode-encoded `LogSqrtInput`.
+
+ # Returns
+ Bincode-encoded `FfiResult<ComplexResult, String>`.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_mv_complex_sqrt_k_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the k-th branch of the complex square root using JSON.
+
+ # Arguments
+ * `json` - JSON-encoded `LogSqrtInput`.
+
+ # Returns
+ JSON-encoded `FfiResult<ComplexResult, String>`.
+ */
 rssn_
 char *rssn_num_mv_complex_sqrt_k_json(const char *aJson)
 ;
@@ -16014,10 +16913,28 @@ int32_t rssn_num_mv_newton_method_complex(const struct rssn_Expr *aFPtr,
                                           double *aResIm)
 ;
 
+/*
+ Newton's method for complex roots using Bincode for FFI communication.
+
+ # Arguments
+ * `buffer` - Bincode-encoded `NewtonInput`.
+
+ # Returns
+ Bincode-encoded `FfiResult<ComplexResult, String>`.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_mv_newton_method_complex_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Newton's method for complex roots using JSON for FFI communication.
+
+ # Arguments
+ * `input_json` - JSON-encoded `NewtonInput`.
+
+ # Returns
+ JSON-encoded `FfiResult<ComplexResult, String>`.
+ */
 rssn_
 char *rssn_num_mv_newton_method_complex_json(const char *aInputJson)
 ;
@@ -16115,45 +17032,224 @@ struct rssn_Matrix_f64 *rssn_num_ode_solve(const struct rssn_Expr *const *aFuncs
                                            int32_t aMethod)
 ;
 
+/*
+ Solves a system of ordinary differential equations (ODEs) using bincode serialization.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `OdeInput` with:
+   - `funcs`: Vector of differential equations as `Expr`
+   - `y0`: Initial values for each function
+   - `x_range`: Integration range as (start, end)
+   - `num_steps`: Number of steps for the solver
+   - `method`: ODE solver method to use
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<Vec<f64>>, String>` with either:
+ - `ok`: Solution matrix where each row represents a step
+ - `err`: Error message if solving failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer is valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_ode_solve_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves a system of ordinary differential equations (ODEs) using JSON serialization.
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `funcs`: Array of differential equations as `Expr`
+   - `y0`: Initial values for each function
+   - `x_range`: Integration range as [start, end]
+   - `num_steps`: Number of steps for the solver
+   - `method`: ODE solver method to use
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<Vec<f64>>, String>` with either:
+ - `ok`: Solution matrix where each row represents a step
+ - `err`: Error message if solving failed
+
+ # Safety
+
+ This function is unsafe because it:
+ - Receives a raw C string pointer that must be valid, null-terminated UTF-8
+ - Returns a raw pointer that the caller must free using `rssn_free_string`
+ */
 rssn_
 char *rssn_num_ode_solve_json(const char *aInputJson)
 ;
 
+/*
+ Computes the total power radiated by a blackbody via handle-based FFI.
+
+ Uses the Stefan-Boltzmann law P = σAT⁴, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
+
+ # Arguments
+
+ * `area` - Surface area A (m²)
+ * `temperature` - Absolute temperature T (Kelvin)
+
+ # Returns
+
+ The radiated power P (Watts).
+ */
 rssn_
 double rssn_num_physics_blackbody_power(double aArea,
                                         double aTemperature)
 ;
 
+/*
+ Computes the total power radiated by a blackbody using JSON serialization.
+
+ Uses the Stefan-Boltzmann law P = σAT⁴, where σ = 5.67 × 10⁻⁸ W/(m²·K⁴).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `area`: Surface area A (m²)
+   - `temperature`: Absolute temperature T (Kelvin)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the radiated power P (Watts).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_blackbody_power_json(const char *aInput)
 ;
 
+/*
+ Returns the Boltzmann constant k_B via handle-based FFI.
+
+ # Returns
+
+ The Boltzmann constant k_B = 1.381 × 10⁻²³ J/K.
+ */
 rssn_
 double rssn_num_physics_boltzmann_constant(void)
 ;
 
+/*
+ Computes the Compton wavelength of a particle via handle-based FFI.
+
+ The Compton wavelength is λ_C = h/(mc), characteristic of quantum scattering.
+
+ # Arguments
+
+ * `mass` - Particle rest mass m (kg)
+
+ # Returns
+
+ The Compton wavelength λ_C (meters).
+ */
 rssn_
 double rssn_num_physics_compton_wavelength(double aMass)
 ;
 
+/*
+ Computes the Coulomb electrostatic force between two point charges via handle-based FFI.
+
+ The force is F = k_e q₁q₂ / r², where k_e = 8.99 × 10⁹ N·m²/C².
+
+ # Arguments
+
+ * `q1` - First charge q₁ (Coulombs)
+ * `q2` - Second charge q₂ (Coulombs)
+ * `r` - Separation distance r (m)
+
+ # Returns
+
+ The Coulomb force magnitude F (Newtons, positive for repulsion).
+ */
 rssn_
 double rssn_num_physics_coulomb_force(double aQ1,
                                       double aQ2,
                                       double aR)
 ;
 
+/*
+ Computes the Coulomb electrostatic force between two point charges using bincode serialization.
+
+ The Coulomb force is the electrostatic interaction between charged particles:
+ F = k_e q₁q₂ / r², where k_e is Coulomb's constant (8.99×10⁹ N·m²/C²).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `TwoChargesInput` with:
+   - `q1`: First charge q₁ (Coulombs)
+   - `q2`: Second charge q₂ (Coulombs)
+   - `r`: Separation distance r (m)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The Coulomb force magnitude F (Newtons, positive for repulsion)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_physics_coulomb_force_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Coulomb electrostatic force between two point charges using JSON serialization.
+
+ The force is F = k_e q₁q₂ / r², where k_e = 8.99 × 10⁹ N·m²/C².
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `q1`: First charge q₁ (Coulombs)
+   - `q2`: Second charge q₂ (Coulombs)
+   - `r`: Separation distance r (m)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the Coulomb force magnitude F (Newtons, positive for repulsion).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_coulomb_force_json(const char *aInput)
 ;
 
+/*
+ Computes the cyclotron radius for a charged particle in a magnetic field via handle-based FFI.
+
+ The radius is r = (mv) / (qB), representing circular motion radius in a uniform B-field.
+
+ # Arguments
+
+ * `mass` - Particle mass m (kg)
+ * `velocity` - Particle velocity v (m/s)
+ * `charge` - Particle charge q (Coulombs)
+ * `b_field` - Magnetic field magnitude B (Tesla)
+
+ # Returns
+
+ The cyclotron radius r (m).
+ */
 rssn_
 double rssn_num_physics_cyclotron_radius(double aMass,
                                          double aVelocity,
@@ -16161,6 +17257,23 @@ double rssn_num_physics_cyclotron_radius(double aMass,
                                          double aBField)
 ;
 
+/*
+ Computes the displacement of a damped harmonic oscillator via handle-based FFI.
+
+ The displacement is x(t) = A e⁻γᵗ cos(ω't + φ), where ω' = √(ω₀² - γ²).
+
+ # Arguments
+
+ * `amplitude` - Initial amplitude A (m)
+ * `omega0` - Natural angular frequency ω₀ (rad/s)
+ * `gamma` - Damping coefficient γ (1/s)
+ * `phase` - Phase angle φ (radians)
+ * `time` - Time t at which to evaluate displacement (s)
+
+ # Returns
+
+ The displacement x(t) for underdamped oscillation (m).
+ */
 rssn_
 double rssn_num_physics_damped_harmonic_oscillator(double aAmplitude,
                                                    double aOmega0,
@@ -16169,99 +17282,458 @@ double rssn_num_physics_damped_harmonic_oscillator(double aAmplitude,
                                                    double aTime)
 ;
 
+/*
+ Computes the displacement of a damped harmonic oscillator using JSON serialization.
+
+ The displacement is x(t) = A e⁻γᵗ cos(ω't + φ), where ω' = √(ω₀² - γ²).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `amplitude`: Initial amplitude A (m)
+   - `omega0`: Natural angular frequency ω₀ (rad/s)
+   - `gamma`: Damping coefficient γ (1/s)
+   - `phase`: Phase angle φ (radians)
+   - `time`: Time t at which to evaluate displacement (s)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the displacement x(t) for underdamped oscillation (m).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_damped_harmonic_oscillator_json(const char *aInput)
 ;
 
+/*
+ Computes the de Broglie wavelength of a particle via handle-based FFI.
+
+ The wavelength is λ = h/p, where h is Planck's constant and p is momentum.
+
+ # Arguments
+
+ * `momentum` - Particle momentum p (kg·m/s)
+
+ # Returns
+
+ The de Broglie wavelength λ (meters).
+ */
 rssn_
 double rssn_num_physics_de_broglie_wavelength(double aMomentum)
 ;
 
+/*
+ Computes the de Broglie wavelength of a particle using JSON serialization.
+
+ The wavelength is λ = h/p, where h is Planck's constant and p is momentum.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `momentum`: Particle momentum p (kg·m/s)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the de Broglie wavelength λ (meters).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_de_broglie_wavelength_json(const char *aInput)
 ;
 
+/*
+ Computes the electric field magnitude of a point charge via handle-based FFI.
+
+ The electric field is E = k_e q / r².
+
+ # Arguments
+
+ * `q` - Point charge q (Coulombs)
+ * `r` - Distance from charge r (m)
+
+ # Returns
+
+ The electric field magnitude E (N/C or V/m).
+ */
 rssn_
 double rssn_num_physics_electric_field_point_charge(double aQ,
                                                     double aR)
 ;
 
+/*
+ Computes the electric field magnitude of a point charge using JSON serialization.
+
+ The electric field is E = k_e q / r².
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `q`: Point charge q (Coulombs)
+   - `r`: Distance from charge r (m)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the electric field magnitude E (N/C or V/m).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_electric_field_point_charge_json(const char *aInput)
 ;
 
+/*
+ Computes the electric potential of a point charge via handle-based FFI.
+
+ The potential is V = k_e q / r.
+
+ # Arguments
+
+ * `q` - Point charge q (Coulombs)
+ * `r` - Distance from charge r (m)
+
+ # Returns
+
+ The electric potential V (Volts).
+ */
 rssn_
 double rssn_num_physics_electric_potential_point_charge(double aQ,
                                                         double aR)
 ;
 
+/*
+ Returns the electron rest mass m_e via handle-based FFI.
+
+ # Returns
+
+ The electron rest mass m_e = 9.109 × 10⁻³¹ kg.
+ */
 rssn_
 double rssn_num_physics_electron_mass(void)
 ;
 
+/*
+ Returns the elementary charge e via handle-based FFI.
+
+ # Returns
+
+ The elementary charge e = 1.602 × 10⁻¹⁹ Coulombs.
+ */
 rssn_
 double rssn_num_physics_elementary_charge(void)
 ;
 
+/*
+ Returns the gravitational constant G via handle-based FFI.
+
+ # Returns
+
+ The gravitational constant G = 6.674 × 10⁻¹¹ N·m²/kg².
+ */
 rssn_
 double rssn_num_physics_gravitational_constant(void)
 ;
 
+/*
+ Computes the energy level of the hydrogen atom using the Bohr model via handle-based FFI.
+
+ The energy is E_n = -13.6 eV / n², where n is the principal quantum number.
+
+ # Arguments
+
+ * `n` - Principal quantum number n (positive integer, ground state = 1)
+
+ # Returns
+
+ The energy level E_n (Joules, negative for bound states).
+ */
 rssn_
 double rssn_num_physics_hydrogen_energy_level(uint64_t aN)
 ;
 
+/*
+ Computes the energy level of the hydrogen atom using the Bohr model and bincode serialization.
+
+ The Bohr model gives hydrogen atom energy levels as:
+ E_n = -13.6 eV / n², where n is the principal quantum number (n ≥ 1).
+ Energy is negative, indicating a bound state.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `QuantumNumberInput` with:
+   - `n`: Principal quantum number n (positive integer, ground state = 1)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The energy level E_n (Joules, negative for bound states)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_physics_hydrogen_energy_level_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the energy level of the hydrogen atom using the Bohr model and JSON serialization.
+
+ The energy is E_n = -13.6 eV / n², where n is the principal quantum number.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n`: Principal quantum number n (positive integer, ground state = 1)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the energy level E_n (Joules, negative for bound states).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_hydrogen_energy_level_json(const char *aInput)
 ;
 
+/*
+ Computes the pressure of an ideal gas via handle-based FFI.
+
+ Uses the ideal gas law PV = nRT, where R = 8.314 J/(mol·K).
+
+ # Arguments
+
+ * `n` - Amount of substance (moles)
+ * `t` - Absolute temperature T (Kelvin)
+ * `v` - Volume V (m³)
+
+ # Returns
+
+ The gas pressure P (Pascals).
+ */
 rssn_
 double rssn_num_physics_ideal_gas_pressure(double aN,
                                            double aT,
                                            double aV)
 ;
 
+/*
+ Computes the pressure of an ideal gas using the ideal gas law and bincode serialization.
+
+ The ideal gas law relates pressure, volume, temperature, and amount of substance:
+ PV = nRT, where R is the universal gas constant (8.314 J/(mol·K)).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `IdealGasInput` with:
+   - `n`: Amount of substance (moles)
+   - `t`: Absolute temperature T (Kelvin)
+   - `v`: Volume V (m³)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The gas pressure P (Pascals)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_physics_ideal_gas_pressure_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the pressure of an ideal gas using JSON serialization.
+
+ Uses the ideal gas law PV = nRT, where R = 8.314 J/(mol·K).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n`: Amount of substance (moles)
+   - `t`: Absolute temperature T (Kelvin)
+   - `v`: Volume V (m³)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the gas pressure P (Pascals).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_ideal_gas_pressure_json(const char *aInput)
 ;
 
+/*
+ Computes the temperature of an ideal gas via handle-based FFI.
+
+ Uses the ideal gas law T = PV/(nR).
+
+ # Arguments
+
+ * `p` - Pressure P (Pascals)
+ * `v` - Volume V (m³)
+ * `n` - Amount of substance (moles)
+
+ # Returns
+
+ The absolute temperature T (Kelvin).
+ */
 rssn_
 double rssn_num_physics_ideal_gas_temperature(double aP,
                                               double aV,
                                               double aN)
 ;
 
+/*
+ Computes the volume of an ideal gas via handle-based FFI.
+
+ Uses the ideal gas law V = nRT/P.
+
+ # Arguments
+
+ * `n` - Amount of substance (moles)
+ * `t` - Absolute temperature T (Kelvin)
+ * `p` - Pressure P (Pascals)
+
+ # Returns
+
+ The gas volume V (m³).
+ */
 rssn_
 double rssn_num_physics_ideal_gas_volume(double aN,
                                          double aT,
                                          double aP)
 ;
 
+/*
+ Computes relativistic length contraction via handle-based FFI.
+
+ The contracted length is L = L₀/γ, where γ is the Lorentz factor.
+
+ # Arguments
+
+ * `proper_length` - Proper length L₀ (m)
+ * `velocity` - Relative velocity v (m/s)
+
+ # Returns
+
+ The contracted length L (m).
+ */
 rssn_
 double rssn_num_physics_length_contraction(double aProperLength,
                                            double aVelocity)
 ;
 
+/*
+ Computes the Lorentz factor for relativistic transformations via handle-based FFI.
+
+ The Lorentz factor is γ = 1 / √(1 - v²/c²).
+
+ # Arguments
+
+ * `velocity` - Velocity v (m/s)
+
+ # Returns
+
+ The Lorentz factor γ (dimensionless, ≥ 1).
+ */
 rssn_
 double rssn_num_physics_lorentz_factor(double aVelocity)
 ;
 
+/*
+ Computes the Lorentz factor for relativistic time dilation and length contraction using bincode serialization.
+
+ The Lorentz factor γ appears in special relativity transformations:
+ γ = 1 / √(1 - v²/c²), where v is velocity and c is the speed of light.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `VelocityInput` with:
+   - `velocity`: Velocity v (m/s, typically as a fraction of c)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The Lorentz factor γ (dimensionless, ≥ 1)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_physics_lorentz_factor_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Lorentz factor for relativistic transformations using JSON serialization.
+
+ The Lorentz factor is γ = 1 / √(1 - v²/c²).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `velocity`: Velocity v (m/s)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the Lorentz factor γ (dimensionless, ≥ 1).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_lorentz_factor_json(const char *aInput)
 ;
 
+/*
+ Computes the Lorentz force on a charged particle in electromagnetic fields via handle-based FFI.
+
+ The force is F = q(E + v × B), simplified for parallel fields.
+
+ # Arguments
+
+ * `charge` - Particle charge q (Coulombs)
+ * `velocity` - Particle velocity v (m/s)
+ * `e_field` - Electric field magnitude E (V/m)
+ * `b_field` - Magnetic field magnitude B (Tesla)
+
+ # Returns
+
+ The Lorentz force magnitude F (Newtons).
+ */
 rssn_
 double rssn_num_physics_lorentz_force(double aCharge,
                                       double aVelocity,
@@ -16269,95 +17741,439 @@ double rssn_num_physics_lorentz_force(double aCharge,
                                       double aBField)
 ;
 
+/*
+ Computes the magnetic field magnitude around an infinite straight current-carrying wire via handle-based FFI.
+
+ The magnetic field is B = (μ₀ I) / (2πr), where μ₀ is the permeability of free space.
+
+ # Arguments
+
+ * `current` - Electric current I (Amperes)
+ * `r` - Perpendicular distance from wire r (m)
+
+ # Returns
+
+ The magnetic field magnitude B (Tesla).
+ */
 rssn_
 double rssn_num_physics_magnetic_field_infinite_wire(double aCurrent,
                                                      double aR)
 ;
 
+/*
+ Computes rest mass energy using Einstein's mass-energy equivalence via handle-based FFI.
+
+ The rest energy is E = mc².
+
+ # Arguments
+
+ * `mass` - Rest mass m (kg)
+
+ # Returns
+
+ The rest energy E (Joules).
+ */
 rssn_
 double rssn_num_physics_mass_energy(double aMass)
 ;
 
+/*
+ Computes the rest mass energy using Einstein's mass-energy equivalence and bincode serialization.
+
+ Einstein's mass-energy relation is one of the most famous equations in physics:
+ E = mc², where m is rest mass and c is the speed of light (2.998×10⁸ m/s).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `MassInput` with:
+   - `mass`: Rest mass m (kg)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The rest energy E (Joules)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_physics_mass_energy_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes rest mass energy using Einstein's mass-energy equivalence and JSON serialization.
+
+ The rest energy is E = mc².
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `mass`: Rest mass m (kg)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the rest energy E (Joules).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_mass_energy_json(const char *aInput)
 ;
 
+/*
+ Computes the mean speed of particles in a Maxwell-Boltzmann distribution via handle-based FFI.
+
+ The mean speed is ⟨v⟩ = √(8k_BT/(πm)).
+
+ # Arguments
+
+ * `mass` - Particle mass m (kg)
+ * `temperature` - Absolute temperature T (Kelvin)
+
+ # Returns
+
+ The mean speed ⟨v⟩ (m/s).
+ */
 rssn_
 double rssn_num_physics_maxwell_boltzmann_mean_speed(double aMass,
                                                      double aTemperature)
 ;
 
+/*
+ Computes the mean speed of particles in a Maxwell-Boltzmann distribution using JSON serialization.
+
+ The mean speed is ⟨v⟩ = √(8k_BT/(πm)).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `mass`: Particle mass m (kg)
+   - `temperature`: Absolute temperature T (Kelvin)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the mean speed ⟨v⟩ (m/s).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_maxwell_boltzmann_mean_speed_json(const char *aInput)
 ;
 
+/*
+ Computes the root-mean-square speed of particles in a Maxwell-Boltzmann distribution via handle-based FFI.
+
+ The RMS speed is v_rms = √(3k_BT/m).
+
+ # Arguments
+
+ * `mass` - Particle mass m (kg)
+ * `temperature` - Absolute temperature T (Kelvin)
+
+ # Returns
+
+ The RMS speed v_rms (m/s).
+ */
 rssn_
 double rssn_num_physics_maxwell_boltzmann_rms_speed(double aMass,
                                                     double aTemperature)
 ;
 
+/*
+ Computes the Maxwell-Boltzmann speed distribution probability density via handle-based FFI.
+
+ The distribution is f(v) = 4π(m/(2πk_BT))³¹² v² exp(-mv²/(2k_BT)).
+
+ # Arguments
+
+ * `v` - Particle speed v (m/s)
+ * `mass` - Particle mass m (kg)
+ * `temperature` - Absolute temperature T (Kelvin)
+
+ # Returns
+
+ The probability density f(v) (s/m).
+ */
 rssn_
 double rssn_num_physics_maxwell_boltzmann_speed_distribution(double aV,
                                                              double aMass,
                                                              double aTemperature)
 ;
 
+/*
+ Computes the energy of a photon from its wavelength via handle-based FFI.
+
+ The energy is E = hc/λ.
+
+ # Arguments
+
+ * `wavelength` - Photon wavelength λ (meters)
+
+ # Returns
+
+ The photon energy E (Joules).
+ */
 rssn_
 double rssn_num_physics_photon_energy(double aWavelength)
 ;
 
+/*
+ Computes the energy of a photon from its wavelength using JSON serialization.
+
+ The energy is E = hc/λ.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `wavelength`: Photon wavelength λ (meters)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the photon energy E (Joules).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_photon_energy_json(const char *aInput)
 ;
 
+/*
+ Computes the wavelength of a photon from its energy via handle-based FFI.
+
+ The wavelength is λ = hc/E.
+
+ # Arguments
+
+ * `energy` - Photon energy E (Joules)
+
+ # Returns
+
+ The photon wavelength λ (meters).
+ */
 rssn_
 double rssn_num_physics_photon_wavelength(double aEnergy)
 ;
 
+/*
+ Computes the wavelength of a photon from its energy using JSON serialization.
+
+ The wavelength is λ = hc/E.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `energy`: Photon energy E (Joules)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the photon wavelength λ (meters).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_photon_wavelength_json(const char *aInput)
 ;
 
+/*
+ Returns Planck's constant h via handle-based FFI.
+
+ # Returns
+
+ Planck's constant h = 6.626 × 10⁻³⁴ J·s.
+ */
 rssn_
 double rssn_num_physics_planck_constant(void)
 ;
 
+/*
+ Computes the energy eigenvalue of a quantum harmonic oscillator via handle-based FFI.
+
+ The energy is E_n = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
+
+ # Arguments
+
+ * `n` - Quantum number n (non-negative integer, ground state = 0)
+ * `omega` - Angular frequency ω (rad/s)
+
+ # Returns
+
+ The energy eigenvalue E_n (Joules).
+ */
 rssn_
 double rssn_num_physics_quantum_harmonic_oscillator_energy(uint64_t aN,
                                                            double aOmega)
 ;
 
+/*
+ Computes the energy eigenvalue of a quantum harmonic oscillator using bincode serialization.
+
+ The quantum harmonic oscillator has discrete energy levels given by:
+ E_n = ℏω(n + 1/2), where n is the quantum number, ℏ is the reduced Planck constant,
+ and ω is the angular frequency.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `QuantumHarmonicInput` with:
+   - `n`: Quantum number n (non-negative integer, ground state = 0)
+   - `omega`: Angular frequency ω (rad/s)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The energy eigenvalue E_n (Joules)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_physics_quantum_harmonic_oscillator_energy_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the energy eigenvalue of a quantum harmonic oscillator using JSON serialization.
+
+ The energy is E_n = ℏω(n + 1/2), where ℏ is the reduced Planck constant.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n`: Quantum number n (non-negative integer, ground state = 0)
+   - `omega`: Angular frequency ω (rad/s)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the energy eigenvalue E_n (Joules).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_quantum_harmonic_oscillator_energy_json(const char *aInput)
 ;
 
+/*
+ Computes relativistic kinetic energy via handle-based FFI.
+
+ The kinetic energy is K = (γ - 1)mc².
+
+ # Arguments
+
+ * `mass` - Rest mass m (kg)
+ * `velocity` - Velocity v (m/s)
+
+ # Returns
+
+ The kinetic energy K (Joules).
+ */
 rssn_
 double rssn_num_physics_relativistic_kinetic_energy(double aMass,
                                                     double aVelocity)
 ;
 
+/*
+ Computes relativistic momentum via handle-based FFI.
+
+ The momentum is p = γmv, where γ is the Lorentz factor.
+
+ # Arguments
+
+ * `mass` - Rest mass m (kg)
+ * `velocity` - Velocity v (m/s)
+
+ # Returns
+
+ The relativistic momentum p (kg·m/s).
+ */
 rssn_
 double rssn_num_physics_relativistic_momentum(double aMass,
                                               double aVelocity)
 ;
 
+/*
+ Computes relativistic velocity addition via handle-based FFI.
+
+ The combined velocity is u = (v + w) / (1 + vw/c²).
+
+ # Arguments
+
+ * `v` - First velocity (m/s)
+ * `w` - Second velocity (m/s)
+
+ # Returns
+
+ The combined velocity u (m/s).
+ */
 rssn_
 double rssn_num_physics_relativistic_velocity_addition(double aV,
                                                        double aW)
 ;
 
+/*
+ Computes relativistic velocity addition using JSON serialization.
+
+ The combined velocity is u = (v + w) / (1 + vw/c²).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `v`: First velocity (m/s)
+   - `w`: Second velocity (m/s)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the combined velocity u (m/s).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_relativistic_velocity_addition_json(const char *aInput)
 ;
 
+/*
+ Computes the displacement of a simple harmonic oscillator via handle-based FFI.
+
+ The displacement is given by x(t) = A cos(ωt + φ).
+
+ # Arguments
+
+ * `amplitude` - Oscillation amplitude A (m)
+ * `omega` - Angular frequency ω (rad/s)
+ * `phase` - Phase angle φ (radians)
+ * `time` - Time t at which to evaluate displacement (s)
+
+ # Returns
+
+ The displacement x(t) (m).
+ */
 rssn_
 double rssn_num_physics_simple_harmonic_oscillator(double aAmplitude,
                                                    double aOmega,
@@ -16365,31 +18181,154 @@ double rssn_num_physics_simple_harmonic_oscillator(double aAmplitude,
                                                    double aTime)
 ;
 
+/*
+ Computes the displacement of a simple harmonic oscillator using bincode serialization.
+
+ The simple harmonic oscillator describes oscillatory motion with displacement:
+ x(t) = A cos(ωt + φ), where A is amplitude, ω is angular frequency, and φ is phase.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `HarmonicOscillatorInput` with:
+   - `amplitude`: Oscillation amplitude A (m)
+   - `omega`: Angular frequency ω (rad/s)
+   - `phase`: Phase angle φ (radians)
+   - `time`: Time t at which to evaluate displacement (s)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The displacement x(t) (m)
+ - `err`: Error message if deserialization failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_physics_simple_harmonic_oscillator_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the displacement of a simple harmonic oscillator using JSON serialization.
+
+ The displacement is x(t) = A cos(ωt + φ).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `amplitude`: Oscillation amplitude A (m)
+   - `omega`: Angular frequency ω (rad/s)
+   - `phase`: Phase angle φ (radians)
+   - `time`: Time t at which to evaluate displacement (s)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the displacement x(t) (m).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_simple_harmonic_oscillator_json(const char *aInput)
 ;
 
+/*
+ Returns the speed of light constant c via handle-based FFI.
+
+ # Returns
+
+ The speed of light c = 2.998 × 10⁸ m/s.
+ */
 rssn_
 double rssn_num_physics_speed_of_light(void)
 ;
 
+/*
+ Computes relativistic time dilation via handle-based FFI.
+
+ The dilated time is t = γt₀, where γ is the Lorentz factor.
+
+ # Arguments
+
+ * `proper_time` - Proper time t₀ (s)
+ * `velocity` - Relative velocity v (m/s)
+
+ # Returns
+
+ The dilated time t (s).
+ */
 rssn_
 double rssn_num_physics_time_dilation(double aProperTime,
                                       double aVelocity)
 ;
 
+/*
+ Computes relativistic time dilation using JSON serialization.
+
+ The dilated time is t = γt₀, where γ is the Lorentz factor.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `proper_time`: Proper time t₀ (s)
+   - `velocity`: Relative velocity v (m/s)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the dilated time t (s).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_time_dilation_json(const char *aInput)
 ;
 
+/*
+ Computes the peak wavelength of blackbody radiation using Wien's displacement law via handle-based FFI.
+
+ Wien's law states λ_max = b/T, where b = 2.898 × 10⁻³ m·K.
+
+ # Arguments
+
+ * `temperature` - Absolute temperature T (Kelvin)
+
+ # Returns
+
+ The peak wavelength λ_max (meters).
+ */
 rssn_
 double rssn_num_physics_wien_displacement_wavelength(double aTemperature)
 ;
 
+/*
+ Computes the peak wavelength of blackbody radiation using Wien's displacement law and JSON serialization.
+
+ Wien's law states λ_max = b/T, where b = 2.898 × 10⁻³ m·K.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `temperature`: Absolute temperature T (Kelvin)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the peak wavelength λ_max (meters).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_physics_wien_displacement_wavelength_json(const char *aInput)
 ;

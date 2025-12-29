@@ -30,6 +30,33 @@ struct OptimizeResponse {
     error: Option<String>,
 }
 
+/// Solves a numerical optimization problem using JSON serialization.
+///
+/// This function performs gradient descent optimization on well-known test problems
+/// (Rosenbrock, Sphere) via FFI. The optimization configuration and problem parameters
+/// are deserialized from a JSON string.
+///
+/// # Arguments
+///
+/// * `json_ptr` - A null-terminated C string containing JSON with:
+///   - `problem_type`: Name of the optimization problem ("Rosenbrock" or "Sphere")
+///   - `init_param`: Initial parameter vector for optimization
+///   - `max_iters`: Maximum number of iterations allowed
+///   - `tolerance`: Convergence tolerance threshold
+///   - `rosenbrock_a`: Optional parameter `a` for Rosenbrock function (default: 1.0)
+///   - `rosenbrock_b`: Optional parameter `b` for Rosenbrock function (default: 100.0)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `OptimizeResponse` with:
+/// - `success`: Whether optimization succeeded
+/// - `best_param`: Optimal parameter vector found
+/// - `best_cost`: Minimum cost achieved
+/// - `iterations`: Number of iterations performed
+/// - `error`: Error message if optimization failed
+///
+/// The caller must free the returned string using `numerical_optimize_free_json`.
+/// Returns null if the input pointer is invalid.
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_solve_json(
@@ -219,6 +246,17 @@ pub extern "C" fn numerical_optimize_solve_json(
         .into_raw()
 }
 
+/// Frees a JSON string previously allocated by `numerical_optimize_solve_json`.
+///
+/// # Arguments
+///
+/// * `ptr` - Pointer to a C string to deallocate
+///
+/// # Safety
+///
+/// The caller must ensure the pointer was previously returned by
+/// `numerical_optimize_solve_json` and has not already been freed.
+/// Passing a null pointer is safe but has no effect.
 #[no_mangle]
 
 pub extern "C" fn numerical_optimize_free_json(
