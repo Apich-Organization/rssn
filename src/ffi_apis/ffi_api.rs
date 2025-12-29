@@ -7649,81 +7649,52 @@ pub unsafe extern "C" fn rssn_plugin_execute(
             0
         };
 
-    let pm_guard = PLUGIN_MANAGER
-        .lock()
-        .expect("Plugin Manager Error");
-
-    let pm = match &*pm_guard {
-        | Some(manager) => manager,
-        | None => {
-
-            return handle_error(
-                "Plugin manager not initialized. Call rssn_init_plugin_manager first.".to_string(),
-            );
-        },
-    };
-
     let plugin_name = match unsafe {
-
-        CStr::from_ptr(plugin_name_ptr)
-            .to_str()
+        CStr::from_ptr(plugin_name_ptr).to_str()
     } {
         | Ok(s) => s,
         | Err(e) => {
-            return handle_error(
-                format!(
-                    "Invalid UTF-8 in \
-                     plugin_name: {e}"
-                ),
-            )
+            return handle_error(format!("Invalid UTF-8 in plugin_name: {e}"));
         },
     };
 
     let command = match unsafe {
-
-        CStr::from_ptr(command_ptr)
-            .to_str()
+        CStr::from_ptr(command_ptr).to_str()
     } {
         | Ok(s) => s,
         | Err(e) => {
-            return handle_error(
-                format!(
-                    "Invalid UTF-8 in \
-                     command: {e}"
-                ),
-            )
+            return handle_error(format!("Invalid UTF-8 in command: {e}"));
         },
     };
 
-    let args_expr = match HANDLE_MANAGER
-        .get(args_handle)
-    {
+    let args_expr = match HANDLE_MANAGER.get(args_handle) {
         | Some(expr) => expr,
         | None => {
-            return handle_error(
-                format!(
-                "Invalid handle for \
-                 args: {args_handle}"
-            ),
-            )
+            return handle_error(format!("Invalid handle for args: {args_handle}"));
         },
     };
 
-    match pm.execute_plugin(
-        plugin_name,
-        command,
-        &args_expr,
-    ) {
+    let result = {
+        let pm_guard = PLUGIN_MANAGER.lock().expect("Plugin Manager Error");
+
+        let pm = match &*pm_guard {
+            | Some(manager) => manager,
+            | None => {
+                return handle_error(
+                    "Plugin manager not initialized. Call rssn_init_plugin_manager first.".to_string(),
+                );
+            },
+        };
+
+        pm.execute_plugin(plugin_name, command, &args_expr)
+    };
+
+    match result {
         | Ok(result_expr) => {
-            HANDLE_MANAGER
-                .insert(result_expr)
+            HANDLE_MANAGER.insert(result_expr)
         },
         | Err(e) => {
-            handle_error(format!(
-                "Plugin execution \
-                 failed for \
-                 '{plugin_name}': {e}"
-            ))
+            handle_error(format!("Plugin execution failed for '{plugin_name}': {e}"))
         },
     }
 }
