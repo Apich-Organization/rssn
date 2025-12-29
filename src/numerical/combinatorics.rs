@@ -13,6 +13,7 @@
 /// The factorial of `n` as an `f64`. Returns `f64::INFINITY` if `n` is too large to fit in `f64`.
 #[must_use]
 
+#[allow(clippy::cast_precision_loss)]
 pub fn factorial(n: u64) -> f64 {
 
     if n > 170 {
@@ -35,6 +36,7 @@ pub fn factorial(n: u64) -> f64 {
 /// The number of permutations as an `f64`. Returns `0.0` if `k > n`.
 #[must_use]
 
+#[allow(clippy::cast_precision_loss)]
 pub fn permutations(
     n: u64,
     k: u64,
@@ -60,6 +62,7 @@ pub fn permutations(
 /// The number of combinations as an `f64`. Returns `0.0` if `k > n`.
 #[must_use]
 
+#[allow(clippy::cast_precision_loss)]
 pub fn combinations(
     n: u64,
     k: u64,
@@ -168,6 +171,7 @@ pub fn solve_recurrence_numerical(
 /// This is the number of ways to partition a set of `n` elements into `k` non-empty subsets.
 #[must_use]
 
+#[allow(clippy::cast_precision_loss)]
 pub fn stirling_second(
     n: u64,
     k: u64,
@@ -246,6 +250,8 @@ pub fn catalan(n: u64) -> f64 {
 /// Computes the rising factorial (Pochhammer symbol) x^(n) = x(x+1)...(x+n-1).
 #[must_use]
 
+// precision loss is allowed here because we need to introduce bigint otherwise --- that will require a lot of work and results in breaking change and loss of performance. So we will have to handle it later.
+#[allow(clippy::cast_precision_loss)]
 pub fn rising_factorial(
     x: f64,
     n: u64,
@@ -269,6 +275,7 @@ pub fn rising_factorial(
 /// Computes the falling factorial (x)_n = x(x-1)...(x-n+1).
 #[must_use]
 
+#[allow(clippy::cast_precision_loss)]
 pub fn falling_factorial(
     x: f64,
     n: u64,
