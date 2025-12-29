@@ -1165,6 +1165,7 @@ rssn_Expr *expr_substitute(rssn_Expr *aHandle,
  The caller is responsible for freeing the returned string using `free_string`.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 char *expr_to_latex(rssn_Expr *aHandle)
 ;
 
@@ -1174,6 +1175,7 @@ char *expr_to_latex(rssn_Expr *aHandle)
  The caller is responsible for freeing the returned string using `free_string`.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 char *expr_to_pretty_string(rssn_Expr *aHandle)
 ;
 
@@ -1183,6 +1185,7 @@ char *expr_to_pretty_string(rssn_Expr *aHandle)
  The caller is responsible for freeing the returned string using `free_string`.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 char *expr_to_string(rssn_Expr *aHandle)
 ;
 
@@ -1195,6 +1198,7 @@ char *expr_to_string(rssn_Expr *aHandle)
  The caller is responsible for freeing the returned string using `free_string`.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 char *expr_unify_expression(rssn_Expr *aHandle)
 ;
 
@@ -1209,6 +1213,7 @@ void free_string(char *aS)
  Evaluates a point on a Bézier curve and returns the coordinates as a JSON string.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 char *interpolate_bezier_curve(const char *aJsonPtr)
 ;
 
@@ -1216,6 +1221,7 @@ char *interpolate_bezier_curve(const char *aJsonPtr)
  Computes a Lagrange interpolating polynomial and returns its coefficients as a JSON string.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 char *interpolate_lagrange(const char *aJsonPtr)
 ;
 
@@ -1540,11 +1546,21 @@ char *mobius_transformation_new_json(const char *aAJson,
                                      const char *aDJson)
 ;
 
+/*
+ Computes the modular inverse (a^-1 mod b) using input from a JSON string.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 char *nt_mod_inverse(const char *aJsonPtr)
 ;
 
+/*
+ Computes the modular exponentiation (base^exp % modulus) using input from a JSON string.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 char *nt_mod_pow(const char *aJsonPtr)
@@ -1722,32 +1738,62 @@ DEPRECATED_WITH_NOTE
 char *physics_solve_advection_diffusion_1d(const char *aJsonPtr)
 ;
 
+/*
+ Computes the degree of a polynomial expression with respect to a given variable.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 int64_t poly_degree(const char *aJsonPtr)
 ;
 
+/*
+ Creates a polynomial expression from a vector of its coefficients.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 rssn_Expr *poly_from_coeffs_vec(const char *aJsonPtr)
 ;
 
+/*
+ Checks if an expression is a polynomial with respect to a given variable.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 bool poly_is_polynomial(const char *aJsonPtr)
 ;
 
+/*
+ Computes the leading coefficient of a polynomial expression with respect to a given variable.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 rssn_Expr *poly_leading_coefficient(rssn_Expr *aHandle,
                                     const char *aVarPtr)
 ;
 
+/*
+ Performs polynomial long division on two expressions with respect to a given variable.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 char *poly_long_division(const char *aJsonPtr)
 ;
 
+/*
+ Converts a polynomial expression to a vector of its coefficients.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 char *poly_to_coeffs_vec(const char *aJsonPtr)
@@ -5566,6 +5612,7 @@ rssn_Expr *rssn_calculate_residue(const rssn_Expr *aExpr,
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_calculus_definite_integrate(size_t aExprH,
                                          const char *aVar,
                                          size_t aLowerH,
@@ -5574,18 +5621,21 @@ int32_t rssn_calculus_definite_integrate(size_t aExprH,
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_calculus_differentiate(size_t aExprH,
                                     const char *aVar,
                                     size_t *aResultH)
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_calculus_integrate(size_t aExprH,
                                 const char *aVar,
                                 size_t *aResultH)
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_calculus_limit(size_t aExprH,
                             const char *aVar,
                             size_t aToH,
@@ -5593,6 +5643,7 @@ int32_t rssn_calculus_limit(size_t aExprH,
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_calculus_substitute(size_t aExprH,
                                  const char *aVar,
                                  size_t aReplacementH,
@@ -5788,25 +5839,60 @@ size_t rssn_chromatic_number_exact(const rssn_RssnGraph *aGraph)
 
 /*
  Computes the number of combinations (nCk).
+
+ # Arguments
+ * `n` - The total number of items.
+ * `k` - The number of items to choose.
+ * `result` - A pointer to store the computed number of combinations.
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer).
+
+ # Safety
+ The `result` pointer must point to a valid f64 location.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_comb_combinations(uint64_t aN,
                                uint64_t aK,
                                double *aResult)
 ;
 
 /*
- Computes the factorial of a number.
+ Computes the factorial of a number `n`.
+
+ # Arguments
+ * `n` - The number to compute the factorial of.
+ * `result` - A pointer to store the computed factorial.
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer).
+
+ # Safety
+ The `result` pointer must point to a valid f64 location.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_comb_factorial(uint64_t aN,
                             double *aResult)
 ;
 
 /*
  Computes the number of permutations (nPk).
+
+ # Arguments
+ * `n` - The total number of items.
+ * `k` - The number of items to choose.
+ * `result` - A pointer to store the computed number of permutations.
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer).
+
+ # Safety
+ The `result` pointer must point to a valid f64 location.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_comb_permutations(uint64_t aN,
                                uint64_t aK,
                                double *aResult)
@@ -6793,6 +6879,7 @@ rssn_Expr *rssn_exponential_map(const rssn_Expr *aX,
  Returns 0 if the JSON is invalid.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 size_t rssn_expr_create(const char *aJsonPtr)
 ;
 
@@ -6800,6 +6887,7 @@ size_t rssn_expr_create(const char *aJsonPtr)
  Frees the memory associated with an expression handle.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 void rssn_expr_free(size_t aHandle)
 ;
 
@@ -6839,6 +6927,7 @@ size_t rssn_expr_list_len(const rssn_ExprList *aList)
  Returns 0 on error (e.g., invalid handle).
  */
 rssn_
+DEPRECATED_WITH_NOTE
 size_t rssn_expr_simplify(const size_t *aHandle)
 ;
 
@@ -6912,6 +7001,7 @@ rssn_Expr *rssn_feynman_slash(const rssn_Expr *aVMu)
  Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_fft(rssn_Complex<double> *aData,
                  size_t aLen)
 ;
@@ -7224,6 +7314,12 @@ rssn_
 void rssn_free_string_api(char *aPtr)
 ;
 
+/*
+ Frees a C string that was allocated by the `rssn_get_*` functions in this module.
+
+ # Safety
+ The `ptr` must be a valid C string pointer allocated by this module.
+ */
 rssn_
 void rssn_free_string_constant(char *aPtr)
 ;
@@ -8267,6 +8363,7 @@ rssn_Expr *rssn_ideal_gas_law(const rssn_Expr *aP,
  Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers in-place.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_ifft(rssn_Complex<double> *aData,
                   size_t aLen)
 ;
@@ -8311,6 +8408,7 @@ rssn_Expr *rssn_ifs_similarity_dimension(rssn_Expr *const *aScalingFactorsPtr,
  with `rssn_get_last_error`.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_init_plugin_manager(const char *aPluginDirPtr)
 ;
 
@@ -8343,6 +8441,7 @@ rssn_Expr *rssn_integrate_rational_function_handle(const rssn_Expr *aExpr,
  Evaluates a point on a Bezier curve defined by control points.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_interp_bezier_curve(const rssn_FfiPoint *aPointsPtr,
                                  size_t aNumPoints,
                                  double aT,
@@ -8354,6 +8453,7 @@ int32_t rssn_interp_bezier_curve(const rssn_FfiPoint *aPointsPtr,
  Returns a handle to the resulting polynomial expression.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_interp_lagrange(const rssn_FfiPoint *aPointsPtr,
                              size_t aNumPoints,
                              size_t *aResultHandle)
@@ -12271,6 +12371,7 @@ rssn_Expr *rssn_mass_energy_equivalence(const rssn_Expr *aMass)
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_add(size_t aH1,
                         size_t aH2,
                         size_t *aResultH)
@@ -12288,6 +12389,7 @@ rssn_Expr *rssn_matrix_add_handle(const rssn_Expr *aM1,
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_determinant(size_t aH,
                                 size_t *aResultH)
 ;
@@ -12303,11 +12405,13 @@ rssn_Expr *rssn_matrix_determinant_handle(const rssn_Expr *aMatrix)
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_identity(size_t aSize,
                              size_t *aResultH)
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_inverse(size_t aH,
                             size_t *aResultH)
 ;
@@ -12323,6 +12427,7 @@ rssn_Expr *rssn_matrix_inverse_handle(const rssn_Expr *aMatrix)
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_mul(size_t aH1,
                         size_t aH2,
                         size_t *aResultH)
@@ -12340,6 +12445,7 @@ rssn_Expr *rssn_matrix_mul_handle(const rssn_Expr *aM1,
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_scalar_mul(size_t aScalarH,
                                size_t aMatrixH,
                                size_t *aResultH)
@@ -12357,12 +12463,14 @@ rssn_Expr *rssn_matrix_solve_linear_system_handle(const rssn_Expr *aA,
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_sub(size_t aH1,
                         size_t aH2,
                         size_t *aResultH)
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_matrix_transpose(size_t aH,
                               size_t *aResultH)
 ;
@@ -12485,6 +12593,7 @@ rssn_Expr *rssn_norm(const rssn_HilbertSpace *aSpace,
  On error, call `rssn_get_last_error` to get the error message.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_nt_gcd(uint64_t aA,
                     uint64_t aB,
                     uint64_t *aResult)
@@ -12497,6 +12606,7 @@ int32_t rssn_nt_gcd(uint64_t aA,
  On error, call `rssn_get_last_error` to get the error message.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_nt_is_prime(uint64_t aN,
                          bool *aResult)
 ;
@@ -12508,6 +12618,7 @@ int32_t rssn_nt_is_prime(uint64_t aN,
  On error, call `rssn_get_last_error` to get the error message.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_nt_mod_inverse(int64_t aA,
                             int64_t aB,
                             int64_t *aResult)
@@ -12520,6 +12631,7 @@ int32_t rssn_nt_mod_inverse(int64_t aA,
  On error, call `rssn_get_last_error` to get the error message.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_nt_mod_pow(uint64_t aBase,
                         uint64_t aExp,
                         uint64_t aModulus,
@@ -16911,6 +17023,7 @@ double rssn_numerical_evaluate_power_series(const rssn_Vec<double> *aCoeffs,
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_numerical_gradient(size_t aExprH,
                                 const char *const *aVars,
                                 size_t aNumVars,
@@ -16936,6 +17049,7 @@ char *rssn_numerical_hessian_json(const char *aInputJson)
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_numerical_integrate(size_t aExprH,
                                  const char *aVar,
                                  double aStart,
@@ -17248,6 +17362,7 @@ rssn_Expr *rssn_perspective_projection(const rssn_Expr *aFovy,
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_physics_advection_diffusion_1d(const double *aInitialCond,
                                             size_t aLen,
                                             double aDx,
@@ -17821,6 +17936,7 @@ rssn_ char *rssn_pi_json() ;
  On failure, an error message can be retrieved with `rssn_get_last_error`.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 size_t rssn_plugin_execute(const char *aPluginNamePtr,
                            const char *aCommandPtr,
                            size_t aArgsHandle)
@@ -17939,7 +18055,23 @@ uint8_t *rssn_poly_add_gf256(const uint8_t *aP1,
                              size_t *aOutLen)
 ;
 
+/*
+ Computes the degree of a polynomial expression with respect to a given variable.
+
+ # Arguments
+ * `expr_handle` - A handle to the expression to check.
+ * `var_ptr` - A pointer to a null-terminated C string representing the variable.
+ * `result` - A pointer to store the degree of the polynomial.
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer, invalid handle).
+
+ # Safety
+ The `var_ptr` must point to a valid null-terminated C string.
+ The `result` pointer must point to a valid `i64` location.
+ */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_poly_degree(size_t aExprHandle,
                          const char *aVarPtr,
                          int64_t *aResult)
@@ -17998,13 +18130,47 @@ rssn_FiniteFieldPolynomial *rssn_poly_gcd_gf_handle(const rssn_FiniteFieldPolyno
                                                     const rssn_FiniteFieldPolynomial *aB)
 ;
 
+/*
+ Checks if an expression is a polynomial with respect to a given variable.
+
+ # Arguments
+ * `expr_handle` - A handle to the expression to check.
+ * `var_ptr` - A pointer to a null-terminated C string representing the variable.
+ * `result` - A pointer to store the boolean result (true if it's a polynomial, false otherwise).
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer, invalid handle).
+
+ # Safety
+ The `var_ptr` must point to a valid null-terminated C string.
+ The `result` pointer must point to a valid boolean location.
+ */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_poly_is_polynomial(size_t aExprHandle,
                                 const char *aVarPtr,
                                 bool *aResult)
 ;
 
+/*
+ Performs polynomial long division on two expressions with respect to a given variable.
+
+ # Arguments
+ * `n_handle` - A handle to the numerator expression.
+ * `d_handle` - A handle to the denominator expression.
+ * `var_ptr` - A pointer to a null-terminated C string representing the variable.
+ * `q_handle` - A pointer to store the handle of the quotient expression.
+ * `r_handle` - A pointer to store the handle of the remainder expression.
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer, invalid handle).
+
+ # Safety
+ The `var_ptr` must point to a valid null-terminated C string.
+ The `q_handle` and `r_handle` pointers must point to valid `usize` locations.
+ */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_poly_long_division(size_t aNHandle,
                                 size_t aDHandle,
                                 const char *aVarPtr,
@@ -18858,6 +19024,7 @@ rssn_Expr **rssn_so3_generators(size_t *aOutLen)
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_solve(size_t aExprH,
                    const char *aVar,
                    size_t *aResultH)
@@ -19276,25 +19443,74 @@ char *rssn_state_set_intermediate_value_json(const char *aJsonState,
 ;
 
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_stats_covariance(const double *aD1,
                               const double *aD2,
                               size_t aLen,
                               double *aResult)
 ;
 
+/*
+ Computes the mean of a slice of f64 values.
+
+ # Arguments
+ * `data` - A pointer to the first element of the data slice.
+ * `len` - The length of the data slice.
+ * `result` - A pointer to store the computed mean.
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer).
+
+ # Safety
+ The `data` pointer must point to a valid array of `len` f64 elements.
+ The `result` pointer must point to a valid f64 location.
+ */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_stats_mean(const double *aData,
                         size_t aLen,
                         double *aResult)
 ;
 
+/*
+ Computes the standard deviation of a slice of f64 values.
+
+ # Arguments
+ * `data` - A pointer to the first element of the data slice.
+ * `len` - The length of the data slice.
+ * `result` - A pointer to store the computed standard deviation.
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer).
+
+ # Safety
+ The `data` pointer must point to a valid array of `len` f64 elements.
+ The `result` pointer must point to a valid f64 location.
+ */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_stats_std_dev(const double *aData,
                            size_t aLen,
                            double *aResult)
 ;
 
+/*
+ Computes the variance of a slice of f64 values.
+
+ # Arguments
+ * `data` - A pointer to the first element of the data slice.
+ * `len` - The length of the data slice.
+ * `result` - A pointer to store the computed variance.
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer).
+
+ # Safety
+ The `data` pointer must point to a valid array of `len` f64 elements.
+ The `result` pointer must point to a valid f64 location.
+ */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_stats_variance(const double *aData,
                             size_t aLen,
                             double *aResult)
@@ -19720,8 +19936,23 @@ char *rssn_vec_distance_json(const char *aJsonPtr)
 
 /*
  Computes the dot product of two vectors.
+
+ # Arguments
+ * `d1` - A pointer to the first element of the first vector.
+ * `l1` - The length of the first vector.
+ * `d2` - A pointer to the first element of the second vector.
+ * `l2` - The length of the second vector.
+ * `result` - A pointer to store the computed dot product.
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer or mismatched lengths).
+
+ # Safety
+ The `d1` and `d2` pointers must point to valid arrays of `l1` and `l2` f64 elements respectively.
+ The `result` pointer must point to a valid f64 location.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_vec_dot_product(const double *aD1,
                              size_t aL1,
                              const double *aD2,
@@ -19801,8 +20032,21 @@ char *rssn_vec_lp_norm_json(const char *aJsonPtr)
 
 /*
  Computes the L2 norm of a vector.
+
+ # Arguments
+ * `data` - A pointer to the first element of the vector.
+ * `len` - The length of the vector.
+ * `result` - A pointer to store the computed norm.
+
+ # Returns
+ 0 on success, -1 on error (e.g., null pointer).
+
+ # Safety
+ The `data` pointer must point to a valid array of `len` f64 elements.
+ The `result` pointer must point to a valid f64 location.
  */
 rssn_
+DEPRECATED_WITH_NOTE
 int32_t rssn_vec_norm(const double *aData,
                       size_t aLen,
                       double *aResult)
@@ -20189,11 +20433,21 @@ rssn_
 double rssn_zeta_numerical(double aS)
 ;
 
+/*
+ Computes the percentile of a dataset.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 char *stats_percentile(const char *aJsonPtr)
 ;
 
+/*
+ Performs a simple linear regression on a dataset.
+
+ This function is deprecated.
+ */
 rssn_
 DEPRECATED_WITH_NOTE
 char *stats_simple_linear_regression(const char *aJsonPtr)
