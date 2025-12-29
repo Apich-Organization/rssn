@@ -2339,8 +2339,8 @@ pub(crate) fn hopcroft_karp_bfs<
 >(
     graph: &Graph<V>,
     u_nodes: &[usize],
-    pair_u: &mut [Option<usize>],
-    pair_v: &mut [Option<usize>],
+    pair_u: &[Option<usize>],
+    pair_v: &[Option<usize>],
     dist: &mut [usize],
 ) -> bool {
 
