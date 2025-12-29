@@ -19,7 +19,11 @@ use crate::symbolic::core::Expr;
 /// * `tolerance` - The threshold for the absolute value of a term, below which summation stops.
 ///
 /// # Returns
-/// A `Result` containing the numerical sum, or an error string if evaluation fails.
+/// A `Result` containing the numerical sum.
+///
+/// # Errors
+///
+/// Returns an error if the expression evaluation fails for any term.
 
 pub fn sum_series_numerical(
     term_expr: &Expr,
@@ -122,7 +126,14 @@ pub fn aitken_acceleration(
 /// * `tolerance` - The desired precision for the limit.
 ///
 /// # Returns
-/// A `Result` containing the numerical limit, or an error string if convergence is not found.
+/// A `Result` containing the numerical limit.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The expression evaluation fails for any generated term.
+/// - The sequence becomes empty unexpectedly during acceleration.
+/// - Convergence is not found within the specified tolerance and maximum terms.
 
 pub fn find_sequence_limit(
     term_expr: &Expr,

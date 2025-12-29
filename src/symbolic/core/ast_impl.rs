@@ -1153,6 +1153,9 @@ impl Expr {
     ///
     /// # Returns
     /// * `DagOp` - The operation type corresponding to this expression
+    ///
+    /// # Panics
+    /// Panics if the expression cannot be converted to a `DagOp`.
     #[must_use]
 
     pub fn op(&self) -> DagOp {

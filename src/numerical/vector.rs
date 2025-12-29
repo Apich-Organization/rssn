@@ -21,7 +21,9 @@
 ///
 /// # Returns
 /// * `Ok(Vec<f64>)` - The sum of the two vectors.
-/// * `Err(String)` - If the vectors have different lengths.
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths.
 
 pub fn vec_add(
     v1: &[f64],
@@ -56,7 +58,9 @@ pub fn vec_add(
 ///
 /// # Returns
 /// * `Ok(Vec<f64>)` - The difference of the two vectors.
-/// * `Err(String)` - If the vectors have different lengths.
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths.
 
 pub fn vec_sub(
     v1: &[f64],
@@ -110,7 +114,9 @@ pub fn scalar_mul(
 ///
 /// # Returns
 /// * `Ok(f64)` - The dot product.
-/// * `Err(String)` - If the vectors have different lengths.
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths.
 
 pub fn dot_product(
     v1: &[f64],
@@ -213,9 +219,8 @@ pub fn lp_norm(
 
 /// Normalizes a vector to have a magnitude of 1.
 ///
-/// # Returns
-/// * `Ok(Vec<f64>)` - The unit vector.
-/// * `Err(String)` - If the vector is a zero vector and cannot be normalized.
+/// # Errors
+/// Returns an error if the vector is a zero vector.
 
 pub fn normalize(
     v: &[f64]
@@ -246,7 +251,9 @@ pub fn normalize(
 ///
 /// # Returns
 /// * `Ok(Vec<f64>)` - The 3D cross product vector.
-/// * `Err(String)` - If the input vectors are not 3D.
+///
+/// # Errors
+/// Returns an error if the input vectors are not 3D.
 
 pub fn cross_product(
     v1: &[f64],
@@ -278,6 +285,9 @@ pub fn cross_product(
 }
 
 /// Computes the Euclidean distance between two vectors.
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths.
 
 pub fn distance(
     v1: &[f64],
@@ -292,6 +302,9 @@ pub fn distance(
 /// Computes the angle between two vectors in radians.
 ///
 /// Formula: $\theta = \arccos\left(\frac{\mathbf{a} \cdot \mathbf{b}}{||\mathbf{a}|| ||\mathbf{b}||}\right)$
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths.
 
 pub fn angle(
     v1: &[f64],
@@ -318,6 +331,9 @@ pub fn angle(
 /// Projects vector `v1` onto vector `v2`.
 ///
 /// Formula: $\text{proj}_{\mathbf{v2}}(\mathbf{v1}) = \frac{\mathbf{v1} \cdot \mathbf{v2}}{||\mathbf{v2}||^2} \mathbf{v2}$
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths.
 
 pub fn project(
     v1: &[f64],
@@ -351,6 +367,9 @@ pub fn project(
 ///
 /// Formula: $\mathbf{r} = \mathbf{v} - 2(\mathbf{v} \cdot \mathbf{n})\mathbf{n}$
 /// Note: The normal vector `n` must be normalized.
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths.
 
 pub fn reflect(
     v: &[f64],
@@ -379,6 +398,9 @@ pub fn reflect(
 ///
 /// # Arguments
 /// * `t` - Interpolation factor, typically in $[0, 1]$.
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths.
 
 pub fn lerp(
     v1: &[f64],
@@ -405,6 +427,9 @@ pub fn lerp(
 }
 
 /// Checks if two vectors are orthogonal.
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths.
 
 pub fn is_orthogonal(
     v1: &[f64],
@@ -418,6 +443,9 @@ pub fn is_orthogonal(
 }
 
 /// Checks if two vectors are parallel.
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths.
 
 pub fn is_parallel(
     v1: &[f64],
@@ -454,6 +482,9 @@ pub fn is_parallel(
 }
 
 /// Computes the cosine similarity between two vectors.
+///
+/// # Errors
+/// Returns an error if the vectors have different lengths or if any vector is zero.
 
 pub fn cosine_similarity(
     v1: &[f64],

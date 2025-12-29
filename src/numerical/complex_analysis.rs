@@ -265,10 +265,11 @@ impl MobiusTransformation {
 
 /// Performs numerical contour integration of a symbolic expression.
 ///
-/// # Arguments
-/// * `expr` - The symbolic expression to integrate.
-/// * `var` - The variable of integration.
 /// * `path` - A slice of complex points defining the contour.
+///
+/// # Errors
+///
+/// Returns an error if the expression evaluation fails.
 
 pub fn contour_integral_expr(
     expr: &Expr,
@@ -295,10 +296,11 @@ pub fn contour_integral_expr(
 ///
 /// # Arguments
 /// * `expr` - The symbolic expression.
-/// * `var` - The complex variable.
-/// * `z0` - The point at which to calculate the residue.
-/// * `radius` - Radius of the circular contour.
 /// * `n_points` - Number of points for integration.
+///
+/// # Errors
+///
+/// Returns an error if the residue calculation fails (e.g., expression evaluation error).
 
 pub fn residue_expr(
     expr: &Expr,
@@ -337,6 +339,13 @@ pub fn residue_expr(
 ///
 /// # Returns
 /// A `Result` containing the complex numerical value if the evaluation is successful, otherwise an error string.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - A variable in the expression is not provided in the `vars` map.
+/// - An unsupported operation is encountered for complex numbers.
+/// - Division by zero or other mathematical errors occur.
 
 pub fn eval_complex_expr<
     S: ::std::hash::BuildHasher,

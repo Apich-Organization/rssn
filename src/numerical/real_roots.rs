@@ -144,6 +144,9 @@ pub(crate) fn count_sign_changes(
 /// A `Result` containing a `Vec<(f64, f64)>` of tuples, where each tuple `(a, b)`
 /// represents an interval `[a, b]` containing exactly one root. Returns an error string
 /// if root bounding or counting fails.
+///
+/// # Errors
+/// Returns an error if the leading coefficient is zero (invalid for root isolation).
 
 pub fn isolate_real_roots(
     poly: &Polynomial,
@@ -342,6 +345,9 @@ pub fn refine_root_bisection(
 ///
 /// # Returns
 /// A `Result` containing a sorted `Vec<f64>` of roots.
+///
+/// # Errors
+/// Returns an error if root isolation fails (e.g., if the leading coefficient is zero).
 
 pub fn find_roots(
     poly: &Polynomial,

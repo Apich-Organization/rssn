@@ -45,7 +45,13 @@ use crate::symbolic::core::Expr;
 /// # Returns
 ///
 /// * `Ok(f64)` - The computed numerical result.
-/// * `Err(String)` - An error message describing domain violations or undefined operations.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - A variable in the expression is not provided in the `vars` map.
+/// - A domain violation occurs (e.g., division by zero, log of non-positive number).
+/// - An unsupported expression variant is encountered.
 ///
 /// # Examples
 ///
@@ -327,6 +333,10 @@ pub fn eval_expr<
 }
 
 /// Evaluates an expression with a single variable `x`.
+///
+/// # Errors
+///
+/// Returns an error if the expression evaluation fails.
 
 pub fn eval_expr_single(
     expr: &Expr,

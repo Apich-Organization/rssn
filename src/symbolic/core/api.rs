@@ -525,6 +525,9 @@ impl Expr {
 
     // --- Leaf Node Constructors ---
     /// Creates a new Constant expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the value cannot be created in the DAG.
     #[must_use]
 
     pub fn new_constant(
@@ -544,6 +547,9 @@ impl Expr {
     }
 
     /// Creates a new Variable expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the variable cannot be created in the DAG.
     #[must_use]
 
     pub fn new_variable(
@@ -563,6 +569,9 @@ impl Expr {
     }
 
     /// Creates a new `BigInt` expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the value cannot be created in the DAG.
     #[must_use]
 
     pub fn new_bigint(
@@ -580,6 +589,9 @@ impl Expr {
     }
 
     /// Creates a new Rational expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the value cannot be created in the DAG.
     #[must_use]
 
     pub fn new_rational(
@@ -597,6 +609,9 @@ impl Expr {
     }
 
     /// Creates a new Pi expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the value cannot be created in the DAG.
     #[must_use]
 
     pub fn new_pi() -> Self {
@@ -612,6 +627,9 @@ impl Expr {
     }
 
     /// Creates a new E expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the value cannot be created in the DAG.
     #[must_use]
 
     pub fn new_e() -> Self {
@@ -627,6 +645,9 @@ impl Expr {
     }
 
     /// Creates a new Infinity expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the value cannot be created in the DAG.
     #[must_use]
 
     pub fn new_infinity() -> Self {
@@ -642,6 +663,9 @@ impl Expr {
     }
 
     /// Creates a new `NegativeInfinity` expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the value cannot be created in the DAG.
     #[must_use]
 
     pub fn new_negative_infinity(
@@ -659,6 +683,9 @@ impl Expr {
 
     // --- Special Constructors ---
     /// Creates a new Matrix expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the matrix rows have inconsistent length or if elements cannot be created in the DAG.
 
     pub fn new_matrix<I, J, T>(
         elements: I
@@ -723,6 +750,9 @@ impl Expr {
     }
 
     /// Creates a new Predicate expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the predicate or its arguments cannot be created in the DAG.
 
     pub fn new_predicate<I, T>(
         name: &str,
@@ -757,6 +787,9 @@ impl Expr {
     }
 
     /// Creates a new `ForAll` quantifier expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the expression cannot be created in the DAG.
 
     pub fn new_forall<A>(
         var: &str,
@@ -785,6 +818,9 @@ impl Expr {
     }
 
     /// Creates a new Exists quantifier expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the expression cannot be created in the DAG.
 
     pub fn new_exists<A>(
         var: &str,
@@ -813,6 +849,9 @@ impl Expr {
     }
 
     /// Creates a new Interval expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the interval boundaries cannot be created in the DAG.
 
     pub fn new_interval<A, B>(
         lower: A,
@@ -854,6 +893,9 @@ impl Expr {
     }
 
     /// Creates a new `SparsePolynomial` expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the polynomial cannot be created in the DAG.
     #[must_use]
 
     pub fn new_sparse_polynomial(
@@ -874,6 +916,9 @@ impl Expr {
 
     // --- Custom Constructors ---
     /// Creates a new `CustomZero` expression (deprecated).
+    ///
+    /// # Panics
+    /// Panics if the value cannot be created in the DAG.
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -895,6 +940,9 @@ impl Expr {
     }
 
     /// Creates a new `CustomString` expression (deprecated).
+    ///
+    /// # Panics
+    /// Panics if the value cannot be created in the DAG.
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -920,6 +968,9 @@ impl Expr {
     }
 
     /// Creates a new `CustomArcThree` expression (deprecated).
+    ///
+    /// # Panics
+    /// Panics if the arguments cannot be created in the DAG.
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -968,6 +1019,9 @@ impl Expr {
     }
 
     /// Creates a new `CustomArcFour` expression (deprecated).
+    ///
+    /// # Panics
+    /// Panics if the arguments cannot be created in the DAG.
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -1024,6 +1078,9 @@ impl Expr {
     }
 
     /// Creates a new `CustomArcFive` expression (deprecated).
+    ///
+    /// # Panics
+    /// Panics if the arguments cannot be created in the DAG.
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -1126,6 +1183,9 @@ impl Expr {
     /// * `Ok(Expr::Dag)` - The expression in DAG form
     /// * `Err(String)` - If conversion fails
     ///
+    /// # Errors
+    /// Returns an error if conversion from AST to DAG fails.
+    ///
     /// # Examples
     /// ```
     /// 
@@ -1208,6 +1268,9 @@ impl Expr {
     /// # Returns
     /// * `Ok(Expr)` - The expression in AST form
     /// * `Err(String)` - If conversion fails
+    ///
+    /// # Errors
+    /// Returns an error if conversion from DAG to AST fails.
 
     pub fn to_ast(
         &self
@@ -1262,6 +1325,9 @@ lazy_static! {
 
 /// Registers a dynamic operation with the global registry.
 ///
+/// # Panics
+/// Panics if the global registry lock is poisoned.
+///
 /// This function allows you to add custom operations at runtime without modifying
 /// the core `Expr` enum. Once registered, operations can be used with `UnaryList`,
 /// `BinaryList`, or `NaryList` variants.
@@ -1305,6 +1371,9 @@ pub fn register_dynamic_op(
 }
 
 /// Retrieves the properties of a dynamically registered operation.
+///
+/// # Panics
+/// Panics if the global registry lock is poisoned.
 ///
 /// This function looks up an operation in the global registry and returns its
 /// properties if found.

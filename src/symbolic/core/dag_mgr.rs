@@ -566,6 +566,9 @@ impl DagManager {
     /// # Safety
     /// Limits the number of children to prevent excessive memory allocation
     /// and potential stack overflows during recursive operations.
+    ///
+    /// # Errors
+    /// Returns an error if the number of children exceeds the safety limit.
     #[inline]
 
     pub fn get_or_create_normalized(
@@ -804,6 +807,9 @@ impl DagManager {
     ///
     /// # Returns
     /// * `Result<Arc<DagNode>, String>` - The DAG node representation of the expression or an error
+    ///
+    /// # Errors
+    /// Returns an error if conversion from AST to DAG fails.
     #[inline]
 
     pub fn get_or_create(

@@ -150,6 +150,10 @@ pub(crate) fn eval_expr(
 }
 
 /// Plots a 2D function y = f(x) and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
 
 pub fn plot_function_2d(
     expr: &Expr,
@@ -263,6 +267,10 @@ pub fn plot_function_2d(
 }
 
 /// Plots a 2D vector field and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
 
 pub fn plot_vector_field_2d(
     comps: (&Expr, &Expr),
@@ -387,6 +395,10 @@ pub fn plot_vector_field_2d(
 }
 
 /// Plots a 3D surface z = f(x, y) and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
 
 pub fn plot_surface_3d(
     expr: &Expr,
@@ -496,6 +508,10 @@ pub fn plot_surface_3d(
 }
 
 /// Plots a 3D parametric curve (x(t), y(t), z(t)) and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
 
 pub fn plot_parametric_curve_3d(
     comps: (&Expr, &Expr, &Expr),
@@ -568,6 +584,10 @@ pub fn plot_parametric_curve_3d(
 }
 
 /// Plots a 3D vector field and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
 
 pub fn plot_vector_field_3d(
     comps: (&Expr, &Expr, &Expr),

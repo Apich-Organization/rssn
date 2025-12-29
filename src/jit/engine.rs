@@ -64,6 +64,10 @@ impl Default for JitEngine {
 
 impl JitEngine {
     /// Creates a new JIT engine.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `JITBuilder` fails to initialize.
 
     #[must_use] 
     pub fn new() -> Self {
@@ -98,6 +102,12 @@ impl JitEngine {
     }
 
     /// Registers a custom operation handler.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `func_ptr` is a valid pointer to a function
+    /// that can be safely called with `arg_count` arguments. This pointer must remain
+    /// valid for the entire lifetime of the `JitEngine` and any compiled code that uses it.
 
     pub unsafe fn register_custom_op(
         &mut self,
@@ -122,6 +132,19 @@ impl JitEngine {
 
     /// Compiles the given instructions into a function.
     /// The function takes no arguments and returns an f64.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The `jit` feature is not enabled.
+    /// - The function cannot be declared or defined in the JIT module.
+    /// - The module fails to finalize definitions.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the provided instructions are valid and do not cause
+    /// undefined behavior when executed (e.g., stack underflow, invalid memory access).
+    /// The returned pointer must be used correctly according to the expected signature.
 
     pub unsafe fn compile(
         &mut self,

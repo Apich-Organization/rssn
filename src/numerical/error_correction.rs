@@ -248,6 +248,9 @@ impl PolyGF256 {
     ///
     /// # Returns
     /// A tuple (quotient, remainder), or an error if divisor is zero.
+    ///
+    /// # Errors
+    /// Returns an error if the divisor polynomial is empty (zero polynomial).
 
     pub fn poly_div(
         &self,
@@ -530,6 +533,11 @@ fn poly_eval_gf256(
 /// A `Result` containing the full codeword (message + parity symbols), or an error
 /// if the total length exceeds the field size.
 ///
+/// # Errors
+/// Returns an error if:
+/// - The total length (message + parity) exceeds 255.
+/// - The number of parity symbols is invalid.
+///
 /// # Example
 /// ```
 /// 
@@ -598,6 +606,12 @@ pub fn reed_solomon_encode(
 ///
 /// # Returns
 /// A `Result` indicating success or an error if decoding fails (e.g., too many errors).
+///
+/// # Errors
+/// Returns an error if:
+/// - The number of errors exceeds the correction capability of the code.
+/// - No valid error locations can be found.
+/// - The Berlekamp-Massey or Forney algorithms fail to converge.
 ///
 /// # Example
 /// ```
@@ -1006,6 +1020,9 @@ pub fn calculate_syndromes(
 /// Finds the roots of the error locator polynomial to determine error locations.
 ///
 /// Uses Chien search to efficiently evaluate the polynomial at all field elements.
+///
+/// # Errors
+/// Returns an error if the field element inversion fails.
 
 pub fn chien_search(
     sigma: &PolyGF256
@@ -1037,6 +1054,9 @@ pub fn chien_search(
 ///
 /// # Returns
 /// A vector of error magnitudes for each error location.
+///
+/// # Errors
+/// Returns an error if division by zero occurs during magnitude calculation.
 
 pub fn forney_algorithm(
     omega: &PolyGF256,
@@ -1219,6 +1239,9 @@ pub fn hamming_encode_numerical(
 /// - `Ok((data, error_pos))` where `data` is the 4-bit corrected data and `error_pos` is
 ///   `Some(index)` if an error was corrected at the given 1-based index, or `None` if no error was found.
 /// - `Err(String)` if the input length is not 7.
+///
+/// # Errors
+/// Returns an error if the input codeword length is not exactly 7.
 ///
 /// # Example
 /// ```
@@ -1419,6 +1442,11 @@ pub fn bch_encode(
 ///
 /// # Returns
 /// The decoded data, or an error if too many errors are present.
+///
+/// # Errors
+/// Returns an error if:
+/// - The codeword is shorter than the number of parity bits.
+/// - Too many errors are detected to perform reliable correction.
 
 pub fn bch_decode(
     codeword: &[u8],

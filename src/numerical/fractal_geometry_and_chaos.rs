@@ -1413,6 +1413,9 @@ pub fn box_counting_dimension(
 ///
 /// # Returns
 /// An estimate of the correlation dimension.
+///
+/// # Panics
+/// Panics if any pairwise distance between points is NaN during sorting.
 #[must_use]
 
 pub fn correlation_dimension(

@@ -59,6 +59,8 @@ pub enum OdeSolverMethod {
 /// // At x=1, y should be approx e^1 = 2.718...
 /// assert!((res.last().unwrap()[0] - 2.718).abs() < 0.01);
 /// ```
+/// # Errors
+/// Returns an error if the selected solver method fails or if expression evaluation fails.
 
 pub fn solve_ode_system(
     funcs: &[Expr],
@@ -97,6 +99,9 @@ pub fn solve_ode_system(
 }
 
 /// Solves an ODE system using the Euler method (first-order).
+///
+/// # Errors
+/// Returns an error if symbolic expression evaluation fails.
 
 pub fn solve_ode_euler(
     funcs: &[Expr],
@@ -141,6 +146,9 @@ pub fn solve_ode_euler(
 }
 
 /// Solves an ODE system using Heun's method (second-order).
+///
+/// # Errors
+/// Returns an error if symbolic expression evaluation fails.
 
 pub fn solve_ode_heun(
     funcs: &[Expr],
@@ -202,6 +210,9 @@ pub fn solve_ode_heun(
 }
 
 /// Solves an ODE system using the fourth-order Runge-Kutta method.
+///
+/// # Errors
+/// Returns an error if symbolic expression evaluation fails.
 
 pub fn solve_ode_system_rk4(
     funcs: &[Expr],

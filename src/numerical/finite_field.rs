@@ -411,8 +411,8 @@ pub fn gf256_mul(
 
 /// Computes the multiplicative inverse in GF(2^8).
 ///
-/// # Panics
-/// * Panics if `a` is 0, as 0 has no multiplicative inverse.
+/// # Errors
+/// * Returns an error if `a` is 0, as 0 has no multiplicative inverse.
 #[inline]
 
 pub fn gf256_inv(
@@ -439,8 +439,8 @@ pub fn gf256_inv(
 ///
 /// Division is implemented as multiplication by the inverse of the divisor.
 ///
-/// # Panics
-/// * Panics if the divisor `b` is 0.
+/// # Errors
+/// * Returns an error if the divisor `b` is 0.
 #[inline]
 
 pub fn gf256_div(

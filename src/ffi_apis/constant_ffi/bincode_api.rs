@@ -71,9 +71,12 @@ pub extern "C" fn rssn_get_commit_sha_bincode(
 
 macro_rules! gen_ffi_bincode {
     ($ffi_name:ident, $internal_getter:path) => {
-        /// Generates a FFI function that retrieves a constant value,
-        /// serializes it using bincode_next, and returns it as a BincodeBuffer.
-        /// The caller must free the returned buffer using rssn_free_bincode_buffer.
+/// Generates a FFI function that retrieves a constant value,
+/// serializes it using `bincode_next`, and returns it as a `BincodeBuffer`.
+///
+/// # Safety
+///
+/// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
         #[no_mangle]
         pub extern "C" fn $ffi_name() -> BincodeBuffer {
             let value = $internal_getter();

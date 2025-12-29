@@ -47,6 +47,9 @@ pub enum LinearSolution {
 ///
 /// # Returns
 /// A `Result` containing a `LinearSolution` enum, or an error string.
+///
+/// # Errors
+/// Returns an error if the matrix and vector dimensions are incompatible, or if RREF/null space computation fails.
 
 pub fn solve_linear_system(
     a: &Matrix<f64>,
@@ -192,6 +195,9 @@ pub fn solve_linear_system(
 ///
 /// # Returns
 /// A `Result` containing the solution vector, or an error string.
+///
+/// # Errors
+/// Returns an error if symbolic expression evaluation fails, if the Jacobian is singular, or if the method fails to converge.
 
 pub fn solve_nonlinear_system(
     funcs: &[Expr],

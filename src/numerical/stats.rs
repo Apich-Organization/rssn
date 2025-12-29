@@ -252,6 +252,9 @@ impl UniformDist {
     ///
     /// # Returns
     /// A `Result` containing the `UniformDist` instance, or an error string if parameters are invalid.
+    ///
+    /// # Errors
+    /// Returns an error if `min >= max`.
 
     pub fn new(
         min: f64,
@@ -292,6 +295,9 @@ pub struct BinomialDist(Binomial);
 
 impl BinomialDist {
     /// Creates a new `BinomialDist` instance.
+    ///
+    /// # Errors
+    /// Returns an error if `p < 0.0` or `p > 1.0`.
 
     pub fn new(
         n: u64,
@@ -462,6 +468,9 @@ pub struct PoissonDist(
 
 impl PoissonDist {
     /// Creates a new `PoissonDist` instance.
+    ///
+    /// # Errors
+    /// Returns an error if `rate <= 0.0`.
 
     pub fn new(
         rate: f64
@@ -503,6 +512,9 @@ pub struct ExponentialDist(
 
 impl ExponentialDist {
     /// Creates a new `ExponentialDist` instance.
+    ///
+    /// # Errors
+    /// Returns an error if `rate <= 0.0`.
 
     pub fn new(
         rate: f64
@@ -546,6 +558,9 @@ pub struct GammaDist(
 
 impl GammaDist {
     /// Creates a new `GammaDist` instance.
+    ///
+    /// # Errors
+    /// Returns an error if `shape <= 0.0` or `rate <= 0.0`.
 
     pub fn new(
         shape: f64,

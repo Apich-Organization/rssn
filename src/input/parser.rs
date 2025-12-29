@@ -65,6 +65,9 @@ pub(crate) fn parse_rational_structure(
 ///
 /// # Returns
 /// A `Result` containing the remaining input and the parsed `Expr`.
+///
+/// # Errors
+/// Returns a `nom::Err` if the input cannot be parsed as a valid expression.
 
 pub fn parse_expr(
     input: &str

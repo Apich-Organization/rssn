@@ -48,10 +48,10 @@ pub fn csr_from_triplets(
 /// * `vector` - The dense vector.
 ///
 /// # Returns
-/// A `Vec<f64>` representing the result of the multiplication.
+/// A `Result` containing a `Vec<f64>` representing the result of the multiplication.
 ///
-/// # Panics
-/// Panics if matrix and vector dimensions are not compatible.
+/// # Errors
+/// Returns an error if matrix and vector dimensions are not compatible.
 
 pub fn sp_mat_vec_mul(
     matrix: &CsMat<f64>,
@@ -225,6 +225,9 @@ pub fn transpose(
 }
 
 /// Computes the trace of a square sparse matrix.
+///
+/// # Errors
+/// Returns an error if the matrix is not square.
 
 pub fn trace(
     matrix: &CsMat<f64>
@@ -589,6 +592,9 @@ use ndarray::Array1;
 ///
 /// # Returns
 /// A `Result` containing the solution vector `x`, or an error string.
+///
+/// # Errors
+/// Returns an error if the matrix and vector dimensions are incompatible.
 
 pub fn solve_conjugate_gradient(
     a: &CsMat<f64>,

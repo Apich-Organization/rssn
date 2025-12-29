@@ -204,6 +204,9 @@ impl Particle {
     }
 
     /// Distance to another particle
+    ///
+    /// # Errors
+    /// Returns an error if the particles have different dimensions.
 
     pub fn distance_to(
         &self,
@@ -237,6 +240,9 @@ impl Particle {
 /// # Returns
 /// A tuple `(potential, force_on_p1)` where `potential` is the scalar potential energy
 /// and `force_on_p1` is the force vector acting on `p1` due to `p2`.
+///
+/// # Errors
+/// Returns an error if the particles have different dimensions.
 
 pub fn lennard_jones_interaction(
     p1: &Particle,
@@ -307,6 +313,9 @@ pub fn lennard_jones_interaction(
 ///
 /// # Returns
 /// A `Vec<Vec<Particle>>` representing the trajectory of the particles over time.
+///
+/// # Errors
+/// Returns an error if the force calculator fails or if vector operations fail due to dimension mismatch.
 
 pub fn integrate_velocity_verlet<F>(
     particles: &mut Vec<Particle>,
@@ -393,6 +402,9 @@ where
 /// * `de` - Dissociation energy
 /// * `a` - Controls the width of the potential well
 /// * `re` - Equilibrium bond distance
+///
+/// # Errors
+/// Returns an error if the particles have different dimensions.
 
 pub fn morse_interaction(
     p1: &Particle,
@@ -452,6 +464,9 @@ pub fn morse_interaction(
 /// * `p1`, `p2` - The two particles
 /// * `k` - Spring constant
 /// * `r0` - Equilibrium distance
+///
+/// # Errors
+/// Returns an error if the particles have different dimensions.
 
 pub fn harmonic_interaction(
     p1: &Particle,
@@ -499,6 +514,9 @@ pub fn harmonic_interaction(
 /// # Arguments
 /// * `p1`, `p2` - The two particles (with charge fields)
 /// * `k_coulomb` - Coulomb constant (in appropriate units)
+///
+/// # Errors
+/// Returns an error if the particles have different dimensions.
 
 pub fn coulomb_interaction(
     p1: &Particle,
@@ -546,6 +564,9 @@ pub fn coulomb_interaction(
 /// Soft-sphere potential for avoiding particle overlap.
 ///
 /// V(r) = ε * (σ/r)^n for r < σ, 0 otherwise
+///
+/// # Errors
+/// Returns an error if the particles have different dimensions.
 
 pub fn soft_sphere_interaction(
     p1: &Particle,
@@ -617,6 +638,9 @@ pub fn total_kinetic_energy(
 }
 
 /// Calculates the total momentum of the system.
+///
+/// # Errors
+/// Returns an error if the particle list is empty.
 
 pub fn total_momentum(
     particles: &[Particle]
@@ -652,6 +676,9 @@ pub fn total_momentum(
 }
 
 /// Calculates the center of mass of the system.
+///
+/// # Errors
+/// Returns an error if the particle list is empty.
 
 pub fn center_of_mass(
     particles: &[Particle]
@@ -750,6 +777,9 @@ pub fn pressure(
 }
 
 /// Removes center of mass velocity from the system.
+///
+/// # Errors
+/// Returns an error if the particle list is empty.
 
 pub fn remove_com_velocity(
     particles: &mut [Particle]

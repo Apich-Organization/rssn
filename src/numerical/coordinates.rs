@@ -26,7 +26,11 @@ use crate::symbolic::core::Expr;
 /// * `to` - The target `CoordinateSystem`.
 ///
 /// # Returns
-/// A `Result` containing a `Vec<f64>` of the transformed coordinates, or an error string.
+/// A `Result` containing a `Vec<f64>` of the transformed coordinates.
+///
+/// # Errors
+///
+/// Returns an error if the transformation rules cannot be found or if expression evaluation fails.
 
 pub fn transform_point(
     point: &[f64],
@@ -73,7 +77,11 @@ pub fn transform_point(
 /// * `at_point` - The point at which to evaluate the Jacobian.
 ///
 /// # Returns
-/// A `Result` containing a `Matrix<f64>` representing the Jacobian matrix, or an error string.
+/// A `Result` containing a `Matrix<f64>` representing the Jacobian matrix.
+///
+/// # Errors
+///
+/// Returns an error if the transformation rules cannot be found or if numerical gradient computation fails.
 
 pub fn numerical_jacobian(
     from: CoordinateSystem,
@@ -127,7 +135,11 @@ pub fn numerical_jacobian(
 /// * `to` - The target `CoordinateSystem`.
 ///
 /// # Returns
-/// A `Result` containing a `Vec<f64>` of the transformed coordinates, or an error string.
+/// A `Result` containing a `Vec<f64>` of the transformed coordinates.
+///
+/// # Errors
+///
+/// Returns an error if the input point has an incorrect number of components for the specified coordinate systems.
 
 pub fn transform_point_pure(
     point: &[f64],

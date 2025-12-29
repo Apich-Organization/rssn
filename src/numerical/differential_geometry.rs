@@ -18,6 +18,11 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::inverse_matrix;
 
 /// Evaluates the metric tensor at a given point for a coordinate system.
+///
+/// # Errors
+///
+/// Returns an error if the metric tensor cannot be retrieved for the specified system
+/// or if numerical evaluation at the point fails.
 
 pub fn metric_tensor_at_point(
     system: CoordinateSystem,
@@ -105,6 +110,13 @@ pub fn metric_tensor_at_point(
 /// )
 /// .unwrap();
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The coordinate system rules or metric tensor cannot be retrieved.
+/// - Numerical evaluation of the metric or its derivatives fails.
+/// - The metric tensor is singular and cannot be inverted.
 
 pub fn christoffel_symbols(
     system: CoordinateSystem,
@@ -310,6 +322,13 @@ pub fn christoffel_symbols(
 /// Computes the Riemann curvature tensor at a given point.
 ///
 /// `R^ρ_{σμν} = ∂_μ Γ^ρ_{σν} - ∂_ν Γ^ρ_{σμ} + Γ^ρ_{λμ} Γ^λ_{σν} - Γ^ρ_{λν} Γ^λ_{σμ}`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Coordinate transformation rules or metric tensor are missing.
+/// - Numerical evaluation of second derivatives of the metric fails.
+/// - The metric tensor is singular.
 
 pub fn riemann_tensor(
     system: CoordinateSystem,
@@ -638,6 +657,10 @@ fn invert_mat_num(
 /// Computes the Ricci tensor at a given point.
 ///
 /// `R_{σν} = R^μ_{σμν}` (Contraction of Riemann tensor)
+///
+/// # Errors
+///
+/// Returns an error if the Riemann tensor computation fails.
 
 pub fn ricci_tensor(
     system: CoordinateSystem,
@@ -674,6 +697,11 @@ pub fn ricci_tensor(
 /// Computes the Ricci scalar at a given point.
 ///
 /// `R = g^{μν} R_{μν}`
+///
+/// # Errors
+///
+/// Returns an error if the Ricci tensor or metric tensor cannot be computed,
+/// or if the metric is singular.
 
 pub fn ricci_scalar(
     system: CoordinateSystem,

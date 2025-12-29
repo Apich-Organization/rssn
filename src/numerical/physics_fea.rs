@@ -371,6 +371,9 @@ pub fn assemble_global_stiffness_matrix(
 ///
 /// # Returns
 /// A `Result` containing a `Vec<f64>` of nodal displacements, or an error string if the system is singular.
+///
+/// # Errors
+/// Returns an error if the force vector dimension mismatches the stiffness matrix, or if the resulting system is singular.
 
 pub fn solve_static_structural(
     mut global_k: Matrix<f64>,
@@ -642,6 +645,9 @@ impl TriangleElement2D {
     }
 
     /// Computes element stresses given nodal displacements.
+    ///
+    /// # Panics
+    /// Panics if the number of displacements is not 6.
     #[must_use]
 
     pub fn compute_stress(
@@ -691,6 +697,9 @@ impl TriangleElement2D {
     }
 
     /// Computes von Mises stress from stress components [σx, σy, τxy].
+    ///
+    /// # Panics
+    /// Panics if the stress vector length is not 3.
     #[must_use]
 
     pub fn von_mises_stress(
@@ -1220,6 +1229,9 @@ pub fn compute_element_strain(
 
 /// Converts stress to principal stresses.
 /// Returns (sigma1, sigma2, angle) where sigma1 >= sigma2.
+///
+/// # Panics
+/// Panics if the stress vector length is not 3.
 #[must_use]
 
 pub fn principal_stresses(

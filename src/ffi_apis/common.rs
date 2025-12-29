@@ -247,7 +247,11 @@ pub fn from_bincode_buffer<
 /// Helper to convert a C string pointer to a Rust string slice.
 ///
 /// Returns None if the pointer is null or the string is not valid UTF-8.
-
+///
+/// # Safety
+///
+/// The caller must ensure that `s` is a valid pointer to a null-terminated C string
+/// and that the string remains valid for the lifetime 'a.
 #[must_use] 
 pub unsafe fn c_str_to_str<'a>(
     s: *const c_char

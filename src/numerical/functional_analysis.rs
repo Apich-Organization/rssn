@@ -100,8 +100,10 @@ pub fn infinity_norm(
 /// * `g_points` - A slice of `(x, y)` tuples representing the second function's samples.
 ///
 /// # Returns
-/// A `Result` containing the numerical value of the inner product, or an error string
-/// if the input functions have different numbers of sample points.
+/// A `Result` containing the numerical value of the inner product.
+///
+/// # Errors
+/// Returns an error if the input functions have different numbers of sample points.
 
 pub fn inner_product(
     f_points: &[(f64, f64)],
@@ -157,6 +159,9 @@ pub fn inner_product(
 
 /// Computes the projection of function `f` onto function `g`.
 /// Both functions must be sampled at the same x-coordinates.
+///
+/// # Errors
+/// Returns an error if the input functions have different numbers or inconsistent sample points.
 
 pub fn project(
     f_points: &[(f64, f64)],
@@ -212,6 +217,9 @@ pub fn normalize(
 
 /// Performs the Gram-Schmidt process to orthogonalize a set of functions.
 /// All functions must have the same sampling points.
+///
+/// # Errors
+/// Returns an error if any pair of input functions has mismatched sample points.
 
 pub fn gram_schmidt(
     basis: &[Vec<(f64, f64)>]
@@ -247,6 +255,9 @@ pub fn gram_schmidt(
 }
 
 /// Performs the Gram-Schmidt process to orthonormalize a set of functions.
+///
+/// # Errors
+/// Returns an error if any pair of input functions has mismatched sample points.
 
 pub fn gram_schmidt_orthonormal(
     basis: &[Vec<(f64, f64)>]

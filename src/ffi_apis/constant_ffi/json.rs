@@ -93,9 +93,14 @@ macro_rules! gen_ffi_json {
         $ffi_name:ident,
         $internal_getter:path
     ) => {
-        /// Generates a FFI function that retrieves a constant value,
-        /// serializes it to a JSON string, and returns a C string pointer.
-        /// The caller must free the returned string using rssn_free_string.
+/// Generates an `FFI` function that retrieves a constant value.
+///
+/// This function serializes the value to a `JSON` string and returns 
+/// a `C` string pointer.
+///
+/// # Safety
+///
+/// The caller must free the returned string using `rssn_free_string`.
         #[no_mangle]
 
         pub extern "C" fn $ffi_name(

@@ -13,6 +13,9 @@ impl DagNode {
     /// Converts a DAG node into an `Expr` (AST) structure.
     ///
     /// This is an iterative implementation to avoid stack overflow on deep trees.
+    ///
+    /// # Errors
+    /// Returns an error if the node limit is exceeded or if any child cannot be converted.
 
     pub fn to_expr(
         &self
@@ -1554,6 +1557,9 @@ impl DagNode {
 
 impl Expr {
     /// Clones the distribution if the expression represents a probability distribution.
+    ///
+    /// # Errors
+    /// Returns an error if the expression is not a distribution.
 
     pub fn clone_box_dist(
         &self
@@ -1576,6 +1582,9 @@ impl Expr {
     }
 
     /// Clones the unit quantity if the expression represents a quantity.
+    ///
+    /// # Errors
+    /// Returns an error if the expression is not a quantity.
 
     pub fn clone_box_quant(
         &self

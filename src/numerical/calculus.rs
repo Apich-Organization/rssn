@@ -28,6 +28,10 @@ use crate::symbolic::core::Expr;
 /// // Expect derivative at x=2 to be approx 4.0
 /// assert!((val - 4.0).abs() < 1e-5);
 /// ```
+///
+/// # Errors
+/// 
+/// Returns an error if the expression evaluation fails.
 
 pub fn partial_derivative(
     f: &Expr,
@@ -94,6 +98,12 @@ pub fn partial_derivative(
 ///
 /// assert!((grad[1] - 1.0).abs() < 1e-5);
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The number of variables does not match the number of point dimensions.
+/// - The expression evaluation fails for any sampled point.
 
 pub fn gradient(
     f: &Expr,
@@ -177,6 +187,10 @@ pub fn gradient(
 /// // J = [[y, x], [1, 1]] at (1,2) = [[2, 1], [1, 1]]
 /// assert!((jac[0][0] - 2.0).abs() < 1e-5);
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if the gradient computation fails for any component function.
 
 pub fn jacobian(
     funcs: &[Expr],
@@ -236,6 +250,12 @@ pub fn jacobian(
 ///
 /// assert!((hess[0][1] - 1.0).abs() < 1e-5);
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The number of variables does not match the number of point dimensions.
+/// - The expression evaluation fails for any sampled point.
 
 pub fn hessian(
     f: &Expr,

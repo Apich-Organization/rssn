@@ -53,6 +53,9 @@ pub trait Field:
     fn is_invertible(&self) -> bool;
 
     /// Returns the inverse of the element.
+    ///
+    /// # Errors
+    /// Returns an error if the element is not invertible (e.g., zero in most fields).
 
     fn inverse(
         &self
@@ -703,6 +706,10 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// The rank of the matrix (number of non-zero rows in RREF).
+    ///
+    /// # Errors
+    /// Returns an error if a division by zero occurs during the elimination process,
+    /// which can happen if the matrix elements are not from a proper field.
 
     pub fn rref(
         &mut self
@@ -851,7 +858,12 @@ impl<T: Field> Matrix<T> {
     /// * `other` - The matrix to multiply with.
     ///
     /// ## Returns
-    /// A new `Matrix` representing the product of the two matrices, or an error if multiplication is not possible.
+    /// A new `Matrix` representing the product of the two matrices.
+    ///
+    /// ## Errors
+    /// Returns an error if:
+    /// - Matrix multiplication is not possible due to incompatible dimensions.
+    /// - The matrices are not square (for the internal recursive calls).
 
     pub fn mul_strassen(
         &self,
@@ -1150,7 +1162,12 @@ impl<T: Field> Matrix<T> {
     /// determinant calculation, especially for large matrices.
     ///
     /// # Returns
-    /// The determinant of the matrix, or an error if the matrix is not square.
+    /// The determinant of the matrix.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The matrix is not square.
+    /// - The matrix is singular or reduction fails.
 
     pub fn determinant(
         &self
@@ -1230,6 +1247,11 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A tuple containing the LU matrix and the number of row swaps.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The matrix is not square.
+    /// - The matrix is singular.
 
     pub fn lu_decomposition(
         &self
@@ -1557,6 +1579,9 @@ impl<T: Field> Matrix<T> {
     ///
     /// # Returns
     /// A `Matrix` whose columns form a basis for the null space.
+    ///
+    /// # Errors
+    /// Returns an error if the RREF calculation fails.
 
     pub fn null_space(
         &self
@@ -1687,6 +1712,9 @@ impl<T: Field> Matrix<T> {
     }
 
     /// Computes the trace of the matrix (sum of diagonal elements).
+    ///
+    /// # Errors
+    /// Returns an error if the matrix is not square.
 
     pub fn trace(
         &self
@@ -2045,7 +2073,12 @@ impl Matrix<f64> {
     ///
     /// # Returns
     /// A `Result` containing a tuple `(eigenvalues, eigenvectors)` where `eigenvalues` is a `Vec<f64>`
-    /// and `eigenvectors` is a `Matrix<f64>` (columns are eigenvectors), or an error string if the matrix is not square.
+    /// and `eigenvectors` is a `Matrix<f64>` (columns are eigenvectors).
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The matrix is not square.
+    /// - The decomposition fails to converge within the maximum sweeps.
 
     pub fn jacobi_eigen_decomposition(
         &self,

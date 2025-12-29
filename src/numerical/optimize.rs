@@ -313,6 +313,9 @@ impl LinearRegression {
     #[allow(clippy::suspicious_operation_groupings)]
 
     /// Creates a new `LinearRegression` problem instance.
+    ///
+    /// # Errors
+    /// Returns an error if the input data dimensions are mismatched or empty.
 
     pub fn new(
         x: Array2<f64>,
@@ -553,6 +556,9 @@ type PsoSolveResult<C, E> =
 
 impl EquationOptimizer {
     /// Solve using gradient descent
+    ///
+    /// # Errors
+    /// Returns an error if the optimization process fails to initialize or execute.
 
     pub fn solve_with_gradient_descent<
         C,
@@ -601,6 +607,12 @@ impl EquationOptimizer {
     }
 
     /// Automatically configures and solves a problem using the Conjugate Gradient method.
+    ///
+    /// # Errors
+    /// Returns an error if the optimization process fails.
+    ///
+    /// # Panics
+    /// Panics if the internal Armijo condition fails to initialize.
 
     pub fn auto_solve_conjugate_gradient<
         C,
@@ -671,6 +683,9 @@ impl EquationOptimizer {
     }
 
     /// Solve using BFGS quasi-Newton method
+    ///
+    /// # Errors
+    /// Returns an error if the BFGS optimization fails.
 
     pub fn solve_with_bfgs<C>(
         cost_function: C,
@@ -724,6 +739,9 @@ impl EquationOptimizer {
     }
 
     /// Solve using particle swarm optimization (for non-differentiable functions)
+    ///
+    /// # Errors
+    /// Returns an error if the PSO optimization fails.
 
     pub fn solve_with_pso<C>(
         cost_function: C,
@@ -765,6 +783,9 @@ impl EquationOptimizer {
     }
 
     /// Automatically select solver and solve
+    ///
+    /// # Errors
+    /// Returns an error if the optimization process fails.
 
     pub fn auto_solve<S, I>(
         problem: P,

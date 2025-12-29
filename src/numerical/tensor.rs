@@ -15,6 +15,9 @@ use ndarray::IxDyn;
 ///
 /// # Returns
 /// The resulting contracted tensor as an `ndarray::ArrayD<f64>`.
+///
+/// # Errors
+/// Returns an error if the number of axes to contract mismatch, or if the dimensions along these axes do not match.
 
 pub fn tensordot(
     a: &ArrayD<f64>,
@@ -148,6 +151,9 @@ pub fn tensordot(
 ///
 /// # Returns
 /// The resulting outer product tensor as an `ndarray::ArrayD<f64>`.
+///
+/// # Errors
+/// Returns an error if input tensors are not contiguous.
 
 pub fn outer_product(
     a: &ArrayD<f64>,
@@ -200,6 +206,9 @@ pub fn outer_product(
 }
 
 /// Performs tensor-vector multiplication.
+///
+/// # Errors
+/// Returns an error if the tensor has zero dimensions or if the last dimension mismatches the vector size.
 
 pub fn tensor_vec_mul(
     tensor: &ArrayD<f64>,
@@ -244,6 +253,9 @@ pub fn tensor_vec_mul(
 }
 
 /// Computes the inner product of two tensors of the same shape.
+///
+/// # Errors
+/// Returns an error if the shapes mismatch or if tensors are not contiguous.
 
 pub fn inner_product(
     a: &ArrayD<f64>,
@@ -275,6 +287,9 @@ pub fn inner_product(
 }
 
 /// Contracts a single tensor along two specified axes.
+///
+/// # Errors
+/// Returns an error if axes are the same, dimensions mismatch, or if general rank contraction is not yet implemented.
 
 pub fn contract(
     a: &ArrayD<f64>,
@@ -394,7 +409,9 @@ impl From<&ArrayD<f64>> for TensorData {
 
 impl TensorData {
     /// Converts back to an `ndarray::ArrayD`.
-
+    ///
+    /// # Errors
+    /// Returns an error if the shape and data are inconsistent.
     pub fn to_arrayd(
         &self
     ) -> Result<ArrayD<f64>, String>

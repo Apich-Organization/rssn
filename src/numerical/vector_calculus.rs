@@ -15,6 +15,9 @@ use crate::symbolic::core::Expr;
 /// * `f` - The symbolic expression representing the scalar field.
 /// * `vars` - A slice of string slices representing the independent variables.
 /// * `point` - The point at which to compute the gradient.
+///
+/// # Errors
+/// Returns an error if symbolic expression evaluation fails or if the point dimension mismatches the variables.
 
 pub fn gradient(
     f: &Expr,
@@ -32,6 +35,9 @@ pub fn gradient(
 /// # Arguments
 /// * `vector_field` - A closure representing the vector field `F`.
 /// * `point` - The point at which to compute the divergence.
+///
+/// # Errors
+/// Returns an error if the vector field evaluation fails.
 
 pub fn divergence<F>(
     vector_field: F,
@@ -118,6 +124,9 @@ where
 ///
 /// assert!((div - 6.0).abs() < 1e-5);
 /// ```
+///
+/// # Errors
+/// Returns an error if the number of functions does not match the number of variables, or if evaluation fails.
 
 pub fn divergence_expr(
     funcs: &[Expr],
@@ -162,6 +171,9 @@ pub fn divergence_expr(
 /// # Arguments
 /// * `vector_field` - A closure representing the vector field `F`.
 /// * `point` - The point at which to compute the curl.
+///
+/// # Errors
+/// Returns an error if the point dimension is not 3 or if the vector field evaluation fails.
 
 pub fn curl<F>(
     vector_field: F,
@@ -285,6 +297,9 @@ where
 }
 
 /// Computes the numerical curl of a 3D vector field represented by symbolic expressions.
+///
+/// # Errors
+/// Returns an error if the number of functions or variables is not 3, or if evaluation fails.
 
 pub fn curl_expr(
     funcs: &[Expr],
@@ -356,6 +371,9 @@ pub fn curl_expr(
 ///
 /// assert!((lap - 4.0).abs() < 1e-5);
 /// ```
+///
+/// # Errors
+/// Returns an error if symbolic expression evaluation fails.
 
 pub fn laplacian(
     f: &Expr,
@@ -405,6 +423,9 @@ pub fn laplacian(
 }
 
 /// Computes the numerical directional derivative of a function at a given point.
+///
+/// # Errors
+/// Returns an error if symbolic expression evaluation fails, if dimensions mismatch, or if the direction vector is zero.
 
 pub fn directional_derivative(
     f: &Expr,

@@ -26,6 +26,10 @@ use crate::prelude::Expr;
 /// * `filename` - The path to the `.npy` file.
 /// * `arr` - The array to write.
 ///
+/// # Errors
+///
+/// This function will return an error if the file cannot be written to.
+///
 /// # Panics
 /// Panics if the write fails.
 
@@ -66,6 +70,10 @@ pub fn write_npy_file<
 /// # Returns
 /// The read array as an `ndarray::Array2<f64>`.
 ///
+/// # Errors
+///
+/// This function will return an error if the file cannot be read.
+///
 /// # Panics
 /// Panics if the read fails.
 
@@ -93,6 +101,10 @@ pub fn read_npy_file<P: AsRef<Path>>(
 }
 
 /// Writes a 2D `ndarray::Array` to a CSV file.
+///
+/// # Errors
+///
+/// This function will return an error if the file cannot be written to.
 
 pub fn write_csv_file<
     P: AsRef<Path>,
@@ -127,6 +139,10 @@ pub fn write_csv_file<
 }
 
 /// Reads a 2D `ndarray::Array` from a CSV file.
+///
+/// # Errors
+///
+/// This function will return an error if the file cannot be read or parsed.
 
 pub fn read_csv_file<P: AsRef<Path>>(
     filename: P
@@ -208,6 +224,10 @@ pub fn read_csv_file<P: AsRef<Path>>(
 }
 
 /// Writes a 2D `ndarray::Array` to a JSON file.
+///
+/// # Errors
+///
+/// This function will return an error if the file cannot be written to.
 
 pub fn write_json_file<
     P: AsRef<Path>,
@@ -229,6 +249,10 @@ pub fn write_json_file<
 }
 
 /// Reads a 2D `ndarray::Array` from a JSON file.
+///
+/// # Errors
+///
+/// This function will return an error if the file cannot be read or parsed.
 
 pub fn read_json_file<
     P: AsRef<Path>,
@@ -507,6 +531,11 @@ mod tests {
 /// # Returns
 /// A `Result` indicating success or an error string if the input is not a matrix
 /// or contains non-numerical elements.
+///
+/// # Errors
+///
+/// This function will return an error if the input expression is not a matrix,
+/// contains non-numerical elements, or if the file write operation fails.
 
 pub fn save_expr_as_npy<
     P: AsRef<Path>,
@@ -585,6 +614,11 @@ pub fn save_expr_as_npy<
 }
 
 /// Converts an `Expr::Matrix` to an `ndarray::Array2<f64>` and saves it as a CSV file.
+///
+/// # Errors
+///
+/// This function will return an error if the expression is not a matrix or
+/// if the file cannot be written to.
 
 pub fn save_expr_as_csv<
     P: AsRef<Path>,
@@ -651,6 +685,10 @@ pub fn save_expr_as_csv<
 }
 
 /// Reads a CSV file into an `ndarray::Array2<f64>` and converts it to an `Expr::Matrix`.
+///
+/// # Errors
+///
+/// This function will return an error if the file cannot be read or parsed.
 
 pub fn load_csv_as_expr<
     P: AsRef<Path>,
@@ -678,6 +716,11 @@ pub fn load_csv_as_expr<
 }
 
 /// Converts an `Expr::Matrix` to an `ndarray::Array2<f64>` and saves it as a JSON file.
+///
+/// # Errors
+///
+/// This function will return an error if the expression is not a matrix or
+/// if the file cannot be written to.
 
 pub fn save_expr_as_json<
     P: AsRef<Path>,
@@ -744,6 +787,10 @@ pub fn save_expr_as_json<
 }
 
 /// Reads a JSON file into an `ndarray::Array2<f64>` and converts it to an `Expr::Matrix`.
+///
+/// # Errors
+///
+/// This function will return an error if the file cannot be read or parsed.
 
 pub fn load_json_as_expr<
     P: AsRef<Path>,
@@ -778,6 +825,11 @@ pub fn load_json_as_expr<
 /// # Returns
 /// A `Result` containing the `Expr::Matrix` representation of the loaded array,
 /// or an error string if the read fails.
+///
+/// # Errors
+///
+/// This function will return an error if the file cannot be read or if the
+/// data cannot be converted to an `Expr::Matrix`.
 
 pub fn load_npy_as_expr<
     P: AsRef<Path>,
@@ -807,6 +859,11 @@ pub fn load_npy_as_expr<
 }
 
 /// Automatically dispatches to the correct saver based on the file extension.
+///
+/// # Errors
+///
+/// This function will return an error if the file extension is not supported
+/// or if the save operation fails.
 
 pub fn save_expr<P: AsRef<Path>>(
     path: P,
@@ -843,6 +900,11 @@ pub fn save_expr<P: AsRef<Path>>(
 }
 
 /// Automatically dispatches to the correct loader based on the file extension.
+///
+/// # Errors
+///
+/// This function will return an error if the file extension is not supported
+/// or if the load operation fails.
 
 pub fn load_expr<P: AsRef<Path>>(
     path: P

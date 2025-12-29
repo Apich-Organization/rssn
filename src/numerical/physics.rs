@@ -248,6 +248,9 @@ impl Particle3D {
 /// # Returns
 /// A `Result` containing a `Vec<Vec<f64>>` representing the trajectory over time,
 /// or an error string if evaluation fails.
+///
+/// # Errors
+/// Returns an error if symbolic expression evaluation or ODE solving fails.
 
 pub fn simulate_particle_motion(
     force_exprs: (&Expr, &Expr, &Expr),
@@ -403,6 +406,9 @@ pub fn simulate_ising_model(
 /// # Returns
 /// A `Result` containing a tuple `(eigenvalues, eigenvectors_matrix)`,
 /// or an error string if the number of points is too small or evaluation fails.
+///
+/// # Errors
+/// Returns an error if `num_points` is less than 3, if symbolic evaluation fails, or if the decomposition fails to converge.
 
 pub fn solve_1d_schrodinger(
     potential_expr: &Expr,
@@ -507,6 +513,9 @@ pub fn solve_1d_schrodinger(
 /// # Returns
 /// A `Result` containing a tuple `(eigenvalues, eigenvectors_matrix)`,
 /// or an error string if grid dimensions are too small or evaluation fails.
+///
+/// # Errors
+/// Returns an error if grid dimensions are less than 3, if symbolic evaluation fails, or if the decomposition fails to converge.
 
 pub fn solve_2d_schrodinger(
     potential_expr: &Expr,
@@ -667,6 +676,9 @@ pub fn solve_2d_schrodinger(
 /// # Returns
 /// A `Result` containing a tuple `(eigenvalues, eigenvectors_matrix)`,
 /// or an error string if grid dimensions are too small, too large, or evaluation fails.
+///
+/// # Errors
+/// Returns an error if grid dimensions are less than 3, if the total number of points exceeds 25,000, if symbolic evaluation fails, or if the decomposition fails to converge.
 
 pub fn solve_3d_schrodinger(
     potential_expr: &Expr,
@@ -901,6 +913,9 @@ pub fn solve_3d_schrodinger(
 /// # Returns
 /// A `Result` containing a `Vec<Vec<f64>>` where each inner `Vec` is the solution `u`
 /// at a given time step, or an error string if input dimensions are invalid.
+///
+/// # Errors
+/// Returns an error if `nx` < 3 or `nt` < 1.
 #[allow(clippy::suspicious_operation_groupings)]
 
 pub fn solve_heat_equation_1d_crank_nicolson(
@@ -1082,6 +1097,9 @@ pub fn solve_heat_equation_1d_crank_nicolson(
 /// # Returns
 /// A `Result` containing a `Vec<Vec<f64>>` where each inner `Vec` is the solution `u`
 /// at a given time step, or an error string if input dimensions mismatch or CFL is violated.
+///
+/// # Errors
+/// Returns an error if initial vectors have different lengths, if `num_points` < 3, or if the CFL stability condition is violated.
 
 pub fn solve_wave_equation_1d(
     initial_u: &[f64],

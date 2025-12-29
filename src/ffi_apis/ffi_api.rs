@@ -2153,6 +2153,7 @@ macro_rules! impl_rssn_special_fn_two_args {
                     and please use special \
                     ffi api modules instead."
         )]
+        #[allow(clippy::too_long_first_doc_paragraph)]
         /// Implements a FFI function that takes two f64 arguments `a` and `b`,
         /// calls a wrapped special function that operates on them, and stores the f64 result
         /// in the `result` pointer. Returns 0 on success, -1 on error.

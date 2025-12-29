@@ -102,7 +102,13 @@ pub fn combinations(
 /// * `target_n` - The index `n` for which to compute `a_n`.
 ///
 /// # Returns
-/// A `Result` containing the numerical value of `a_n`, or an error string if input dimensions mismatch.
+/// A `Result` containing the numerical value of `a_n`.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The number of initial conditions does not match the order of the recurrence.
+/// - The internal storage fails to compute values (e.g., empty result vector).
 
 pub fn solve_recurrence_numerical(
     coeffs: &[f64],

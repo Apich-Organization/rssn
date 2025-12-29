@@ -120,6 +120,9 @@ where
 /// ## Returns
 /// `Result<f64, String>`
 ///
+/// ## Errors
+/// Returns an error if the number of steps is zero or if an internal calculation fails.
+///
 /// ## Example
 /// ```
 /// 
@@ -507,7 +510,11 @@ where
 /// * `method` - The quadrature method to use.
 ///
 /// # Returns
-/// A `Result` containing the numerical value of the integral, or an error string.
+/// A `Result` containing the numerical value of the integral.
+///
+/// # Errors
+/// Returns an error if the integration results in NaN, which may happen if the symbolic
+/// expression fails to evaluate at any of the sample points.
 
 pub fn quadrature(
     f: &Expr,

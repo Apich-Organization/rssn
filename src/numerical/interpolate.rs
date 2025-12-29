@@ -17,8 +17,10 @@ use crate::numerical::polynomial::Polynomial;
 /// * `points` - A slice of `(x, y)` tuples.
 ///
 /// # Returns
-/// A `Result` containing a `Polynomial` struct representing the interpolating polynomial,
-/// or an error string if duplicate x-coordinates are found.
+/// A `Result` containing a `Polynomial` struct representing the interpolating polynomial.
+///
+/// # Errors
+/// Returns an error if duplicate x-coordinates are found among the input points.
 ///
 /// # Example
 /// ```rust
@@ -111,7 +113,10 @@ pub fn lagrange_interpolation(
 ///
 /// # Returns
 /// A `Result` containing a closure `Arc<dyn Fn(f64) -> f64>` that can be used to evaluate
-/// the spline at any point, or an error string if fewer than two points are provided.
+/// the spline at any point.
+///
+/// # Errors
+/// Returns an error if fewer than two points are provided, or if the x-coordinates are not strictly increasing.
 ///
 /// # Example
 /// ```rust

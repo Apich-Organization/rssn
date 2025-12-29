@@ -79,6 +79,9 @@ impl Polynomial {
     /// # Returns
     /// A `Result` containing a `Vec<f64>` of the real roots found, or an error string
     /// if root isolation or refinement fails.
+    ///
+    /// # Errors
+    /// Returns an error if root isolation or refinement fails.
 
     pub fn find_roots(
         &self
@@ -537,6 +540,9 @@ impl Polynomial {
     ///
     /// # Returns
     /// A `Result` containing the new `Polynomial`, or an error if the scalar is zero.
+    ///
+    /// # Errors
+    /// Returns an error if the divisor scalar is zero.
 
     pub fn div_scalar(
         self,

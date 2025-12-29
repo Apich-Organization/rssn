@@ -24,6 +24,8 @@ use crate::symbolic::core::Expr;
 /// assert!((coeffs[2] - 1.0).abs() < 1e-5);
 /// ```
 
+/// # Errors
+/// Returns an error if symbolic expression evaluation fails.
 pub fn taylor_coefficients(
     f: &Expr,
     var: &str,
@@ -119,6 +121,8 @@ pub fn evaluate_power_series(
 /// assert!((sum - 55.0).abs() < 1e-5);
 /// ```
 
+/// # Errors
+/// Returns an error if symbolic expression evaluation fails.
 pub fn sum_series(
     f: &Expr,
     var: &str,

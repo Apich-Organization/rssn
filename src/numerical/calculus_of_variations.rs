@@ -66,6 +66,10 @@ use crate::symbolic::core::Expr;
 /// // Integral of 0.5 from 0 to 1 is 0.5
 /// assert!((action - 0.5).abs() < 1e-5);
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if the numerical quadrature fails.
 
 pub fn evaluate_action(
     lagrangian: &Expr,
