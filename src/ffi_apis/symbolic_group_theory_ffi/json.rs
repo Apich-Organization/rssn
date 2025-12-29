@@ -1,8 +1,6 @@
-use std::collections::HashMap;
 use std::os::raw::c_char;
 
 use crate::ffi_apis::common::*;
-use crate::symbolic::core::Expr;
 use crate::symbolic::group_theory::*;
 
 #[no_mangle]

@@ -4,13 +4,10 @@
 //! general finite field arithmetic operations.
 
 use std::os::raw::c_char;
-use std::sync::Arc;
 
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::error_correction_helper::gf256_add;
-use crate::symbolic::error_correction_helper::gf256_div;
-use crate::symbolic::error_correction_helper::gf256_exp;
 use crate::symbolic::error_correction_helper::gf256_inv;
 use crate::symbolic::error_correction_helper::gf256_mul;
 use crate::symbolic::error_correction_helper::poly_add_gf;

@@ -1,7 +1,5 @@
 //! Bincode-based FFI API for electromagnetism functions.
 
-use std::os::raw::c_char;
-
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
 use crate::symbolic::electromagnetism;

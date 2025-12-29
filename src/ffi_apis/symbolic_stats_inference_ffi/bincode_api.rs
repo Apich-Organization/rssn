@@ -1,6 +1,5 @@
 use crate::ffi_apis::common::*;
 use crate::symbolic::core::Expr;
-use crate::symbolic::stats_inference::HypothesisTest;
 use crate::symbolic::stats_inference::{
     self,
 };

@@ -16,8 +16,6 @@ use crate::symbolic::error_correction_helper::gf256_pow;
 use crate::symbolic::error_correction_helper::poly_add_gf;
 use crate::symbolic::error_correction_helper::poly_add_gf256;
 use crate::symbolic::error_correction_helper::poly_derivative_gf256;
-use crate::symbolic::error_correction_helper::poly_div_gf;
-use crate::symbolic::error_correction_helper::poly_div_gf256;
 use crate::symbolic::error_correction_helper::poly_eval_gf256;
 use crate::symbolic::error_correction_helper::poly_gcd_gf256;
 use crate::symbolic::error_correction_helper::poly_mul_gf;

@@ -1,5 +1,3 @@
-use std::os::raw::c_char;
-
 use crate::symbolic::core::Expr;
 use crate::symbolic::quantum_mechanics::Bra;
 use crate::symbolic::quantum_mechanics::Ket;
