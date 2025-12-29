@@ -40,7 +40,7 @@ pub struct IteratedFunctionSystem {
     /// The probabilities associated with each function (for randomized algorithms).
     /// These should sum to 1.
     pub probabilities: Vec<Expr>,
-    /// The variables involved in the functions (e.g., ["x", "y"]).
+    /// The variables involved in the functions (e.g., `["x", "y"]`).
     pub variables: Vec<String>,
 }
 

@@ -470,7 +470,11 @@ pub fn gf256_exp(log_val: u8) -> u8 {
 /// * `a` - The field element (must be non-zero)
 ///
 /// # Returns
-/// `Ok(log)` if a is non-zero, `Err` if a is zero
+/// `Ok(log)` containing the discrete logarithm.
+///
+/// # Errors
+///
+/// This function will return an error if `a` is zero, as the logarithm of zero is undefined in a finite field.
 
 pub fn gf256_log(
     a: u8
@@ -925,6 +929,12 @@ pub fn poly_gcd_gf256(
 ///
 /// # Returns
 /// A `Vec<u8>` representing the remainder polynomial.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The `divisor` is empty.
+/// - The leading coefficient of the divisor is zero (making it non-invertible).
 
 pub fn poly_div_gf256(
     mut dividend: Vec<u8>,
@@ -1024,8 +1034,12 @@ pub(crate) fn field_elements_to_expr(
 ///
 /// # Returns
 /// * `Ok(Expr::Polynomial)` representing the sum.
-/// * `Err(String)` if the input expressions are not valid polynomials, contain invalid coefficients,
-///   or if the underlying `FieldElement::add` operation fails due to field mismatch.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The input expressions are not valid polynomials or contain invalid coefficients.
+/// - The underlying `FieldElement::add` operation fails due to field mismatch.
 
 pub fn poly_add_gf(
     p1_expr: &Expr,
@@ -1098,8 +1112,12 @@ pub fn poly_add_gf(
 ///
 /// # Returns
 /// * `Ok(Expr::Polynomial)` representing the product.
-/// * `Err(String)` if the input expressions are not valid polynomials, contain invalid coefficients,
-///   or if the underlying `FieldElement::mul` operation fails due to field mismatch.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The input expressions are not valid polynomials or contain invalid coefficients.
+/// - The underlying `FieldElement::mul` operation fails due to field mismatch.
 
 pub fn poly_mul_gf(
     p1_expr: &Expr,
@@ -1167,8 +1185,13 @@ pub fn poly_mul_gf(
 ///
 /// # Returns
 /// * `Ok((Expr::Polynomial, Expr::Polynomial))` representing the quotient and remainder.
-/// * `Err(String)` if the input expressions are not valid polynomials, contain invalid coefficients,
-///   if division by the zero polynomial is attempted, or if a leading coefficient is not invertible.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The input expressions are not valid polynomials or contain invalid coefficients.
+/// - Division by the zero polynomial is attempted.
+/// - The leading coefficient of the divisor is not invertible.
 
 pub fn poly_div_gf(
     p1_expr: &Expr,

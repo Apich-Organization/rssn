@@ -44,7 +44,11 @@ impl GaussQuadrature {
 ///
 /// # Returns
 /// A vector representing the solution u at each node.
-
+///
+/// # Errors
+///
+/// This function will return an error if `n_elements` is 0, or if the underlying
+/// linear system solver fails to converge or encounters numerical instability.
 pub fn solve_poisson_1d<F>(
     n_elements: usize,
     domain_length: f64,

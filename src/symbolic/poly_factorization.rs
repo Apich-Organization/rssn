@@ -1116,6 +1116,10 @@ pub(crate) fn poly_with_field(
 }
 
 /// Polynomial Extended Euclidean Algorithm for `a(x)s(x) + b(x)t(x) = gcd(a(x), b(x))`.
+///
+/// # Errors
+///
+/// This function will return an error if the underlying polynomial long division fails.
 
 pub fn poly_extended_gcd(
     a: FiniteFieldPolynomial,

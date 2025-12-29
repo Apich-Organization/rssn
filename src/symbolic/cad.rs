@@ -55,7 +55,7 @@ pub struct Cad {
 ///
 /// # Arguments
 /// * `polys` - A slice of `SparsePolynomial` representing the input set.
-/// * `vars` - The names of the variables in order (e.g., ["x", "y", "z"]).
+/// * `vars` - The names of the variables in order (e.g., `["x", "y", "z"]`).
 ///
 /// # Returns
 /// A `Result` containing the `Cad` structure or an error message.

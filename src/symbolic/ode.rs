@@ -2106,6 +2106,11 @@ pub fn solve_riccati_ode(
 /// # Returns
 /// An `Option<Expr>` representing the general solution, or `None` if the
 /// equation is not a second-order Cauchy-Euler ODE.
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn solve_cauchy_euler_ode(
@@ -2276,6 +2281,11 @@ pub fn solve_cauchy_euler_ode(
 /// # Returns
 /// An `Option<Expr>` representing the general solution, or `None` if the
 /// reduction of order cannot be performed.
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn solve_by_reduction_of_order(
@@ -2389,6 +2399,11 @@ pub fn solve_by_reduction_of_order(
 /// # Returns
 /// An `Option<Expr>` representing the implicit solution `F(x,y) = C`,
 /// or `None` if the equation is not exact or cannot be solved.
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn solve_exact_ode(

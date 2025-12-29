@@ -1365,6 +1365,11 @@ impl<T: Field> Matrix<T> {
     ///
     /// Computes the determinant using block matrix decomposition (Schur complement).
     /// This is efficient for large matrices.
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// - The matrix is not square.
+    /// - The matrix is singular or reduction fails.
     #[allow(clippy::suspicious_operation_groupings)]
 
     pub fn determinant_block(
@@ -1448,7 +1453,11 @@ impl<T: Field> Matrix<T> {
     }
 
     /// Computes the determinant using LU decomposition.
-
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// - The matrix is not square.
+    /// - The matrix is singular or reduction fails.
     pub fn determinant_lu(
         &self
     ) -> Result<T, String> {
@@ -1700,7 +1709,11 @@ impl<T: Field> Matrix<T> {
     }
 
     /// Computes the rank of the matrix.
-
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// - The matrix is not square.
+    /// - The matrix is singular or reduction fails.
     pub fn rank(
         &self
     ) -> Result<usize, String> {

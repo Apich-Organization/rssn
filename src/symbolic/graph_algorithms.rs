@@ -3077,6 +3077,13 @@ pub fn floyd_warshall<
 /// A `Result` containing a tuple `(eigenvalues, eigenvectors_matrix)`.
 /// `eigenvalues` is a column vector of eigenvalues.
 /// `eigenvectors_matrix` is a matrix where each column is an eigenvector.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The input `matrix` is not a valid matrix expression.
+/// - The matrix is not square.
+/// - The underlying eigenvalue decomposition algorithm fails.
 
 pub fn spectral_analysis(
     matrix: &Expr
@@ -3094,8 +3101,13 @@ pub fn spectral_analysis(
 /// * `graph` - The graph to analyze.
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the algebraic connectivity,
-/// or an error string if computation fails or the graph has fewer than 2 eigenvalues.
+/// A `Result` containing an `Expr` representing the algebraic connectivity.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The spectral analysis of the Laplacian matrix fails.
+/// - The graph has fewer than 2 nodes (and thus fewer than 2 eigenvalues).
 
 pub fn algebraic_connectivity<V>(
     graph: &Graph<V>

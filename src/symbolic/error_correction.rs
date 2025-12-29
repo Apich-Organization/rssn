@@ -245,7 +245,10 @@ pub fn hamming_check(
 /// A `Result` containing:
 /// - `Ok((data, error_pos))` where `data` is the 4-bit corrected data and `error_pos` is
 ///   `Some(index)` if an error was corrected at the given 1-based index, or `None` if no error was found.
-/// - `Err(String)` if the input length is not 7.
+///
+/// # Errors
+///
+/// This function will return an error if the input `codeword` length is not 7.
 
 pub fn hamming_decode(
     codeword: &[u8]

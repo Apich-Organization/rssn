@@ -251,14 +251,19 @@ pub(crate) fn flatten_product(
 }
 
 /// Normalizes an expression to a canonical form.
-
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub fn normalize(expr: Expr) -> Expr {
 
     match expr {
         | Expr::Dag(node) => {
             normalize(
                 node.to_expr()
-                    .expect("Noramlize"),
+                    .expect("Normalize"),
             )
         },
         | Expr::Add(a, b) => {
@@ -387,7 +392,12 @@ pub fn normalize(expr: Expr) -> Expr {
 }
 
 /// Expands expressions by applying the distributive property and expanding powers.
-
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub fn expand(expr: Expr) -> Expr {
 
     let expanded_expr = match expr {

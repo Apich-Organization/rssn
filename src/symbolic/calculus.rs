@@ -1414,6 +1414,12 @@ pub(crate) const fn get_liate_type(
 ///
 /// # Returns
 /// A new `Expr` with the substitutions applied.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn substitute_expr(
@@ -2543,6 +2549,12 @@ pub fn check_analytic(
 ///
 /// # Returns
 /// A `Vec<Expr>` containing the symbolic expressions for the poles.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn find_poles(
@@ -2834,6 +2846,12 @@ pub(crate) fn integrate_by_parts(
 ///
 /// # Returns
 /// `true` if the point is strictly inside the contour, `false` otherwise.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn is_inside_contour(
@@ -2955,6 +2973,12 @@ pub fn is_inside_contour(
 ///
 /// # Returns
 /// An `Expr` representing the value of the path integral.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn path_integrate(

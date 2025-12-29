@@ -949,7 +949,13 @@ pub(crate) fn poly_integrate(
 /// * `x` - The variable of integration.
 ///
 /// # Returns
-/// A `Result` containing the symbolic integral or an error message.
+/// An `Expr` representing the symbolic integral.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The denominator polynomial `Q(x)` is zero.
+/// - The underlying polynomial operations (GCD, division, system solving) fail.
 
 pub fn hermite_integrate_rational(
     p: &SparsePolynomial,

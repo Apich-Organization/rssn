@@ -396,6 +396,11 @@ pub fn get_transform_rules(
 /// `from_vars` are the variable names of the source system.
 /// `cartesian_vars` are the variable names of the Cartesian system.
 /// `rules` are the expressions for Cartesian coordinates in terms of `from_vars`.
+///
+/// # Errors
+///
+/// This function will return an error if the transformation rules for the
+/// requested coordinate system are not implemented.
 
 pub fn get_to_cartesian_rules(
     from: CoordinateSystem
@@ -1369,8 +1374,14 @@ pub fn transform_curl(
 /// * `to` - The target `CoordinateSystem`.
 ///
 /// # Returns
-/// A `Result` containing a `Vec<Expr>` of the transformed gradient components,
-/// or an error string if the transformation is not supported or computation fails.
+/// A `Result` containing a `Vec<Expr>` of the transformed gradient components.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The transformation rules for the `from` system cannot be retrieved.
+/// - The underlying covariant vector transformation fails (e.g., if the Jacobian
+///   matrix is singular or dimensions are incompatible).
 
 pub fn transform_gradient(
     scalar_field: &Expr,

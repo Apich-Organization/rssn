@@ -248,7 +248,10 @@ impl PluginManager {
     }
 
     /// Registers a plugin manually. Useful for testing or internal plugins.
-
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal `RwLock` for plugins is poisoned.
     pub fn register_plugin(
         &self,
         plugin: Box<dyn Plugin>,
@@ -275,7 +278,10 @@ impl PluginManager {
     }
 
     /// Returns a list of all loaded plugin names.
-
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal `RwLock` for plugins or stable plugins is poisoned.
     #[must_use] 
     pub fn get_loaded_plugin_names(
         &self
@@ -303,7 +309,10 @@ impl PluginManager {
     }
 
     /// Unloads a plugin by name.
-
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal `RwLock` for plugins or stable plugins is poisoned.
     #[must_use] 
     pub fn unload_plugin(
         &self,
@@ -334,7 +343,10 @@ impl PluginManager {
     }
 
     /// Gets metadata for all plugins.
-
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal `RwLock` for plugins is poisoned.
     #[must_use] 
     pub fn get_plugin_metadata(
         &self

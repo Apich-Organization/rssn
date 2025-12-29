@@ -156,7 +156,10 @@ impl FredholmEquation {
     ///
     /// # Arguments
     /// * `a_funcs` - A vector of `Expr` representing the `a_i(x)` functions.
-    /// A `Result<Expr, String>` which is the solution `y(x)` on success.
+    /// * `b_funcs` - A vector of `Expr` representing the `b_i(t)` functions.
+    ///
+    /// # Returns
+    /// * `Ok(Expr)` - The solution `y(x)` on success.
     ///
     /// # Errors
     ///
