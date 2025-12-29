@@ -20,12 +20,6 @@ pub mod compute_cache_ffi;
 pub mod compute_state_ffi;
 /// FFI for constants.
 pub mod constant_ffi;
-#[deprecated(
-    since = "0.1.19",
-    note = "This module is deprecated \
-            and please use special \
-            ffi api modules instead."
-)]
 /// General FFI API (deprecated).
 pub mod ffi_api;
 /// FFI for JIT compilation.
