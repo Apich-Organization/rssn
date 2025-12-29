@@ -624,6 +624,19 @@ pub(crate) fn expr_to_f64(
 /// // Result is a Quantity representing 5 m/s
 /// ```
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - A numerical value cannot be extracted from a quantity expression.
+/// - Units cannot be parsed from the provided strings.
+/// - Addition, subtraction, multiplication, or division of quantities fails
+///   due to incompatible dimensions.
 pub fn unify_expression(
     expr: &Expr
 ) -> Result<Expr, String> {

@@ -647,7 +647,9 @@ pub(crate) fn solve_pythagorean(
 ///
 /// # Returns
 /// * `Ok(Vec<Expr>)` containing the parametric solutions for the variables if a solver is found.
-/// * `Err(String)` if the equation type is not recognized or not supported.
+/// * `Err(String)` if the input is not an equation (`Expr::Eq`), the equation
+///   type is not recognized or not supported, or if an underlying solver (e.g.,
+///   `solve_linear_diophantine`, `solve_pell_from_poly`, `solve_pythagorean`) fails.
 
 pub fn solve_diophantine(
     equation: &Expr,
@@ -903,7 +905,8 @@ pub fn solve_diophantine(
 ///
 /// # Returns
 /// * `Ok(Vec<Expr>)` with the fundamental solution `(x, y)` if successful.
-/// * `Err(String)` if the polynomial does not match the recognized form of Pell's equation.
+/// * `Err(String)` if the polynomial does not match the recognized form of Pell's equation,
+///   or if the underlying `solve_pell` function fails.
 
 pub fn solve_pell_from_poly(
     poly: &SparsePolynomial,

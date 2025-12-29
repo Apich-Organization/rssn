@@ -505,6 +505,12 @@ pub fn simplify(expr: Expr) -> Expr {
 ///
 /// # Returns
 /// `true` if the expression is numerically 0, `false` otherwise.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 
 pub fn is_zero(expr: &Expr) -> bool {
 
@@ -550,6 +556,12 @@ pub fn is_zero(expr: &Expr) -> bool {
 ///
 /// # Returns
 /// `true` if the expression is numerically 1, `false` otherwise.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 
 pub fn is_one(expr: &Expr) -> bool {
 
@@ -595,6 +607,12 @@ pub fn is_one(expr: &Expr) -> bool {
 ///
 /// # Returns
 /// `Some(f64)` if conversion is possible, `None` otherwise.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 
 pub fn as_f64(
     expr: &Expr

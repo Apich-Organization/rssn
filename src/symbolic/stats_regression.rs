@@ -150,9 +150,15 @@ pub fn nonlinear_regression_symbolic(
 /// * `degree` - The degree `m` of the polynomial.
 ///
 /// # Returns
-/// A `Result` containing a vector of symbolic expressions for the coefficients `[c0, c1, ..., cm]`,
-/// or an error string if the system cannot be solved.
-
+/// A `Result` containing a `Vec<Expr>` of the symbolic polynomial coefficients `[c0, c1, ..., cm]`.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The Vandermonde matrix `X` cannot be constructed or its multiplication `X^T * X` fails.
+/// - The linear system `(X^T * X) * C = X^T * Y` is singular or has no unique solution.
+/// - The underlying linear system solver (`matrix::solve_linear_system`) fails for any reason
+///   or returns a result that is not a single-column matrix (a vector).
 pub fn polynomial_regression_symbolic(
     data: &[(Expr, Expr)],
     degree: usize,

@@ -32,6 +32,12 @@ use crate::symbolic::transforms;
 ///
 /// # Returns
 /// An `Expr` representing the solution to the PDE, or an unevaluated `Expr::Solve` if no solution is found.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn solve_pde(

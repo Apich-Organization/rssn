@@ -175,8 +175,13 @@ pub(crate) fn count_sign_changes(
 /// * `b` - The upper bound of the interval.
 ///
 /// # Returns
-/// A `Result` containing the number of distinct real roots as a `usize`,
-/// or an error string if evaluation fails.
+/// A `Result` containing the number of distinct real roots as a `usize`.
+///
+/// # Errors
+///
+/// This function does not explicitly return errors, but it relies on `sturm_sequence`
+/// which may fail internally if polynomial operations encounter issues. Future versions
+/// may propagate these errors.
 
 pub fn count_real_roots_in_interval(
     poly: &SparsePolynomial,
@@ -211,8 +216,13 @@ pub fn count_real_roots_in_interval(
 ///
 /// # Returns
 /// A `Result` containing a `Vec<(f64, f64)>` of tuples, where each tuple `(a, b)`
-/// represents an interval `[a, b]` containing exactly one root. Returns an error string
-/// if root bounding or counting fails.
+/// represents an interval `[a, b]` containing exactly one root.
+///
+/// # Errors
+///
+/// This function will return an error if `root_bound` fails to determine a bound
+/// for the roots, which can happen if the polynomial's leading coefficient is not
+/// a numerical value or is zero.
 
 pub fn isolate_real_roots(
     poly: &SparsePolynomial,
@@ -378,6 +388,12 @@ pub(crate) fn root_bound(
 ///
 /// # Returns
 /// The numerical result as an `f64`.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 
 pub fn eval_expr(
     expr: &Expr,

@@ -207,8 +207,12 @@ pub(crate) fn apply_rules_once(
 /// * `equations` - A slice of `Expr::Eq` representing the initial equations.
 ///
 /// # Returns
-/// A `Result` containing a `Vec<RewriteRule>` if the completion is successful,
-/// or an error string if the input is invalid or the algorithm fails to complete.
+/// A `Result` containing a `Vec<RewriteRule>` if the completion is successful.
+///
+/// # Errors
+///
+/// This function will return an error if any element in the `equations` slice is
+/// not a valid `Expr::Eq`.
 
 pub fn knuth_bendix(
     equations: &[Expr]

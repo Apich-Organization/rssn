@@ -398,8 +398,16 @@ pub fn solve_system_parcial(
 /// * `b` - An `Expr::Matrix` representing the constant vector `b` (must be a column vector).
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the solution (matrix, system, or no solution),
-/// or an error string if inputs are invalid or dimensions are incompatible.
+/// A `Result` containing an `Expr` representing the solution (matrix, system, or no solution).
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - `A` or `b` are not valid matrices.
+/// - The row dimensions of `A` and `b` are incompatible.
+/// - `b` is not a column vector.
+/// - The `rref` computation fails.
+/// - The `null_space` computation fails.
 
 pub fn solve_linear_system_mat(
     a: &Expr,
@@ -599,8 +607,13 @@ pub fn solve_linear_system_mat(
 /// * `vars` - A slice of strings representing the variables to solve for.
 ///
 /// # Returns
-/// A `Result` containing a vector of `Expr` representing the solutions for `vars`,
-/// or an error string if the system cannot be solved.
+/// A `Result` containing a vector of `Expr` representing the solutions for `vars`.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The input `system` is not an `Expr::System`.
+/// - The underlying `solve_system` dispatcher fails to find a solution.
 
 pub fn solve_linear_system(
     system: &Expr,
@@ -667,8 +680,15 @@ pub fn solve_linear_system(
 /// * `vars` - A slice of strings representing the variables to solve for.
 ///
 /// # Returns
-/// A `Result` containing a vector of `Expr` representing the solutions for `vars`,
-/// or an error string if the system is inconsistent, singular, or inputs are invalid.
+/// A `Result` containing a vector of `Expr` representing the solutions for `vars`.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The input is not an `Expr::System`.
+/// - The number of equations does not match the number of variables.
+/// - An element in the system is not a valid `Expr::Eq`.
+/// - The system matrix is singular or underdetermined, preventing a unique solution.
 
 pub fn solve_linear_system_gauss(
     system: &Expr,

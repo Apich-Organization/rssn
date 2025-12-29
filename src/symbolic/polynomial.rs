@@ -421,6 +421,12 @@ pub fn contains_var(
 ///
 /// # Returns
 /// `true` if the expression is a polynomial in `var`, `false` otherwise.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn is_polynomial(
@@ -1316,6 +1322,11 @@ pub fn from_coeffs_to_expr(
 ///
 /// # Returns
 /// A tuple `(quotient, remainder)` as `Expr`.
+///
+/// # Errors
+///
+/// This function will return an error if `d` is the zero polynomial,
+/// as division by zero is undefined.
 ///
 /// # Panics
 /// Panics if the denominator is the zero polynomial.

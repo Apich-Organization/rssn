@@ -67,8 +67,11 @@ pub fn shannon_entropy(
 /// * `q_dist` - A slice of `Expr` representing the comparison probabilities `q(x)`.
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the symbolic KL divergence, or an error
-/// if the distributions have different lengths.
+/// A `Result` containing an `Expr` representing the symbolic KL divergence.
+///
+/// # Errors
+///
+/// This function will return an error if `p_dist` and `q_dist` have different lengths.
 
 pub fn kl_divergence(
     p_dist: &[Expr],
@@ -132,8 +135,11 @@ pub fn kl_divergence(
 /// * `q_dist` - A slice of `Expr` representing the predicted probabilities `q(x)`.
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the symbolic cross-entropy, or an error
-/// if the distributions have different lengths.
+/// A `Result` containing an `Expr` representing the symbolic cross-entropy.
+///
+/// # Errors
+///
+/// This function will return an error if `p_dist` and `q_dist` have different lengths.
 
 pub fn cross_entropy(
     p_dist: &[Expr],
@@ -192,8 +198,11 @@ pub fn cross_entropy(
 /// * `joint_probs` - An `Expr::Matrix` representing the joint probabilities `p(x,y)`.
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the symbolic joint entropy, or an error
-/// if the input is not a matrix.
+/// A `Result` containing an `Expr` representing the symbolic joint entropy.
+///
+/// # Errors
+///
+/// This function will return an error if the input `joint_probs` is not an `Expr::Matrix`.
 
 pub fn joint_entropy(
     joint_probs: &Expr
@@ -232,8 +241,12 @@ pub fn joint_entropy(
 /// * `joint_probs` - An `Expr::Matrix` representing the joint probabilities `p(x,y)`.
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the symbolic conditional entropy, or an error
-/// if the input is not a matrix.
+/// A `Result` containing an `Expr` representing the symbolic conditional entropy.
+///
+/// # Errors
+///
+/// This function will return an error if `joint_probs` is not a matrix or if the
+/// underlying `joint_entropy` calculation fails.
 
 pub fn conditional_entropy(
     joint_probs: &Expr
@@ -282,8 +295,12 @@ pub fn conditional_entropy(
 /// * `joint_probs` - An `Expr::Matrix` representing the joint probabilities `p(x,y)`.
 ///
 /// # Returns
-/// A `Result` containing an `Expr` representing the symbolic mutual information, or an error
-/// if the input is not a matrix.
+/// A `Result` containing an `Expr` representing the symbolic mutual information.
+///
+/// # Errors
+///
+/// This function will return an error if `joint_probs` is not a matrix or if the
+/// underlying `joint_entropy` calculation fails.
 
 pub fn mutual_information(
     joint_probs: &Expr

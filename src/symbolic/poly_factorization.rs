@@ -30,6 +30,11 @@ use crate::symbolic::finite_field::PrimeFieldElement;
 ///
 /// # Returns
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors of the polynomial.
+///
+/// # Errors
+///
+/// This function will return an error if the chosen factorization algorithm
+/// (Berlekamp or Cantor-Zassenhaus) encounters an error.
 
 pub fn factor_gf(
     poly: &FiniteFieldPolynomial
@@ -123,6 +128,11 @@ pub fn poly_derivative_gf(
 /// # Returns
 /// A `Vec<(FiniteFieldPolynomial, usize)>` where each tuple contains a square-free
 /// polynomial and its multiplicity.
+///
+/// # Errors
+///
+/// This function will return an error if `poly_gcd_gf` fails during the computation
+/// of the greatest common divisor.
 
 pub fn square_free_factorization_gf(
     f: FiniteFieldPolynomial
@@ -180,6 +190,14 @@ pub fn square_free_factorization_gf(
 ///
 /// # Returns
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The field modulus is too large to fit in `u64`.
+/// - `poly_pow_mod` fails to compute `x^(p^i) mod f(x)`.
+/// - `Matrix::null_space` fails to compute the null space of the Berlekamp matrix.
+/// - `poly_gcd_gf` fails during factor splitting.
 
 pub fn berlekamp_factorization(
     f: &FiniteFieldPolynomial
@@ -390,6 +408,12 @@ pub fn berlekamp_factorization(
 ///
 /// # Returns
 /// A `Vec<FiniteFieldPolynomial>` containing the factors over the integers.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - `berlekamp_factorization` fails during the modular factorization step.
+/// - `poly_long_division` fails during the division of the remaining polynomial.
 
 pub fn berlekamp_zassenhaus(
     poly: &FiniteFieldPolynomial
@@ -680,6 +704,11 @@ pub(crate) fn hensel_lift(
 ///
 /// # Returns
 /// A `Vec<FiniteFieldPolynomial>` containing the irreducible factors.
+///
+/// # Errors
+///
+/// This function will return an error if `distinct_degree_factorization` or
+/// `equal_degree_splitting` fail during their respective factorization steps.
 
 pub fn cantor_zassenhaus(
     f: &FiniteFieldPolynomial
@@ -735,6 +764,11 @@ pub fn cantor_zassenhaus(
 /// # Returns
 /// A `Vec<(FiniteFieldPolynomial, usize)>` where each tuple contains a polynomial
 /// (which is a product of irreducible factors of a certain degree) and that degree.
+///
+/// # Errors
+///
+/// This function will return an error if `poly_pow_mod` or `poly_gcd_gf` fail
+/// during the factorization process.
 
 pub fn distinct_degree_factorization(
     f: &FiniteFieldPolynomial
@@ -811,6 +845,11 @@ pub fn distinct_degree_factorization(
 }
 
 /// Performs Equal-Degree Splitting.
+///
+/// # Errors
+///
+/// This function will return an error if `poly_pow_mod` or `poly_gcd_gf` fail
+/// during the splitting process.
 
 pub(crate) fn equal_degree_splitting(
     f: &FiniteFieldPolynomial,
@@ -943,6 +982,10 @@ pub(crate) fn random_poly(
 }
 
 /// Computes the greatest common divisor (GCD) of two polynomials over a prime field.
+///
+/// # Errors
+///
+/// This function will return an error if `long_division` fails during the Euclidean algorithm.
 
 pub fn poly_gcd_gf(
     a: FiniteFieldPolynomial,
@@ -967,6 +1010,10 @@ pub fn poly_gcd_gf(
 }
 
 /// Computes base^exp mod modulus for polynomials over a prime field.
+///
+/// # Errors
+///
+/// This function will return an error if `long_division` fails during the modular exponentiation.
 
 pub fn poly_pow_mod(
     base: FiniteFieldPolynomial,

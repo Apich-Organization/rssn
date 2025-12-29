@@ -27,6 +27,12 @@ use crate::symbolic::transforms;
 
 pub struct ParsedODE {
     /// The order of the differential equation (the highest derivative present).
+///
+/// # Panics
+///
+/// This function, or its internal helper `collect_terms`, may panic if a `Dag` node cannot
+/// be converted to an `Expr`, which indicates an internal inconsistency in the expression
+/// representation. This should ideally not happen in a well-formed expression DAG.
     pub order: u32,
     /// A mapping from derivative orders to their corresponding coefficient expressions.
     pub coeffs: HashMap<u32, Expr>,
@@ -162,6 +168,11 @@ pub(crate) fn parse_ode(
     }
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn get_term_order_and_coeff(
     expr: &Expr,
     func: &str,
@@ -247,6 +258,11 @@ pub(crate) fn get_term_order_and_coeff(
     }
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn find_constants(
     expr: &Expr,
     constants: &mut Vec<String>,
@@ -312,6 +328,11 @@ pub(crate) fn find_constants(
     }
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn find_derivatives(
     expr: &Expr,
     var: &str,
@@ -892,6 +913,11 @@ pub(crate) fn reduce_to_first_order_system(
     ))
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 pub(crate) fn solve_first_order_system_sequentially(
     equations: &[Expr],
     funcs: &[&str],
@@ -1051,6 +1077,11 @@ pub(crate) fn solve_first_order_system_sequentially(
     }
 }
 
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 fn separate_factors(
     expr: &Expr,
     func: &str,
@@ -1167,6 +1198,12 @@ fn separate_factors(
 ///
 /// # Returns
 /// An `Option<Expr>` representing the general solution, or `None` if it's not separable.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 
 pub fn solve_separable_ode(
     equation: &Expr,
@@ -1368,6 +1405,12 @@ pub fn solve_separable_ode(
 ///
 /// # Returns
 /// An `Option<Expr>` representing the general solution, or `None` if it's not linear.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 
 pub fn solve_first_order_linear_ode(
     equation: &Expr,
@@ -1453,6 +1496,12 @@ pub fn solve_first_order_linear_ode(
 /// # Returns
 /// An `Option<Expr>` representing the solution, or `None` if the equation
 /// is not a Bernoulli ODE or cannot be solved.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 
 pub fn solve_bernoulli_ode(
@@ -1611,6 +1660,14 @@ pub fn solve_bernoulli_ode(
 /// # Returns
 /// An `Option<Expr>` representing the general solution, or `None` if the
 /// equation is not a Riccati ODE or the particular solution is invalid.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
+/// Panics if during term collection for coefficient extraction, a `Dag` node cannot
+/// be converted to an `Expr`.
 #[must_use]
 
 pub fn solve_riccati_ode(

@@ -53,6 +53,12 @@ pub fn evaluate_numerical(
 ///
 /// # Returns
 /// An `Option<Complex64>` containing the complex numerical value if successful.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation. This should ideally
+/// not happen in a well-formed expression DAG.
 #[must_use]
 #[allow(clippy::suboptimal_flops)]
 

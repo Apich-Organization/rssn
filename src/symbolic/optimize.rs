@@ -63,8 +63,14 @@ pub struct CriticalPoint {
 /// * `vars` - A slice of string slices representing the independent variables.
 ///
 /// # Returns
-/// A `Result` containing a vector of `CriticalPoint` structs, or an error string
-/// if the system cannot be solved or classification fails.
+/// A `Result` containing a vector of `CriticalPoint` structs.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The system of gradient equations cannot be solved for critical points.
+/// - `eigen_decomposition` fails during the analysis of the Hessian matrix.
+/// - Eigenvalues are not numerical or cannot be evaluated for classification.
 
 pub fn find_extrema(
     f: &Expr,
@@ -272,6 +278,11 @@ pub fn hessian_matrix(
 ///
 /// # Returns
 /// A `Result` containing a list of solutions, where each solution is a map from variable names to their values.
+///
+/// # Errors
+///
+/// This function will return an error if `solve_system` fails to find solutions
+/// for the system of equations derived from the Lagrangian.
 
 pub fn find_constrained_extrema(
     f: &Expr,
