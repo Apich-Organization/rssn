@@ -6,6 +6,23 @@ use crate::symbolic::lie_groups_and_algebras::*;
 
 #[no_mangle]
 
+/// Constructs the Lie algebra \(\mathfrak{so}(3)\) and returns it via bincode serialization.
+///
+/// The Lie algebra \(\mathfrak{so}(3)\) consists of skew-symmetric \(3\times3\) matrices and
+/// is associated with the rotation group SO(3).
+///
+/// # Arguments
+///
+/// This function takes no arguments.
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding a [`LieAlgebra`] representing \(\mathfrak{so}(3)\).
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3(
 ) -> BincodeBuffer {
 
@@ -16,6 +33,23 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3(
 
 #[no_mangle]
 
+/// Constructs the Lie algebra \(\mathfrak{su}(2)\) and returns it via bincode serialization.
+///
+/// The Lie algebra \(\mathfrak{su}(2)\) consists of traceless skew-Hermitian \(2\times2\)
+/// matrices and is associated with the special unitary group SU(2).
+///
+/// # Arguments
+///
+/// This function takes no arguments.
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding a [`LieAlgebra`] representing \(\mathfrak{su}(2)\).
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2(
 ) -> BincodeBuffer {
 
@@ -28,6 +62,22 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2(
 
 #[no_mangle]
 
+/// Computes the Lie bracket \([x, y]\) of two elements of a Lie algebra using bincode serialization.
+///
+/// # Arguments
+///
+/// * `x_buf` - `BincodeBuffer` encoding an `Expr` representing \(x\).
+/// * `y_buf` - `BincodeBuffer` encoding an `Expr` representing \(y\).
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding the Lie bracket \([x, y]\) as an `Expr`, or an empty
+/// buffer if deserialization fails or the bracket cannot be computed.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_lie_bracket(
     x_buf: BincodeBuffer,
     y_buf: BincodeBuffer,
@@ -57,6 +107,25 @@ pub unsafe extern "C" fn rssn_bincode_lie_bracket(
 
 #[no_mangle]
 
+/// Computes the exponential map from a Lie algebra element to the corresponding Lie group element.
+///
+/// The exponential map \(\exp(x)\) is approximated by a truncated series of the
+/// given order.
+///
+/// # Arguments
+///
+/// * `x_buf` - `BincodeBuffer` encoding an `Expr` representing the Lie algebra element \(x\).
+/// * `order` - Truncation order for the series expansion of the exponential map.
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding the resulting group element as an `Expr`, or an empty
+/// buffer if deserialization fails or the computation encounters an error.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_exponential_map(
     x_buf: BincodeBuffer,
     order: usize,
@@ -81,6 +150,25 @@ pub unsafe extern "C" fn rssn_bincode_exponential_map(
 
 #[no_mangle]
 
+/// Applies the adjoint representation of a Lie group element to a Lie algebra element.
+///
+/// This computes \(\mathrm{Ad}_g(x)\), describing how the group element \(g\)
+/// conjugates the Lie algebra element \(x\).
+///
+/// # Arguments
+///
+/// * `g_buf` - `BincodeBuffer` encoding an `Expr` for the group element \(g\).
+/// * `x_buf` - `BincodeBuffer` encoding an `Expr` for the Lie algebra element \(x\).
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding the result of the group adjoint action as an `Expr`,
+/// or an empty buffer if deserialization fails or the computation encounters an error.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
     g_buf: BincodeBuffer,
     x_buf: BincodeBuffer,
@@ -110,6 +198,26 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
 
 #[no_mangle]
 
+/// Applies the adjoint representation of a Lie algebra element to another element.
+///
+/// This computes \(\mathrm{ad}_x(y) = [x, y]\), the derivation induced by \(x\)
+/// on the Lie algebra.
+///
+/// # Arguments
+///
+/// * `x_buf` - `BincodeBuffer` encoding an `Expr` for the Lie algebra element \(x\).
+/// * `y_buf` - `BincodeBuffer` encoding an `Expr` for the Lie algebra element \(y\).
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding the result of the algebra adjoint action as an
+/// `Expr`, or an empty buffer if deserialization fails or the computation
+/// encounters an error.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
     x_buf: BincodeBuffer,
     y_buf: BincodeBuffer,
@@ -141,6 +249,22 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
 
 #[no_mangle]
 
+/// Computes the commutator table (structure constants) of a Lie algebra.
+///
+/// # Arguments
+///
+/// * `algebra_buf` - `BincodeBuffer` encoding a [`LieAlgebra`].
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding the commutator table (typically as a collection of
+/// brackets of basis elements), or an empty buffer if deserialization fails or the
+/// computation encounters an error.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_commutator_table(
     algebra_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -164,6 +288,24 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
 
 #[no_mangle]
 
+/// Checks whether a Lie algebra satisfies the Jacobi identity.
+///
+/// The Jacobi identity is a fundamental property of Lie algebras,
+/// \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+///
+/// # Arguments
+///
+/// * `algebra_buf` - `BincodeBuffer` encoding a [`LieAlgebra`].
+///
+/// # Returns
+///
+/// `true` if the Jacobi identity holds, `false` if it does not or if
+/// deserialization or the computation fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must ensure the buffer encodes a valid `LieAlgebra`.
 pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
     algebra_buf: BincodeBuffer
 ) -> bool {
@@ -188,6 +330,21 @@ pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
 
 #[no_mangle]
 
+/// Returns the standard generators of \(\mathfrak{so}(3)\) via bincode serialization.
+///
+/// # Arguments
+///
+/// This function takes no arguments.
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding a `Vec<Expr>` whose entries represent a basis of
+/// generators for \(\mathfrak{so}(3)\).
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_so3_generators(
 ) -> BincodeBuffer {
 
@@ -203,6 +360,21 @@ pub unsafe extern "C" fn rssn_bincode_so3_generators(
 
 #[no_mangle]
 
+/// Returns the standard generators of \(\mathfrak{su}(2)\) via bincode serialization.
+///
+/// # Arguments
+///
+/// This function takes no arguments.
+///
+/// # Returns
+///
+/// A `BincodeBuffer` encoding a `Vec<Expr>` whose entries represent a basis of
+/// generators for \(\mathfrak{su}(2)\).
+///
+/// # Safety
+///
+/// This function is unsafe because it is exposed as an FFI entry point; callers
+/// must treat the returned buffer as opaque and only pass it to compatible APIs.
 pub unsafe extern "C" fn rssn_bincode_su2_generators(
 ) -> BincodeBuffer {
 

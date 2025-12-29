@@ -2142,11 +2142,53 @@ rssn_
 rssn_Expr *rssn_abs_handle(const rssn_Expr *aZ)
 ;
 
+/*
+ Applies the adjoint representation of a Lie algebra element to another element.
+
+ This computes \(\mathrm{ad}_x(y) = [x, y]\), the derivation induced by \(x\)
+ on the Lie algebra.
+
+ # Arguments
+
+ * `x` - Pointer to an `Expr` representing the first Lie algebra element.
+ * `y` - Pointer to an `Expr` representing the second Lie algebra element.
+
+ # Returns
+
+ A pointer to a newly allocated `Expr` representing the result of the algebra
+ adjoint action, or null if the computation fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers and returns
+ ownership of a heap-allocated `Expr` that must be freed by the caller.
+ */
 rssn_
 rssn_Expr *rssn_adjoint_representation_algebra(const rssn_Expr *aX,
                                                const rssn_Expr *aY)
 ;
 
+/*
+ Applies the adjoint representation of a Lie group element to a Lie algebra element.
+
+ This computes \(\mathrm{Ad}_g(x)\), describing how the group element \(g\)
+ conjugates the algebra element \(x\).
+
+ # Arguments
+
+ * `g` - Pointer to an `Expr` representing the group element.
+ * `x` - Pointer to an `Expr` representing the Lie algebra element.
+
+ # Returns
+
+ A pointer to a newly allocated `Expr` representing the result of the group
+ adjoint action, or null if the computation fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers and returns
+ ownership of a heap-allocated `Expr` that must be freed by the caller.
+ */
 rssn_
 rssn_Expr *rssn_adjoint_representation_group(const rssn_Expr *aG,
                                              const rssn_Expr *aX)
@@ -2498,11 +2540,54 @@ rssn_
 rssn_BincodeBuffer rssn_bincode_abs(rssn_BincodeBuffer aZBuf)
 ;
 
+/*
+ Applies the adjoint representation of a Lie algebra element to another element.
+
+ This computes \(\mathrm{ad}_x(y) = [x, y]\), the derivation induced by \(x\)
+ on the Lie algebra.
+
+ # Arguments
+
+ * `x_buf` - `BincodeBuffer` encoding an `Expr` for the Lie algebra element \(x\).
+ * `y_buf` - `BincodeBuffer` encoding an `Expr` for the Lie algebra element \(y\).
+
+ # Returns
+
+ A `BincodeBuffer` encoding the result of the algebra adjoint action as an
+ `Expr`, or an empty buffer if deserialization fails or the computation
+ encounters an error.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 rssn_BincodeBuffer rssn_bincode_adjoint_representation_algebra(rssn_BincodeBuffer aXBuf,
                                                                rssn_BincodeBuffer aYBuf)
 ;
 
+/*
+ Applies the adjoint representation of a Lie group element to a Lie algebra element.
+
+ This computes \(\mathrm{Ad}_g(x)\), describing how the group element \(g\)
+ conjugates the Lie algebra element \(x\).
+
+ # Arguments
+
+ * `g_buf` - `BincodeBuffer` encoding an `Expr` for the group element \(g\).
+ * `x_buf` - `BincodeBuffer` encoding an `Expr` for the Lie algebra element \(x\).
+
+ # Returns
+
+ A `BincodeBuffer` encoding the result of the group adjoint action as an `Expr`,
+ or an empty buffer if deserialization fails or the computation encounters an error.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 rssn_BincodeBuffer rssn_bincode_adjoint_representation_group(rssn_BincodeBuffer aGBuf,
                                                              rssn_BincodeBuffer aXBuf)
@@ -2881,6 +2966,26 @@ bool rssn_bincode_check_analytic(rssn_BincodeBuffer aExprBuf,
                                  const char *aVar)
 ;
 
+/*
+ Checks whether a Lie algebra satisfies the Jacobi identity.
+
+ The Jacobi identity is a fundamental property of Lie algebras,
+ \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+
+ # Arguments
+
+ * `algebra_buf` - `BincodeBuffer` encoding a [`LieAlgebra`].
+
+ # Returns
+
+ `true` if the Jacobi identity holds, `false` if it does not or if
+ deserialization or the computation fails.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must ensure the buffer encodes a valid `LieAlgebra`.
+ */
 rssn_
 bool rssn_bincode_check_jacobi_identity(rssn_BincodeBuffer aAlgebraBuf)
 ;
@@ -2936,6 +3041,24 @@ rssn_BincodeBuffer rssn_bincode_combinations(rssn_BincodeBuffer aNBuf,
                                              rssn_BincodeBuffer aKBuf)
 ;
 
+/*
+ Computes the commutator table (structure constants) of a Lie algebra.
+
+ # Arguments
+
+ * `algebra_buf` - `BincodeBuffer` encoding a [`LieAlgebra`].
+
+ # Returns
+
+ A `BincodeBuffer` encoding the commutator table (typically as a collection of
+ brackets of basis elements), or an empty buffer if deserialization fails or the
+ computation encounters an error.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 rssn_BincodeBuffer rssn_bincode_commutator_table(rssn_BincodeBuffer aAlgebraBuf)
 ;
@@ -3515,6 +3638,27 @@ rssn_BincodeBuffer rssn_bincode_expectation_value(rssn_BincodeBuffer aOpBuf,
                                                   rssn_BincodeBuffer aPsiBuf)
 ;
 
+/*
+ Computes the exponential map from a Lie algebra element to the corresponding Lie group element.
+
+ The exponential map \(\exp(x)\) is approximated by a truncated series of the
+ given order.
+
+ # Arguments
+
+ * `x_buf` - `BincodeBuffer` encoding an `Expr` representing the Lie algebra element \(x\).
+ * `order` - Truncation order for the series expansion of the exponential map.
+
+ # Returns
+
+ A `BincodeBuffer` encoding the resulting group element as an `Expr`, or an empty
+ buffer if deserialization fails or the computation encounters an error.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 rssn_BincodeBuffer rssn_bincode_exponential_map(rssn_BincodeBuffer aXBuf,
                                                 size_t aOrder)
@@ -4792,14 +4936,70 @@ rssn_BincodeBuffer rssn_bincode_legendre_rodrigues_formula(rssn_BincodeBuffer aN
                                                            rssn_BincodeBuffer aXBuf)
 ;
 
+/*
+ Constructs the Lie algebra \(\mathfrak{so}(3)\) and returns it via bincode serialization.
+
+ The Lie algebra \(\mathfrak{so}(3)\) consists of skew-symmetric \(3\times3\) matrices and
+ is associated with the rotation group SO(3).
+
+ # Arguments
+
+ This function takes no arguments.
+
+ # Returns
+
+ A `BincodeBuffer` encoding a [`LieAlgebra`] representing \(\mathfrak{so}(3)\).
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 rssn_BincodeBuffer rssn_bincode_lie_algebra_so3()
 ;
 
+/*
+ Constructs the Lie algebra \(\mathfrak{su}(2)\) and returns it via bincode serialization.
+
+ The Lie algebra \(\mathfrak{su}(2)\) consists of traceless skew-Hermitian \(2\times2\)
+ matrices and is associated with the special unitary group SU(2).
+
+ # Arguments
+
+ This function takes no arguments.
+
+ # Returns
+
+ A `BincodeBuffer` encoding a [`LieAlgebra`] representing \(\mathfrak{su}(2)\).
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 rssn_BincodeBuffer rssn_bincode_lie_algebra_su2()
 ;
 
+/*
+ Computes the Lie bracket \([x, y]\) of two elements of a Lie algebra using bincode serialization.
+
+ # Arguments
+
+ * `x_buf` - `BincodeBuffer` encoding an `Expr` representing \(x\).
+ * `y_buf` - `BincodeBuffer` encoding an `Expr` representing \(y\).
+
+ # Returns
+
+ A `BincodeBuffer` encoding the Lie bracket \([x, y]\) as an `Expr`, or an empty
+ buffer if deserialization fails or the bracket cannot be computed.
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 rssn_BincodeBuffer rssn_bincode_lie_bracket(rssn_BincodeBuffer aXBuf,
                                             rssn_BincodeBuffer aYBuf)
@@ -5682,6 +5882,23 @@ rssn_
 rssn_BincodeBuffer rssn_bincode_sinc(rssn_BincodeBuffer aValBuf)
 ;
 
+/*
+ Returns the standard generators of \(\mathfrak{so}(3)\) via bincode serialization.
+
+ # Arguments
+
+ This function takes no arguments.
+
+ # Returns
+
+ A `BincodeBuffer` encoding a `Vec<Expr>` whose entries represent a basis of
+ generators for \(\mathfrak{so}(3)\).
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 rssn_BincodeBuffer rssn_bincode_so3_generators()
 ;
@@ -5913,6 +6130,23 @@ rssn_BincodeBuffer rssn_bincode_sturm_sequence(rssn_BincodeBuffer aExprBuf,
                                                const char *aVarPtr)
 ;
 
+/*
+ Returns the standard generators of \(\mathfrak{su}(2)\) via bincode serialization.
+
+ # Arguments
+
+ This function takes no arguments.
+
+ # Returns
+
+ A `BincodeBuffer` encoding a `Vec<Expr>` whose entries represent a basis of
+ generators for \(\mathfrak{su}(2)\).
+
+ # Safety
+
+ This function is unsafe because it is exposed as an FFI entry point; callers
+ must treat the returned buffer as opaque and only pass it to compatible APIs.
+ */
 rssn_
 rssn_BincodeBuffer rssn_bincode_su2_generators()
 ;
@@ -6646,6 +6880,32 @@ rssn_
 rssn_Expr *rssn_catalan_number(size_t aN)
 ;
 
+/*
+ Computes the character of a representation and returns its values via raw output buffers.
+
+ The character is the trace of each representation matrix and is returned as a
+ mapping from group elements to scalar values.
+
+ # Arguments
+
+ * `rep` - Pointer to a [`Representation`] value.
+ * `out_len` - Pointer to a `usize` that will be filled with the number of character entries.
+ * `out_keys` - Output pointer that will receive a pointer to an array of `*mut Expr`
+   representing the group elements.
+ * `out_values` - Output pointer that will receive a pointer to an array of `*mut Expr`
+   representing the corresponding character values.
+
+ # Returns
+
+ This function does not return a direct value; results are written through the
+ output pointers.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers and returns
+ ownership of heap-allocated arrays of `Expr`. The caller must ensure all input
+ pointers are valid and is responsible for freeing the returned memory.
+ */
 rssn_
 void rssn_character(const rssn_Representation *aRep,
                     size_t *aOutLen,
@@ -6689,6 +6949,26 @@ bool rssn_check_analytic(const rssn_Expr *aExpr,
                          const char *aVar)
 ;
 
+/*
+ Checks whether a Lie algebra satisfies the Jacobi identity.
+
+ The Jacobi identity is a fundamental property of Lie algebras,
+ \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+
+ # Arguments
+
+ * `algebra` - Pointer to a [`LieAlgebra`] value.
+
+ # Returns
+
+ `true` if the Jacobi identity holds, `false` otherwise or if the computation
+ fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer; the caller must
+ ensure `algebra` points to a valid `LieAlgebra`.
+ */
 rssn_
 bool rssn_check_jacobi_identity(const rssn_LieAlgebra *aAlgebra)
 ;
@@ -6807,6 +7087,27 @@ rssn_Expr *rssn_commutator(const rssn_Operator *aA,
                            const rssn_Ket *aKet)
 ;
 
+/*
+ Computes the commutator table of a Lie algebra and returns it as a flattened array of expressions.
+
+ # Arguments
+
+ * `algebra` - Pointer to a [`LieAlgebra`] value.
+ * `out_rows` - Pointer to a `usize` that will be filled with the number of rows.
+ * `out_cols` - Pointer to a `usize` that will be filled with the number of columns.
+
+ # Returns
+
+ A pointer to a heap-allocated array of `*mut Expr` representing the commutator
+ table entries in row-major order, or null if the computation fails. On error,
+ `out_rows` and `out_cols` are set to 0.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers and returns
+ ownership of heap-allocated memory. The caller must ensure all pointers are
+ valid and must correctly free the returned expressions and array.
+ */
 rssn_
 rssn_Expr **rssn_commutator_table(const rssn_LieAlgebra *aAlgebra,
                                   size_t *aOutRows,
@@ -7906,6 +8207,26 @@ rssn_Expr *rssn_expectation_value(const rssn_Operator *aOp,
                                   const rssn_Ket *aPsi)
 ;
 
+/*
+ Applies the exponential map to a Lie algebra element, returning the corresponding group element.
+
+ The exponential map is approximated by a truncated series of the specified order.
+
+ # Arguments
+
+ * `x` - Pointer to an `Expr` representing the Lie algebra element.
+ * `order` - Truncation order for the series expansion of the exponential map.
+
+ # Returns
+
+ A pointer to a newly allocated `Expr` representing the group element, or null
+ if the computation fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer and returns
+ ownership of a heap-allocated `Expr` that must be freed by the caller.
+ */
 rssn_
 rssn_Expr *rssn_exponential_map(const rssn_Expr *aX,
                                 size_t aOrder)
@@ -9049,11 +9370,59 @@ rssn_Expr *rssn_greens_theorem_handle(const rssn_Expr *aPPtr,
                                       const rssn_Expr *aDomainPtr)
 ;
 
+/*
+ Computes the center of a group and returns its elements as a dynamically allocated array of expressions.
+
+ The center consists of elements that commute with every element of the group.
+
+ # Arguments
+
+ * `group` - Pointer to a [`Group`] value.
+ * `out_len` - Pointer to a `usize` that will be filled with the number of elements in the center.
+
+ # Returns
+
+ A pointer to a heap-allocated array of `*mut Expr` representing the center
+ elements. The caller is responsible for freeing each `Expr` and the array
+ itself.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers and returns
+ ownership of heap-allocated memory. The caller must ensure `group` and
+ `out_len` are valid pointers and must correctly manage the returned memory.
+ */
 rssn_
 rssn_Expr **rssn_group_center(const rssn_Group *aGroup,
                               size_t *aOutLen)
 ;
 
+/*
+ Constructs a group from raw pointers describing its elements, multiplication table, and identity.
+
+ The group operation is encoded as a Cayley table over the given elements, represented by
+ parallel arrays of left factors, right factors, and products.
+
+ # Arguments
+
+ * `elements_ptr` - Pointer to an array of pointers to `Expr` giving the group elements.
+ * `elements_len` - Number of elements referenced by `elements_ptr`.
+ * `keys_a_ptr` - Pointer to an array of pointers to `Expr` for the left factors in the multiplication table.
+ * `keys_b_ptr` - Pointer to an array of pointers to `Expr` for the right factors in the multiplication table.
+ * `values_ptr` - Pointer to an array of pointers to `Expr` for the products in the multiplication table.
+ * `table_len` - Number of entries in the multiplication table arrays.
+ * `identity_ptr` - Pointer to an `Expr` representing the identity element of the group.
+
+ # Returns
+
+ A pointer to a heap-allocated [`Group`] constructed from the supplied data.
+
+ # Safety
+
+ This function is unsafe because it dereferences multiple raw pointers and assumes
+ they form consistent arrays of valid `Expr` objects. The returned `Group` must be
+ freed with [`rssn_group_free`].
+ */
 rssn_
 rssn_Group *rssn_group_create(const rssn_Expr *const *aElementsPtr,
                               size_t aElementsLen,
@@ -9064,24 +9433,116 @@ rssn_Group *rssn_group_create(const rssn_Expr *const *aElementsPtr,
                               const rssn_Expr *aIdentityPtr)
 ;
 
+/*
+ Computes the order of a group element using a group handle.
+
+ The order is the smallest positive integer `n` such that `a^n` is the identity,
+ if such an integer exists.
+
+ # Arguments
+
+ * `group` - Pointer to a [`Group`] value.
+ * `a` - Pointer to an `Expr` representing the element.
+
+ # Returns
+
+ The order of the element as a `usize`, or `0` if the order is undefined.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers; the caller must
+ ensure they point to a valid group and element.
+ */
 rssn_
 size_t rssn_group_element_order(const rssn_Group *aGroup,
                                 const rssn_Expr *aA)
 ;
 
+/*
+ Frees a group previously created by [`rssn_group_create`].
+
+ # Arguments
+
+ * `ptr` - Pointer to a heap-allocated [`Group`] returned by `rssn_group_create`.
+
+ # Returns
+
+ This function does not return a value.
+
+ # Safety
+
+ This function is unsafe because it takes ownership of a raw pointer. The pointer
+ must either be null or have been allocated by `rssn_group_create`, and must not
+ be used after this call.
+ */
 rssn_
 void rssn_group_free(rssn_Group *aPtr)
 ;
 
+/*
+ Computes the inverse of a group element using a group handle.
+
+ # Arguments
+
+ * `group` - Pointer to a [`Group`] value.
+ * `a` - Pointer to an `Expr` representing the element whose inverse is sought.
+
+ # Returns
+
+ A pointer to a newly allocated `Expr` representing the inverse element, or null
+ if the element has no inverse in the group.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers and returns
+ ownership of a heap-allocated `Expr` that must be freed by the caller.
+ */
 rssn_
 rssn_Expr *rssn_group_inverse(const rssn_Group *aGroup,
                               const rssn_Expr *aA)
 ;
 
+/*
+ Tests whether a group is Abelian using a group handle.
+
+ A group is Abelian if its operation is commutative for all pairs of elements.
+
+ # Arguments
+
+ * `group` - Pointer to a [`Group`] value.
+
+ # Returns
+
+ `true` if the group is Abelian, `false` otherwise.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer; the caller must
+ ensure `group` points to a valid [`Group`].
+ */
 rssn_
 bool rssn_group_is_abelian(const rssn_Group *aGroup)
 ;
 
+/*
+ Multiplies two group elements using a group handle and returns the product expression.
+
+ # Arguments
+
+ * `group` - Pointer to a [`Group`] value.
+ * `a` - Pointer to an `Expr` representing the left factor.
+ * `b` - Pointer to an `Expr` representing the right factor.
+
+ # Returns
+
+ A pointer to a newly allocated `Expr` representing the product, or null if the
+ elements are not in the group or the multiplication is undefined.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers and returns
+ ownership of a heap-allocated `Expr` that must be freed by the caller.
+ */
 rssn_
 rssn_Expr *rssn_group_multiply(const rssn_Group *aGroup,
                                const rssn_Expr *aA,
@@ -9746,11 +10207,55 @@ rssn_
 char *rssn_json_abs(const char *aZJson)
 ;
 
+/*
+ Applies the adjoint representation of a Lie algebra element to another element using JSON.
+
+ This computes \(\mathrm{ad}_x(y) = [x, y]\), the derivation induced by \(x\)
+ on the Lie algebra.
+
+ # Arguments
+
+ * `x_json` - C string pointer with JSON-encoded `Expr` for the Lie algebra element \(x\).
+ * `y_json` - C string pointer with JSON-encoded `Expr` for the Lie algebra element \(y\).
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Expr` for the result of the algebra
+ adjoint action, or null if deserialization fails or the computation encounters
+ an error.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_adjoint_representation_algebra(const char *aXJson,
                                                const char *aYJson)
 ;
 
+/*
+ Applies the adjoint representation of a Lie group element to a Lie algebra element using JSON.
+
+ This computes \(\mathrm{Ad}_g(x)\), describing how the group element \(g\)
+ conjugates the Lie algebra element \(x\).
+
+ # Arguments
+
+ * `g_json` - C string pointer with JSON-encoded `Expr` for the group element \(g\).
+ * `x_json` - C string pointer with JSON-encoded `Expr` for the Lie algebra element \(x\).
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Expr` for the result of the group
+ adjoint action, or null if deserialization fails or the computation encounters
+ an error.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_adjoint_representation_group(const char *aGJson,
                                              const char *aXJson)
@@ -10044,6 +10549,26 @@ rssn_
 char *rssn_json_catalan_number(size_t aN)
 ;
 
+/*
+ Computes the character of a representation using a JSON-encoded input.
+
+ The character is the trace of each representation matrix and is returned as a
+ JSON-encoded mapping from group elements to scalar values.
+
+ # Arguments
+
+ * `rep_json` - C string pointer with JSON-encoded [`Representation`].
+
+ # Returns
+
+ A C string pointer containing JSON-encoded character values, or null if
+ deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_character(const char *aRepJson)
 ;
@@ -10081,6 +10606,26 @@ bool rssn_json_check_analytic(const char *aExprJson,
                               const char *aVar)
 ;
 
+/*
+ Checks whether a Lie algebra satisfies the Jacobi identity using JSON serialization.
+
+ The Jacobi identity is a fundamental property of Lie algebras,
+ \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+
+ # Arguments
+
+ * `algebra_json` - C string pointer with JSON-encoded [`LieAlgebra`].
+
+ # Returns
+
+ `true` if the Jacobi identity holds, `false` otherwise or if deserialization or
+ the computation fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer; the
+ caller must ensure it points to a valid JSON string.
+ */
 rssn_
 bool rssn_json_check_jacobi_identity(const char *aAlgebraJson)
 ;
@@ -10139,6 +10684,24 @@ char *rssn_json_combinations(const char *aNJson,
                              const char *aKJson)
 ;
 
+/*
+ Computes the commutator table of a Lie algebra using JSON serialization.
+
+ # Arguments
+
+ * `algebra_json` - C string pointer with JSON-encoded [`LieAlgebra`].
+
+ # Returns
+
+ A C string pointer containing JSON-encoded commutator table (typically a nested
+ collection of brackets of basis elements), or null if deserialization fails or
+ the computation encounters an error.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_commutator_table(const char *aAlgebraJson)
 ;
@@ -10725,6 +11288,26 @@ char *rssn_json_expectation_value(const char *aOpJson,
                                   const char *aPsiJson)
 ;
 
+/*
+ Applies the exponential map to a Lie algebra element using JSON serialization.
+
+ The exponential map is approximated by a truncated series of the given order.
+
+ # Arguments
+
+ * `x_json` - C string pointer with JSON-encoded `Expr` representing the Lie algebra element.
+ * `order` - Truncation order for the series expansion of the exponential map.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Expr` for the corresponding group
+ element, or null if deserialization fails or the computation encounters an error.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_exponential_map(const char *aXJson,
                                 size_t aOrder)
@@ -11404,32 +11987,167 @@ char *rssn_json_greens_theorem(const char *aPJson,
                                const char *aDomainJson)
 ;
 
+/*
+ Computes the center of a group using a JSON-encoded group.
+
+ The center consists of elements that commute with every element of the group.
+
+ # Arguments
+
+ * `group_json` - C string pointer with JSON-encoded [`Group`].
+
+ # Returns
+
+ A C string pointer containing JSON-encoded center elements, or null if
+ deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_group_center(const char *aGroupJson)
 ;
 
+/*
+ Computes the conjugacy classes of a group using a JSON-encoded group.
+
+ Conjugacy classes partition the group into sets of elements related by
+ conjugation and are returned as JSON-encoded collections.
+
+ # Arguments
+
+ * `group_json` - C string pointer with JSON-encoded [`Group`].
+
+ # Returns
+
+ A C string pointer containing JSON-encoded conjugacy classes (typically as
+ lists of `GroupElement` values), or null if deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_group_conjugacy_classes(const char *aGroupJson)
 ;
 
+/*
+ Creates a group from a JSON-encoded description.
+
+ The input string encodes a [`Group`] (e.g., its elements and multiplication law),
+ which is deserialized and returned in canonical internal form.
+
+ # Arguments
+
+ * `json_str` - C string pointer containing JSON for a `Group` description.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded [`Group`], or null if the input
+ cannot be deserialized.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_group_create(const char *aJsonStr)
 ;
 
+/*
+ Computes the order of a group element using a JSON-encoded group.
+
+ The order is the smallest positive integer `n` such that `a^n` is the identity,
+ if such an integer exists.
+
+ # Arguments
+
+ * `group_json` - C string pointer with JSON-encoded [`Group`].
+ * `a_json` - C string pointer with JSON-encoded [`GroupElement`].
+
+ # Returns
+
+ The order of the element as a `usize`, or `0` if the order is undefined or
+ deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers; the
+ caller must ensure they point to valid JSON strings.
+ */
 rssn_
 size_t rssn_json_group_element_order(const char *aGroupJson,
                                      const char *aAJson)
 ;
 
+/*
+ Computes the inverse of a group element using a JSON-encoded group.
+
+ # Arguments
+
+ * `group_json` - C string pointer with JSON-encoded [`Group`].
+ * `a_json` - C string pointer with JSON-encoded [`GroupElement`] whose inverse is sought.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `GroupElement` for the inverse, or
+ null if deserialization fails or the element has no inverse in the group.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_group_inverse(const char *aGroupJson,
                               const char *aAJson)
 ;
 
+/*
+ Tests whether a group is Abelian using a JSON-encoded group.
+
+ A group is Abelian if its operation is commutative for all pairs of elements.
+
+ # Arguments
+
+ * `group_json` - C string pointer with JSON-encoded [`Group`].
+
+ # Returns
+
+ `true` if the group is Abelian, `false` otherwise or if deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer; the
+ caller must ensure it points to a valid JSON string.
+ */
 rssn_
 bool rssn_json_group_is_abelian(const char *aGroupJson)
 ;
 
+/*
+ Multiplies two group elements using a JSON-encoded group and elements.
+
+ # Arguments
+
+ * `group_json` - C string pointer with JSON-encoded [`Group`].
+ * `a_json` - C string pointer with JSON-encoded [`GroupElement`] for the left factor.
+ * `b_json` - C string pointer with JSON-encoded [`GroupElement`] for the right factor.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `GroupElement` representing the
+ product, or null if deserialization fails or the multiplication is undefined.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_group_multiply(const char *aGroupJson,
                                const char *aAJson,
@@ -11876,14 +12594,72 @@ char *rssn_json_legendre_rodrigues_formula(const char *aNJson,
                                            const char *aXJson)
 ;
 
+/*
+ Constructs the Lie algebra \(\mathfrak{so}(3)\) and returns it as JSON.
+
+ The Lie algebra \(\mathfrak{so}(3)\) consists of skew-symmetric \(3\times3\) matrices
+ associated with the rotation group SO(3).
+
+ # Arguments
+
+ This function takes no arguments.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded [`LieAlgebra`] for \(\mathfrak{so}(3)\),
+ or null if serialization fails.
+
+ # Safety
+
+ This function is unsafe because it returns ownership of a heap-allocated C
+ string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_lie_algebra_so3()
 ;
 
+/*
+ Constructs the Lie algebra \(\mathfrak{su}(2)\) and returns it as JSON.
+
+ The Lie algebra \(\mathfrak{su}(2)\) consists of traceless skew-Hermitian
+ \(2\times2\) matrices associated with the special unitary group SU(2).
+
+ # Arguments
+
+ This function takes no arguments.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded [`LieAlgebra`] for \(\mathfrak{su}(2)\),
+ or null if serialization fails.
+
+ # Safety
+
+ This function is unsafe because it returns ownership of a heap-allocated C
+ string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_lie_algebra_su2()
 ;
 
+/*
+ Computes the Lie bracket of two elements of a Lie algebra using JSON serialization.
+
+ # Arguments
+
+ * `x_json` - C string pointer with JSON-encoded `Expr` representing \(x\).
+ * `y_json` - C string pointer with JSON-encoded `Expr` representing \(y\).
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Expr` for the bracket \([x, y]\), or
+ null if deserialization fails or the computation encounters an error.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_lie_bracket(const char *aXJson,
                             const char *aYJson)
@@ -12500,10 +13276,51 @@ char *rssn_json_regularized_incomplete_beta(const char *aAJson,
                                             const char *aXJson)
 ;
 
+/*
+ Creates a group representation from a JSON-encoded description.
+
+ A representation assigns matrices or linear operators to group elements,
+ defining a homomorphism into a general linear group.
+
+ # Arguments
+
+ * `json_str` - C string pointer containing JSON for a [`Representation`].
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Representation`, or null if the
+ input cannot be deserialized.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer and
+ returns ownership of a heap-allocated C string that must be freed by the caller.
+ */
 rssn_
 char *rssn_json_representation_create(const char *aJsonStr)
 ;
 
+/*
+ Checks whether a representation is valid for a given group using JSON-encoded inputs.
+
+ A representation is valid if it respects the group operation, i.e., defines a
+ group homomorphism.
+
+ # Arguments
+
+ * `rep_json` - C string pointer with JSON-encoded [`Representation`].
+ * `group_json` - C string pointer with JSON-encoded [`Group`].
+
+ # Returns
+
+ `true` if the representation is valid for the group, `false` otherwise or if
+ deserialization fails.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw C string pointers; the
+ caller must ensure they point to valid JSON strings.
+ */
 rssn_
 bool rssn_json_representation_is_valid(const char *aRepJson,
                                        const char *aGroupJson)
@@ -12738,7 +13555,26 @@ rssn_
 char *rssn_json_sinc(const char *aXJson)
 ;
 
-rssn_ char *rssn_json_so3_generators() ;
+/*
+ Returns the standard generators of \(\mathfrak{so}(3)\) as a JSON-encoded list of expressions.
+
+ # Arguments
+
+ This function takes no arguments.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `Vec<Expr>` for the generators,
+ or null if serialization fails.
+
+ # Safety
+
+ This function is unsafe because it returns ownership of a heap-allocated C
+ string that must be freed by the caller.
+ */
+rssn_
+char *rssn_json_so3_generators()
+;
 
 /*
  Solves an equation for a given variable.
@@ -13787,31 +14623,157 @@ rssn_Expr *rssn_legendre_rodrigues_formula(const rssn_Expr *aN,
                                            const rssn_Expr *aX)
 ;
 
+/*
+ Frees a Lie algebra previously created by one of the constructor functions.
+
+ # Arguments
+
+ * `ptr` - Pointer to a heap-allocated [`LieAlgebra`] returned by
+   `rssn_lie_algebra_so3_create` or `rssn_lie_algebra_su2_create`.
+
+ # Returns
+
+ This function does not return a value.
+
+ # Safety
+
+ This function is unsafe because it takes ownership of a raw pointer. The pointer
+ must either be null or have been allocated by the corresponding constructor, and
+ must not be used after this call.
+ */
 rssn_
 void rssn_lie_algebra_free(rssn_LieAlgebra *aPtr)
 ;
 
+/*
+ Returns a basis element of a Lie algebra as a symbolic expression.
+
+ # Arguments
+
+ * `ptr` - Pointer to a [`LieAlgebra`] value.
+ * `index` - Zero-based index into the algebra's basis.
+
+ # Returns
+
+ A pointer to a newly allocated `Expr` representing the requested basis element,
+ or null if `index` is out of bounds.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer and returns
+ ownership of a heap-allocated `Expr` that must be freed by the caller.
+ */
 rssn_
 rssn_Expr *rssn_lie_algebra_get_basis_element(const rssn_LieAlgebra *aPtr,
                                               size_t aIndex)
 ;
 
+/*
+ Returns the dimension of a Lie algebra.
+
+ # Arguments
+
+ * `ptr` - Pointer to a [`LieAlgebra`] value.
+
+ # Returns
+
+ The dimension of the Lie algebra as a `usize`.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer; the caller must
+ ensure `ptr` points to a valid `LieAlgebra`.
+ */
 rssn_
 size_t rssn_lie_algebra_get_dimension(const rssn_LieAlgebra *aPtr)
 ;
 
+/*
+ Returns the name of a Lie algebra as a newly allocated C string.
+
+ # Arguments
+
+ * `ptr` - Pointer to a [`LieAlgebra`] value.
+
+ # Returns
+
+ A pointer to a heap-allocated, null-terminated C string containing the algebra
+ name. The caller is responsible for freeing this string using the appropriate
+ deallocation routine.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer and returns
+ ownership of a heap-allocated C string.
+ */
 rssn_
 char *rssn_lie_algebra_get_name(const rssn_LieAlgebra *aPtr)
 ;
 
+/*
+ Constructs the Lie algebra \(\mathfrak{so}(3)\) and returns a heap-allocated handle.
+
+ The Lie algebra \(\mathfrak{so}(3)\) consists of skew-symmetric \(3\times3\) matrices
+ associated with the rotation group SO(3).
+
+ # Arguments
+
+ This function takes no arguments.
+
+ # Returns
+
+ A pointer to a heap-allocated [`LieAlgebra`] representing \(\mathfrak{so}(3)\).
+
+ # Safety
+
+ This function is unsafe because it returns ownership of a heap-allocated
+ `LieAlgebra` that must later be freed with [`rssn_lie_algebra_free`].
+ */
 rssn_
 rssn_LieAlgebra *rssn_lie_algebra_so3_create()
 ;
 
+/*
+ Constructs the Lie algebra \(\mathfrak{su}(2)\) and returns a heap-allocated handle.
+
+ The Lie algebra \(\mathfrak{su}(2)\) consists of traceless skew-Hermitian \(2\times2\)
+ matrices associated with the special unitary group SU(2).
+
+ # Arguments
+
+ This function takes no arguments.
+
+ # Returns
+
+ A pointer to a heap-allocated [`LieAlgebra`] representing \(\mathfrak{su}(2)\).
+
+ # Safety
+
+ This function is unsafe because it returns ownership of a heap-allocated
+ `LieAlgebra` that must later be freed with [`rssn_lie_algebra_free`].
+ */
 rssn_
 rssn_LieAlgebra *rssn_lie_algebra_su2_create()
 ;
 
+/*
+ Computes the Lie bracket of two elements of a Lie algebra.
+
+ # Arguments
+
+ * `x` - Pointer to an `Expr` representing the first element.
+ * `y` - Pointer to an `Expr` representing the second element.
+
+ # Returns
+
+ A pointer to a newly allocated `Expr` representing the Lie bracket \([x, y]\),
+ or null if the bracket cannot be computed.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers and returns
+ ownership of a heap-allocated `Expr` that must be freed by the caller.
+ */
 rssn_
 rssn_Expr *rssn_lie_bracket(const rssn_Expr *aX,
                             const rssn_Expr *aY)
@@ -26126,6 +27088,31 @@ double rssn_regularized_incomplete_beta(double aA,
                                         double aX)
 ;
 
+/*
+ Constructs a group representation from raw pointers describing its carrier set and action matrices.
+
+ The representation is defined by a set of group elements and a mapping that
+ assigns a matrix (or linear operator) to each element.
+
+ # Arguments
+
+ * `elements_ptr` - Pointer to an array of pointers to `Expr` giving the group elements.
+ * `elements_len` - Number of elements referenced by `elements_ptr`.
+ * `keys_ptr` - Pointer to an array of pointers to `Expr` for the group elements used as keys.
+ * `values_ptr` - Pointer to an array of pointers to `Expr` for the corresponding matrices/operators.
+ * `map_len` - Number of entries in the representation map.
+
+ # Returns
+
+ A pointer to a heap-allocated [`Representation`] constructed from the supplied
+ data.
+
+ # Safety
+
+ This function is unsafe because it dereferences multiple raw pointers and
+ assumes they form consistent arrays of valid `Expr` objects. The returned
+ `Representation` must be freed with [`rssn_representation_free`].
+ */
 rssn_
 rssn_Representation *rssn_representation_create(const rssn_Expr *const *aElementsPtr,
                                                 size_t aElementsLen,
@@ -26134,10 +27121,47 @@ rssn_Representation *rssn_representation_create(const rssn_Expr *const *aElement
                                                 size_t aMapLen)
 ;
 
+/*
+ Frees a representation previously created by [`rssn_representation_create`].
+
+ # Arguments
+
+ * `ptr` - Pointer to a heap-allocated [`Representation`] returned by `rssn_representation_create`.
+
+ # Returns
+
+ This function does not return a value.
+
+ # Safety
+
+ This function is unsafe because it takes ownership of a raw pointer. The pointer
+ must either be null or have been allocated by `rssn_representation_create`, and
+ must not be used after this call.
+ */
 rssn_
 void rssn_representation_free(rssn_Representation *aPtr)
 ;
 
+/*
+ Checks whether a representation is valid for a given group using handle-based APIs.
+
+ A representation is valid if it defines a group homomorphism from the group to
+ the general linear group on the representation space.
+
+ # Arguments
+
+ * `rep` - Pointer to a [`Representation`] value.
+ * `group` - Pointer to a [`Group`] value.
+
+ # Returns
+
+ `true` if the representation is valid for the group, `false` otherwise.
+
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers; the caller must
+ ensure they point to valid objects.
+ */
 rssn_
 bool rssn_representation_is_valid(const rssn_Representation *aRep,
                                   const rssn_Group *aGroup)
@@ -26642,6 +27666,24 @@ rssn_
 double rssn_sinc(double aX)
 ;
 
+/*
+ Returns the standard generators of \(\mathfrak{so}(3)\) as a dynamically allocated array of expressions.
+
+ # Arguments
+
+ * `out_len` - Pointer to a `usize` that will be filled with the number of generators.
+
+ # Returns
+
+ A pointer to a heap-allocated array of `*mut Expr` representing the generators.
+ The caller is responsible for freeing each `Expr` and the array itself.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer and returns
+ ownership of heap-allocated memory. The caller must ensure `out_len` is valid
+ and correctly free the returned memory.
+ */
 rssn_
 rssn_Expr **rssn_so3_generators(size_t *aOutLen)
 ;
@@ -27205,6 +28247,24 @@ rssn_Vec<rssn_Expr> *rssn_sturm_sequence_handle(const rssn_Expr *aExprPtr,
                                                 const char *aVarPtr)
 ;
 
+/*
+ Returns the standard generators of \(\mathfrak{su}(2)\) as a dynamically allocated array of expressions.
+
+ # Arguments
+
+ * `out_len` - Pointer to a `usize` that will be filled with the number of generators.
+
+ # Returns
+
+ A pointer to a heap-allocated array of `*mut Expr` representing the generators.
+ The caller is responsible for freeing each `Expr` and the array itself.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw pointer and returns
+ ownership of heap-allocated memory. The caller must ensure `out_len` is valid
+ and correctly free the returned memory.
+ */
 rssn_
 rssn_Expr **rssn_su2_generators(size_t *aOutLen)
 ;

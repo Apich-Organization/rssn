@@ -8,6 +8,23 @@ use crate::symbolic::lie_groups_and_algebras::*;
 
 #[no_mangle]
 
+/// Constructs the Lie algebra \(\mathfrak{so}(3)\) and returns a heap-allocated handle.
+///
+/// The Lie algebra \(\mathfrak{so}(3)\) consists of skew-symmetric \(3\times3\) matrices
+/// associated with the rotation group SO(3).
+///
+/// # Arguments
+///
+/// This function takes no arguments.
+///
+/// # Returns
+///
+/// A pointer to a heap-allocated [`LieAlgebra`] representing \(\mathfrak{so}(3)\).
+///
+/// # Safety
+///
+/// This function is unsafe because it returns ownership of a heap-allocated
+/// `LieAlgebra` that must later be freed with [`rssn_lie_algebra_free`].
 pub unsafe extern "C" fn rssn_lie_algebra_so3_create(
 ) -> *mut LieAlgebra {
 
@@ -18,6 +35,23 @@ pub unsafe extern "C" fn rssn_lie_algebra_so3_create(
 
 #[no_mangle]
 
+/// Constructs the Lie algebra \(\mathfrak{su}(2)\) and returns a heap-allocated handle.
+///
+/// The Lie algebra \(\mathfrak{su}(2)\) consists of traceless skew-Hermitian \(2\times2\)
+/// matrices associated with the special unitary group SU(2).
+///
+/// # Arguments
+///
+/// This function takes no arguments.
+///
+/// # Returns
+///
+/// A pointer to a heap-allocated [`LieAlgebra`] representing \(\mathfrak{su}(2)\).
+///
+/// # Safety
+///
+/// This function is unsafe because it returns ownership of a heap-allocated
+/// `LieAlgebra` that must later be freed with [`rssn_lie_algebra_free`].
 pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
 ) -> *mut LieAlgebra {
 
@@ -28,6 +62,22 @@ pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
 
 #[no_mangle]
 
+/// Frees a Lie algebra previously created by one of the constructor functions.
+///
+/// # Arguments
+///
+/// * `ptr` - Pointer to a heap-allocated [`LieAlgebra`] returned by
+///   `rssn_lie_algebra_so3_create` or `rssn_lie_algebra_su2_create`.
+///
+/// # Returns
+///
+/// This function does not return a value.
+///
+/// # Safety
+///
+/// This function is unsafe because it takes ownership of a raw pointer. The pointer
+/// must either be null or have been allocated by the corresponding constructor, and
+/// must not be used after this call.
 pub unsafe extern "C" fn rssn_lie_algebra_free(
     ptr: *mut LieAlgebra
 ) {
@@ -40,6 +90,20 @@ pub unsafe extern "C" fn rssn_lie_algebra_free(
 
 #[no_mangle]
 
+/// Returns the dimension of a Lie algebra.
+///
+/// # Arguments
+///
+/// * `ptr` - Pointer to a [`LieAlgebra`] value.
+///
+/// # Returns
+///
+/// The dimension of the Lie algebra as a `usize`.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw pointer; the caller must
+/// ensure `ptr` points to a valid `LieAlgebra`.
 pub unsafe extern "C" fn rssn_lie_algebra_get_dimension(
     ptr: *const LieAlgebra
 ) -> usize {
@@ -49,6 +113,22 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_dimension(
 
 #[no_mangle]
 
+/// Returns the name of a Lie algebra as a newly allocated C string.
+///
+/// # Arguments
+///
+/// * `ptr` - Pointer to a [`LieAlgebra`] value.
+///
+/// # Returns
+///
+/// A pointer to a heap-allocated, null-terminated C string containing the algebra
+/// name. The caller is responsible for freeing this string using the appropriate
+/// deallocation routine.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw pointer and returns
+/// ownership of a heap-allocated C string.
 pub unsafe extern "C" fn rssn_lie_algebra_get_name(
     ptr: *const LieAlgebra
 ) -> *mut c_char {
@@ -64,6 +144,22 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_name(
 
 #[no_mangle]
 
+/// Returns a basis element of a Lie algebra as a symbolic expression.
+///
+/// # Arguments
+///
+/// * `ptr` - Pointer to a [`LieAlgebra`] value.
+/// * `index` - Zero-based index into the algebra's basis.
+///
+/// # Returns
+///
+/// A pointer to a newly allocated `Expr` representing the requested basis element,
+/// or null if `index` is out of bounds.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw pointer and returns
+/// ownership of a heap-allocated `Expr` that must be freed by the caller.
 pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
     ptr: *const LieAlgebra,
     index: usize,
@@ -87,6 +183,22 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
 
 #[no_mangle]
 
+/// Computes the Lie bracket of two elements of a Lie algebra.
+///
+/// # Arguments
+///
+/// * `x` - Pointer to an `Expr` representing the first element.
+/// * `y` - Pointer to an `Expr` representing the second element.
+///
+/// # Returns
+///
+/// A pointer to a newly allocated `Expr` representing the Lie bracket \([x, y]\),
+/// or null if the bracket cannot be computed.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers and returns
+/// ownership of a heap-allocated `Expr` that must be freed by the caller.
 pub unsafe extern "C" fn rssn_lie_bracket(
     x: *const Expr,
     y: *const Expr,
@@ -108,6 +220,24 @@ pub unsafe extern "C" fn rssn_lie_bracket(
 
 #[no_mangle]
 
+/// Applies the exponential map to a Lie algebra element, returning the corresponding group element.
+///
+/// The exponential map is approximated by a truncated series of the specified order.
+///
+/// # Arguments
+///
+/// * `x` - Pointer to an `Expr` representing the Lie algebra element.
+/// * `order` - Truncation order for the series expansion of the exponential map.
+///
+/// # Returns
+///
+/// A pointer to a newly allocated `Expr` representing the group element, or null
+/// if the computation fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw pointer and returns
+/// ownership of a heap-allocated `Expr` that must be freed by the caller.
 pub unsafe extern "C" fn rssn_exponential_map(
     x: *const Expr,
     order: usize,
@@ -129,6 +259,25 @@ pub unsafe extern "C" fn rssn_exponential_map(
 
 #[no_mangle]
 
+/// Applies the adjoint representation of a Lie group element to a Lie algebra element.
+///
+/// This computes \(\mathrm{Ad}_g(x)\), describing how the group element \(g\)
+/// conjugates the algebra element \(x\).
+///
+/// # Arguments
+///
+/// * `g` - Pointer to an `Expr` representing the group element.
+/// * `x` - Pointer to an `Expr` representing the Lie algebra element.
+///
+/// # Returns
+///
+/// A pointer to a newly allocated `Expr` representing the result of the group
+/// adjoint action, or null if the computation fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers and returns
+/// ownership of a heap-allocated `Expr` that must be freed by the caller.
 pub unsafe extern "C" fn rssn_adjoint_representation_group(
     g: *const Expr,
     x: *const Expr,
@@ -150,6 +299,25 @@ pub unsafe extern "C" fn rssn_adjoint_representation_group(
 
 #[no_mangle]
 
+/// Applies the adjoint representation of a Lie algebra element to another element.
+///
+/// This computes \(\mathrm{ad}_x(y) = [x, y]\), the derivation induced by \(x\)
+/// on the Lie algebra.
+///
+/// # Arguments
+///
+/// * `x` - Pointer to an `Expr` representing the first Lie algebra element.
+/// * `y` - Pointer to an `Expr` representing the second Lie algebra element.
+///
+/// # Returns
+///
+/// A pointer to a newly allocated `Expr` representing the result of the algebra
+/// adjoint action, or null if the computation fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers and returns
+/// ownership of a heap-allocated `Expr` that must be freed by the caller.
 pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
     x: *const Expr,
     y: *const Expr,
@@ -173,6 +341,25 @@ pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
 
 #[no_mangle]
 
+/// Computes the commutator table of a Lie algebra and returns it as a flattened array of expressions.
+///
+/// # Arguments
+///
+/// * `algebra` - Pointer to a [`LieAlgebra`] value.
+/// * `out_rows` - Pointer to a `usize` that will be filled with the number of rows.
+/// * `out_cols` - Pointer to a `usize` that will be filled with the number of columns.
+///
+/// # Returns
+///
+/// A pointer to a heap-allocated array of `*mut Expr` representing the commutator
+/// table entries in row-major order, or null if the computation fails. On error,
+/// `out_rows` and `out_cols` are set to 0.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers and returns
+/// ownership of heap-allocated memory. The caller must ensure all pointers are
+/// valid and must correctly free the returned expressions and array.
 pub unsafe extern "C" fn rssn_commutator_table(
     algebra: *const LieAlgebra,
     out_rows: *mut usize,
@@ -237,6 +424,24 @@ pub unsafe extern "C" fn rssn_commutator_table(
 
 #[no_mangle]
 
+/// Checks whether a Lie algebra satisfies the Jacobi identity.
+///
+/// The Jacobi identity is a fundamental property of Lie algebras,
+/// \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+///
+/// # Arguments
+///
+/// * `algebra` - Pointer to a [`LieAlgebra`] value.
+///
+/// # Returns
+///
+/// `true` if the Jacobi identity holds, `false` otherwise or if the computation
+/// fails.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw pointer; the caller must
+/// ensure `algebra` points to a valid `LieAlgebra`.
 pub unsafe extern "C" fn rssn_check_jacobi_identity(
     algebra: *const LieAlgebra
 ) -> bool {
@@ -253,6 +458,22 @@ pub unsafe extern "C" fn rssn_check_jacobi_identity(
 
 #[no_mangle]
 
+/// Returns the standard generators of \(\mathfrak{so}(3)\) as a dynamically allocated array of expressions.
+///
+/// # Arguments
+///
+/// * `out_len` - Pointer to a `usize` that will be filled with the number of generators.
+///
+/// # Returns
+///
+/// A pointer to a heap-allocated array of `*mut Expr` representing the generators.
+/// The caller is responsible for freeing each `Expr` and the array itself.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw pointer and returns
+/// ownership of heap-allocated memory. The caller must ensure `out_len` is valid
+/// and correctly free the returned memory.
 pub unsafe extern "C" fn rssn_so3_generators(
     out_len: *mut usize
 ) -> *mut *mut Expr {
@@ -281,6 +502,22 @@ pub unsafe extern "C" fn rssn_so3_generators(
 
 #[no_mangle]
 
+/// Returns the standard generators of \(\mathfrak{su}(2)\) as a dynamically allocated array of expressions.
+///
+/// # Arguments
+///
+/// * `out_len` - Pointer to a `usize` that will be filled with the number of generators.
+///
+/// # Returns
+///
+/// A pointer to a heap-allocated array of `*mut Expr` representing the generators.
+/// The caller is responsible for freeing each `Expr` and the array itself.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw pointer and returns
+/// ownership of heap-allocated memory. The caller must ensure `out_len` is valid
+/// and correctly free the returned memory.
 pub unsafe extern "C" fn rssn_su2_generators(
     out_len: *mut usize
 ) -> *mut *mut Expr {
