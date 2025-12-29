@@ -113,8 +113,7 @@ pub extern "C" fn rssn_computation_result_cache_get_bincode(
                 &expr_buffer,
             );
 
-        if let Some(e) = expr {
-
+        expr.map_or_else(BincodeBuffer::empty, |e| {
             match (*cache)
                 .get(&Arc::new(e))
             {
@@ -128,10 +127,7 @@ pub extern "C" fn rssn_computation_result_cache_get_bincode(
                     )
                 },
             }
-        } else {
-
-            BincodeBuffer::empty()
-        }
+        })
     }
 }
 

@@ -281,7 +281,10 @@
     clippy::arithmetic_side_effects,
     // Precision loss is allowed here because we need to introduce bigint to all places otherwise --- that will require a lot of work and results in breaking change and loss of performance. So we will have to handle it later.
     // DEBT: Handle precision loss when possible (add more suites of code)
+    // Possible Truncation warnned, due to CPU branch prediction and simd optimization programs, we will just warn this problems instead deny it.
     clippy::cast_precision_loss,
+    clippy::cast_possible_wrap,
+    clippy::cast_possible_truncation,
     clippy::dbg_macro,
     clippy::todo,
     clippy::unnecessary_safety_comment

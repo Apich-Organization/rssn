@@ -112,8 +112,7 @@ pub extern "C" fn rssn_computation_result_cache_get_json(
         let expr: Option<Expr> =
             from_json_string(json_expr);
 
-        if let Some(e) = expr {
-
+        expr.map_or(std::ptr::null_mut(), |e| {
             match (*cache).get(&Arc::new(e)) {
                 | Some(value) => {
                     match serde_json::to_string(&value) {
@@ -123,10 +122,7 @@ pub extern "C" fn rssn_computation_result_cache_get_json(
                 },
                 | None => std::ptr::null_mut(),
             }
-        } else {
-
-            std::ptr::null_mut()
-        }
+        })
     }
 }
 

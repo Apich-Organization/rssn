@@ -1535,18 +1535,10 @@ pub fn solve_system(
 
     if is_linear_system {
 
-        if let Some(sol) =
-            solve_linear_system_symbolic(
-                symbolic_matrix,
-                symbolic_rhs,
-            )
-        {
-
-            vec![sol]
-        } else {
-
-            vec![]
-        }
+        solve_linear_system_symbolic(
+            symbolic_matrix,
+            symbolic_rhs,
+        ).map_or_else(Vec::new, |sol| vec![sol])
     } else {
 
         solve_nonlinear_system_numerical(

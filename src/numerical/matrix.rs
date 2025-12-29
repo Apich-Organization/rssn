@@ -293,7 +293,7 @@ impl Field for f64 {
             FaerDecompositionType::Cholesky => {
                 if rows != cols { return None; }
                 let mat = MatRef::from_column_major_slice(&matrix.data, rows, cols);
-                if let Ok(chol) = mat.llt(Side::Lower) {
+                mat.llt(Side::Lower).ok().map(|chol| {
                     let l_mat = chol.L();
                     let mut l_data = vec![0.0; rows * cols];
                     for i in 0..rows {
@@ -301,12 +301,10 @@ impl Field for f64 {
                              l_data[i * cols + j] = *l_mat.get(i, j);
                         }
                     }
-                    Some(FaerDecompositionResult::Cholesky {
+                    FaerDecompositionResult::Cholesky {
                         l: Matrix::new(rows, cols, l_data).with_backend(matrix.backend)
-                    })
-                } else {
-                    None
-                }
+                    }
+                })
             }
              FaerDecompositionType::EigenSymmetric => {
                  if rows != cols { return None; }
@@ -1543,48 +1541,22 @@ impl<T: Field> Matrix<T> {
         }
 
         // Check if RREF operation was successful
-        if let Ok(rank) =
-            augmented.rref()
-        {
-
+        augmented.rref().ok().and_then(|rank| {
             if rank == n {
+                let mut inv_data = vec![T::zero(); n * n];
 
-                let mut inv_data =
-                    vec![
-                        T::zero();
-                        n * n
-                    ];
-
-                for i in 0 .. n {
-
-                    for j in 0 .. n {
-
-                        inv_data[i * n + j] = augmented
-                            .get(i, j + n)
-                            .clone();
+                for i in 0..n {
+                    for j in 0..n {
+                        inv_data[i * n + j] = augmented.get(i, j + n).clone();
                     }
                 }
 
-                Some(
-                    Self::new(
-                        n,
-                        n,
-                        inv_data,
-                    )
-                    .with_backend(
-                        self.backend,
-                    ),
-                )
+                Some(Self::new(n, n, inv_data).with_backend(self.backend))
             } else {
-
                 // Matrix is not invertible (rank is less than n)
                 None
             }
-        } else {
-
-            // RREF operation failed
-            None
-        }
+        })
     }
 
     /// Computes a basis for the null space (kernel) of the matrix.
