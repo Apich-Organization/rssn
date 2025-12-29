@@ -1,6 +1,7 @@
 use num_bigint::BigInt;
 
-use crate::symbolic::finite_field::{PrimeFieldElement, PrimeField};
+use crate::symbolic::finite_field::PrimeField;
+use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// Creates a new prime field element (Handle)
 /// Returns a boxed pointer to the element

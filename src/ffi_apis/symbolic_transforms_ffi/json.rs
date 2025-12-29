@@ -5,7 +5,8 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
 use crate::symbolic::transforms;
 
@@ -20,6 +21,14 @@ use crate::symbolic::transforms;
 /// Returns a JSON string representing the `Expr` of the Fourier transform.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_fourier_transform(
     expr_json: *const c_char,
@@ -62,6 +71,14 @@ pub unsafe extern "C" fn rssn_json_fourier_transform(
 /// Returns a JSON string representing the `Expr` of the inverse Fourier transform.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_inverse_fourier_transform(
     expr_json: *const c_char,
@@ -107,6 +124,14 @@ pub unsafe extern "C" fn rssn_json_inverse_fourier_transform(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_fourier_time_shift(
     f_omega_json: *const c_char,
     a_json: *const c_char,
@@ -147,6 +172,14 @@ pub unsafe extern "C" fn rssn_json_fourier_time_shift(
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_fourier_frequency_shift(
     f_omega_json: *const c_char,
@@ -189,6 +222,14 @@ pub unsafe extern "C" fn rssn_json_fourier_frequency_shift(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_fourier_scaling(
     f_omega_json: *const c_char,
     a_json: *const c_char,
@@ -228,6 +269,14 @@ pub unsafe extern "C" fn rssn_json_fourier_scaling(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_fourier_differentiation(
     f_omega_json: *const c_char,
     out_var_json: *const c_char,
@@ -261,6 +310,14 @@ pub unsafe extern "C" fn rssn_json_fourier_differentiation(
 /// Returns a JSON string representing the `Expr` of the Laplace transform.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_laplace_transform(
     expr_json: *const c_char,
@@ -303,6 +360,14 @@ pub unsafe extern "C" fn rssn_json_laplace_transform(
 /// Returns a JSON string representing the `Expr` of the inverse Laplace transform.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_inverse_laplace_transform(
     expr_json: *const c_char,
@@ -348,6 +413,14 @@ pub unsafe extern "C" fn rssn_json_inverse_laplace_transform(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_laplace_time_shift(
     f_s_json: *const c_char,
     a_json: *const c_char,
@@ -388,6 +461,14 @@ pub unsafe extern "C" fn rssn_json_laplace_time_shift(
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_laplace_frequency_shift(
     f_s_json: *const c_char,
@@ -430,6 +511,14 @@ pub unsafe extern "C" fn rssn_json_laplace_frequency_shift(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_laplace_scaling(
     f_s_json: *const c_char,
     a_json: *const c_char,
@@ -471,6 +560,14 @@ pub unsafe extern "C" fn rssn_json_laplace_scaling(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_laplace_differentiation(
     f_s_json: *const c_char,
     out_var_json: *const c_char,
@@ -510,6 +607,14 @@ pub unsafe extern "C" fn rssn_json_laplace_differentiation(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_laplace_integration(
     f_s_json: *const c_char,
     out_var_json: *const c_char,
@@ -543,6 +648,14 @@ pub unsafe extern "C" fn rssn_json_laplace_integration(
 /// Returns a JSON string representing the `Expr` of the Z-transform.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_z_transform(
     expr_json: *const c_char,
@@ -590,6 +703,14 @@ pub unsafe extern "C" fn rssn_json_z_transform(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_inverse_z_transform(
     expr_json: *const c_char,
     in_var_json: *const c_char,
@@ -633,6 +754,14 @@ pub unsafe extern "C" fn rssn_json_inverse_z_transform(
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_z_time_shift(
     f_z_json: *const c_char,
@@ -679,6 +808,14 @@ pub unsafe extern "C" fn rssn_json_z_time_shift(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_z_scaling(
     f_z_json: *const c_char,
     a_json: *const c_char,
@@ -722,6 +859,14 @@ pub unsafe extern "C" fn rssn_json_z_scaling(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_z_differentiation(
     f_z_json: *const c_char,
     out_var_json: *const c_char,
@@ -757,6 +902,14 @@ pub unsafe extern "C" fn rssn_json_z_differentiation(
 /// Returns a JSON string representing the `Expr` of the convolution.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_convolution_fourier(
     f_json: *const c_char,
@@ -808,6 +961,14 @@ pub unsafe extern "C" fn rssn_json_convolution_fourier(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_convolution_laplace(
     f_json: *const c_char,
     g_json: *const c_char,
@@ -855,6 +1016,14 @@ pub unsafe extern "C" fn rssn_json_convolution_laplace(
 /// Returns a JSON string representing `Vec<Expr>` (partial fraction decomposition).
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_partial_fraction_decomposition(
     expr_json: *const c_char,

@@ -24,6 +24,14 @@ use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponentia
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3(
 ) -> BincodeBuffer {
 
@@ -51,6 +59,14 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2(
 ) -> BincodeBuffer {
@@ -80,6 +96,14 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_lie_bracket(
     x_buf: BincodeBuffer,
@@ -130,6 +154,14 @@ pub unsafe extern "C" fn rssn_bincode_lie_bracket(
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_exponential_map(
     x_buf: BincodeBuffer,
     order: usize,
@@ -173,6 +205,14 @@ pub unsafe extern "C" fn rssn_bincode_exponential_map(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
     g_buf: BincodeBuffer,
@@ -224,6 +264,14 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
     x_buf: BincodeBuffer,
     y_buf: BincodeBuffer,
@@ -272,6 +320,14 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_commutator_table(
     algebra_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -314,6 +370,14 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffer encodes a valid `LieAlgebra`.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
     algebra_buf: BincodeBuffer
 ) -> bool {
@@ -354,6 +418,14 @@ pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_so3_generators(
 ) -> BincodeBuffer {
 
@@ -384,6 +456,14 @@ pub unsafe extern "C" fn rssn_bincode_so3_generators(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_su2_generators(
 ) -> BincodeBuffer {

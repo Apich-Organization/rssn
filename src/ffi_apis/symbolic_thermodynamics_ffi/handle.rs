@@ -6,6 +6,14 @@ use crate::symbolic::thermodynamics;
 /// Calculates ideal gas Law expression: PV - nRT.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_ideal_gas_law(
     p: *const Expr,
     v: *const Expr,
@@ -34,6 +42,14 @@ pub unsafe extern "C" fn rssn_ideal_gas_law(
 /// Calculates enthalpy: U + PV.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_enthalpy(
     u: *const Expr,
     p: *const Expr,
@@ -58,6 +74,14 @@ pub unsafe extern "C" fn rssn_enthalpy(
 /// Calculates Gibbs Free Energy: H - TS.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_gibbs_free_energy(
     h: *const Expr,
     t: *const Expr,
@@ -80,6 +104,14 @@ pub unsafe extern "C" fn rssn_gibbs_free_energy(
 /// Calculates Carnot Efficiency: 1 - Tc/Th.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_carnot_efficiency(
     tc: *const Expr,
     th: *const Expr,
@@ -97,6 +129,14 @@ pub unsafe extern "C" fn rssn_carnot_efficiency(
 
 /// Calculates Boltzmann Distribution.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_boltzmann_distribution(
     energy: *const Expr,

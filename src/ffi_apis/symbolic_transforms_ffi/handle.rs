@@ -17,6 +17,14 @@ use crate::symbolic::transforms;
 /// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_fourier_transform(
     expr: *const Expr,
     in_var: *const c_char,
@@ -50,6 +58,14 @@ pub unsafe extern "C" fn rssn_fourier_transform(
 /// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_inverse_fourier_transform(
     expr: *const Expr,
     in_var: *const c_char,
@@ -78,6 +94,14 @@ pub unsafe extern "C" fn rssn_inverse_fourier_transform(
 /// Caller must ensure `expr` is a valid pointer to an `Expr`.
 /// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_laplace_transform(
     expr: *const Expr,
@@ -112,6 +136,14 @@ pub unsafe extern "C" fn rssn_laplace_transform(
 /// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_inverse_laplace_transform(
     expr: *const Expr,
     in_var: *const c_char,
@@ -140,6 +172,14 @@ pub unsafe extern "C" fn rssn_inverse_laplace_transform(
 /// Caller must ensure `expr` is a valid pointer to an `Expr`.
 /// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_z_transform(
     expr: *const Expr,
@@ -174,6 +214,14 @@ pub unsafe extern "C" fn rssn_z_transform(
 /// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_inverse_z_transform(
     expr: *const Expr,
     in_var: *const c_char,
@@ -207,6 +255,14 @@ pub unsafe extern "C" fn rssn_inverse_z_transform(
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_fourier_time_shift(
     f_omega: *const Expr,
     a: *const Expr,
@@ -237,6 +293,14 @@ pub unsafe extern "C" fn rssn_fourier_time_shift(
 /// Caller must ensure `f_omega` and `a` are valid pointers to an `Expr`.
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_fourier_frequency_shift(
     f_omega: *const Expr,
@@ -269,6 +333,14 @@ pub unsafe extern "C" fn rssn_fourier_frequency_shift(
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_fourier_scaling(
     f_omega: *const Expr,
     a: *const Expr,
@@ -300,6 +372,14 @@ pub unsafe extern "C" fn rssn_fourier_scaling(
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_fourier_differentiation(
     f_omega: *const Expr,
     out_var: *const c_char,
@@ -324,6 +404,14 @@ pub unsafe extern "C" fn rssn_fourier_differentiation(
 /// Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_laplace_time_shift(
     f_s: *const Expr,
@@ -352,6 +440,14 @@ pub unsafe extern "C" fn rssn_laplace_time_shift(
 /// Caller must ensure `f_s` and `f_zero` are valid pointers to an `Expr`.
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_laplace_differentiation(
     f_s: *const Expr,
@@ -383,6 +479,14 @@ pub unsafe extern "C" fn rssn_laplace_differentiation(
 /// Caller must ensure `f` and `g` are valid pointers to an `Expr`.
 /// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_convolution_fourier(
     f: *const Expr,
@@ -416,6 +520,14 @@ pub unsafe extern "C" fn rssn_convolution_fourier(
 /// `in_var` and `out_var` must be valid C strings or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_convolution_laplace(
     f: *const Expr,
     g: *const Expr,
@@ -448,6 +560,14 @@ pub unsafe extern "C" fn rssn_convolution_laplace(
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_laplace_frequency_shift(
     f_s: *const Expr,
     a: *const Expr,
@@ -473,6 +593,14 @@ pub unsafe extern "C" fn rssn_laplace_frequency_shift(
 /// Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_laplace_scaling(
     f_s: *const Expr,
@@ -502,6 +630,14 @@ pub unsafe extern "C" fn rssn_laplace_scaling(
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_laplace_integration(
     f_s: *const Expr,
     out_var: *const c_char,
@@ -528,6 +664,14 @@ pub unsafe extern "C" fn rssn_laplace_integration(
 /// Caller must ensure `f_z` and `k` are valid pointers to an `Expr`.
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_z_time_shift(
     f_z: *const Expr,
@@ -557,6 +701,14 @@ pub unsafe extern "C" fn rssn_z_time_shift(
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_z_scaling(
     f_z: *const Expr,
     a: *const Expr,
@@ -584,6 +736,14 @@ pub unsafe extern "C" fn rssn_z_scaling(
 /// Caller must ensure `f_z` is a valid pointer to an `Expr`.
 /// `out_var` must be a valid C string or null (defaults apply).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_z_differentiation(
     f_z: *const Expr,
@@ -621,6 +781,14 @@ pub struct ExprList(pub Vec<Expr>);
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_partial_fraction_decomposition(
     expr: *const Expr,
     var: *const c_char,
@@ -655,6 +823,14 @@ pub unsafe extern "C" fn rssn_partial_fraction_decomposition(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub const unsafe extern "C" fn rssn_expr_list_len(
     list: *const ExprList
 ) -> usize {
@@ -676,6 +852,14 @@ pub const unsafe extern "C" fn rssn_expr_list_len(
 /// Returns a raw pointer to an `Expr` at that index.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_expr_list_get(
     list: *const ExprList,
@@ -707,6 +891,14 @@ pub unsafe extern "C" fn rssn_expr_list_get(
 /// Takes a raw mutable pointer to an `ExprList`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_expr_list_free(
     list: *mut ExprList

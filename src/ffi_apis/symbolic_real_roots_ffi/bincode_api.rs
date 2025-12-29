@@ -1,11 +1,15 @@
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::expr_to_sparse_poly;
 use crate::symbolic::polynomial::sparse_poly_to_expr;
-use crate::symbolic::real_roots::{sturm_sequence, count_real_roots_in_interval, isolate_real_roots};
+use crate::symbolic::real_roots::count_real_roots_in_interval;
+use crate::symbolic::real_roots::isolate_real_roots;
+use crate::symbolic::real_roots::sturm_sequence;
 
 /// Generates the Sturm sequence for a given polynomial (Bincode)
 #[no_mangle]

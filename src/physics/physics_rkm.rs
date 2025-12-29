@@ -90,12 +90,17 @@ pub fn solve_rk4<
             .for_each(
                 |((yt, &yi), &k1i)| {
 
-                    *yt = (0.5 * current_dt).mul_add(k1i, yi);
+                    *yt = (0.5
+                        * current_dt)
+                        .mul_add(
+                            k1i, yi,
+                        );
                 },
             );
 
         system.eval(
-            0.5f64.mul_add(current_dt, t),
+            0.5f64
+                .mul_add(current_dt, t),
             &y_temp,
             &mut k2,
         );
@@ -108,12 +113,17 @@ pub fn solve_rk4<
             .for_each(
                 |((yt, &yi), &k2i)| {
 
-                    *yt = (0.5 * current_dt).mul_add(k2i, yi);
+                    *yt = (0.5
+                        * current_dt)
+                        .mul_add(
+                            k2i, yi,
+                        );
                 },
             );
 
         system.eval(
-            0.5f64.mul_add(current_dt, t),
+            0.5f64
+                .mul_add(current_dt, t),
             &y_temp,
             &mut k3,
         );
@@ -126,7 +136,10 @@ pub fn solve_rk4<
             .for_each(
                 |((yt, &yi), &k3i)| {
 
-                    *yt = current_dt.mul_add(k3i, yi);
+                    *yt = current_dt
+                        .mul_add(
+                            k3i, yi,
+                        );
                 },
             );
 
@@ -156,7 +169,11 @@ pub fn solve_rk4<
 
                     *yi += (current_dt
                         / 6.0)
-                        * (2.0f64.mul_add(k2i, k1i)
+                        * (2.0f64
+                            .mul_add(
+                                k2i,
+                                k1i,
+                            )
                             + 2.0
                                 * k3i
                             + k4i);
@@ -184,7 +201,8 @@ pub struct DormandPrince54 {
 impl DormandPrince54 {
     /// Creates a new Dormand-Prince 5(4) solver.
 
-    #[must_use] 
+    #[must_use]
+
     pub fn new() -> Self {
 
         Self {
@@ -337,7 +355,8 @@ impl DormandPrince54 {
                 }
 
                 system.eval(
-                    self.c[i].mul_add(dt, t),
+                    self.c[i]
+                        .mul_add(dt, t),
                     &y_temp,
                     &mut k[i],
                 );
@@ -362,9 +381,12 @@ impl DormandPrince54 {
                         * self.b4[j];
                 }
 
-                let scale = y[i].abs().max(
-                        y5_i.abs(),
-                    ).mul_add(rtol, atol);
+                let scale = y[i]
+                    .abs()
+                    .max(y5_i.abs())
+                    .mul_add(
+                        rtol, atol,
+                    );
 
                 error += ((y5_i
                     - y4_i)
@@ -556,7 +578,8 @@ impl CashKarp45 {
                 }
 
                 system.eval(
-                    self.c[i].mul_add(dt, t),
+                    self.c[i]
+                        .mul_add(dt, t),
                     &y_temp,
                     &mut k[i],
                 );
@@ -581,9 +604,12 @@ impl CashKarp45 {
                         * self.b4[j];
                 }
 
-                let scale = y[i].abs().max(
-                        y5_i.abs(),
-                    ).mul_add(rtol, atol);
+                let scale = y[i]
+                    .abs()
+                    .max(y5_i.abs())
+                    .mul_add(
+                        rtol, atol,
+                    );
 
                 error += ((y5_i
                     - y4_i)
@@ -742,7 +768,8 @@ impl BogackiShampine23 {
                 }
 
                 system.eval(
-                    self.c[i].mul_add(dt, t),
+                    self.c[i]
+                        .mul_add(dt, t),
                     &y_temp,
                     &mut k[i],
                 );
@@ -767,9 +794,12 @@ impl BogackiShampine23 {
                         * self.b2[j];
                 }
 
-                let scale = y[i].abs().max(
-                        y3_i.abs(),
-                    ).mul_add(rtol, atol);
+                let scale = y[i]
+                    .abs()
+                    .max(y3_i.abs())
+                    .mul_add(
+                        rtol, atol,
+                    );
 
                 error += ((y3_i
                     - y2_i)
@@ -851,9 +881,15 @@ impl OdeSystem for LorenzSystem {
         dy[0] =
             self.sigma * (y[1] - y[0]);
 
-        dy[1] = y[0].mul_add(self.rho - y[2], -y[1]);
+        dy[1] = y[0].mul_add(
+            self.rho - y[2],
+            -y[1],
+        );
 
-        dy[2] = y[0].mul_add(y[1], -(self.beta * y[2]));
+        dy[2] = y[0].mul_add(
+            y[1],
+            -(self.beta * y[2]),
+        );
     }
 }
 
@@ -887,7 +923,13 @@ impl OdeSystem
         dy[0] = y[1];
 
         dy[1] = (-2.0
-            * self.zeta * self.omega).mul_add(y[1], -(self.omega.powi(2) * y[0]));
+            * self.zeta
+            * self.omega)
+            .mul_add(
+                y[1],
+                -(self.omega.powi(2)
+                    * y[0]),
+            );
     }
 }
 
@@ -955,10 +997,16 @@ impl OdeSystem for LotkaVolterraSystem {
         dy: &mut [f64],
     ) {
 
-        dy[0] = self.alpha.mul_add(y[0], -(self.beta * y[0] * y[1]));
+        dy[0] = self.alpha.mul_add(
+            y[0],
+            -(self.beta * y[0] * y[1]),
+        );
 
-        dy[1] =
-            (self.delta * y[0]).mul_add(y[1], -(self.gamma * y[1]));
+        dy[1] = (self.delta * y[0])
+            .mul_add(
+                y[1],
+                -(self.gamma * y[1]),
+            );
     }
 }
 
@@ -1001,7 +1049,8 @@ impl OdeSystem for PendulumSystem {
 
 /// Simulates the Lorenz attractor system.
 
-#[must_use] 
+#[must_use]
+
 pub fn simulate_lorenz_attractor_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 
@@ -1032,7 +1081,8 @@ pub fn simulate_lorenz_attractor_scenario(
 
 /// Simulates a damped harmonic oscillator.
 
-#[must_use] 
+#[must_use]
+
 pub fn simulate_damped_oscillator_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 
@@ -1058,7 +1108,8 @@ pub fn simulate_damped_oscillator_scenario(
 
 /// Simulates the Van der Pol oscillator.
 
-#[must_use] 
+#[must_use]
+
 pub fn simulate_vanderpol_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 
@@ -1087,7 +1138,8 @@ pub fn simulate_vanderpol_scenario(
 
 /// Simulates the Lotka-Volterra predator-prey system.
 
-#[must_use] 
+#[must_use]
+
 pub fn simulate_lotka_volterra_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 

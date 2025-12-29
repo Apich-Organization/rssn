@@ -6,6 +6,14 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::differential_geometry::{DifferentialForm, exterior_derivative, wedge_product, boundary, generalized_stokes_theorem, gauss_theorem, stokes_theorem, greens_theorem};
 use crate::symbolic::vector::Vector;
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
     len: usize,
@@ -32,7 +40,10 @@ unsafe fn parse_c_str_array(
 
         match c_str.to_str() {
             | Ok(s) => {
-                vars.push(s.to_string());
+
+                vars.push(
+                    s.to_string(),
+                );
             },
             | Err(_) => return None,
         }

@@ -20,6 +20,14 @@ use crate::symbolic::coordinates::CoordinateSystem;
 /// A pointer to the transformed point (array of doubles), or null on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_coord_transform_point(
     point_ptr: *const c_double,
     point_len: usize,
@@ -76,6 +84,14 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
 
 /// Transforms a point from one coordinate system to another (pure numerical).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
     point_ptr: *const c_double,
@@ -134,6 +150,14 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
 /// Computes the numerical Jacobian matrix.
 /// Returns a pointer to a flat array of doubles (row-major).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_coord_jacobian(
     from: CoordinateSystem,
@@ -199,6 +223,14 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
 
 /// Frees a pointer allocated by the coordinate transformation functions.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_coord_free(
     ptr: *mut c_double,

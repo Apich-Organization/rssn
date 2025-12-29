@@ -1,4 +1,7 @@
-use crate::symbolic::discrete_groups::{cyclic_group, dihedral_group, symmetric_group, klein_four_group};
+use crate::symbolic::discrete_groups::cyclic_group;
+use crate::symbolic::discrete_groups::dihedral_group;
+use crate::symbolic::discrete_groups::klein_four_group;
+use crate::symbolic::discrete_groups::symmetric_group;
 use crate::symbolic::group_theory::Group;
 
 /// Creates a cyclic group of order `n` and returns a raw pointer to it.
@@ -9,6 +12,14 @@ use crate::symbolic::group_theory::Group;
 /// # Returns
 /// A raw pointer (`*mut Group`) to the newly created group.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_cyclic_group_create(
     n: usize
@@ -28,6 +39,14 @@ pub unsafe extern "C" fn rssn_cyclic_group_create(
 /// A raw pointer (`*mut Group`) to the newly created group.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dihedral_group_create(
     n: usize
 ) -> *mut Group {
@@ -45,6 +64,14 @@ pub unsafe extern "C" fn rssn_dihedral_group_create(
 /// # Returns
 /// A raw pointer (`*mut Group`) to the newly created group, or NULL if `n` is invalid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_symmetric_group_create(
     n: usize
@@ -67,6 +94,14 @@ pub unsafe extern "C" fn rssn_symmetric_group_create(
 /// # Returns
 /// A raw pointer (`*mut Group`) to the newly created group.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_klein_four_group_create(
 ) -> *mut Group {

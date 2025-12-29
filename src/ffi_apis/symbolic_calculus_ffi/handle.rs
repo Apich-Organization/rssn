@@ -6,6 +6,14 @@ use std::os::raw::c_char;
 use crate::symbolic::calculus;
 use crate::symbolic::core::Expr;
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
 ) -> Option<&'a str> {
@@ -26,6 +34,14 @@ unsafe fn c_str_to_str<'a>(
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_differentiate(
     expr: *const Expr,
@@ -61,6 +77,14 @@ pub unsafe extern "C" fn rssn_differentiate(
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_integrate(
     expr: *const Expr,
@@ -99,6 +123,14 @@ pub unsafe extern "C" fn rssn_integrate(
 /// The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_check_analytic(
     expr: *const Expr,
     var: *const c_char,
@@ -128,6 +160,14 @@ pub unsafe extern "C" fn rssn_check_analytic(
 /// # Safety
 /// The caller must ensure `expr` and `point` are valid Expr pointers and `var` is a valid C string.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_limit(
     expr: *const Expr,
@@ -167,6 +207,14 @@ pub unsafe extern "C" fn rssn_limit(
 
 /// Computes the definite integral of an expression.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_definite_integrate(
     expr: *const Expr,
@@ -212,6 +260,14 @@ pub unsafe extern "C" fn rssn_definite_integrate(
 /// Evaluates an expression at a given point.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_evaluate_at_point(
     expr: *const Expr,
     var: *const c_char,
@@ -250,6 +306,14 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
 
 /// Finds poles of an expression.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_find_poles(
     expr: *const Expr,
@@ -295,6 +359,14 @@ pub unsafe extern "C" fn rssn_find_poles(
 /// This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub const unsafe extern "C" fn rssn_poles_len(
     poles: *const Vec<Expr>
 ) -> usize {
@@ -325,6 +397,14 @@ pub const unsafe extern "C" fn rssn_poles_len(
 /// This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>` and
 /// returns ownership of a heap-allocated `Expr` to the caller.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_poles_get(
     poles: *const Vec<Expr>,
@@ -365,6 +445,14 @@ pub unsafe extern "C" fn rssn_poles_get(
 /// not be used after this call.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_free_poles(
     poles: *mut Vec<Expr>
 ) {
@@ -377,6 +465,14 @@ pub unsafe extern "C" fn rssn_free_poles(
 
 /// Calculates the residue of a complex function at a given pole.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_calculate_residue(
     expr: *const Expr,
@@ -417,6 +513,14 @@ pub unsafe extern "C" fn rssn_calculate_residue(
 /// Finds the order of a pole.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_find_pole_order(
     expr: *const Expr,
     var: *const c_char,
@@ -450,6 +554,14 @@ pub unsafe extern "C" fn rssn_find_pole_order(
 
 /// Substitutes a variable with an expression.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_substitute(
     expr: *const Expr,
@@ -494,6 +606,14 @@ pub unsafe extern "C" fn rssn_substitute(
 /// I'll return a Vec<Expr> of size 2.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_get_real_imag_parts(
     expr: *const Expr
 ) -> *mut Vec<Expr> {
@@ -517,6 +637,14 @@ pub unsafe extern "C" fn rssn_get_real_imag_parts(
 
 /// Computes a path integral.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_path_integrate(
     expr: *const Expr,

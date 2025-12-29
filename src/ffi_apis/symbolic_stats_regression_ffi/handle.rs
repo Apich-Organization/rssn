@@ -5,6 +5,14 @@ use crate::ffi_apis::common::c_str_to_str;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn collect_pairs(
     x_data: *const *const Expr,
     y_data: *const *const Expr,
@@ -44,6 +52,14 @@ unsafe fn collect_pairs(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_simple_linear_regression(
     x_data: *const *const Expr,
     y_data: *const *const Expr,
@@ -81,6 +97,14 @@ pub unsafe extern "C" fn rssn_simple_linear_regression(
 /// Returns a raw pointer to an `Expr` (vector) containing the coefficients of the polynomial.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_polynomial_regression(
     x_data: *const *const Expr,
@@ -125,6 +149,14 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
 /// Returns a raw pointer to an `Expr` representing the solutions (optimized parameter values).
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_nonlinear_regression(
     x_data: *const *const Expr,

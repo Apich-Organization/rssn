@@ -8,6 +8,14 @@ use crate::physics::physics_cnm;
 /// The caller is responsible for freeing the memory using `rssn_free_f64_array`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
     initial_condition: *const f64,
     n: usize,
@@ -51,6 +59,14 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
 
 /// Frees a float64 array allocated by the CNM FFI.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_free_f64_cnm_array(
     ptr: *mut f64,

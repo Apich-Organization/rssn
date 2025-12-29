@@ -5,9 +5,25 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 #[cfg(feature = "jit")]
-use cranelift_codegen::ir::condcodes::{IntCC, FloatCC};
+use cranelift_codegen::ir::condcodes::FloatCC;
 #[cfg(feature = "jit")]
-use cranelift_codegen::ir::{AbiParam, types, StackSlotData, StackSlotKind, InstBuilder, MemFlags, Type, Value};
+use cranelift_codegen::ir::condcodes::IntCC;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::types;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::AbiParam;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::InstBuilder;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::MemFlags;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::StackSlotData;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::StackSlotKind;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::Type;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::Value;
 #[cfg(feature = "jit")]
 use cranelift_codegen::Context;
 #[cfg(feature = "jit")]
@@ -69,7 +85,8 @@ impl JitEngine {
     ///
     /// Panics if the `JITBuilder` fails to initialize.
 
-    #[must_use] 
+    #[must_use]
+
     pub fn new() -> Self {
 
         let function_counter =
@@ -161,9 +178,8 @@ impl JitEngine {
                     Ordering::SeqCst,
                 );
 
-            let name = format!(
-                "jit_fn_{id}"
-            );
+            let name =
+                format!("jit_fn_{id}");
 
             // Setup signature: () -> f64
             self.ctx
@@ -644,17 +660,13 @@ fn cast_to_storage(
 
     if ty.is_int()
         && storage_ty.is_int()
-
         && ty.bits() < storage_ty.bits()
-        {
+    {
 
-            return builder
-                .ins()
-                .uextend(
-                    storage_ty,
-                    val,
-                );
-        }
+        return builder
+            .ins()
+            .uextend(storage_ty, val);
+    }
 
     if ty.is_float()
         && storage_ty == types::I64

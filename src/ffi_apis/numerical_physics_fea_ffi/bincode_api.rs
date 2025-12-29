@@ -57,6 +57,14 @@ struct PrincipalStressOutput {
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -107,6 +115,14 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
     buffer: BincodeBuffer
@@ -162,6 +178,14 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(
     buffer: BincodeBuffer

@@ -363,10 +363,7 @@ pub fn eval_complex_expr<
 
             let inner = node
                 .to_expr()
-                .map_err(|e| {
-
-                    e
-                })?;
+                .map_err(|e| e)?;
 
             eval_complex_expr(
                 &inner,

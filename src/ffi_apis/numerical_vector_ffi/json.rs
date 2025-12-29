@@ -55,6 +55,14 @@ struct LerpInput {
 /// JSON FFI for `vec_add`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_vec_add_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -115,6 +123,14 @@ pub unsafe extern "C" fn rssn_vec_add_json(
 
 /// JSON FFI for `vec_sub`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_vec_sub_json(
     json_ptr: *const c_char
@@ -177,6 +193,14 @@ pub unsafe extern "C" fn rssn_vec_sub_json(
 /// JSON FFI for `scalar_mul`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_vec_scalar_mul_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -229,6 +253,14 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_json(
 
 /// JSON FFI for `dot_product`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_vec_dot_product_json(
     json_ptr: *const c_char
@@ -291,6 +323,14 @@ pub unsafe extern "C" fn rssn_vec_dot_product_json(
 /// JSON FFI for norm ($`L_2`$).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_vec_norm_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -340,6 +380,14 @@ pub unsafe extern "C" fn rssn_vec_norm_json(
 
 /// JSON FFI for `lp_norm`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_vec_lp_norm_json(
     json_ptr: *const c_char
@@ -393,6 +441,14 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_json(
 
 /// JSON FFI for normalize.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_vec_normalize_json(
     json_ptr: *const c_char
@@ -453,6 +509,14 @@ pub unsafe extern "C" fn rssn_vec_normalize_json(
 
 /// JSON FFI for `cross_product`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_vec_cross_product_json(
     json_ptr: *const c_char
@@ -516,6 +580,14 @@ pub unsafe extern "C" fn rssn_vec_cross_product_json(
 /// JSON FFI for distance.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_vec_distance_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -576,6 +648,14 @@ pub unsafe extern "C" fn rssn_vec_distance_json(
 
 /// JSON FFI for angle.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_vec_angle_json(
     json_ptr: *const c_char
@@ -638,6 +718,14 @@ pub unsafe extern "C" fn rssn_vec_angle_json(
 /// JSON FFI for project.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_vec_project_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -698,6 +786,14 @@ pub unsafe extern "C" fn rssn_vec_project_json(
 
 /// JSON FFI for reflect.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_vec_reflect_json(
     json_ptr: *const c_char
@@ -760,6 +856,14 @@ pub unsafe extern "C" fn rssn_vec_reflect_json(
 /// JSON FFI for lerp.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_vec_lerp_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -821,6 +925,14 @@ pub unsafe extern "C" fn rssn_vec_lerp_json(
 
 /// JSON FFI for `is_orthogonal`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(
     json_ptr: *const c_char
@@ -885,6 +997,14 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_json(
 /// JSON FFI for `is_parallel`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_vec_is_parallel_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -946,6 +1066,14 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_json(
 
 /// JSON FFI for `cosine_similarity`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_vec_cosine_similarity_json(
     json_ptr: *const c_char

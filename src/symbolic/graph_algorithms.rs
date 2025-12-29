@@ -2543,6 +2543,7 @@ pub fn blossom_algorithm<
 ///
 /// This function will return an error if `find_common_ancestor` fails, indicating
 /// an issue during blossom contraction.
+
 pub(crate) fn find_augmenting_path_with_blossoms<
     V: Eq
         + std::hash::Hash
@@ -2667,6 +2668,7 @@ pub(crate) fn find_augmenting_path_with_blossoms<
 ///
 /// This function will return an error if a common ancestor cannot be found,
 /// indicating an internal inconsistency in the blossom algorithm's state.
+
 pub(crate) fn find_common_ancestor(
     origin: &[usize],
     parent: &[Option<usize>],

@@ -75,6 +75,14 @@ struct TwoQuaternionsInput {
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -117,6 +125,14 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
 /// Computes the cross product of two 3D vectors using bincode for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
     buffer: BincodeBuffer
@@ -162,6 +178,14 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -200,6 +224,14 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -227,6 +259,14 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
 /// Creates a 3D translation matrix using bincode for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
     buffer: BincodeBuffer
@@ -259,6 +299,14 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
 /// Multiplies two quaternions using bincode for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_bincode(
     buffer: BincodeBuffer

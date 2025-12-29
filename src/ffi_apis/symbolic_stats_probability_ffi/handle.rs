@@ -13,6 +13,14 @@ use crate::symbolic::stats_probability::StudentT;
 use crate::symbolic::stats_probability::Uniform;
 
 // --- Helper to convert a raw pointer to a boxed Expr ---
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn ptr_to_expr(
     ptr: *const Expr
 ) -> Option<Expr> {
@@ -52,6 +60,14 @@ fn wrap_dist<
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dist_normal(
     mean: *const Expr,
     std_dev: *const Expr,
@@ -78,6 +94,14 @@ pub unsafe extern "C" fn rssn_dist_normal(
 /// Returns a raw pointer to an `Expr` representing the uniform distribution.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_dist_uniform(
     min: *const Expr,
@@ -106,6 +130,14 @@ pub unsafe extern "C" fn rssn_dist_uniform(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dist_binomial(
     n: *const Expr,
     p: *const Expr,
@@ -133,6 +165,14 @@ pub unsafe extern "C" fn rssn_dist_binomial(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dist_poisson(
     rate: *const Expr
 ) -> *mut Expr {
@@ -154,6 +194,14 @@ pub unsafe extern "C" fn rssn_dist_poisson(
 /// Returns a raw pointer to an `Expr` representing the Bernoulli distribution.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_dist_bernoulli(
     p: *const Expr
@@ -177,6 +225,14 @@ pub unsafe extern "C" fn rssn_dist_bernoulli(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dist_exponential(
     rate: *const Expr
 ) -> *mut Expr {
@@ -198,6 +254,14 @@ pub unsafe extern "C" fn rssn_dist_exponential(
 /// Returns a raw pointer to an `Expr` representing the gamma distribution.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_dist_gamma(
     shape: *const Expr,
@@ -226,6 +290,14 @@ pub unsafe extern "C" fn rssn_dist_gamma(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dist_beta(
     alpha: *const Expr,
     beta: *const Expr,
@@ -253,6 +325,14 @@ pub unsafe extern "C" fn rssn_dist_beta(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dist_student_t(
     nu: *const Expr
 ) -> *mut Expr {
@@ -276,6 +356,14 @@ pub unsafe extern "C" fn rssn_dist_student_t(
 /// Returns a raw pointer to an `Expr` representing the PDF at `x`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_dist_pdf(
     dist: *const Expr,
@@ -310,6 +398,14 @@ pub unsafe extern "C" fn rssn_dist_pdf(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dist_cdf(
     dist: *const Expr,
     x: *const Expr,
@@ -343,6 +439,14 @@ pub unsafe extern "C" fn rssn_dist_cdf(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dist_expectation(
     dist: *const Expr
 ) -> *mut Expr {
@@ -372,6 +476,14 @@ pub unsafe extern "C" fn rssn_dist_expectation(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dist_variance(
     dist: *const Expr
 ) -> *mut Expr {
@@ -400,6 +512,14 @@ pub unsafe extern "C" fn rssn_dist_variance(
 /// Returns a raw pointer to an `Expr` representing the MGF.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_dist_mgf(
     dist: *const Expr,

@@ -637,6 +637,7 @@ pub(crate) fn expr_to_f64(
 /// - Units cannot be parsed from the provided strings.
 /// - Addition, subtraction, multiplication, or division of quantities fails
 ///   due to incompatible dimensions.
+
 pub fn unify_expression(
     expr: &Expr
 ) -> Result<Expr, String> {

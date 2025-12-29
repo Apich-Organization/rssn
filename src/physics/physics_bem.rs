@@ -30,7 +30,8 @@ pub struct Vector2D {
 impl Vector2D {
     /// Creates a new 2D vector.
 
-    #[must_use] 
+    #[must_use]
+
     pub const fn new(
         x: f64,
         y: f64,
@@ -44,7 +45,8 @@ impl Vector2D {
 
     /// Calculates the norm of the vector.
 
-    #[must_use] 
+    #[must_use]
+
     pub fn norm(&self) -> f64 {
 
         self.x.hypot(self.y)
@@ -119,7 +121,8 @@ impl Vector3D {
     #[allow(dead_code)]
     /// Creates a new 3D vector.
 
-    #[must_use] 
+    #[must_use]
+
     pub const fn new(
         x: f64,
         y: f64,
@@ -136,11 +139,14 @@ impl Vector3D {
     #[allow(dead_code)]
     /// Calculates the norm of the vector.
 
-    #[must_use] 
+    #[must_use]
+
     pub fn norm(&self) -> f64 {
 
-        (self.x.mul_add(self.x, self.y * self.y)
-            + self.z * self.z)
+        (self.x.mul_add(
+            self.x,
+            self.y * self.y,
+        ) + self.z * self.z)
             .sqrt()
     }
 }
@@ -203,7 +209,8 @@ pub struct Element2D {
 impl Element2D {
     /// Creates a new 2D boundary element.
 
-    #[must_use] 
+    #[must_use]
+
     pub fn new(
         p1: Vector2D,
         p2: Vector2D,
@@ -489,7 +496,8 @@ pub fn simulate_2d_cylinder_scenario(
 /// * `u` - The solved boundary potentials.
 /// * `q` - The solved boundary fluxes.
 
-#[must_use] 
+#[must_use]
+
 pub fn evaluate_potential_2d(
     point: (f64, f64),
     elements: &[Element2D],
@@ -509,7 +517,11 @@ pub fn evaluate_potential_2d(
 
         let r = r_vec.norm();
 
-        let dot = r_vec.x.mul_add(elements[i].normal.x, r_vec.y * elements[i].normal.y);
+        let dot = r_vec.x.mul_add(
+            elements[i].normal.x,
+            r_vec.y
+                * elements[i].normal.y,
+        );
 
         let h_ij = -dot
             / (2.0
@@ -522,8 +534,15 @@ pub fn evaluate_potential_2d(
                 * std::f64::consts::PI)
             * r.ln();
 
-        result += (g_ij * elements[i].length).mul_add(q[i], -(h_ij
-                * elements[i].length * u[i]));
+        result += (g_ij
+            * elements[i].length)
+            .mul_add(
+                q[i],
+                -(h_ij
+                    * elements[i]
+                        .length
+                    * u[i]),
+            );
     }
 
     result

@@ -1,7 +1,11 @@
 use std::os::raw::c_int;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::topology::{Simplex, SimplicialComplex, SymbolicChain, create_grid_complex, create_torus_complex};
+use crate::symbolic::topology::create_grid_complex;
+use crate::symbolic::topology::create_torus_complex;
+use crate::symbolic::topology::Simplex;
+use crate::symbolic::topology::SimplicialComplex;
+use crate::symbolic::topology::SymbolicChain;
 
 // --- Simplex ---
 

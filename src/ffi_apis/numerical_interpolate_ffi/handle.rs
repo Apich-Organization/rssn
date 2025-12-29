@@ -15,6 +15,14 @@ pub type CubicSplineHandle =
 /// Computes Lagrange interpolation and returns a Polynomial pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
     x_coords: *const f64,
     y_coords: *const f64,
@@ -66,6 +74,14 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
 
 /// Creates a cubic spline interpolator handle.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
     x_coords: *const f64,
@@ -119,6 +135,14 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
 /// Evaluates a cubic spline at a given x coordinate.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_cubic_spline_evaluate(
     handle: *const CubicSplineHandle,
     x: f64,
@@ -142,6 +166,14 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_evaluate(
 /// Frees a cubic spline handle.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_cubic_spline_free(
     handle: *mut CubicSplineHandle
 ) {
@@ -159,6 +191,14 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_free(
 /// Evaluates a Bézier curve at parameter t.
 /// `control_points` is a flattened array of size `n_points` * dim.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_bezier_curve(
     control_points: *const f64,
@@ -215,6 +255,14 @@ pub unsafe extern "C" fn rssn_num_bezier_curve(
 
 /// Evaluates a B-spline curve at parameter t.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_b_spline(
     control_points: *const f64,

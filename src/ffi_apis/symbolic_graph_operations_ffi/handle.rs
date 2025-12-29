@@ -102,7 +102,8 @@ pub extern "C" fn rssn_graph_induced_subgraph(
         &labels,
     );
 
-    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
+    Box::into_raw(Box::new(result))
+        .cast::<RssnGraph>()
 }
 
 /// Computes the union of two graphs.
@@ -131,7 +132,8 @@ pub extern "C" fn rssn_graph_union(
 
     let result = union(g1, g2);
 
-    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
+    Box::into_raw(Box::new(result))
+        .cast::<RssnGraph>()
 }
 
 /// Computes the intersection of two graphs.
@@ -160,7 +162,8 @@ pub extern "C" fn rssn_graph_intersection(
 
     let result = intersection(g1, g2);
 
-    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
+    Box::into_raw(Box::new(result))
+        .cast::<RssnGraph>()
 }
 
 /// Computes the Cartesian product of two graphs.
@@ -192,7 +195,8 @@ pub extern "C" fn rssn_graph_cartesian_product(
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
+    Box::into_raw(Box::new(result))
+        .cast::<RssnGraph>()
 }
 
 /// Computes the Tensor product of two graphs.
@@ -224,7 +228,8 @@ pub extern "C" fn rssn_graph_tensor_product(
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
+    Box::into_raw(Box::new(result))
+        .cast::<RssnGraph>()
 }
 
 /// Computes the complement of a graph.
@@ -246,7 +251,8 @@ pub extern "C" fn rssn_graph_complement(
 
     let result = complement(graph);
 
-    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
+    Box::into_raw(Box::new(result))
+        .cast::<RssnGraph>()
 }
 
 /// Computes the disjoint union of two graphs.
@@ -278,7 +284,8 @@ pub extern "C" fn rssn_graph_disjoint_union(
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
+    Box::into_raw(Box::new(result))
+        .cast::<RssnGraph>()
 }
 
 /// Computes the join of two graphs.
@@ -309,5 +316,6 @@ pub extern "C" fn rssn_graph_join(
 
     let result = convert_expr_graph_to_string_graph(result_expr);
 
-    Box::into_raw(Box::new(result)).cast::<RssnGraph>()
+    Box::into_raw(Box::new(result))
+        .cast::<RssnGraph>()
 }

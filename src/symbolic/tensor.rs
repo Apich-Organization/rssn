@@ -47,6 +47,7 @@ impl Tensor {
     ///
     /// This function will return an error if the number of components does not match
     /// the product of the shape dimensions.
+
     pub fn new(
         components: Vec<Expr>,
         shape: Vec<usize>,
@@ -98,6 +99,7 @@ impl Tensor {
     /// # Errors
     ///
     /// This function will return an error if the number of indices is incorrect or an index is out of bounds.
+
     pub fn get(
         &self,
         indices: &[usize],
@@ -203,6 +205,7 @@ impl Tensor {
     /// # Errors
     ///
     /// This function will return an error if the tensors have incompatible shapes.
+
     pub fn add(
         &self,
         other: &Self,
@@ -252,6 +255,7 @@ impl Tensor {
     /// # Errors
     ///
     /// This function will return an error if the tensors have incompatible shapes.
+
     pub fn sub(
         &self,
         other: &Self,
@@ -303,6 +307,7 @@ impl Tensor {
     /// # Errors
     ///
     /// This function will return an error if components of the resulting tensor cannot be created.
+
     pub fn scalar_mul(
         &self,
         scalar: &Expr,
@@ -341,6 +346,7 @@ impl Tensor {
     /// # Errors
     ///
     /// This function will return an error if components of the resulting tensor cannot be created.
+
     pub fn outer_product(
         &self,
         other: &Self,
@@ -402,6 +408,7 @@ impl Tensor {
     /// This function will return an error if:
     /// - Axes are out of bounds or dimensions along contracted axes are unequal.
     /// - An axis is contracted with itself.
+
     pub fn contract(
         &self,
         axis1: usize,
@@ -567,6 +574,7 @@ impl Tensor {
     /// # Errors
     ///
     /// This function will return an error if the tensor is not rank-2.
+
     pub fn to_matrix_expr(
         &self
     ) -> Result<Expr, String> {
@@ -619,6 +627,7 @@ impl MetricTensor {
     /// # Errors
     ///
     /// This function will return an error if `g` is not a square rank-2 tensor or cannot be inverted.
+
     pub fn new(
         g: Tensor
     ) -> Result<Self, String> {
@@ -683,6 +692,7 @@ impl MetricTensor {
     /// # Errors
     ///
     /// This function will return an error if the input is not a rank-1 tensor.
+
     pub fn raise_index(
         &self,
         covector: &Tensor,
@@ -717,6 +727,7 @@ impl MetricTensor {
     /// # Errors
     ///
     /// This function will return an error if the input is not a rank-1 tensor.
+
     pub fn lower_index(
         &self,
         vector: &Tensor,
@@ -755,6 +766,7 @@ impl MetricTensor {
 /// # Errors
 ///
 /// This function will return an error if the number of variables does not match the metric dimension.
+
 pub fn christoffel_symbols_first_kind(
     metric: &MetricTensor,
     vars: &[&str],
@@ -857,6 +869,7 @@ pub fn christoffel_symbols_first_kind(
 /// # Errors
 ///
 /// This function will return an error if dimensions mismatch or computation fails.
+
 pub fn christoffel_symbols_second_kind(
     metric: &MetricTensor,
     vars: &[&str],
@@ -892,6 +905,7 @@ pub fn christoffel_symbols_second_kind(
 /// # Errors
 ///
 /// This function will return an error if computation fails.
+
 pub fn riemann_curvature_tensor(
     metric: &MetricTensor,
     vars: &[&str],
@@ -992,6 +1006,7 @@ pub fn riemann_curvature_tensor(
 /// # Errors
 ///
 /// This function will return an error if dimensions mismatch or computation fails.
+
 pub fn covariant_derivative_vector(
     vector_field: &Tensor,
     metric: &MetricTensor,

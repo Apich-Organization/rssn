@@ -43,6 +43,14 @@ struct BSplineInput {
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
     input_ptr: *const c_char
 ) -> *mut c_char {
@@ -80,6 +88,14 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
 /// Computes the cubic spline interpolation for a given set of points using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
     input_ptr: *const c_char
@@ -123,6 +139,14 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_bezier_curve_json(
     input_ptr: *const c_char
 ) -> *mut c_char {
@@ -155,6 +179,14 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_json(
 /// Computes a point on a B-spline curve given control points, degree, knots, and a parameter t, using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_b_spline_json(
     input_ptr: *const c_char

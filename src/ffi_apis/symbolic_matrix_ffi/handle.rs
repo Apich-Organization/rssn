@@ -1,5 +1,10 @@
 use crate::symbolic::core::Expr;
-use crate::symbolic::matrix::{add_matrices, mul_matrices, transpose_matrix, determinant, inverse_matrix, solve_linear_system};
+use crate::symbolic::matrix::add_matrices;
+use crate::symbolic::matrix::determinant;
+use crate::symbolic::matrix::inverse_matrix;
+use crate::symbolic::matrix::mul_matrices;
+use crate::symbolic::matrix::solve_linear_system;
+use crate::symbolic::matrix::transpose_matrix;
 
 /// Performs matrix addition using raw pointers to `Expr` objects.
 

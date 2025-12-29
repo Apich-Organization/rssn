@@ -74,6 +74,14 @@ pub const extern "C" fn rssn_num_nt_phi(
 /// `out_factors` must be large enough.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_nt_factorize(
     n: u64,
     out_factors: *mut u64,

@@ -5,7 +5,13 @@ use std::os::raw::c_int;
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_algorithms::{bfs, dfs, connected_components, edmonds_karp_max_flow, kruskal_mst, has_cycle, is_bipartite};
+use crate::symbolic::graph_algorithms::bfs;
+use crate::symbolic::graph_algorithms::connected_components;
+use crate::symbolic::graph_algorithms::dfs;
+use crate::symbolic::graph_algorithms::edmonds_karp_max_flow;
+use crate::symbolic::graph_algorithms::has_cycle;
+use crate::symbolic::graph_algorithms::is_bipartite;
+use crate::symbolic::graph_algorithms::kruskal_mst;
 
 /// Opaque type for Graph<String> to work with cbindgen
 #[repr(C)]
@@ -25,7 +31,8 @@ pub extern "C" fn rssn_graph_new(
         is_directed != 0,
     );
 
-    Box::into_raw(Box::new(graph)).cast::<RssnGraph>()
+    Box::into_raw(Box::new(graph))
+        .cast::<RssnGraph>()
 }
 
 /// Frees a graph.
@@ -64,9 +71,8 @@ pub extern "C" fn rssn_graph_add_node(
 
     let graph = unsafe {
 
-        &mut *ptr.cast::<Graph<
-            String,
-        >>()
+        &mut *ptr
+            .cast::<Graph<String>>()
     };
 
     let label_str = unsafe {
@@ -100,9 +106,8 @@ pub extern "C" fn rssn_graph_add_edge(
 
     let graph = unsafe {
 
-        &mut *ptr.cast::<Graph<
-            String,
-        >>()
+        &mut *ptr
+            .cast::<Graph<String>>()
     };
 
     let from = unsafe {
@@ -433,5 +438,7 @@ pub extern "C" fn rssn_graph_is_bipartite(
         &*ptr.cast::<Graph<String>>()
     };
 
-    i32::from(is_bipartite(graph).is_some())
+    i32::from(
+        is_bipartite(graph).is_some(),
+    )
 }

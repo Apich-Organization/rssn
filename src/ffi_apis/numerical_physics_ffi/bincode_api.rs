@@ -83,6 +83,14 @@ struct QuantumNumberInput {
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -136,6 +144,14 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -188,6 +204,14 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -239,6 +263,14 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -287,6 +319,14 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
     buffer: BincodeBuffer
@@ -338,6 +378,14 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -384,6 +432,14 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bin
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_bincode(
     buffer: BincodeBuffer

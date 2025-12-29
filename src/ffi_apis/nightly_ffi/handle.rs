@@ -23,6 +23,14 @@ pub struct RssnMatrixHandle;
 /// A raw pointer to the Matrix object, or null on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_create_nightly(
     rows: usize,
     cols: usize,
@@ -55,11 +63,20 @@ pub unsafe extern "C" fn rssn_num_matrix_create_nightly(
         slice.to_vec(),
     );
 
-    Box::into_raw(Box::new(matrix)).cast::<RssnMatrixHandle>()
+    Box::into_raw(Box::new(matrix))
+        .cast::<RssnMatrixHandle>()
 }
 
 /// Frees a previously allocated Matrix.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_matrix_free_nightly(
     matrix: *mut RssnMatrixHandle
@@ -79,6 +96,14 @@ pub unsafe extern "C" fn rssn_num_matrix_free_nightly(
 /// Returns the number of rows of a given matrix.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub const unsafe extern "C" fn rssn_num_matrix_get_rows_nightly(
     matrix: *const RssnMatrixHandle
@@ -100,6 +125,14 @@ pub const unsafe extern "C" fn rssn_num_matrix_get_rows_nightly(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub const unsafe extern "C" fn rssn_num_matrix_get_cols_nightly(
     matrix: *const RssnMatrixHandle
 ) -> usize {
@@ -119,6 +152,14 @@ pub const unsafe extern "C" fn rssn_num_matrix_get_cols_nightly(
 /// Retrieves the raw data of a given matrix.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_matrix_get_data_nightly(
     matrix: *const RssnMatrixHandle,
@@ -162,6 +203,14 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data_nightly(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_add_nightly(
     m1: *const RssnMatrixHandle,
 
@@ -198,12 +247,21 @@ pub unsafe extern "C" fn rssn_num_matrix_add_nightly(
 
     let res = v1.clone() + v2.clone();
 
-    Box::into_raw(Box::new(res)).cast::<RssnMatrixHandle>()
+    Box::into_raw(Box::new(res))
+        .cast::<RssnMatrixHandle>()
 }
 
 /// Multiplies two matrices.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_matrix_mul_nightly(
     m1: *const RssnMatrixHandle,
@@ -239,12 +297,21 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_nightly(
 
     let res = v1.clone() * v2.clone();
 
-    Box::into_raw(Box::new(res)).cast::<RssnMatrixHandle>()
+    Box::into_raw(Box::new(res))
+        .cast::<RssnMatrixHandle>()
 }
 
 /// Transposes a matrix.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_matrix_transpose_nightly(
     matrix: *const RssnMatrixHandle
@@ -262,12 +329,21 @@ pub unsafe extern "C" fn rssn_num_matrix_transpose_nightly(
 
     let res = m.transpose();
 
-    Box::into_raw(Box::new(res)).cast::<RssnMatrixHandle>()
+    Box::into_raw(Box::new(res))
+        .cast::<RssnMatrixHandle>()
 }
 
 /// Computes the determinant of a matrix.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_matrix_determinant_nightly(
     matrix: *const RssnMatrixHandle,
@@ -310,6 +386,14 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant_nightly(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_inverse_nightly(
     matrix: *const RssnMatrixHandle
 ) -> *mut RssnMatrixHandle {
@@ -325,9 +409,10 @@ pub unsafe extern "C" fn rssn_num_matrix_inverse_nightly(
     };
 
     match m.inverse() {
-        | Some(inv) => {
-            Box::into_raw(Box::new(inv)).cast::<RssnMatrixHandle>()
-        },
+        | Some(inv) => Box::into_raw(
+            Box::new(inv),
+        )
+        .cast::<RssnMatrixHandle>(),
         | None => {
 
             update_last_error(
@@ -344,6 +429,14 @@ pub unsafe extern "C" fn rssn_num_matrix_inverse_nightly(
 /// Creates an identity matrix.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_identity_nightly(
     size: usize
 ) -> *mut RssnMatrixHandle {
@@ -351,11 +444,20 @@ pub unsafe extern "C" fn rssn_num_matrix_identity_nightly(
     let m =
         Matrix::<f64>::identity(size);
 
-    Box::into_raw(Box::new(m)).cast::<RssnMatrixHandle>()
+    Box::into_raw(Box::new(m))
+        .cast::<RssnMatrixHandle>()
 }
 
 /// Checks if it's identity.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_matrix_is_identity_nightly(
     matrix: *const RssnMatrixHandle,
@@ -378,6 +480,14 @@ pub unsafe extern "C" fn rssn_num_matrix_is_identity_nightly(
 /// Checks if it's orthogonal.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_is_orthogonal_nightly(
     matrix: *const RssnMatrixHandle,
     epsilon: f64,
@@ -398,6 +508,14 @@ pub unsafe extern "C" fn rssn_num_matrix_is_orthogonal_nightly(
 
 /// Returns the rank.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_matrix_rank_nightly(
     matrix: *const RssnMatrixHandle,
@@ -438,6 +556,14 @@ pub unsafe extern "C" fn rssn_num_matrix_rank_nightly(
 /// Returns the trace.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_trace_nightly(
     matrix: *const RssnMatrixHandle,
     out_trace: *mut f64,
@@ -477,6 +603,14 @@ pub unsafe extern "C" fn rssn_num_matrix_trace_nightly(
 /// Returns the Frobenius norm.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_frobenius_norm_nightly(
     matrix: *const RssnMatrixHandle
 ) -> f64 {
@@ -498,6 +632,14 @@ pub unsafe extern "C" fn rssn_num_matrix_frobenius_norm_nightly(
 /// 0: Native, 1: Faer
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_set_backend_nightly(
     matrix: *mut RssnMatrixHandle,
     backend_id: i32,
@@ -508,16 +650,21 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend_nightly(
         return -1;
     }
 
-    let m = &mut *matrix.cast::<Matrix<f64>>();
+    let m = &mut *matrix
+        .cast::<Matrix<f64>>();
 
     match backend_id {
         | 0 => {
+
             m.set_backend(
                 Backend::Native,
             );
         },
         | 1 => {
-            m.set_backend(Backend::Faer);
+
+            m.set_backend(
+                Backend::Faer,
+            );
         },
         | _ => return -1,
     }
@@ -528,6 +675,14 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend_nightly(
 /// Computes SVD decomposition: A = U * S * V^T.
 /// Returns 0 on success, -1 on error.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_matrix_decompose_svd_nightly(
     matrix: *const RssnMatrixHandle,
@@ -545,7 +700,8 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd_nightly(
         return -1;
     }
 
-    let m = &*matrix.cast::<Matrix<f64>>();
+    let m =
+        &*matrix.cast::<Matrix<f64>>();
 
     if let Some(res) = m.decompose(
         FaerDecompositionType::Svd,
@@ -567,6 +723,14 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd_nightly(
 /// Computes Cholesky decomposition: A = L * L^T.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_decompose_cholesky_nightly(
     matrix: *const RssnMatrixHandle,
     out_l: *mut *mut RssnMatrixHandle,
@@ -579,7 +743,8 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_cholesky_nightly(
         return -1;
     }
 
-    let m = &*matrix.cast::<Matrix<f64>>();
+    let m =
+        &*matrix.cast::<Matrix<f64>>();
 
     if let Some(res) = m.decompose(
         FaerDecompositionType::Cholesky,
@@ -597,6 +762,14 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_cholesky_nightly(
 /// Computes Symmetric Eigendecomposition: A = V * D * V^T.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_decompose_eigen_symmetric_nightly(
     matrix: *const RssnMatrixHandle,
     out_values: *mut *mut RssnMatrixHandle,
@@ -611,7 +784,8 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_eigen_symmetric_nightly(
         return -1;
     }
 
-    let m = &*matrix.cast::<Matrix<f64>>();
+    let m =
+        &*matrix.cast::<Matrix<f64>>();
 
     if let Some(res) = m.decompose(FaerDecompositionType::EigenSymmetric) {
         if let FaerDecompositionResult::EigenSymmetric { values, vectors } = res {

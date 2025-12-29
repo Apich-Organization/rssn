@@ -4,7 +4,11 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::polynomial::{is_polynomial, polynomial_degree, polynomial_long_division, leading_coefficient, contains_var};
+use crate::symbolic::polynomial::contains_var;
+use crate::symbolic::polynomial::is_polynomial;
+use crate::symbolic::polynomial::leading_coefficient;
+use crate::symbolic::polynomial::polynomial_degree;
+use crate::symbolic::polynomial::polynomial_long_division;
 
 /// Checks if an expression is a polynomial in the given variable (handle-based)
 #[no_mangle]

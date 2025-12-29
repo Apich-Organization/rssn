@@ -5,7 +5,8 @@ use std::os::raw::c_char;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
 use crate::symbolic::rewriting::apply_rules_to_normal_form;
 use crate::symbolic::rewriting::knuth_bendix;

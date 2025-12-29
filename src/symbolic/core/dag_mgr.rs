@@ -16,7 +16,9 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use ordered_float::OrderedFloat;
 
-use super::expr::{PathType, SparsePolynomial, Expr};
+use super::expr::Expr;
+use super::expr::PathType;
+use super::expr::SparsePolynomial;
 
 lazy_static! {
     /// Global singleton instance of the DagManager.

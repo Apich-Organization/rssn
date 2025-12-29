@@ -311,7 +311,8 @@ pub fn simulate_lid_driven_cavity_scenario(
 
             eprintln!(
                 "An error occurred \
-                 during simulation: {e}"
+                 during simulation: \
+                 {e}"
             );
         },
     }

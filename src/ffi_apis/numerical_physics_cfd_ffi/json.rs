@@ -118,6 +118,14 @@ struct Burgers1DInput {
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -185,6 +193,14 @@ pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(
 /// This function is unsafe because it returns a raw pointer that the caller must free.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(
     _input: *const c_char
 ) -> *mut c_char {
@@ -231,6 +247,14 @@ pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(
 ///
 /// This function is unsafe because it returns a raw pointer that the caller must free.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(
     _input: *const c_char
@@ -285,6 +309,14 @@ pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(
     input: *const c_char
@@ -345,6 +377,14 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(
     input: *const c_char
@@ -411,6 +451,14 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -474,6 +522,14 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(
     input: *const c_char
@@ -541,6 +597,14 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -605,6 +669,14 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_cfd_solve_burgers_1d_json(
     input: *const c_char

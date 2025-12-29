@@ -14,6 +14,14 @@ use crate::symbolic::rewriting::RewriteRule;
 /// The caller must ensure `lhs` and `rhs` are valid Expr pointers.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_rewrite_rule_new(
     lhs: *const Expr,
     rhs: *const Expr,
@@ -38,6 +46,14 @@ pub unsafe extern "C" fn rssn_rewrite_rule_new(
 /// The caller must ensure `rule` was created by this module and hasn't been freed yet.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_rewrite_rule_free(
     rule: *mut RewriteRule
 ) {
@@ -55,6 +71,14 @@ pub unsafe extern "C" fn rssn_rewrite_rule_free(
 /// # Safety
 /// The caller must ensure `rule` is a valid `RewriteRule` pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(
     rule: *const RewriteRule
@@ -78,6 +102,14 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(
 /// The caller must ensure `rule` is a valid `RewriteRule` pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_rewrite_rule_get_rhs(
     rule: *const RewriteRule
 ) -> *mut Expr {
@@ -97,6 +129,14 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_rhs(
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer and `rules` is a valid array.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
     expr: *const Expr,
@@ -156,6 +196,14 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
 /// The caller must ensure `equations` is a valid array of Expr pointers.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_knuth_bendix(
     equations: *const *const Expr,
     equations_len: usize,
@@ -213,6 +261,14 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
 /// The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub const unsafe extern "C" fn rssn_rules_vec_len(
     rules: *const Vec<RewriteRule>
 ) -> usize {
@@ -233,6 +289,14 @@ pub const unsafe extern "C" fn rssn_rules_vec_len(
 /// # Safety
 /// The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_rules_vec_get(
     rules: *const Vec<RewriteRule>,
@@ -262,6 +326,14 @@ pub unsafe extern "C" fn rssn_rules_vec_get(
 /// The caller must ensure `rules` was created by this module and hasn't been freed yet.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_rules_vec_free(
     rules: *mut Vec<RewriteRule>
 ) {
@@ -279,6 +351,14 @@ pub unsafe extern "C" fn rssn_rules_vec_free(
 /// # Safety
 /// The caller must free the returned string.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_rewrite_rule_to_string(
     rule: *const RewriteRule

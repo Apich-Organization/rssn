@@ -65,6 +65,14 @@ pub extern "C" fn rssn_physics_mm_sph_create(
 /// Frees an SPH system.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_physics_mm_sph_free(
     system: *mut physics_mm::SPHSystem
 ) {
@@ -77,6 +85,14 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_free(
 
 /// Adds a particle to the SPH system.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
     system: *mut physics_mm::SPHSystem,
@@ -111,6 +127,14 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
 /// Updates the SPH system by one time step.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_physics_mm_sph_update(
     system: *mut physics_mm::SPHSystem,
     dt: f64,
@@ -124,6 +148,14 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update(
 
 /// Returns the number of particles in the SPH system.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub const unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
     system: *mut physics_mm::SPHSystem
@@ -140,6 +172,14 @@ pub const unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
 
 /// Gets particle positions as a Matrix (Nx2).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
     system: *mut physics_mm::SPHSystem

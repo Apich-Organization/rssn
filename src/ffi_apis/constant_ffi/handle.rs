@@ -99,10 +99,10 @@ macro_rules! gen_ffi_handle {
 /// Generates an `FFI` function that retrieves a constant value.
 ///
 /// This function converts the value to a `C` string and returns a pointer to it.
-/// 
+///
 /// # Safety
 ///
-/// The caller is responsible for memory management. The returned string must 
+/// The caller is responsible for memory management. The returned string must
 /// be freed using `rssn_free_string` to avoid memory leaks.
         #[no_mangle]
         pub extern "C" fn $ffi_name() -> *mut std::os::raw::c_char {

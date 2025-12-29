@@ -91,7 +91,10 @@ pub fn run_schrodinger_simulation(
                 .enumerate()
             {
 
-                let k_sq = kx[i].mul_add(kx[i], ky_sq);
+                let k_sq = kx[i]
+                    .mul_add(
+                        kx[i], ky_sq,
+                    );
 
                 let phase = -hbar
                     * k_sq
@@ -284,8 +287,15 @@ pub fn simulate_double_slit_scenario(
             let norm_sq =
                 dx * dx + dy * dy;
 
-            let phase = (initial_momentum.0 as f64)
-                .mul_add(dx, initial_momentum.1 * dy);
+            let phase =
+                (initial_momentum.0
+                    as f64)
+                    .mul_add(
+                        dx,
+                        initial_momentum
+                            .1
+                            * dy,
+                    );
 
             let envelope = (-norm_sq
                 / (2.0

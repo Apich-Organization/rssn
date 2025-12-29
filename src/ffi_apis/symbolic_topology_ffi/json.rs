@@ -1,6 +1,9 @@
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
-use crate::symbolic::topology::{Simplex, SimplicialComplex, SymbolicChain};
+use crate::symbolic::topology::Simplex;
+use crate::symbolic::topology::SimplicialComplex;
+use crate::symbolic::topology::SymbolicChain;
 
 /// Creates a new Simplex (JSON)
 #[no_mangle]

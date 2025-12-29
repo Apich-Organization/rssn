@@ -25,6 +25,14 @@ use crate::symbolic::lie_groups_and_algebras::{LieAlgebra, so3, su2, lie_bracket
 /// This function is unsafe because it returns ownership of a heap-allocated
 /// `LieAlgebra` that must later be freed with [`rssn_lie_algebra_free`].
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_lie_algebra_so3_create(
 ) -> *mut LieAlgebra {
 
@@ -53,6 +61,14 @@ pub unsafe extern "C" fn rssn_lie_algebra_so3_create(
 /// This function is unsafe because it returns ownership of a heap-allocated
 /// `LieAlgebra` that must later be freed with [`rssn_lie_algebra_free`].
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
 ) -> *mut LieAlgebra {
 
@@ -79,6 +95,14 @@ pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
 /// This function is unsafe because it takes ownership of a raw pointer. The pointer
 /// must either be null or have been allocated by the corresponding constructor, and
 /// must not be used after this call.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_lie_algebra_free(
     ptr: *mut LieAlgebra
@@ -107,6 +131,14 @@ pub unsafe extern "C" fn rssn_lie_algebra_free(
 /// This function is unsafe because it dereferences a raw pointer; the caller must
 /// ensure `ptr` points to a valid `LieAlgebra`.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub const unsafe extern "C" fn rssn_lie_algebra_get_dimension(
     ptr: *const LieAlgebra
 ) -> usize {
@@ -132,6 +164,14 @@ pub const unsafe extern "C" fn rssn_lie_algebra_get_dimension(
 ///
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of a heap-allocated C string.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_lie_algebra_get_name(
     ptr: *const LieAlgebra
@@ -164,6 +204,14 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_name(
 ///
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
     ptr: *const LieAlgebra,
@@ -205,6 +253,14 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_lie_bracket(
     x: *const Expr,
     y: *const Expr,
@@ -244,6 +300,14 @@ pub unsafe extern "C" fn rssn_lie_bracket(
 ///
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_exponential_map(
     x: *const Expr,
@@ -286,6 +350,14 @@ pub unsafe extern "C" fn rssn_exponential_map(
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_adjoint_representation_group(
     g: *const Expr,
     x: *const Expr,
@@ -326,6 +398,14 @@ pub unsafe extern "C" fn rssn_adjoint_representation_group(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
     x: *const Expr,
@@ -369,6 +449,14 @@ pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of heap-allocated memory. The caller must ensure all pointers are
 /// valid and must correctly free the returned expressions and array.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_commutator_table(
     algebra: *const LieAlgebra,
@@ -453,6 +541,14 @@ pub unsafe extern "C" fn rssn_commutator_table(
 /// This function is unsafe because it dereferences a raw pointer; the caller must
 /// ensure `algebra` points to a valid `LieAlgebra`.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_check_jacobi_identity(
     algebra: *const LieAlgebra
 ) -> bool {
@@ -485,6 +581,14 @@ pub unsafe extern "C" fn rssn_check_jacobi_identity(
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of heap-allocated memory. The caller must ensure `out_len` is valid
 /// and correctly free the returned memory.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_so3_generators(
     out_len: *mut usize
@@ -530,6 +634,14 @@ pub unsafe extern "C" fn rssn_so3_generators(
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of heap-allocated memory. The caller must ensure `out_len` is valid
 /// and correctly free the returned memory.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_su2_generators(
     out_len: *mut usize

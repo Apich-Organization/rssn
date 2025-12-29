@@ -57,6 +57,14 @@ struct LaplacianInput {
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -79,7 +87,9 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(std::string::String::as_str)
+        .map(
+            std::string::String::as_str,
+        )
         .collect();
 
     let res = vector_calculus::divergence_expr(
@@ -132,6 +142,14 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -154,7 +172,9 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(std::string::String::as_str)
+        .map(
+            std::string::String::as_str,
+        )
         .collect();
 
     let res =
@@ -208,6 +228,14 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -230,7 +258,9 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(std::string::String::as_str)
+        .map(
+            std::string::String::as_str,
+        )
         .collect();
 
     let res =

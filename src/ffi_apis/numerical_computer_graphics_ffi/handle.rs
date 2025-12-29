@@ -30,6 +30,14 @@ pub extern "C" fn rssn_num_graphics_dot_product(
 /// Pointers must be valid.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_cross_product(
     x1: f64,
     y1: f64,
@@ -70,6 +78,14 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product(
 /// # Safety
 /// Pointers must be valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_normalize(
     x: f64,
@@ -120,6 +136,14 @@ pub extern "C" fn rssn_num_graphics_magnitude(
 /// # Safety
 /// Pointers must be valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_reflect(
     ix: f64,
@@ -207,6 +231,14 @@ pub extern "C" fn rssn_num_graphics_radians_to_degrees(
 /// Pointers must be valid.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
     w1: f64,
     x1: f64,
@@ -254,6 +286,14 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
 /// # Safety
 /// `out_ptr` must point to at least 16 f64 values.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x(
     angle_rad: f64,
@@ -326,6 +366,14 @@ pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
 /// # Safety
 /// Pointers must be valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic(
     p0x: f64,

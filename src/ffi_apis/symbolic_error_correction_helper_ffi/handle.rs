@@ -106,6 +106,14 @@ pub extern "C" fn rssn_gf256_div(
 /// Caller must ensure `poly` is a valid pointer to an array of `len` bytes.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_poly_eval_gf256(
     poly: *const u8,
     len: usize,
@@ -130,6 +138,14 @@ pub unsafe extern "C" fn rssn_poly_eval_gf256(
 /// # Safety
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_poly_add_gf256(
     p1: *const u8,
@@ -173,6 +189,14 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_poly_mul_gf256(
     p1: *const u8,
     p1_len: usize,
@@ -215,6 +239,14 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
 /// Caller must ensure pointer is valid. Result is allocated and must be freed.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_poly_scale_gf256(
     poly: *const u8,
     len: usize,
@@ -251,6 +283,14 @@ pub unsafe extern "C" fn rssn_poly_scale_gf256(
 /// Caller must ensure pointer is valid. Result is allocated and must be freed.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_poly_derivative_gf256(
     poly: *const u8,
     len: usize,
@@ -285,6 +325,14 @@ pub unsafe extern "C" fn rssn_poly_derivative_gf256(
 /// # Safety
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_poly_gcd_gf256(
     p1: *const u8,
@@ -342,6 +390,14 @@ pub extern "C" fn rssn_finite_field_new(
 /// Caller must ensure `field` is a valid pointer returned by `rssn_finite_field_new`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_finite_field_free(
     field: *mut Arc<FiniteField>
 ) {
@@ -357,6 +413,14 @@ pub unsafe extern "C" fn rssn_finite_field_free(
 /// # Safety
 /// Caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_poly_add_gf(
     p1: *const Expr,
@@ -393,6 +457,14 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
 /// # Safety
 /// Caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_poly_mul_gf(
     p1: *const Expr,

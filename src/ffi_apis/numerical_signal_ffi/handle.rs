@@ -11,6 +11,14 @@ use crate::numerical::signal;
 /// Computes the FFT and returns a Matrix<Complex<f64>> as a Matrix<f64> (real, imag interleaved).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_signal_fft(
     real: *const f64,
     imag: *const f64,
@@ -62,6 +70,14 @@ pub unsafe extern "C" fn rssn_num_signal_fft(
 /// Computes the convolution of two sequences.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_signal_convolve(
     a: *const f64,
     a_len: usize,
@@ -105,6 +121,14 @@ pub unsafe extern "C" fn rssn_num_signal_convolve(
 /// Computes the cross-correlation of two sequences.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_signal_cross_correlation(
     a: *const f64,
     a_len: usize,
@@ -145,6 +169,14 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation(
 /// Generates a Hann window.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_signal_hann_window(
     n: usize
 ) -> *mut Matrix<f64> {
@@ -158,6 +190,14 @@ pub unsafe extern "C" fn rssn_num_signal_hann_window(
 
 /// Generates a Hamming window.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_signal_hamming_window(
     n: usize

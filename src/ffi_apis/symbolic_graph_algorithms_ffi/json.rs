@@ -1,11 +1,32 @@
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_algorithms::{dfs, bfs, connected_components, is_connected, strongly_connected_components, has_cycle, find_bridges_and_articulation_points, kruskal_mst, edmonds_karp_max_flow, dinic_max_flow, is_bipartite, bipartite_maximum_matching, topological_sort};
+use crate::symbolic::graph_algorithms::bfs;
+use crate::symbolic::graph_algorithms::bipartite_maximum_matching;
+use crate::symbolic::graph_algorithms::connected_components;
+use crate::symbolic::graph_algorithms::dfs;
+use crate::symbolic::graph_algorithms::dinic_max_flow;
+use crate::symbolic::graph_algorithms::edmonds_karp_max_flow;
+use crate::symbolic::graph_algorithms::find_bridges_and_articulation_points;
+use crate::symbolic::graph_algorithms::has_cycle;
+use crate::symbolic::graph_algorithms::is_bipartite;
+use crate::symbolic::graph_algorithms::is_connected;
+use crate::symbolic::graph_algorithms::kruskal_mst;
+use crate::symbolic::graph_algorithms::strongly_connected_components;
+use crate::symbolic::graph_algorithms::topological_sort;
 
 /// Performs DFS traversal.
 /// Input: {"graph": Graph, "`start_node"`: usize}
 /// Output: [usize] (array of node indices)
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_graph_dfs_api(
     json: *const std::os::raw::c_char
@@ -36,6 +57,14 @@ pub unsafe extern "C" fn rssn_json_graph_dfs_api(
 /// Output: [usize]
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_graph_bfs_api(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
@@ -65,6 +94,14 @@ pub unsafe extern "C" fn rssn_json_graph_bfs_api(
 /// Output: [[usize]] (array of arrays)
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_graph_connected_components_api(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
@@ -85,6 +122,14 @@ pub unsafe extern "C" fn rssn_json_graph_connected_components_api(
 /// Output: bool
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_graph_is_connected(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
@@ -103,6 +148,14 @@ pub unsafe extern "C" fn rssn_json_graph_is_connected(
 /// Input: Graph
 /// Output: [[usize]]
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_graph_strongly_connected_components(
     json: *const std::os::raw::c_char
@@ -126,6 +179,14 @@ pub unsafe extern "C" fn rssn_json_graph_strongly_connected_components(
 /// Output: bool
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_graph_has_cycle_api(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
@@ -144,6 +205,14 @@ pub unsafe extern "C" fn rssn_json_graph_has_cycle_api(
 /// Input: Graph
 /// Output: {"bridges": [(usize, usize)], "`articulation_points"`: [usize]}
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
     json: *const std::os::raw::c_char
@@ -175,6 +244,14 @@ pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
 /// Input: Graph
 /// Output: Graph (MST)
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_graph_kruskal_mst_api(
     json: *const std::os::raw::c_char
@@ -213,6 +290,14 @@ pub unsafe extern "C" fn rssn_json_graph_kruskal_mst_api(
 /// Output: f64
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_graph_edmonds_karp_max_flow(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
@@ -243,6 +328,14 @@ pub unsafe extern "C" fn rssn_json_graph_edmonds_karp_max_flow(
 /// Input: {"graph": Graph, "source": usize, "sink": usize}
 /// Output: f64
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_graph_dinic_max_flow(
     json: *const std::os::raw::c_char
@@ -275,6 +368,14 @@ pub unsafe extern "C" fn rssn_json_graph_dinic_max_flow(
 /// Output: [i8] or null
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_graph_is_bipartite_api(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
@@ -293,6 +394,14 @@ pub unsafe extern "C" fn rssn_json_graph_is_bipartite_api(
 /// Input: {"graph": Graph, "partition": [i8]}
 /// Output: [(usize, usize)]
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_graph_bipartite_maximum_matching(
     json: *const std::os::raw::c_char
@@ -323,6 +432,14 @@ pub unsafe extern "C" fn rssn_json_graph_bipartite_maximum_matching(
 /// Input: Graph
 /// Output: [usize] or null
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_graph_topological_sort(
     json: *const std::os::raw::c_char

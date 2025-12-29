@@ -25,6 +25,14 @@ struct TwoGaInput {
 /// JSON FFI for `ga_add`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_add_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -72,6 +80,14 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(
 
 /// JSON FFI for `ga_sub`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_ga_sub_json(
     json_ptr: *const c_char
@@ -121,6 +137,14 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(
 /// JSON FFI for `ga_mul`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_mul_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -168,6 +192,14 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(
 
 /// JSON FFI for `ga_wedge`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_ga_wedge_json(
     json_ptr: *const c_char
@@ -221,6 +253,14 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(
 /// JSON FFI for `ga_dot`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_dot_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -273,6 +313,14 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(
 /// JSON FFI for `ga_reverse`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_reverse_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -321,6 +369,14 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(
 /// JSON FFI for `ga_norm`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_norm_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -368,6 +424,14 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(
 
 /// JSON FFI for `ga_inv`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_ga_inv_json(
     json_ptr: *const c_char

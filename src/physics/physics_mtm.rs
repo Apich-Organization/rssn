@@ -29,7 +29,9 @@ impl Grid {
         }
     }
 
-    pub(crate) const fn size(&self) -> usize {
+    pub(crate) const fn size(
+        &self
+    ) -> usize {
 
         self.u.len()
     }
@@ -55,8 +57,10 @@ pub(crate) fn calculate_residual(
         .skip(1)
     {
 
-        let a_u = (2.0f64.mul_add(grid.u[i], -grid.u[i - 1])
-            - grid.u[i + 1])
+        let a_u = (2.0f64.mul_add(
+            grid.u[i],
+            -grid.u[i - 1],
+        ) - grid.u[i + 1])
             * h_sq_inv;
 
         *vars = grid.f[i] - a_u;
@@ -91,9 +95,17 @@ pub(crate) fn smooth(
             let f_i = grid.f[i];
 
             let new_u_i = 0.5
-                * h_sq.mul_add(f_i, prev + next);
+                * h_sq.mul_add(
+                    f_i,
+                    prev + next,
+                );
 
-            grid.u[i] = (1.0_f64 - omega).mul_add(u_old[i], omega * new_u_i);
+            grid.u[i] = (1.0_f64
+                - omega)
+                .mul_add(
+                    u_old[i],
+                    omega * new_u_i,
+                );
         }
     }
 }
@@ -120,9 +132,11 @@ pub(crate) fn restrict(
 
         let j = 2 * i;
 
-        *vars = 0.25f64.mul_add(fine_residual[j - 1], 0.5 * fine_residual[j])
-            + 0.25
-                * fine_residual[j + 1];
+        *vars = 0.25f64.mul_add(
+            fine_residual[j - 1],
+            0.5 * fine_residual[j],
+        ) + 0.25
+            * fine_residual[j + 1];
     }
 
     coarse_f
@@ -421,10 +435,15 @@ pub(crate) fn calculate_residual_2d(
 
             for j in 1 .. n - 1 {
 
-                let a_u = (4.0f64.mul_add(grid.u
-                        [i * n + j], -grid.u[(i - 1)
-                        * n
-                        + j])
+                let a_u = (4.0f64
+                    .mul_add(
+                        grid.u
+                            [i * n + j],
+                        -grid.u[(i
+                            - 1)
+                            * n
+                            + j],
+                    )
                     - grid.u[(i + 1)
                         * n
                         + j]
@@ -468,7 +487,10 @@ pub(crate) fn restrict_2d(
 
             let val = (fine_grid.f
                 [fine_grid
-                    .idx(fi, fj)].mul_add(4.0, (fine_grid.f
+                    .idx(fi, fj)]
+            .mul_add(
+                4.0,
+                (fine_grid.f
                     [fine_grid.idx(
                         fi - 1,
                         fj,
@@ -490,30 +512,26 @@ pub(crate) fn restrict_2d(
                             .idx(
                                 fi,
                                 fj + 1,
-                            )]) * 2.0)
-                + (fine_grid.f
+                            )])
+                    * 2.0,
+            ) + (fine_grid
+                .f[fine_grid
+                .idx(fi - 1, fj - 1)]
+                + fine_grid.f
                     [fine_grid.idx(
-                        fi - 1,
+                        fi + 1,
                         fj - 1,
                     )]
-                    + fine_grid.f
-                        [fine_grid
-                            .idx(
-                                fi + 1,
-                                fj - 1,
-                            )]
-                    + fine_grid.f
-                        [fine_grid
-                            .idx(
-                                fi - 1,
-                                fj + 1,
-                            )]
-                    + fine_grid.f
-                        [fine_grid
-                            .idx(
-                                fi + 1,
-                                fj + 1,
-                            )]))
+                + fine_grid.f
+                    [fine_grid.idx(
+                        fi - 1,
+                        fj + 1,
+                    )]
+                + fine_grid.f
+                    [fine_grid.idx(
+                        fi + 1,
+                        fj + 1,
+                    )]))
                 / 16.0;
 
             let helper =

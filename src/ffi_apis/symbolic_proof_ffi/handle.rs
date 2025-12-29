@@ -6,6 +6,14 @@ use std::os::raw::c_int;
 use crate::symbolic::core::Expr;
 use crate::symbolic::proof;
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
     len: usize,
@@ -32,7 +40,10 @@ unsafe fn parse_c_str_array(
 
         match c_str.to_str() {
             | Ok(s) => {
-                vars.push(s.to_string());
+
+                vars.push(
+                    s.to_string(),
+                );
             },
             | Err(_) => return None,
         }
@@ -43,6 +54,14 @@ unsafe fn parse_c_str_array(
 
 /// Verifies an equation solution (Handle)
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
     equations_ptr: *const *const Expr,
@@ -133,6 +152,14 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
 /// Verifies an indefinite integral (Handle)
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_verify_indefinite_integral_handle(
     integrand_ptr: *const Expr,
     integral_result_ptr: *const Expr,
@@ -164,6 +191,14 @@ pub unsafe extern "C" fn rssn_verify_indefinite_integral_handle(
 
 /// Verifies a definite integral (Handle)
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_verify_definite_integral_handle(
     integrand_ptr: *const Expr,
@@ -199,6 +234,14 @@ pub unsafe extern "C" fn rssn_verify_definite_integral_handle(
 
 /// Verifies an ODE solution (Handle)
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_verify_ode_solution_handle(
     ode_ptr: *const Expr,
@@ -245,6 +288,14 @@ pub unsafe extern "C" fn rssn_verify_ode_solution_handle(
 /// Verifies a matrix inverse (Handle)
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_verify_matrix_inverse_handle(
     original_ptr: *const Expr,
     inverse_ptr: *const Expr,
@@ -265,6 +316,14 @@ pub unsafe extern "C" fn rssn_verify_matrix_inverse_handle(
 
 /// Verifies a derivative (Handle)
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_verify_derivative_handle(
     original_func_ptr: *const Expr,
@@ -297,6 +356,14 @@ pub unsafe extern "C" fn rssn_verify_derivative_handle(
 
 /// Verifies a limit (Handle)
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_verify_limit_handle(
     f_ptr: *const Expr,

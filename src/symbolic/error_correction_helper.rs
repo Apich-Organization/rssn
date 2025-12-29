@@ -242,10 +242,11 @@ impl FieldElement {
 
 impl Add for FieldElement {
     type Output = Result<Self, String>;
-/// # Errors
-///
-/// This function will return an error if `self` and `rhs` belong to different
-/// finite fields.
+
+    /// # Errors
+    ///
+    /// This function will return an error if `self` and `rhs` belong to different
+    /// finite fields.
 
 
     fn add(
@@ -276,10 +277,11 @@ impl Add for FieldElement {
 
 impl Sub for FieldElement {
     type Output = Result<Self, String>;
-/// # Errors
-///
-/// This function will return an error if `self` and `rhs` belong to different
-/// finite fields.
+
+    /// # Errors
+    ///
+    /// This function will return an error if `self` and `rhs` belong to different
+    /// finite fields.
 
 
     fn sub(
@@ -311,10 +313,11 @@ impl Sub for FieldElement {
 
 impl Mul for FieldElement {
     type Output = Result<Self, String>;
-/// # Errors
-///
-/// This function will return an error if `self` and `rhs` belong to different
-/// finite fields.
+
+    /// # Errors
+    ///
+    /// This function will return an error if `self` and `rhs` belong to different
+    /// finite fields.
 
 
     fn mul(

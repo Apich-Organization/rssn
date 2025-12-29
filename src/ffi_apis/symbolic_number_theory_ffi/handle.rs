@@ -51,7 +51,9 @@ pub extern "C" fn rssn_solve_diophantine_handle(
 
     let vars_str: Vec<&str> = vars
         .iter()
-        .map(std::string::String::as_str)
+        .map(
+            std::string::String::as_str,
+        )
         .collect();
 
     match solve_diophantine(

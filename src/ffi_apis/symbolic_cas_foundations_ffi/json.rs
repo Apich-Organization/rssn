@@ -5,7 +5,8 @@ use std::os::raw::c_char;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::cas_foundations;
 use crate::symbolic::core::Expr;
 use crate::symbolic::grobner::MonomialOrder;
@@ -113,7 +114,9 @@ pub extern "C" fn rssn_cas_simplify_with_relations_json(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(std::string::String::as_str)
+        .map(
+            std::string::String::as_str,
+        )
         .collect();
 
     let result = cas_foundations::simplify_with_relations(

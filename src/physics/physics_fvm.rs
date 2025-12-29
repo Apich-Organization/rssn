@@ -74,9 +74,11 @@ impl Mesh {
 
     /// Returns the number of cells in the mesh.
     #[inline]
+    #[must_use]
 
-    #[must_use] 
-    pub const fn num_cells(&self) -> usize {
+    pub const fn num_cells(
+        &self
+    ) -> usize {
 
         self.cells.len()
     }
@@ -114,14 +116,19 @@ where
     F: Fn(f64) -> f64,
 {
 
-    0.5f64.mul_add(flux_fn(u_left) + flux_fn(u_right), -(0.5
-            * (dx / dt) * (u_right - u_left)))
+    0.5f64.mul_add(
+        flux_fn(u_left)
+            + flux_fn(u_right),
+        -(0.5
+            * (dx / dt)
+            * (u_right - u_left)),
+    )
 }
 
 /// Minmod limiter for MUSCL reconstruction.
 #[inline]
+#[must_use]
 
-#[must_use] 
 pub fn minmod(
     a: f64,
     b: f64,
@@ -141,8 +148,8 @@ pub fn minmod(
 
 /// Van Leer limiter for MUSCL reconstruction.
 #[inline]
+#[must_use]
 
-#[must_use] 
 pub fn van_leer(
     a: f64,
     b: f64,
@@ -235,7 +242,8 @@ where
 
 /// Example scenario: Simulates the advection of a square wave (top-hat profile).
 
-#[must_use] 
+#[must_use]
+
 pub fn simulate_1d_advection_scenario(
 ) -> Vec<f64> {
 
@@ -376,7 +384,8 @@ pub struct SweState {
 
 /// Solves 1D Shallow Water Equations using FVM and Lax-Friedrichs flux.
 
-#[must_use] 
+#[must_use]
+
 pub fn solve_shallow_water_1d(
     initial_h: Vec<f64>,
     initial_hu: Vec<f64>,
@@ -415,7 +424,10 @@ pub fn solve_shallow_water_1d(
 
         (
             s.hu,
-            s.hu.mul_add(u, 0.5 * g * s.h * s.h),
+            s.hu.mul_add(
+                u,
+                0.5 * g * s.h * s.h,
+            ),
         )
     };
 
@@ -649,7 +661,8 @@ where
 
 /// Example scenario: Simulates the advection of a 2D Gaussian blob.
 
-#[must_use] 
+#[must_use]
+
 pub fn simulate_2d_advection_scenario(
 ) -> Vec<f64> {
 
@@ -690,8 +703,11 @@ pub fn simulate_2d_advection_scenario(
 
             let sigma_sq = 0.005;
 
-            let dist_sq = (y - cy).mul_add(y - cy, (x - cx)
-                .powi(2));
+            let dist_sq = (y - cy)
+                .mul_add(
+                    y - cy,
+                    (x - cx).powi(2),
+                );
 
             (-dist_sq
                 / (2.0 * sigma_sq))
@@ -953,7 +969,8 @@ where
 
 /// Example scenario: Simulates the advection of a 3D Gaussian blob.
 
-#[must_use] 
+#[must_use]
+
 pub fn simulate_3d_advection_scenario(
 ) -> Vec<f64> {
 
@@ -1006,8 +1023,13 @@ pub fn simulate_3d_advection_scenario(
 
             let sigma_sq = 0.01;
 
-            let dist_sq = (z - cz).mul_add(z - cz, (x - cx)
-                .powi(2) + (y - cy).powi(2));
+            let dist_sq = (z - cz)
+                .mul_add(
+                    z - cz,
+                    (x - cx).powi(2)
+                        + (y - cy)
+                            .powi(2),
+                );
 
             (-dist_sq
                 / (2.0 * sigma_sq))

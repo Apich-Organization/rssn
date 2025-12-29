@@ -334,11 +334,23 @@ pub fn plot_vector_field_2d(
 
         for j in 0 .. steps {
 
-            let x = (x_range.1 - x_range.0).mul_add((i as f64) / (steps - 1)
-                            as f64, x_range.0);
+            let x = (x_range.1
+                - x_range.0)
+                .mul_add(
+                    (i as f64)
+                        / (steps - 1)
+                            as f64,
+                    x_range.0,
+                );
 
-            let y = (y_range.1 - y_range.0).mul_add((j as f64) / (steps - 1)
-                            as f64, y_range.0);
+            let y = (y_range.1
+                - y_range.0)
+                .mul_add(
+                    (j as f64)
+                        / (steps - 1)
+                            as f64,
+                    y_range.0,
+                );
 
             let mut vars_map =
                 HashMap::new();
@@ -374,9 +386,17 @@ pub fn plot_vector_field_2d(
                         - x_range.0)
                         * 0.05;
 
-                    let end_x = (vx / magnitude).mul_add(scale, x);
+                    let end_x = (vx
+                        / magnitude)
+                        .mul_add(
+                            scale, x,
+                        );
 
-                    let end_y = (vy / magnitude).mul_add(scale, y);
+                    let end_y = (vy
+                        / magnitude)
+                        .mul_add(
+                            scale, y,
+                        );
 
                     arrows.push(PathElement::new(vec![(x, y), (end_x, end_y)], conf.line_color));
                 }
@@ -648,7 +668,8 @@ pub fn plot_vector_field_3d(
 
     let mut arrows = Vec::new();
 
-    let steps = (conf.samples as f64).cbrt()
+    let steps = (conf.samples as f64)
+        .cbrt()
         as usize;
 
     for i in 0 .. steps {
@@ -657,17 +678,35 @@ pub fn plot_vector_field_3d(
 
             for k in 0 .. steps {
 
-                let x = (x_range.1 - x_range.0).mul_add((i as f64) / (steps
+                let x = (x_range.1
+                    - x_range.0)
+                    .mul_add(
+                        (i as f64)
+                            / (steps
                                 - 1)
-                                as f64, x_range.0);
+                                as f64,
+                        x_range.0,
+                    );
 
-                let y = (y_range.1 - y_range.0).mul_add((j as f64) / (steps
+                let y = (y_range.1
+                    - y_range.0)
+                    .mul_add(
+                        (j as f64)
+                            / (steps
                                 - 1)
-                                as f64, y_range.0);
+                                as f64,
+                        y_range.0,
+                    );
 
-                let z = (z_range.1 - z_range.0).mul_add((k as f64) / (steps
+                let z = (z_range.1
+                    - z_range.0)
+                    .mul_add(
+                        (k as f64)
+                            / (steps
                                 - 1)
-                                as f64, z_range.0);
+                                as f64,
+                        z_range.0,
+                    );
 
                 let mut vars_map =
                     HashMap::new();
@@ -706,9 +745,12 @@ pub fn plot_vector_field_3d(
                     ),
                 ) {
 
-                    let magnitude = (vx.mul_add(vx, vy * vy)
-                        + vz * vz)
-                        .sqrt();
+                    let magnitude =
+                        (vx.mul_add(
+                            vx,
+                            vy * vy,
+                        ) + vz * vz)
+                            .sqrt();
 
                     if magnitude > 1e-6
                     {

@@ -6,6 +6,14 @@ use crate::numerical::functional_analysis;
 
 /// Helper to convert raw pointers to (x, y) tuples.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn to_points(
     x: *const f64,
     y: *const f64,
@@ -32,6 +40,14 @@ unsafe fn to_points(
 /// Calculates the L1 norm.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fa_l1_norm(
     x: *const f64,
     y: *const f64,
@@ -52,6 +68,14 @@ pub unsafe extern "C" fn rssn_num_fa_l1_norm(
 
 /// Calculates the L2 norm.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fa_l2_norm(
     x: *const f64,
@@ -74,6 +98,14 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm(
 /// Calculates the L-infinity norm.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fa_infinity_norm(
     x: *const f64,
     y: *const f64,
@@ -94,6 +126,14 @@ pub unsafe extern "C" fn rssn_num_fa_infinity_norm(
 
 /// Calculates the inner product.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fa_inner_product(
     x1: *const f64,

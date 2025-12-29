@@ -5,7 +5,8 @@ use crate::symbolic::core::Expr;
 
 /// Converts an expression to a Typst string.
 
-#[must_use] 
+#[must_use]
+
 pub fn to_typst(expr: &Expr) -> String {
 
     format!(

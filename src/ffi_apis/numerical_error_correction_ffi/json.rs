@@ -81,6 +81,14 @@ struct HammingDecodeResult {
 /// Encodes a message using Reed-Solomon codes with JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -130,6 +138,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
 /// Decodes a Reed-Solomon codeword with JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
     input: *const c_char
@@ -183,6 +199,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -221,6 +245,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
 // Hamming functions
 /// Encodes a message using Hamming codes with JSON for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
     input: *const c_char
@@ -268,6 +300,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
 /// Decodes a Hamming codeword and corrects errors with JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
     input: *const c_char
@@ -321,6 +361,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -356,6 +404,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
 /// Computes the Hamming distance between two byte vectors with JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
     input: *const c_char
@@ -404,6 +460,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -440,6 +504,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
 /// Computes the CRC32 checksum of a byte vector with JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -475,6 +547,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
 /// Verifies the CRC32 checksum of a byte vector with JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
     input: *const c_char
@@ -515,6 +595,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -554,6 +642,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -592,6 +688,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
 // Interleaving functions
 /// Interleaves a byte vector with a given depth using JSON for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
     input: *const c_char
@@ -633,6 +737,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -673,6 +785,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
 /// Computes the code rate (k/n) of a code with JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -712,6 +832,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
 /// Computes the error correction capability of a code given its minimum distance, using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_error_correction_capability_json(
     input: *const c_char

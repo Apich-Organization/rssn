@@ -12,6 +12,14 @@ use crate::symbolic::core::Expr;
 /// Returns a pointer to a Vec<f64> containing the coefficients.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
     f: *const Expr,
     var: *const c_char,
@@ -67,6 +75,14 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
 /// Evaluates a power series at a point.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
     coeffs: *const Vec<f64>,
     at_point: f64,
@@ -87,6 +103,14 @@ pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
 
 /// Computes the sum of a series.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_numerical_sum_series(
     f: *const Expr,

@@ -12,6 +12,14 @@ use crate::numerical::graph::Graph;
 /// Creates a new graph.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graph_create(
     num_nodes: usize
 ) -> *mut Graph {
@@ -23,6 +31,14 @@ pub unsafe extern "C" fn rssn_num_graph_create(
 
 /// Frees a graph.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graph_free(
     graph: *mut Graph
@@ -36,6 +52,14 @@ pub unsafe extern "C" fn rssn_num_graph_free(
 
 /// Adds a directed edge.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graph_add_edge(
     graph: *mut Graph,
@@ -52,6 +76,14 @@ pub unsafe extern "C" fn rssn_num_graph_add_edge(
 
 /// Computes Dijkstra's algorithm.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graph_dijkstra(
     graph: *mut Graph,
@@ -109,6 +141,14 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra(
 /// Computes BFS.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graph_bfs(
     graph: *mut Graph,
     start_node: usize,
@@ -145,6 +185,14 @@ pub unsafe extern "C" fn rssn_num_graph_bfs(
 
 /// Computes `PageRank`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graph_page_rank(
     graph: *mut Graph,
@@ -192,6 +240,14 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank(
 /// Computes Floyd-Warshall.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall(
     graph: *mut Graph,
     dist_matrix: *mut f64,
@@ -227,6 +283,14 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall(
 /// Result array `components` must be allocated by caller with size `num_nodes`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graph_connected_components(
     graph: *mut Graph,
     components: *mut usize,
@@ -261,6 +325,14 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components(
 /// Computes Minimum Spanning Tree (MST).
 /// Returns a new Graph handle.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree(
     graph: *mut Graph

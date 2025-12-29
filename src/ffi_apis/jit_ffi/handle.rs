@@ -16,6 +16,14 @@ pub extern "C" fn rssn_jit_create(
 /// Frees a JIT Engine instance.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_jit_free(
     engine: *mut JitEngine
 ) {
@@ -33,6 +41,14 @@ pub unsafe extern "C" fn rssn_jit_free(
 /// It assumes the function signature is `fn() -> f64`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_jit_execute(
     func_ptr: *const u8
 ) -> f64 {
@@ -42,6 +58,13 @@ pub unsafe extern "C" fn rssn_jit_execute(
         return 0.0;
     }
 
+    /// # Safety
+    ///
+    /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+    /// The caller must ensure:
+    /// 1. All pointer arguments are valid and point to initialized memory.
+    /// 2. The memory layout of passed structures matches the expected C-ABI layout.
+    /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
     let func: unsafe extern "C" fn() -> f64 = std::mem::transmute(func_ptr);
 
     func()
@@ -53,6 +76,14 @@ pub unsafe extern "C" fn rssn_jit_execute(
 /// `func_ptr`: Pointer to the C function to call. Signature must be `fn(i64, ...) -> i64` where `i64` represents a stack value.
 /// `arg_count`: Number of arguments the function expects (popped from stack).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_jit_register_custom_op(
     engine: *mut JitEngine,

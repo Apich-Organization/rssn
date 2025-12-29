@@ -6,7 +6,11 @@ use serde::Serialize;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
 use crate::ffi_apis::common::BincodeBuffer;
-use crate::numerical::optimize::{OptimizationConfig, ProblemType, Rosenbrock, EquationOptimizer, Sphere};
+use crate::numerical::optimize::EquationOptimizer;
+use crate::numerical::optimize::OptimizationConfig;
+use crate::numerical::optimize::ProblemType;
+use crate::numerical::optimize::Rosenbrock;
+use crate::numerical::optimize::Sphere;
 
 #[derive(Serialize, Deserialize)]
 
@@ -59,6 +63,14 @@ struct OptimizeResponse {
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn numerical_optimize_solve_bincode(
     buffer: BincodeBuffer

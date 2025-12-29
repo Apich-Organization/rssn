@@ -24,7 +24,8 @@ pub struct BincodeBuffer {
 impl BincodeBuffer {
     /// Creates a new empty buffer.
 
-    #[must_use] 
+    #[must_use]
+
     pub const fn empty() -> Self {
 
         Self {
@@ -35,7 +36,8 @@ impl BincodeBuffer {
 
     /// Creates a buffer from a Vec<u8>.
 
-    #[must_use] 
+    #[must_use]
+
     pub fn from_vec(
         bytes: Vec<u8>
     ) -> Self {
@@ -44,7 +46,8 @@ impl BincodeBuffer {
 
         let data = Box::into_raw(
             bytes.into_boxed_slice(),
-        ).cast::<u8>();
+        )
+        .cast::<u8>();
 
         Self {
             data,
@@ -54,8 +57,11 @@ impl BincodeBuffer {
 
     /// Checks if the buffer is null/empty.
 
-    #[must_use] 
-    pub const fn is_null(&self) -> bool {
+    #[must_use]
+
+    pub const fn is_null(
+        &self
+    ) -> bool {
 
         self.data.is_null()
             || self.len == 0
@@ -66,7 +72,15 @@ impl BincodeBuffer {
     /// # Safety
     /// The buffer must be valid and not yet freed.
 
-    #[must_use] 
+    #[must_use]
+    /// # Safety
+    ///
+    /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+    /// The caller must ensure:
+    /// 1. All pointer arguments are valid and point to initialized memory.
+    /// 2. The memory layout of passed structures matches the expected C-ABI layout.
+    /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
     pub unsafe fn as_slice(
         &self
     ) -> &[u8] {
@@ -131,7 +145,8 @@ pub extern "C" fn rssn_free_bincode_buffer(
 ///
 /// Returns null on error.
 
-#[must_use] 
+#[must_use]
+
 pub fn to_c_string(
     s: String
 ) -> *mut c_char {
@@ -166,7 +181,8 @@ pub fn to_json_string<
 ///
 /// Returns None on error.
 
-#[must_use] 
+#[must_use]
+
 pub fn from_json_string<
     T: serde::de::DeserializeOwned,
 >(
@@ -219,7 +235,8 @@ pub fn to_bincode_buffer<
 ///
 /// Returns None on error.
 
-#[must_use] 
+#[must_use]
+
 pub fn from_bincode_buffer<
     T: serde::de::DeserializeOwned,
 >(
@@ -252,7 +269,15 @@ pub fn from_bincode_buffer<
 ///
 /// The caller must ensure that `s` is a valid pointer to a null-terminated C string
 /// and that the string remains valid for the lifetime 'a.
-#[must_use] 
+#[must_use]
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe fn c_str_to_str<'a>(
     s: *const c_char
 ) -> Option<&'a str> {

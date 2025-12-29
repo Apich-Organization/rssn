@@ -13,6 +13,14 @@ use crate::numerical::tensor::{
 /// Creates a new tensor from shape and data.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_tensor_create(
     shape: *const usize,
     ndim: usize,
@@ -68,6 +76,14 @@ pub unsafe extern "C" fn rssn_num_tensor_create(
 /// Frees a tensor object.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_tensor_free(
     tensor: *mut ArrayD<f64>
 ) {
@@ -84,6 +100,14 @@ pub unsafe extern "C" fn rssn_num_tensor_free(
 
 /// Returns the number of dimensions.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_tensor_get_ndim(
     tensor: *const ArrayD<f64>
@@ -102,6 +126,14 @@ pub unsafe extern "C" fn rssn_num_tensor_get_ndim(
 
 /// Returns the shape of the tensor.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_tensor_get_shape(
     tensor: *const ArrayD<f64>,
@@ -136,6 +168,14 @@ pub unsafe extern "C" fn rssn_num_tensor_get_shape(
 
 /// Tensor contraction (tensordot).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_tensor_tensordot(
     a: *const ArrayD<f64>,
@@ -199,6 +239,14 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
 /// Outer product of two tensors.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_tensor_outer_product(
     a: *const ArrayD<f64>,
     b: *const ArrayD<f64>,
@@ -235,6 +283,14 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product(
 
 /// Frobenius norm of a tensor.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_tensor_norm(
     tensor: *const ArrayD<f64>

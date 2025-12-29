@@ -2,9 +2,15 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
-use crate::symbolic::polynomial::{is_polynomial, polynomial_degree, polynomial_long_division, leading_coefficient, to_polynomial_coeffs_vec, contains_var};
+use crate::symbolic::polynomial::contains_var;
+use crate::symbolic::polynomial::is_polynomial;
+use crate::symbolic::polynomial::leading_coefficient;
+use crate::symbolic::polynomial::polynomial_degree;
+use crate::symbolic::polynomial::polynomial_long_division;
+use crate::symbolic::polynomial::to_polynomial_coeffs_vec;
 
 /// Checks if an expression is a polynomial in the given variable (JSON)
 #[no_mangle]

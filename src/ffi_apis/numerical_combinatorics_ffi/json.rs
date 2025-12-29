@@ -34,6 +34,14 @@ struct RecurrenceInput {
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_factorial_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -71,6 +79,14 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_json(
 /// Computes the number of permutations using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_permutations_json(
     input_json: *const c_char
@@ -112,6 +128,14 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_combinations_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -151,6 +175,14 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_json(
 /// Solves a linear recurrence relation using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
     input_json: *const c_char
@@ -210,6 +242,14 @@ struct XNInput {
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -250,6 +290,14 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_bell_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -287,6 +335,14 @@ pub unsafe extern "C" fn rssn_num_comb_bell_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_catalan_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -323,6 +379,14 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_json(
 /// Computes the rising factorial using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
     input_json: *const c_char
@@ -363,6 +427,14 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
 /// Computes the falling factorial using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial_json(
     input_json: *const c_char

@@ -11,6 +11,14 @@ use crate::symbolic::core::Expr;
 /// Computes the numerical divergence of a vector field at a point.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
     funcs: *const *const Expr,
     n_funcs: usize,
@@ -50,6 +58,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
             .to_str()
         {
             | Ok(s) => {
+
                 vars_list.push(s);
             },
             | Err(_) => {
@@ -92,6 +101,14 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
 /// Computes the numerical curl of a 3D vector field at a point.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
     funcs: *const *const Expr,
     vars: *const *const c_char,
@@ -127,6 +144,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
             .to_str()
         {
             | Ok(s) => {
+
                 vars_list.push(s);
             },
             | Err(_) => {
@@ -165,6 +183,14 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
 /// Computes the numerical Laplacian of a scalar field at a point.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
     f: *const Expr,
     vars: *const *const c_char,
@@ -193,6 +219,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
             .to_str()
         {
             | Ok(s) => {
+
                 vars_list.push(s);
             },
             | Err(_) => {
@@ -235,6 +262,14 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
 /// Computes the numerical directional derivative of a function at a point.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
     f: *const Expr,
     vars: *const *const c_char,
@@ -265,6 +300,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
             .to_str()
         {
             | Ok(s) => {
+
                 vars_list.push(s);
             },
             | Err(_) => {

@@ -120,7 +120,10 @@ pub fn solve_midpoint_euler<
             .for_each(
                 |((ym, &yi), &k1i)| {
 
-                    *ym = (0.5 * dt).mul_add(k1i, yi);
+                    *ym = (0.5 * dt)
+                        .mul_add(
+                            k1i, yi,
+                        );
                 },
             );
 
@@ -190,7 +193,9 @@ pub fn solve_heun_euler<
             .for_each(
                 |((yp, &yi), &k1i)| {
 
-                    *yp = dt.mul_add(k1i, yi);
+                    *yp = dt.mul_add(
+                        k1i, yi,
+                    );
                 },
             );
 
@@ -338,7 +343,8 @@ use crate::physics::physics_rkm::DampedOscillatorSystem;
 /// # Returns
 /// A `Vec` of tuples `(time, state_vector)` representing the solution path.
 
-#[must_use] 
+#[must_use]
+
 pub fn simulate_oscillator_forward_euler_scenario(
 ) -> Vec<(f64, Vec<f64>)> {
 

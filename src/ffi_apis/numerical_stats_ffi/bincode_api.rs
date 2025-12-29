@@ -64,6 +64,14 @@ struct TestOutput {
 /// valid and properly encoded.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_mean_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -109,6 +117,14 @@ pub unsafe extern "C" fn rssn_num_stats_mean_bincode(
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_variance_bincode(
     buffer: BincodeBuffer
@@ -156,6 +172,14 @@ pub unsafe extern "C" fn rssn_num_stats_variance_bincode(
 /// valid and properly encoded.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_std_dev_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -202,6 +226,14 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev_bincode(
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_covariance_bincode(
     buffer: BincodeBuffer
@@ -252,6 +284,14 @@ pub unsafe extern "C" fn rssn_num_stats_covariance_bincode(
 /// valid and properly encoded.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_correlation_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -301,6 +341,14 @@ pub unsafe extern "C" fn rssn_num_stats_correlation_bincode(
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_bincode(
     buffer: BincodeBuffer
@@ -356,6 +404,14 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_bincode(
 /// valid and properly encoded.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_welch_t_test_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -409,6 +465,14 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test_bincode(
 /// valid and properly encoded.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -461,6 +525,14 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_bincode(
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_linear_regression_bincode(
     buffer: BincodeBuffer
@@ -521,6 +593,14 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_bincode(
 /// valid and properly encoded.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_z_scores_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -567,6 +647,14 @@ pub unsafe extern "C" fn rssn_num_stats_z_scores_bincode(
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_shannon_entropy_bincode(
     buffer: BincodeBuffer

@@ -17,6 +17,14 @@ use crate::symbolic::functional_analysis::{HilbertSpace, BanachSpace, LinearOper
 /// A raw pointer to the newly created `HilbertSpace`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_hilbert_space_create(
     var: *const c_char,
     lower_bound: *const Expr,
@@ -42,6 +50,14 @@ pub unsafe extern "C" fn rssn_hilbert_space_create(
 /// * `ptr` - Pointer to the `HilbertSpace` to free.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_hilbert_space_free(
     ptr: *mut HilbertSpace
 ) {
@@ -65,6 +81,14 @@ pub unsafe extern "C" fn rssn_hilbert_space_free(
 /// # Returns
 /// A raw pointer to the newly created `BanachSpace`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_banach_space_create(
     var: *const c_char,
@@ -93,6 +117,14 @@ pub unsafe extern "C" fn rssn_banach_space_create(
 /// * `ptr` - Pointer to the `BanachSpace` to free.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_banach_space_free(
     ptr: *mut BanachSpace
 ) {
@@ -113,6 +145,14 @@ pub unsafe extern "C" fn rssn_banach_space_free(
 /// # Returns
 /// A raw pointer to the `LinearOperator`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
     var: *const c_char
@@ -138,6 +178,14 @@ pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
 /// # Returns
 /// A raw pointer to the `LinearOperator`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_linear_operator_integral_create(
     lower_bound: *const Expr,
@@ -166,6 +214,14 @@ pub unsafe extern "C" fn rssn_linear_operator_integral_create(
 /// A raw pointer to the resulting symbolic expression.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_linear_operator_apply(
     op: *const LinearOperator,
     expr: *const Expr,
@@ -181,6 +237,14 @@ pub unsafe extern "C" fn rssn_linear_operator_apply(
 /// # Arguments
 /// * `ptr` - Pointer to the `LinearOperator` to free.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_linear_operator_free(
     ptr: *mut LinearOperator
@@ -204,6 +268,14 @@ pub unsafe extern "C" fn rssn_linear_operator_free(
 /// # Returns
 /// A raw pointer to the symbolic expression representing the inner product.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_inner_product(
     space: *const HilbertSpace,
@@ -230,6 +302,14 @@ pub unsafe extern "C" fn rssn_inner_product(
 /// A raw pointer to the symbolic expression representing the norm.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_norm(
     space: *const HilbertSpace,
     f: *const Expr,
@@ -249,6 +329,14 @@ pub unsafe extern "C" fn rssn_norm(
 /// # Returns
 /// A raw pointer to the symbolic expression representing the norm.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_banach_norm(
     space: *const BanachSpace,
@@ -272,6 +360,14 @@ pub unsafe extern "C" fn rssn_banach_norm(
 /// `true` if orthogonal, `false` otherwise.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_are_orthogonal(
     space: *const HilbertSpace,
     f: *const Expr,
@@ -291,6 +387,14 @@ pub unsafe extern "C" fn rssn_are_orthogonal(
 /// # Returns
 /// A raw pointer to the resulting projection expression.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_project(
     space: *const HilbertSpace,
@@ -315,6 +419,14 @@ pub unsafe extern "C" fn rssn_project(
 /// # Returns
 /// A raw pointer to an array of handles to the orthogonalized basis expressions.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_gram_schmidt(
     space: *const HilbertSpace,

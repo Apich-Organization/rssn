@@ -4,7 +4,11 @@ use std::slice;
 use argmin::core::State;
 use ndarray::Array1;
 
-use crate::numerical::optimize::{Rosenbrock, OptimizationConfig, ProblemType, EquationOptimizer, Sphere};
+use crate::numerical::optimize::EquationOptimizer;
+use crate::numerical::optimize::OptimizationConfig;
+use crate::numerical::optimize::ProblemType;
+use crate::numerical::optimize::Rosenbrock;
+use crate::numerical::optimize::Sphere;
 
 /// FFI-compatible optimization result containing the solution and convergence information.
 ///

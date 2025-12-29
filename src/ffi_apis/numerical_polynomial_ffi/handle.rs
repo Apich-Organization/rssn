@@ -8,6 +8,14 @@ use crate::numerical::polynomial::Polynomial;
 /// Creates a new polynomial from coefficients.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_poly_create(
     coeffs: *const f64,
     len: usize,
@@ -42,6 +50,14 @@ pub unsafe extern "C" fn rssn_num_poly_create(
 /// Frees a polynomial object.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_poly_free(
     poly: *mut Polynomial
 ) {
@@ -57,6 +73,14 @@ pub unsafe extern "C" fn rssn_num_poly_free(
 
 /// Evaluates a polynomial at x.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_poly_eval(
     poly: *const Polynomial,
@@ -77,6 +101,14 @@ pub unsafe extern "C" fn rssn_num_poly_eval(
 /// Returns the degree of a polynomial.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub const unsafe extern "C" fn rssn_num_poly_degree(
     poly: *const Polynomial
 ) -> usize {
@@ -94,6 +126,14 @@ pub const unsafe extern "C" fn rssn_num_poly_degree(
 
 /// Computes the derivative.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_poly_derivative(
     poly: *const Polynomial
@@ -115,6 +155,14 @@ pub unsafe extern "C" fn rssn_num_poly_derivative(
 /// Computes the integral.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_poly_integral(
     poly: *const Polynomial
 ) -> *mut Polynomial {
@@ -134,6 +182,14 @@ pub unsafe extern "C" fn rssn_num_poly_integral(
 
 /// Adds two polynomials.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_poly_add(
     a: *const Polynomial,
@@ -156,6 +212,14 @@ pub unsafe extern "C" fn rssn_num_poly_add(
 /// Subtracts two polynomials.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_poly_sub(
     a: *const Polynomial,
     b: *const Polynomial,
@@ -176,6 +240,14 @@ pub unsafe extern "C" fn rssn_num_poly_sub(
 
 /// Multiplies two polynomials.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_poly_mul(
     a: *const Polynomial,

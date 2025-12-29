@@ -20,14 +20,18 @@ pub extern "C" fn rssn_are_isomorphic_heuristic(
 
     unsafe {
 
-        let graph1 = &*g1.cast::<Graph<String>>();
+        let graph1 = &*g1
+            .cast::<Graph<String>>();
 
-        let graph2 = &*g2.cast::<Graph<String>>();
+        let graph2 = &*g2
+            .cast::<Graph<String>>();
 
-        i32::from(are_isomorphic_heuristic(
-            graph1,
-            graph2,
-        ))
+        i32::from(
+            are_isomorphic_heuristic(
+                graph1,
+                graph2,
+            ),
+        )
     }
 }
 
@@ -46,7 +50,8 @@ pub extern "C" fn rssn_greedy_coloring(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         let colors = greedy_coloring(g);
 
@@ -76,7 +81,8 @@ pub extern "C" fn rssn_chromatic_number_exact(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         chromatic_number_exact(g)
     }

@@ -42,6 +42,14 @@ struct BSplineInput {
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_lagrange_interpolation_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -74,6 +82,14 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_bincode(
 /// Computes the cubic spline interpolation for a given set of points using bincode for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
     buffer: BincodeBuffer
@@ -112,6 +128,14 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -139,6 +163,14 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(
 /// Computes a point on a B-spline curve given control points, degree, knots, and a parameter t, using bincode for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_b_spline_bincode(
     buffer: BincodeBuffer

@@ -28,7 +28,8 @@ impl GeodesicParameters {
     /// Calculates the effective potential for a Schwarzschild black hole.
     /// `V_eff(r)` = -M/r + L^2/(2r^2) - ML^2/r^3
 
-    #[must_use] 
+    #[must_use]
+
     pub fn effective_potential(
         &self,
         r: f64,
@@ -102,7 +103,8 @@ impl OdeSystem for SchwarzschildSystem {
 /// A `Vec` of `(f64, f64)` tuples, where each tuple is an `(x, y)` coordinate
 /// in Cartesian space, representing the simulated orbit.
 
-#[must_use] 
+#[must_use]
+
 pub fn run_geodesic_simulation(
     params: &GeodesicParameters
 ) -> Vec<(f64, f64)> {
@@ -248,7 +250,8 @@ pub fn simulate_black_hole_orbits_scenario(
                 }
 
                 println!(
-                    "Saved path to {filename}"
+                    "Saved path to \
+                     {filename}"
                 );
             }
         });

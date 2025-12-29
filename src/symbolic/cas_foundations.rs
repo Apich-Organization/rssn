@@ -172,6 +172,7 @@ pub fn build_expr_from_factors<
 /// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
+
 pub(crate) fn flatten_sum(
     expr: Expr,
     terms: &mut Vec<Expr>,
@@ -211,6 +212,7 @@ pub(crate) fn flatten_sum(
 /// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
+
 pub(crate) fn flatten_product(
     expr: Expr,
     numeric_factors: &mut Vec<f64>,
@@ -244,6 +246,7 @@ pub(crate) fn flatten_product(
             );
         },
         | Expr::Constant(n) => {
+
             numeric_factors.push(n);
         },
         | _ => other_factors.push(expr),
@@ -257,6 +260,7 @@ pub(crate) fn flatten_product(
 /// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
+
 pub fn normalize(expr: Expr) -> Expr {
 
     match expr {
@@ -398,6 +402,7 @@ pub fn normalize(expr: Expr) -> Expr {
 /// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
+
 pub fn expand(expr: Expr) -> Expr {
 
     let expanded_expr = match expr {

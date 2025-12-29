@@ -27,7 +27,8 @@ pub struct Vector2D {
 impl Vector2D {
     /// Creates a new 2D vector.
 
-    #[must_use] 
+    #[must_use]
+
     pub const fn new(
         x: f64,
         y: f64,
@@ -43,7 +44,10 @@ impl Vector2D {
         &self
     ) -> f64 {
 
-        self.x.mul_add(self.x, self.y * self.y)
+        self.x.mul_add(
+            self.x,
+            self.y * self.y,
+        )
     }
 }
 
@@ -143,7 +147,8 @@ pub struct Poly6Kernel {
 impl Poly6Kernel {
     /// Creates a new Poly6 kernel.
 
-    #[must_use] 
+    #[must_use]
+
     pub fn new(h: f64) -> Self {
 
         Self {
@@ -183,7 +188,8 @@ pub struct SpikyKernel {
 impl SpikyKernel {
     /// Creates a new spiky kernel.
 
-    #[must_use] 
+    #[must_use]
+
     pub fn new(h: f64) -> Self {
 
         Self {
@@ -431,7 +437,8 @@ impl SPHSystem {
 /// # Returns
 /// A `Vec` of tuples `(x, y)` representing the final positions of the particles.
 
-#[must_use] 
+#[must_use]
+
 pub fn simulate_dam_break_2d_scenario(
 ) -> Vec<(f64, f64)> {
 

@@ -35,6 +35,14 @@ struct MatrixDecompositionRequest {
 /// Evaluates a matrix addition from JSON.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_add_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -149,6 +157,14 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
 /// Evaluates a matrix multiplication from JSON.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_mul_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -261,6 +277,14 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
 /// Computes determinant from JSON.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_det_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -349,6 +373,14 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(
 /// Sets backend for a matrix (returns new matrix with backend set) from JSON.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_matrix_set_backend_json(
     json_ptr: *const c_char
 ) -> *mut c_char {
@@ -417,6 +449,14 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend_json(
 
 /// Decomposes a matrix from JSON.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_matrix_decompose_json(
     json_ptr: *const c_char

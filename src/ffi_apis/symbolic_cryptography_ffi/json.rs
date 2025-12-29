@@ -7,7 +7,8 @@ use std::str::FromStr;
 
 use num_bigint::BigInt;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::cryptography::ecdsa_sign;
 use crate::symbolic::cryptography::ecdsa_verify;
 use crate::symbolic::cryptography::generate_keypair;
@@ -35,6 +36,14 @@ fn parse_bigint(
 /// Creates a new elliptic curve.
 /// Arguments: a (str), b (str), modulus (str)
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_elliptic_curve_new(
     a_json: *const c_char,
@@ -71,6 +80,14 @@ pub unsafe extern "C" fn rssn_json_elliptic_curve_new(
 /// Creates an affine curve point.
 /// Arguments: x (str), y (str), modulus (str)
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_curve_point_affine(
     x_json: *const c_char,
@@ -110,6 +127,14 @@ pub unsafe extern "C" fn rssn_json_curve_point_affine(
 /// Creates a point at infinity.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_curve_point_infinity(
 ) -> *mut c_char {
 
@@ -120,6 +145,14 @@ pub unsafe extern "C" fn rssn_json_curve_point_infinity(
 
 /// Checks if a point is on the curve.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_curve_is_on_curve(
     curve_json: *const c_char,
@@ -148,6 +181,14 @@ pub unsafe extern "C" fn rssn_json_curve_is_on_curve(
 /// Negates a point.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_curve_negate(
     curve_json: *const c_char,
     point_json: *const c_char,
@@ -173,6 +214,14 @@ pub unsafe extern "C" fn rssn_json_curve_negate(
 /// Doubles a point.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_curve_double(
     curve_json: *const c_char,
     point_json: *const c_char,
@@ -197,6 +246,14 @@ pub unsafe extern "C" fn rssn_json_curve_double(
 
 /// Adds two points.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_curve_add(
     curve_json: *const c_char,
@@ -229,6 +286,14 @@ pub unsafe extern "C" fn rssn_json_curve_add(
 
 /// Scalar multiplication.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_curve_scalar_mult(
     curve_json: *const c_char,
@@ -263,6 +328,14 @@ pub unsafe extern "C" fn rssn_json_curve_scalar_mult(
 /// Generates a key pair.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_generate_keypair(
     curve_json: *const c_char,
     generator_json: *const c_char,
@@ -291,6 +364,14 @@ pub unsafe extern "C" fn rssn_json_generate_keypair(
 
 /// Generates a shared secret.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_generate_shared_secret(
     curve_json: *const c_char,
@@ -334,6 +415,14 @@ pub unsafe extern "C" fn rssn_json_generate_shared_secret(
 
 /// Signs a message.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_ecdsa_sign(
     message_hash_json: *const c_char,
@@ -395,6 +484,14 @@ pub unsafe extern "C" fn rssn_json_ecdsa_sign(
 
 /// Verifies a signature.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_ecdsa_verify(
     message_hash_json: *const c_char,
@@ -459,6 +556,14 @@ pub unsafe extern "C" fn rssn_json_ecdsa_verify(
 /// Compresses a point.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_point_compress(
     point_json: *const c_char
 ) -> *mut c_char {
@@ -490,6 +595,14 @@ pub unsafe extern "C" fn rssn_json_point_compress(
 
 /// Decompresses a point.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_point_decompress(
     x_json: *const c_char,

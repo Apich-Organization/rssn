@@ -15,6 +15,14 @@ use crate::numerical::convergence;
 /// A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_convergence_aitken(
     data: *const f64,
     len: usize,
@@ -43,6 +51,14 @@ pub unsafe extern "C" fn rssn_convergence_aitken(
 /// # Returns
 /// A pointer to a new `Vec<f64>` containing the extrapolated sequence, or null on error.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_convergence_richardson(
     data: *const f64,
@@ -73,6 +89,14 @@ pub unsafe extern "C" fn rssn_convergence_richardson(
 /// A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_convergence_wynn(
     data: *const f64,
     len: usize,
@@ -97,6 +121,14 @@ pub unsafe extern "C" fn rssn_convergence_wynn(
 /// Frees a generic `Vec<f64>` pointer created by convergence functions.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_convergence_free_vec(
     vec: *mut Vec<f64>
 ) {
@@ -112,6 +144,14 @@ pub unsafe extern "C" fn rssn_convergence_free_vec(
 
 /// Returns the length of the vector.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub const unsafe extern "C" fn rssn_convergence_get_vec_len(
     vec: *const Vec<f64>
@@ -131,6 +171,14 @@ pub const unsafe extern "C" fn rssn_convergence_get_vec_len(
 /// Copies the vector data into a provided buffer.
 /// buffer must have size at least `len * sizeof(f64)`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub const unsafe extern "C" fn rssn_convergence_get_vec_data(
     vec: *const Vec<f64>,

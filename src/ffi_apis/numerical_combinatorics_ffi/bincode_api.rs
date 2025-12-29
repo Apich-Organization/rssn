@@ -33,6 +33,14 @@ struct RecurrenceInput {
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -62,6 +70,14 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(
 /// Computes the number of permutations using bincode for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
     buffer: BincodeBuffer
@@ -95,6 +111,14 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -126,6 +150,14 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
 /// Solves a linear recurrence relation using bincode for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_bincode(
     buffer: BincodeBuffer
@@ -176,6 +208,14 @@ struct XNInput {
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -208,6 +248,14 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_bell_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -237,6 +285,14 @@ pub unsafe extern "C" fn rssn_num_comb_bell_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -265,6 +321,14 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(
 /// Computes the rising factorial using bincode for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
     buffer: BincodeBuffer
@@ -297,6 +361,14 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
 /// Computes the falling factorial using bincode for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial_bincode(
     buffer: BincodeBuffer

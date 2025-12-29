@@ -13,6 +13,14 @@ use crate::symbolic::grobner::MonomialOrder;
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_cas_expand(
     expr: *const Expr
 ) -> *mut Expr {
@@ -37,6 +45,14 @@ pub unsafe extern "C" fn rssn_cas_expand(
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_cas_factorize(
     expr: *const Expr
 ) -> *mut Expr {
@@ -60,6 +76,14 @@ pub unsafe extern "C" fn rssn_cas_factorize(
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_cas_normalize(
     expr: *const Expr
@@ -92,6 +116,14 @@ pub unsafe extern "C" fn rssn_cas_normalize(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
     expr: *const Expr,
@@ -164,7 +196,8 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter().copied()
+        .iter()
+        .copied()
         .collect();
 
     // Convert order

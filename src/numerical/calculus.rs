@@ -30,7 +30,7 @@ use crate::symbolic::core::Expr;
 /// ```
 ///
 /// # Errors
-/// 
+///
 /// Returns an error if the expression evaluation fails.
 
 pub fn partial_derivative(

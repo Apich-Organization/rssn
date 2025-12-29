@@ -7,7 +7,11 @@ use ndarray::Array1;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::numerical::optimize::{OptimizationConfig, ProblemType, Rosenbrock, EquationOptimizer, Sphere};
+use crate::numerical::optimize::EquationOptimizer;
+use crate::numerical::optimize::OptimizationConfig;
+use crate::numerical::optimize::ProblemType;
+use crate::numerical::optimize::Rosenbrock;
+use crate::numerical::optimize::Sphere;
 
 #[derive(Serialize, Deserialize)]
 

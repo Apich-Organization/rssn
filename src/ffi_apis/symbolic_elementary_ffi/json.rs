@@ -2,7 +2,9 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string, to_c_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary;
 
@@ -14,6 +16,14 @@ use crate::symbolic::elementary;
 /// # Returns
 /// JSON-serialized Expr or null on error
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_sin_json(
     json_expr: *const c_char
@@ -32,6 +42,14 @@ pub unsafe extern "C" fn rssn_sin_json(
 /// Creates a cosine expression from JSON: cos(expr).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_cos_json(
     json_expr: *const c_char
 ) -> *mut c_char {
@@ -48,6 +66,14 @@ pub unsafe extern "C" fn rssn_cos_json(
 
 /// Creates a tangent expression from JSON: tan(expr).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_tan_json(
     json_expr: *const c_char
@@ -66,6 +92,14 @@ pub unsafe extern "C" fn rssn_tan_json(
 /// Creates an exponential expression from JSON: e^(expr).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_exp_json(
     json_expr: *const c_char
 ) -> *mut c_char {
@@ -83,6 +117,14 @@ pub unsafe extern "C" fn rssn_exp_json(
 /// Creates a natural logarithm expression from JSON: ln(expr).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_ln_json(
     json_expr: *const c_char
 ) -> *mut c_char {
@@ -99,6 +141,14 @@ pub unsafe extern "C" fn rssn_ln_json(
 
 /// Creates a square root expression from JSON: sqrt(expr).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_sqrt_json(
     json_expr: *const c_char
@@ -120,6 +170,14 @@ pub unsafe extern "C" fn rssn_sqrt_json(
 /// * `json_base` - JSON-serialized base Expr
 /// * `json_exp` - JSON-serialized exponent Expr
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_pow_json(
     json_base: *const c_char,
@@ -161,6 +219,14 @@ pub extern "C" fn rssn_e_json(
 
 /// Expands a symbolic expression from JSON.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_expand_json(
     json_expr: *const c_char

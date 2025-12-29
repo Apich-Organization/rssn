@@ -1,7 +1,11 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
-use crate::symbolic::group_theory::{Group, GroupElement, Representation, character};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
+use crate::symbolic::group_theory::character;
+use crate::symbolic::group_theory::Group;
+use crate::symbolic::group_theory::GroupElement;
+use crate::symbolic::group_theory::Representation;
 
 #[no_mangle]
 
@@ -23,6 +27,14 @@ use crate::symbolic::group_theory::{Group, GroupElement, Representation, charact
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_group_create(
     json_str: *const c_char
@@ -55,6 +67,14 @@ pub unsafe extern "C" fn rssn_json_group_create(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_group_multiply(
     group_json: *const c_char,
@@ -101,6 +121,14 @@ pub unsafe extern "C" fn rssn_json_group_multiply(
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_group_inverse(
     group_json: *const c_char,
     a_json: *const c_char,
@@ -140,6 +168,14 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
 /// This function is unsafe because it dereferences a raw C string pointer; the
 /// caller must ensure it points to a valid JSON string.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_group_is_abelian(
     group_json: *const c_char
 ) -> bool {
@@ -176,6 +212,14 @@ pub unsafe extern "C" fn rssn_json_group_is_abelian(
 ///
 /// This function is unsafe because it dereferences raw C string pointers; the
 /// caller must ensure they point to valid JSON strings.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_group_element_order(
     group_json: *const c_char,
@@ -222,6 +266,14 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
     group_json: *const c_char
 ) -> *mut c_char {
@@ -256,6 +308,14 @@ pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_group_center(
     group_json: *const c_char
@@ -292,6 +352,14 @@ pub unsafe extern "C" fn rssn_json_group_center(
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_representation_create(
     json_str: *const c_char
 ) -> *mut c_char {
@@ -325,6 +393,14 @@ pub unsafe extern "C" fn rssn_json_representation_create(
 ///
 /// This function is unsafe because it dereferences raw C string pointers; the
 /// caller must ensure they point to valid JSON strings.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_representation_is_valid(
     rep_json: *const c_char,
@@ -369,6 +445,14 @@ pub unsafe extern "C" fn rssn_json_representation_is_valid(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_character(
     rep_json: *const c_char

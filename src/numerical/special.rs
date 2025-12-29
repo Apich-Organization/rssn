@@ -228,12 +228,15 @@ pub fn regularized_beta(
         0.0
     } else {
 
-        b.mul_add((1.0 - x).ln(), a.mul_add(
-            x.ln(),
-            ln_gamma(a + b)
-                - ln_gamma(a)
-                - ln_gamma(b),
-        ))
+        b.mul_add(
+            (1.0 - x).ln(),
+            a.mul_add(
+                x.ln(),
+                ln_gamma(a + b)
+                    - ln_gamma(a)
+                    - ln_gamma(b),
+            ),
+        )
         .exp()
     };
 
@@ -353,16 +356,21 @@ pub fn inverse_erf_numerical(
 
         let x2 = x * x;
 
-        let num = x
-            * x2.mul_add(x2.mul_add(
-                    0.014_000_2,
-                    -0.140_543_331,
-                ), 1.0);
+        let num = x * x2.mul_add(
+            x2.mul_add(
+                0.014_000_2,
+                -0.140_543_331,
+            ),
+            1.0,
+        );
 
-        let den = x2.mul_add(x2.mul_add(
+        let den = x2.mul_add(
+            x2.mul_add(
                 0.049_988,
                 -0.453_004_011,
-            ), 1.0);
+            ),
+            1.0,
+        );
 
         num / den
     } else {
@@ -427,11 +435,14 @@ pub fn bessel_j0(x: f64) -> f64 {
 
         let ans2 = 57_568_490_411.0
             + y * (1_029_532_985.0
-                + y * y.mul_add(y.mul_add(
+                + y * y.mul_add(
+                    y.mul_add(
                         267.853_271_2
                             + y,
                         59_272.648_53,
-                    ), 9_494_680.718));
+                    ),
+                    9_494_680.718,
+                ));
 
         ans1 / ans2
     } else {
@@ -482,11 +493,14 @@ pub fn bessel_j1(x: f64) -> f64 {
 
         let ans2 = 144_725_228_442.0
             + y * (230_053_517_800.0
-                + y * y.mul_add(y.mul_add(
+                + y * y.mul_add(
+                    y.mul_add(
                         376.999_139_7
                             + y,
                         994_474.339_4,
-                    ), 185_833_047.4));
+                    ),
+                    185_833_047.4,
+                ));
 
         ans1 / ans2
     } else {
@@ -542,11 +556,14 @@ pub fn bessel_y0(x: f64) -> f64 {
 
         let ans2 = 4_007_654_426.9
             + y * (745_249_964.8
-                + y * y.mul_add(y.mul_add(
+                + y * y.mul_add(
+                    y.mul_add(
                         226.103_024_4
                             + y,
                         474_472.647_0,
-                    ), 7_189_466.438));
+                    ),
+                    7_189_466.438,
+                ));
 
         (0.636_619_772 * bessel_j0(x))
             .mul_add(
@@ -603,10 +620,13 @@ pub fn bessel_y1(x: f64) -> f64 {
                 + y * (37_336_503_670.0
                     + y * y.mul_add(y.mul_add(354_963.288_5 + y, 102_042.605), 22_459_040.0)));
 
-        0.636_619_772f64.mul_add(bessel_j1(x).mul_add(
-                    x.ln(),
-                    -(1.0 / x),
-                ), ans1 / ans2)
+        0.636_619_772f64.mul_add(
+            bessel_j1(x).mul_add(
+                x.ln(),
+                -(1.0 / x),
+            ),
+            ans1 / ans2,
+        )
     } else {
 
         let z = 8.0 / x;
@@ -734,7 +754,12 @@ pub fn legendre_p(
     for k in 2 ..= n {
 
         let p_next =
-            (f64::from(2 * k - 1) * x).mul_add(p_curr, -(f64::from(k - 1) * p_prev))
+            (f64::from(2 * k - 1) * x)
+                .mul_add(
+                    p_curr,
+                    -(f64::from(k - 1)
+                        * p_prev),
+                )
                 / f64::from(k);
 
         p_prev = p_curr;
@@ -839,8 +864,12 @@ pub fn hermite_h(
 
     for k in 2 ..= n {
 
-        let h_next = (2.0 * x).mul_add(h_curr, -(2.0
-                * f64::from(k - 1) * h_prev));
+        let h_next = (2.0 * x).mul_add(
+            h_curr,
+            -(2.0
+                * f64::from(k - 1)
+                * h_prev),
+        );
 
         h_prev = h_curr;
 

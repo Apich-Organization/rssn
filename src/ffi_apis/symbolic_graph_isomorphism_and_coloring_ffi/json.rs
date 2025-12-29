@@ -7,6 +7,14 @@ use crate::symbolic::graph_isomorphism_and_coloring::{are_isomorphic_heuristic, 
 /// Output: bool
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
@@ -37,6 +45,14 @@ pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
 /// Output: {`node_id`: `color_id`}
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_greedy_coloring(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
@@ -56,6 +72,14 @@ pub unsafe extern "C" fn rssn_json_greedy_coloring(
 /// Input: Graph
 /// Output: usize
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_chromatic_number_exact(
     json: *const std::os::raw::c_char

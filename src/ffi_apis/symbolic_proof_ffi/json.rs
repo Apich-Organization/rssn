@@ -8,6 +8,14 @@ use crate::symbolic::proof;
 /// Verifies an equation solution using JSON.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_verify_equation_solution(
     equations_json: *const c_char,
     solution_json: *const c_char,
@@ -55,6 +63,14 @@ pub unsafe extern "C" fn rssn_json_verify_equation_solution(
 /// Verifies an indefinite integral using JSON.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_verify_indefinite_integral(
     integrand_json: *const c_char,
     integral_result_json: *const c_char,
@@ -93,6 +109,14 @@ pub unsafe extern "C" fn rssn_json_verify_indefinite_integral(
 
 /// Verifies a matrix inverse using JSON.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_verify_matrix_inverse(
     original_json: *const c_char,

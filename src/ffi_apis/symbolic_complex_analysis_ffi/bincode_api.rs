@@ -1,7 +1,10 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
-use crate::symbolic::complex_analysis::{PathContinuation, MobiusTransformation};
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
+use crate::symbolic::complex_analysis::MobiusTransformation;
+use crate::symbolic::complex_analysis::PathContinuation;
 use crate::symbolic::core::Expr;
 
 /// Constructs a new analytic path continuation object from a function, variable, and start point.
@@ -25,6 +28,14 @@ use crate::symbolic::core::Expr;
 /// This function is unsafe because it dereferences a raw C string pointer and expects
 /// valid bincode-encoded `Expr` values.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn path_continuation_new_bincode(
     func_bincode: BincodeBuffer,
@@ -71,6 +82,14 @@ pub unsafe extern "C" fn path_continuation_new_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
     pc_bincode: BincodeBuffer,
     path_points_bincode: BincodeBuffer,
@@ -110,6 +129,14 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
     pc_bincode: BincodeBuffer
 ) -> BincodeBuffer {
@@ -135,6 +162,14 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
 /// Returns an `f64` representing the estimated radius of convergence.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
     series_expr_bincode: BincodeBuffer,
@@ -183,6 +218,14 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn complex_distance_bincode(
     p1_bincode: BincodeBuffer,
     p2_bincode: BincodeBuffer,
@@ -218,6 +261,14 @@ pub unsafe extern "C" fn complex_distance_bincode(
 /// Returns a bincode-serialized `SingularityType` enum.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn classify_singularity_bincode(
     func_bincode: BincodeBuffer,
@@ -263,6 +314,14 @@ pub unsafe extern "C" fn classify_singularity_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn laurent_series_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
@@ -307,6 +366,14 @@ pub unsafe extern "C" fn laurent_series_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn calculate_residue_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
@@ -349,6 +416,14 @@ pub unsafe extern "C" fn calculate_residue_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
@@ -388,6 +463,14 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
 /// Returns a bincode-serialized `MobiusTransformation` object.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn mobius_transformation_new_bincode(
     a_bincode: BincodeBuffer,
@@ -452,6 +535,14 @@ pub extern "C" fn mobius_transformation_identity_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn mobius_transformation_apply_bincode(
     mobius_bincode: BincodeBuffer,
     z_bincode: BincodeBuffer,
@@ -481,6 +572,14 @@ pub unsafe extern "C" fn mobius_transformation_apply_bincode(
 /// Returns a bincode-serialized `MobiusTransformation` representing their composition.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn mobius_transformation_compose_bincode(
     mobius1_bincode: BincodeBuffer,
@@ -513,6 +612,14 @@ pub unsafe extern "C" fn mobius_transformation_compose_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
     mobius_bincode: BincodeBuffer
 ) -> BincodeBuffer {
@@ -538,6 +645,14 @@ pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
 /// Returns a bincode-serialized `Expr` representing the value of the function at `z0`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn cauchy_integral_formula_bincode(
     func_bincode: BincodeBuffer,
@@ -576,6 +691,14 @@ pub unsafe extern "C" fn cauchy_integral_formula_bincode(
 /// Returns a bincode-serialized `Expr` representing the nth derivative of the function at `z0`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
     func_bincode: BincodeBuffer,
@@ -619,6 +742,14 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn complex_exp_bincode(
     z_bincode: BincodeBuffer
 ) -> BincodeBuffer {
@@ -643,6 +774,14 @@ pub unsafe extern "C" fn complex_exp_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn complex_log_bincode(
     z_bincode: BincodeBuffer
 ) -> BincodeBuffer {
@@ -666,6 +805,14 @@ pub unsafe extern "C" fn complex_log_bincode(
 /// Returns a bincode-serialized `Expr` representing `arg(z)`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn complex_arg_bincode(
     z_bincode: BincodeBuffer
@@ -696,6 +843,14 @@ pub unsafe extern "C" fn complex_arg_bincode(
 /// This function is unsafe because it dereferences a bincode buffer that must contain
 /// a valid serialized `Expr`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn complex_modulus_bincode(
     z_bincode: BincodeBuffer

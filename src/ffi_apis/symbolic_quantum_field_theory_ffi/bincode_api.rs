@@ -1,9 +1,19 @@
-use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::quantum_field_theory;
 
 /// Computes a propagator using Bincode.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_qft_propagator(
     p_buf: BincodeBuffer,
@@ -28,6 +38,14 @@ pub unsafe extern "C" fn rssn_bincode_qft_propagator(
 
 /// Lagrangian density for a scalar field using Bincode.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_scalar_field_lagrangian(
     phi_buf: BincodeBuffer,

@@ -4,7 +4,18 @@ use std::os::raw::c_char;
 use std::os::raw::c_int;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::optimize::{CriticalPoint, find_extrema, hessian_matrix, find_constrained_extrema};
+use crate::symbolic::optimize::find_constrained_extrema;
+use crate::symbolic::optimize::find_extrema;
+use crate::symbolic::optimize::hessian_matrix;
+use crate::symbolic::optimize::CriticalPoint;
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
@@ -32,7 +43,10 @@ unsafe fn parse_c_str_array(
 
         match c_str.to_str() {
             | Ok(s) => {
-                vars.push(s.to_string());
+
+                vars.push(
+                    s.to_string(),
+                );
             },
             | Err(_) => return None,
         }

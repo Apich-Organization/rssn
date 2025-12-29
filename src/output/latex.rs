@@ -5,7 +5,8 @@ use crate::symbolic::core::Expr;
 
 /// Converts an expression to a LaTeX string.
 
-#[must_use] 
+#[must_use]
+
 pub fn to_latex(expr: &Expr) -> String {
 
     to_latex_prec(expr, 0)
@@ -172,7 +173,8 @@ pub(crate) fn to_latex_prec(
 /// Helper to add parentheses if needed. This function is now simplified as the main
 /// iterative function handles most of the logic.
 
-#[must_use] 
+#[must_use]
+
 pub fn to_latex_prec_with_parens(
     expr: &Expr,
     precedence: u8,
@@ -190,9 +192,7 @@ pub fn to_latex_prec_with_parens(
 
     if op_prec < precedence {
 
-        format!(
-            r"\left( {s} \right)"
-        )
+        format!(r"\left( {s} \right)")
     } else {
 
         s
@@ -201,7 +201,8 @@ pub fn to_latex_prec_with_parens(
 
 /// Converts common Greek letter names to LaTeX.
 
-#[must_use] 
+#[must_use]
+
 pub fn to_greek(s: &str) -> String {
 
     match s {

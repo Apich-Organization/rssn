@@ -23,6 +23,14 @@ use crate::numerical::sparse::{
 /// A raw pointer to the `CsMat` object, or null on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_sparse_create(
     rows: usize,
     cols: usize,
@@ -94,6 +102,14 @@ pub unsafe extern "C" fn rssn_num_sparse_create(
 /// Frees a sparse matrix object.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_sparse_free(
     matrix: *mut CsMat<f64>
 ) {
@@ -110,6 +126,14 @@ pub unsafe extern "C" fn rssn_num_sparse_free(
 
 /// Returns the number of rows.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_sparse_get_rows(
     matrix: *const CsMat<f64>
@@ -129,6 +153,14 @@ pub unsafe extern "C" fn rssn_num_sparse_get_rows(
 /// Returns the number of columns.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_sparse_get_cols(
     matrix: *const CsMat<f64>
 ) -> usize {
@@ -146,6 +178,14 @@ pub unsafe extern "C" fn rssn_num_sparse_get_cols(
 
 /// Returns the number of non-zero elements.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_sparse_get_nnz(
     matrix: *const CsMat<f64>
@@ -166,6 +206,14 @@ pub unsafe extern "C" fn rssn_num_sparse_get_nnz(
 ///
 /// result = matrix * vector
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_sparse_spmv(
     matrix: *const CsMat<f64>,
@@ -236,6 +284,14 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
 /// Computes the Frobenius norm.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_sparse_frobenius_norm(
     matrix: *const CsMat<f64>
 ) -> f64 {
@@ -255,6 +311,14 @@ pub unsafe extern "C" fn rssn_num_sparse_frobenius_norm(
 
 /// Computes the trace.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_sparse_trace(
     matrix: *const CsMat<f64>,

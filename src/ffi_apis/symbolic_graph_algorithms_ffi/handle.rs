@@ -22,7 +22,8 @@ pub extern "C" fn rssn_graph_dfs_api(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         let result = dfs(g, start_node);
 
@@ -54,7 +55,8 @@ pub extern "C" fn rssn_graph_bfs_api(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         let result = bfs(g, start_node);
 
@@ -85,7 +87,8 @@ pub extern "C" fn rssn_graph_connected_components_api(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         let result =
             connected_components(g);
@@ -116,7 +119,8 @@ pub extern "C" fn rssn_graph_is_connected(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         i32::from(is_connected(g))
     }
@@ -137,7 +141,8 @@ pub extern "C" fn rssn_graph_strongly_connected_components(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         let result = strongly_connected_components(g);
 
@@ -167,7 +172,8 @@ pub extern "C" fn rssn_graph_has_cycle_api(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         i32::from(has_cycle(g))
     }
@@ -188,7 +194,8 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         let (bridges, aps) = find_bridges_and_articulation_points(g);
 
@@ -233,7 +240,8 @@ pub extern "C" fn rssn_graph_kruskal_mst_api(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         let mst_edges = kruskal_mst(g);
 
@@ -259,7 +267,8 @@ pub extern "C" fn rssn_graph_kruskal_mst_api(
 
         Box::into_raw(Box::new(
             mst_graph,
-        )).cast::<RssnGraph>()
+        ))
+        .cast::<RssnGraph>()
     }
 }
 
@@ -279,7 +288,8 @@ pub extern "C" fn rssn_graph_edmonds_karp_max_flow(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         edmonds_karp_max_flow(
             g,
@@ -305,7 +315,8 @@ pub extern "C" fn rssn_graph_dinic_max_flow(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         dinic_max_flow(g, source, sink)
     }
@@ -326,7 +337,8 @@ pub extern "C" fn rssn_graph_is_bipartite_api(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         match is_bipartite(g) {
             | Some(partition) => {
@@ -365,7 +377,8 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         let partition_str =
             CStr::from_ptr(
@@ -412,7 +425,8 @@ pub extern "C" fn rssn_graph_topological_sort(
 
     unsafe {
 
-        let g = &*graph.cast::<Graph<String>>();
+        let g = &*graph
+            .cast::<Graph<String>>();
 
         match topological_sort(g) {
             | Some(order) => {

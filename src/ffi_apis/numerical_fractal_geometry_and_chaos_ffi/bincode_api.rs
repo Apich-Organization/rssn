@@ -82,6 +82,14 @@ struct DimensionInput {
 /// Generates the Mandelbrot set as an image (iterations per pixel) using bincode for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -116,6 +124,14 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -147,6 +163,14 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
 // Julia set
 /// Generates the Julia set as an image (iterations per pixel) using bincode for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
     buffer: BincodeBuffer
@@ -183,6 +207,14 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
 /// Generates data points for the Lorenz attractor using bincode for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -214,6 +246,14 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
 // Henon map
 /// Generates data points for the Henon map using bincode for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
     buffer: BincodeBuffer
@@ -248,6 +288,14 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
 /// Computes iterations of the logistic map using bincode for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -279,6 +327,14 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
 // Lyapunov exponent for logistic map
 /// Computes the Lyapunov exponent for the logistic map using bincode for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
     buffer: BincodeBuffer
@@ -313,6 +369,14 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
 /// Computes the box-counting dimension of a set of points using bincode for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -343,6 +407,14 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
 // Correlation dimension
 /// Computes the correlation dimension of a set of points using bincode for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_bincode(
     buffer: BincodeBuffer

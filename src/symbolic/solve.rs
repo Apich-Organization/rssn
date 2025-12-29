@@ -1477,10 +1477,7 @@ pub(crate) fn solve_cubic(
                     omega2,
                     u,
                 ),
-                Expr::new_mul(
-                    omega,
-                    v,
-                ),
+                Expr::new_mul(omega, v),
             ),
             sub_term,
         ));
@@ -1633,9 +1630,7 @@ pub(crate) fn solve_quartic(
         let y2_2 =
             simplify(&Expr::new_div(
                 Expr::new_sub(
-                    Expr::new_neg(
-                        p,
-                    ),
+                    Expr::new_neg(p),
                     sqrt_disc,
                 ),
                 two,

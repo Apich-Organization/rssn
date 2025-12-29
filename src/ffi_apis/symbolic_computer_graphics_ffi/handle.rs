@@ -28,6 +28,14 @@ use crate::symbolic::vector::Vector;
 /// All Expr pointers must be valid.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_translation_2d(
     tx: *const Expr,
     ty: *const Expr,
@@ -48,6 +56,14 @@ pub unsafe extern "C" fn rssn_translation_2d(
 
 /// Generates a 4x4 3D translation matrix.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_translation_3d(
     tx: *const Expr,
@@ -75,6 +91,14 @@ pub unsafe extern "C" fn rssn_translation_3d(
 /// Generates a 3x3 2D rotation matrix.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_rotation_2d(
     angle: *const Expr
 ) -> *mut Expr {
@@ -91,6 +115,14 @@ pub unsafe extern "C" fn rssn_rotation_2d(
 
 /// Generates a 4x4 3D rotation matrix around the X-axis.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_rotation_3d_x(
     angle: *const Expr
@@ -109,6 +141,14 @@ pub unsafe extern "C" fn rssn_rotation_3d_x(
 /// Generates a 4x4 3D rotation matrix around the Y-axis.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_rotation_3d_y(
     angle: *const Expr
 ) -> *mut Expr {
@@ -126,6 +166,14 @@ pub unsafe extern "C" fn rssn_rotation_3d_y(
 /// Generates a 4x4 3D rotation matrix around the Z-axis.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_rotation_3d_z(
     angle: *const Expr
 ) -> *mut Expr {
@@ -142,6 +190,14 @@ pub unsafe extern "C" fn rssn_rotation_3d_z(
 
 /// Generates a 3x3 2D scaling matrix.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_scaling_2d(
     sx: *const Expr,
@@ -163,6 +219,14 @@ pub unsafe extern "C" fn rssn_scaling_2d(
 
 /// Generates a 4x4 3D scaling matrix.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_scaling_3d(
     sx: *const Expr,
@@ -190,6 +254,14 @@ pub unsafe extern "C" fn rssn_scaling_3d(
 /// Generates a 3x3 2D shear matrix.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_shear_2d(
     shx: *const Expr,
     shy: *const Expr,
@@ -209,6 +281,14 @@ pub unsafe extern "C" fn rssn_shear_2d(
 /// Generates a 3x3 2D reflection matrix across a line.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_reflection_2d(
     angle: *const Expr
 ) -> *mut Expr {
@@ -225,6 +305,14 @@ pub unsafe extern "C" fn rssn_reflection_2d(
 
 /// Generates a 4x4 3D reflection matrix across a plane.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_reflection_3d(
     nx: *const Expr,
@@ -252,6 +340,14 @@ pub unsafe extern "C" fn rssn_reflection_3d(
 /// Generates a 4x4 3D rotation matrix around an arbitrary axis.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_rotation_axis_angle(
     axis: *const Vector,
     angle: *const Expr,
@@ -273,6 +369,14 @@ pub unsafe extern "C" fn rssn_rotation_axis_angle(
 
 /// Generates a 4x4 perspective projection matrix.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_perspective_projection(
     fovy: *const Expr,
@@ -302,6 +406,14 @@ pub unsafe extern "C" fn rssn_perspective_projection(
 
 /// Generates a 4x4 orthographic projection matrix.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_orthographic_projection(
     left: *const Expr,
@@ -338,6 +450,14 @@ pub unsafe extern "C" fn rssn_orthographic_projection(
 /// Creates a new Bezier curve from control points.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bezier_curve_new(
     points: *const Vector,
     count: usize,
@@ -352,7 +472,8 @@ pub unsafe extern "C" fn rssn_bezier_curve_new(
         std::slice::from_raw_parts(
             points,
             count,
-        ).to_vec();
+        )
+        .to_vec();
 
     let degree = count - 1;
 
@@ -366,6 +487,14 @@ pub unsafe extern "C" fn rssn_bezier_curve_new(
 
 /// Evaluates a Bezier curve at parameter t.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bezier_curve_evaluate(
     curve: *const BezierCurve,
@@ -384,6 +513,14 @@ pub unsafe extern "C" fn rssn_bezier_curve_evaluate(
 
 /// Computes the derivative (tangent) of a Bezier curve at parameter t.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bezier_curve_derivative(
     curve: *const BezierCurve,
@@ -405,6 +542,14 @@ pub unsafe extern "C" fn rssn_bezier_curve_derivative(
 /// Returns left curve. Use `rssn_bezier_curve_split_right` for the right curve.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bezier_curve_split_left(
     curve: *const BezierCurve,
     t: *const Expr,
@@ -425,6 +570,14 @@ pub unsafe extern "C" fn rssn_bezier_curve_split_left(
 /// Returns right curve.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bezier_curve_split_right(
     curve: *const BezierCurve,
     t: *const Expr,
@@ -444,6 +597,14 @@ pub unsafe extern "C" fn rssn_bezier_curve_split_right(
 /// Frees a Bezier curve.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bezier_curve_free(
     curve: *mut BezierCurve
 ) {
@@ -456,6 +617,14 @@ pub unsafe extern "C" fn rssn_bezier_curve_free(
 
 /// Creates a new polygon mesh.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_polygon_mesh_new(
     vertices: *const Vector,
@@ -473,7 +642,8 @@ pub unsafe extern "C" fn rssn_polygon_mesh_new(
         std::slice::from_raw_parts(
             vertices,
             vertex_count,
-        ).to_vec();
+        )
+        .to_vec();
 
     Box::into_raw(Box::new(
         PolygonMesh::new(verts, vec![]),
@@ -482,6 +652,14 @@ pub unsafe extern "C" fn rssn_polygon_mesh_new(
 
 /// Triangulates a polygon mesh.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_polygon_mesh_triangulate(
     mesh: *const PolygonMesh
@@ -503,6 +681,14 @@ pub unsafe extern "C" fn rssn_polygon_mesh_triangulate(
 /// Frees a polygon mesh.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_polygon_mesh_free(
     mesh: *mut PolygonMesh
 ) {
@@ -515,6 +701,14 @@ pub unsafe extern "C" fn rssn_polygon_mesh_free(
 
 /// Frees a Vector.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_vector_free(
     vec: *mut Vector

@@ -1,6 +1,7 @@
 use std::ffi::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::convergence::analyze_convergence;
 use crate::symbolic::core::Expr;
 

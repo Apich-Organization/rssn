@@ -95,7 +95,12 @@ pub fn complex_log_k(
 
     let ln_r = z.norm().ln();
 
-    let theta = (2.0 * std::f64::consts::PI).mul_add(f64::from(k), z.arg());
+    let theta = (2.0
+        * std::f64::consts::PI)
+        .mul_add(
+            f64::from(k),
+            z.arg(),
+        );
 
     Complex::new(ln_r, theta)
 }
@@ -111,7 +116,12 @@ pub fn complex_sqrt_k(
 
     let r_sqrt = z.norm().sqrt();
 
-    let theta = (2.0 * std::f64::consts::PI).mul_add(f64::from(k), z.arg())
+    let theta = (2.0
+        * std::f64::consts::PI)
+        .mul_add(
+            f64::from(k),
+            z.arg(),
+        )
         / 2.0;
 
     Complex::new(
@@ -149,7 +159,12 @@ pub fn complex_nth_root_k(
         .norm()
         .powf(1.0 / f64::from(n));
 
-    let theta = (2.0 * std::f64::consts::PI).mul_add(f64::from(k), z.arg())
+    let theta = (2.0
+        * std::f64::consts::PI)
+        .mul_add(
+            f64::from(k),
+            z.arg(),
+        )
         / f64::from(n);
 
     Complex::new(

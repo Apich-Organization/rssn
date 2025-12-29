@@ -25,6 +25,14 @@ pub extern "C" fn rssn_physics_fvm_mesh_new(
 /// Frees a Mesh handle.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_physics_fvm_mesh_free(
     mesh: *mut Mesh
 ) {
@@ -38,6 +46,14 @@ pub unsafe extern "C" fn rssn_physics_fvm_mesh_free(
 /// Returns a pointer to the mesh data.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_physics_fvm_mesh_data(
     mesh: *mut Mesh
 ) -> *mut f64 {
@@ -49,7 +65,8 @@ pub unsafe extern "C" fn rssn_physics_fvm_mesh_data(
 
     (*mesh)
         .cells
-        .as_mut_ptr().cast::<f64>()
+        .as_mut_ptr()
+        .cast::<f64>()
 }
 
 /// Simulates 1D advection and returns the final values in a new buffer.

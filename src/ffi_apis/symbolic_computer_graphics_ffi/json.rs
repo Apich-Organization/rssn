@@ -24,6 +24,14 @@ use crate::symbolic::vector::Vector;
 /// Generates a 3x3 2D translation matrix via JSON interface.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_translation_2d(
     tx_json: *const c_char,
     ty_json: *const c_char,
@@ -50,6 +58,14 @@ pub unsafe extern "C" fn rssn_json_translation_2d(
 
 /// Generates a 4x4 3D translation matrix via JSON interface.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_translation_3d(
     tx_json: *const c_char,
@@ -85,6 +101,14 @@ pub unsafe extern "C" fn rssn_json_translation_3d(
 /// Generates a 3x3 2D rotation matrix via JSON interface.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_rotation_2d(
     angle_json: *const c_char
 ) -> *mut c_char {
@@ -103,6 +127,14 @@ pub unsafe extern "C" fn rssn_json_rotation_2d(
 
 /// Generates a 4x4 3D rotation matrix around X-axis via JSON interface.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_rotation_3d_x(
     angle_json: *const c_char
@@ -125,6 +157,14 @@ pub unsafe extern "C" fn rssn_json_rotation_3d_x(
 /// Generates a 4x4 3D rotation matrix around Y-axis via JSON interface.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_rotation_3d_y(
     angle_json: *const c_char
 ) -> *mut c_char {
@@ -146,6 +186,14 @@ pub unsafe extern "C" fn rssn_json_rotation_3d_y(
 /// Generates a 4x4 3D rotation matrix around Z-axis via JSON interface.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_rotation_3d_z(
     angle_json: *const c_char
 ) -> *mut c_char {
@@ -166,6 +214,14 @@ pub unsafe extern "C" fn rssn_json_rotation_3d_z(
 
 /// Generates a 3x3 2D scaling matrix via JSON interface.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_scaling_2d(
     sx_json: *const c_char,
@@ -193,6 +249,14 @@ pub unsafe extern "C" fn rssn_json_scaling_2d(
 
 /// Generates a 4x4 3D scaling matrix via JSON interface.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_scaling_3d(
     sx_json: *const c_char,
@@ -228,6 +292,14 @@ pub unsafe extern "C" fn rssn_json_scaling_3d(
 /// Generates a 3x3 2D shear matrix via JSON interface.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_shear_2d(
     shx_json: *const c_char,
     shy_json: *const c_char,
@@ -255,6 +327,14 @@ pub unsafe extern "C" fn rssn_json_shear_2d(
 /// Generates a 3x3 2D reflection matrix via JSON interface.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_reflection_2d(
     angle_json: *const c_char
 ) -> *mut c_char {
@@ -275,6 +355,14 @@ pub unsafe extern "C" fn rssn_json_reflection_2d(
 
 /// Generates a 4x4 3D reflection matrix via JSON interface.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_reflection_3d(
     nx_json: *const c_char,
@@ -309,6 +397,14 @@ pub unsafe extern "C" fn rssn_json_reflection_3d(
 
 /// Generates a 4x4 3D rotation around arbitrary axis via JSON interface.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_rotation_axis_angle(
     axis_x_json: *const c_char,

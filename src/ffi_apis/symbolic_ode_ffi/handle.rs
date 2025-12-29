@@ -6,6 +6,14 @@ use std::os::raw::c_char;
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode;
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
 ) -> Option<&'a str> {
@@ -26,6 +34,14 @@ unsafe fn c_str_to_str<'a>(
 /// # Safety
 /// The caller must ensure `ode_expr` is a valid Expr pointer, and `func` and `var` are valid C strings.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_ode(
     ode_expr: *const Expr,
@@ -76,6 +92,14 @@ pub unsafe extern "C" fn rssn_solve_ode(
 /// # Safety
 /// The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_separable_ode(
     equation: *const Expr,
@@ -131,6 +155,14 @@ pub unsafe extern "C" fn rssn_solve_separable_ode(
 /// The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_solve_first_order_linear_ode(
     equation: *const Expr,
     func: *const c_char,
@@ -180,6 +212,14 @@ pub unsafe extern "C" fn rssn_solve_first_order_linear_ode(
 /// # Safety
 /// The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
     equation: *const Expr,
@@ -234,6 +274,14 @@ pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_riccati_ode(
     equation: *const Expr,
@@ -294,6 +342,14 @@ pub unsafe extern "C" fn rssn_solve_riccati_ode(
 /// The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
     equation: *const Expr,
     func: *const c_char,
@@ -348,6 +404,14 @@ pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
 /// The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_solve_exact_ode(
     equation: *const Expr,
     func: *const c_char,
@@ -401,6 +465,14 @@ pub unsafe extern "C" fn rssn_solve_exact_ode(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_by_reduction_of_order(
     equation: *const Expr,

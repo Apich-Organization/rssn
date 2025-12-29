@@ -9,6 +9,14 @@ use crate::symbolic::quantum_mechanics::{
 /// Creates a new Ket from a state expression.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_ket_new(
     state: *const Expr
 ) -> *mut Ket {
@@ -26,6 +34,14 @@ pub unsafe extern "C" fn rssn_ket_new(
 /// Frees a Ket.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_ket_free(
     ket: *mut Ket
 ) {
@@ -38,6 +54,14 @@ pub unsafe extern "C" fn rssn_ket_free(
 
 /// Creates a new Bra from a state expression.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bra_new(
     state: *const Expr
@@ -56,6 +80,14 @@ pub unsafe extern "C" fn rssn_bra_new(
 /// Frees a Bra.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bra_free(
     bra: *mut Bra
 ) {
@@ -68,6 +100,14 @@ pub unsafe extern "C" fn rssn_bra_free(
 
 /// Creates a new Operator from an expression.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_operator_new(
     op: *const Expr
@@ -86,6 +126,14 @@ pub unsafe extern "C" fn rssn_operator_new(
 /// Frees an Operator.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_operator_free(
     op_ptr: *mut Operator
 ) {
@@ -100,6 +148,14 @@ pub unsafe extern "C" fn rssn_operator_free(
 
 /// Computes the inner product <Bra|Ket>.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bra_ket(
     bra: *const Bra,
@@ -120,6 +176,14 @@ pub unsafe extern "C" fn rssn_bra_ket(
 
 /// Computes the commutator [A, B] acting on a Ket.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_commutator(
     a: *const Operator,
@@ -145,6 +209,14 @@ pub unsafe extern "C" fn rssn_commutator(
 /// Computes the expectation value <A>.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_expectation_value(
     op: *const Operator,
     psi: *const Ket,
@@ -162,6 +234,14 @@ pub unsafe extern "C" fn rssn_expectation_value(
 
 /// Computes the uncertainty ΔA.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_uncertainty(
     op: *const Operator,
@@ -183,6 +263,14 @@ pub unsafe extern "C" fn rssn_uncertainty(
 /// Computes the probability density |ψ(x)|^2.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_probability_density(
     psi: *const Ket
 ) -> *mut Expr {
@@ -199,6 +287,14 @@ pub unsafe extern "C" fn rssn_probability_density(
 
 /// Hamiltonian for a free particle.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_hamiltonian_free_particle(
     m: *const Expr
@@ -217,6 +313,14 @@ pub unsafe extern "C" fn rssn_hamiltonian_free_particle(
 /// Hamiltonian for a harmonic oscillator.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_hamiltonian_harmonic_oscillator(
     m: *const Expr,
     omega: *const Expr,
@@ -234,6 +338,14 @@ pub unsafe extern "C" fn rssn_hamiltonian_harmonic_oscillator(
 
 /// Pauli matrices `σ_x`, `σ_y`, `σ_z`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_pauli_matrices(
     sigma_x: *mut *mut Expr,
@@ -265,6 +377,14 @@ pub unsafe extern "C" fn rssn_pauli_matrices(
 /// Spin operator S = hbar/2 * σ.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_spin_operator(
     pauli: *const Expr
 ) -> *mut Expr {
@@ -281,6 +401,14 @@ pub unsafe extern "C" fn rssn_spin_operator(
 
 /// Time-dependent Schrödinger equation.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_time_dependent_schrodinger_equation(
     hamiltonian: *const Operator,
@@ -305,6 +433,14 @@ pub unsafe extern "C" fn rssn_time_dependent_schrodinger_equation(
 /// First-order energy correction.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_first_order_energy_correction(
     perturbation: *const Operator,
     unperturbed_state: *const Ket,
@@ -328,6 +464,14 @@ pub unsafe extern "C" fn rssn_first_order_energy_correction(
 /// Dirac equation for a free particle.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dirac_equation(
     psi: *const Expr,
     m: *const Expr,
@@ -346,6 +490,14 @@ pub unsafe extern "C" fn rssn_dirac_equation(
 /// Klein-Gordon equation.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_klein_gordon_equation(
     psi: *const Expr,
     m: *const Expr,
@@ -363,6 +515,14 @@ pub unsafe extern "C" fn rssn_klein_gordon_equation(
 
 /// Scattering amplitude.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_scattering_amplitude(
     initial_state: *const Ket,

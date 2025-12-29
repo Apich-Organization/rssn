@@ -16,6 +16,14 @@ pub struct ExprPair {
 /// Calculates the Lorentz factor.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_lorentz_factor(
     velocity: *const Expr
 ) -> *mut Expr {
@@ -34,6 +42,14 @@ pub unsafe extern "C" fn rssn_lorentz_factor(
 
 /// Performs a Lorentz transformation in the x-direction.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_lorentz_transformation_x(
     x: *const Expr,
@@ -68,6 +84,14 @@ pub unsafe extern "C" fn rssn_lorentz_transformation_x(
 /// Calculates mass-energy equivalence.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_mass_energy_equivalence(
     mass: *const Expr
 ) -> *mut Expr {
@@ -84,6 +108,14 @@ pub unsafe extern "C" fn rssn_mass_energy_equivalence(
 
 /// Calculates Schwarzschild radius.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_schwarzschild_radius(
     mass: *const Expr

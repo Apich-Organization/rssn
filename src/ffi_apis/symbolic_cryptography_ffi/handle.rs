@@ -25,6 +25,14 @@ use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// Use standard decimal string parsing for `BigInts`.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn parse_bigint(
     s: *const c_char
 ) -> Option<BigInt> {
@@ -53,6 +61,14 @@ fn bigint_to_string(
 
 /// Creates a new elliptic curve from decimal strings.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_elliptic_curve_new(
     a_str: *const c_char,
@@ -83,6 +99,14 @@ pub unsafe extern "C" fn rssn_elliptic_curve_new(
 /// Frees an elliptic curve handle.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_elliptic_curve_free(
     curve: *mut EllipticCurve
 ) {
@@ -97,6 +121,14 @@ pub unsafe extern "C" fn rssn_elliptic_curve_free(
 
 /// Creates an affine curve point from decimal strings.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_curve_point_affine(
     x_str: *const c_char,
@@ -142,6 +174,14 @@ pub extern "C" fn rssn_curve_point_infinity(
 /// Checks if a point is the point at infinity.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub const unsafe extern "C" fn rssn_curve_point_is_infinity(
     point: *const CurvePoint
 ) -> bool {
@@ -156,6 +196,14 @@ pub const unsafe extern "C" fn rssn_curve_point_is_infinity(
 
 /// Gets the x-coordinate of an affine point as a string. Returns NULL if infinity.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_curve_point_get_x(
     point: *const CurvePoint
@@ -178,6 +226,14 @@ pub unsafe extern "C" fn rssn_curve_point_get_x(
 /// Gets the y-coordinate of an affine point as a string. Returns NULL if infinity.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_curve_point_get_y(
     point: *const CurvePoint
 ) -> *mut c_char {
@@ -198,6 +254,14 @@ pub unsafe extern "C" fn rssn_curve_point_get_y(
 
 /// Frees a curve point handle.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_curve_point_free(
     point: *mut CurvePoint
@@ -220,6 +284,14 @@ pub unsafe extern "C" fn rssn_curve_point_free(
 /// # Returns
 /// `true` if the point is on the curve, `false` otherwise.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_curve_is_on_curve(
     curve: *const EllipticCurve,
@@ -245,6 +317,14 @@ pub unsafe extern "C" fn rssn_curve_is_on_curve(
 /// # Returns
 /// A handle to the negated point, or NULL on error.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_curve_negate(
     curve: *const EllipticCurve,
@@ -273,6 +353,14 @@ pub unsafe extern "C" fn rssn_curve_negate(
 /// # Returns
 /// A handle to the doubled point, or NULL on error.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_curve_double(
     curve: *const EllipticCurve,
@@ -303,6 +391,14 @@ pub unsafe extern "C" fn rssn_curve_double(
 /// A handle to the resulting point, or NULL on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_curve_add(
     curve: *const EllipticCurve,
     p1: *const CurvePoint,
@@ -325,6 +421,14 @@ pub unsafe extern "C" fn rssn_curve_add(
 
 /// Scalar multiplication. k is a string.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_curve_scalar_mult(
     curve: *const EllipticCurve,
@@ -366,6 +470,14 @@ pub unsafe extern "C" fn rssn_curve_scalar_mult(
 /// A handle to the generated key pair, or NULL on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_generate_keypair(
     curve: *const EllipticCurve,
     generator: *const CurvePoint,
@@ -395,6 +507,14 @@ pub unsafe extern "C" fn rssn_generate_keypair(
 /// A decimal string representing the private key, or NULL on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_keypair_get_private_key(
     kp: *const EcdhKeyPair
 ) -> *mut c_char {
@@ -410,6 +530,14 @@ pub unsafe extern "C" fn rssn_keypair_get_private_key(
 
 /// Returns a NEW handle to the public key point (must be freed).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_keypair_get_public_key(
     kp: *const EcdhKeyPair
@@ -431,6 +559,14 @@ pub unsafe extern "C" fn rssn_keypair_get_public_key(
 /// # Arguments
 /// * `keypair` - Handle to the key pair to free.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_keypair_free(
     keypair: *mut EcdhKeyPair
@@ -454,6 +590,14 @@ pub unsafe extern "C" fn rssn_keypair_free(
 /// # Returns
 /// A handle to the shared secret point, or NULL on error.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_generate_shared_secret(
     curve: *const EllipticCurve,
@@ -500,6 +644,14 @@ pub unsafe extern "C" fn rssn_generate_shared_secret(
 /// # Returns
 /// A handle to the ECDSA signature, or NULL on error.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_ecdsa_sign(
     message_hash_str: *const c_char,
@@ -563,6 +715,14 @@ pub unsafe extern "C" fn rssn_ecdsa_sign(
 /// `true` if the signature is valid, `false` otherwise.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_ecdsa_verify(
     message_hash_str: *const c_char,
     signature: *const EcdsaSignature,
@@ -611,6 +771,14 @@ pub unsafe extern "C" fn rssn_ecdsa_verify(
 /// A decimal string representing 'r', or NULL on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_ecdsa_signature_get_r(
     sig: *const EcdsaSignature
 ) -> *mut c_char {
@@ -633,6 +801,14 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_get_r(
 /// A decimal string representing 's', or NULL on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_ecdsa_signature_get_s(
     sig: *const EcdsaSignature
 ) -> *mut c_char {
@@ -652,6 +828,14 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_get_s(
 /// * `sig` - Handle to the signature to free.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_ecdsa_signature_free(
     sig: *mut EcdsaSignature
 ) {
@@ -666,6 +850,14 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_free(
 
 /// Compresses a point. Returns the x-coordinate string. sets *`is_odd` to the parity.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_point_compress(
     point: *const CurvePoint,
@@ -694,6 +886,14 @@ pub unsafe extern "C" fn rssn_point_compress(
 
 /// Decompresses a point.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_point_decompress(
     x_str: *const c_char,

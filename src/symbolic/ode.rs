@@ -27,12 +27,12 @@ use crate::symbolic::transforms;
 
 pub struct ParsedODE {
     /// The order of the differential equation (the highest derivative present).
-///
-/// # Panics
-///
-/// This function, or its internal helper `collect_terms`, may panic if a `Dag` node cannot
-/// be converted to an `Expr`, which indicates an internal inconsistency in the expression
-/// representation. This should ideally not happen in a well-formed expression DAG.
+    ///
+    /// # Panics
+    ///
+    /// This function, or its internal helper `collect_terms`, may panic if a `Dag` node cannot
+    /// be converted to an `Expr`, which indicates an internal inconsistency in the expression
+    /// representation. This should ideally not happen in a well-formed expression DAG.
     pub order: u32,
     /// A mapping from derivative orders to their corresponding coefficient expressions.
     pub coeffs: HashMap<u32, Expr>,
@@ -173,6 +173,7 @@ pub(crate) fn parse_ode(
 /// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
+
 pub(crate) fn get_term_order_and_coeff(
     expr: &Expr,
     func: &str,
@@ -263,6 +264,7 @@ pub(crate) fn get_term_order_and_coeff(
 /// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
+
 pub(crate) fn find_constants(
     expr: &Expr,
     constants: &mut Vec<String>,
@@ -333,6 +335,7 @@ pub(crate) fn find_constants(
 /// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
+
 pub(crate) fn find_derivatives(
     expr: &Expr,
     var: &str,
@@ -918,6 +921,7 @@ pub(crate) fn reduce_to_first_order_system(
 /// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
+
 pub(crate) fn solve_first_order_system_sequentially(
     equations: &[Expr],
     funcs: &[&str],
@@ -1082,6 +1086,7 @@ pub(crate) fn solve_first_order_system_sequentially(
 /// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
+
 fn separate_factors(
     expr: &Expr,
     func: &str,
@@ -1813,7 +1818,9 @@ pub fn solve_riccati_ode(
                 );
             },
             | _ => {
-                terms.push(expr.clone());
+
+                terms
+                    .push(expr.clone());
             },
         }
     }

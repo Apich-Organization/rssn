@@ -27,6 +27,14 @@ pub extern "C" fn rssn_num_ff_pfe_new(
 /// Frees a `PrimeFieldElement`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ff_pfe_free(
     pfe: *mut PrimeFieldElement
 ) {
@@ -42,6 +50,14 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_free(
 
 /// Computes the inverse of a `PrimeFieldElement`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
     pfe: *const PrimeFieldElement
@@ -75,6 +91,14 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
 /// Computes (pfe^exp) mod modulus.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ff_pfe_pow(
     pfe: *const PrimeFieldElement,
     exp: u64,
@@ -96,6 +120,14 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_pow(
 /// Performs addition in GF(p).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ff_pfe_add(
     a: *const PrimeFieldElement,
     b: *const PrimeFieldElement,
@@ -116,6 +148,14 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add(
 
 /// Performs multiplication in GF(p).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_mul(
     a: *const PrimeFieldElement,

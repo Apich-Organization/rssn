@@ -64,6 +64,14 @@ struct TestOutput {
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_mean_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -116,6 +124,14 @@ pub unsafe extern "C" fn rssn_num_stats_mean_json(
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_variance_json(
     input: *const c_char
@@ -170,6 +186,14 @@ pub unsafe extern "C" fn rssn_num_stats_variance_json(
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_std_dev_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -223,6 +247,14 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev_json(
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_geometric_mean_json(
     input: *const c_char
@@ -279,6 +311,14 @@ pub unsafe extern "C" fn rssn_num_stats_geometric_mean_json(
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_harmonic_mean_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -333,6 +373,14 @@ pub unsafe extern "C" fn rssn_num_stats_harmonic_mean_json(
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_covariance_json(
     input: *const c_char
@@ -390,6 +438,14 @@ pub unsafe extern "C" fn rssn_num_stats_covariance_json(
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_correlation_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -446,6 +502,14 @@ pub unsafe extern "C" fn rssn_num_stats_correlation_json(
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_json(
     input: *const c_char
@@ -508,6 +572,14 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test_json(
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_welch_t_test_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -568,6 +640,14 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test_json(
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -627,6 +707,14 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test_json(
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_linear_regression_json(
     input: *const c_char
@@ -696,6 +784,14 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression_json(
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_z_scores_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -749,6 +845,14 @@ pub unsafe extern "C" fn rssn_num_stats_z_scores_json(
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_shannon_entropy_json(
     input: *const c_char

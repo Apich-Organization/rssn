@@ -1,8 +1,10 @@
 use std::ffi::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
-use crate::symbolic::radicals::{simplify_radicals, denest_sqrt};
+use crate::symbolic::radicals::denest_sqrt;
+use crate::symbolic::radicals::simplify_radicals;
 
 /// Simplifies radical expressions (JSON)
 #[no_mangle]

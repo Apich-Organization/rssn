@@ -59,6 +59,14 @@ fn encode<T: Serialize>(
 /// Transforms a point via Bincode.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
     data: *const u8,
     len: usize,
@@ -104,6 +112,14 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
 
 /// Transforms a point (pure numerical) via Bincode.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_coord_transform_pure_bincode(
     data: *const u8,

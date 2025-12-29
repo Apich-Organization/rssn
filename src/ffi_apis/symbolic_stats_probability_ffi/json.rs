@@ -38,6 +38,14 @@ fn parse_expr(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_dist_normal(
     mean_json: *const c_char,
     std_dev_json: *const c_char,
@@ -72,6 +80,14 @@ pub unsafe extern "C" fn rssn_json_dist_normal(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_dist_uniform(
     min_json: *const c_char,
     max_json: *const c_char,
@@ -102,6 +118,14 @@ pub unsafe extern "C" fn rssn_json_dist_uniform(
 /// Returns a JSON string representing the `Expr` of the binomial distribution.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_dist_binomial(
     n_json: *const c_char,
@@ -134,6 +158,14 @@ pub unsafe extern "C" fn rssn_json_dist_binomial(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_dist_poisson(
     rate_json: *const c_char
 ) -> *mut c_char {
@@ -159,6 +191,14 @@ pub unsafe extern "C" fn rssn_json_dist_poisson(
 /// Returns a JSON string representing the `Expr` of the Bernoulli distribution.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_dist_bernoulli(
     p_json: *const c_char
@@ -186,6 +226,14 @@ pub unsafe extern "C" fn rssn_json_dist_bernoulli(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_dist_exponential(
     rate_json: *const c_char
 ) -> *mut c_char {
@@ -211,6 +259,14 @@ pub unsafe extern "C" fn rssn_json_dist_exponential(
 /// Returns a JSON string representing the `Expr` of the gamma distribution.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_dist_gamma(
     shape_json: *const c_char,
@@ -243,6 +299,14 @@ pub unsafe extern "C" fn rssn_json_dist_gamma(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_dist_beta(
     alpha_json: *const c_char,
     beta_json: *const c_char,
@@ -274,6 +338,14 @@ pub unsafe extern "C" fn rssn_json_dist_beta(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_dist_student_t(
     nu_json: *const c_char
 ) -> *mut c_char {
@@ -301,6 +373,14 @@ pub unsafe extern "C" fn rssn_json_dist_student_t(
 /// Returns a JSON string representing the `Expr` of the PDF at `x`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_dist_pdf(
     dist_json: *const c_char,
@@ -336,6 +416,14 @@ pub unsafe extern "C" fn rssn_json_dist_pdf(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_dist_cdf(
     dist_json: *const c_char,
     x_json: *const c_char,
@@ -370,6 +458,14 @@ pub unsafe extern "C" fn rssn_json_dist_cdf(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_dist_expectation(
     dist_json: *const c_char
 ) -> *mut c_char {
@@ -400,6 +496,14 @@ pub unsafe extern "C" fn rssn_json_dist_expectation(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_dist_variance(
     dist_json: *const c_char
 ) -> *mut c_char {
@@ -429,6 +533,14 @@ pub unsafe extern "C" fn rssn_json_dist_variance(
 /// Returns a JSON string representing the `Expr` of the MGF.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_dist_mgf(
     dist_json: *const c_char,

@@ -9,6 +9,14 @@ use crate::symbolic::core::Expr;
 /// Finds a root of a complex function using Newton's method.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
     f_ptr: *const Expr,
     f_prime_ptr: *const Expr,
@@ -67,6 +75,14 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
 /// Computes the k-th branch of the complex logarithm.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_mv_complex_log_k(
     re: f64,
     im: f64,
@@ -90,6 +106,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k(
 /// Computes the k-th branch of the complex square root.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k(
     re: f64,
     im: f64,
@@ -112,6 +136,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k(
 
 /// Computes the k-th branch of the complex power z^w.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_mv_complex_pow_k(
     z_re: f64,
@@ -140,6 +172,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k(
 /// Computes the k-th branch of the complex n-th root.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_mv_complex_nth_root_k(
     re: f64,
     im: f64,
@@ -160,6 +200,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_nth_root_k(
 
 /// Computes the k-th branch of the complex arcsine.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_mv_complex_arcsin_k(
     re: f64,
@@ -184,6 +232,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_arcsin_k(
 /// Computes the k-th branch of the complex arccosine.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_mv_complex_arccos_k(
     re: f64,
     im: f64,
@@ -207,6 +263,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_arccos_k(
 
 /// Computes the k-th branch of the complex arctangent.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_mv_complex_arctan_k(
     re: f64,

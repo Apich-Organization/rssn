@@ -147,6 +147,14 @@ struct DimensionInput {
 /// Generates the Mandelbrot set as an image (iterations per pixel) using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -189,6 +197,14 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -228,6 +244,14 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
 // Julia set
 /// Generates the Julia set as an image (iterations per pixel) using JSON for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
     input: *const c_char
@@ -272,6 +296,14 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -314,6 +346,14 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
 /// Generates data points for the Lorenz attractor using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -353,6 +393,14 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
 /// Generates data points for the Lorenz attractor with custom parameters using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
     input: *const c_char
@@ -397,6 +445,14 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
 /// Generates data points for the Rossler attractor using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -440,6 +496,14 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
 /// Generates data points for the Henon map using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -480,6 +544,14 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
 // Tinkerbell map
 /// Generates data points for the Tinkerbell map using JSON for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
     input: *const c_char
@@ -524,6 +596,14 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
 /// Computes iterations of the logistic map using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -563,6 +643,14 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
 // Bifurcation diagram
 /// Generates data for a bifurcation diagram of the logistic map using JSON for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
     input: *const c_char
@@ -606,6 +694,14 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
 /// Computes the Lyapunov exponent for the logistic map using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -646,6 +742,14 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
 /// Computes the Lyapunov exponent for the Lorenz attractor using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
     input: *const c_char
@@ -690,6 +794,14 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
 /// Computes the box-counting dimension of a set of points using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -728,6 +840,14 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
 /// Computes the correlation dimension of a set of points using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
     input: *const c_char

@@ -13,6 +13,14 @@ use crate::symbolic::core::Expr;
 /// Evaluates a symbolic expression to a complex number.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_complex_eval(
     expr_ptr: *const Expr,
     var_names: *const *const c_char,
@@ -78,6 +86,14 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
 /// Computes a contour integral of a symbolic expression.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_complex_contour_integral(
     expr_ptr: *const Expr,
     var_ptr: *const c_char,
@@ -137,6 +153,14 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
 
 /// Computes the residue of a symbolic expression.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_complex_residue(
     expr_ptr: *const Expr,

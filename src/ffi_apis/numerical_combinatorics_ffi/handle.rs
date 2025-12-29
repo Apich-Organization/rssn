@@ -8,6 +8,14 @@ use crate::numerical::combinatorics;
 /// Computes the factorial of n.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_factorial(
     n: u64,
     result: *mut f64,
@@ -33,6 +41,14 @@ pub unsafe extern "C" fn rssn_num_comb_factorial(
 /// Computes the number of permutations P(n, k).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_permutations(
     n: u64,
     k: u64,
@@ -57,6 +73,14 @@ pub unsafe extern "C" fn rssn_num_comb_permutations(
 /// Computes the number of combinations C(n, k).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_combinations(
     n: u64,
     k: u64,
@@ -80,6 +104,14 @@ pub unsafe extern "C" fn rssn_num_comb_combinations(
 
 /// Solves a linear recurrence relation numerically.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
     coeffs: *const f64,
@@ -135,6 +167,14 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
 /// Computes the Stirling numbers of the second kind S(n, k).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_stirling_second(
     n: u64,
     k: u64,
@@ -158,6 +198,14 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second(
 
 /// Computes the Bell number B(n).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_bell(
     n: u64,
@@ -183,6 +231,14 @@ pub unsafe extern "C" fn rssn_num_comb_bell(
 /// Computes the Catalan number `C_n`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_catalan(
     n: u64,
     result: *mut f64,
@@ -207,6 +263,14 @@ pub unsafe extern "C" fn rssn_num_comb_catalan(
 /// Computes the rising factorial.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial(
     x: f64,
     n: u64,
@@ -230,6 +294,14 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial(
 
 /// Computes the falling factorial.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial(
     x: f64,

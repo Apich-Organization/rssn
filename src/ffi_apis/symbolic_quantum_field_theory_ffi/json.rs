@@ -1,11 +1,20 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
 use crate::symbolic::quantum_field_theory;
 
 /// Computes the Dirac adjoint using JSON.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_dirac_adjoint(
     psi_json: *const c_char
@@ -26,6 +35,14 @@ pub unsafe extern "C" fn rssn_json_dirac_adjoint(
 /// Computes the Feynman slash using JSON.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_feynman_slash(
     v_mu_json: *const c_char
 ) -> *mut c_char {
@@ -44,6 +61,14 @@ pub unsafe extern "C" fn rssn_json_feynman_slash(
 
 /// Lagrangian density for a scalar field using JSON.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_scalar_field_lagrangian(
     phi_json: *const c_char,
@@ -69,6 +94,14 @@ pub unsafe extern "C" fn rssn_json_scalar_field_lagrangian(
 
 /// Lagrangian density for QED using JSON.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_qed_lagrangian(
     psi_bar_json: *const c_char,
@@ -125,6 +158,14 @@ pub unsafe extern "C" fn rssn_json_qed_lagrangian(
 /// Lagrangian density for QCD using JSON.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_qcd_lagrangian(
     psi_bar_json: *const c_char,
     psi_json: *const c_char,
@@ -179,6 +220,14 @@ pub unsafe extern "C" fn rssn_json_qcd_lagrangian(
 
 /// Computes a propagator using JSON.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_qft_propagator(
     p_json: *const c_char,

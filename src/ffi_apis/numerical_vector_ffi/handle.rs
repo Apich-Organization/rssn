@@ -8,6 +8,14 @@ use crate::numerical::vector;
 /// The caller is responsible for freeing the returned pointer using `rssn_num_vec_free`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vec_create(
     data: *const f64,
     len: usize,
@@ -38,6 +46,14 @@ pub unsafe extern "C" fn rssn_num_vec_create(
 /// Frees a numerical vector allocated by the library.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vec_free(
     v: *mut Vec<f64>
 ) {
@@ -53,6 +69,14 @@ pub unsafe extern "C" fn rssn_num_vec_free(
 
 /// Returns the length of a numerical vector.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub const unsafe extern "C" fn rssn_num_vec_len(
     v: *const Vec<f64>
@@ -72,6 +96,14 @@ pub const unsafe extern "C" fn rssn_num_vec_len(
 /// Returns a pointer to the underlying data of a numerical vector.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub const unsafe extern "C" fn rssn_num_vec_data(
     v: *const Vec<f64>
 ) -> *const f64 {
@@ -89,6 +121,14 @@ pub const unsafe extern "C" fn rssn_num_vec_data(
 
 /// Computes the sum of two vectors.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_vec_add(
     v1: *const Vec<f64>,
@@ -127,6 +167,14 @@ pub unsafe extern "C" fn rssn_num_vec_add(
 /// Computes the difference of two vectors.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vec_sub(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
@@ -164,6 +212,14 @@ pub unsafe extern "C" fn rssn_num_vec_sub(
 /// Multiplies a vector by a scalar.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vec_scalar_mul(
     v: *const Vec<f64>,
     s: f64,
@@ -187,6 +243,14 @@ pub unsafe extern "C" fn rssn_num_vec_scalar_mul(
 
 /// Computes the dot product of two vectors.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_vec_dot_product(
     v1: *const Vec<f64>,
@@ -233,6 +297,14 @@ pub unsafe extern "C" fn rssn_num_vec_dot_product(
 /// Computes the L2 norm of a vector.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vec_norm(
     v: *const Vec<f64>,
     result: *mut f64,
@@ -253,6 +325,14 @@ pub unsafe extern "C" fn rssn_num_vec_norm(
 
 /// Computes the Lp norm of a vector.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_vec_lp_norm(
     v: *const Vec<f64>,
@@ -276,6 +356,14 @@ pub unsafe extern "C" fn rssn_num_vec_lp_norm(
 
 /// Normalizes a vector.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_vec_normalize(
     v: *const Vec<f64>
@@ -304,6 +392,14 @@ pub unsafe extern "C" fn rssn_num_vec_normalize(
 
 /// Computes the cross product of two 3D vectors.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_vec_cross_product(
     v1: *const Vec<f64>,
@@ -339,6 +435,14 @@ pub unsafe extern "C" fn rssn_num_vec_cross_product(
 
 /// Computes the angle between two vectors.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_vec_angle(
     v1: *const Vec<f64>,
@@ -385,6 +489,14 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
 /// Projects v1 onto v2.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_vec_project(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
@@ -419,6 +531,14 @@ pub unsafe extern "C" fn rssn_num_vec_project(
 
 /// Reflects v about n.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_vec_reflect(
     v: *const Vec<f64>,

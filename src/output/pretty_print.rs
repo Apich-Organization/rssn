@@ -14,7 +14,8 @@ pub struct PrintBox {
 
 /// Main entry point. Converts an expression to a formatted string.
 
-#[must_use] 
+#[must_use]
+
 pub fn pretty_print(
     expr: &Expr
 ) -> String {

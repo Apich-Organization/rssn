@@ -1,6 +1,10 @@
-use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
-use crate::symbolic::optimize::{find_extrema, hessian_matrix, find_constrained_extrema};
+use crate::symbolic::optimize::find_constrained_extrema;
+use crate::symbolic::optimize::find_extrema;
+use crate::symbolic::optimize::hessian_matrix;
 
 /// Finds extrema of a function (Bincode)
 #[no_mangle]

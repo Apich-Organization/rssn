@@ -75,6 +75,14 @@ struct PageRankInput {
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -121,6 +129,14 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graph_bfs_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -161,6 +177,14 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_json(
 /// Computes the `PageRank` scores for nodes in a graph using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graph_page_rank_json(
     input_json: *const c_char
@@ -206,6 +230,14 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_json(
 /// Computes the Floyd-Warshall all-pairs shortest path algorithm on a graph using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_json(
     input_json: *const c_char
@@ -290,6 +322,14 @@ impl GraphDefOut {
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -327,6 +367,14 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
 /// Computes the Minimum Spanning Tree (MST) of a graph using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_json(
     input_json: *const c_char

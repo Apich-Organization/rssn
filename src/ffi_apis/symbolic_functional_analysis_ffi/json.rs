@@ -25,6 +25,14 @@ use crate::symbolic::functional_analysis::{HilbertSpace, inner_product, norm, gr
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_hilbert_space_create(
     json_str: *const c_char
 ) -> *mut c_char {
@@ -59,6 +67,14 @@ pub unsafe extern "C" fn rssn_json_hilbert_space_create(
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_inner_product(
     space_json: *const c_char,
@@ -116,6 +132,14 @@ pub unsafe extern "C" fn rssn_json_inner_product(
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_norm(
     space_json: *const c_char,
     f_json: *const c_char,
@@ -160,6 +184,14 @@ pub unsafe extern "C" fn rssn_json_norm(
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_gram_schmidt(
     space_json: *const c_char,

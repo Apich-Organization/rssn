@@ -7,6 +7,14 @@ use crate::numerical::stats;
 /// Computes the mean of an array.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_mean(
     data: *const f64,
     len: usize,
@@ -26,6 +34,14 @@ pub unsafe extern "C" fn rssn_num_stats_mean(
 
 /// Computes the variance of an array.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_variance(
     data: *const f64,
@@ -47,6 +63,14 @@ pub unsafe extern "C" fn rssn_num_stats_variance(
 /// Computes the standard deviation of an array.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_std_dev(
     data: *const f64,
     len: usize,
@@ -66,6 +90,14 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev(
 
 /// Computes the geometric mean of an array.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_geometric_mean(
     data: *const f64,
@@ -87,6 +119,14 @@ pub unsafe extern "C" fn rssn_num_stats_geometric_mean(
 /// Computes the harmonic mean of an array.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_harmonic_mean(
     data: *const f64,
     len: usize,
@@ -107,6 +147,14 @@ pub unsafe extern "C" fn rssn_num_stats_harmonic_mean(
 /// Computes the range of an array.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_range(
     data: *const f64,
     len: usize,
@@ -126,6 +174,14 @@ pub unsafe extern "C" fn rssn_num_stats_range(
 
 /// Computes the coefficient of variation of an array.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_cv(
     data: *const f64,
@@ -149,6 +205,14 @@ pub unsafe extern "C" fn rssn_num_stats_cv(
 /// Computes the standard error of an array.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_standard_error(
     data: *const f64,
     len: usize,
@@ -169,6 +233,14 @@ pub unsafe extern "C" fn rssn_num_stats_standard_error(
 /// Computes the Shannon entropy of a probability distribution.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_shannon_entropy(
     data: *const f64,
     len: usize,
@@ -188,6 +260,14 @@ pub unsafe extern "C" fn rssn_num_stats_shannon_entropy(
 
 /// Computes the covariance of two arrays.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_covariance(
     data1: *const f64,
@@ -219,6 +299,14 @@ pub unsafe extern "C" fn rssn_num_stats_covariance(
 /// Computes the Pearson correlation coefficient of two arrays.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_correlation(
     data1: *const f64,
     len1: usize,
@@ -249,6 +337,14 @@ pub unsafe extern "C" fn rssn_num_stats_correlation(
 /// Performs a two-sample t-test.
 /// Returns t-statistic via `out_t` and p-value via `out_p`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test(
     sample1: *const f64,
@@ -294,6 +390,14 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test(
 /// Returns t-statistic via `out_t` and p-value via `out_p`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_stats_welch_t_test(
     sample1: *const f64,
     len1: usize,
@@ -335,6 +439,14 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test(
 /// Performs a chi-squared test.
 /// Returns chi-squared statistic via `out_chi` and p-value via `out_p`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_chi_squared_test(
     observed: *const f64,
@@ -378,6 +490,14 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test(
 /// Performs simple linear regression.
 /// Returns slope via `out_slope` and intercept via `out_intercept`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_stats_linear_regression(
     x: *const f64,

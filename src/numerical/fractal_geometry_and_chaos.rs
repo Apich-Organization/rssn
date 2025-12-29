@@ -1010,12 +1010,15 @@ pub fn generate_tinkerbell_map(
 
     for _ in 0 .. num_steps {
 
-        let x_new = a.mul_add(x, x
-            .mul_add(x, -(y * y)))
-            + b * y;
+        let x_new = a.mul_add(
+            x,
+            x.mul_add(x, -(y * y)),
+        ) + b * y;
 
-        let y_new = d.mul_add(y, (2.0 * x)
-            .mul_add(y, c * x));
+        let y_new = d.mul_add(
+            y,
+            (2.0 * x).mul_add(y, c * x),
+        );
 
         x = x_new;
 

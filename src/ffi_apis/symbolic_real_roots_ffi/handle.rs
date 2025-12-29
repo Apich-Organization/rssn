@@ -5,7 +5,9 @@ use std::os::raw::c_double;
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::expr_to_sparse_poly;
 use crate::symbolic::polynomial::sparse_poly_to_expr;
-use crate::symbolic::real_roots::{sturm_sequence, count_real_roots_in_interval, isolate_real_roots};
+use crate::symbolic::real_roots::count_real_roots_in_interval;
+use crate::symbolic::real_roots::isolate_real_roots;
+use crate::symbolic::real_roots::sturm_sequence;
 
 /// Generates the Sturm sequence for a given polynomial (Handle)
 #[no_mangle]

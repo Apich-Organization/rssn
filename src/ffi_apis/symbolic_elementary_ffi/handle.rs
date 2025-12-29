@@ -12,6 +12,14 @@ use crate::symbolic::elementary;
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_sin(
     expr: *const Expr
 ) -> *mut Expr {
@@ -32,6 +40,14 @@ pub unsafe extern "C" fn rssn_sin(
 
 /// Creates a cosine expression: cos(expr).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_cos(
     expr: *const Expr
@@ -54,6 +70,14 @@ pub unsafe extern "C" fn rssn_cos(
 /// Creates a tangent expression: tan(expr).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_tan(
     expr: *const Expr
 ) -> *mut Expr {
@@ -74,6 +98,14 @@ pub unsafe extern "C" fn rssn_tan(
 
 /// Creates an exponential expression: e^(expr).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_exp(
     expr: *const Expr
@@ -96,6 +128,14 @@ pub unsafe extern "C" fn rssn_exp(
 /// Creates a natural logarithm expression: ln(expr).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_ln(
     expr: *const Expr
 ) -> *mut Expr {
@@ -117,6 +157,14 @@ pub unsafe extern "C" fn rssn_ln(
 /// Creates a square root expression: sqrt(expr).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_sqrt(
     expr: *const Expr
 ) -> *mut Expr {
@@ -137,6 +185,14 @@ pub unsafe extern "C" fn rssn_sqrt(
 
 /// Creates a power expression: base^exp.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_pow(
     base: *const Expr,
@@ -188,6 +244,14 @@ pub extern "C" fn rssn_e() -> *mut Expr
 /// The caller must ensure `expr` is a valid Expr pointer.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_expand(
     expr: *const Expr
 ) -> *mut Expr {
@@ -224,6 +288,14 @@ pub extern "C" fn rssn_binomial_coefficient(
 /// # Safety
 /// The caller must ensure `expr` was created by this module and hasn't been freed yet.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_free_expr(
     expr: *mut Expr

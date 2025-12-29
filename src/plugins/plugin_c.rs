@@ -20,7 +20,8 @@ use crate::symbolic::core::Expr;
     abi_stable::StableAbi,
     Debug,
     Clone,
-    PartialEq, Eq,
+    PartialEq,
+    Eq,
 )]
 /// Represents the health status of a plugin.
 
@@ -40,7 +41,9 @@ pub enum PluginHealth {
 }
 
 /// Represents the kind of error that a plugin can encounter.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, PartialEq, Eq,
+)]
 
 pub enum PluginErrorKind {
     /// The plugin was not found.
@@ -70,7 +73,8 @@ pub struct PluginError {
 impl PluginError {
     /// Creates a new `PluginError`.
 
-    #[must_use] 
+    #[must_use]
+
     pub fn new(
         kind: PluginErrorKind,
         msg: &str,
@@ -129,11 +133,11 @@ pub trait Plugin: Send + Sync {
 
     /// Called once when the plugin is loaded by the `PluginManager`.
     /// Use this for any necessary setup or initialization.
-///
-/// # Errors
-///
-/// This function will return a `PluginError` if the plugin fails to initialize
-/// or encounters an unrecoverable error during setup.
+    ///
+    /// # Errors
+    ///
+    /// This function will return a `PluginError` if the plugin fails to initialize
+    /// or encounters an unrecoverable error during setup.
 
     fn on_load(
         &self
@@ -147,11 +151,11 @@ pub trait Plugin: Send + Sync {
     ///
     /// # Returns
     /// A `Result` containing either a resulting `Expr` on success or a `PluginError` on failure.
-///
-/// # Errors
-///
-/// This function will return a `PluginError` if the specified `command` is not
-/// recognized or if an error occurs during the execution of the plugin's logic.
+    ///
+    /// # Errors
+    ///
+    /// This function will return a `PluginError` if the specified `command` is not
+    /// recognized or if an error occurs during the execution of the plugin's logic.
 
     fn execute(
         &self,

@@ -488,6 +488,7 @@ impl FiniteFieldPolynomial {
     ///
     /// # Panics
     /// Panics if the divisor is the zero polynomial.
+
     pub fn long_division(
         self,
         divisor: &Self,
@@ -915,12 +916,12 @@ pub(crate) fn poly_extended_gcd(
 
 impl ExtensionFieldElement {
     /// Adds two extension field elements.
-///
-/// # Errors
-///
-/// This function will return an error if the elements belong to different
-/// extension fields (though this check is usually handled implicitly by
-/// type constraints and underlying polynomial arithmetic).
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the elements belong to different
+    /// extension fields (though this check is usually handled implicitly by
+    /// type constraints and underlying polynomial arithmetic).
 
     pub fn add(
         self,
@@ -934,12 +935,12 @@ impl ExtensionFieldElement {
     }
 
     /// Subtracts one extension field element from another.
-///
-/// # Errors
-///
-/// This function will return an error if the elements belong to different
-/// extension fields (though this check is usually handled implicitly by
-/// type constraints and underlying polynomial arithmetic).
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the elements belong to different
+    /// extension fields (though this check is usually handled implicitly by
+    /// type constraints and underlying polynomial arithmetic).
 
     pub fn sub(
         self,
@@ -953,12 +954,12 @@ impl ExtensionFieldElement {
     }
 
     /// Multiplies two extension field elements.
-///
-/// # Errors
-///
-/// This function will return an error if the elements belong to different
-/// extension fields (though this check is usually handled implicitly by
-/// type constraints and underlying polynomial arithmetic).
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the elements belong to different
+    /// extension fields (though this check is usually handled implicitly by
+    /// type constraints and underlying polynomial arithmetic).
 
     pub fn mul(
         self,
@@ -972,11 +973,11 @@ impl ExtensionFieldElement {
     }
 
     /// Divides one extension field element by another.
-///
-/// # Errors
-///
-/// This function will return an error if `rhs` is the zero element or is not
-/// invertible within the extension field.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `rhs` is the zero element or is not
+    /// invertible within the extension field.
 
     pub fn div(
         self,

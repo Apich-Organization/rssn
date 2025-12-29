@@ -24,6 +24,14 @@ use crate::symbolic::error_correction::rs_error_count;
 /// Caller must ensure `data` points to 4 bytes and `out` points to 7 bytes of allocated memory.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_hamming_encode(
     data: *const u8,
     out: *mut u8,
@@ -62,6 +70,14 @@ pub unsafe extern "C" fn rssn_hamming_encode(
 /// Caller must ensure `codeword` points to 7 bytes and `data_out` points to 4 bytes.
 /// `error_pos` will receive the 1-based error position or 0 if no error.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_hamming_decode(
     codeword: *const u8,
@@ -109,6 +125,14 @@ pub unsafe extern "C" fn rssn_hamming_decode(
 /// Caller must ensure `data` is valid. Returns allocated memory that must be freed.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_rs_encode(
     data: *const u8,
     data_len: usize,
@@ -137,7 +161,8 @@ pub unsafe extern "C" fn rssn_rs_encode(
             let boxed = codeword
                 .into_boxed_slice();
 
-            Box::into_raw(boxed).cast::<u8>()
+            Box::into_raw(boxed)
+                .cast::<u8>()
         },
         | Err(_) => {
             std::ptr::null_mut()
@@ -150,6 +175,14 @@ pub unsafe extern "C" fn rssn_rs_encode(
 /// # Safety
 /// Caller must ensure `codeword` is valid. Returns allocated memory that must be freed.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_rs_decode(
     codeword: *const u8,
@@ -179,7 +212,8 @@ pub unsafe extern "C" fn rssn_rs_decode(
             let boxed =
                 data.into_boxed_slice();
 
-            Box::into_raw(boxed).cast::<u8>()
+            Box::into_raw(boxed)
+                .cast::<u8>()
         },
         | Err(_) => {
             std::ptr::null_mut()
@@ -192,6 +226,14 @@ pub unsafe extern "C" fn rssn_rs_decode(
 /// # Safety
 /// Caller must ensure `ptr` was returned by `rssn_rs_encode` or `rssn_rs_decode`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_rs_free(
     ptr: *mut u8,
@@ -214,6 +256,14 @@ pub unsafe extern "C" fn rssn_rs_free(
 /// Caller must ensure `a` and `b` point to `len` bytes each.
 /// Returns -1 on error (null pointers or different lengths).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_hamming_distance(
     a: *const u8,
@@ -257,6 +307,14 @@ pub unsafe extern "C" fn rssn_hamming_distance(
 /// Caller must ensure `data` points to `len` bytes.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_hamming_weight(
     data: *const u8,
     len: usize,
@@ -281,6 +339,14 @@ pub unsafe extern "C" fn rssn_hamming_weight(
 /// Caller must ensure `codeword` points to 7 bytes.
 /// Returns 1 if valid, 0 if invalid, -1 on error.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_hamming_check(
     codeword: *const u8
@@ -311,6 +377,14 @@ pub unsafe extern "C" fn rssn_hamming_check(
 /// Returns 1 if valid, 0 if invalid, -1 on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_rs_check(
     codeword: *const u8,
     codeword_len: usize,
@@ -328,7 +402,9 @@ pub unsafe extern "C" fn rssn_rs_check(
             codeword_len,
         );
 
-    i32::from(rs_check(slice, n_sym))
+    i32::from(rs_check(
+        slice, n_sym,
+    ))
 }
 
 /// Estimates the number of errors in a Reed-Solomon codeword.
@@ -337,6 +413,14 @@ pub unsafe extern "C" fn rssn_rs_check(
 /// Caller must ensure `codeword` points to `codeword_len` bytes.
 /// Returns error count or -1 on error.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_rs_error_count(
     codeword: *const u8,
@@ -368,6 +452,14 @@ pub unsafe extern "C" fn rssn_rs_error_count(
 /// Caller must ensure `data` points to `len` bytes.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_crc32_compute(
     data: *const u8,
     len: usize,
@@ -393,6 +485,14 @@ pub unsafe extern "C" fn rssn_crc32_compute(
 /// Returns 1 if valid, 0 if invalid.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_crc32_verify(
     data: *const u8,
     len: usize,
@@ -409,7 +509,10 @@ pub unsafe extern "C" fn rssn_crc32_verify(
             data, len,
         );
 
-    i32::from(crc32_verify(slice, expected_crc))
+    i32::from(crc32_verify(
+        slice,
+        expected_crc,
+    ))
 }
 
 /// Updates an existing CRC-32 with additional data (for incremental computation).
@@ -418,6 +521,14 @@ pub unsafe extern "C" fn rssn_crc32_verify(
 /// Caller must ensure `data` points to `len` bytes.
 /// Use 0xFFFFFFFF as initial crc for first call.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_crc32_update(
     crc: u32,

@@ -86,6 +86,14 @@ pub extern "C" fn rssn_num_fractal_lyapunov_lorenz(
 /// `out_ptr` must be a valid pointer to at least `num_steps * 3` f64 values.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor(
     x0: f64,
     y0: f64,
@@ -127,6 +135,14 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor(
 /// `out_ptr` must be a valid pointer to at least `num_steps * 2` f64 values.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_henon_map(
     x0: f64,
     y0: f64,
@@ -167,6 +183,14 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map(
 /// `out_ptr` must be a valid pointer to at least `num_steps + 1` f64 values.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map(
     x0: f64,
     r: f64,
@@ -197,6 +221,14 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map(
 /// # Safety
 /// `points_ptr` must be a valid pointer to `num_points * 2` f64 values.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim(
     points_ptr: *const f64,
@@ -232,6 +264,14 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim(
 /// # Safety
 /// `points_ptr` must be a valid pointer to `num_points * 2` f64 values.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim(
     points_ptr: *const f64,

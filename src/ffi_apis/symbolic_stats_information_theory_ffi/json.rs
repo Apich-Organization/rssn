@@ -1,6 +1,7 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_information_theory;
 
@@ -13,6 +14,14 @@ use crate::symbolic::stats_information_theory;
 /// Returns a JSON string representing the `Expr` of the entropy.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_shannon_entropy(
     probs_json: *const c_char
@@ -41,6 +50,14 @@ pub unsafe extern "C" fn rssn_json_shannon_entropy(
 /// Returns a JSON string representing the `Expr` of the KL divergence.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_kl_divergence(
     p_probs_json: *const c_char,
@@ -77,6 +94,14 @@ pub unsafe extern "C" fn rssn_json_kl_divergence(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_cross_entropy(
     p_probs_json: *const c_char,
     q_probs_json: *const c_char,
@@ -112,6 +137,14 @@ pub unsafe extern "C" fn rssn_json_cross_entropy(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_gini_impurity(
     probs_json: *const c_char
 ) -> *mut c_char {
@@ -139,6 +172,14 @@ pub unsafe extern "C" fn rssn_json_gini_impurity(
 /// Returns a JSON string representing the `Expr` of the joint entropy.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_joint_entropy(
     joint_probs_json: *const c_char
@@ -171,6 +212,14 @@ pub unsafe extern "C" fn rssn_json_joint_entropy(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_conditional_entropy(
     joint_probs_json: *const c_char
 ) -> *mut c_char {
@@ -201,6 +250,14 @@ pub unsafe extern "C" fn rssn_json_conditional_entropy(
 /// Returns a JSON string representing the `Expr` of the mutual information.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_mutual_information(
     joint_probs_json: *const c_char

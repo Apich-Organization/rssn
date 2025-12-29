@@ -13,6 +13,14 @@ use crate::symbolic::special_functions;
 /// Computes the symbolic Gamma function Γ(z).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_gamma(
     arg: *const Expr
 ) -> *mut Expr {
@@ -32,6 +40,14 @@ pub unsafe extern "C" fn rssn_gamma(
 /// Computes the symbolic log-gamma function ln(Γ(z)).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_ln_gamma(
     arg: *const Expr
 ) -> *mut Expr {
@@ -50,6 +66,14 @@ pub unsafe extern "C" fn rssn_ln_gamma(
 
 /// Computes the symbolic Beta function B(a, b).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_beta(
     a: *const Expr,
@@ -72,6 +96,14 @@ pub unsafe extern "C" fn rssn_beta(
 /// Computes the symbolic Digamma function ψ(z).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_digamma(
     arg: *const Expr
 ) -> *mut Expr {
@@ -90,6 +122,14 @@ pub unsafe extern "C" fn rssn_digamma(
 
 /// Computes the symbolic Polygamma function ψ⁽ⁿ⁾(z).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_polygamma(
     n: *const Expr,
@@ -116,6 +156,14 @@ pub unsafe extern "C" fn rssn_polygamma(
 /// Computes the symbolic error function erf(z).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_erf(
     arg: *const Expr
 ) -> *mut Expr {
@@ -135,6 +183,14 @@ pub unsafe extern "C" fn rssn_erf(
 /// Computes the symbolic complementary error function erfc(z).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_erfc(
     arg: *const Expr
 ) -> *mut Expr {
@@ -153,6 +209,14 @@ pub unsafe extern "C" fn rssn_erfc(
 
 /// Computes the symbolic imaginary error function erfi(z).
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_erfi(
     arg: *const Expr
@@ -177,6 +241,14 @@ pub unsafe extern "C" fn rssn_erfi(
 /// Computes the symbolic Riemann zeta function ζ(s).
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_zeta(
     arg: *const Expr
 ) -> *mut Expr {
@@ -200,6 +272,14 @@ pub unsafe extern "C" fn rssn_zeta(
 /// Computes the symbolic Bessel function of the first kind `J_n(x)`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bessel_j(
     order: *const Expr,
     arg: *const Expr,
@@ -221,6 +301,14 @@ pub unsafe extern "C" fn rssn_bessel_j(
 
 /// Computes the symbolic Bessel function of the second kind `Y_n(x)`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bessel_y(
     order: *const Expr,
@@ -244,6 +332,14 @@ pub unsafe extern "C" fn rssn_bessel_y(
 /// Computes the symbolic modified Bessel function of the first kind `I_n(x)`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bessel_i(
     order: *const Expr,
     arg: *const Expr,
@@ -265,6 +361,14 @@ pub unsafe extern "C" fn rssn_bessel_i(
 
 /// Computes the symbolic modified Bessel function of the second kind `K_n(x)`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bessel_k(
     order: *const Expr,
@@ -292,6 +396,14 @@ pub unsafe extern "C" fn rssn_bessel_k(
 /// Computes the symbolic Legendre polynomial `P_n(x)`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_legendre_p(
     degree: *const Expr,
     arg: *const Expr,
@@ -314,6 +426,14 @@ pub unsafe extern "C" fn rssn_legendre_p(
 /// Computes the symbolic Laguerre polynomial `L_n(x)`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_laguerre_l(
     degree: *const Expr,
     arg: *const Expr,
@@ -335,6 +455,14 @@ pub unsafe extern "C" fn rssn_laguerre_l(
 
 /// Computes the symbolic Generalized Laguerre polynomial `L_n^α(x)`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_generalized_laguerre(
     n: *const Expr,
@@ -362,6 +490,14 @@ pub unsafe extern "C" fn rssn_generalized_laguerre(
 /// Computes the symbolic Hermite polynomial `H_n(x)`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_hermite_h(
     degree: *const Expr,
     arg: *const Expr,
@@ -384,6 +520,14 @@ pub unsafe extern "C" fn rssn_hermite_h(
 /// Computes the symbolic Chebyshev polynomial of the first kind `T_n(x)`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_chebyshev_t(
     n: *const Expr,
     x: *const Expr,
@@ -404,6 +548,14 @@ pub unsafe extern "C" fn rssn_chebyshev_t(
 
 /// Computes the symbolic Chebyshev polynomial of the second kind `U_n(x)`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_chebyshev_u(
     n: *const Expr,
@@ -430,6 +582,14 @@ pub unsafe extern "C" fn rssn_chebyshev_u(
 /// Constructs Bessel's differential equation: x²y'' + xy' + (x² - n²)y = 0.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bessel_differential_equation(
     y: *const Expr,
     x: *const Expr,
@@ -451,6 +611,14 @@ pub unsafe extern "C" fn rssn_bessel_differential_equation(
 
 /// Constructs Legendre's differential equation: (1-x²)y'' - 2xy' + n(n+1)y = 0.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_legendre_differential_equation(
     y: *const Expr,
@@ -474,6 +642,14 @@ pub unsafe extern "C" fn rssn_legendre_differential_equation(
 /// Constructs Laguerre's differential equation: xy'' + (1-x)y' + ny = 0.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_laguerre_differential_equation(
     y: *const Expr,
     x: *const Expr,
@@ -496,6 +672,14 @@ pub unsafe extern "C" fn rssn_laguerre_differential_equation(
 /// Constructs Hermite's differential equation: y'' - 2xy' + 2ny = 0.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_hermite_differential_equation(
     y: *const Expr,
     x: *const Expr,
@@ -517,6 +701,14 @@ pub unsafe extern "C" fn rssn_hermite_differential_equation(
 
 /// Constructs Chebyshev's differential equation: (1-x²)y'' - xy' + n²y = 0.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_chebyshev_differential_equation(
     y: *const Expr,
@@ -544,6 +736,14 @@ pub unsafe extern "C" fn rssn_chebyshev_differential_equation(
 /// Constructs Rodrigues' formula for Legendre polynomials.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_legendre_rodrigues_formula(
     n: *const Expr,
     x: *const Expr,
@@ -561,6 +761,14 @@ pub unsafe extern "C" fn rssn_legendre_rodrigues_formula(
 
 /// Constructs Rodrigues' formula for Hermite polynomials.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_hermite_rodrigues_formula(
     n: *const Expr,

@@ -1,9 +1,31 @@
-use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_algorithms::{dfs, bfs, connected_components, is_connected, strongly_connected_components, has_cycle, find_bridges_and_articulation_points, kruskal_mst, edmonds_karp_max_flow, dinic_max_flow, is_bipartite, bipartite_maximum_matching, topological_sort};
+use crate::symbolic::graph_algorithms::bfs;
+use crate::symbolic::graph_algorithms::bipartite_maximum_matching;
+use crate::symbolic::graph_algorithms::connected_components;
+use crate::symbolic::graph_algorithms::dfs;
+use crate::symbolic::graph_algorithms::dinic_max_flow;
+use crate::symbolic::graph_algorithms::edmonds_karp_max_flow;
+use crate::symbolic::graph_algorithms::find_bridges_and_articulation_points;
+use crate::symbolic::graph_algorithms::has_cycle;
+use crate::symbolic::graph_algorithms::is_bipartite;
+use crate::symbolic::graph_algorithms::is_connected;
+use crate::symbolic::graph_algorithms::kruskal_mst;
+use crate::symbolic::graph_algorithms::strongly_connected_components;
+use crate::symbolic::graph_algorithms::topological_sort;
 
 /// Performs DFS traversal.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_dfs_api(
     input_buf: BincodeBuffer
@@ -32,6 +54,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs_api(
 /// Performs BFS traversal.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_bfs_api(
     input_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -59,6 +89,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs_api(
 /// Finds connected components.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_connected_components_api(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -77,6 +115,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_connected_components_api(
 /// Checks if graph is connected.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_is_connected(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -93,6 +139,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_connected(
 
 /// Finds strongly connected components.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_strongly_connected_components(
     graph_buf: BincodeBuffer
@@ -114,6 +168,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_strongly_connected_components(
 /// Checks if graph has a cycle.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_has_cycle_api(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -130,6 +192,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_has_cycle_api(
 
 /// Finds bridges and articulation points.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
     graph_buf: BincodeBuffer
@@ -159,6 +229,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
 
 /// Computes MST using Kruskal's algorithm.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst_api(
     graph_buf: BincodeBuffer
@@ -195,6 +273,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst_api(
 /// Computes maximum flow using Edmonds-Karp.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_edmonds_karp_max_flow(
     input_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -223,6 +309,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_edmonds_karp_max_flow(
 
 /// Computes maximum flow using Dinic's algorithm.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_dinic_max_flow(
     input_buf: BincodeBuffer
@@ -253,6 +347,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_dinic_max_flow(
 /// Checks if graph is bipartite.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite_api(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -269,6 +371,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite_api(
 
 /// Finds maximum matching in bipartite graph.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_bipartite_maximum_matching(
     input_buf: BincodeBuffer
@@ -297,6 +407,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_bipartite_maximum_matching(
 
 /// Performs topological sort.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_topological_sort(
     graph_buf: BincodeBuffer

@@ -18,6 +18,14 @@ use crate::symbolic::stats_inference::{
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_one_sample_t_test(
     data_json: *const c_char,
     target_mean_json: *const c_char,
@@ -53,6 +61,14 @@ pub unsafe extern "C" fn rssn_json_one_sample_t_test(
 /// Returns a JSON string representing the `HypothesisTest` result.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_two_sample_t_test(
     data1_json: *const c_char,
@@ -94,6 +110,14 @@ pub unsafe extern "C" fn rssn_json_two_sample_t_test(
 /// Returns a JSON string representing the `HypothesisTest` result.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_z_test(
     data_json: *const c_char,

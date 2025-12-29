@@ -412,6 +412,7 @@ impl TensorData {
     ///
     /// # Errors
     /// Returns an error if the shape and data are inconsistent.
+
     pub fn to_arrayd(
         &self
     ) -> Result<ArrayD<f64>, String>

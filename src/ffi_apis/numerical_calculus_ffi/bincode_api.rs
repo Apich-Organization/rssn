@@ -37,6 +37,14 @@ struct HessianInput {
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_numerical_gradient_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -56,7 +64,9 @@ pub unsafe extern "C" fn rssn_numerical_gradient_bincode(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(std::string::String::as_str)
+        .map(
+            std::string::String::as_str,
+        )
         .collect();
 
     let res = calculus::gradient(
@@ -87,6 +97,14 @@ pub unsafe extern "C" fn rssn_numerical_gradient_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -106,7 +124,9 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(std::string::String::as_str)
+        .map(
+            std::string::String::as_str,
+        )
         .collect();
 
     let res = calculus::jacobian(
@@ -137,6 +157,14 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_numerical_hessian_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
@@ -156,7 +184,9 @@ pub unsafe extern "C" fn rssn_numerical_hessian_bincode(
     let vars_refs: Vec<&str> = input
         .vars
         .iter()
-        .map(std::string::String::as_str)
+        .map(
+            std::string::String::as_str,
+        )
         .collect();
 
     let res = calculus::hessian(

@@ -9,6 +9,14 @@ use crate::numerical::geometric_algebra::Multivector3D;
 #[no_mangle]
 #[allow(clippy::too_many_arguments)]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_create(
     s: f64,
     v1: f64,
@@ -31,6 +39,14 @@ pub unsafe extern "C" fn rssn_num_ga_create(
 /// Frees a `Multivector3D`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_free(
     mv: *mut Multivector3D
 ) {
@@ -46,6 +62,14 @@ pub unsafe extern "C" fn rssn_num_ga_free(
 
 /// Gets components of a `Multivector3D`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_ga_get_components(
     mv: *const Multivector3D,
@@ -117,6 +141,14 @@ pub unsafe extern "C" fn rssn_num_ga_get_components(
 /// Performs multivector addition.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_add(
     mv1: *const Multivector3D,
     mv2: *const Multivector3D,
@@ -142,6 +174,14 @@ pub unsafe extern "C" fn rssn_num_ga_add(
 
 /// Performs multivector subtraction.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_ga_sub(
     mv1: *const Multivector3D,
@@ -169,6 +209,14 @@ pub unsafe extern "C" fn rssn_num_ga_sub(
 /// Performs geometric product.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_mul(
     mv1: *const Multivector3D,
     mv2: *const Multivector3D,
@@ -194,6 +242,14 @@ pub unsafe extern "C" fn rssn_num_ga_mul(
 
 /// Performs outer product.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_ga_wedge(
     mv1: *const Multivector3D,
@@ -223,6 +279,14 @@ pub unsafe extern "C" fn rssn_num_ga_wedge(
 /// Performs inner product.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_dot(
     mv1: *const Multivector3D,
     mv2: *const Multivector3D,
@@ -249,6 +313,14 @@ pub unsafe extern "C" fn rssn_num_ga_dot(
 /// Returns the reverse of a `Multivector3D`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_reverse(
     mv: *const Multivector3D
 ) -> *mut Multivector3D {
@@ -271,6 +343,14 @@ pub unsafe extern "C" fn rssn_num_ga_reverse(
 /// Returns the norm of a `Multivector3D`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_ga_norm(
     mv: *const Multivector3D
 ) -> f64 {
@@ -290,6 +370,14 @@ pub unsafe extern "C" fn rssn_num_ga_norm(
 
 /// Returns the inverse of a `Multivector3D`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_ga_inv(
     mv: *const Multivector3D

@@ -72,7 +72,8 @@ pub trait Field:
 
     /// Optional: Multiply two matrices using Faer backend if supported.
 
-    #[must_use] 
+    #[must_use]
+
     fn faer_mul(
         _lhs: &Matrix<Self>,
         _rhs: &Matrix<Self>,
@@ -83,7 +84,8 @@ pub trait Field:
 
     /// Optional: Invert a matrix using Faer backend if supported.
 
-    #[must_use] 
+    #[must_use]
+
     fn faer_inverse(
         _matrix: &Matrix<Self>
     ) -> Option<Matrix<Self>> {
@@ -93,7 +95,8 @@ pub trait Field:
 
     /// Optional: Solve Ax = b using Faer backend if supported.
 
-    #[must_use] 
+    #[must_use]
+
     fn faer_solve(
         _a: &Matrix<Self>,
         _b: &Matrix<Self>,
@@ -369,9 +372,9 @@ impl Field for PrimeFieldElement {
     Eq,
     Serialize,
     Deserialize,
+    Default,
 )]
 
-#[derive(Default)]
 pub enum Backend {
     /// Native Rust implementation (default)
     #[default]
@@ -509,7 +512,8 @@ impl<T: Field> Matrix<T> {
 
     /// Sets the backend for the matrix.
 
-    #[must_use] 
+    #[must_use]
+
     pub const fn with_backend(
         mut self,
         backend: Backend,
@@ -621,7 +625,8 @@ impl<T: Field> Matrix<T> {
     /// Returns None if the backend is not set to Faer, if the decomposition type is unsupported
     /// for the matrix type, or if the decomposition fails (e.g., Cholesky on non-SPD).
 
-    #[must_use] 
+    #[must_use]
+
     pub fn decompose(
         &self,
         kind: FaerDecompositionType,
@@ -632,7 +637,8 @@ impl<T: Field> Matrix<T> {
         if self.backend == Backend::Faer
         {
 
-            self.data.first()
+            self.data
+                .first()
                 .and_then(|e| {
 
                     e.faer_decompose(

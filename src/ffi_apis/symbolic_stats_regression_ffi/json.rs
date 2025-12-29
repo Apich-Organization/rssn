@@ -1,6 +1,7 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats_regression;
 
@@ -18,6 +19,14 @@ use crate::symbolic::stats_regression;
 /// Returns a JSON string representing a `Vec<Expr>` containing the intercept and slope coefficients.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_simple_linear_regression(
     data_json: *const c_char
@@ -47,6 +56,14 @@ pub unsafe extern "C" fn rssn_json_simple_linear_regression(
 /// Returns a JSON string representing a `Vec<Expr>` containing the coefficients of the polynomial.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_polynomial_regression(
     data_json: *const c_char,
@@ -80,6 +97,14 @@ pub unsafe extern "C" fn rssn_json_polynomial_regression(
 /// Returns a JSON string representing `Vec<(Expr, Expr)>` (optimized parameter values).
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_nonlinear_regression(
     data_json: *const c_char,

@@ -1,7 +1,10 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string, to_c_string};
-use crate::symbolic::complex_analysis::{PathContinuation, MobiusTransformation};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_c_string;
+use crate::ffi_apis::common::to_json_string;
+use crate::symbolic::complex_analysis::MobiusTransformation;
+use crate::symbolic::complex_analysis::PathContinuation;
 use crate::symbolic::core::Expr;
 
 /// Creates a new `PathContinuation` object.
@@ -13,6 +16,14 @@ use crate::symbolic::core::Expr;
 /// Returns a JSON-serialized `PathContinuation` object.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn path_continuation_new_json(
     func_json: *const c_char,
@@ -57,6 +68,14 @@ pub unsafe extern "C" fn path_continuation_new_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn path_continuation_continue_along_path_json(
     pc_json: *const c_char,
     path_points_json: *const c_char,
@@ -94,6 +113,14 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn path_continuation_get_final_expression_json(
     pc_json: *const c_char
 ) -> *mut c_char {
@@ -119,6 +146,14 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_json(
 /// Returns an `f64` representing the estimated radius of convergence.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn estimate_radius_of_convergence_json(
     series_expr_json: *const c_char,
@@ -167,6 +202,14 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn complex_distance_json(
     p1_json: *const c_char,
     p2_json: *const c_char,
@@ -200,6 +243,14 @@ pub unsafe extern "C" fn complex_distance_json(
 /// Returns a JSON-serialized `SingularityType` enum.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn classify_singularity_json(
     func_json: *const c_char,
@@ -245,6 +296,14 @@ pub unsafe extern "C" fn classify_singularity_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn laurent_series_json(
     func_json: *const c_char,
     var: *const c_char,
@@ -289,6 +348,14 @@ pub unsafe extern "C" fn laurent_series_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn calculate_residue_json(
     func_json: *const c_char,
     var: *const c_char,
@@ -331,6 +398,14 @@ pub unsafe extern "C" fn calculate_residue_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn contour_integral_residue_theorem_json(
     func_json: *const c_char,
     var: *const c_char,
@@ -370,6 +445,14 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_json(
 /// Returns a JSON-serialized `MobiusTransformation` object.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn mobius_transformation_new_json(
     a_json: *const c_char,
@@ -453,6 +536,14 @@ pub extern "C" fn mobius_transformation_identity_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn mobius_transformation_apply_json(
     mobius_json: *const c_char,
 
@@ -488,6 +579,14 @@ pub unsafe extern "C" fn mobius_transformation_apply_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn mobius_transformation_compose_json(
     mobius1_json: *const c_char,
 
@@ -520,6 +619,14 @@ pub unsafe extern "C" fn mobius_transformation_compose_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn mobius_transformation_inverse_json(
     mobius_json: *const c_char
 ) -> *mut c_char {
@@ -545,6 +652,14 @@ pub unsafe extern "C" fn mobius_transformation_inverse_json(
 /// Returns a JSON-serialized `Expr` representing the result of the integral.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn cauchy_integral_formula_json(
     func_json: *const c_char,
@@ -585,6 +700,14 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
 /// Returns a JSON-serialized `Expr` representing the nth derivative.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn cauchy_derivative_formula_json(
     func_json: *const c_char,
@@ -631,6 +754,14 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn complex_exp_json(
     z_json: *const c_char
 ) -> *mut c_char {
@@ -658,6 +789,14 @@ pub unsafe extern "C" fn complex_exp_json(
 /// Returns a JSON-serialized `Expr` representing `ln(z)`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn complex_log_json(
     z_json: *const c_char
@@ -687,6 +826,14 @@ pub unsafe extern "C" fn complex_log_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn complex_arg_json(
     z_json: *const c_char
 ) -> *mut c_char {
@@ -714,6 +861,14 @@ pub unsafe extern "C" fn complex_arg_json(
 /// Returns a JSON-serialized `Expr` representing the modulus of `z`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn complex_modulus_json(
     z_json: *const c_char

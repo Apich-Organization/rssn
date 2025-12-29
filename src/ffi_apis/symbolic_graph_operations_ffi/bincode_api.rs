@@ -6,6 +6,14 @@ use crate::symbolic::graph_operations::{induced_subgraph, union, intersection, c
 /// Creates an induced subgraph.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_induced_subgraph(
     input_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -33,6 +41,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_induced_subgraph(
 /// Computes the union of two graphs.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_union(
     input_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -57,6 +73,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_union(
 
 /// Computes the intersection of two graphs.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_intersection(
     input_buf: BincodeBuffer
@@ -84,6 +108,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_intersection(
 
 /// Computes the Cartesian product of two graphs.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_cartesian_product(
     input_buf: BincodeBuffer
@@ -114,6 +146,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_cartesian_product(
 /// Computes the Tensor product of two graphs.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_tensor_product(
     input_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -143,6 +183,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_tensor_product(
 /// Computes the complement of a graph.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_complement(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -159,6 +207,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_complement(
 
 /// Computes the disjoint union of two graphs.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_disjoint_union(
     input_buf: BincodeBuffer
@@ -188,6 +244,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_disjoint_union(
 
 /// Computes the join of two graphs.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_join(
     input_buf: BincodeBuffer

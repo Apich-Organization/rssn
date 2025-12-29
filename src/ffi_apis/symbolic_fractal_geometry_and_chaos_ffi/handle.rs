@@ -233,7 +233,9 @@ pub extern "C" fn rssn_complex_system_fixed_points(
             })
             .collect();
 
-        let ptr = boxed_points.as_ptr().cast_mut();
+        let ptr = boxed_points
+            .as_ptr()
+            .cast_mut();
 
         std::mem::forget(boxed_points);
 
@@ -290,7 +292,9 @@ pub extern "C" fn rssn_find_fixed_points(
             })
             .collect();
 
-        let ptr = boxed_points.as_ptr().cast_mut();
+        let ptr = boxed_points
+            .as_ptr()
+            .cast_mut();
 
         std::mem::forget(boxed_points);
 

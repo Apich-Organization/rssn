@@ -1,5 +1,10 @@
-use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
-use crate::symbolic::group_theory::{Group, GroupElement, Representation, character};
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
+use crate::symbolic::group_theory::character;
+use crate::symbolic::group_theory::Group;
+use crate::symbolic::group_theory::GroupElement;
+use crate::symbolic::group_theory::Representation;
 
 #[no_mangle]
 
@@ -21,6 +26,14 @@ use crate::symbolic::group_theory::{Group, GroupElement, Representation, charact
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_group_create(
     buf: BincodeBuffer
@@ -56,6 +69,14 @@ pub unsafe extern "C" fn rssn_bincode_group_create(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_group_multiply(
     group_buf: BincodeBuffer,
@@ -102,6 +123,14 @@ pub unsafe extern "C" fn rssn_bincode_group_multiply(
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_group_inverse(
     group_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
@@ -143,6 +172,14 @@ pub unsafe extern "C" fn rssn_bincode_group_inverse(
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffer is a valid encoding of a `Group`.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
     group_buf: BincodeBuffer
 ) -> bool {
@@ -179,6 +216,14 @@ pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffers encode a compatible group and element.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_group_element_order(
     group_buf: BincodeBuffer,
@@ -227,6 +272,14 @@ pub unsafe extern "C" fn rssn_bincode_group_element_order(
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
     group_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -263,6 +316,14 @@ pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_group_center(
     group_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -298,6 +359,14 @@ pub unsafe extern "C" fn rssn_bincode_group_center(
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_representation_create(
     buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -331,6 +400,14 @@ pub unsafe extern "C" fn rssn_bincode_representation_create(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffers encode compatible objects.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
     rep_buf: BincodeBuffer,
@@ -376,6 +453,14 @@ pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_character(
     rep_buf: BincodeBuffer

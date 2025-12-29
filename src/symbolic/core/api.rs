@@ -11,8 +11,10 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use ordered_float::OrderedFloat;
 
-use super::dag_mgr::{DAG_MANAGER, DagOp};
-use super::expr::{Expr, SparsePolynomial};
+use super::dag_mgr::DagOp;
+use super::dag_mgr::DAG_MANAGER;
+use super::expr::Expr;
+use super::expr::SparsePolynomial;
 
 impl AsRef<Self> for Expr {
     fn as_ref(&self) -> &Self {
@@ -1746,14 +1748,18 @@ impl ToConstant for f64 {
 impl ToConstant for f32 {
     fn constant(&self) -> Expr {
 
-        Expr::new_constant(f64::from(*self))
+        Expr::new_constant(f64::from(
+            *self,
+        ))
     }
 }
 
 impl ToConstant for i32 {
     fn constant(&self) -> Expr {
 
-        Expr::new_constant(f64::from(*self))
+        Expr::new_constant(f64::from(
+            *self,
+        ))
     }
 }
 

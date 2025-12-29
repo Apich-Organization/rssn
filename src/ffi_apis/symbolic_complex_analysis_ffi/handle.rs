@@ -1,7 +1,9 @@
 use std::os::raw::c_char;
 
 use crate::ffi_apis::common::to_c_string;
-use crate::symbolic::complex_analysis::{PathContinuation, SingularityType, MobiusTransformation};
+use crate::symbolic::complex_analysis::MobiusTransformation;
+use crate::symbolic::complex_analysis::PathContinuation;
+use crate::symbolic::complex_analysis::SingularityType;
 use crate::symbolic::core::Expr;
 
 /// Creates a new `PathContinuation` object.
@@ -15,6 +17,14 @@ use crate::symbolic::core::Expr;
 /// Returns a raw pointer to a new `PathContinuation` object.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn path_continuation_new(
     func: *const Expr,
@@ -63,6 +73,14 @@ pub unsafe extern "C" fn path_continuation_new(
 /// Returns a C-style string "OK" on success, or an error message on failure.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn path_continuation_continue_along_path(
     pc: *mut PathContinuation,
@@ -113,6 +131,14 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn path_continuation_get_final_expression(
     pc: *const PathContinuation
 ) -> *mut Expr {
@@ -146,6 +172,14 @@ pub unsafe extern "C" fn path_continuation_get_final_expression(
 /// Returns an `f64` representing the estimated radius of convergence.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn estimate_radius_of_convergence(
     series_expr: *const Expr,
@@ -189,6 +223,14 @@ pub unsafe extern "C" fn estimate_radius_of_convergence(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn complex_distance(
     p1: *const Expr,
     p2: *const Expr,
@@ -217,6 +259,14 @@ pub unsafe extern "C" fn complex_distance(
 /// Returns a raw pointer to a `SingularityType` enum.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn classify_singularity(
     func: *const Expr,
@@ -265,6 +315,14 @@ pub unsafe extern "C" fn classify_singularity(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn laurent_series(
     func: *const Expr,
     var: *const c_char,
@@ -310,6 +368,14 @@ pub unsafe extern "C" fn laurent_series(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn calculate_residue(
     func: *const Expr,
     var: *const c_char,
@@ -352,6 +418,14 @@ pub unsafe extern "C" fn calculate_residue(
 /// Returns a raw pointer to an `Expr` representing the result of the integral.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn contour_integral_residue_theorem(
     func: *const Expr,
@@ -404,6 +478,14 @@ pub unsafe extern "C" fn contour_integral_residue_theorem(
 /// Returns a raw pointer to a new `MobiusTransformation` object.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn mobius_transformation_new(
     a: *const Expr,
@@ -468,6 +550,14 @@ pub extern "C" fn mobius_transformation_identity(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn mobius_transformation_apply(
     mobius: *const MobiusTransformation,
     z: *const Expr,
@@ -497,6 +587,14 @@ pub unsafe extern "C" fn mobius_transformation_apply(
 /// Returns a raw pointer to a `MobiusTransformation` representing their composition.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn mobius_transformation_compose(
     mobius1 : *const MobiusTransformation,
@@ -530,6 +628,14 @@ pub unsafe extern "C" fn mobius_transformation_compose(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn mobius_transformation_inverse(
     mobius: *const MobiusTransformation
 ) -> *mut MobiusTransformation {
@@ -557,6 +663,14 @@ pub unsafe extern "C" fn mobius_transformation_inverse(
 /// Returns a raw pointer to an `Expr` representing the value of the function at `z0`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn cauchy_integral_formula(
     func: *const Expr,
@@ -599,6 +713,14 @@ pub unsafe extern "C" fn cauchy_integral_formula(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn cauchy_derivative_formula(
     func: *const Expr,
     var: *const c_char,
@@ -640,6 +762,14 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn complex_exp(
     z: *const Expr
 ) -> *mut Expr {
@@ -665,6 +795,14 @@ pub unsafe extern "C" fn complex_exp(
 /// Returns a raw pointer to an `Expr` representing `log(z)`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn complex_log(
     z: *const Expr
@@ -692,6 +830,14 @@ pub unsafe extern "C" fn complex_log(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn complex_arg(
     z: *const Expr
 ) -> *mut Expr {
@@ -717,6 +863,14 @@ pub unsafe extern "C" fn complex_arg(
 /// Returns a raw pointer to an `Expr` representing `|z|`.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn complex_modulus(
     z: *const Expr

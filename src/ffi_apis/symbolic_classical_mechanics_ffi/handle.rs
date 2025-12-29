@@ -8,6 +8,14 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 use crate::symbolic::vector_calculus::ParametricCurve;
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
 ) -> Option<&'a str> {
@@ -25,6 +33,14 @@ unsafe fn c_str_to_str<'a>(
 
 /// Calculates kinetic energy: 1/2 * m * v^2.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_kinetic_energy(
     mass: *const Expr,
@@ -46,6 +62,14 @@ pub unsafe extern "C" fn rssn_kinetic_energy(
 /// Calculates Lagrangian: T - V.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_lagrangian(
     t: *const Expr,
     v: *const Expr,
@@ -66,6 +90,14 @@ pub unsafe extern "C" fn rssn_lagrangian(
 /// Calculates Hamiltonian: T + V.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_hamiltonian(
     t: *const Expr,
     v: *const Expr,
@@ -83,6 +115,14 @@ pub unsafe extern "C" fn rssn_hamiltonian(
 
 /// Computes Euler-Lagrange equation.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_euler_lagrange_equation(
     lagrangian: *const Expr,
@@ -138,6 +178,14 @@ pub unsafe extern "C" fn rssn_euler_lagrange_equation(
 /// Calculates torque: r x F.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_torque(
     r: *const Vector,
     force: *const Vector,
@@ -158,6 +206,14 @@ pub unsafe extern "C" fn rssn_torque(
 
 /// Calculates power: F . v.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_power(
     force: *const Vector,
@@ -181,6 +237,14 @@ pub unsafe extern "C" fn rssn_power(
 
 /// Calculates work done by a variable force field along a path.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_work_line_integral(
     force_field: *const Vector,

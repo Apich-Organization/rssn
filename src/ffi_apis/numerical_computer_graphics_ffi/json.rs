@@ -166,6 +166,14 @@ struct PerspectiveInput {
 /// Computes the dot product of two 3D vectors using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_dot_product_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -216,6 +224,14 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_json(
 /// Computes the cross product of two 3D vectors using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_cross_product_json(
     input: *const c_char
@@ -271,6 +287,14 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_normalize_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -319,6 +343,14 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_magnitude_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -360,6 +392,14 @@ pub unsafe extern "C" fn rssn_num_graphics_magnitude_json(
 /// Computes the reflection of an incident vector across a normal vector using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_reflect_json(
     input: *const c_char
@@ -419,6 +459,14 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_angle_between_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -467,6 +515,14 @@ pub unsafe extern "C" fn rssn_num_graphics_angle_between_json(
 /// Creates a 3D translation matrix using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -506,6 +562,14 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_json(
 /// Creates a 3D scaling matrix using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_scaling_matrix_json(
     input: *const c_char
@@ -547,6 +611,14 @@ pub unsafe extern "C" fn rssn_num_graphics_scaling_matrix_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -582,6 +654,14 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_json(
 /// Creates a 3D rotation matrix around the Y-axis using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_y_json(
     input: *const c_char
@@ -619,6 +699,14 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_y_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_z_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -654,6 +742,14 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_z_json(
 /// Creates a 3D rotation matrix around an arbitrary axis using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
     input: *const c_char
@@ -696,6 +792,14 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_axis_json(
 // Quaternion operations
 /// Multiplies two quaternions using JSON for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_json(
     input: *const c_char
@@ -754,6 +858,14 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_json(
 
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_slerp_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -810,6 +922,14 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_slerp_json(
 // Ray tracing
 /// Computes the intersection of a ray with a sphere using JSON for serialization.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
     input: *const c_char
@@ -898,6 +1018,14 @@ pub unsafe extern "C" fn rssn_num_graphics_ray_sphere_intersection_json(
 /// Computes a point on a cubic Bezier curve using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -975,6 +1103,14 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic_json(
 /// Creates a look-at matrix using JSON for serialization.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
     input: *const c_char
 ) -> *mut c_char {
@@ -1028,6 +1164,14 @@ pub unsafe extern "C" fn rssn_num_graphics_look_at_matrix_json(
 /// Creates a perspective projection matrix using JSON for serialization.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_graphics_perspective_matrix_json(
     input: *const c_char

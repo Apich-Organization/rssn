@@ -1,4 +1,8 @@
-use crate::symbolic::combinatorics::{permutations, combinations, catalan_number, stirling_number_second_kind, bell_number};
+use crate::symbolic::combinatorics::bell_number;
+use crate::symbolic::combinatorics::catalan_number;
+use crate::symbolic::combinatorics::combinations;
+use crate::symbolic::combinatorics::permutations;
+use crate::symbolic::combinatorics::stirling_number_second_kind;
 use crate::symbolic::core::Expr;
 
 /// Computes the number of permutations symbolically as an `Expr`.
@@ -21,6 +25,14 @@ use crate::symbolic::core::Expr;
 /// ownership of a heap-allocated `Expr` to the caller.
 
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_permutations(
     n: *const Expr,
@@ -56,6 +68,14 @@ pub unsafe extern "C" fn rssn_permutations(
 /// ownership of a heap-allocated `Expr` to the caller.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_combinations(
     n: *const Expr,
     k: *const Expr,
@@ -89,6 +109,14 @@ pub unsafe extern "C" fn rssn_combinations(
 /// ownership of a heap-allocated `Expr` to the caller.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_catalan_number(
     n: usize
 ) -> *mut Expr {
@@ -118,6 +146,14 @@ pub unsafe extern "C" fn rssn_catalan_number(
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated `Expr` to the caller.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_stirling_number_second_kind(
     n: usize,
@@ -149,6 +185,14 @@ pub unsafe extern "C" fn rssn_stirling_number_second_kind(
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated `Expr` to the caller.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bell_number(
     n: usize

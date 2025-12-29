@@ -7,6 +7,14 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::electromagnetism;
 use crate::symbolic::vector::Vector;
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
 ) -> Option<&'a str> {
@@ -24,6 +32,14 @@ unsafe fn c_str_to_str<'a>(
 
 /// Calculates the Lorentz force.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_lorentz_force(
     charge: *const Expr,
@@ -54,6 +70,14 @@ pub unsafe extern "C" fn rssn_lorentz_force(
 /// Calculates the Poynting vector.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_poynting_vector(
     e_field: *const Vector,
     b_field: *const Vector,
@@ -74,6 +98,14 @@ pub unsafe extern "C" fn rssn_poynting_vector(
 /// Calculates energy density.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_electromagnetic_energy_density(
     e_field: *const Vector,
     b_field: *const Vector,
@@ -93,6 +125,14 @@ pub unsafe extern "C" fn rssn_electromagnetic_energy_density(
 
 /// Computes magnetic field from vector potential.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_magnetic_field_from_vector_potential(
     a: *const Vector,
@@ -138,6 +178,14 @@ pub unsafe extern "C" fn rssn_magnetic_field_from_vector_potential(
 
 /// Computes electric field from scalar and vector potentials.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_electric_field_from_potentials(
     v: *const Expr,
@@ -199,6 +247,14 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
 
 /// Calculates Coulomb's Law field.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_coulombs_law(
     charge: *const Expr,

@@ -7,6 +7,14 @@ use crate::symbolic::vector::Vector;
 /// Creates a new `CrystalLattice`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_crystal_lattice_new(
     a1: *const Vector,
     a2: *const Vector,
@@ -33,6 +41,14 @@ pub unsafe extern "C" fn rssn_crystal_lattice_new(
 /// Frees a `CrystalLattice`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_crystal_lattice_free(
     ptr: *mut CrystalLattice
 ) {
@@ -45,6 +61,14 @@ pub unsafe extern "C" fn rssn_crystal_lattice_free(
 
 /// Computes the volume of the unit cell.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_crystal_lattice_volume(
     ptr: *const CrystalLattice
@@ -62,6 +86,14 @@ pub unsafe extern "C" fn rssn_crystal_lattice_volume(
 
 /// Computes reciprocal lattice vectors.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_crystal_lattice_reciprocal_vectors(
     ptr: *const CrystalLattice,
@@ -92,6 +124,14 @@ pub unsafe extern "C" fn rssn_crystal_lattice_reciprocal_vectors(
 /// Computes the density of states for a 3D electron gas.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_density_of_states_3d(
     energy: *const Expr,
     effective_mass: *const Expr,
@@ -118,6 +158,14 @@ pub unsafe extern "C" fn rssn_density_of_states_3d(
 /// Computes Fermi energy for a 3D electron gas.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_fermi_energy_3d(
     concentration: *const Expr,
     effective_mass: *const Expr,
@@ -140,6 +188,14 @@ pub unsafe extern "C" fn rssn_fermi_energy_3d(
 
 /// Computes Drude conductivity.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_drude_conductivity(
     n: *const Expr,
@@ -169,6 +225,14 @@ pub unsafe extern "C" fn rssn_drude_conductivity(
 
 /// Computes Hall coefficient.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_hall_coefficient(
     n: *const Expr,

@@ -208,10 +208,13 @@ impl Particle3D {
     ) -> f64 {
 
         0.5 * self.mass
-            * self.vz.mul_add(self.vz, self.vx.mul_add(
-                self.vx,
-                self.vy * self.vy,
-            ))
+            * self.vz.mul_add(
+                self.vz,
+                self.vx.mul_add(
+                    self.vx,
+                    self.vy * self.vy,
+                ),
+            )
     }
 
     /// Momentum magnitude.
@@ -220,10 +223,16 @@ impl Particle3D {
     pub fn momentum(&self) -> f64 {
 
         self.mass
-            * self.vz.mul_add(self.vz, self.vx.mul_add(
-                self.vx,
-                self.vy * self.vy,
-            ))
+            * self
+                .vz
+                .mul_add(
+                    self.vz,
+                    self.vx.mul_add(
+                        self.vx,
+                        self.vy
+                            * self.vy,
+                    ),
+                )
                 .sqrt()
     }
 }
@@ -1442,11 +1451,13 @@ pub fn simulate_n_body(
                             .z;
 
                     let r_sq =
-                        dz.mul_add(dz, dx.mul_add(
-                            dx,
-                            dy * dy,
-                        ))
-                            + 1e-10; // Softening
+                        dz.mul_add(
+                            dz,
+                            dx.mul_add(
+                                dx,
+                                dy * dy,
+                            ),
+                        ) + 1e-10; // Softening
                     let r = r_sq.sqrt();
 
                     let f = g
@@ -1517,8 +1528,14 @@ pub fn gravitational_potential_energy(
             let dz = particles[j].z
                 - particles[i].z;
 
-            let r = dz.mul_add(dz, dx
-                .mul_add(dx, dy * dy))
+            let r = dz
+                .mul_add(
+                    dz,
+                    dx.mul_add(
+                        dx,
+                        dy * dy,
+                    ),
+                )
                 .sqrt();
 
             if r > 1e-10 {

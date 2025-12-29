@@ -12,6 +12,14 @@ use crate::symbolic::core::Expr;
 /// Computes the numerical partial derivative of a function with respect to a variable at a point.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_calculus_partial_derivative(
     f: *const Expr,
     var: *const c_char,
@@ -71,6 +79,14 @@ pub unsafe extern "C" fn rssn_num_calculus_partial_derivative(
 /// Returns a pointer to a Vec<f64> containing the gradient.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_calculus_gradient(
     f: *const Expr,
     vars: *const *const c_char,
@@ -98,8 +114,8 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
         if v_ptr.is_null() {
 
             update_last_error(format!(
-                "Variable at index {i} \
-                 is null"
+                "Variable at index \
+                 {i} is null"
             ));
 
             return ptr::null_mut();
@@ -109,6 +125,7 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
             .to_str()
         {
             | Ok(s) => {
+
                 vars_list.push(s);
             },
             | Err(_) => {
@@ -151,6 +168,14 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
 /// Returns a pointer to a Matrix<f64>.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_calculus_jacobian(
     funcs: *const *const Expr,
     n_funcs: usize,
@@ -188,6 +213,7 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
             .to_str()
         {
             | Ok(s) => {
+
                 vars_list.push(s);
             },
             | Err(_) => {
@@ -255,6 +281,14 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
 /// Returns a pointer to a Matrix<f64>.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_calculus_hessian(
     f: *const Expr,
     vars: *const *const c_char,
@@ -283,6 +317,7 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
             .to_str()
         {
             | Ok(s) => {
+
                 vars_list.push(s);
             },
             | Err(_) => {

@@ -9,6 +9,14 @@ use crate::symbolic::stats;
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_mean(
     data: *const *const Expr,
     len: usize,
@@ -42,6 +50,14 @@ pub unsafe extern "C" fn rssn_mean(
 /// # Safety
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_variance(
     data: *const *const Expr,
@@ -77,6 +93,14 @@ pub unsafe extern "C" fn rssn_variance(
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_std_dev(
     data: *const *const Expr,
     len: usize,
@@ -110,6 +134,14 @@ pub unsafe extern "C" fn rssn_std_dev(
 /// # Safety
 /// The caller must ensure `data1` and `data2` are valid pointers to arrays of `Expr` pointers.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_covariance(
     data1: *const *const Expr,
@@ -164,6 +196,14 @@ pub unsafe extern "C" fn rssn_covariance(
 /// # Safety
 /// The caller must ensure `data1` and `data2` are valid pointers to arrays of `Expr` pointers.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_correlation(
     data1: *const *const Expr,

@@ -20,6 +20,14 @@ use crate::symbolic::error_correction_helper::FiniteField;
 /// Performs addition in GF(2^8) via JSON interface.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_gf256_add(
     a_json: *const c_char,
     b_json: *const c_char,
@@ -45,6 +53,14 @@ pub unsafe extern "C" fn rssn_json_gf256_add(
 
 /// Performs multiplication in GF(2^8) via JSON interface.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_gf256_mul(
     a_json: *const c_char,
@@ -72,6 +88,14 @@ pub unsafe extern "C" fn rssn_json_gf256_mul(
 /// Computes inverse in GF(2^8) via JSON interface.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_gf256_inv(
     a_json: *const c_char
 ) -> *mut c_char {
@@ -97,6 +121,14 @@ pub unsafe extern "C" fn rssn_json_gf256_inv(
 
 /// Evaluates a polynomial over GF(2^8) via JSON interface.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_poly_eval_gf256(
     poly_json: *const c_char,
@@ -125,6 +157,14 @@ pub unsafe extern "C" fn rssn_json_poly_eval_gf256(
 /// Adds two polynomials over GF(2^8) via JSON interface.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_poly_add_gf256(
     p1_json: *const c_char,
     p2_json: *const c_char,
@@ -152,6 +192,14 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf256(
 /// Multiplies two polynomials over GF(2^8) via JSON interface.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_json_poly_mul_gf256(
     p1_json: *const c_char,
     p2_json: *const c_char,
@@ -178,6 +226,14 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf256(
 
 /// Adds two polynomials over a general finite field via JSON interface.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_poly_add_gf(
     p1_json: *const c_char,
@@ -223,6 +279,14 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf(
 
 /// Multiplies two polynomials over a general finite field via JSON interface.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_json_poly_mul_gf(
     p1_json: *const c_char,

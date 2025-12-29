@@ -6,6 +6,14 @@ use std::os::raw::c_char;
 use crate::symbolic::core::Expr;
 use crate::symbolic::pde;
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
 ) -> Option<&'a str> {
@@ -27,6 +35,14 @@ unsafe fn c_str_to_str<'a>(
 /// The caller must ensure `pde_expr` is a valid Expr pointer, `func` and `vars` are valid C strings,
 /// and `vars_len` accurately represents the number of variables.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_pde(
     pde_expr: *const Expr,
@@ -72,7 +88,8 @@ pub unsafe extern "C" fn rssn_solve_pde(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter().copied()
+        .iter()
+        .copied()
         .collect();
 
     let result = pde::solve_pde(
@@ -90,6 +107,14 @@ pub unsafe extern "C" fn rssn_solve_pde(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
     equation: *const Expr,
@@ -135,7 +160,8 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter().copied()
+        .iter()
+        .copied()
         .collect();
 
     match pde::solve_pde_by_characteristics(
@@ -153,6 +179,14 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
     equation: *const Expr,
@@ -198,7 +232,8 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter().copied()
+        .iter()
+        .copied()
         .collect();
 
     match pde::solve_wave_equation_1d_dalembert(
@@ -216,6 +251,14 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
     equation: *const Expr,
@@ -261,7 +304,8 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter().copied()
+        .iter()
+        .copied()
         .collect();
 
     match pde::solve_heat_equation_1d(
@@ -283,6 +327,14 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
     equation: *const Expr,
@@ -328,7 +380,8 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter().copied()
+        .iter()
+        .copied()
         .collect();
 
     match pde::solve_laplace_equation_2d(
@@ -350,6 +403,14 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
     equation: *const Expr,
@@ -395,7 +456,8 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter().copied()
+        .iter()
+        .copied()
         .collect();
 
     match pde::solve_poisson_equation_2d(
@@ -417,6 +479,14 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
     equation: *const Expr,
@@ -462,7 +532,8 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter().copied()
+        .iter()
+        .copied()
         .collect();
 
     match pde::solve_helmholtz_equation(
@@ -484,6 +555,14 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
     equation: *const Expr,
@@ -529,7 +608,8 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter().copied()
+        .iter()
+        .copied()
         .collect();
 
     match pde::solve_schrodinger_equation(
@@ -547,6 +627,14 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
 /// # Safety
 /// The caller must ensure all pointers are valid.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
     equation: *const Expr,
@@ -592,7 +680,8 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
     }
 
     let vars_refs: Vec<&str> = vars_vec
-        .iter().copied()
+        .iter()
+        .copied()
         .collect();
 
     match pde::solve_klein_gordon_equation(

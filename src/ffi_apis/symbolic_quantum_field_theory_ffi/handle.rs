@@ -4,6 +4,14 @@ use crate::symbolic::quantum_field_theory;
 /// Computes the Dirac adjoint of a fermion field.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_dirac_adjoint(
     psi: *const Expr
 ) -> *mut Expr {
@@ -20,6 +28,14 @@ pub unsafe extern "C" fn rssn_dirac_adjoint(
 
 /// Computes the Feynman slash notation.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_feynman_slash(
     v_mu: *const Expr
@@ -38,6 +54,14 @@ pub unsafe extern "C" fn rssn_feynman_slash(
 /// Lagrangian density for a free real scalar field.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_scalar_field_lagrangian(
     phi: *const Expr,
     m: *const Expr,
@@ -55,6 +79,14 @@ pub unsafe extern "C" fn rssn_scalar_field_lagrangian(
 
 /// Lagrangian density for QED.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_qed_lagrangian(
     psi_bar: *const Expr,
@@ -88,6 +120,14 @@ pub unsafe extern "C" fn rssn_qed_lagrangian(
 /// Lagrangian density for QCD.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_qcd_lagrangian(
     psi_bar: *const Expr,
     psi: *const Expr,
@@ -120,6 +160,14 @@ pub unsafe extern "C" fn rssn_qcd_lagrangian(
 /// Computes a propagator for a particle in QFT.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_qft_propagator(
     p: *const Expr,
     m: *const Expr,
@@ -138,6 +186,14 @@ pub unsafe extern "C" fn rssn_qft_propagator(
 
 /// Scattering cross-section.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_qft_scattering_cross_section(
     matrix_element: *const Expr,
@@ -164,6 +220,14 @@ pub unsafe extern "C" fn rssn_qft_scattering_cross_section(
 
 /// Feynman propagator in position space.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_feynman_propagator_position_space(
     x: *const Expr,

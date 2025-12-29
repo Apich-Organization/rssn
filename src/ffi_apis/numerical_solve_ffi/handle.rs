@@ -20,6 +20,14 @@ use crate::numerical::solve::{
 /// A pointer to a `LinearSolution` object, or null on error.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_solve_linear_system_handle(
     matrix_ptr: *const Matrix<f64>,
     vector_data: *const f64,
@@ -56,6 +64,14 @@ pub unsafe extern "C" fn rssn_num_solve_linear_system_handle(
 /// Frees a `LinearSolution` object.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_solve_free_solution(
     ptr: *mut LinearSolution
 ) {
@@ -68,6 +84,14 @@ pub unsafe extern "C" fn rssn_num_solve_free_solution(
 
 /// Checks if the solution is unique.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub const unsafe extern "C" fn rssn_num_solve_is_unique(
     ptr: *const LinearSolution
@@ -85,6 +109,14 @@ pub const unsafe extern "C" fn rssn_num_solve_is_unique(
 }
 
 /// Helper to copy vector data.
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 const unsafe fn copy_vec_to_buffer(
     vec: &[f64],
@@ -104,6 +136,14 @@ const unsafe fn copy_vec_to_buffer(
 /// * `ptr` - Pointer to the `LinearSolution`.
 /// * `buffer` - Buffer to store the solution vector.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_solve_get_unique_solution(
     ptr: *const LinearSolution,
@@ -127,6 +167,14 @@ pub unsafe extern "C" fn rssn_num_solve_get_unique_solution(
 
 /// Gets the length of the unique solution vector.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub const unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
     ptr: *const LinearSolution
@@ -154,6 +202,14 @@ pub const unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
 
 /// Checks if there is no solution.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub const unsafe extern "C" fn rssn_num_solve_is_no_solution(
     ptr: *const LinearSolution

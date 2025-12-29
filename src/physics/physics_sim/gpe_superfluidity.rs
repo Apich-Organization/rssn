@@ -90,7 +90,9 @@ pub fn run_gpe_ground_state_finder(
 
                 *val = 0.5
                     * trap_strength
-                    * x.mul_add(x, y_sq);
+                    * x.mul_add(
+                        x, y_sq,
+                    );
             }
         });
 
@@ -119,7 +121,10 @@ pub fn run_gpe_ground_state_finder(
                 .enumerate()
             {
 
-                let k_sq = kx[i].mul_add(kx[i], ky_sq);
+                let k_sq = kx[i]
+                    .mul_add(
+                        kx[i], ky_sq,
+                    );
 
                 *val = (-0.5
                     * k_sq
@@ -146,8 +151,11 @@ pub fn run_gpe_ground_state_finder(
             .enumerate()
             .for_each(|(idx, p)| {
 
-                let v_eff = params.g.mul_add(p.norm_sqr(), potential
-                    [idx]);
+                let v_eff =
+                    params.g.mul_add(
+                        p.norm_sqr(),
+                        potential[idx],
+                    );
 
                 *p *= (-v_eff
                     * params.d_tau
@@ -178,8 +186,11 @@ pub fn run_gpe_ground_state_finder(
             .enumerate()
             .for_each(|(idx, p)| {
 
-                let v_eff = params.g.mul_add(p.norm_sqr(), potential
-                    [idx]);
+                let v_eff =
+                    params.g.mul_add(
+                        p.norm_sqr(),
+                        potential[idx],
+                    );
 
                 *p *= (-v_eff
                     * params.d_tau

@@ -49,6 +49,14 @@ struct SweInput {
 /// valid and properly encoded.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_physics_fvm_swe_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {

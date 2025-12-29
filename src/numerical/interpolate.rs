@@ -257,13 +257,16 @@ pub fn cubic_spline_interpolation(
 
         let dx = x - points_owned[i].0;
 
-        d[i].mul_add(dx.powi(3), c[i].mul_add(
-            dx.powi(2),
-            b[i].mul_add(
-                dx,
-                points_owned[i].1,
+        d[i].mul_add(
+            dx.powi(3),
+            c[i].mul_add(
+                dx.powi(2),
+                b[i].mul_add(
+                    dx,
+                    points_owned[i].1,
+                ),
             ),
-        ))
+        )
     };
 
     Ok(Arc::new(spline))

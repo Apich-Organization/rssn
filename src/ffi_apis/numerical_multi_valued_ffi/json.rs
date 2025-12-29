@@ -39,6 +39,14 @@ struct ComplexResult {
 /// JSON-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_json(
     input_json: *const c_char
 ) -> *mut c_char {
@@ -116,6 +124,14 @@ struct LogSqrtInput {
 /// JSON-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
     json: *const c_char
 ) -> *mut c_char {
@@ -170,6 +186,14 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
 /// # Returns
 /// JSON-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_json(
     json: *const c_char
@@ -235,6 +259,14 @@ struct PowInput {
 /// # Returns
 /// JSON-encoded `FfiResult<ComplexResult, String>`.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_json(
     json: *const c_char

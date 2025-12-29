@@ -1,10 +1,26 @@
-use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_algorithms::{bfs, dfs, connected_components, edmonds_karp_max_flow, kruskal_mst, has_cycle, is_bipartite};
+use crate::symbolic::graph_algorithms::bfs;
+use crate::symbolic::graph_algorithms::connected_components;
+use crate::symbolic::graph_algorithms::dfs;
+use crate::symbolic::graph_algorithms::edmonds_karp_max_flow;
+use crate::symbolic::graph_algorithms::has_cycle;
+use crate::symbolic::graph_algorithms::is_bipartite;
+use crate::symbolic::graph_algorithms::kruskal_mst;
 
 /// Creates a new graph from bincode specification.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_new(
     spec_buf: BincodeBuffer
@@ -29,6 +45,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_new(
 
 /// Adds a node to the graph.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_add_node(
     input_buf: BincodeBuffer
@@ -55,6 +79,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_node(
 
 /// Adds an edge to the graph.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_add_edge(
     input_buf: BincodeBuffer
@@ -88,6 +120,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_edge(
 /// Gets the adjacency matrix.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_adjacency_matrix(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -106,6 +146,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_adjacency_matrix(
 /// Gets the Laplacian matrix.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_laplacian_matrix(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -123,6 +171,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_laplacian_matrix(
 
 /// Performs BFS traversal.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_bfs(
     input_buf: BincodeBuffer
@@ -151,6 +207,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs(
 /// Performs DFS traversal.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_dfs(
     input_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -178,6 +242,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs(
 /// Finds connected components.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_connected_components(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -195,6 +267,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_connected_components(
 
 /// Computes maximum flow.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_max_flow(
     input_buf: BincodeBuffer
@@ -225,6 +305,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_max_flow(
 /// Computes MST using Kruskal's algorithm.
 #[no_mangle]
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+
 pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
@@ -241,6 +329,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst(
 
 /// Checks if graph has a cycle.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_has_cycle(
     graph_buf: BincodeBuffer
@@ -259,6 +355,14 @@ pub unsafe extern "C" fn rssn_bincode_graph_has_cycle(
 
 /// Checks if graph is bipartite.
 #[no_mangle]
+
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
 pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite(
     graph_buf: BincodeBuffer
