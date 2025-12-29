@@ -33,6 +33,30 @@ struct Bem2DOutput {
     q: Vec<f64>,
 }
 
+/// Solves the 2D Laplace equation using Boundary Element Method (BEM) via bincode serialization.
+///
+/// The Laplace equation ∇²u = 0 is solved using BEM, where the domain is discretized
+/// into boundary elements and the solution is represented by potential u and flux q
+/// on the boundary.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `Bem2DInput` with:
+///   - `points`: Boundary points as (x, y) coordinates
+///   - `bcs`: Boundary conditions (Potential or Flux) at each point
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Bem2DOutput, String>` with either:
+/// - `ok`: Object containing:
+///   - `u`: Potential values at boundary nodes
+///   - `q`: Flux values at boundary nodes
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_bincode(

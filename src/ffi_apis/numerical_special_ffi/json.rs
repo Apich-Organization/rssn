@@ -51,6 +51,24 @@ struct BinomialInput {
 }
 
 // Gamma functions
+/// Computes the Gamma function Γ(x) via JSON serialization.
+///
+/// The Gamma function extends the factorial to real and complex numbers: Γ(n) = (n-1)!.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Argument of the Gamma function (must be positive)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value Γ(x).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_gamma_json(
@@ -81,6 +99,24 @@ pub unsafe extern "C" fn rssn_num_special_gamma_json(
     )
 }
 
+/// Computes the natural logarithm of the Gamma function ln(Γ(x)) via JSON serialization.
+///
+/// More numerically stable than ln(gamma(x)) for large x.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Argument of the log-gamma function
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value ln(Γ(x)).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_ln_gamma_json(
@@ -111,6 +147,24 @@ pub unsafe extern "C" fn rssn_num_special_ln_gamma_json(
     )
 }
 
+/// Computes the Digamma function ψ(x) = d/dx[ln(Γ(x))] via JSON serialization.
+///
+/// The logarithmic derivative of the Gamma function.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Argument of the Digamma function
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value ψ(x).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_digamma_json(
@@ -142,6 +196,23 @@ pub unsafe extern "C" fn rssn_num_special_digamma_json(
 }
 
 // Beta functions
+/// Computes the Beta function B(a, b) = Γ(a)Γ(b) / Γ(a+b) via JSON serialization.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `a`: First shape parameter (must be positive)
+///   - `b`: Second shape parameter (must be positive)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value B(a, b).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_beta_json(
@@ -172,6 +243,26 @@ pub unsafe extern "C" fn rssn_num_special_beta_json(
     )
 }
 
+/// Computes the regularized incomplete Beta function I(x; a, b) via JSON serialization.
+///
+/// The cumulative distribution function of the Beta distribution.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Upper limit of integration (0 ≤ x ≤ 1)
+///   - `a`: First shape parameter (must be positive)
+///   - `b`: Second shape parameter (must be positive)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value I(x; a, b) ∈ [0, 1].
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_regularized_beta_json(
@@ -209,6 +300,24 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_json(
 }
 
 // Error functions
+/// Computes the error function erf(x) via JSON serialization.
+///
+/// Defined as erf(x) = (2/√π) ∫₀^x e^(-t²) dt.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Argument of the error function
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value erf(x) ∈ [-1, 1].
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_erf_json(
@@ -239,6 +348,24 @@ pub unsafe extern "C" fn rssn_num_special_erf_json(
     )
 }
 
+/// Computes the complementary error function erfc(x) = 1 - erf(x) via JSON serialization.
+///
+/// More accurate than 1 - erf(x) for large positive x.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Argument of the complementary error function
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value erfc(x) ∈ [0, 2].
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_erfc_json(
@@ -270,6 +397,24 @@ pub unsafe extern "C" fn rssn_num_special_erfc_json(
 }
 
 // Bessel functions
+/// Computes the Bessel function of the first kind of order zero J₀(x) via JSON serialization.
+///
+/// Solution to Bessel's differential equation for ν = 0.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Argument of the Bessel function
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value J₀(x).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_bessel_j0_json(
@@ -306,6 +451,24 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j0_json(
     )
 }
 
+/// Computes the Bessel function of the first kind of order one J₁(x) via JSON serialization.
+///
+/// Solution to Bessel's differential equation for ν = 1.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Argument of the Bessel function
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value J₁(x).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_bessel_j1_json(
@@ -343,6 +506,25 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j1_json(
 }
 
 // Orthogonal polynomials
+/// Computes the Legendre polynomial Pₙ(x) via JSON serialization.
+///
+/// Orthogonal on [-1, 1], used in multipole expansions and spherical harmonics.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n`: Polynomial degree (non-negative integer)
+///   - `x`: Evaluation point (typically in [-1, 1])
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value Pₙ(x).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_legendre_p_json(
@@ -380,6 +562,25 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_json(
     )
 }
 
+/// Computes the Chebyshev polynomial of the first kind Tₙ(x) via JSON serialization.
+///
+/// Satisfies Tₙ(cos θ) = cos(nθ), minimizes polynomial interpolation error.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n`: Polynomial degree (non-negative integer)
+///   - `x`: Evaluation point (typically in [-1, 1])
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value Tₙ(x).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_chebyshev_t_json(
@@ -410,6 +611,25 @@ pub unsafe extern "C" fn rssn_num_special_chebyshev_t_json(
     )
 }
 
+/// Computes the Hermite polynomial Hₙ(x) via JSON serialization.
+///
+/// Orthogonal with weight e^(-x²), appears in quantum harmonic oscillator wavefunctions.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n`: Polynomial degree (non-negative integer)
+///   - `x`: Evaluation point
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value Hₙ(x).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_hermite_h_json(
@@ -448,6 +668,24 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_json(
 }
 
 // Other special functions
+/// Computes the factorial n! via JSON serialization.
+///
+/// For large n, computed using the Gamma function.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n`: Non-negative integer
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value n! (as f64).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_factorial_json(
@@ -484,6 +722,25 @@ pub unsafe extern "C" fn rssn_num_special_factorial_json(
     )
 }
 
+/// Computes the binomial coefficient C(n, k) via JSON serialization.
+///
+/// The number of ways to choose k items from n items.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n`: Total number of items (non-negative integer)
+///   - `k`: Number of items to choose (0 ≤ k ≤ n)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value C(n, k) (as f64).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_binomial_json(
@@ -521,6 +778,24 @@ pub unsafe extern "C" fn rssn_num_special_binomial_json(
     )
 }
 
+/// Computes the sigmoid function σ(x) = 1 / (1 + e^(-x)) via JSON serialization.
+///
+/// Common activation function in neural networks, maps ℝ to (0, 1).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Input value
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value σ(x) ∈ (0, 1).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_sigmoid_json(
@@ -557,6 +832,24 @@ pub unsafe extern "C" fn rssn_num_special_sigmoid_json(
     )
 }
 
+/// Computes the normalized sinc function sinc(x) = sin(x) / x via JSON serialization.
+///
+/// With sinc(0) = 1 by continuity. Appears in signal processing and Fourier analysis.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `x`: Input value (radians)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+/// the value sinc(x).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_special_sinc_json(

@@ -28,6 +28,29 @@ struct SumInput {
     end: i64,
 }
 
+/// Computes Taylor series coefficients for a symbolic expression using bincode serialization.
+///
+/// Evaluates the derivatives of the expression at a point to obtain Taylor expansion coefficients:
+/// f(x) ≈ Σ [fⁿⁿⁿ(a)/n!](x-a)ⁿ for n = 0 to order.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `TaylorInput` with:
+///   - `expr`: Symbolic expression to expand
+///   - `var`: Variable name for expansion
+///   - `at_point`: Point a around which to expand
+///   - `order`: Maximum order of Taylor expansion
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+/// - `ok`: Array of Taylor coefficients [c₀, c₁, ..., cₙ]
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
@@ -72,6 +95,28 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
     to_bincode_buffer(&ffi_res)
 }
 
+/// Computes the numerical sum of a symbolic series using bincode serialization.
+///
+/// Evaluates Σ f(var) for var from start to end, where f is a symbolic expression.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `SumInput` with:
+///   - `expr`: Symbolic expression to sum
+///   - `var`: Summation index variable name
+///   - `start`: Lower limit of summation (inclusive)
+///   - `end`: Upper limit of summation (inclusive)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The computed sum value
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_numerical_sum_series_bincode(

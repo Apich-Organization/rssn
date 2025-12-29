@@ -10,6 +10,29 @@ use crate::physics::physics_sim::linear_elasticity::{
     self,
 };
 
+/// Solves the linear elasticity equations for stress and displacement in a deformable solid via JSON serialization.
+///
+/// The elasticity equations σᵢⱼ = Cᵢⱼₖₗεₖₗ with strain εᵢⱼ = ½(∂uᵢ/∂xⱼ + ∂uⱼ/∂xᵢ) describe
+/// small deformations in elastic materials, where σ is stress tensor, ε is strain tensor,
+/// u is displacement field, and C is the stiffness tensor.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `nx`, `ny`: Grid dimensions for finite element discretization
+///   - `young_modulus`: Young's modulus E (stiffness)
+///   - `poisson_ratio`: Poisson's ratio ν (lateral contraction)
+///   - `applied_force`: External force distribution
+///   - `boundary_conditions`: Fixed displacement constraints
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the displacement field u(x,y) as a flattened vector.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_json(

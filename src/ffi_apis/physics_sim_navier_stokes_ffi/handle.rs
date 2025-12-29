@@ -3,11 +3,18 @@
 use crate::numerical::matrix::Matrix;
 use crate::physics::physics_sim::navier_stokes_fluid;
 
+/// Result handles for the Navier-Stokes simulation containing velocity and pressure fields.
+///
+/// This C-compatible struct encapsulates the output of an incompressible Navier-Stokes
+/// solver, providing matrix handles to the computed velocity components and pressure.
 #[repr(C)]
 
 pub struct NavierStokesResultHandles {
+    /// Pointer to a Matrix containing the horizontal velocity field u(x,y) in m/s.
     pub u: *mut Matrix<f64>,
+    /// Pointer to a Matrix containing the vertical velocity field v(x,y) in m/s.
     pub v: *mut Matrix<f64>,
+    /// Pointer to a Matrix containing the pressure field p(x,y) in Pa.
     pub p: *mut Matrix<f64>,
 }
 

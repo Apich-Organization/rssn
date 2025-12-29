@@ -17,6 +17,28 @@ struct Multigrid2DInput {
     num_cycles: usize,
 }
 
+/// Solves the 2D Poisson equation using Multigrid Method via bincode serialization.
+///
+/// The Poisson equation ∇²u = f is solved using the multigrid method, which achieves
+/// optimal O(N) complexity through hierarchical coarse-grid correction.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `Multigrid2DInput` with:
+///   - `n`: Grid size (n×n interior points)
+///   - `f`: Right-hand side source term (flattened 2D array)
+///   - `num_cycles`: Number of V-cycles or W-cycles to perform
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+/// - `ok`: Solution vector u (flattened 2D array)
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_bincode(

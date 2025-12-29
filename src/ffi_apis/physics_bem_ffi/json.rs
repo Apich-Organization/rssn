@@ -34,6 +34,27 @@ struct Bem2DOutput {
     q: Vec<f64>,
 }
 
+/// Solves the 2D Laplace equation using Boundary Element Method (BEM) via JSON serialization.
+///
+/// The Laplace equation ∇²u = 0 is solved using BEM, where the domain is discretized
+/// into boundary elements and the solution is represented by potential u and flux q
+/// on the boundary.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `points`: Boundary points as (x, y) coordinate pairs
+///   - `bcs`: Boundary conditions (Potential or Flux) at each point
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Bem2DOutput, String>` with
+/// potential `u` and flux `q` values at boundary nodes.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_json(

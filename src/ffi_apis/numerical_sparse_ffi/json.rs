@@ -126,6 +126,29 @@ struct CgRequest {
     tolerance: f64,
 }
 
+/// Solves the linear system Ax = b using the Conjugate Gradient iterative method via JSON.
+///
+/// The Conjugate Gradient method is efficient for large sparse symmetric positive-definite matrices,
+/// converging in at most N iterations (typically much fewer).
+///
+/// # Arguments
+///
+/// * `json_ptr` - A JSON string pointer containing:
+///   - `a`: Sparse matrix A in CSR/COO format
+///   - `b`: Right-hand side vector b
+///   - `x0`: Optional initial guess for solution vector
+///   - `max_iter`: Maximum number of iterations
+///   - `tolerance`: Convergence tolerance for residual norm
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the solution vector x.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_sparse_solve_cg_json(

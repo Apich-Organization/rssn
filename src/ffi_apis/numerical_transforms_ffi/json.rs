@@ -17,6 +17,25 @@ struct TransformInput {
     data: Vec<Complex<f64>>,
 }
 
+/// Computes the Fast Fourier Transform (FFT) in-place via JSON serialization.
+///
+/// The FFT converts a sequence from the time/space domain to the frequency domain,
+/// computing X(k) = Σx(n)e^(-2πikn/N) for k = 0, ..., N-1.
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `data`: Array of complex numbers to transform
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<Complex<f64>>, String>` with
+/// FFT-transformed data in frequency domain.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_fft_json(
@@ -51,6 +70,25 @@ pub unsafe extern "C" fn rssn_num_fft_json(
     )
 }
 
+/// Computes the Inverse Fast Fourier Transform (IFFT) in-place via JSON serialization.
+///
+/// The IFFT converts a sequence from the frequency domain back to the time/space domain,
+/// computing x(n) = (1/N) ΣX(k)e^(2πikn/N) for n = 0, ..., N-1.
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `data`: Array of complex numbers in frequency domain
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<Complex<f64>>, String>` with
+/// IFFT-transformed data in time/space domain.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_ifft_json(

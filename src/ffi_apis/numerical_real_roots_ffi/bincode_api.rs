@@ -53,6 +53,26 @@ fn encode<T: Serialize>(
     }
 }
 
+/// Finds all real roots of a polynomial using numerical methods and bincode serialization.
+///
+/// Uses root-finding algorithms to locate all real zeros of the polynomial.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `FindRootsInput` with:
+///   - `coeffs`: Polynomial coefficients [a₀, a₁, ..., aₙ] for a₀ + a₁x + ... + aₙxⁿ
+///   - `tolerance`: Convergence tolerance for root finding
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+/// - `ok`: Array of real roots found
+/// - `err`: Error message if root finding failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives raw pointers through FFI.
+/// The caller must ensure the input buffer contains valid bincode data.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_real_roots_find_roots_bincode(

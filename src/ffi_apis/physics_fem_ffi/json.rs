@@ -16,6 +16,26 @@ struct Poisson1DInput {
     domain_length: f64,
 }
 
+/// Solves the 1D Poisson equation using Finite Element Method (FEM) via JSON serialization.
+///
+/// The Poisson equation -d²u/dx² = f(x) is solved using linear finite elements
+/// with homogeneous Dirichlet boundary conditions (u = 0 at boundaries).
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n_elements`: Number of finite elements in the mesh
+///   - `domain_length`: Total length of the 1D domain
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the solution vector u at nodal points.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fem_solve_poisson_1d_json(

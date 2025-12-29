@@ -21,6 +21,34 @@ struct SchrodingerInput {
     initial_psi_im: Vec<f64>,
 }
 
+/// Solves the time-dependent Schrödinger equation for quantum wavefunction evolution via bincode serialization.
+///
+/// The Schrödinger equation iℏ∂ψ/∂t = Ĥψ where Ĥ = -ℏ²∇²/(2m) + V(r) governs quantum
+/// mechanical evolution of the wavefunction ψ(r,t) under a potential V. This solver uses
+/// the Crank-Nicolson or split-operator method for unitary time evolution.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `SchrodingerInput` with:
+///   - `params`: Schrödinger parameters including:
+///     - `n_points`: Number of spatial grid points
+///     - `dx`: Spatial discretization step
+///     - `dt`: Time step size
+///     - `steps`: Number of time steps
+///     - `potential`: External potential V(x) values
+///   - `initial_psi_re`: Real part of initial wavefunction ψ(x,0)
+///   - `initial_psi_im`: Imaginary part of initial wavefunction ψ(x,0)
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+/// - `ok`: Final probability density |ψ(x,t)|² as a vector
+/// - `err`: Error message if computation failed or produced no snapshots
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(

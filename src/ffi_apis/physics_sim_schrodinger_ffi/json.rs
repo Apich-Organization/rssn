@@ -22,6 +22,32 @@ struct SchrodingerInput {
     initial_psi_im: Vec<f64>,
 }
 
+/// Solves the time-dependent Schrödinger equation for quantum wavefunction evolution via JSON serialization.
+///
+/// The Schrödinger equation iℏ∂ψ/∂t = Ĥψ where Ĥ = -ℏ²∇²/(2m) + V(r) governs quantum
+/// mechanical evolution of the wavefunction ψ(r,t) under a potential V. This solver uses
+/// the Crank-Nicolson or split-operator method for unitary time evolution.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `params`: Schrödinger parameters including:
+///     - `n_points`: Number of spatial grid points
+///     - `dx`: Spatial discretization step
+///     - `dt`: Time step size
+///     - `steps`: Number of time steps
+///     - `potential`: External potential V(x) values
+///   - `initial_psi_re`: Real part of initial wavefunction ψ(x,0)
+///   - `initial_psi_im`: Imaginary part of initial wavefunction ψ(x,0)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the final probability density |ψ(x,t)|² as a vector.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences a raw C string pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(

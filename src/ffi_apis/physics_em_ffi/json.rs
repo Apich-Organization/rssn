@@ -26,6 +26,30 @@ struct EulerInput {
     method: String, /* "forward", "midpoint", "heun" */
 }
 
+/// Solves ODE systems using Euler methods (forward, midpoint, or Heun) via JSON serialization.
+///
+/// Supports various dynamical systems including Lorenz attractor, damped oscillators,
+/// and orbital mechanics, using explicit Euler integration methods.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `system_type`: System identifier ("lorenz", "oscillator", "orbital")
+///   - `params`: System parameters as JSON object
+///   - `y0`: Initial state vector
+///   - `t_span`: Time interval [t_start, t_end]
+///   - `dt`: Time step size
+///   - `method`: Integration method ("forward", "midpoint", "heun")
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<(f64, Vec<f64>)>, String>` with
+/// the trajectory as (time, state) pairs.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_em_solve_json(

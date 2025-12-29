@@ -21,6 +21,27 @@ struct BettiInput {
     max_dim: usize,
 }
 
+/// Computes Betti numbers at a fixed radius for topological data analysis via JSON serialization.
+///
+/// Betti numbers characterize topological features: β₀ (connected components),
+/// β₁ (holes/loops), β₂ (voids), etc., in the Vietoris-Rips complex.
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `points`: Point cloud data as arrays of coordinates
+///   - `epsilon`: Radius parameter for Vietoris-Rips complex
+///   - `max_dim`: Maximum homology dimension to compute
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<usize>, String>` with
+/// a vector of Betti numbers [β₀, β₁, β₂, ...] up to max_dim.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
@@ -74,6 +95,28 @@ struct PersistenceInput {
     max_dim: usize,
 }
 
+/// Computes persistent homology for topological data analysis via JSON serialization.
+///
+/// Tracks the birth and death of topological features (components, holes, voids)
+/// across multiple scales, producing persistence diagrams.
+///
+/// # Arguments
+///
+/// * `input_json` - A JSON string pointer containing:
+///   - `points`: Point cloud data as arrays of coordinates
+///   - `max_epsilon`: Maximum radius to analyze
+///   - `steps`: Number of radius values to sample
+///   - `max_dim`: Maximum homology dimension to compute
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<PersistenceDiagram>, String>` with
+/// persistence diagrams for each dimension.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_topology_persistence_json(

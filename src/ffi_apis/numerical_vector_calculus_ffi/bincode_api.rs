@@ -34,6 +34,28 @@ struct LaplacianInput {
     point: Vec<f64>,
 }
 
+/// Computes the divergence of a vector field at a point using bincode serialization.
+///
+/// The divergence measures the net outward flux of a vector field:
+/// div(F) = ∂F₁/∂x₁ + ∂F₂/∂x₂ + ... + ∂Fₙ/∂xₙ.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `DivergenceInput` with:
+///   - `funcs`: Vector field components as symbolic expressions
+///   - `vars`: Variable names corresponding to coordinates
+///   - `point`: Point at which to evaluate divergence
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The divergence value (scalar)
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_bincode(
@@ -82,6 +104,28 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_bincode(
     to_bincode_buffer(&ffi_res)
 }
 
+/// Computes the curl of a vector field at a point using bincode serialization.
+///
+/// The curl measures the rotational tendency of a vector field. In 3D:
+/// curl(F) = (∂F₃/∂x₂ - ∂F₂/∂x₃, ∂F₁/∂x₃ - ∂F₃/∂x₁, ∂F₂/∂x₁ - ∂F₁/∂x₂).
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `CurlInput` with:
+///   - `funcs`: Vector field components as symbolic expressions
+///   - `vars`: Variable names corresponding to coordinates
+///   - `point`: Point at which to evaluate curl
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+/// - `ok`: The curl vector
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl_bincode(
@@ -131,6 +175,28 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_bincode(
     to_bincode_buffer(&ffi_res)
 }
 
+/// Computes the Laplacian of a scalar field at a point using bincode serialization.
+///
+/// The Laplacian is the divergence of the gradient:
+/// ∇²f = ∂²f/∂x₁² + ∂²f/∂x₂² + ... + ∂²f/∂xₙ².
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `LaplacianInput` with:
+///   - `f`: Scalar field as a symbolic expression
+///   - `vars`: Variable names corresponding to coordinates
+///   - `point`: Point at which to evaluate Laplacian
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+/// - `ok`: The Laplacian value (scalar)
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_bincode(

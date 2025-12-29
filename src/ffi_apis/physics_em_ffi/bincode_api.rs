@@ -22,6 +22,31 @@ struct EulerInput {
     method: String,
 }
 
+/// Solves ODE systems using Euler methods (forward, midpoint, or Heun) via bincode serialization.
+///
+/// Supports various dynamical systems including Lorenz attractor and damped oscillators,
+/// using explicit Euler integration methods.
+///
+/// # Arguments
+///
+/// * `buffer` - A bincode-encoded buffer containing `EulerInput` with:
+///   - `system_type`: System identifier ("lorenz", "oscillator")
+///   - `params_bincode`: System parameters encoded with bincode
+///   - `y0`: Initial state vector
+///   - `t_span`: Time interval (t_start, t_end)
+///   - `dt`: Time step size
+///   - `method`: Integration method ("forward", "midpoint", "heun")
+///
+/// # Returns
+///
+/// A bincode-encoded buffer containing `FfiResult<Vec<(f64, Vec<f64>)>, String>` with either:
+/// - `ok`: Trajectory as (time, state) pairs
+/// - `err`: Error message if computation failed
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw bincode buffer that must be
+/// valid and properly encoded.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_em_solve_bincode(

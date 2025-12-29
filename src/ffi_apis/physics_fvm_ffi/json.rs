@@ -36,6 +36,30 @@ struct SweInput {
     g: f64,
 }
 
+/// Solves the 1D advection equation using Finite Volume Method (FVM) via JSON serialization.
+///
+/// The advection equation ∂u/∂t + v∂u/∂x = 0 models conservative transport
+/// of a scalar quantity u with constant velocity v.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `num_cells`: Number of cells in the mesh
+///   - `domain_size`: Total length of the 1D domain
+///   - `velocity`: Advection velocity v
+///   - `dt`: Time step size
+///   - `steps`: Number of time steps to simulate
+///   - `initial_values`: Initial field distribution
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the final field distribution.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fvm_advection_json(
@@ -95,6 +119,30 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(
     )
 }
 
+/// Solves the 1D shallow water equations using Finite Volume Method (FVM) via JSON serialization.
+///
+/// The shallow water equations model conservation of mass and momentum in free-surface flows:
+/// ∂h/∂t + ∂(hu)/∂x = 0 and ∂(hu)/∂t + ∂(hu² + gh²/2)/∂x = 0.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `h`: Initial water depth distribution
+///   - `hu`: Initial momentum (h×velocity) distribution
+///   - `dx`: Spatial step size
+///   - `dt`: Time step size
+///   - `steps`: Number of time steps to simulate
+///   - `g`: Gravitational acceleration
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<SweState>, String>` with
+/// the time series of shallow water states (h, hu).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_physics_fvm_swe_json(

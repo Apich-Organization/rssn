@@ -592,14 +592,41 @@ typedef struct rssn_ExprPair {
     struct rssn_Expr *mSecond;
 } rssn_ExprPair;
 
+/*
+ Result handle for the Ising model simulation containing spin grid and magnetization.
+
+ This C-compatible struct encapsulates the output of an Ising model Monte Carlo
+ simulation, providing both the final spin configuration and the computed magnetization.
+ */
 typedef struct rssn_IsingResultHandle {
+    /*
+     Pointer to a Matrix containing the final spin configuration as f64 values (±1.0).
+     */
     struct rssn_Matrix_f64 *mGrid;
+    /*
+     Average magnetization M = ⟨∑ᵢsᵢ⟩/N, ranging from -1 (all spins down) to +1 (all spins up).
+     */
     double mMagnetization;
 } rssn_IsingResultHandle;
 
+/*
+ Result handles for the Navier-Stokes simulation containing velocity and pressure fields.
+
+ This C-compatible struct encapsulates the output of an incompressible Navier-Stokes
+ solver, providing matrix handles to the computed velocity components and pressure.
+ */
 typedef struct rssn_NavierStokesResultHandles {
+    /*
+     Pointer to a Matrix containing the horizontal velocity field u(x,y) in m/s.
+     */
     struct rssn_Matrix_f64 *mU;
+    /*
+     Pointer to a Matrix containing the vertical velocity field v(x,y) in m/s.
+     */
     struct rssn_Matrix_f64 *mV;
+    /*
+     Pointer to a Matrix containing the pressure field p(x,y) in Pa.
+     */
     struct rssn_Matrix_f64 *mP;
 } rssn_NavierStokesResultHandles;
 
@@ -15092,6 +15119,28 @@ struct rssn_PrimeFieldElement *rssn_num_ff_pfe_pow(const struct rssn_PrimeFieldE
                                                    uint64_t aExp)
 ;
 
+/*
+ Computes the Fast Fourier Transform (FFT) in-place using bincode serialization.
+
+ The FFT converts a sequence from the time/space domain to the frequency domain,
+ computing X(k) = Σx(n)e^(-2πikn/N) for k = 0, ..., N-1.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `TransformInput` with:
+   - `data`: Vector of complex numbers to transform
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<Complex<f64>>, String>` with either:
+ - `ok`: FFT-transformed data in frequency domain
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_fft_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
@@ -15113,6 +15162,27 @@ int32_t rssn_num_fft_inplace(double *aReal,
                              size_t aLen)
 ;
 
+/*
+ Computes the Fast Fourier Transform (FFT) in-place via JSON serialization.
+
+ The FFT converts a sequence from the time/space domain to the frequency domain,
+ computing X(k) = Σx(n)e^(-2πikn/N) for k = 0, ..., N-1.
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `data`: Array of complex numbers to transform
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<Complex<f64>>, String>` with
+ FFT-transformed data in frequency domain.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_fft_json(const char *aInputJson)
 ;
@@ -16110,6 +16180,28 @@ rssn_
 char *rssn_num_graphics_translation_matrix_json(const char *aInput)
 ;
 
+/*
+ Computes the Inverse Fast Fourier Transform (IFFT) in-place using bincode serialization.
+
+ The IFFT converts a sequence from the frequency domain back to the time/space domain,
+ computing x(n) = (1/N) ΣX(k)e^(2πikn/N) for n = 0, ..., N-1.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `TransformInput` with:
+   - `data`: Vector of complex numbers in frequency domain
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<Complex<f64>>, String>` with either:
+ - `ok`: IFFT-transformed data in time/space domain
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_ifft_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
@@ -16123,6 +16215,27 @@ int32_t rssn_num_ifft_inplace(double *aReal,
                               size_t aLen)
 ;
 
+/*
+ Computes the Inverse Fast Fourier Transform (IFFT) in-place via JSON serialization.
+
+ The IFFT converts a sequence from the frequency domain back to the time/space domain,
+ computing x(n) = (1/N) ΣX(k)e^(2πikn/N) for n = 0, ..., N-1.
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `data`: Array of complex numbers in frequency domain
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<Complex<f64>>, String>` with
+ IFFT-transformed data in time/space domain.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_ifft_json(const char *aInputJson)
 ;
@@ -16666,10 +16779,54 @@ double rssn_num_md_apply_pbc_1d(double aX,
                                 double aBoxLength)
 ;
 
+/*
+ Applies periodic boundary conditions (PBC) to wrap particle coordinates into the simulation box using bincode serialization.
+
+ Periodic boundary conditions create an infinite tiling of the simulation box,
+ ensuring particles that exit one side re-enter from the opposite side.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `PbcInput` with:
+   - `position`: Position vector to wrap (x, y, z)
+   - `box_size`: Simulation box dimensions (Lx, Ly, Lz)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: Wrapped position vector within [0, box_size)
+ - `err`: Error message if input invalid
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_md_apply_pbc_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Applies periodic boundary conditions (PBC) to wrap particle coordinates using JSON serialization.
+
+ Periodic boundary conditions create an infinite tiling of the simulation box.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `position`: Position vector to wrap [x, y, z]
+   - `box_size`: Simulation box dimensions [Lx, Ly, Lz]
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the wrapped position vector within [0, box_size).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_md_apply_pbc_json(const char *aInput)
 ;
@@ -16697,18 +16854,114 @@ double rssn_num_md_cfl_check(double aVelocity,
                              double aSigma)
 ;
 
+/*
+ Creates a simple cubic lattice of particles using JSON serialization.
+
+ Generates a 3D cubic lattice structure commonly used for initial configurations
+ in molecular dynamics simulations.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n_per_side`: Number of particles per lattice dimension
+   - `lattice_constant`: Spacing between adjacent lattice sites
+   - `mass`: Mass of each particle
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<ParticleOutput>, String>` with
+ an array of particles positioned on a cubic lattice.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_md_create_cubic_lattice_json(const char *aInput)
 ;
 
+/*
+ Computes the harmonic interaction potential and force between two particles using JSON serialization.
+
+ The harmonic potential models elastic bonds:
+ V(r) = ½k(r - r₀)², where k is the spring constant.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `p1_position`: Position vector of first particle [x, y, z]
+   - `p2_position`: Position vector of second particle [x, y, z]
+   - `k`: Spring constant k (force/length units)
+   - `r0`: Equilibrium distance r₀
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult` with potential and force.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_md_harmonic_json(const char *aInput)
 ;
 
+/*
+ Computes the Lennard-Jones interaction potential and force between two particles using bincode serialization.
+
+ The Lennard-Jones potential models van der Waals interactions:
+ V(r) = 4ε[(σ/r)¹² - (σ/r)⁶], where ε is the depth of the potential well and σ is the finite distance at which the potential is zero.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `LennardJonesInput` with:
+   - `p1_position`: Position vector of first particle (x, y, z)
+   - `p2_position`: Position vector of second particle (x, y, z)
+   - `epsilon`: Well depth ε (energy units)
+   - `sigma`: Finite distance σ at which V=0 (length units)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<InteractionOutput, String>` with either:
+ - `ok`: Object containing:
+   - `potential`: Interaction potential energy V(r)
+   - `force`: Force vector acting on particle 1
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_md_lennard_jones_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Lennard-Jones interaction potential and force between two particles using JSON serialization.
+
+ The Lennard-Jones potential models van der Waals interactions:
+ V(r) = 4ε[(σ/r)¹² - (σ/r)⁶].
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `p1_position`: Position vector of first particle [x, y, z]
+   - `p2_position`: Position vector of second particle [x, y, z]
+   - `epsilon`: Well depth ε (energy units)
+   - `sigma`: Finite distance σ at which V=0 (length units)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult` with potential and force.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_md_lennard_jones_json(const char *aInput)
 ;
@@ -16721,14 +16974,83 @@ double rssn_num_md_minimum_image_1d(double aDx,
                                     double aBoxLength)
 ;
 
+/*
+ Computes the minimum image distance vector under periodic boundary conditions using JSON serialization.
+
+ The minimum image convention finds the shortest distance between particles
+ considering all periodic images of the simulation box.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `position`: Separation vector [x, y, z]
+   - `box_size`: Simulation box dimensions [Lx, Ly, Lz]
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the minimum image distance vector.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_md_minimum_image_json(const char *aInput)
 ;
 
+/*
+ Computes the Morse interaction potential and force between two particles using JSON serialization.
+
+ The Morse potential models chemical bonds:
+ V(r) = D_e[1 - e⁻ᵃʳʳ⁻ʳᵉ⁾]², where D_e is the dissociation energy.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `p1_position`: Position vector of first particle [x, y, z]
+   - `p2_position`: Position vector of second particle [x, y, z]
+   - `de`: Dissociation energy D_e
+   - `a`: Width parameter a (controls potential curvature)
+   - `re`: Equilibrium bond distance r_e
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult` with potential and force.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_md_morse_json(const char *aInput)
 ;
 
+/*
+ Computes system-level properties for a collection of particles using JSON serialization.
+
+ Calculates kinetic energy, temperature, center of mass, and total momentum.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `particles`: Array of particle objects with id, mass, position, velocity
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<SystemPropertiesOutput, String>` with:
+ - `kinetic_energy`: Total kinetic energy of the system
+ - `temperature`: System temperature T = 2K/(3Nk_B)
+ - `center_of_mass`: Center of mass position vector
+ - `total_momentum`: Total linear momentum vector
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_md_system_properties_json(const char *aInput)
 ;
@@ -18541,10 +18863,54 @@ struct rssn_Matrix_f64 *rssn_num_signal_convolve(const double *aA,
                                                  size_t aVLen)
 ;
 
+/*
+ Computes the discrete convolution of two signals using bincode serialization.
+
+ The convolution is defined as (a * v)[n] = Σ a[k]v[n-k], representing the
+ combined effect of two systems or filtering operation.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `ConvolveInput` with:
+   - `a`: First signal array
+   - `v`: Second signal array (kernel)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with
+ the convolution result.
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_signal_convolve_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the discrete convolution of two signals using JSON serialization.
+
+ The convolution is defined as (a * v)[n] = Σ a[k]v[n-k], representing the
+ combined effect of two systems or filtering operation.
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `a`: First signal array
+   - `v`: Second signal array (kernel)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the convolution result.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_signal_convolve_json(const char *aInputJson)
 ;
@@ -18559,10 +18925,54 @@ struct rssn_Matrix_f64 *rssn_num_signal_cross_correlation(const double *aA,
                                                           size_t aVLen)
 ;
 
+/*
+ Computes the cross-correlation of two signals using bincode serialization.
+
+ Cross-correlation measures similarity between signals as a function of lag:
+ (a ⋆ v)[n] = Σ a[k]v[n+k].
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `ConvolveInput` with:
+   - `a`: First signal array
+   - `v`: Second signal array
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with
+ the cross-correlation result.
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_signal_cross_correlation_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the cross-correlation of two signals using JSON serialization.
+
+ Cross-correlation measures similarity between signals as a function of lag:
+ (a ⋆ v)[n] = Σ a[k]v[n+k].
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `a`: First signal array
+   - `v`: Second signal array
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the cross-correlation result.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_signal_cross_correlation_json(const char *aInputJson)
 ;
@@ -18576,10 +18986,52 @@ struct rssn_Matrix_f64 *rssn_num_signal_fft(const double *aReal,
                                             size_t aLen)
 ;
 
+/*
+ Computes the Fast Fourier Transform (FFT) of complex data using bincode serialization.
+
+ The FFT converts a signal from time/space domain to frequency domain using the
+ Cooley-Tukey algorithm in O(N log N) time.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `FftInput` with:
+   - `data`: Array of complex numbers to transform
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<Complex<f64>>, String>` with
+ the frequency domain representation.
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_signal_fft_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Fast Fourier Transform (FFT) of complex data using JSON serialization.
+
+ The FFT converts a signal from time/space domain to frequency domain using the
+ Cooley-Tukey algorithm in O(N log N) time.
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `data`: Array of complex numbers to transform
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<Complex<f64>>, String>` with
+ the frequency domain representation.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_signal_fft_json(const char *aInputJson)
 ;
@@ -18713,6 +19165,31 @@ rssn_
 size_t rssn_num_sparse_get_rows(const rssn_CsMat<double> *aMatrix)
 ;
 
+/*
+ Solves the linear system Ax = b using the Conjugate Gradient iterative method via JSON.
+
+ The Conjugate Gradient method is efficient for large sparse symmetric positive-definite matrices,
+ converging in at most N iterations (typically much fewer).
+
+ # Arguments
+
+ * `json_ptr` - A JSON string pointer containing:
+   - `a`: Sparse matrix A in CSR/COO format
+   - `b`: Right-hand side vector b
+   - `x0`: Optional initial guess for solution vector
+   - `max_iter`: Maximum number of iterations
+   - `tolerance`: Convergence tolerance for residual norm
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the solution vector x.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_sparse_solve_cg_json(const char *aJsonPtr)
 ;
@@ -18752,262 +19229,1350 @@ int32_t rssn_num_sparse_trace(const rssn_CsMat<double> *aMatrix,
                               double *aOutTrace)
 ;
 
+/*
+ Computes the modified Bessel function of the first kind of order zero I₀(x) via handle-based FFI.
+
+ Solution to the modified Bessel equation for ν = 0.
+
+ # Arguments
+
+ * `x` - Argument of the modified Bessel function
+
+ # Returns
+
+ The value I₀(x).
+ */
 rssn_
 double rssn_num_special_bessel_i0(double aX)
 ;
 
+/*
+ Computes the modified Bessel function of the first kind of order one I₁(x) via handle-based FFI.
+
+ Solution to the modified Bessel equation for ν = 1.
+
+ # Arguments
+
+ * `x` - Argument of the modified Bessel function
+
+ # Returns
+
+ The value I₁(x).
+ */
 rssn_
 double rssn_num_special_bessel_i1(double aX)
 ;
 
+/*
+ Computes the Bessel function of the first kind of order zero J₀(x) via handle-based FFI.
+
+ Solution to Bessel's differential equation for ν = 0.
+
+ # Arguments
+
+ * `x` - Argument of the Bessel function
+
+ # Returns
+
+ The value J₀(x).
+ */
 rssn_
 double rssn_num_special_bessel_j0(double aX)
 ;
 
+/*
+ Computes the Bessel function of the first kind of order zero J₀(x) using bincode serialization.
+
+ The Bessel function J₀(x) is a solution to Bessel's differential equation for ν = 0:
+ x²y'' + xy' + x²y = 0. It appears in problems with cylindrical symmetry.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SingleInput` with:
+   - `x`: Argument of the Bessel function
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value J₀(x)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_bessel_j0_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Bessel function of the first kind of order zero J₀(x) via JSON serialization.
+
+ Solution to Bessel's differential equation for ν = 0.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Argument of the Bessel function
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value J₀(x).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_bessel_j0_json(const char *aInput)
 ;
 
+/*
+ Computes the Bessel function of the first kind of order one J₁(x) via handle-based FFI.
+
+ Solution to Bessel's differential equation for ν = 1.
+
+ # Arguments
+
+ * `x` - Argument of the Bessel function
+
+ # Returns
+
+ The value J₁(x).
+ */
 rssn_
 double rssn_num_special_bessel_j1(double aX)
 ;
 
+/*
+ Computes the Bessel function of the first kind of order one J₁(x) using bincode serialization.
+
+ The Bessel function J₁(x) is a solution to Bessel's differential equation for ν = 1:
+ x²y'' + xy' + (x² - 1)y = 0. It appears in wave propagation and vibration problems.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SingleInput` with:
+   - `x`: Argument of the Bessel function
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value J₁(x)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_bessel_j1_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Bessel function of the first kind of order one J₁(x) via JSON serialization.
+
+ Solution to Bessel's differential equation for ν = 1.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Argument of the Bessel function
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value J₁(x).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_bessel_j1_json(const char *aInput)
 ;
 
+/*
+ Computes the Bessel function of the second kind of order zero Y₀(x) via handle-based FFI.
+
+ Also known as the Neumann function or Weber function.
+
+ # Arguments
+
+ * `x` - Argument of the Bessel function (must be positive)
+
+ # Returns
+
+ The value Y₀(x).
+ */
 rssn_
 double rssn_num_special_bessel_y0(double aX)
 ;
 
+/*
+ Computes the Bessel function of the second kind of order one Y₁(x) via handle-based FFI.
+
+ Also known as the Neumann function or Weber function.
+
+ # Arguments
+
+ * `x` - Argument of the Bessel function (must be positive)
+
+ # Returns
+
+ The value Y₁(x).
+ */
 rssn_
 double rssn_num_special_bessel_y1(double aX)
 ;
 
+/*
+ Computes the Beta function B(a, b) = Γ(a)Γ(b) / Γ(a+b) via handle-based FFI.
+
+ # Arguments
+
+ * `a` - First shape parameter (must be positive)
+ * `b` - Second shape parameter (must be positive)
+
+ # Returns
+
+ The value B(a, b).
+ */
 rssn_
 double rssn_num_special_beta(double aA,
                              double aB)
 ;
 
+/*
+ Computes the Beta function B(a, b) using bincode serialization.
+
+ The Beta function is defined as B(a, b) = ∫₀^1 t^(a-1) (1-t)^(b-1) dt,
+ which can be expressed in terms of Gamma functions: B(a, b) = Γ(a)Γ(b) / Γ(a+b).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `TwoInput` with:
+   - `a`: First shape parameter (must be positive)
+   - `b`: Second shape parameter (must be positive)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value B(a, b)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_beta_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Beta function B(a, b) = Γ(a)Γ(b) / Γ(a+b) via JSON serialization.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `a`: First shape parameter (must be positive)
+   - `b`: Second shape parameter (must be positive)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value B(a, b).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_beta_json(const char *aInput)
 ;
 
+/*
+ Computes the binomial coefficient C(n, k) via handle-based FFI.
+
+ The number of ways to choose k items from n items.
+
+ # Arguments
+
+ * `n` - Total number of items (non-negative integer)
+ * `k` - Number of items to choose (0 ≤ k ≤ n)
+
+ # Returns
+
+ The value C(n, k) (as f64).
+ */
 rssn_
 double rssn_num_special_binomial(uint64_t aN,
                                  uint64_t aK)
 ;
 
+/*
+ Computes the binomial coefficient C(n, k) = n! / (k!(n-k)!) using bincode serialization.
+
+ The binomial coefficient represents the number of ways to choose k items from n items
+ without regard to order. Also appears as coefficients in the binomial expansion.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `BinomialInput` with:
+   - `n`: Total number of items (non-negative integer)
+   - `k`: Number of items to choose (0 ≤ k ≤ n)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value C(n, k) (as f64)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_binomial_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the binomial coefficient C(n, k) via JSON serialization.
+
+ The number of ways to choose k items from n items.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n`: Total number of items (non-negative integer)
+   - `k`: Number of items to choose (0 ≤ k ≤ n)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value C(n, k) (as f64).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_binomial_json(const char *aInput)
 ;
 
+/*
+ Computes the Chebyshev polynomial of the first kind Tₙ(x) via handle-based FFI.
+
+ Satisfies Tₙ(cos θ) = cos(nθ), minimizes polynomial interpolation error.
+
+ # Arguments
+
+ * `n` - Polynomial degree (non-negative integer)
+ * `x` - Evaluation point (typically in [-1, 1])
+
+ # Returns
+
+ The value Tₙ(x).
+ */
 rssn_
 double rssn_num_special_chebyshev_t(uint32_t aN,
                                     double aX)
 ;
 
+/*
+ Computes the Chebyshev polynomial of the first kind Tₙ(x) using bincode serialization.
+
+ The Chebyshev polynomials satisfy Tₙ(cos θ) = cos(nθ) and are orthogonal on [-1, 1]
+ with weight function 1/√(1-x²). They minimize polynomial interpolation error.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `PolyInput` with:
+   - `n`: Polynomial degree (non-negative integer)
+   - `x`: Evaluation point (typically in [-1, 1])
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value Tₙ(x)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_chebyshev_t_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Chebyshev polynomial of the first kind Tₙ(x) via JSON serialization.
+
+ Satisfies Tₙ(cos θ) = cos(nθ), minimizes polynomial interpolation error.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n`: Polynomial degree (non-negative integer)
+   - `x`: Evaluation point (typically in [-1, 1])
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value Tₙ(x).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_chebyshev_t_json(const char *aInput)
 ;
 
+/*
+ Computes the Chebyshev polynomial of the second kind Uₙ(x) via handle-based FFI.
+
+ Satisfies Uₙ(cos θ) = sin((n+1)θ) / sin(θ).
+
+ # Arguments
+
+ * `n` - Polynomial degree (non-negative integer)
+ * `x` - Evaluation point (typically in [-1, 1])
+
+ # Returns
+
+ The value Uₙ(x).
+ */
 rssn_
 double rssn_num_special_chebyshev_u(uint32_t aN,
                                     double aX)
 ;
 
+/*
+ Computes the Digamma function ψ(x) = d/dx[ln(Γ(x))] via handle-based FFI.
+
+ The logarithmic derivative of the Gamma function.
+
+ # Arguments
+
+ * `x` - Argument of the Digamma function
+
+ # Returns
+
+ The value ψ(x).
+ */
 rssn_
 double rssn_num_special_digamma(double aX)
 ;
 
+/*
+ Computes the Digamma function ψ(x) using bincode serialization.
+
+ The Digamma function is the logarithmic derivative of the Gamma function:
+ ψ(x) = d/dx[ln(Γ(x))] = Γ'(x) / Γ(x).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SingleInput` with:
+   - `x`: Argument of the Digamma function
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value ψ(x)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_digamma_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Digamma function ψ(x) = d/dx[ln(Γ(x))] via JSON serialization.
+
+ The logarithmic derivative of the Gamma function.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Argument of the Digamma function
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value ψ(x).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_digamma_json(const char *aInput)
 ;
 
+/*
+ Computes the double factorial n!! via handle-based FFI.
+
+ Defined as n!! = n × (n-2) × (n-4) × ... (down to 1 or 2).
+
+ # Arguments
+
+ * `n` - Non-negative integer
+
+ # Returns
+
+ The value n!! (as f64).
+ */
 rssn_
 double rssn_num_special_double_factorial(uint64_t aN)
 ;
 
+/*
+ Computes the error function erf(x) via handle-based FFI.
+
+ Defined as erf(x) = (2/√π) ∫₀^x e^(-t²) dt.
+
+ # Arguments
+
+ * `x` - Argument of the error function
+
+ # Returns
+
+ The value erf(x) ∈ [-1, 1].
+ */
 rssn_
 double rssn_num_special_erf(double aX)
 ;
 
+/*
+ Computes the error function erf(x) using bincode serialization.
+
+ The error function is defined as erf(x) = (2/√π) ∫₀^x e^(-t²) dt.
+ It represents the probability that a random variable from a standard normal distribution
+ falls within [-x, x].
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SingleInput` with:
+   - `x`: Argument of the error function
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value erf(x) (range: [-1, 1])
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_erf_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the error function erf(x) via JSON serialization.
+
+ Defined as erf(x) = (2/√π) ∫₀^x e^(-t²) dt.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Argument of the error function
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value erf(x) ∈ [-1, 1].
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_erf_json(const char *aInput)
 ;
 
+/*
+ Computes the complementary error function erfc(x) = 1 - erf(x) via handle-based FFI.
+
+ More accurate than 1 - erf(x) for large positive x.
+
+ # Arguments
+
+ * `x` - Argument of the complementary error function
+
+ # Returns
+
+ The value erfc(x) ∈ [0, 2].
+ */
 rssn_
 double rssn_num_special_erfc(double aX)
 ;
 
+/*
+ Computes the complementary error function erfc(x) using bincode serialization.
+
+ The complementary error function is defined as erfc(x) = 1 - erf(x) = (2/√π) ∫ₓ^∞ e^(-t²) dt.
+ It is more accurate than computing 1 - erf(x) for large positive x.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SingleInput` with:
+   - `x`: Argument of the complementary error function
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value erfc(x) (range: [0, 2])
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_erfc_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the complementary error function erfc(x) = 1 - erf(x) via JSON serialization.
+
+ More accurate than 1 - erf(x) for large positive x.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Argument of the complementary error function
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value erfc(x) ∈ [0, 2].
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_erfc_json(const char *aInput)
 ;
 
+/*
+ Computes the factorial n! via handle-based FFI.
+
+ For large n, computed using the Gamma function.
+
+ # Arguments
+
+ * `n` - Non-negative integer
+
+ # Returns
+
+ The value n! (as f64).
+ */
 rssn_
 double rssn_num_special_factorial(uint64_t aN)
 ;
 
+/*
+ Computes the factorial n! using bincode serialization.
+
+ The factorial is defined as n! = n × (n-1) × ... × 2 × 1 for n ≥ 1, with 0! = 1.
+ For large n, the result is computed using the Gamma function to avoid overflow.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `IntInput` with:
+   - `n`: Non-negative integer
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value n! (as f64)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_factorial_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the factorial n! via JSON serialization.
+
+ For large n, computed using the Gamma function.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n`: Non-negative integer
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value n! (as f64).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_factorial_json(const char *aInput)
 ;
 
+/*
+ Computes the Gamma function Γ(x) via handle-based FFI.
+
+ The Gamma function extends the factorial to real and complex numbers: Γ(n) = (n-1)!.
+
+ # Arguments
+
+ * `x` - Argument of the Gamma function (must be positive)
+
+ # Returns
+
+ The value Γ(x).
+ */
 rssn_
 double rssn_num_special_gamma(double aX)
 ;
 
+/*
+ Computes the Gamma function Γ(x) using bincode serialization.
+
+ The Gamma function is defined as Γ(x) = ∫₀^∞ t^(x-1) e^(-t) dt for x > 0,
+ generalizing the factorial function to real and complex numbers: Γ(n) = (n-1)!.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SingleInput` with:
+   - `x`: Argument of the Gamma function (must be positive)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value Γ(x)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_gamma_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Gamma function Γ(x) via JSON serialization.
+
+ The Gamma function extends the factorial to real and complex numbers: Γ(n) = (n-1)!.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Argument of the Gamma function (must be positive)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value Γ(x).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_gamma_json(const char *aInput)
 ;
 
+/*
+ Computes the Hermite polynomial Hₙ(x) via handle-based FFI.
+
+ Orthogonal with weight e^(-x²), appears in quantum harmonic oscillator wavefunctions.
+
+ # Arguments
+
+ * `n` - Polynomial degree (non-negative integer)
+ * `x` - Evaluation point
+
+ # Returns
+
+ The value Hₙ(x).
+ */
 rssn_
 double rssn_num_special_hermite_h(uint32_t aN,
                                   double aX)
 ;
 
+/*
+ Computes the Hermite polynomial Hₙ(x) using bincode serialization.
+
+ The Hermite polynomials (physicists' version) are orthogonal on (-∞, ∞) with weight
+ function e^(-x²). They appear in quantum harmonic oscillator wavefunctions and
+ probability theory.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `PolyInput` with:
+   - `n`: Polynomial degree (non-negative integer)
+   - `x`: Evaluation point
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value Hₙ(x)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_hermite_h_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Hermite polynomial Hₙ(x) via JSON serialization.
+
+ Orthogonal with weight e^(-x²), appears in quantum harmonic oscillator wavefunctions.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n`: Polynomial degree (non-negative integer)
+   - `x`: Evaluation point
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value Hₙ(x).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_hermite_h_json(const char *aInput)
 ;
 
+/*
+ Computes the inverse error function erf⁻¹(x) via handle-based FFI.
+
+ Finds y such that erf(y) = x.
+
+ # Arguments
+
+ * `x` - Value in the range (-1, 1)
+
+ # Returns
+
+ The value y such that erf(y) = x.
+ */
 rssn_
 double rssn_num_special_inverse_erf(double aX)
 ;
 
+/*
+ Computes the Laguerre polynomial Lₙ(x) via handle-based FFI.
+
+ Orthogonal with weight e^(-x) on [0, ∞), appears in quantum mechanics (hydrogen atom).
+
+ # Arguments
+
+ * `n` - Polynomial degree (non-negative integer)
+ * `x` - Evaluation point (typically ≥ 0)
+
+ # Returns
+
+ The value Lₙ(x).
+ */
 rssn_
 double rssn_num_special_laguerre_l(uint32_t aN,
                                    double aX)
 ;
 
+/*
+ Computes the Legendre polynomial Pₙ(x) via handle-based FFI.
+
+ Orthogonal on [-1, 1], used in multipole expansions and spherical harmonics.
+
+ # Arguments
+
+ * `n` - Polynomial degree (non-negative integer)
+ * `x` - Evaluation point (typically in [-1, 1])
+
+ # Returns
+
+ The value Pₙ(x).
+ */
 rssn_
 double rssn_num_special_legendre_p(uint32_t aN,
                                    double aX)
 ;
 
+/*
+ Computes the Legendre polynomial Pₙ(x) using bincode serialization.
+
+ The Legendre polynomials are solutions to Legendre's differential equation:
+ (1 - x²)y'' - 2xy' + n(n+1)y = 0. They are orthogonal on [-1, 1] and appear
+ in multipole expansions and spherical harmonics.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `PolyInput` with:
+   - `n`: Polynomial degree (non-negative integer)
+   - `x`: Evaluation point (typically in [-1, 1])
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value Pₙ(x)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_legendre_p_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Legendre polynomial Pₙ(x) via JSON serialization.
+
+ Orthogonal on [-1, 1], used in multipole expansions and spherical harmonics.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n`: Polynomial degree (non-negative integer)
+   - `x`: Evaluation point (typically in [-1, 1])
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value Pₙ(x).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_legendre_p_json(const char *aInput)
 ;
 
+/*
+ Computes the natural logarithm of the Beta function ln(B(a, b)) via handle-based FFI.
+
+ More numerically stable than ln(beta(a, b)) for large parameters.
+
+ # Arguments
+
+ * `a` - First shape parameter (must be positive)
+ * `b` - Second shape parameter (must be positive)
+
+ # Returns
+
+ The value ln(B(a, b)).
+ */
 rssn_
 double rssn_num_special_ln_beta(double aA,
                                 double aB)
 ;
 
+/*
+ Computes the natural logarithm of the Gamma function ln(Γ(x)) via handle-based FFI.
+
+ More numerically stable than ln(gamma(x)) for large x.
+
+ # Arguments
+
+ * `x` - Argument of the log-gamma function
+
+ # Returns
+
+ The value ln(Γ(x)).
+ */
 rssn_
 double rssn_num_special_ln_gamma(double aX)
 ;
 
+/*
+ Computes the natural logarithm of the Gamma function ln(Γ(x)) using bincode serialization.
+
+ This function is more numerically stable than computing ln(Γ(x)) = ln(gamma(x)),
+ especially for large values of x where Γ(x) would overflow.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SingleInput` with:
+   - `x`: Argument of the log-gamma function
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value ln(Γ(x))
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_ln_gamma_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the natural logarithm of the Gamma function ln(Γ(x)) via JSON serialization.
+
+ More numerically stable than ln(gamma(x)) for large x.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Argument of the log-gamma function
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value ln(Γ(x)).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_ln_gamma_json(const char *aInput)
 ;
 
+/*
+ Computes the logit function logit(p) = ln(p / (1 - p)) via handle-based FFI.
+
+ The inverse of the sigmoid function, maps (0, 1) to ℝ.
+
+ # Arguments
+
+ * `p` - Probability value in the range (0, 1)
+
+ # Returns
+
+ The value logit(p).
+ */
 rssn_
 double rssn_num_special_logit(double aP)
 ;
 
+/*
+ Computes the lower incomplete Gamma function γ(s, x) via handle-based FFI.
+
+ Defined as γ(s, x) = ∫₀^x t^(s-1) e^(-t) dt.
+
+ # Arguments
+
+ * `s` - Shape parameter
+ * `x` - Upper limit of integration
+
+ # Returns
+
+ The value γ(s, x).
+ */
 rssn_
 double rssn_num_special_lower_incomplete_gamma(double aS,
                                                double aX)
 ;
 
+/*
+ Computes the regularized incomplete Beta function I(x; a, b) via handle-based FFI.
+
+ The cumulative distribution function of the Beta distribution.
+
+ # Arguments
+
+ * `x` - Upper limit of integration (0 ≤ x ≤ 1)
+ * `a` - First shape parameter (must be positive)
+ * `b` - Second shape parameter (must be positive)
+
+ # Returns
+
+ The value I(x; a, b) ∈ [0, 1].
+ */
 rssn_
 double rssn_num_special_regularized_beta(double aX,
                                          double aA,
                                          double aB)
 ;
 
+/*
+ Computes the regularized incomplete Beta function I(x; a, b) using bincode serialization.
+
+ The regularized incomplete Beta function is defined as:
+ I(x; a, b) = B(x; a, b) / B(a, b), where B(x; a, b) = ∫₀^x t^(a-1) (1-t)^(b-1) dt.
+ This function is the cumulative distribution function of the Beta distribution.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `ThreeInput` with:
+   - `x`: Upper limit of integration (0 ≤ x ≤ 1)
+   - `a`: First shape parameter (must be positive)
+   - `b`: Second shape parameter (must be positive)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value I(x; a, b)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_regularized_beta_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the regularized incomplete Beta function I(x; a, b) via JSON serialization.
+
+ The cumulative distribution function of the Beta distribution.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Upper limit of integration (0 ≤ x ≤ 1)
+   - `a`: First shape parameter (must be positive)
+   - `b`: Second shape parameter (must be positive)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value I(x; a, b) ∈ [0, 1].
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_regularized_beta_json(const char *aInput)
 ;
 
+/*
+ Computes the sigmoid function σ(x) = 1 / (1 + e^(-x)) via handle-based FFI.
+
+ Common activation function in neural networks, maps ℝ to (0, 1).
+
+ # Arguments
+
+ * `x` - Input value
+
+ # Returns
+
+ The value σ(x) ∈ (0, 1).
+ */
 rssn_
 double rssn_num_special_sigmoid(double aX)
 ;
 
+/*
+ Computes the sigmoid function σ(x) = 1 / (1 + e^(-x)) using bincode serialization.
+
+ The sigmoid is a smooth, S-shaped activation function commonly used in neural networks
+ and logistic regression. It maps any real value to the range (0, 1).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SingleInput` with:
+   - `x`: Input value
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value σ(x) ∈ (0, 1)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_sigmoid_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the sigmoid function σ(x) = 1 / (1 + e^(-x)) via JSON serialization.
+
+ Common activation function in neural networks, maps ℝ to (0, 1).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Input value
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value σ(x) ∈ (0, 1).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_sigmoid_json(const char *aInput)
 ;
 
+/*
+ Computes the normalized sinc function sinc(x) = sin(x) / x via handle-based FFI.
+
+ With sinc(0) = 1 by continuity. Appears in signal processing and Fourier analysis.
+
+ # Arguments
+
+ * `x` - Input value (radians)
+
+ # Returns
+
+ The value sinc(x).
+ */
 rssn_
 double rssn_num_special_sinc(double aX)
 ;
 
+/*
+ Computes the normalized sinc function sinc(x) = sin(x) / x using bincode serialization.
+
+ The sinc function is defined as sinc(x) = sin(x)/x for x ≠ 0, and sinc(0) = 1 by continuity.
+ It appears in signal processing (Fourier analysis) and optics (diffraction patterns).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SingleInput` with:
+   - `x`: Input value (radians)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The value sinc(x)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_special_sinc_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the normalized sinc function sinc(x) = sin(x) / x via JSON serialization.
+
+ With sinc(0) = 1 by continuity. Appears in signal processing and Fourier analysis.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Input value (radians)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the value sinc(x).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_special_sinc_json(const char *aInput)
 ;
 
+/*
+ Computes the softplus function softplus(x) = ln(1 + e^x) via handle-based FFI.
+
+ A smooth approximation to the ReLU activation function.
+
+ # Arguments
+
+ * `x` - Input value
+
+ # Returns
+
+ The value softplus(x) > 0.
+ */
 rssn_
 double rssn_num_special_softplus(double aX)
 ;
 
+/*
+ Computes the upper incomplete Gamma function Γ(s, x) via handle-based FFI.
+
+ Defined as Γ(s, x) = ∫ₓ^∞ t^(s-1) e^(-t) dt.
+
+ # Arguments
+
+ * `s` - Shape parameter
+ * `x` - Lower limit of integration
+
+ # Returns
+
+ The value Γ(s, x).
+ */
 rssn_
 double rssn_num_special_upper_incomplete_gamma(double aS,
                                                double aX)
 ;
 
+/*
+ Computes the Riemann zeta function ζ(s) via handle-based FFI.
+
+ Defined as ζ(s) = ∑ₙ₌₁^∞ 1/n^s for Re(s) > 1.
+
+ # Arguments
+
+ * `s` - Argument of the zeta function
+
+ # Returns
+
+ The value ζ(s).
+ */
 rssn_
 double rssn_num_special_zeta(double aS)
 ;
@@ -19024,10 +20589,55 @@ int32_t rssn_num_stats_chi_squared_test(const double *aObserved,
                                         double *aOutP)
 ;
 
+/*
+ Performs a chi-squared goodness-of-fit test using bincode serialization.
+
+ Tests whether observed frequencies match expected frequencies according to
+ the test statistic χ² = Σ(Oᵢ - Eᵢ)² / Eᵢ.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `TwoDataInput` with:
+   - `data1`: Observed frequencies
+   - `data2`: Expected frequencies
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<TestOutput, String>` with either:
+ - `ok`: Object containing `statistic` (χ²-statistic) and `p_value`
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_chi_squared_test_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Performs a chi-squared goodness-of-fit test via JSON serialization.
+
+ Tests whether observed frequencies match expected frequencies according to
+ the test statistic χ² = Σ(Oᵢ - Eᵢ)² / Eᵢ.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data1`: Observed frequencies
+   - `data2`: Expected frequencies
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<TestOutput, String>` with
+ `statistic` (χ²-statistic) and `p_value`.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_chi_squared_test_json(const char *aInput)
 ;
@@ -19042,10 +20652,53 @@ double rssn_num_stats_correlation(const double *aData1,
                                   size_t aLen2)
 ;
 
+/*
+ Computes the Pearson correlation coefficient between two datasets using bincode serialization.
+
+ The Pearson correlation is defined as ρ = Cov(X,Y) / (σₓσᵧ), ranging from -1 to 1.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `TwoDataInput` with:
+   - `data1`: First dataset
+   - `data2`: Second dataset (must have same length as data1)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The correlation coefficient ρ ∈ [-1, 1]
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_correlation_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Pearson correlation coefficient between two datasets via JSON serialization.
+
+ The Pearson correlation is defined as ρ = Cov(X,Y) / (σₓσᵧ), ranging from -1 to 1.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data1`: First dataset
+   - `data2`: Second dataset (must have same length as data1)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the correlation coefficient ρ ∈ [-1, 1].
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_correlation_json(const char *aInput)
 ;
@@ -19060,10 +20713,53 @@ double rssn_num_stats_covariance(const double *aData1,
                                  size_t aLen2)
 ;
 
+/*
+ Computes the covariance between two datasets using bincode serialization.
+
+ The sample covariance is defined as Cov(X,Y) = (1/(n-1)) Σ(xᵢ - μₓ)(yᵢ - μᵧ).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `TwoDataInput` with:
+   - `data1`: First dataset
+   - `data2`: Second dataset (must have same length as data1)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The covariance Cov(X,Y)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_covariance_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the covariance between two datasets via JSON serialization.
+
+ The sample covariance is defined as Cov(X,Y) = (1/(n-1)) Σ(xᵢ - μₓ)(yᵢ - μᵧ).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data1`: First dataset
+   - `data2`: Second dataset (must have same length as data1)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the covariance Cov(X,Y).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_covariance_json(const char *aInput)
 ;
@@ -19084,6 +20780,27 @@ double rssn_num_stats_geometric_mean(const double *aData,
                                      size_t aLen)
 ;
 
+/*
+ Computes the geometric mean of a dataset via JSON serialization.
+
+ The geometric mean is defined as (∏xᵢ)^(1/n), useful for quantities with
+ multiplicative relationships (e.g., growth rates).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data`: Array of positive numerical values
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the geometric mean.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_geometric_mean_json(const char *aInput)
 ;
@@ -19096,6 +20813,27 @@ double rssn_num_stats_harmonic_mean(const double *aData,
                                     size_t aLen)
 ;
 
+/*
+ Computes the harmonic mean of a dataset via JSON serialization.
+
+ The harmonic mean is defined as n / Σ(1/xᵢ), useful for averaging rates
+ and ratios.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data`: Array of positive numerical values
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the harmonic mean.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_harmonic_mean_json(const char *aInput)
 ;
@@ -19112,10 +20850,53 @@ int32_t rssn_num_stats_linear_regression(const double *aX,
                                          double *aOutIntercept)
 ;
 
+/*
+ Computes simple linear regression using least squares method via bincode serialization.
+
+ Fits a line y = mx + b to the data by minimizing Σ(yᵢ - (mxᵢ + b))².
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `RegressionInput` with:
+   - `x`: Independent variable values
+   - `y`: Dependent variable values (must have same length as x)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<RegressionOutput, String>` with either:
+ - `ok`: Object containing `slope` (m) and `intercept` (b)
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_linear_regression_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes simple linear regression using least squares method via JSON serialization.
+
+ Fits a line y = mx + b to the data by minimizing Σ(yᵢ - (mxᵢ + b))².
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `x`: Independent variable values
+   - `y`: Dependent variable values (must have same length as x)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<RegressionOutput, String>` with
+ `slope` (m) and `intercept` (b).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_linear_regression_json(const char *aInput)
 ;
@@ -19128,10 +20909,51 @@ double rssn_num_stats_mean(const double *aData,
                            size_t aLen)
 ;
 
+/*
+ Computes the arithmetic mean (average) of a dataset using bincode serialization.
+
+ The arithmetic mean is defined as μ = (1/n) Σxᵢ.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `DataInput` with:
+   - `data`: Vector of numerical values
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The mean value μ
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_mean_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the arithmetic mean (average) of a dataset via JSON serialization.
+
+ The arithmetic mean is defined as μ = (1/n) Σxᵢ.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data`: Array of numerical values
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the mean value μ.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_mean_json(const char *aInput)
 ;
@@ -19152,10 +20974,53 @@ double rssn_num_stats_shannon_entropy(const double *aData,
                                       size_t aLen)
 ;
 
+/*
+ Computes Shannon entropy of a probability distribution using bincode serialization.
+
+ Shannon entropy is defined as H(X) = -Σ p(xᵢ) log₂(p(xᵢ)), measuring
+ the average information content or uncertainty in the distribution.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `DataInput` with:
+   - `data`: Probability distribution (values should sum to 1)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: Shannon entropy H(X) in bits
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_shannon_entropy_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes Shannon entropy of a probability distribution via JSON serialization.
+
+ Shannon entropy is defined as H(X) = -Σ p(xᵢ) log₂(p(xᵢ)), measuring
+ the average information content or uncertainty in the distribution.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data`: Probability distribution (values should sum to 1)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ Shannon entropy H(X) in bits.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_shannon_entropy_json(const char *aInput)
 ;
@@ -19176,10 +21041,51 @@ double rssn_num_stats_std_dev(const double *aData,
                               size_t aLen)
 ;
 
+/*
+ Computes the sample standard deviation of a dataset using bincode serialization.
+
+ The standard deviation is defined as s = √(s²) where s² is the sample variance.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `DataInput` with:
+   - `data`: Vector of numerical values
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The standard deviation s
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_std_dev_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the sample standard deviation of a dataset via JSON serialization.
+
+ The standard deviation is defined as s = √(s²) where s² is the sample variance.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data`: Array of numerical values
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the standard deviation s.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_std_dev_json(const char *aInput)
 ;
@@ -19197,10 +21103,55 @@ int32_t rssn_num_stats_two_sample_t_test(const double *aSample1,
                                          double *aOutP)
 ;
 
+/*
+ Performs a two-sample t-test for equal means using bincode serialization.
+
+ Tests the null hypothesis that two independent samples have equal means,
+ assuming equal variances (pooled variance).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `TwoDataInput` with:
+   - `data1`: First sample
+   - `data2`: Second sample
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<TestOutput, String>` with either:
+ - `ok`: Object containing `statistic` (t-statistic) and `p_value`
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_two_sample_t_test_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Performs a two-sample t-test for equal means via JSON serialization.
+
+ Tests the null hypothesis that two independent samples have equal means,
+ assuming equal variances (pooled variance).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data1`: First sample
+   - `data2`: Second sample
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<TestOutput, String>` with
+ `statistic` (t-statistic) and `p_value`.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_two_sample_t_test_json(const char *aInput)
 ;
@@ -19213,10 +21164,51 @@ double rssn_num_stats_variance(const double *aData,
                                size_t aLen)
 ;
 
+/*
+ Computes the sample variance of a dataset using bincode serialization.
+
+ The sample variance is defined as s² = (1/(n-1)) Σ(xᵢ - μ)².
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `DataInput` with:
+   - `data`: Vector of numerical values
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The variance s²
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_variance_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the sample variance of a dataset via JSON serialization.
+
+ The sample variance is defined as s² = (1/(n-1)) Σ(xᵢ - μ)².
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data`: Array of numerical values
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the variance s².
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_variance_json(const char *aInput)
 ;
@@ -19234,18 +21226,106 @@ int32_t rssn_num_stats_welch_t_test(const double *aSample1,
                                     double *aOutP)
 ;
 
+/*
+ Performs Welch's t-test for unequal variances using bincode serialization.
+
+ Tests the null hypothesis that two independent samples have equal means,
+ without assuming equal variances (Welch-Satterthwaite correction).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `TwoDataInput` with:
+   - `data1`: First sample
+   - `data2`: Second sample
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<TestOutput, String>` with either:
+ - `ok`: Object containing `statistic` (t-statistic) and `p_value`
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_welch_t_test_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Performs Welch's t-test for unequal variances via JSON serialization.
+
+ Tests the null hypothesis that two independent samples have equal means,
+ without assuming equal variances (Welch-Satterthwaite correction).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data1`: First sample
+   - `data2`: Second sample
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<TestOutput, String>` with
+ `statistic` (t-statistic) and `p_value`.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_welch_t_test_json(const char *aInput)
 ;
 
+/*
+ Computes standardized z-scores for a dataset using bincode serialization.
+
+ The z-score is defined as z = (x - μ) / σ, representing the number of
+ standard deviations each value is from the mean.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `DataInput` with:
+   - `data`: Vector of numerical values
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: Vector of z-scores
+ - `err`: Error message if input is invalid
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_stats_z_scores_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes standardized z-scores for a dataset via JSON serialization.
+
+ The z-score is defined as z = (x - μ) / σ, representing the number of
+ standard deviations each value is from the mean.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `data`: Array of numerical values
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the vector of z-scores.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_stats_z_scores_json(const char *aInput)
 ;
@@ -19343,10 +21423,57 @@ int32_t rssn_num_topology_betti_numbers(const double *const *aPoints,
                                         size_t *aResult)
 ;
 
+/*
+ Computes Betti numbers at a fixed radius for topological data analysis using bincode serialization.
+
+ Betti numbers characterize topological features: β₀ (connected components),
+ β₁ (holes/loops), β₂ (voids), etc., in the Vietoris-Rips complex.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `BettiInput` with:
+   - `points`: Point cloud data as vectors of coordinates
+   - `epsilon`: Radius parameter for Vietoris-Rips complex
+   - `max_dim`: Maximum homology dimension to compute
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<usize>, String>` with either:
+ - `ok`: Vector of Betti numbers [β₀, β₁, β₂, ...] up to max_dim
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_topology_betti_numbers_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes Betti numbers at a fixed radius for topological data analysis via JSON serialization.
+
+ Betti numbers characterize topological features: β₀ (connected components),
+ β₁ (holes/loops), β₂ (voids), etc., in the Vietoris-Rips complex.
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `points`: Point cloud data as arrays of coordinates
+   - `epsilon`: Radius parameter for Vietoris-Rips complex
+   - `max_dim`: Maximum homology dimension to compute
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<usize>, String>` with
+ a vector of Betti numbers [β₀, β₁, β₂, ...] up to max_dim.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_topology_betti_numbers_json(const char *aInputJson)
 ;
@@ -19367,10 +21494,59 @@ rssn_
 struct rssn_Vec_Vec_usize *rssn_num_topology_find_connected_components(const struct rssn_Graph *aGraphPtr)
 ;
 
+/*
+ Computes persistent homology for topological data analysis using bincode serialization.
+
+ Tracks the birth and death of topological features (components, holes, voids)
+ across multiple scales, producing persistence diagrams.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `PersistenceInput` with:
+   - `points`: Point cloud data as vectors of coordinates
+   - `max_epsilon`: Maximum radius to analyze
+   - `steps`: Number of radius values to sample
+   - `max_dim`: Maximum homology dimension to compute
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<PersistenceDiagram>, String>` with either:
+ - `ok`: Persistence diagrams for each dimension
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_topology_persistence_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes persistent homology for topological data analysis via JSON serialization.
+
+ Tracks the birth and death of topological features (components, holes, voids)
+ across multiple scales, producing persistence diagrams.
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `points`: Point cloud data as arrays of coordinates
+   - `max_epsilon`: Maximum radius to analyze
+   - `steps`: Number of radius values to sample
+   - `max_dim`: Maximum homology dimension to compute
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<PersistenceDiagram>, String>` with
+ persistence diagrams for each dimension.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_topology_persistence_json(const char *aInputJson)
 ;
@@ -19504,10 +21680,57 @@ struct rssn_Vec_f64 *rssn_num_vector_calculus_curl(const struct rssn_Expr *const
                                                    const double *aPoint)
 ;
 
+/*
+ Computes the curl of a vector field at a point using bincode serialization.
+
+ The curl measures the rotational tendency of a vector field. In 3D:
+ curl(F) = (∂F₃/∂x₂ - ∂F₂/∂x₃, ∂F₁/∂x₃ - ∂F₃/∂x₁, ∂F₂/∂x₁ - ∂F₁/∂x₂).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `CurlInput` with:
+   - `funcs`: Vector field components as symbolic expressions
+   - `vars`: Variable names corresponding to coordinates
+   - `point`: Point at which to evaluate curl
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: The curl vector
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_vector_calculus_curl_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the curl of a vector field at a point via JSON serialization.
+
+ The curl measures the rotational tendency of a vector field. In 3D:
+ curl(F) = (∂F₃/∂x₂ - ∂F₂/∂x₃, ∂F₁/∂x₃ - ∂F₃/∂x₁, ∂F₂/∂x₁ - ∂F₁/∂x₂).
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `funcs`: Vector field components as symbolic expressions
+   - `vars`: Variable names corresponding to coordinates
+   - `point`: Point at which to evaluate curl
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the curl vector.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_vector_calculus_curl_json(const char *aInputJson)
 ;
@@ -19536,10 +21759,57 @@ int32_t rssn_num_vector_calculus_divergence(const struct rssn_Expr *const *aFunc
                                             double *aResult)
 ;
 
+/*
+ Computes the divergence of a vector field at a point using bincode serialization.
+
+ The divergence measures the net outward flux of a vector field:
+ div(F) = ∂F₁/∂x₁ + ∂F₂/∂x₂ + ... + ∂Fₙ/∂xₙ.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `DivergenceInput` with:
+   - `funcs`: Vector field components as symbolic expressions
+   - `vars`: Variable names corresponding to coordinates
+   - `point`: Point at which to evaluate divergence
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The divergence value (scalar)
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_vector_calculus_divergence_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the divergence of a vector field at a point via JSON serialization.
+
+ The divergence measures the net outward flux of a vector field:
+ div(F) = ∂F₁/∂x₁ + ∂F₂/∂x₂ + ... + ∂Fₙ/∂xₙ.
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `funcs`: Vector field components as symbolic expressions
+   - `vars`: Variable names corresponding to coordinates
+   - `point`: Point at which to evaluate divergence
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the divergence value (scalar).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_vector_calculus_divergence_json(const char *aInputJson)
 ;
@@ -19555,10 +21825,57 @@ int32_t rssn_num_vector_calculus_laplacian(const struct rssn_Expr *aF,
                                            double *aResult)
 ;
 
+/*
+ Computes the Laplacian of a scalar field at a point using bincode serialization.
+
+ The Laplacian is the divergence of the gradient:
+ ∇²f = ∂²f/∂x₁² + ∂²f/∂x₂² + ... + ∂²f/∂xₙ².
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `LaplacianInput` with:
+   - `f`: Scalar field as a symbolic expression
+   - `vars`: Variable names corresponding to coordinates
+   - `point`: Point at which to evaluate Laplacian
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The Laplacian value (scalar)
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_num_vector_calculus_laplacian_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the Laplacian of a scalar field at a point via JSON serialization.
+
+ The Laplacian is the divergence of the gradient:
+ ∇²f = ∂²f/∂x₁² + ∂²f/∂x₂² + ... + ∂²f/∂xₙ².
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `f`: Scalar field as a symbolic expression
+   - `vars`: Variable names corresponding to coordinates
+   - `point`: Point at which to evaluate Laplacian
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the Laplacian value (scalar).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_num_vector_calculus_laplacian_json(const char *aInputJson)
 ;
@@ -19715,10 +22032,57 @@ int32_t rssn_numerical_sum_series(const struct rssn_Expr *aF,
                                   double *aResult)
 ;
 
+/*
+ Computes the numerical sum of a symbolic series using bincode serialization.
+
+ Evaluates Σ f(var) for var from start to end, where f is a symbolic expression.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SumInput` with:
+   - `expr`: Symbolic expression to sum
+   - `var`: Summation index variable name
+   - `start`: Lower limit of summation (inclusive)
+   - `end`: Upper limit of summation (inclusive)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<f64, String>` with either:
+ - `ok`: The computed sum value
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_numerical_sum_series_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes the numerical sum of a symbolic series using JSON serialization.
+
+ Evaluates Σ f(var) for var from start to end, where f is a symbolic expression.
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `expr`: Symbolic expression to sum
+   - `var`: Summation index variable name
+   - `start`: Lower limit of summation (inclusive)
+   - `end`: Upper limit of summation (inclusive)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<f64, String>` with
+ the computed sum value.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_numerical_sum_series_json(const char *aInputJson)
 ;
@@ -19734,10 +22098,59 @@ struct rssn_Vec_f64 *rssn_numerical_taylor_coefficients(const struct rssn_Expr *
                                                         size_t aOrder)
 ;
 
+/*
+ Computes Taylor series coefficients for a symbolic expression using bincode serialization.
+
+ Evaluates the derivatives of the expression at a point to obtain Taylor expansion coefficients:
+ f(x) ≈ Σ [fⁿⁿⁿ(a)/n!](x-a)ⁿ for n = 0 to order.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `TaylorInput` with:
+   - `expr`: Symbolic expression to expand
+   - `var`: Variable name for expansion
+   - `at_point`: Point a around which to expand
+   - `order`: Maximum order of Taylor expansion
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: Array of Taylor coefficients [c₀, c₁, ..., cₙ]
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_numerical_taylor_coefficients_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes Taylor series coefficients for a symbolic expression using JSON serialization.
+
+ Evaluates the derivatives of the expression at a point to obtain Taylor expansion coefficients:
+ f(x) ≈ Σ [fⁿⁿⁿ(a)/n!](x-a)ⁿ for n = 0 to order.
+
+ # Arguments
+
+ * `input_json` - A JSON string pointer containing:
+   - `expr`: Symbolic expression to expand
+   - `var`: Variable name for expansion
+   - `at_point`: Point a around which to expand
+   - `order`: Maximum order of Taylor expansion
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ an array of Taylor coefficients [c₀, c₁, ..., cₙ].
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_numerical_taylor_coefficients_json(const char *aInputJson)
 ;
@@ -19979,10 +22392,59 @@ int32_t rssn_physics_bem_solve_laplace_2d(const double *aPointsX,
                                           double *aOutQ)
 ;
 
+/*
+ Solves the 2D Laplace equation using Boundary Element Method (BEM) via bincode serialization.
+
+ The Laplace equation ∇²u = 0 is solved using BEM, where the domain is discretized
+ into boundary elements and the solution is represented by potential u and flux q
+ on the boundary.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `Bem2DInput` with:
+   - `points`: Boundary points as (x, y) coordinates
+   - `bcs`: Boundary conditions (Potential or Flux) at each point
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Bem2DOutput, String>` with either:
+ - `ok`: Object containing:
+   - `u`: Potential values at boundary nodes
+   - `q`: Flux values at boundary nodes
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_bem_solve_laplace_2d_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the 2D Laplace equation using Boundary Element Method (BEM) via JSON serialization.
+
+ The Laplace equation ∇²u = 0 is solved using BEM, where the domain is discretized
+ into boundary elements and the solution is represented by potential u and flux q
+ on the boundary.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `points`: Boundary points as (x, y) coordinate pairs
+   - `bcs`: Boundary conditions (Potential or Flux) at each point
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Bem2DOutput, String>` with
+ potential `u` and flux `q` values at boundary nodes.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_bem_solve_laplace_2d_json(const char *aInput)
 ;
@@ -20001,10 +22463,57 @@ double *rssn_physics_cnm_solve_heat_1d(const double *aInitialCondition,
                                        size_t *aOutSize)
 ;
 
+/*
+ Solves the 2D heat equation using Crank-Nicolson ADI method via bincode serialization.
+
+ The heat equation ∂u/∂t = α∇²u is solved using the Crank-Nicolson Alternating
+ Direction Implicit (ADI) method, which is unconditionally stable and second-order
+ accurate in both space and time.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `Heat2DInput` with:
+   - `initial_condition`: Initial temperature distribution (flattened 2D grid)
+   - `config`: Solver configuration (grid size, time step, thermal diffusivity, etc.)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: Final temperature distribution after time evolution
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_cnm_solve_heat_2d_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the 2D heat equation using Crank-Nicolson ADI method via JSON serialization.
+
+ The heat equation ∂u/∂t = α∇²u is solved using the Crank-Nicolson Alternating
+ Direction Implicit (ADI) method, which is unconditionally stable and second-order
+ accurate in both space and time.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `initial_condition`: Initial temperature distribution (flattened 2D grid)
+   - `config`: Solver configuration (grid size, time step, thermal diffusivity, etc.)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the final temperature distribution after time evolution.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_cnm_solve_heat_2d_json(const char *aInput)
 ;
@@ -20030,14 +22539,92 @@ rssn_
 struct rssn_Matrix_f64 *rssn_physics_em_simulate_stiff_decay_backward(void)
 ;
 
+/*
+ Solves ODE systems using Euler methods (forward, midpoint, or Heun) via bincode serialization.
+
+ Supports various dynamical systems including Lorenz attractor and damped oscillators,
+ using explicit Euler integration methods.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `EulerInput` with:
+   - `system_type`: System identifier ("lorenz", "oscillator")
+   - `params_bincode`: System parameters encoded with bincode
+   - `y0`: Initial state vector
+   - `t_span`: Time interval (t_start, t_end)
+   - `dt`: Time step size
+   - `method`: Integration method ("forward", "midpoint", "heun")
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<(f64, Vec<f64>)>, String>` with either:
+ - `ok`: Trajectory as (time, state) pairs
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_em_solve_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves ODE systems using Euler methods (forward, midpoint, or Heun) via JSON serialization.
+
+ Supports various dynamical systems including Lorenz attractor, damped oscillators,
+ and orbital mechanics, using explicit Euler integration methods.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `system_type`: System identifier ("lorenz", "oscillator", "orbital")
+   - `params`: System parameters as JSON object
+   - `y0`: Initial state vector
+   - `t_span`: Time interval [t_start, t_end]
+   - `dt`: Time step size
+   - `method`: Integration method ("forward", "midpoint", "heun")
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<(f64, Vec<f64>)>, String>` with
+ the trajectory as (time, state) pairs.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_em_solve_json(const char *aInput)
 ;
 
+/*
+ Solves the 1D Burgers' equation using Finite Difference Method via JSON serialization.
+
+ Burgers' equation ∂u/∂t + u∂u/∂x = ν∂²u/∂x² combines nonlinear convection
+ with diffusion, modeling shock wave formation and viscous fluid flow.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `initial_u`: Initial velocity field
+   - `dx`: Spatial step size
+   - `nu`: Kinematic viscosity coefficient ν
+   - `dt`: Time step size
+   - `steps`: Number of time steps to simulate
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the final velocity field.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_fdm_burgers_json(const char *aInput)
 ;
@@ -20072,10 +22659,66 @@ rssn_FdmGrid<double> *rssn_physics_fdm_grid_new(size_t aD1,
                                                 size_t aD3)
 ;
 
+/*
+ Solves the 2D heat equation using Finite Difference Method (FDM) via JSON serialization.
+
+ The heat equation ∂u/∂t = α∇²u is solved using explicit finite differences with
+ a square heat source at the center of the domain.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `width`: Grid width (number of cells in x-direction)
+   - `height`: Grid height (number of cells in y-direction)
+   - `alpha`: Thermal diffusivity coefficient α
+   - `dx`: Spatial step size in x-direction
+   - `dy`: Spatial step size in y-direction
+   - `dt`: Time step size
+   - `steps`: Number of time steps to simulate
+   - `initial_temp`: Temperature of the central heat source
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<FdmGrid<f64>, String>` with
+ the final temperature field grid.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_fdm_heat_json(const char *aInput)
 ;
 
+/*
+ Solves the 2D Poisson equation using Finite Difference Method with SOR via JSON serialization.
+
+ The Poisson equation ∇²u = f is solved using Successive Over-Relaxation (SOR)
+ iteration to find the steady-state potential field given a source distribution.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `width`: Grid width (number of cells in x-direction)
+   - `height`: Grid height (number of cells in y-direction)
+   - `source`: Source term f (flattened 2D array)
+   - `dx`: Spatial step size in x-direction
+   - `dy`: Spatial step size in y-direction
+   - `omega`: SOR relaxation parameter (1 < ω < 2 for optimal convergence)
+   - `max_iter`: Maximum number of iterations
+   - `tolerance`: Convergence tolerance for residual norm
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<FdmGrid<f64>, String>` with
+ the solution grid u.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_fdm_poisson_json(const char *aInput)
 ;
@@ -20094,10 +22737,65 @@ rssn_
 rssn_FdmGrid<double> *rssn_physics_fdm_simulate_wave_2d(void)
 ;
 
+/*
+ Solves the 2D wave equation using Finite Difference Method (FDM) via bincode serialization.
+
+ The wave equation ∂²u/∂t² = c²∇²u is solved using explicit finite differences with
+ a Gaussian initial condition centered at the grid midpoint.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `WaveEquationInput` with:
+   - `width`: Grid width (number of cells in x-direction)
+   - `height`: Grid height (number of cells in y-direction)
+   - `c`: Wave speed
+   - `dx`: Spatial step size in x-direction
+   - `dy`: Spatial step size in y-direction
+   - `dt`: Time step size
+   - `steps`: Number of time steps to simulate
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<FdmGrid<f64>, String>` with either:
+ - `ok`: Final wave field grid after time evolution
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_fdm_wave_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the 2D wave equation using Finite Difference Method (FDM) via JSON serialization.
+
+ The wave equation ∂²u/∂t² = c²∇²u is solved using explicit finite differences with
+ a Gaussian initial condition centered at the grid midpoint.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `width`: Grid width (number of cells in x-direction)
+   - `height`: Grid height (number of cells in y-direction)
+   - `c`: Wave speed
+   - `dx`: Spatial step size in x-direction
+   - `dy`: Spatial step size in y-direction
+   - `dt`: Time step size
+   - `steps`: Number of time steps to simulate
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<FdmGrid<f64>, String>` with
+ the final wave field grid.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_fdm_wave_json(const char *aInput)
 ;
@@ -20112,14 +22810,85 @@ double *rssn_physics_fem_solve_poisson_1d(size_t aNElements,
                                           size_t *aOutSize)
 ;
 
+/*
+ Solves the 1D Poisson equation using Finite Element Method (FEM) via bincode serialization.
+
+ The Poisson equation -d²u/dx² = f(x) is solved using linear finite elements
+ with homogeneous Dirichlet boundary conditions (u = 0 at boundaries).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `Poisson1DInput` with:
+   - `n_elements`: Number of finite elements in the mesh
+   - `domain_length`: Total length of the 1D domain
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: Solution vector u at nodal points
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_fem_solve_poisson_1d_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the 1D Poisson equation using Finite Element Method (FEM) via JSON serialization.
+
+ The Poisson equation -d²u/dx² = f(x) is solved using linear finite elements
+ with homogeneous Dirichlet boundary conditions (u = 0 at boundaries).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n_elements`: Number of finite elements in the mesh
+   - `domain_length`: Total length of the 1D domain
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the solution vector u at nodal points.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_fem_solve_poisson_1d_json(const char *aInput)
 ;
 
+/*
+ Solves the 1D advection equation using Finite Volume Method (FVM) via JSON serialization.
+
+ The advection equation ∂u/∂t + v∂u/∂x = 0 models conservative transport
+ of a scalar quantity u with constant velocity v.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `num_cells`: Number of cells in the mesh
+   - `domain_size`: Total length of the 1D domain
+   - `velocity`: Advection velocity v
+   - `dt`: Time step size
+   - `steps`: Number of time steps to simulate
+   - `initial_values`: Initial field distribution
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the final field distribution.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_fvm_advection_json(const char *aInput)
 ;
@@ -20153,10 +22922,63 @@ rssn_
 double *rssn_physics_fvm_simulate_advection_1d(void)
 ;
 
+/*
+ Solves the 1D shallow water equations using Finite Volume Method (FVM) via bincode serialization.
+
+ The shallow water equations model conservation of mass and momentum in free-surface flows:
+ ∂h/∂t + ∂(hu)/∂x = 0 and ∂(hu)/∂t + ∂(hu² + gh²/2)/∂x = 0.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SweInput` with:
+   - `h`: Initial water depth distribution
+   - `hu`: Initial momentum (h×velocity) distribution
+   - `dx`: Spatial step size
+   - `dt`: Time step size
+   - `steps`: Number of time steps to simulate
+   - `g`: Gravitational acceleration
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<SweState>, String>` with either:
+ - `ok`: Time series of shallow water states (h, hu)
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_fvm_swe_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the 1D shallow water equations using Finite Volume Method (FVM) via JSON serialization.
+
+ The shallow water equations model conservation of mass and momentum in free-surface flows:
+ ∂h/∂t + ∂(hu)/∂x = 0 and ∂(hu)/∂t + ∂(hu² + gh²/2)/∂x = 0.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `h`: Initial water depth distribution
+   - `hu`: Initial momentum (h×velocity) distribution
+   - `dx`: Spatial step size
+   - `dt`: Time step size
+   - `steps`: Number of time steps to simulate
+   - `g`: Gravitational acceleration
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<SweState>, String>` with
+ the time series of shallow water states (h, hu).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_fvm_swe_json(const char *aInput)
 ;
@@ -20168,6 +22990,22 @@ rssn_
 struct rssn_Matrix_f64 *rssn_physics_mm_simulate_dam_break(void)
 ;
 
+/*
+ Simulates a 2D dam break scenario using SPH method via JSON serialization.
+
+ Models the collapse of a water column and its subsequent flow, a classical
+ validation case for SPH fluid simulation.
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<(f64, f64)>, String>` with
+ particle positions (x, y) after simulation.
+
+ # Safety
+
+ This function is unsafe because it returns a raw C string pointer that the
+ caller must free.
+ */
 rssn_
 char *rssn_physics_mm_simulate_dam_break_json(void)
 ;
@@ -20222,10 +23060,55 @@ void rssn_physics_mm_sph_update(struct rssn_SPHSystem *aSystem,
                                 double aDt)
 ;
 
+/*
+ Updates a Smoothed Particle Hydrodynamics (SPH) system by one time step via bincode serialization.
+
+ SPH is a meshfree Lagrangian method for simulating fluid dynamics by representing
+ the continuum as a set of particles with smoothed properties.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SphInput` with:
+   - `system`: SPH system state (particles with positions, velocities, densities, etc.)
+   - `dt`: Time step size
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<SPHSystem, String>` with either:
+ - `ok`: Updated SPH system state after time step
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_mm_sph_update_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Updates a Smoothed Particle Hydrodynamics (SPH) system by one time step via JSON serialization.
+
+ SPH is a meshfree Lagrangian method for simulating fluid dynamics by representing
+ the continuum as a set of particles with smoothed properties.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `system`: SPH system state (particles with positions, velocities, densities, etc.)
+   - `dt`: Time step size
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<SPHSystem, String>` with
+ the updated SPH system state after time step.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_mm_sph_update_json(const char *aInput)
 ;
@@ -20242,6 +23125,29 @@ double *rssn_physics_mtm_solve_poisson_1d(size_t aNInterior,
                                           size_t *aOutSize)
 ;
 
+/*
+ Solves the 1D Poisson equation using Multigrid Method via JSON serialization.
+
+ The Poisson equation -d²u/dx² = f is solved using the multigrid method, which achieves
+ optimal O(N) complexity through hierarchical coarse-grid correction.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n_interior`: Number of interior grid points
+   - `f`: Right-hand side source term
+   - `num_cycles`: Number of V-cycles or W-cycles to perform
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the solution vector u.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_mtm_solve_poisson_1d_json(const char *aInput)
 ;
@@ -20257,26 +23163,181 @@ double *rssn_physics_mtm_solve_poisson_2d(size_t aN,
                                           size_t *aOutSize)
 ;
 
+/*
+ Solves the 2D Poisson equation using Multigrid Method via bincode serialization.
+
+ The Poisson equation ∇²u = f is solved using the multigrid method, which achieves
+ optimal O(N) complexity through hierarchical coarse-grid correction.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `Multigrid2DInput` with:
+   - `n`: Grid size (n×n interior points)
+   - `f`: Right-hand side source term (flattened 2D array)
+   - `num_cycles`: Number of V-cycles or W-cycles to perform
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: Solution vector u (flattened 2D array)
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_mtm_solve_poisson_2d_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the 2D Poisson equation using Multigrid Method via JSON serialization.
+
+ The Poisson equation ∇²u = f is solved using the multigrid method, which achieves
+ optimal O(N) complexity through hierarchical coarse-grid correction.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n`: Grid size (n×n interior points)
+   - `f`: Right-hand side source term (flattened 2D array)
+   - `num_cycles`: Number of V-cycles or W-cycles to perform
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the solution vector u (flattened 2D array).
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_mtm_solve_poisson_2d_json(const char *aInput)
 ;
 
+/*
+ Solves the damped oscillator system using RK4 method via JSON serialization.
+
+ The damped harmonic oscillator is defined by:
+ d²x/dt² + 2ζωdx/dt + ω²x = 0.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `omega`: Natural frequency ω
+   - `zeta`: Damping ratio ζ
+   - `y0`: Initial state [x₀, v₀]
+   - `t_span`: Time interval [t_start, t_end]
+   - `dt`: Time step size
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<OdeResult, String>` with
+ `time` and `states` arrays.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_rkm_damped_oscillator_json(const char *aInput)
 ;
 
+/*
+ Solves the Lorenz system using adaptive Dormand-Prince RK5(4) method via bincode serialization.
+
+ The Lorenz system is a chaotic dynamical system defined by:
+ dx/dt = σ(y - x), dy/dt = x(ρ - z) - y, dz/dt = xy - βz.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `LorenzInput` with:
+   - `sigma`: Prandtl number σ
+   - `rho`: Rayleigh number ρ
+   - `beta`: Geometric parameter β
+   - `y0`: Initial state [x₀, y₀, z₀]
+   - `t_span`: Time interval (t_start, t_end)
+   - `dt_initial`: Initial time step size
+   - `tol`: Error tolerances (absolute, relative)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<OdeResult, String>` with either:
+ - `ok`: Object containing `time` and `states` arrays
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_rkm_lorenz_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the Lorenz system using adaptive Dormand-Prince RK5(4) method via JSON serialization.
+
+ The Lorenz system is a chaotic dynamical system defined by:
+ dx/dt = σ(y - x), dy/dt = x(ρ - z) - y, dz/dt = xy - βz.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `sigma`: Prandtl number σ
+   - `rho`: Rayleigh number ρ
+   - `beta`: Geometric parameter β
+   - `y0`: Initial state [x₀, y₀, z₀]
+   - `t_span`: Time interval [t_start, t_end]
+   - `dt_initial`: Initial time step size
+   - `tol`: Error tolerances [absolute, relative]
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<OdeResult, String>` with
+ `time` and `states` arrays.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_rkm_lorenz_json(const char *aInput)
 ;
 
+/*
+ Solves the Lotka-Volterra predator-prey system using Bogacki-Shampine RK2(3) via JSON serialization.
+
+ The Lotka-Volterra equations model population dynamics:
+ dx/dt = αx - βxy, dy/dt = δxy - γy.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `alpha`: Prey growth rate α
+   - `beta`: Predation rate β
+   - `delta`: Predator efficiency δ
+   - `gamma`: Predator death rate γ
+   - `y0`: Initial state [prey₀, predator₀]
+   - `t_span`: Time interval [t_start, t_end]
+   - `dt_initial`: Initial time step size
+   - `tol`: Error tolerances [absolute, relative]
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<OdeResult, String>` with
+ `time` and `states` arrays.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_rkm_lotka_volterra_json(const char *aInput)
 ;
@@ -20309,6 +23370,31 @@ rssn_
 struct rssn_Matrix_f64 *rssn_physics_rkm_simulate_vanderpol(void)
 ;
 
+/*
+ Solves the Van der Pol oscillator using adaptive Cash-Karp RK4(5) method via JSON serialization.
+
+ The Van der Pol equation models nonlinear oscillations with self-excitation:
+ d²x/dt² - μ(1 - x²)dx/dt + x = 0.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `mu`: Nonlinearity parameter μ
+   - `y0`: Initial state [x₀, v₀]
+   - `t_span`: Time interval [t_start, t_end]
+   - `dt_initial`: Initial time step size
+   - `tol`: Error tolerances [absolute, relative]
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<OdeResult, String>` with
+ `time` and `states` arrays.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_physics_rkm_vanderpol_json(const char *aInput)
 ;
@@ -20325,10 +23411,62 @@ struct rssn_Matrix_f64 *rssn_physics_sim_fdtd_run_2d(size_t aWidth,
                                                      double aSourceFreq)
 ;
 
+/*
+ Runs a Finite-Difference Time-Domain (FDTD) electromagnetic simulation via bincode serialization.
+
+ FDTD solves Maxwell's equations ∇×E = -∂B/∂t and ∇×H = ∂D/∂t + J using a staggered
+ Yee lattice grid, advancing the electric field Ez and magnetic field components in time.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `FdtdParameters` with:
+   - `width`, `height`: Grid dimensions
+   - `dx`, `dy`: Spatial discretization steps
+   - `dt`: Time step size (must satisfy Courant-Friedrichs-Lewy stability condition)
+   - `steps`: Number of time steps to simulate
+   - `source_x`, `source_y`: Position of electromagnetic source
+   - `source_frequency`: Angular frequency ω of the source
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Array2<f64>, String>` with either:
+ - `ok`: Final Ez field as a 2D array
+ - `err`: Error message if computation failed or no snapshots were produced
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_sim_fdtd_run_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Runs a Finite-Difference Time-Domain (FDTD) electromagnetic simulation via JSON serialization.
+
+ FDTD solves Maxwell's equations ∇×E = -∂B/∂t and ∇×H = ∂D/∂t + J using a staggered
+ Yee lattice grid, advancing the electric field Ez and magnetic field components in time.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `width`, `height`: Grid dimensions
+   - `dx`, `dy`: Spatial discretization steps
+   - `dt`: Time step size (must satisfy Courant-Friedrichs-Lewy stability condition)
+   - `steps`: Number of time steps to simulate
+   - `source_x`, `source_y`: Position of electromagnetic source
+   - `source_frequency`: Angular frequency ω of the source
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<Vec<f64>>, String>` with
+ the final Ez field as a 2D vector array.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer.
+ */
 rssn_
 char *rssn_physics_sim_fdtd_run_json(const char *aInput)
 ;
@@ -20346,14 +23484,93 @@ struct rssn_Matrix_f64 *rssn_physics_sim_geodesic_run(double aBlackHoleMass,
                                                       double aInitialDt)
 ;
 
+/*
+ Computes a geodesic trajectory in curved spacetime using general relativity via bincode serialization.
+
+ Integrates the geodesic equation d²xᵘ/dτ² + Γᵘᵥᵨ(dxᵥ/dτ)(dxᵨ/dτ) = 0 where Γᵘᵥᵨ are
+ Christoffel symbols of the metric tensor, modeling particle motion in curved spacetime
+ (e.g., near a black hole using Schwarzschild metric).
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `GeodesicParameters` with:
+   - `mass`: Central mass M (e.g., black hole mass)
+   - `r0`, `phi0`: Initial radial and angular coordinates
+   - `v_r`, `v_phi`: Initial radial and angular velocities
+   - `dt`: Time step for integration
+   - `steps`: Number of integration steps
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<(f64, f64)>, String>` with
+ the geodesic path as (r, φ) coordinate pairs.
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_sim_geodesic_run_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Computes a geodesic trajectory in curved spacetime using general relativity via JSON serialization.
+
+ Integrates the geodesic equation d²xᵘ/dτ² + Γᵘᵥᵨ(dxᵥ/dτ)(dxᵨ/dτ) = 0 where Γᵘᵥᵨ are
+ Christoffel symbols of the metric tensor, modeling particle motion in curved spacetime
+ (e.g., near a black hole using Schwarzschild metric).
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `mass`: Central mass M (e.g., black hole mass)
+   - `r0`, `phi0`: Initial radial and angular coordinates
+   - `v_r`, `v_phi`: Initial radial and angular velocities
+   - `dt`: Time step for integration
+   - `steps`: Number of integration steps
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<(f64, f64)>, String>` with
+ the geodesic path as (r, φ) coordinate pairs.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer.
+ */
 rssn_
 char *rssn_physics_sim_geodesic_run_json(const char *aInput)
 ;
 
+/*
+ Solves the Gross-Pitaevskii equation (GPE) for Bose-Einstein condensate ground state via bincode serialization.
+
+ The GPE iℏ∂ψ/∂t = [-ℏ²∇²/(2m) + V(r) + g|ψ|²]ψ describes the macroscopic wavefunction
+ of a superfluid quantum gas. This solver finds the ground state using imaginary time
+ evolution or variational methods.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `GpeParameters` with:
+   - `n_points`: Number of spatial grid points
+   - `dx`: Spatial discretization step
+   - `g`: Nonlinear interaction strength (proportional to scattering length)
+   - `v_trap`: External trapping potential coefficients
+   - `tolerance`: Convergence tolerance for ground state search
+   - `max_iterations`: Maximum iterations for solver
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: Ground state wavefunction ψ(x) as probability density |ψ|²
+ - `err`: Error message if computation failed or did not converge
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_sim_gpe_run_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
@@ -20372,6 +23589,32 @@ struct rssn_Matrix_f64 *rssn_physics_sim_gpe_run_ground_state_finder(size_t aNx,
                                                                      double aTrapStrength)
 ;
 
+/*
+ Solves the Gross-Pitaevskii equation (GPE) for Bose-Einstein condensate ground state via JSON serialization.
+
+ The GPE iℏ∂ψ/∂t = [-ℏ²∇²/(2m) + V(r) + g|ψ|²]ψ describes the macroscopic wavefunction
+ of a superfluid quantum gas. This solver finds the ground state using imaginary time
+ evolution or variational methods.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `n_points`: Number of spatial grid points
+   - `dx`: Spatial discretization step
+   - `g`: Nonlinear interaction strength (proportional to scattering length)
+   - `v_trap`: External trapping potential coefficients
+   - `tolerance`: Convergence tolerance for ground state search
+   - `max_iterations`: Maximum iterations for solver
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the ground state wavefunction ψ(x) as probability density |ψ|².
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer.
+ */
 rssn_
 char *rssn_physics_sim_gpe_run_json(const char *aInput)
 ;
@@ -20393,18 +23636,121 @@ struct rssn_IsingResultHandle rssn_physics_sim_ising_run(size_t aWidth,
                                                          size_t aMcSteps)
 ;
 
+/*
+ Runs a 2D Ising model Monte Carlo simulation using the Metropolis algorithm via bincode serialization.
+
+ The Ising model with Hamiltonian H = -J∑⟨i,j⟩sᵢsⱼ - h∑ᵢsᵢ describes phase transitions
+ in magnetic systems. The simulation uses Metropolis-Hastings sampling to evolve spin
+ configurations toward thermal equilibrium.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `IsingParameters` with:
+   - `width`, `height`: Grid dimensions
+   - `temperature`: Temperature T in units of J/k_B
+   - `mc_steps`: Number of Monte Carlo sweeps to perform
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<IsingOutput, String>` with either:
+ - `ok`: Object containing:
+   - `grid`: Final spin configuration (±1 values)
+   - `magnetization`: Average magnetization M = ⟨∑ᵢsᵢ⟩/N
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_sim_ising_run_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Runs a 2D Ising model Monte Carlo simulation using the Metropolis algorithm via JSON serialization.
+
+ The Ising model with Hamiltonian H = -J∑⟨i,j⟩sᵢsⱼ - h∑ᵢsᵢ describes phase transitions
+ in magnetic systems. The simulation uses Metropolis-Hastings sampling to evolve spin
+ configurations toward thermal equilibrium.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `width`, `height`: Grid dimensions
+   - `temperature`: Temperature T in units of J/k_B
+   - `mc_steps`: Number of Monte Carlo sweeps to perform
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<IsingOutput, String>` with:
+ - `grid`: Final spin configuration (±1 values)
+ - `magnetization`: Average magnetization M = ⟨∑ᵢsᵢ⟩/N
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer.
+ */
 rssn_
 char *rssn_physics_sim_ising_run_json(const char *aInput)
 ;
 
+/*
+ Solves the linear elasticity equations for stress and displacement in a deformable solid via bincode serialization.
+
+ The elasticity equations σᵢⱼ = Cᵢⱼₖₗεₖₗ with strain εᵢⱼ = ½(∂uᵢ/∂xⱼ + ∂uⱼ/∂xᵢ) describe
+ small deformations in elastic materials, where σ is stress tensor, ε is strain tensor,
+ u is displacement field, and C is the stiffness tensor.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `ElasticityParameters` with:
+   - `nx`, `ny`: Grid dimensions for finite element discretization
+   - `young_modulus`: Young's modulus E (stiffness)
+   - `poisson_ratio`: Poisson's ratio ν (lateral contraction)
+   - `applied_force`: External force distribution
+   - `boundary_conditions`: Fixed displacement constraints
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: Displacement field u(x,y) as flattened vector
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_sim_linear_elasticity_run_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the linear elasticity equations for stress and displacement in a deformable solid via JSON serialization.
+
+ The elasticity equations σᵢⱼ = Cᵢⱼₖₗεₖₗ with strain εᵢⱼ = ½(∂uᵢ/∂xⱼ + ∂uⱼ/∂xᵢ) describe
+ small deformations in elastic materials, where σ is stress tensor, ε is strain tensor,
+ u is displacement field, and C is the stiffness tensor.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `nx`, `ny`: Grid dimensions for finite element discretization
+   - `young_modulus`: Young's modulus E (stiffness)
+   - `poisson_ratio`: Poisson's ratio ν (lateral contraction)
+   - `applied_force`: External force distribution
+   - `boundary_conditions`: Fixed displacement constraints
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the displacement field u(x,y) as a flattened vector.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer.
+ */
 rssn_
 char *rssn_physics_sim_linear_elasticity_run_json(const char *aInput)
 ;
@@ -20423,10 +23769,67 @@ rssn_
 void rssn_physics_sim_navier_stokes_free_results(struct rssn_NavierStokesResultHandles aHandles)
 ;
 
+/*
+ Solves the incompressible Navier-Stokes equations for fluid flow in a lid-driven cavity via bincode serialization.
+
+ The Navier-Stokes equations ∂u/∂t + (u·∇)u = -∇p/ρ + ν∇²u with incompressibility
+ constraint ∇·u = 0 govern viscous fluid dynamics. This solver uses a projection method
+ to enforce divergence-free velocity fields.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `NavierStokesParameters` with:
+   - `nx`, `ny`: Grid dimensions
+   - `re`: Reynolds number Re = UL/ν (ratio of inertial to viscous forces)
+   - `dt`: Time step size
+   - `n_iter`: Number of time iterations
+   - `lid_velocity`: Velocity of the moving lid boundary
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<NavierStokesOutputData, String>` with either:
+ - `ok`: Object containing:
+   - `u`: Horizontal velocity field u(x,y)
+   - `v`: Vertical velocity field v(x,y)
+   - `p`: Pressure field p(x,y)
+ - `err`: Error message if computation failed
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_sim_navier_stokes_run_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the incompressible Navier-Stokes equations for fluid flow in a lid-driven cavity via JSON serialization.
+
+ The Navier-Stokes equations ∂u/∂t + (u·∇)u = -∇p/ρ + ν∇²u with incompressibility
+ constraint ∇·u = 0 govern viscous fluid dynamics. This solver uses a projection method
+ to enforce divergence-free velocity fields.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `nx`, `ny`: Grid dimensions
+   - `re`: Reynolds number Re = UL/ν (ratio of inertial to viscous forces)
+   - `dt`: Time step size
+   - `n_iter`: Number of time iterations
+   - `lid_velocity`: Velocity of the moving lid boundary
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<NavierStokesOutputData, String>` with:
+ - `u`: Horizontal velocity field u(x,y)
+ - `v`: Vertical velocity field v(x,y)
+ - `p`: Pressure field p(x,y)
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer.
+ */
 rssn_
 char *rssn_physics_sim_navier_stokes_run_json(const char *aInput)
 ;
@@ -20460,10 +23863,68 @@ struct rssn_Matrix_f64 *rssn_physics_sim_schrodinger_run_2d(size_t aNx,
                                                             const double *aInitialPsiImPtr)
 ;
 
+/*
+ Solves the time-dependent Schrödinger equation for quantum wavefunction evolution via bincode serialization.
+
+ The Schrödinger equation iℏ∂ψ/∂t = Ĥψ where Ĥ = -ℏ²∇²/(2m) + V(r) governs quantum
+ mechanical evolution of the wavefunction ψ(r,t) under a potential V. This solver uses
+ the Crank-Nicolson or split-operator method for unitary time evolution.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `SchrodingerInput` with:
+   - `params`: Schrödinger parameters including:
+     - `n_points`: Number of spatial grid points
+     - `dx`: Spatial discretization step
+     - `dt`: Time step size
+     - `steps`: Number of time steps
+     - `potential`: External potential V(x) values
+   - `initial_psi_re`: Real part of initial wavefunction ψ(x,0)
+   - `initial_psi_im`: Imaginary part of initial wavefunction ψ(x,0)
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: Final probability density |ψ(x,t)|² as a vector
+ - `err`: Error message if computation failed or produced no snapshots
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_sim_schrodinger_run_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the time-dependent Schrödinger equation for quantum wavefunction evolution via JSON serialization.
+
+ The Schrödinger equation iℏ∂ψ/∂t = Ĥψ where Ĥ = -ℏ²∇²/(2m) + V(r) governs quantum
+ mechanical evolution of the wavefunction ψ(r,t) under a potential V. This solver uses
+ the Crank-Nicolson or split-operator method for unitary time evolution.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `params`: Schrödinger parameters including:
+     - `n_points`: Number of spatial grid points
+     - `dx`: Spatial discretization step
+     - `dt`: Time step size
+     - `steps`: Number of time steps
+     - `potential`: External potential V(x) values
+   - `initial_psi_re`: Real part of initial wavefunction ψ(x,0)
+   - `initial_psi_im`: Imaginary part of initial wavefunction ψ(x,0)
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the final probability density |ψ(x,t)|² as a vector.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer.
+ */
 rssn_
 char *rssn_physics_sim_schrodinger_run_json(const char *aInput)
 ;
@@ -20482,14 +23943,97 @@ rssn_
 struct rssn_Matrix_f64 *rssn_physics_sm_simulate_2d_advection(void)
 ;
 
+/*
+ Solves the 1D advection-diffusion equation using spectral methods via JSON serialization.
+
+ The 1D advection-diffusion equation ∂u/∂t + c∂u/∂x = D∂²u/∂x² models scalar transport
+ with velocity c and diffusivity D. Spectral methods provide exponential convergence
+ for smooth solutions.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `initial_condition`: Initial scalar field u(x,0)
+   - `dx`: Spatial step size
+   - `c`: Advection velocity
+   - `d`: Diffusion coefficient D
+   - `dt`: Time step size
+   - `steps`: Number of time steps
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the final scalar field u(x,t).
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer.
+ */
 rssn_
 char *rssn_physics_sm_solve_advection_1d_json(const char *aInput)
 ;
 
+/*
+ Solves the 2D advection-diffusion equation using spectral methods via bincode serialization.
+
+ The advection-diffusion equation ∂u/∂t + c·∇u = D∇²u models transport phenomena
+ combining convective transport (advection) and diffusive spreading. Spectral methods
+ use Fourier basis functions for high-order accuracy.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing:
+   - `initial_condition`: Initial scalar field u(x,y,0) as flattened vector
+   - `config`: Configuration including:
+     - `nx`, `ny`: Grid dimensions
+     - `dx`, `dy`: Spatial steps
+     - `cx`, `cy`: Advection velocities in x and y directions
+     - `d`: Diffusion coefficient D
+     - `dt`: Time step size
+     - `steps`: Number of time steps
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with
+ the final scalar field u(x,y,t) as a flattened vector.
+
+ # Safety
+
+ This function is unsafe because it receives a raw bincode buffer that must be
+ valid and properly encoded.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_physics_sm_solve_advection_2d_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Solves the 2D advection-diffusion equation using spectral methods via JSON serialization.
+
+ The 2D advection-diffusion equation ∂u/∂t + c·∇u = D∇²u models transport phenomena
+ combining convective transport (advection) and diffusive spreading. Spectral methods
+ use Fourier basis functions for high-order accuracy.
+
+ # Arguments
+
+ * `input` - A JSON string pointer containing:
+   - `initial_condition`: Initial scalar field u(x,y,0) as flattened vector
+   - `config`: Configuration including:
+     - `nx`, `ny`: Grid dimensions
+     - `dx`, `dy`: Spatial steps
+     - `cx`, `cy`: Advection velocities in x and y directions
+     - `d`: Diffusion coefficient D
+     - `dt`: Time step size
+     - `steps`: Number of time steps
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ the final scalar field u(x,y,t) as a flattened vector.
+
+ # Safety
+
+ This function is unsafe because it dereferences a raw C string pointer.
+ */
 rssn_
 char *rssn_physics_sm_solve_advection_2d_json(const char *aInput)
 ;
@@ -21022,10 +24566,53 @@ struct rssn_Vec_f64 *rssn_real_roots_find_roots(const double *aCoeffsPtr,
                                                 double aTolerance)
 ;
 
+/*
+ Finds all real roots of a polynomial using numerical methods and bincode serialization.
+
+ Uses root-finding algorithms to locate all real zeros of the polynomial.
+
+ # Arguments
+
+ * `buffer` - A bincode-encoded buffer containing `FindRootsInput` with:
+   - `coeffs`: Polynomial coefficients [a₀, a₁, ..., aₙ] for a₀ + a₁x + ... + aₙxⁿ
+   - `tolerance`: Convergence tolerance for root finding
+
+ # Returns
+
+ A bincode-encoded buffer containing `FfiResult<Vec<f64>, String>` with either:
+ - `ok`: Array of real roots found
+ - `err`: Error message if root finding failed
+
+ # Safety
+
+ This function is unsafe because it receives raw pointers through FFI.
+ The caller must ensure the input buffer contains valid bincode data.
+ */
 rssn_
 struct rssn_BincodeBuffer rssn_real_roots_find_roots_bincode(struct rssn_BincodeBuffer aBuffer)
 ;
 
+/*
+ Finds all real roots of a polynomial using numerical methods and JSON serialization.
+
+ Uses root-finding algorithms to locate all real zeros of the polynomial.
+
+ # Arguments
+
+ * `json_ptr` - A JSON string pointer containing:
+   - `coeffs`: Polynomial coefficients [a₀, a₁, ..., aₙ] for a₀ + a₁x + ... + aₙxⁿ
+   - `tolerance`: Convergence tolerance for root finding
+
+ # Returns
+
+ A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+ an array of real roots found.
+
+ # Safety
+
+ This function is unsafe because it receives a raw C string pointer that must be
+ valid, null-terminated UTF-8. The caller must free the returned pointer.
+ */
 rssn_
 char *rssn_real_roots_find_roots_json(const char *aJsonPtr)
 ;

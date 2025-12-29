@@ -103,6 +103,27 @@ struct LatticeInput {
 // Potential Functions
 // ============================================================================
 
+/// Computes the Lennard-Jones interaction potential and force between two particles using JSON serialization.
+///
+/// The Lennard-Jones potential models van der Waals interactions:
+/// V(r) = 4ε[(σ/r)¹² - (σ/r)⁶].
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `p1_position`: Position vector of first particle [x, y, z]
+///   - `p2_position`: Position vector of second particle [x, y, z]
+///   - `epsilon`: Well depth ε (energy units)
+///   - `sigma`: Finite distance σ at which V=0 (length units)
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult` with potential and force.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(
@@ -173,6 +194,28 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(
     }
 }
 
+/// Computes the Morse interaction potential and force between two particles using JSON serialization.
+///
+/// The Morse potential models chemical bonds:
+/// V(r) = D_e[1 - e⁻ᵃʳʳ⁻ʳᵉ⁾]², where D_e is the dissociation energy.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `p1_position`: Position vector of first particle [x, y, z]
+///   - `p2_position`: Position vector of second particle [x, y, z]
+///   - `de`: Dissociation energy D_e
+///   - `a`: Width parameter a (controls potential curvature)
+///   - `re`: Equilibrium bond distance r_e
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult` with potential and force.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_morse_json(
@@ -252,6 +295,27 @@ pub unsafe extern "C" fn rssn_num_md_morse_json(
     }
 }
 
+/// Computes the harmonic interaction potential and force between two particles using JSON serialization.
+///
+/// The harmonic potential models elastic bonds:
+/// V(r) = ½k(r - r₀)², where k is the spring constant.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `p1_position`: Position vector of first particle [x, y, z]
+///   - `p2_position`: Position vector of second particle [x, y, z]
+///   - `k`: Spring constant k (force/length units)
+///   - `r0`: Equilibrium distance r₀
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult` with potential and force.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_harmonic_json(
@@ -326,6 +390,27 @@ pub unsafe extern "C" fn rssn_num_md_harmonic_json(
 // System Properties
 // ============================================================================
 
+/// Computes system-level properties for a collection of particles using JSON serialization.
+///
+/// Calculates kinetic energy, temperature, center of mass, and total momentum.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `particles`: Array of particle objects with id, mass, position, velocity
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<SystemPropertiesOutput, String>` with:
+/// - `kinetic_energy`: Total kinetic energy of the system
+/// - `temperature`: System temperature T = 2K/(3Nk_B)
+/// - `center_of_mass`: Center of mass position vector
+/// - `total_momentum`: Total linear momentum vector
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_system_properties_json(
@@ -404,6 +489,27 @@ pub unsafe extern "C" fn rssn_num_md_system_properties_json(
 // Lattice Creation
 // ============================================================================
 
+/// Creates a simple cubic lattice of particles using JSON serialization.
+///
+/// Generates a 3D cubic lattice structure commonly used for initial configurations
+/// in molecular dynamics simulations.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `n_per_side`: Number of particles per lattice dimension
+///   - `lattice_constant`: Spacing between adjacent lattice sites
+///   - `mass`: Mass of each particle
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<ParticleOutput>, String>` with
+/// an array of particles positioned on a cubic lattice.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
@@ -468,6 +574,25 @@ pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
 // Periodic Boundary Conditions
 // ============================================================================
 
+/// Applies periodic boundary conditions (PBC) to wrap particle coordinates using JSON serialization.
+///
+/// Periodic boundary conditions create an infinite tiling of the simulation box.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `position`: Position vector to wrap [x, y, z]
+///   - `box_size`: Simulation box dimensions [Lx, Ly, Lz]
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the wrapped position vector within [0, box_size).
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_apply_pbc_json(
@@ -505,6 +630,26 @@ pub unsafe extern "C" fn rssn_num_md_apply_pbc_json(
     )
 }
 
+/// Computes the minimum image distance vector under periodic boundary conditions using JSON serialization.
+///
+/// The minimum image convention finds the shortest distance between particles
+/// considering all periodic images of the simulation box.
+///
+/// # Arguments
+///
+/// * `input` - A JSON string pointer containing:
+///   - `position`: Separation vector [x, y, z]
+///   - `box_size`: Simulation box dimensions [Lx, Ly, Lz]
+///
+/// # Returns
+///
+/// A C string pointer containing JSON-encoded `FfiResult<Vec<f64>, String>` with
+/// the minimum image distance vector.
+///
+/// # Safety
+///
+/// This function is unsafe because it receives a raw C string pointer that must be
+/// valid, null-terminated UTF-8. The caller must free the returned pointer.
 #[no_mangle]
 
 pub unsafe extern "C" fn rssn_num_md_minimum_image_json(
