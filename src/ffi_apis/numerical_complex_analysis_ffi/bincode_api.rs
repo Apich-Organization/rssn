@@ -4,7 +4,6 @@ use std::collections::HashMap;
 
 use num_complex::Complex;
 use serde::Deserialize;
-use serde::Serialize;
 
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;

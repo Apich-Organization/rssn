@@ -4,7 +4,6 @@ use std::os::raw::c_char;
 
 use rustfft::num_complex::Complex;
 use serde::Deserialize;
-use serde::Serialize;
 
 use crate::ffi_apis::common::from_json_string;
 use crate::ffi_apis::common::to_c_string;

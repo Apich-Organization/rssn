@@ -1,6 +1,6 @@
 //! Handle-based FFI API for numerical functional analysis.
 
-use std::ptr;
+
 
 use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::functional_analysis;

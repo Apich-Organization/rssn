@@ -1,32 +1,21 @@
 #![allow(deprecated)]
 
-use std::cmp::Ordering;
-use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::convert::AsRef;
+
 use std::fmt::Debug;
 use std::fmt::Write;
-use std::fmt::{
-    self,
-};
+use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::RwLock;
 
-use lazy_static::lazy_static;
+
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use num_traits::ToPrimitive;
-use ordered_float::OrderedFloat;
 
-use super::api::*;
-use super::ast_impl::*;
+
 use super::dag_mgr::*;
-use super::expr_impl::*;
-use super::to_expr::*;
+
 use crate::symbolic::unit_unification::UnitQuantity;
 
 // --- Distribution Trait ---

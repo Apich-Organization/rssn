@@ -195,11 +195,11 @@
 #![allow(deprecated)]
 
 pub use api::*;
-pub use ast_impl::*;
+
 pub use dag_mgr::*;
 pub use expr::*;
 pub use expr_impl::*;
-pub use to_expr::*;
+
 
 /// Public API and constructors for symbolic expressions.
 pub mod api;
