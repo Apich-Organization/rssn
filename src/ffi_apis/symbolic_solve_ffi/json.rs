@@ -15,7 +15,7 @@ use crate::symbolic::solve::solve_system;
 
 /// Returns a JSON string representing the `Expr` of the solution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve(
     expr_json: *const c_char,
@@ -28,17 +28,16 @@ pub extern "C" fn rssn_json_solve(
     let var: Option<String> =
         from_json_string(var_json);
 
-    if let (Some(e), Some(v)) =
-        (expr, var)
-    {
+    match (expr, var)
+    { (Some(e), Some(v)) => {
 
         let result = solve(&e, &v);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Solves a system of equations for given variables.
@@ -49,7 +48,7 @@ pub extern "C" fn rssn_json_solve(
 
 /// Returns a JSON string representing the `Expr` of the solution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_system(
     equations_json: *const c_char,
@@ -64,9 +63,8 @@ pub extern "C" fn rssn_json_solve_system(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    if let (Some(eqs), Some(vs)) =
-        (equations, vars)
-    {
+    match (equations, vars)
+    { (Some(eqs), Some(vs)) => {
 
         let vars_str: Vec<&str> = vs
             .iter()
@@ -84,10 +82,10 @@ pub extern "C" fn rssn_json_solve_system(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Solves a linear system of equations.
@@ -98,7 +96,7 @@ pub extern "C" fn rssn_json_solve_system(
 
 /// Returns a JSON string representing the `Expr` of the solution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_linear_system(
     system_json: *const c_char,
@@ -111,9 +109,8 @@ pub extern "C" fn rssn_json_solve_linear_system(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    if let (Some(sys), Some(vs)) =
-        (system, vars)
-    {
+    match (system, vars)
+    { (Some(sys), Some(vs)) => {
 
         match solve_linear_system(
             &sys, &vs,
@@ -125,8 +122,8 @@ pub extern "C" fn rssn_json_solve_linear_system(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

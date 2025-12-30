@@ -11,10 +11,10 @@ fn test_so3_generators() {
     assert_eq!(generators.len(), 3);
 
     // Check that each generator is a 3x3 matrix
-    for gen in &generators {
+    for r#gen in &generators {
 
         if let Expr::Matrix(rows) =
-            &gen.0
+            &r#gen.0
         {
 
             assert_eq!(rows.len(), 3);
@@ -42,10 +42,10 @@ fn test_su2_generators() {
     assert_eq!(generators.len(), 3);
 
     // Check that each generator is a 2x2 matrix
-    for gen in &generators {
+    for r#gen in &generators {
 
         if let Expr::Matrix(rows) =
-            &gen.0
+            &r#gen.0
         {
 
             assert_eq!(rows.len(), 2);
@@ -368,20 +368,19 @@ fn test_adjoint_representation_group() {
     assert!(result.is_ok());
 
     // Result should be a matrix
-    if let Expr::Matrix(rows) =
-        result.unwrap()
-    {
+    match result.unwrap()
+    { Expr::Matrix(rows) => {
 
         assert_eq!(rows.len(), 2);
 
         assert_eq!(rows[0].len(), 2);
-    } else {
+    } _ => {
 
         panic!(
             "Adjoint representation \
              did not return a matrix"
         );
-    }
+    }}
 }
 
 #[test]

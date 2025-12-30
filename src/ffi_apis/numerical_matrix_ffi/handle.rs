@@ -21,7 +21,7 @@ pub struct RssnMatrixHandle;
 ///
 /// # Returns
 /// A raw pointer to the Matrix object, or null on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -35,7 +35,7 @@ pub unsafe extern "C" fn rssn_num_matrix_create(
     rows: usize,
     cols: usize,
     data: *const f64,
-) -> *mut RssnMatrixHandle {
+) -> *mut RssnMatrixHandle { unsafe {
 
     if data.is_null() {
 
@@ -65,11 +65,11 @@ pub unsafe extern "C" fn rssn_num_matrix_create(
 
     Box::into_raw(Box::new(matrix))
         .cast::<RssnMatrixHandle>()
-}
+}}
 
 /// Frees a previously allocated Matrix.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -96,7 +96,7 @@ pub unsafe extern "C" fn rssn_num_matrix_free(
 
 /// Returns the number of rows of a given matrix.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -124,7 +124,7 @@ pub const unsafe extern "C" fn rssn_num_matrix_get_rows(
 
 /// Returns the number of columns of a given matrix.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -158,7 +158,7 @@ pub const unsafe extern "C" fn rssn_num_matrix_get_cols(
 ///
 /// # Returns
 /// 0 on success, -1 on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -171,7 +171,7 @@ pub const unsafe extern "C" fn rssn_num_matrix_get_cols(
 pub unsafe extern "C" fn rssn_num_matrix_get_data(
     matrix: *const RssnMatrixHandle,
     buffer: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if matrix.is_null()
         || buffer.is_null()
@@ -203,7 +203,7 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data(
     }
 
     0
-}
+}}
 
 /// Adds two numerical matrices.
 ///
@@ -213,7 +213,7 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data(
 ///
 /// # Returns
 /// A handle to the resulting matrix, or null on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -226,7 +226,7 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data(
 pub unsafe extern "C" fn rssn_num_matrix_add(
     m1: *const RssnMatrixHandle,
     m2: *const RssnMatrixHandle,
-) -> *mut RssnMatrixHandle {
+) -> *mut RssnMatrixHandle { unsafe {
 
     if m1.is_null() || m2.is_null() {
 
@@ -260,7 +260,7 @@ pub unsafe extern "C" fn rssn_num_matrix_add(
 
     Box::into_raw(Box::new(res))
         .cast::<RssnMatrixHandle>()
-}
+}}
 
 /// Multiplies two numerical matrices.
 ///
@@ -270,7 +270,7 @@ pub unsafe extern "C" fn rssn_num_matrix_add(
 ///
 /// # Returns
 /// A handle to the resulting matrix, or null on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -283,7 +283,7 @@ pub unsafe extern "C" fn rssn_num_matrix_add(
 pub unsafe extern "C" fn rssn_num_matrix_mul(
     m1: *const RssnMatrixHandle,
     m2: *const RssnMatrixHandle,
-) -> *mut RssnMatrixHandle {
+) -> *mut RssnMatrixHandle { unsafe {
 
     if m1.is_null() || m2.is_null() {
 
@@ -315,7 +315,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul(
 
     Box::into_raw(Box::new(res))
         .cast::<RssnMatrixHandle>()
-}
+}}
 
 /// Transposes a numerical matrix.
 ///
@@ -324,7 +324,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul(
 ///
 /// # Returns
 /// A handle to the transposed matrix, or null on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -362,7 +362,7 @@ pub unsafe extern "C" fn rssn_num_matrix_transpose(
 ///
 /// # Returns
 /// 0 on success, -1 on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -375,7 +375,7 @@ pub unsafe extern "C" fn rssn_num_matrix_transpose(
 pub unsafe extern "C" fn rssn_num_matrix_determinant(
     matrix: *const RssnMatrixHandle,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if matrix.is_null()
         || result.is_null()
@@ -406,7 +406,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
             -1
         },
     }
-}
+}}
 
 /// Computes the inverse of a numerical matrix.
 ///
@@ -415,7 +415,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
 ///
 /// # Returns
 /// A handle to the inverse matrix, or null if the matrix is singular or not square.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -427,7 +427,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant(
 
 pub unsafe extern "C" fn rssn_num_matrix_inverse(
     matrix: *const RssnMatrixHandle
-) -> *mut RssnMatrixHandle {
+) -> *mut RssnMatrixHandle { unsafe {
 
     if matrix.is_null() {
 
@@ -455,10 +455,10 @@ pub unsafe extern "C" fn rssn_num_matrix_inverse(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Creates an identity matrix.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -480,7 +480,7 @@ pub unsafe extern "C" fn rssn_num_matrix_identity(
 }
 
 /// Checks if it's identity.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -509,7 +509,7 @@ pub unsafe extern "C" fn rssn_num_matrix_is_identity(
 }
 
 /// Checks if it's orthogonal.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -538,7 +538,7 @@ pub unsafe extern "C" fn rssn_num_matrix_is_orthogonal(
 }
 
 /// Returns the rank.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -551,7 +551,7 @@ pub unsafe extern "C" fn rssn_num_matrix_is_orthogonal(
 pub unsafe extern "C" fn rssn_num_matrix_rank(
     matrix: *const RssnMatrixHandle,
     out_rank: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if matrix.is_null()
         || out_rank.is_null()
@@ -582,10 +582,10 @@ pub unsafe extern "C" fn rssn_num_matrix_rank(
             -1
         },
     }
-}
+}}
 
 /// Returns the trace.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -598,7 +598,7 @@ pub unsafe extern "C" fn rssn_num_matrix_rank(
 pub unsafe extern "C" fn rssn_num_matrix_trace(
     matrix: *const RssnMatrixHandle,
     out_trace: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if matrix.is_null()
         || out_trace.is_null()
@@ -629,10 +629,10 @@ pub unsafe extern "C" fn rssn_num_matrix_trace(
             -1
         },
     }
-}
+}}
 
 /// Returns the Frobenius norm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -661,7 +661,7 @@ pub unsafe extern "C" fn rssn_num_matrix_frobenius_norm(
 
 /// Sets the backend for the matrix.
 /// 0: Native, 1: Faer
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -674,7 +674,7 @@ pub unsafe extern "C" fn rssn_num_matrix_frobenius_norm(
 pub unsafe extern "C" fn rssn_num_matrix_set_backend(
     matrix: *mut RssnMatrixHandle,
     backend_id: i32,
-) -> i32 {
+) -> i32 { unsafe {
 
     if matrix.is_null() {
 
@@ -701,11 +701,11 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend(
     }
 
     0
-}
+}}
 
 /// Computes SVD decomposition: A = U * S * V^T.
 /// Returns 0 on success, -1 on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -720,7 +720,7 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd(
     out_u: *mut *mut RssnMatrixHandle,
     out_s: *mut *mut RssnMatrixHandle,
     out_v: *mut *mut RssnMatrixHandle,
-) -> i32 {
+) -> i32 { unsafe {
 
     if matrix.is_null()
         || out_u.is_null()
@@ -749,10 +749,10 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd(
     }
 
     -1
-}
+}}
 
 /// Computes Cholesky decomposition: A = L * L^T.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -765,7 +765,7 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd(
 pub unsafe extern "C" fn rssn_num_matrix_decompose_cholesky(
     matrix: *const RssnMatrixHandle,
     out_l: *mut *mut RssnMatrixHandle,
-) -> i32 {
+) -> i32 { unsafe {
 
     if matrix.is_null()
         || out_l.is_null()
@@ -788,10 +788,10 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_cholesky(
     }
 
     -1
-}
+}}
 
 /// Computes Symmetric Eigendecomposition: A = V * D * V^T.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -805,7 +805,7 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_eigen_symmetric(
     matrix: *const RssnMatrixHandle,
     out_values: *mut *mut RssnMatrixHandle,
     out_vectors: *mut *mut RssnMatrixHandle,
-) -> i32 {
+) -> i32 { unsafe {
 
     if matrix.is_null()
         || out_values.is_null()
@@ -828,4 +828,4 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_eigen_symmetric(
     }
 
     -1
-}
+}}

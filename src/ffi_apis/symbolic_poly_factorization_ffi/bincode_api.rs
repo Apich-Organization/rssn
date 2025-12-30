@@ -3,7 +3,7 @@ use crate::symbolic::finite_field::FiniteFieldPolynomial;
 use crate::symbolic::poly_factorization::{factor_gf, square_free_factorization_gf, poly_gcd_gf, poly_derivative_gf};
 
 /// Factors a polynomial over a finite field (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_factor_gf(
     poly_buf: BincodeBuffer
@@ -32,7 +32,7 @@ pub extern "C" fn rssn_bincode_factor_gf(
 }
 
 /// Computes square-free factorization (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_square_free_factorization_gf(
     poly_buf: BincodeBuffer
@@ -55,7 +55,7 @@ pub extern "C" fn rssn_bincode_square_free_factorization_gf(
 }
 
 /// Computes polynomial GCD over finite field (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_poly_gcd_gf(
     a_buf: BincodeBuffer,
@@ -94,7 +94,7 @@ pub extern "C" fn rssn_bincode_poly_gcd_gf(
 }
 
 /// Computes polynomial derivative over finite field (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_poly_derivative_gf(
     poly_buf: BincodeBuffer

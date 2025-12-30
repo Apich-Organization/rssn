@@ -16,7 +16,7 @@ struct SeqInput {
 }
 
 /// JSON FFI for Aitken acceleration.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -33,7 +33,7 @@ struct SeqInput {
 
 pub unsafe extern "C" fn rssn_convergence_aitken_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -74,10 +74,10 @@ pub unsafe extern "C" fn rssn_convergence_aitken_json(
     )
     .unwrap()
     .into_raw()
-}
+}}
 
 /// JSON FFI for Richardson extrapolation.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken_json(
 
 pub unsafe extern "C" fn rssn_convergence_richardson_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -135,10 +135,10 @@ pub unsafe extern "C" fn rssn_convergence_richardson_json(
     )
     .unwrap()
     .into_raw()
-}
+}}
 
 /// JSON FFI for Wynn's epsilon algorithm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson_json(
 
 pub unsafe extern "C" fn rssn_convergence_wynn_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -200,4 +200,4 @@ pub unsafe extern "C" fn rssn_convergence_wynn_json(
     )
     .unwrap()
     .into_raw()
-}
+}}

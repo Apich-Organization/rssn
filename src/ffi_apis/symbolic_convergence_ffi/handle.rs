@@ -12,7 +12,7 @@ use crate::symbolic::core::Expr;
 
 /// Returns a `ConvergenceResult` enum indicating the analysis outcome.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_analyze_convergence_handle(
     term: *const Expr,

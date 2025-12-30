@@ -11,7 +11,7 @@ use crate::symbolic::vector::Vector;
 
 /// Returns a bincode-serialized `Expr` representing its magnitude.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_vector_magnitude(
     v_buf: BincodeBuffer
@@ -39,7 +39,7 @@ pub extern "C" fn rssn_bincode_vector_magnitude(
 
 /// Returns a bincode-serialized `Expr` representing their dot product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_vector_dot(
     v1_buf: BincodeBuffer,
@@ -52,17 +52,16 @@ pub extern "C" fn rssn_bincode_vector_dot(
     let v2: Option<Vector> =
         from_bincode_buffer(&v2_buf);
 
-    if let (Some(vec1), Some(vec2)) =
-        (v1, v2)
-    {
+    match (v1, v2)
+    { (Some(vec1), Some(vec2)) => {
 
         let result = vec1.dot(&vec2);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the cross product of two vectors.
@@ -73,7 +72,7 @@ pub extern "C" fn rssn_bincode_vector_dot(
 
 /// Returns a bincode-serialized `Vector` representing their cross product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_vector_cross(
     v1_buf: BincodeBuffer,
@@ -86,17 +85,16 @@ pub extern "C" fn rssn_bincode_vector_cross(
     let v2: Option<Vector> =
         from_bincode_buffer(&v2_buf);
 
-    if let (Some(vec1), Some(vec2)) =
-        (v1, v2)
-    {
+    match (v1, v2)
+    { (Some(vec1), Some(vec2)) => {
 
         let result = vec1.cross(&vec2);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Normalizes a vector.
@@ -107,7 +105,7 @@ pub extern "C" fn rssn_bincode_vector_cross(
 
 /// Returns a bincode-serialized `Vector` representing the normalized vector.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_vector_normalize(
     v_buf: BincodeBuffer

@@ -10,7 +10,7 @@ use crate::symbolic::real_roots::isolate_real_roots;
 use crate::symbolic::real_roots::sturm_sequence;
 
 /// Generates the Sturm sequence for a given polynomial (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_sturm_sequence_handle(
     expr_ptr: *const Expr,
@@ -66,7 +66,7 @@ pub extern "C" fn rssn_sturm_sequence_handle(
 }
 
 /// Counts the number of distinct real roots in an interval (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_count_real_roots_in_interval_handle(
     expr_ptr: *const Expr,
@@ -109,7 +109,7 @@ pub extern "C" fn rssn_count_real_roots_in_interval_handle(
 
 /// Isolates real roots in an interval (Handle)
 /// Returns a pointer to a Vec<(f64, f64)>
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_isolate_real_roots_handle(
     expr_ptr: *const Expr,
@@ -159,7 +159,7 @@ pub extern "C" fn rssn_isolate_real_roots_handle(
 }
 
 /// Frees a Vec<Expr> handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_expr_vec_handle(
     ptr: *mut Vec<Expr>
@@ -175,7 +175,7 @@ pub extern "C" fn rssn_free_expr_vec_handle(
 }
 
 /// Frees a Vec<(f64, f64)> handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_interval_vec_handle(
     ptr: *mut Vec<(f64, f64)>

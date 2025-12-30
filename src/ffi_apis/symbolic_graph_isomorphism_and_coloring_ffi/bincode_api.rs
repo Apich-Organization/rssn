@@ -3,7 +3,7 @@ use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_isomorphism_and_coloring::{are_isomorphic_heuristic, greedy_coloring, chromatic_number_exact};
 
 /// Checks if two graphs are isomorphic.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rssn_bincode_are_isomorphic_heuristic(
 }
 
 /// Greedy coloring.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rssn_bincode_greedy_coloring(
 }
 
 /// Exact chromatic number.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

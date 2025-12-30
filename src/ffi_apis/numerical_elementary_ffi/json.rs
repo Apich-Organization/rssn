@@ -21,7 +21,7 @@ struct EvalRequest {
 /// Evaluates an expression from a JSON string.
 ///
 /// Input JSON format: `{"expr": <Expr>, "vars": {"x": 1.0, "y": 2.0}}`
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

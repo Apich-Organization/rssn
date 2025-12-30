@@ -6,7 +6,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::quantum_field_theory;
 
 /// Computes the Dirac adjoint using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -33,7 +33,7 @@ pub unsafe extern "C" fn rssn_json_dirac_adjoint(
 }
 
 /// Computes the Feynman slash using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -60,7 +60,7 @@ pub unsafe extern "C" fn rssn_json_feynman_slash(
 }
 
 /// Lagrangian density for a scalar field using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -81,19 +81,18 @@ pub unsafe extern "C" fn rssn_json_scalar_field_lagrangian(
     let m: Option<Expr> =
         from_json_string(m_json);
 
-    if let (Some(phi), Some(m)) =
-        (phi, m)
-    {
+    match (phi, m)
+    { (Some(phi), Some(m)) => {
 
         to_json_string(&quantum_field_theory::scalar_field_lagrangian(&phi, &m))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Lagrangian density for QED using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -126,19 +125,19 @@ pub unsafe extern "C" fn rssn_json_qed_lagrangian(
     let e: Option<Expr> =
         from_json_string(e_json);
 
-    if let (
-        Some(psi_bar),
-        Some(psi),
-        Some(a_mu),
-        Some(m),
-        Some(e),
-    ) = (
+    match (
         psi_bar,
         psi,
         a_mu,
         m,
         e,
-    ) {
+    ) { (
+        Some(psi_bar),
+        Some(psi),
+        Some(a_mu),
+        Some(m),
+        Some(e),
+    ) => {
 
         to_json_string(
             &quantum_field_theory::qed_lagrangian(
@@ -149,14 +148,14 @@ pub unsafe extern "C" fn rssn_json_qed_lagrangian(
                 &e,
             ),
         )
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Lagrangian density for QCD using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -189,19 +188,19 @@ pub unsafe extern "C" fn rssn_json_qcd_lagrangian(
     let gs: Option<Expr> =
         from_json_string(gs_json);
 
-    if let (
-        Some(psi_bar),
-        Some(psi),
-        Some(g_mu),
-        Some(m),
-        Some(gs),
-    ) = (
+    match (
         psi_bar,
         psi,
         g_mu,
         m,
         gs,
-    ) {
+    ) { (
+        Some(psi_bar),
+        Some(psi),
+        Some(g_mu),
+        Some(m),
+        Some(gs),
+    ) => {
 
         to_json_string(
             &quantum_field_theory::qcd_lagrangian(
@@ -212,14 +211,14 @@ pub unsafe extern "C" fn rssn_json_qcd_lagrangian(
                 &gs,
             ),
         )
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes a propagator using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -241,11 +240,11 @@ pub unsafe extern "C" fn rssn_json_qft_propagator(
     let m: Option<Expr> =
         from_json_string(m_json);
 
-    if let (Some(p), Some(m)) = (p, m) {
+    match (p, m) { (Some(p), Some(m)) => {
 
         to_json_string(&quantum_field_theory::propagator(&p, &m, is_fermion))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

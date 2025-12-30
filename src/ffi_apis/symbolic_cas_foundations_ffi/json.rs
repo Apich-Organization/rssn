@@ -21,7 +21,7 @@ struct SimplifyWithRelationsInput {
 }
 
 /// Expands an expression using algebraic rules (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_cas_expand_json(
     json_str: *const c_char
@@ -44,7 +44,7 @@ pub extern "C" fn rssn_cas_expand_json(
 }
 
 /// Factorizes an expression (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_cas_factorize_json(
     json_str: *const c_char
@@ -69,7 +69,7 @@ pub extern "C" fn rssn_cas_factorize_json(
 }
 
 /// Normalizes an expression to a canonical form (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_cas_normalize_json(
     json_str: *const c_char
@@ -94,7 +94,7 @@ pub extern "C" fn rssn_cas_normalize_json(
 }
 
 /// Simplifies an expression using a set of polynomial side-relations (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_cas_simplify_with_relations_json(
     json_str: *const c_char

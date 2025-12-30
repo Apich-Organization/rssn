@@ -8,7 +8,7 @@ use crate::physics::physics_mtm;
 ///
 /// The `out_size` will be set to `n + 2` (including boundaries).
 /// The caller is responsible for freeing the memory using `rssn_free_f64_mtm_array`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -23,7 +23,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
     f: *const f64,
     num_cycles: usize,
     out_size: *mut usize,
-) -> *mut f64 {
+) -> *mut f64 { unsafe {
 
     if f.is_null() {
 
@@ -60,11 +60,11 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Solves 2D Poisson using Multigrid and returns a flat array of doubles.
 /// The `out_size` will be set to `n * n`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
     f: *const f64,
     num_cycles: usize,
     out_size: *mut usize,
-) -> *mut f64 {
+) -> *mut f64 { unsafe {
 
     if f.is_null() {
 
@@ -116,10 +116,10 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Frees a float64 array allocated by the MTM FFI.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -132,10 +132,10 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
 pub unsafe extern "C" fn rssn_free_f64_mtm_array(
     ptr: *mut f64,
     size: usize,
-) {
+) { unsafe {
 
     if !ptr.is_null() {
 
         let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, size));
     }
-}
+}}

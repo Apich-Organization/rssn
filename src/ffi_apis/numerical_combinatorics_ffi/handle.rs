@@ -6,7 +6,7 @@ use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::combinatorics;
 
 /// Computes the factorial of n.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -19,7 +19,7 @@ use crate::numerical::combinatorics;
 pub unsafe extern "C" fn rssn_num_comb_factorial(
     n: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -36,10 +36,10 @@ pub unsafe extern "C" fn rssn_num_comb_factorial(
         combinatorics::factorial(n);
 
     0
-}
+}}
 
 /// Computes the number of permutations P(n, k).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -53,7 +53,7 @@ pub unsafe extern "C" fn rssn_num_comb_permutations(
     n: u64,
     k: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -68,10 +68,10 @@ pub unsafe extern "C" fn rssn_num_comb_permutations(
         );
 
     0
-}
+}}
 
 /// Computes the number of combinations C(n, k).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -85,7 +85,7 @@ pub unsafe extern "C" fn rssn_num_comb_combinations(
     n: u64,
     k: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -100,10 +100,10 @@ pub unsafe extern "C" fn rssn_num_comb_combinations(
         );
 
     0
-}
+}}
 
 /// Solves a linear recurrence relation numerically.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
     initial_len: usize,
     target_n: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if coeffs.is_null()
         || initial_conditions.is_null()
@@ -162,10 +162,10 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
             -1
         },
     }
-}
+}}
 
 /// Computes the Stirling numbers of the second kind S(n, k).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second(
     n: u64,
     k: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -194,10 +194,10 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second(
         );
 
     0
-}
+}}
 
 /// Computes the Bell number B(n).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -210,7 +210,7 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second(
 pub unsafe extern "C" fn rssn_num_comb_bell(
     n: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -226,10 +226,10 @@ pub unsafe extern "C" fn rssn_num_comb_bell(
     *result = combinatorics::bell(n);
 
     0
-}
+}}
 
 /// Computes the Catalan number `C_n`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -242,7 +242,7 @@ pub unsafe extern "C" fn rssn_num_comb_bell(
 pub unsafe extern "C" fn rssn_num_comb_catalan(
     n: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -258,10 +258,10 @@ pub unsafe extern "C" fn rssn_num_comb_catalan(
     *result = combinatorics::catalan(n);
 
     0
-}
+}}
 
 /// Computes the rising factorial.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -275,7 +275,7 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial(
     x: f64,
     n: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -290,10 +290,10 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial(
         );
 
     0
-}
+}}
 
 /// Computes the falling factorial.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -307,7 +307,7 @@ pub unsafe extern "C" fn rssn_num_comb_falling_factorial(
     x: f64,
     n: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -319,4 +319,4 @@ pub unsafe extern "C" fn rssn_num_comb_falling_factorial(
     *result = combinatorics::falling_factorial(x, n);
 
     0
-}
+}}

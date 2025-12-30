@@ -22,7 +22,7 @@ use crate::symbolic::core::Expr;
 
 /// Returns a `BincodeBuffer` containing the transformed point (`Vec<Expr>`).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_transform_point(
     point_buf: BincodeBuffer,
@@ -41,9 +41,8 @@ pub extern "C" fn rssn_bincode_transform_point(
     let to: Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
-    if let (Some(p), Some(f), Some(t)) =
-        (point, from, to)
-    {
+    match (point, from, to)
+    { (Some(p), Some(f), Some(t)) => {
 
         match transform_point(&p, f, t)
         {
@@ -56,10 +55,10 @@ pub extern "C" fn rssn_bincode_transform_point(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Transforms an expression from one coordinate system to another using bincode-serialized inputs.
@@ -72,7 +71,7 @@ pub extern "C" fn rssn_bincode_transform_point(
 
 /// Returns a `BincodeBuffer` containing the transformed expression (`Expr`).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_transform_expression(
     expr_buf: BincodeBuffer,
@@ -91,9 +90,8 @@ pub extern "C" fn rssn_bincode_transform_expression(
     let to: Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
-    if let (Some(e), Some(f), Some(t)) =
-        (expr, from, to)
-    {
+    match (expr, from, to)
+    { (Some(e), Some(f), Some(t)) => {
 
         match transform_expression(
             &e, f, t,
@@ -107,10 +105,10 @@ pub extern "C" fn rssn_bincode_transform_expression(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Gets the metric tensor for a given coordinate system using bincode-serialized input.
@@ -121,7 +119,7 @@ pub extern "C" fn rssn_bincode_transform_expression(
 
 /// Returns a `BincodeBuffer` containing the metric tensor (`Vec<Vec<Expr>>`).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_coordinates_get_metric_tensor(
     system_buf: BincodeBuffer
@@ -161,7 +159,7 @@ pub extern "C" fn rssn_bincode_coordinates_get_metric_tensor(
 
 /// Returns a `BincodeBuffer` containing the transformed contravariant vector components (`Vec<Expr>`).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_transform_contravariant_vector(
     comps_buf: BincodeBuffer,
@@ -180,18 +178,17 @@ pub extern "C" fn rssn_bincode_transform_contravariant_vector(
     let to: Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
-    if let (Some(c), Some(f), Some(t)) =
-        (comps, from, to)
-    {
+    match (comps, from, to)
+    { (Some(c), Some(f), Some(t)) => {
 
         match transform_contravariant_vector(&c, f, t) {
             | Ok(result) => to_bincode_buffer(&result),
             | Err(_) => BincodeBuffer::empty(),
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Transforms a covariant vector from one coordinate system to another using bincode-serialized inputs.
@@ -204,7 +201,7 @@ pub extern "C" fn rssn_bincode_transform_contravariant_vector(
 
 /// Returns a `BincodeBuffer` containing the transformed covariant vector components (`Vec<Expr>`).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_transform_covariant_vector(
     comps_buf: BincodeBuffer,
@@ -223,9 +220,8 @@ pub extern "C" fn rssn_bincode_transform_covariant_vector(
     let to: Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
-    if let (Some(c), Some(f), Some(t)) =
-        (comps, from, to)
-    {
+    match (comps, from, to)
+    { (Some(c), Some(f), Some(t)) => {
 
         match transform_covariant_vector(
             &c, f, t,
@@ -239,10 +235,10 @@ pub extern "C" fn rssn_bincode_transform_covariant_vector(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Transforms the divergence of a vector field from one coordinate system to another using bincode-serialized inputs.
@@ -253,7 +249,7 @@ pub extern "C" fn rssn_bincode_transform_covariant_vector(
 
 /// Returns a `BincodeBuffer` containing the transformed divergence (`Expr`).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_transform_divergence(
     comps_buf: BincodeBuffer,
@@ -267,9 +263,8 @@ pub extern "C" fn rssn_bincode_transform_divergence(
     let from: Option<CoordinateSystem> =
         from_bincode_buffer(&from_buf);
 
-    if let (Some(c), Some(f)) =
-        (comps, from)
-    {
+    match (comps, from)
+    { (Some(c), Some(f)) => {
 
         match transform_divergence(
             &c, f,
@@ -283,10 +278,10 @@ pub extern "C" fn rssn_bincode_transform_divergence(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Transforms the curl of a vector field from one coordinate system to another using bincode-serialized inputs.
@@ -297,7 +292,7 @@ pub extern "C" fn rssn_bincode_transform_divergence(
 
 /// Returns a `BincodeBuffer` containing the transformed curl (`Vec<Expr>`).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_transform_curl(
     comps_buf: BincodeBuffer,
@@ -311,9 +306,8 @@ pub extern "C" fn rssn_bincode_transform_curl(
     let from: Option<CoordinateSystem> =
         from_bincode_buffer(&from_buf);
 
-    if let (Some(c), Some(f)) =
-        (comps, from)
-    {
+    match (comps, from)
+    { (Some(c), Some(f)) => {
 
         match transform_curl(&c, f) {
             | Ok(result) => {
@@ -325,10 +319,10 @@ pub extern "C" fn rssn_bincode_transform_curl(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Transforms the gradient of a scalar function from one coordinate system to another using bincode-serialized inputs.
@@ -341,7 +335,7 @@ pub extern "C" fn rssn_bincode_transform_curl(
 
 /// Returns a `BincodeBuffer` containing the transformed gradient (`Vec<Expr>`).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_transform_gradient(
     scalar_buf: BincodeBuffer,
@@ -367,17 +361,17 @@ pub extern "C" fn rssn_bincode_transform_gradient(
     let to: Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
-    if let (
-        Some(s),
-        Some(v),
-        Some(f),
-        Some(t),
-    ) = (
+    match (
         scalar,
         vars,
         from,
         to,
-    ) {
+    ) { (
+        Some(s),
+        Some(v),
+        Some(f),
+        Some(t),
+    ) => {
 
         match transform_gradient(
             &s, &v, f, t,
@@ -391,8 +385,8 @@ pub extern "C" fn rssn_bincode_transform_gradient(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

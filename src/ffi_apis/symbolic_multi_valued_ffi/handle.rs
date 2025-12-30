@@ -10,7 +10,7 @@ use crate::symbolic::multi_valued::general_power;
 use crate::symbolic::multi_valued::general_sqrt;
 
 /// Computes general multi-valued logarithm (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_general_log_handle(
     z: *const Expr,
@@ -46,7 +46,7 @@ pub extern "C" fn rssn_general_log_handle(
 }
 
 /// Computes general multi-valued square root (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_general_sqrt_handle(
     z: *const Expr,
@@ -82,7 +82,7 @@ pub extern "C" fn rssn_general_sqrt_handle(
 }
 
 /// Computes general multi-valued power (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_general_power_handle(
     z: *const Expr,
@@ -131,7 +131,7 @@ pub extern "C" fn rssn_general_power_handle(
 }
 
 /// Computes general multi-valued n-th root (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_general_nth_root_handle(
     z: *const Expr,
@@ -180,7 +180,7 @@ pub extern "C" fn rssn_general_nth_root_handle(
 }
 
 /// Computes general multi-valued arcsin (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_general_arcsin_handle(
     z: *const Expr,
@@ -216,7 +216,7 @@ pub extern "C" fn rssn_general_arcsin_handle(
 }
 
 /// Computes general multi-valued arccos (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_general_arccos_handle(
     z: *const Expr,
@@ -265,7 +265,7 @@ pub extern "C" fn rssn_general_arccos_handle(
 }
 
 /// Computes general multi-valued arctan (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_general_arctan_handle(
     z: *const Expr,
@@ -301,7 +301,7 @@ pub extern "C" fn rssn_general_arctan_handle(
 }
 
 /// Computes argument (angle) of complex number (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_arg_handle(
     z: *const Expr
@@ -324,7 +324,7 @@ pub extern "C" fn rssn_arg_handle(
 }
 
 /// Computes absolute value (magnitude) of complex number (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_abs_handle(
     z: *const Expr

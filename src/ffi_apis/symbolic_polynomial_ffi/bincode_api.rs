@@ -14,7 +14,7 @@ use crate::symbolic::polynomial::polynomial_long_division;
 use crate::symbolic::polynomial::to_polynomial_coeffs_vec;
 
 /// Checks if an expression is a polynomial in the given variable (bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_polynomial_is_polynomial(
     expr_buf: BincodeBuffer,
@@ -39,19 +39,18 @@ pub extern "C" fn rssn_bincode_polynomial_is_polynomial(
         }
     };
 
-    if let (Some(e), Some(v)) =
-        (expr, var_str)
-    {
+    match (expr, var_str)
+    { (Some(e), Some(v)) => {
 
         is_polynomial(&e, v)
-    } else {
+    } _ => {
 
         false
-    }
+    }}
 }
 
 /// Computes the degree of a polynomial (bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_polynomial_degree(
     expr_buf: BincodeBuffer,
@@ -76,19 +75,18 @@ pub extern "C" fn rssn_bincode_polynomial_degree(
         }
     };
 
-    if let (Some(e), Some(v)) =
-        (expr, var_str)
-    {
+    match (expr, var_str)
+    { (Some(e), Some(v)) => {
 
         polynomial_degree(&e, v)
-    } else {
+    } _ => {
 
         -1
-    }
+    }}
 }
 
 /// Performs polynomial long division (bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_polynomial_long_division(
     dividend_buf: BincodeBuffer,
@@ -121,15 +119,15 @@ pub extern "C" fn rssn_bincode_polynomial_long_division(
         }
     };
 
-    if let (
-        Some(d),
-        Some(div),
-        Some(v),
-    ) = (
+    match (
         dividend,
         divisor,
         var_str,
-    ) {
+    ) { (
+        Some(d),
+        Some(div),
+        Some(v),
+    ) => {
 
         let (quotient, remainder) =
             polynomial_long_division(
@@ -140,14 +138,14 @@ pub extern "C" fn rssn_bincode_polynomial_long_division(
             (quotient, remainder);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Finds the leading coefficient of a polynomial (bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_polynomial_leading_coefficient(
     expr_buf: BincodeBuffer,
@@ -172,22 +170,21 @@ pub extern "C" fn rssn_bincode_polynomial_leading_coefficient(
         }
     };
 
-    if let (Some(e), Some(v)) =
-        (expr, var_str)
-    {
+    match (expr, var_str)
+    { (Some(e), Some(v)) => {
 
         let result =
             leading_coefficient(&e, v);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Converts polynomial to coefficient vector (bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_polynomial_to_coeffs_vec(
     expr_buf: BincodeBuffer,
@@ -212,9 +209,8 @@ pub extern "C" fn rssn_bincode_polynomial_to_coeffs_vec(
         }
     };
 
-    if let (Some(e), Some(v)) =
-        (expr, var_str)
-    {
+    match (expr, var_str)
+    { (Some(e), Some(v)) => {
 
         let coeffs =
             to_polynomial_coeffs_vec(
@@ -222,14 +218,14 @@ pub extern "C" fn rssn_bincode_polynomial_to_coeffs_vec(
             );
 
         to_bincode_buffer(&coeffs)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Checks if an expression contains a variable (bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_polynomial_contains_var(
     expr_buf: BincodeBuffer,
@@ -254,13 +250,12 @@ pub extern "C" fn rssn_bincode_polynomial_contains_var(
         }
     };
 
-    if let (Some(e), Some(v)) =
-        (expr, var_str)
-    {
+    match (expr, var_str)
+    { (Some(e), Some(v)) => {
 
         contains_var(&e, v)
-    } else {
+    } _ => {
 
         false
-    }
+    }}
 }

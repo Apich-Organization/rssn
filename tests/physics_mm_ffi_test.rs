@@ -21,7 +21,7 @@ fn test_mm_simulate_dam_break_handle_ffi(
 
         assert_eq!(matrix.cols(), 2);
 
-        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(matrix_ptr);
+        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(matrix_ptr as *mut rssn::ffi_apis::numerical_matrix_ffi::handle::RssnMatrixHandle);
     }
 }
 
@@ -73,7 +73,7 @@ fn test_mm_sph_handle_life_cycle() {
             2
         );
 
-        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(pos_ptr);
+        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(pos_ptr as *mut rssn::ffi_apis::numerical_matrix_ffi::handle::RssnMatrixHandle);
 
         rssn::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_free(system_ptr);
     }

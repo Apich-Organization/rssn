@@ -16,7 +16,7 @@ use crate::symbolic::core::Expr;
 
 /// Returns a raw pointer to a new `PathContinuation` object.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -36,7 +36,7 @@ pub unsafe extern "C" fn path_continuation_new(
     var: *const c_char,
     start_point: *const Expr,
     order: usize,
-) -> *mut PathContinuation {
+) -> *mut PathContinuation { unsafe {
 
     if func.is_null()
         || start_point.is_null()
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn path_continuation_new(
     Box::into_raw(Box::new(
         path_continuation,
     ))
-}
+}}
 
 /// Continues the analytic continuation along a given path.
 
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn path_continuation_new(
 
 /// Returns a C-style string "OK" on success, or an error message on failure.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -91,7 +91,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
     pc: *mut PathContinuation,
     path_points: *const *const Expr,
     path_points_len: usize,
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     if pc.is_null()
         || path_points.is_null()
@@ -124,7 +124,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
         },
         | Err(e) => to_c_string(e),
     }
-}
+}}
 
 /// Gets the final expression after analytic continuation.
 
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
 
 /// Returns a raw pointer to an `Expr` representing the final expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
 
 pub unsafe extern "C" fn path_continuation_get_final_expression(
     pc: *const PathContinuation
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if pc.is_null() {
 
@@ -164,7 +164,7 @@ pub unsafe extern "C" fn path_continuation_get_final_expression(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Estimates the radius of convergence of a series.
 
@@ -176,7 +176,7 @@ pub unsafe extern "C" fn path_continuation_get_final_expression(
 
 /// Returns an `f64` representing the estimated radius of convergence.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -196,7 +196,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence(
     var: *const c_char,
     center: *const Expr,
     order: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if series_expr.is_null()
         || center.is_null()
@@ -221,7 +221,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence(
         order,
     )
     .unwrap_or(0.0)
-}
+}}
 
 /// Calculates the distance between two complex numbers.
 
@@ -231,7 +231,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence(
 
 /// Returns an `f64` representing the distance.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -244,7 +244,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence(
 pub unsafe extern "C" fn complex_distance(
     p1: *const Expr,
     p2: *const Expr,
-) -> f64 {
+) -> f64 { unsafe {
 
     if p1.is_null() || p2.is_null() {
 
@@ -256,7 +256,7 @@ pub unsafe extern "C" fn complex_distance(
     let p2_ref = &*p2;
 
     crate::symbolic::complex_analysis::complex_distance(p1_ref, p2_ref).unwrap_or(0.0)
-}
+}}
 
 /// Classifies the singularity of a function at a given point.
 
@@ -268,7 +268,7 @@ pub unsafe extern "C" fn complex_distance(
 
 /// Returns a raw pointer to a `SingularityType` enum.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -288,7 +288,7 @@ pub unsafe extern "C" fn classify_singularity(
     var: *const c_char,
     singularity: *const Expr,
     order: usize,
-) -> *mut SingularityType {
+) -> *mut SingularityType { unsafe {
 
     if func.is_null()
         || singularity.is_null()
@@ -316,7 +316,7 @@ pub unsafe extern "C" fn classify_singularity(
     Box::into_raw(Box::new(
         singularity_type,
     ))
-}
+}}
 
 /// Computes the Laurent series of a function.
 
@@ -328,7 +328,7 @@ pub unsafe extern "C" fn classify_singularity(
 
 /// Returns a raw pointer to an `Expr` representing the Laurent series.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -348,7 +348,7 @@ pub unsafe extern "C" fn laurent_series(
     var: *const c_char,
     center: *const Expr,
     order: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if func.is_null()
         || center.is_null()
@@ -374,7 +374,7 @@ pub unsafe extern "C" fn laurent_series(
     );
 
     Box::into_raw(Box::new(series))
-}
+}}
 
 /// Calculates the residue of a function at a given singularity.
 
@@ -386,7 +386,7 @@ pub unsafe extern "C" fn laurent_series(
 
 /// Returns a raw pointer to an `Expr` representing the residue.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -405,7 +405,7 @@ pub unsafe extern "C" fn calculate_residue(
     func: *const Expr,
     var: *const c_char,
     singularity: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if func.is_null()
         || singularity.is_null()
@@ -430,7 +430,7 @@ pub unsafe extern "C" fn calculate_residue(
     );
 
     Box::into_raw(Box::new(residue))
-}
+}}
 
 /// Calculates a contour integral using the residue theorem.
 
@@ -442,7 +442,7 @@ pub unsafe extern "C" fn calculate_residue(
 
 /// Returns a raw pointer to an `Expr` representing the result of the integral.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -462,7 +462,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem(
     var: *const c_char,
     singularities: *const *const Expr,
     singularities_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if func.is_null()
         || singularities.is_null()
@@ -497,7 +497,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem(
     );
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Creates a new Mobius transformation.
 
@@ -507,7 +507,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem(
 
 /// Returns a raw pointer to a new `MobiusTransformation` object.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -522,7 +522,7 @@ pub unsafe extern "C" fn mobius_transformation_new(
     b: *const Expr,
     c: *const Expr,
     d: *const Expr,
-) -> *mut MobiusTransformation {
+) -> *mut MobiusTransformation { unsafe {
 
     if a.is_null()
         || b.is_null()
@@ -550,7 +550,7 @@ pub unsafe extern "C" fn mobius_transformation_new(
         );
 
     Box::into_raw(Box::new(mobius))
-}
+}}
 
 /// Creates an identity Mobius transformation.
 
@@ -558,7 +558,7 @@ pub unsafe extern "C" fn mobius_transformation_new(
 
 /// Takes no arguments and returns a raw pointer to a `MobiusTransformation` object.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn mobius_transformation_identity(
 ) -> *mut MobiusTransformation {
@@ -578,7 +578,7 @@ pub extern "C" fn mobius_transformation_identity(
 
 /// Returns a raw pointer to an `Expr` representing the result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -591,7 +591,7 @@ pub extern "C" fn mobius_transformation_identity(
 pub unsafe extern "C" fn mobius_transformation_apply(
     mobius: *const MobiusTransformation,
     z: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if mobius.is_null() || z.is_null() {
 
@@ -606,7 +606,7 @@ pub unsafe extern "C" fn mobius_transformation_apply(
         mobius_ref.apply(z_ref);
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Composes two Mobius transformations.
 
@@ -616,7 +616,7 @@ pub unsafe extern "C" fn mobius_transformation_apply(
 
 /// Returns a raw pointer to a `MobiusTransformation` representing their composition.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -629,7 +629,7 @@ pub unsafe extern "C" fn mobius_transformation_apply(
 pub unsafe extern "C" fn mobius_transformation_compose(
     mobius1 : *const MobiusTransformation,
     mobius2 : *const MobiusTransformation,
-) -> *mut MobiusTransformation {
+) -> *mut MobiusTransformation { unsafe {
 
     if mobius1.is_null()
         || mobius2.is_null()
@@ -646,7 +646,7 @@ pub unsafe extern "C" fn mobius_transformation_compose(
         .compose(mobius2_ref);
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Computes the inverse of a Mobius transformation.
 
@@ -656,7 +656,7 @@ pub unsafe extern "C" fn mobius_transformation_compose(
 
 /// Returns a raw pointer to a `MobiusTransformation` representing its inverse.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -668,7 +668,7 @@ pub unsafe extern "C" fn mobius_transformation_compose(
 
 pub unsafe extern "C" fn mobius_transformation_inverse(
     mobius: *const MobiusTransformation
-) -> *mut MobiusTransformation {
+) -> *mut MobiusTransformation { unsafe {
 
     if mobius.is_null() {
 
@@ -680,7 +680,7 @@ pub unsafe extern "C" fn mobius_transformation_inverse(
     let result = mobius_ref.inverse();
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Applies Cauchy's integral formula.
 
@@ -692,7 +692,7 @@ pub unsafe extern "C" fn mobius_transformation_inverse(
 
 /// Returns a raw pointer to an `Expr` representing the value of the function at `z0`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -711,7 +711,7 @@ pub unsafe extern "C" fn cauchy_integral_formula(
     func: *const Expr,
     var: *const c_char,
     z0: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if func.is_null() || z0.is_null() {
 
@@ -734,7 +734,7 @@ pub unsafe extern "C" fn cauchy_integral_formula(
     );
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Applies Cauchy's derivative formula.
 
@@ -746,7 +746,7 @@ pub unsafe extern "C" fn cauchy_integral_formula(
 
 /// Returns a raw pointer to an `Expr` representing the nth derivative of the function at `z0`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -766,7 +766,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
     var: *const c_char,
     z0: *const Expr,
     n: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if func.is_null() || z0.is_null() {
 
@@ -790,7 +790,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
     );
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Computes the complex exponential `e^z`.
 
@@ -800,7 +800,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
 
 /// Returns a raw pointer to an `Expr` representing `e^z`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -812,7 +812,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula(
 
 pub unsafe extern "C" fn complex_exp(
     z: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if z.is_null() {
 
@@ -824,7 +824,7 @@ pub unsafe extern "C" fn complex_exp(
     let result = crate::symbolic::complex_analysis::complex_exp(z_ref);
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Computes the complex logarithm `log(z)`.
 
@@ -834,7 +834,7 @@ pub unsafe extern "C" fn complex_exp(
 
 /// Returns a raw pointer to an `Expr` representing `log(z)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -846,7 +846,7 @@ pub unsafe extern "C" fn complex_exp(
 
 pub unsafe extern "C" fn complex_log(
     z: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if z.is_null() {
 
@@ -858,7 +858,7 @@ pub unsafe extern "C" fn complex_log(
     let result = crate::symbolic::complex_analysis::complex_log(z_ref);
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Computes the argument of a complex number `arg(z)`.
 
@@ -868,7 +868,7 @@ pub unsafe extern "C" fn complex_log(
 
 /// Returns a raw pointer to an `Expr` representing `arg(z)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -880,7 +880,7 @@ pub unsafe extern "C" fn complex_log(
 
 pub unsafe extern "C" fn complex_arg(
     z: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if z.is_null() {
 
@@ -892,7 +892,7 @@ pub unsafe extern "C" fn complex_arg(
     let result = crate::symbolic::complex_analysis::complex_arg(z_ref);
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Computes the modulus of a complex number `|z|`.
 
@@ -902,7 +902,7 @@ pub unsafe extern "C" fn complex_arg(
 
 /// Returns a raw pointer to an `Expr` representing `|z|`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -914,7 +914,7 @@ pub unsafe extern "C" fn complex_arg(
 
 pub unsafe extern "C" fn complex_modulus(
     z: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if z.is_null() {
 
@@ -926,4 +926,4 @@ pub unsafe extern "C" fn complex_modulus(
     let result = crate::symbolic::complex_analysis::complex_modulus(z_ref);
 
     Box::into_raw(Box::new(result))
-}
+}}

@@ -7,7 +7,7 @@ use crate::physics::physics_sim::fdtd_electrodynamics::{
 };
 
 /// Runs a 2D FDTD simulation and returns the final Ez field as a Matrix handle (`WxH`).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
     width: usize,

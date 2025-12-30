@@ -9,7 +9,7 @@ use crate::symbolic::finite_field::PrimeField;
 use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// Creates a new prime field element (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_prime_field_element_new(
     value_json: *const c_char,
@@ -41,7 +41,7 @@ pub extern "C" fn rssn_json_prime_field_element_new(
 }
 
 /// Adds two prime field elements (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_prime_field_element_add(
     a_json: *const c_char,
@@ -70,7 +70,7 @@ pub extern "C" fn rssn_json_prime_field_element_add(
 }
 
 /// Subtracts two prime field elements (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_prime_field_element_sub(
     a_json: *const c_char,
@@ -99,7 +99,7 @@ pub extern "C" fn rssn_json_prime_field_element_sub(
 }
 
 /// Multiplies two prime field elements (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_prime_field_element_mul(
     a_json: *const c_char,
@@ -128,7 +128,7 @@ pub extern "C" fn rssn_json_prime_field_element_mul(
 }
 
 /// Divides two prime field elements (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_prime_field_element_div(
     a_json: *const c_char,
@@ -157,7 +157,7 @@ pub extern "C" fn rssn_json_prime_field_element_div(
 }
 
 /// Computes the inverse of a prime field element (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_prime_field_element_inverse(
     elem_json: *const c_char
@@ -184,7 +184,7 @@ pub extern "C" fn rssn_json_prime_field_element_inverse(
 }
 
 /// Creates a new finite field polynomial (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_finite_field_polynomial_new(
     coeffs_json: *const c_char,
@@ -217,7 +217,7 @@ pub extern "C" fn rssn_json_finite_field_polynomial_new(
 }
 
 /// Gets the degree of a finite field polynomial (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_finite_field_polynomial_degree(
     poly_json: *const c_char
@@ -237,7 +237,7 @@ pub extern "C" fn rssn_json_finite_field_polynomial_degree(
 }
 
 /// Performs polynomial long division (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_finite_field_polynomial_long_division(
     dividend_json: *const c_char,

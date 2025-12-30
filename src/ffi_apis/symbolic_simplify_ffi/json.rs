@@ -8,7 +8,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::simplify;
 
 /// Simplifies an expression using the heuristic simplifier (JSON input/output).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_heuristic_simplify(
     expr_json: *const c_char
@@ -30,7 +30,7 @@ pub extern "C" fn rssn_json_heuristic_simplify(
 }
 
 /// Simplifies an expression using the legacy simplifier (JSON input/output).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_simplify(
     expr_json: *const c_char

@@ -11,7 +11,7 @@ use crate::symbolic::tensor::Tensor;
 
 /// and returns a bincode-serialized `Tensor` representing their sum.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_tensor_add(
     t1_buf: BincodeBuffer,
@@ -24,11 +24,11 @@ pub extern "C" fn rssn_bincode_tensor_add(
     let t2: Option<Tensor> =
         from_bincode_buffer(&t2_buf);
 
-    if let (
+    match (t1, t2)
+    { (
         Some(tensor1),
         Some(tensor2),
-    ) = (t1, t2)
-    {
+    ) => {
 
         match tensor1.add(&tensor2) {
             | Ok(result) => {
@@ -40,10 +40,10 @@ pub extern "C" fn rssn_bincode_tensor_add(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Performs scalar multiplication on a tensor.
@@ -54,7 +54,7 @@ pub extern "C" fn rssn_bincode_tensor_add(
 
 /// Returns a bincode-serialized `Tensor` representing the result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_tensor_scalar_mul(
     t_buf: BincodeBuffer,
@@ -70,9 +70,8 @@ pub extern "C" fn rssn_bincode_tensor_scalar_mul(
         &scalar_buf,
     );
 
-    if let (Some(tensor), Some(s)) =
-        (t, scalar)
-    {
+    match (t, scalar)
+    { (Some(tensor), Some(s)) => {
 
         match tensor.scalar_mul(&s) {
             | Ok(result) => {
@@ -84,10 +83,10 @@ pub extern "C" fn rssn_bincode_tensor_scalar_mul(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the outer product of two tensors.
@@ -98,7 +97,7 @@ pub extern "C" fn rssn_bincode_tensor_scalar_mul(
 
 /// and returns a bincode-serialized `Tensor` representing their outer product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_tensor_outer_product(
     t1_buf: BincodeBuffer,
@@ -111,11 +110,11 @@ pub extern "C" fn rssn_bincode_tensor_outer_product(
     let t2: Option<Tensor> =
         from_bincode_buffer(&t2_buf);
 
-    if let (
+    match (t1, t2)
+    { (
         Some(tensor1),
         Some(tensor2),
-    ) = (t1, t2)
-    {
+    ) => {
 
         match tensor1
             .outer_product(&tensor2)
@@ -129,8 +128,8 @@ pub extern "C" fn rssn_bincode_tensor_outer_product(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

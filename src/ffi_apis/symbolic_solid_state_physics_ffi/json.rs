@@ -8,7 +8,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::solid_state_physics;
 
 /// Computes the density of states for a 3D electron gas using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_density_of_states_3d(
     energy_json: *const c_char,
@@ -25,12 +25,12 @@ pub extern "C" fn rssn_json_density_of_states_3d(
     let volume: Option<Expr> =
         from_json_string(volume_json);
 
-    if let (
+    match (energy, mass, volume)
+    { (
         Some(energy),
         Some(mass),
         Some(volume),
-    ) = (energy, mass, volume)
-    {
+    ) => {
 
         to_json_string(
             &solid_state_physics::density_of_states_3d(
@@ -39,14 +39,14 @@ pub extern "C" fn rssn_json_density_of_states_3d(
                 &volume,
             ),
         )
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes Fermi energy for a 3D electron gas using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_fermi_energy_3d(
     concentration_json: *const c_char,
@@ -61,11 +61,11 @@ pub extern "C" fn rssn_json_fermi_energy_3d(
     let mass: Option<Expr> =
         from_json_string(mass_json);
 
-    if let (
+    match (concentration, mass)
+    { (
         Some(concentration),
         Some(mass),
-    ) = (concentration, mass)
-    {
+    ) => {
 
         to_json_string(
             &solid_state_physics::fermi_energy_3d(
@@ -73,14 +73,14 @@ pub extern "C" fn rssn_json_fermi_energy_3d(
                 &mass,
             ),
         )
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes Drude conductivity using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_drude_conductivity(
     n_json: *const c_char,
@@ -101,17 +101,17 @@ pub extern "C" fn rssn_json_drude_conductivity(
     let mass: Option<Expr> =
         from_json_string(mass_json);
 
-    if let (
+    match (n, e, tau, mass)
+    { (
         Some(n),
         Some(e),
         Some(tau),
         Some(mass),
-    ) = (n, e, tau, mass)
-    {
+    ) => {
 
         to_json_string(&solid_state_physics::drude_conductivity(&n, &e, &tau, &mass))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

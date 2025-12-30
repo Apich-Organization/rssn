@@ -23,7 +23,7 @@ use crate::symbolic::functional_analysis::{HilbertSpace, inner_product, norm, gr
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -66,7 +66,7 @@ pub unsafe extern "C" fn rssn_json_hilbert_space_create(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn rssn_json_inner_product(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -183,7 +183,7 @@ pub unsafe extern "C" fn rssn_json_norm(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

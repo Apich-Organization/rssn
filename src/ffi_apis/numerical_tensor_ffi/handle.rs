@@ -11,7 +11,7 @@ use crate::numerical::tensor::{
 };
 
 /// Creates a new tensor from shape and data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn rssn_num_tensor_create(
     ndim: usize,
     data: *const f64,
     data_len: usize,
-) -> *mut ArrayD<f64> {
+) -> *mut ArrayD<f64> { unsafe {
 
     if shape.is_null() || data.is_null()
     {
@@ -71,10 +71,10 @@ pub unsafe extern "C" fn rssn_num_tensor_create(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Frees a tensor object.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -99,7 +99,7 @@ pub unsafe extern "C" fn rssn_num_tensor_free(
 }
 
 /// Returns the number of dimensions.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -125,7 +125,7 @@ pub unsafe extern "C" fn rssn_num_tensor_get_ndim(
 }
 
 /// Returns the shape of the tensor.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -167,7 +167,7 @@ pub unsafe extern "C" fn rssn_num_tensor_get_shape(
 }
 
 /// Tensor contraction (tensordot).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -184,7 +184,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
     axes_a_len: usize,
     axes_b: *const usize,
     axes_b_len: usize,
-) -> *mut ArrayD<f64> {
+) -> *mut ArrayD<f64> { unsafe {
 
     if a.is_null()
         || b.is_null()
@@ -234,10 +234,10 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Outer product of two tensors.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -250,7 +250,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
 pub unsafe extern "C" fn rssn_num_tensor_outer_product(
     a: *const ArrayD<f64>,
     b: *const ArrayD<f64>,
-) -> *mut ArrayD<f64> {
+) -> *mut ArrayD<f64> { unsafe {
 
     if a.is_null() || b.is_null() {
 
@@ -279,10 +279,10 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Frobenius norm of a tensor.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

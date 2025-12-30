@@ -5,7 +5,7 @@ use std::slice;
 use crate::numerical::stats;
 
 /// Computes the mean of an array.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -18,7 +18,7 @@ use crate::numerical::stats;
 pub unsafe extern "C" fn rssn_num_stats_mean(
     data: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data.is_null() || len == 0 {
 
@@ -30,10 +30,10 @@ pub unsafe extern "C" fn rssn_num_stats_mean(
     );
 
     stats::mean(slice)
-}
+}}
 
 /// Computes the variance of an array.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rssn_num_stats_mean(
 pub unsafe extern "C" fn rssn_num_stats_variance(
     data: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data.is_null() || len == 0 {
 
@@ -58,10 +58,10 @@ pub unsafe extern "C" fn rssn_num_stats_variance(
     );
 
     stats::variance(slice)
-}
+}}
 
 /// Computes the standard deviation of an array.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -74,7 +74,7 @@ pub unsafe extern "C" fn rssn_num_stats_variance(
 pub unsafe extern "C" fn rssn_num_stats_std_dev(
     data: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data.is_null() || len == 0 {
 
@@ -86,10 +86,10 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev(
     );
 
     stats::std_dev(slice)
-}
+}}
 
 /// Computes the geometric mean of an array.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn rssn_num_stats_std_dev(
 pub unsafe extern "C" fn rssn_num_stats_geometric_mean(
     data: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data.is_null() || len == 0 {
 
@@ -114,10 +114,10 @@ pub unsafe extern "C" fn rssn_num_stats_geometric_mean(
     );
 
     stats::geometric_mean(slice)
-}
+}}
 
 /// Computes the harmonic mean of an array.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn rssn_num_stats_geometric_mean(
 pub unsafe extern "C" fn rssn_num_stats_harmonic_mean(
     data: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data.is_null() || len == 0 {
 
@@ -142,10 +142,10 @@ pub unsafe extern "C" fn rssn_num_stats_harmonic_mean(
     );
 
     stats::harmonic_mean(slice)
-}
+}}
 
 /// Computes the range of an array.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -158,7 +158,7 @@ pub unsafe extern "C" fn rssn_num_stats_harmonic_mean(
 pub unsafe extern "C" fn rssn_num_stats_range(
     data: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data.is_null() || len == 0 {
 
@@ -170,10 +170,10 @@ pub unsafe extern "C" fn rssn_num_stats_range(
     );
 
     stats::range(slice)
-}
+}}
 
 /// Computes the coefficient of variation of an array.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -186,7 +186,7 @@ pub unsafe extern "C" fn rssn_num_stats_range(
 pub unsafe extern "C" fn rssn_num_stats_cv(
     data: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data.is_null() || len == 0 {
 
@@ -200,10 +200,10 @@ pub unsafe extern "C" fn rssn_num_stats_cv(
     stats::coefficient_of_variation(
         slice,
     )
-}
+}}
 
 /// Computes the standard error of an array.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -216,7 +216,7 @@ pub unsafe extern "C" fn rssn_num_stats_cv(
 pub unsafe extern "C" fn rssn_num_stats_standard_error(
     data: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data.is_null() || len == 0 {
 
@@ -228,10 +228,10 @@ pub unsafe extern "C" fn rssn_num_stats_standard_error(
     );
 
     stats::standard_error(slice)
-}
+}}
 
 /// Computes the Shannon entropy of a probability distribution.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -244,7 +244,7 @@ pub unsafe extern "C" fn rssn_num_stats_standard_error(
 pub unsafe extern "C" fn rssn_num_stats_shannon_entropy(
     data: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data.is_null() || len == 0 {
 
@@ -256,10 +256,10 @@ pub unsafe extern "C" fn rssn_num_stats_shannon_entropy(
     );
 
     stats::shannon_entropy(slice)
-}
+}}
 
 /// Computes the covariance of two arrays.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -274,7 +274,7 @@ pub unsafe extern "C" fn rssn_num_stats_covariance(
     len1: usize,
     data2: *const f64,
     len2: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data1.is_null()
         || data2.is_null()
@@ -294,10 +294,10 @@ pub unsafe extern "C" fn rssn_num_stats_covariance(
     );
 
     stats::covariance(slice1, slice2)
-}
+}}
 
 /// Computes the Pearson correlation coefficient of two arrays.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -312,7 +312,7 @@ pub unsafe extern "C" fn rssn_num_stats_correlation(
     len1: usize,
     data2: *const f64,
     len2: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if data1.is_null()
         || data2.is_null()
@@ -332,11 +332,11 @@ pub unsafe extern "C" fn rssn_num_stats_correlation(
     );
 
     stats::correlation(slice1, slice2)
-}
+}}
 
 /// Performs a two-sample t-test.
 /// Returns t-statistic via `out_t` and p-value via `out_p`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -353,7 +353,7 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test(
     len2: usize,
     out_t: *mut f64,
     out_p: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if sample1.is_null()
         || sample2.is_null()
@@ -384,11 +384,11 @@ pub unsafe extern "C" fn rssn_num_stats_two_sample_t_test(
     *out_p = p;
 
     0
-}
+}}
 
 /// Performs Welch's t-test.
 /// Returns t-statistic via `out_t` and p-value via `out_p`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -405,7 +405,7 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test(
     len2: usize,
     out_t: *mut f64,
     out_p: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if sample1.is_null()
         || sample2.is_null()
@@ -434,11 +434,11 @@ pub unsafe extern "C" fn rssn_num_stats_welch_t_test(
     *out_p = p;
 
     0
-}
+}}
 
 /// Performs a chi-squared test.
 /// Returns chi-squared statistic via `out_chi` and p-value via `out_p`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -454,7 +454,7 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test(
     len: usize,
     out_chi: *mut f64,
     out_p: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if observed.is_null()
         || expected.is_null()
@@ -485,11 +485,11 @@ pub unsafe extern "C" fn rssn_num_stats_chi_squared_test(
     *out_p = p;
 
     0
-}
+}}
 
 /// Performs simple linear regression.
 /// Returns slope via `out_slope` and intercept via `out_intercept`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -505,7 +505,7 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression(
     len: usize,
     out_slope: *mut f64,
     out_intercept: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if x.is_null()
         || y.is_null()
@@ -538,4 +538,4 @@ pub unsafe extern "C" fn rssn_num_stats_linear_regression(
     *out_intercept = intercept;
 
     0
-}
+}}

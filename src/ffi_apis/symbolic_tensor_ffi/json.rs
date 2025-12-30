@@ -12,7 +12,7 @@ use crate::symbolic::tensor::Tensor;
 
 /// and returns a JSON string representing their sum.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_tensor_add(
     t1_json: *const c_char,
@@ -25,11 +25,11 @@ pub extern "C" fn rssn_json_tensor_add(
     let t2: Option<Tensor> =
         from_json_string(t2_json);
 
-    if let (
+    match (t1, t2)
+    { (
         Some(tensor1),
         Some(tensor2),
-    ) = (t1, t2)
-    {
+    ) => {
 
         match tensor1.add(&tensor2) {
             | Ok(result) => {
@@ -39,10 +39,10 @@ pub extern "C" fn rssn_json_tensor_add(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Performs scalar multiplication on a tensor.
@@ -53,7 +53,7 @@ pub extern "C" fn rssn_json_tensor_add(
 
 /// Returns a JSON string representing the resulting `Tensor`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_tensor_scalar_mul(
     t_json: *const c_char,
@@ -67,9 +67,8 @@ pub extern "C" fn rssn_json_tensor_scalar_mul(
         crate::symbolic::core::Expr,
     > = from_json_string(scalar_json);
 
-    if let (Some(tensor), Some(s)) =
-        (t, scalar)
-    {
+    match (t, scalar)
+    { (Some(tensor), Some(s)) => {
 
         match tensor.scalar_mul(&s) {
             | Ok(result) => {
@@ -79,10 +78,10 @@ pub extern "C" fn rssn_json_tensor_scalar_mul(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the outer product of two tensors.
@@ -93,7 +92,7 @@ pub extern "C" fn rssn_json_tensor_scalar_mul(
 
 /// and returns a JSON string representing their outer product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_tensor_outer_product(
     t1_json: *const c_char,
@@ -106,11 +105,11 @@ pub extern "C" fn rssn_json_tensor_outer_product(
     let t2: Option<Tensor> =
         from_json_string(t2_json);
 
-    if let (
+    match (t1, t2)
+    { (
         Some(tensor1),
         Some(tensor2),
-    ) = (t1, t2)
-    {
+    ) => {
 
         match tensor1
             .outer_product(&tensor2)
@@ -122,10 +121,10 @@ pub extern "C" fn rssn_json_tensor_outer_product(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Performs tensor contraction.
@@ -136,7 +135,7 @@ pub extern "C" fn rssn_json_tensor_outer_product(
 
 /// Returns a JSON string representing the contracted `Tensor`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_tensor_contract(
     t_json: *const c_char,

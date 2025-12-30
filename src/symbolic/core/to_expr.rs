@@ -122,7 +122,7 @@ impl DagNode {
 
                 // Helper macro to create Arc from children_exprs
                 macro_rules! arc {
-                    ($idx:expr) => {
+                    ($idx:expr_2021) => {
 
                         if $idx < children_exprs.len() {
 

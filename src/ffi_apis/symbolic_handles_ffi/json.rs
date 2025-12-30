@@ -36,7 +36,7 @@ struct HandleStatsResponse {
 ///
 /// Input: JSON-serialized Expr
 /// Output: JSON object with "handle" field
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_insert_json(
     json_str: *const c_char
@@ -64,7 +64,7 @@ pub extern "C" fn rssn_handle_insert_json(
 ///
 /// Input: JSON object with "handle" field
 /// Output: JSON-serialized Expr
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_get_json(
     json_str: *const c_char
@@ -99,7 +99,7 @@ pub extern "C" fn rssn_handle_get_json(
 ///
 /// Input: JSON object with "handle" field
 /// Output: JSON object with "exists" boolean field
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_exists_json(
     json_str: *const c_char
@@ -133,7 +133,7 @@ pub extern "C" fn rssn_handle_exists_json(
 ///
 /// Input: JSON object with "handle" field
 /// Output: JSON object with "freed" boolean field
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_free_json(
     json_str: *const c_char
@@ -167,7 +167,7 @@ pub extern "C" fn rssn_handle_free_json(
 /// Returns handle manager statistics (JSON).
 ///
 /// Output: JSON object with "count" and "handles" fields
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_stats_json(
 ) -> *mut c_char {
@@ -206,7 +206,7 @@ pub extern "C" fn rssn_handle_stats_json(
 /// Clears all handles (JSON).
 ///
 /// Output: JSON object with "cleared" boolean field
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_clear_json(
 ) -> *mut c_char {
@@ -222,7 +222,7 @@ pub extern "C" fn rssn_handle_clear_json(
 ///
 /// Input: JSON object with "handle" field
 /// Output: JSON object with "`new_handle`" field
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_clone_json(
     json_str: *const c_char

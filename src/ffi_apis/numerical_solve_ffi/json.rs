@@ -20,7 +20,7 @@ struct SolveLinearInput {
 }
 
 /// JSON FFI for solving linear systems.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -37,7 +37,7 @@ struct SolveLinearInput {
 
 pub unsafe extern "C" fn rssn_solve_linear_system_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -94,4 +94,4 @@ pub unsafe extern "C" fn rssn_solve_linear_system_json(
     )
     .unwrap()
     .into_raw()
-}
+}}

@@ -56,7 +56,7 @@ struct Advection1DInput {
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -183,7 +183,7 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

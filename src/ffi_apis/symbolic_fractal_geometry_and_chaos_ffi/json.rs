@@ -3,7 +3,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::fractal_geometry_and_chaos::{IteratedFunctionSystem, ComplexDynamicalSystem, find_fixed_points, analyze_stability, lyapunov_exponent, lorenz_system};
 
 /// Creates a new `IteratedFunctionSystem` (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_ifs_create(
     functions_json : *const std::os::raw::c_char,
@@ -25,11 +25,11 @@ pub extern "C" fn rssn_json_ifs_create(
     let variables: Option<Vec<String>> =
         from_json_string(variables_json);
 
-    if let (Some(f), Some(p), Some(v)) = (
+    match (
         functions,
         probabilities,
         variables,
-    ) {
+    ) { (Some(f), Some(p), Some(v)) => {
 
         let ifs =
             IteratedFunctionSystem::new(
@@ -37,14 +37,14 @@ pub extern "C" fn rssn_json_ifs_create(
             );
 
         to_json_string(&ifs)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Calculates similarity dimension (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_ifs_similarity_dimension(
     scaling_factors_json : *const std::os::raw::c_char
@@ -67,7 +67,7 @@ pub extern "C" fn rssn_json_ifs_similarity_dimension(
 }
 
 /// Creates a new Mandelbrot family system (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_complex_system_new_mandelbrot(
     c_json: *const std::os::raw::c_char
@@ -88,7 +88,7 @@ pub extern "C" fn rssn_json_complex_system_new_mandelbrot(
 }
 
 /// Iterates the system once (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_complex_system_iterate(
     system_json : *const std::os::raw::c_char,
@@ -102,22 +102,21 @@ pub extern "C" fn rssn_json_complex_system_iterate(
     let z: Option<Expr> =
         from_json_string(z_json);
 
-    if let (Some(sys), Some(z_val)) =
-        (system, z)
-    {
+    match (system, z)
+    { (Some(sys), Some(z_val)) => {
 
         let result =
             sys.iterate(&z_val);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Finds fixed points (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_complex_system_fixed_points(
     system_json : *const std::os::raw::c_char
@@ -139,7 +138,7 @@ pub extern "C" fn rssn_json_complex_system_fixed_points(
 }
 
 /// Finds fixed points of a 1D map (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -178,7 +177,7 @@ pub extern "C" fn rssn_json_find_fixed_points(
 }
 
 /// Analyzes stability of a fixed point (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -227,7 +226,7 @@ pub extern "C" fn rssn_json_analyze_stability(
 }
 
 /// Calculates Lyapunov exponent (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -278,7 +277,7 @@ pub extern "C" fn rssn_json_lyapunov_exponent(
 }
 
 /// Returns Lorenz system equations (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_lorenz_system(
 ) -> *mut std::os::raw::c_char {

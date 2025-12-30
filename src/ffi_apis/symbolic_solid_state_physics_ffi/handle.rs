@@ -5,7 +5,7 @@ use crate::symbolic::solid_state_physics::{CrystalLattice, density_of_states_3d,
 use crate::symbolic::vector::Vector;
 
 /// Creates a new `CrystalLattice`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -19,7 +19,7 @@ pub unsafe extern "C" fn rssn_crystal_lattice_new(
     a1: *const Vector,
     a2: *const Vector,
     a3: *const Vector,
-) -> *mut CrystalLattice {
+) -> *mut CrystalLattice { unsafe {
 
     if a1.is_null()
         || a2.is_null()
@@ -36,10 +36,10 @@ pub unsafe extern "C" fn rssn_crystal_lattice_new(
             (*a3).clone(),
         ),
     ))
-}
+}}
 
 /// Frees a `CrystalLattice`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -51,16 +51,16 @@ pub unsafe extern "C" fn rssn_crystal_lattice_new(
 
 pub unsafe extern "C" fn rssn_crystal_lattice_free(
     ptr: *mut CrystalLattice
-) {
+) { unsafe {
 
     if !ptr.is_null() {
 
         let _ = Box::from_raw(ptr);
     }
-}
+}}
 
 /// Computes the volume of the unit cell.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_crystal_lattice_free(
 
 pub unsafe extern "C" fn rssn_crystal_lattice_volume(
     ptr: *const CrystalLattice
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if ptr.is_null() {
 
@@ -82,10 +82,10 @@ pub unsafe extern "C" fn rssn_crystal_lattice_volume(
     Box::into_raw(Box::new(
         (*ptr).volume(),
     ))
-}
+}}
 
 /// Computes reciprocal lattice vectors.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rssn_crystal_lattice_reciprocal_vectors(
     b1: *mut *mut Vector,
     b2: *mut *mut Vector,
     b3: *mut *mut Vector,
-) {
+) { unsafe {
 
     if ptr.is_null()
         || b1.is_null()
@@ -119,10 +119,10 @@ pub unsafe extern "C" fn rssn_crystal_lattice_reciprocal_vectors(
     *b2 = Box::into_raw(Box::new(v2));
 
     *b3 = Box::into_raw(Box::new(v3));
-}
+}}
 
 /// Computes the density of states for a 3D electron gas.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -136,7 +136,7 @@ pub unsafe extern "C" fn rssn_density_of_states_3d(
     energy: *const Expr,
     effective_mass: *const Expr,
     volume: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if energy.is_null()
         || effective_mass.is_null()
@@ -153,10 +153,10 @@ pub unsafe extern "C" fn rssn_density_of_states_3d(
             &*volume,
         ),
     ))
-}
+}}
 
 /// Computes Fermi energy for a 3D electron gas.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -169,7 +169,7 @@ pub unsafe extern "C" fn rssn_density_of_states_3d(
 pub unsafe extern "C" fn rssn_fermi_energy_3d(
     concentration: *const Expr,
     effective_mass: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if concentration.is_null()
         || effective_mass.is_null()
@@ -184,10 +184,10 @@ pub unsafe extern "C" fn rssn_fermi_energy_3d(
             &*effective_mass,
         ),
     ))
-}
+}}
 
 /// Computes Drude conductivity.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -202,7 +202,7 @@ pub unsafe extern "C" fn rssn_drude_conductivity(
     e_charge: *const Expr,
     tau: *const Expr,
     m_star: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if n.is_null()
         || e_charge.is_null()
@@ -221,10 +221,10 @@ pub unsafe extern "C" fn rssn_drude_conductivity(
             &*m_star,
         ),
     ))
-}
+}}
 
 /// Computes Hall coefficient.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -237,7 +237,7 @@ pub unsafe extern "C" fn rssn_drude_conductivity(
 pub unsafe extern "C" fn rssn_hall_coefficient(
     n: *const Expr,
     q: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if n.is_null() || q.is_null() {
 
@@ -247,4 +247,4 @@ pub unsafe extern "C" fn rssn_hall_coefficient(
     Box::into_raw(Box::new(
         hall_coefficient(&*n, &*q),
     ))
-}
+}}

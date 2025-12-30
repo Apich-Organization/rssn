@@ -12,7 +12,7 @@ use crate::symbolic::stats_regression;
 
 /// Returns a bincode-serialized `Vec<Expr>` containing the intercept and slope coefficients.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_simple_linear_regression(
     data_buf: BincodeBuffer
@@ -43,7 +43,7 @@ pub extern "C" fn rssn_bincode_simple_linear_regression(
 
 /// Returns a bincode-serialized `Vec<Expr>` containing the coefficients of the polynomial.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_polynomial_regression(
     data_buf: BincodeBuffer,
@@ -76,7 +76,7 @@ pub extern "C" fn rssn_bincode_polynomial_regression(
 
 /// Returns a bincode-serialized `Vec<Expr>` representing the optimized parameter values.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_nonlinear_regression(
     data_buf: BincodeBuffer,
@@ -100,17 +100,17 @@ pub extern "C" fn rssn_bincode_nonlinear_regression(
             &params_buf,
         );
 
-    if let (
-        Some(data),
-        Some(model),
-        Some(vars),
-        Some(params),
-    ) = (
+    match (
         data,
         model,
         vars,
         params,
-    ) {
+    ) { (
+        Some(data),
+        Some(model),
+        Some(vars),
+        Some(params),
+    ) => {
 
         let vars_refs: Vec<&str> = vars
             .iter()
@@ -132,8 +132,8 @@ pub extern "C" fn rssn_bincode_nonlinear_regression(
             | Some(solutions) => to_bincode_buffer(&solutions),
             | None => BincodeBuffer::empty(),
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

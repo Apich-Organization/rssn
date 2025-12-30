@@ -2749,19 +2749,18 @@ pub(crate) fn simplify_mul(
 
     if !is_one_expr(&constant) {
 
-        if let Ok(constant_node) =
-            DAG_MANAGER.get_or_create(
+        match DAG_MANAGER.get_or_create(
                 &constant,
             )
-        {
+        { Ok(constant_node) => {
 
             new_factors.insert(
                 0,
                 constant_node,
             );
-        } else {
+        } _ => {
             // If creating the constant fails, skip it (equivalent to multiplying by 1)
-        }
+        }}
     }
 
     if new_factors.is_empty() {
@@ -2943,20 +2942,20 @@ pub(crate) fn simplify_add(
 
                         if is_numeric_node(c) {
 
-                        if let Some(val) = get_numeric_value(c) {
+                        match get_numeric_value(c) { Some(val) => {
 
                             // Neg(c * b) -> (-c) * b
                             (
                                 neg_em(&val),
                                 b.clone(),
                             )
-                        } else {
+                        } _ => {
 
                             (
                                 Expr::Constant(-1.0),
                                 child.clone(),
                             )
-                        }
+                        }}
                     } else {
 
                         (
@@ -2999,28 +2998,28 @@ pub(crate) fn simplify_add(
 
                     if is_numeric_node(c) {
 
-                    if let Some(val) = get_numeric_value(c) {
+                    match get_numeric_value(c) { Some(val) => {
 
                         (val, b.clone())
-                    } else {
+                    } _ => {
 
                         (
                             Expr::BigInt(BigInt::one()),
                             simplified_term.clone(),
                         )
-                    }
+                    }}
                 } else if is_numeric_node(b) {
 
-                    if let Some(val) = get_numeric_value(b) {
+                    match get_numeric_value(b) { Some(val) => {
 
                         (val, c.clone())
-                    } else {
+                    } _ => {
 
                         (
                             Expr::BigInt(BigInt::one()),
                             simplified_term.clone(),
                         )
-                    }
+                    }}
                 } else {
 
                     (
@@ -3099,17 +3098,16 @@ pub(crate) fn simplify_add(
 
     if !is_zero_expr(&constant) {
 
-        if let Ok(constant_node) =
-            DAG_MANAGER.get_or_create(
+        match DAG_MANAGER.get_or_create(
                 &constant,
             )
-        {
+        { Ok(constant_node) => {
 
             new_terms
                 .push(constant_node);
-        } else {
+        } _ => {
             // If creating the constant fails, skip it (equivalent to adding 0)
-        }
+        }}
     }
 
     if new_terms.is_empty() {

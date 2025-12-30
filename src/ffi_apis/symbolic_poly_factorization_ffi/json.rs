@@ -5,7 +5,7 @@ use crate::symbolic::finite_field::FiniteFieldPolynomial;
 use crate::symbolic::poly_factorization::{factor_gf, square_free_factorization_gf, poly_gcd_gf, poly_derivative_gf};
 
 /// Factors a polynomial over a finite field (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_factor_gf(
     poly_json: *const c_char
@@ -32,7 +32,7 @@ pub extern "C" fn rssn_json_factor_gf(
 }
 
 /// Computes square-free factorization (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_square_free_factorization_gf(
     poly_json: *const c_char
@@ -55,7 +55,7 @@ pub extern "C" fn rssn_json_square_free_factorization_gf(
 }
 
 /// Computes polynomial GCD over finite field (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_poly_gcd_gf(
     a_json: *const c_char,
@@ -94,7 +94,7 @@ pub extern "C" fn rssn_json_poly_gcd_gf(
 }
 
 /// Computes polynomial derivative over finite field (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_poly_derivative_gf(
     poly_json: *const c_char

@@ -5,7 +5,7 @@ use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// Creates a new prime field element (Handle)
 /// Returns a boxed pointer to the element
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_prime_field_element_new_handle(
     value: *const BigInt,
@@ -48,7 +48,7 @@ pub extern "C" fn rssn_prime_field_element_new_handle(
 }
 
 /// Adds two prime field elements (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_prime_field_element_add_handle(
     a: *const PrimeFieldElement,
@@ -84,7 +84,7 @@ pub extern "C" fn rssn_prime_field_element_add_handle(
 }
 
 /// Multiplies two prime field elements (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_prime_field_element_mul_handle(
     a: *const PrimeFieldElement,
@@ -120,7 +120,7 @@ pub extern "C" fn rssn_prime_field_element_mul_handle(
 }
 
 /// Computes the inverse of a prime field element (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_prime_field_element_inverse_handle(
     elem: *const PrimeFieldElement
@@ -146,7 +146,7 @@ pub extern "C" fn rssn_prime_field_element_inverse_handle(
 }
 
 /// Frees a prime field element (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_prime_field_element_free_handle(
     elem: *mut PrimeFieldElement

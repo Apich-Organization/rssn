@@ -20,7 +20,7 @@ fn test_sm_simulate_1d_handle_ffi() {
 
         assert_eq!(matrix.cols(), 128);
 
-        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(matrix_ptr);
+        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(matrix_ptr as *mut rssn::ffi_apis::numerical_matrix_ffi::handle::RssnMatrixHandle);
     }
 }
 

@@ -18,7 +18,7 @@ use crate::symbolic::stats_regression;
 
 /// Returns a JSON string representing a `Vec<Expr>` containing the intercept and slope coefficients.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -55,7 +55,7 @@ pub unsafe extern "C" fn rssn_json_simple_linear_regression(
 
 /// Returns a JSON string representing a `Vec<Expr>` containing the coefficients of the polynomial.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -96,7 +96,7 @@ pub unsafe extern "C" fn rssn_json_polynomial_regression(
 
 /// Returns a JSON string representing `Vec<(Expr, Expr)>` (optimized parameter values).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -126,17 +126,17 @@ pub unsafe extern "C" fn rssn_json_nonlinear_regression(
     let params: Option<Vec<String>> =
         from_json_string(params_json);
 
-    if let (
-        Some(data),
-        Some(model),
-        Some(vars),
-        Some(params),
-    ) = (
+    match (
         data,
         model,
         vars,
         params,
-    ) {
+    ) { (
+        Some(data),
+        Some(model),
+        Some(vars),
+        Some(params),
+    ) => {
 
         let vars_refs: Vec<&str> = vars
             .iter()
@@ -158,8 +158,8 @@ pub unsafe extern "C" fn rssn_json_nonlinear_regression(
             | Some(solutions) => to_json_string(&solutions), // Vec<(Expr, Expr)>
             | None => std::ptr::null_mut(),
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

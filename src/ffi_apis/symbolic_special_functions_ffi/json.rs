@@ -15,7 +15,7 @@ use crate::symbolic::special_functions;
 // ============================================================================
 
 /// Computes the symbolic Gamma function Γ(z) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rssn_json_gamma(
 }
 
 /// Computes the symbolic log-gamma function ln(Γ(z)) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn rssn_json_ln_gamma(
 }
 
 /// Computes the symbolic Beta function B(a, b) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -94,23 +94,22 @@ pub unsafe extern "C" fn rssn_json_beta(
     let b: Option<Expr> =
         from_json_string(b_json);
 
-    if let (Some(val_a), Some(val_b)) =
-        (a, b)
-    {
+    match (a, b)
+    { (Some(val_a), Some(val_b)) => {
 
         to_json_string(
             &special_functions::beta(
                 val_a, val_b,
             ),
         )
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the symbolic Digamma function ψ(z) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -141,7 +140,7 @@ pub unsafe extern "C" fn rssn_json_digamma(
 }
 
 /// Computes the symbolic Polygamma function ψ⁽ⁿ⁾(z) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -162,13 +161,13 @@ pub unsafe extern "C" fn rssn_json_polygamma(
     let z: Option<Expr> =
         from_json_string(z_json);
 
-    if let (Some(n), Some(z)) = (n, z) {
+    match (n, z) { (Some(n), Some(z)) => {
 
         to_json_string(&special_functions::polygamma(n, z))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 // ============================================================================
@@ -176,7 +175,7 @@ pub unsafe extern "C" fn rssn_json_polygamma(
 // ============================================================================
 
 /// Computes the symbolic error function erf(z) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -205,7 +204,7 @@ pub unsafe extern "C" fn rssn_json_erf(
 }
 
 /// Computes the symbolic complementary error function erfc(z) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -234,7 +233,7 @@ pub unsafe extern "C" fn rssn_json_erfc(
 }
 
 /// Computes the symbolic imaginary error function erfi(z) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -267,7 +266,7 @@ pub unsafe extern "C" fn rssn_json_erfi(
 // ============================================================================
 
 /// Computes the symbolic Riemann zeta function ζ(s) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -300,7 +299,7 @@ pub unsafe extern "C" fn rssn_json_zeta(
 // ============================================================================
 
 /// Computes the symbolic Bessel function `J_n(x)` via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -321,19 +320,18 @@ pub unsafe extern "C" fn rssn_json_bessel_j(
     let arg: Option<Expr> =
         from_json_string(arg_json);
 
-    if let (Some(o), Some(a)) =
-        (order, arg)
-    {
+    match (order, arg)
+    { (Some(o), Some(a)) => {
 
         to_json_string(&special_functions::bessel_j(o, a))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the symbolic Bessel function `Y_n(x)` via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -354,19 +352,18 @@ pub unsafe extern "C" fn rssn_json_bessel_y(
     let arg: Option<Expr> =
         from_json_string(arg_json);
 
-    if let (Some(o), Some(a)) =
-        (order, arg)
-    {
+    match (order, arg)
+    { (Some(o), Some(a)) => {
 
         to_json_string(&special_functions::bessel_y(o, a))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the symbolic modified Bessel function `I_n(x)` via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -387,19 +384,18 @@ pub unsafe extern "C" fn rssn_json_bessel_i(
     let arg: Option<Expr> =
         from_json_string(arg_json);
 
-    if let (Some(o), Some(a)) =
-        (order, arg)
-    {
+    match (order, arg)
+    { (Some(o), Some(a)) => {
 
         to_json_string(&special_functions::bessel_i(o, a))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the symbolic modified Bessel function `K_n(x)` via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -420,15 +416,14 @@ pub unsafe extern "C" fn rssn_json_bessel_k(
     let arg: Option<Expr> =
         from_json_string(arg_json);
 
-    if let (Some(o), Some(a)) =
-        (order, arg)
-    {
+    match (order, arg)
+    { (Some(o), Some(a)) => {
 
         to_json_string(&special_functions::bessel_k(o, a))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 // ============================================================================
@@ -436,7 +431,7 @@ pub unsafe extern "C" fn rssn_json_bessel_k(
 // ============================================================================
 
 /// Computes the symbolic Legendre polynomial `P_n(x)` via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -457,19 +452,18 @@ pub unsafe extern "C" fn rssn_json_legendre_p(
     let arg: Option<Expr> =
         from_json_string(arg_json);
 
-    if let (Some(d), Some(a)) =
-        (degree, arg)
-    {
+    match (degree, arg)
+    { (Some(d), Some(a)) => {
 
         to_json_string(&special_functions::legendre_p(d, a))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the symbolic Laguerre polynomial `L_n(x)` via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -490,19 +484,18 @@ pub unsafe extern "C" fn rssn_json_laguerre_l(
     let arg: Option<Expr> =
         from_json_string(arg_json);
 
-    if let (Some(d), Some(a)) =
-        (degree, arg)
-    {
+    match (degree, arg)
+    { (Some(d), Some(a)) => {
 
         to_json_string(&special_functions::laguerre_l(d, a))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the symbolic Generalized Laguerre polynomial `L_n^α(x)` via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -527,22 +520,22 @@ pub unsafe extern "C" fn rssn_json_generalized_laguerre(
     let x: Option<Expr> =
         from_json_string(x_json);
 
-    if let (
+    match (n, alpha, x)
+    { (
         Some(n),
         Some(alpha),
         Some(x),
-    ) = (n, alpha, x)
-    {
+    ) => {
 
         to_json_string(&special_functions::generalized_laguerre(&n, &alpha, &x))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the symbolic Hermite polynomial `H_n(x)` via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -563,19 +556,18 @@ pub unsafe extern "C" fn rssn_json_hermite_h(
     let arg: Option<Expr> =
         from_json_string(arg_json);
 
-    if let (Some(d), Some(a)) =
-        (degree, arg)
-    {
+    match (degree, arg)
+    { (Some(d), Some(a)) => {
 
         to_json_string(&special_functions::hermite_h(&d, a))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the symbolic Chebyshev polynomial `T_n(x)` via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -596,17 +588,17 @@ pub unsafe extern "C" fn rssn_json_chebyshev_t(
     let x: Option<Expr> =
         from_json_string(x_json);
 
-    if let (Some(n), Some(x)) = (n, x) {
+    match (n, x) { (Some(n), Some(x)) => {
 
         to_json_string(&special_functions::chebyshev_t(&n, &x))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the symbolic Chebyshev polynomial `U_n(x)` via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -627,13 +619,13 @@ pub unsafe extern "C" fn rssn_json_chebyshev_u(
     let x: Option<Expr> =
         from_json_string(x_json);
 
-    if let (Some(n), Some(x)) = (n, x) {
+    match (n, x) { (Some(n), Some(x)) => {
 
         to_json_string(&special_functions::chebyshev_u(&n, &x))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 // ============================================================================
@@ -641,7 +633,7 @@ pub unsafe extern "C" fn rssn_json_chebyshev_u(
 // ============================================================================
 
 /// Constructs Bessel's differential equation via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -666,19 +658,18 @@ pub unsafe extern "C" fn rssn_json_bessel_differential_equation(
     let n: Option<Expr> =
         from_json_string(n_json);
 
-    if let (Some(y), Some(x), Some(n)) =
-        (y, x, n)
-    {
+    match (y, x, n)
+    { (Some(y), Some(x), Some(n)) => {
 
         to_json_string(&special_functions::bessel_differential_equation(&y, &x, &n))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Constructs Legendre's differential equation via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -703,19 +694,18 @@ pub unsafe extern "C" fn rssn_json_legendre_differential_equation(
     let n: Option<Expr> =
         from_json_string(n_json);
 
-    if let (Some(y), Some(x), Some(n)) =
-        (y, x, n)
-    {
+    match (y, x, n)
+    { (Some(y), Some(x), Some(n)) => {
 
         to_json_string(&special_functions::legendre_differential_equation(&y, &x, &n))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Constructs Laguerre's differential equation via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -740,19 +730,18 @@ pub unsafe extern "C" fn rssn_json_laguerre_differential_equation(
     let n: Option<Expr> =
         from_json_string(n_json);
 
-    if let (Some(y), Some(x), Some(n)) =
-        (y, x, n)
-    {
+    match (y, x, n)
+    { (Some(y), Some(x), Some(n)) => {
 
         to_json_string(&special_functions::laguerre_differential_equation(&y, &x, &n))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Constructs Hermite's differential equation via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -777,19 +766,18 @@ pub unsafe extern "C" fn rssn_json_hermite_differential_equation(
     let n: Option<Expr> =
         from_json_string(n_json);
 
-    if let (Some(y), Some(x), Some(n)) =
-        (y, x, n)
-    {
+    match (y, x, n)
+    { (Some(y), Some(x), Some(n)) => {
 
         to_json_string(&special_functions::hermite_differential_equation(&y, &x, &n))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Constructs Chebyshev's differential equation via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -814,15 +802,14 @@ pub unsafe extern "C" fn rssn_json_chebyshev_differential_equation(
     let n: Option<Expr> =
         from_json_string(n_json);
 
-    if let (Some(y), Some(x), Some(n)) =
-        (y, x, n)
-    {
+    match (y, x, n)
+    { (Some(y), Some(x), Some(n)) => {
 
         to_json_string(&special_functions::chebyshev_differential_equation(&y, &x, &n))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 // ============================================================================
@@ -830,7 +817,7 @@ pub unsafe extern "C" fn rssn_json_chebyshev_differential_equation(
 // ============================================================================
 
 /// Constructs Rodrigues' formula for Legendre polynomials via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -851,17 +838,17 @@ pub unsafe extern "C" fn rssn_json_legendre_rodrigues_formula(
     let x: Option<Expr> =
         from_json_string(x_json);
 
-    if let (Some(n), Some(x)) = (n, x) {
+    match (n, x) { (Some(n), Some(x)) => {
 
         to_json_string(&special_functions::legendre_rodrigues_formula(&n, &x))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Constructs Rodrigues' formula for Hermite polynomials via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -882,11 +869,11 @@ pub unsafe extern "C" fn rssn_json_hermite_rodrigues_formula(
     let x: Option<Expr> =
         from_json_string(x_json);
 
-    if let (Some(n), Some(x)) = (n, x) {
+    match (n, x) { (Some(n), Some(x)) => {
 
         to_json_string(&special_functions::hermite_rodrigues_formula(&n, &x))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

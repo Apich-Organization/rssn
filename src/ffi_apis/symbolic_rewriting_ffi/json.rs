@@ -23,7 +23,7 @@ struct ApplyRulesInput {
 ///
 /// Input: JSON object with "expr" and "rules" fields
 /// Output: JSON-serialized Expr (the normal form)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_apply_rules_to_normal_form_json(
     json_str: *const c_char
@@ -52,7 +52,7 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_json(
 ///
 /// Input: JSON array of equations (`Expr::Eq`)
 /// Output: JSON array of `RewriteRule` objects
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_knuth_bendix_json(
     json_str: *const c_char
@@ -87,7 +87,7 @@ pub extern "C" fn rssn_knuth_bendix_json(
 ///
 /// Input: JSON object with "lhs" and "rhs" fields (both Expr)
 /// Output: JSON-serialized `RewriteRule`
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_rewrite_rule_new_json(
     json_str: *const c_char
@@ -122,7 +122,7 @@ pub extern "C" fn rssn_rewrite_rule_new_json(
 ///
 /// Input: JSON-serialized `RewriteRule`
 /// Output: JSON object with "string" field
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_rewrite_rule_to_string_json(
     json_str: *const c_char

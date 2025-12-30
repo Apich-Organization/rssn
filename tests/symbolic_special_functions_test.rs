@@ -531,18 +531,18 @@ fn test_generalized_laguerre() {
 
     // L_0^α(x) = 1 for any α
     let gl = generalized_laguerre(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
+        &Expr::Constant(0.0),
+        &Expr::Constant(1.0),
+        &Expr::Constant(2.0),
     );
 
     assert_approx_eq(&gl, 1.0);
 
     // L_n^0(x) = L_n(x)
     let gl0 = generalized_laguerre(
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        &Expr::Constant(1.0),
+        &Expr::Constant(0.0),
+        &Expr::Constant(0.0),
     );
 
     let l1 = laguerre_l(
@@ -569,7 +569,7 @@ fn test_hermite_h_basic() {
 
     // H_0(x) = 1
     let h0 = hermite_h(
-        Expr::Constant(0.0),
+        &Expr::Constant(0.0),
         x.clone(),
     );
 
@@ -577,7 +577,7 @@ fn test_hermite_h_basic() {
 
     // H_1(x) = 2x, at x=0: H_1(0) = 0
     let h1_at_0 = hermite_h(
-        Expr::Constant(1.0),
+        &Expr::Constant(1.0),
         Expr::Constant(0.0),
     );
 
@@ -585,7 +585,7 @@ fn test_hermite_h_basic() {
 
     // H_1(1) = 2
     let h1_at_1 = hermite_h(
-        Expr::Constant(1.0),
+        &Expr::Constant(1.0),
         Expr::Constant(1.0),
     );
 
@@ -598,7 +598,7 @@ fn test_hermite_h_recurrence() {
 
     // H_2(x) = 4x² - 2, at x=0: H_2(0) = -2
     let h2_at_0 = hermite_h(
-        Expr::Constant(2.0),
+        &Expr::Constant(2.0),
         Expr::Constant(0.0),
     );
 
@@ -606,7 +606,7 @@ fn test_hermite_h_recurrence() {
 
     // H_2(1) = 4 - 2 = 2
     let h2_at_1 = hermite_h(
-        Expr::Constant(2.0),
+        &Expr::Constant(2.0),
         Expr::Constant(1.0),
     );
 
@@ -626,16 +626,16 @@ fn test_chebyshev_t_basic() {
 
     // T_0(x) = 1
     let t0 = chebyshev_t(
-        Expr::Constant(0.0),
-        x.clone(),
+        &Expr::Constant(0.0),
+        &x,
     );
 
     assert_approx_eq(&t0, 1.0);
 
     // T_1(x) = x
     let t1 = chebyshev_t(
-        Expr::Constant(1.0),
-        x.clone(),
+        &Expr::Constant(1.0),
+        &x,
     );
 
     assert_eq!(t1, x);
@@ -649,8 +649,8 @@ fn test_chebyshev_t_at_one() {
     for n in 0 ..= 5 {
 
         let tn = chebyshev_t(
-            Expr::Constant(n as f64),
-            Expr::Constant(1.0),
+            &Expr::Constant(n as f64),
+            &Expr::Constant(1.0),
         );
 
         assert_approx_eq(&tn, 1.0);
@@ -663,22 +663,22 @@ fn test_chebyshev_t_at_minus_one() {
 
     // T_n(-1) = (-1)^n
     let t0 = chebyshev_t(
-        Expr::Constant(0.0),
-        Expr::Constant(-1.0),
+        &Expr::Constant(0.0),
+        &Expr::Constant(-1.0),
     );
 
     assert_approx_eq(&t0, 1.0);
 
     let t1 = chebyshev_t(
-        Expr::Constant(1.0),
-        Expr::Constant(-1.0),
+        &Expr::Constant(1.0),
+        &Expr::Constant(-1.0),
     );
 
     assert_approx_eq(&t1, -1.0);
 
     let t2 = chebyshev_t(
-        Expr::Constant(2.0),
-        Expr::Constant(-1.0),
+        &Expr::Constant(2.0),
+        &Expr::Constant(-1.0),
     );
 
     assert_approx_eq(&t2, 1.0);
@@ -693,16 +693,16 @@ fn test_chebyshev_u_basic() {
 
     // U_0(x) = 1
     let u0 = chebyshev_u(
-        Expr::Constant(0.0),
-        x.clone(),
+        &Expr::Constant(0.0),
+        &x,
     );
 
     assert_approx_eq(&u0, 1.0);
 
     // U_1(x) = 2x, at x=1: U_1(1) = 2
     let u1_at_1 = chebyshev_u(
-        Expr::Constant(1.0),
-        Expr::Constant(1.0),
+        &Expr::Constant(1.0),
+        &Expr::Constant(1.0),
     );
 
     assert_approx_eq(&u1_at_1, 2.0);
@@ -915,8 +915,8 @@ fn test_polynomial_orthogonality_at_boundaries(
         }
 
         let tn = chebyshev_t(
-            Expr::Constant(n as f64),
-            Expr::Constant(1.0),
+            &Expr::Constant(n as f64),
+            &Expr::Constant(1.0),
         );
 
         if let Some(val) =

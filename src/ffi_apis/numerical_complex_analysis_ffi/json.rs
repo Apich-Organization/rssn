@@ -21,7 +21,7 @@ struct EvalInput {
 
 /// Evaluates a complex expression using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -92,7 +92,7 @@ struct ContourInput {
 
 /// Computes the contour integral of a complex expression using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

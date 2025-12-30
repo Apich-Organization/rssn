@@ -55,7 +55,7 @@ struct PrincipalStressOutput {
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -114,7 +114,7 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -177,7 +177,7 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

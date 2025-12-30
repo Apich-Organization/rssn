@@ -3,7 +3,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::geometric_algebra::Multivector;
 
 /// Creates a new scalar multivector (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_multivector_scalar(
     p: u32,
@@ -30,7 +30,7 @@ pub extern "C" fn rssn_bincode_multivector_scalar(
 }
 
 /// Computes geometric product (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_multivector_geometric_product(
     a_buf: BincodeBuffer,
@@ -43,22 +43,21 @@ pub extern "C" fn rssn_bincode_multivector_geometric_product(
     let b: Option<Multivector> =
         from_bincode_buffer(&b_buf);
 
-    if let (Some(mv_a), Some(mv_b)) =
-        (a, b)
-    {
+    match (a, b)
+    { (Some(mv_a), Some(mv_b)) => {
 
         let result = mv_a
             .geometric_product(&mv_b);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes outer product (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_multivector_outer_product(
     a_buf: BincodeBuffer,
@@ -71,22 +70,21 @@ pub extern "C" fn rssn_bincode_multivector_outer_product(
     let b: Option<Multivector> =
         from_bincode_buffer(&b_buf);
 
-    if let (Some(mv_a), Some(mv_b)) =
-        (a, b)
-    {
+    match (a, b)
+    { (Some(mv_a), Some(mv_b)) => {
 
         let result =
             mv_a.outer_product(&mv_b);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes inner product (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_multivector_inner_product(
     a_buf: BincodeBuffer,
@@ -99,22 +97,21 @@ pub extern "C" fn rssn_bincode_multivector_inner_product(
     let b: Option<Multivector> =
         from_bincode_buffer(&b_buf);
 
-    if let (Some(mv_a), Some(mv_b)) =
-        (a, b)
-    {
+    match (a, b)
+    { (Some(mv_a), Some(mv_b)) => {
 
         let result =
             mv_a.inner_product(&mv_b);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes reverse (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_multivector_reverse(
     mv_buf: BincodeBuffer
@@ -136,7 +133,7 @@ pub extern "C" fn rssn_bincode_multivector_reverse(
 }
 
 /// Computes grade projection (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_multivector_grade_projection(
     mv_buf: BincodeBuffer,
@@ -159,7 +156,7 @@ pub extern "C" fn rssn_bincode_multivector_grade_projection(
 }
 
 /// Computes magnitude (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_multivector_magnitude(
     mv_buf: BincodeBuffer

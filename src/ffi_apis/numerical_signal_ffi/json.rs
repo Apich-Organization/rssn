@@ -42,7 +42,7 @@ struct ConvolveInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -110,7 +110,7 @@ pub unsafe extern "C" fn rssn_num_signal_fft_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -180,7 +180,7 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

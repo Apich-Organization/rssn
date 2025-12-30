@@ -8,7 +8,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::ode;
 
 /// Solves an ODE using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_ode(
     ode_json: *const c_char,
@@ -49,29 +49,29 @@ pub extern "C" fn rssn_json_solve_ode(
         }
     };
 
-    if let (
-        Some(ode),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         ode_expr,
         func_str,
         var_str,
-    ) {
+    ) { (
+        Some(ode),
+        Some(f),
+        Some(v),
+    ) => {
 
         let result = ode::solve_ode(
             &ode, f, v, None,
         );
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Solves a separable ODE using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_separable_ode(
     equation_json: *const c_char,
@@ -112,15 +112,15 @@ pub extern "C" fn rssn_json_solve_separable_ode(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         equation,
         func_str,
         var_str,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) => {
 
         match ode::solve_separable_ode(
             &eq, f, v,
@@ -132,14 +132,14 @@ pub extern "C" fn rssn_json_solve_separable_ode(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Solves a first-order linear ODE using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_first_order_linear_ode(
     equation_json: *const c_char,
@@ -180,28 +180,28 @@ pub extern "C" fn rssn_json_solve_first_order_linear_ode(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         equation,
         func_str,
         var_str,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) => {
 
         match ode::solve_first_order_linear_ode(&eq, f, v) {
             | Some(result) => to_json_string(&result),
             | None => std::ptr::null_mut(),
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Solves a Bernoulli ODE using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_bernoulli_ode(
     equation_json: *const c_char,
@@ -242,15 +242,15 @@ pub extern "C" fn rssn_json_solve_bernoulli_ode(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         equation,
         func_str,
         var_str,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) => {
 
         match ode::solve_bernoulli_ode(
             &eq, f, v,
@@ -262,14 +262,14 @@ pub extern "C" fn rssn_json_solve_bernoulli_ode(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Solves a Riccati ODE using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_riccati_ode(
     equation_json: *const c_char,
@@ -314,17 +314,17 @@ pub extern "C" fn rssn_json_solve_riccati_ode(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-        Some(y),
-    ) = (
+    match (
         equation,
         func_str,
         var_str,
         y1,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+        Some(y),
+    ) => {
 
         match ode::solve_riccati_ode(
             &eq, f, v, &y,
@@ -336,14 +336,14 @@ pub extern "C" fn rssn_json_solve_riccati_ode(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Solves a Cauchy-Euler ODE using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_cauchy_euler_ode(
     equation_json: *const c_char,
@@ -384,28 +384,28 @@ pub extern "C" fn rssn_json_solve_cauchy_euler_ode(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         equation,
         func_str,
         var_str,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) => {
 
         match ode::solve_cauchy_euler_ode(&eq, f, v) {
             | Some(result) => to_json_string(&result),
             | None => std::ptr::null_mut(),
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Solves an exact ODE using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_exact_ode(
     equation_json: *const c_char,
@@ -446,15 +446,15 @@ pub extern "C" fn rssn_json_solve_exact_ode(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         equation,
         func_str,
         var_str,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) => {
 
         match ode::solve_exact_ode(
             &eq, f, v,
@@ -466,14 +466,14 @@ pub extern "C" fn rssn_json_solve_exact_ode(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Solves by reduction of order using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_by_reduction_of_order(
     equation_json: *const c_char,
@@ -518,24 +518,24 @@ pub extern "C" fn rssn_json_solve_by_reduction_of_order(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-        Some(y),
-    ) = (
+    match (
         equation,
         func_str,
         var_str,
         y1,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+        Some(y),
+    ) => {
 
         match ode::solve_by_reduction_of_order(&eq, f, v, &y) {
             | Some(result) => to_json_string(&result),
             | None => std::ptr::null_mut(),
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

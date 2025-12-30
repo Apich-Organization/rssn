@@ -128,17 +128,16 @@ fn try_numeric_value(
         },
         | Expr::Dag(node) => {
 
-            if let Ok(inner) =
-                node.to_expr()
-            {
+            match node.to_expr()
+            { Ok(inner) => {
 
                 try_numeric_value(
                     &inner,
                 )
-            } else {
+            } _ => {
 
                 None
-            }
+            }}
         },
         // Try to simplify and extract
         | _ => {

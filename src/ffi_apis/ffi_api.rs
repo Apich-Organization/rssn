@@ -69,7 +69,7 @@ pub(crate) unsafe fn update_last_error(
 ///
 /// The returned pointer is valid until the next call to an FFI function on the same thread.
 /// The caller should not free this pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -112,7 +112,7 @@ macro_rules! impl_handle_api {
         /// Deserializes a JSON string into a `$T` object and returns a raw pointer (handle) to it.
         ///
         /// The caller is responsible for freeing the returned handle using `$free`.
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         #[deprecated(
             since = "0.1.19",
             note = "This module is deprecated \
@@ -153,7 +153,7 @@ macro_rules! impl_handle_api {
         /// Serializes a `$T` object (given by its handle) into a JSON string.
         ///
         /// The caller is responsible for freeing the returned string using `free_string`.
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         #[deprecated(
             since = "0.1.19",
             note = "This module is deprecated \
@@ -196,7 +196,7 @@ macro_rules! impl_handle_api {
             since = "0.1.6",
             note = "Please use the handle-based `rssn_expr_free` instead."
         )]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
 
         /// # Safety
         ///
@@ -228,7 +228,7 @@ impl_handle_api!(
 /// Returns the string representation of an `Expr` handle.
 ///
 /// The caller is responsible for freeing the returned string using `free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -272,7 +272,7 @@ use crate::symbolic::unit_unification::unify_expression;
 /// Creates an expression from a JSON string and returns a thread-safe handle.
 ///
 /// Returns 0 if the JSON is invalid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -290,7 +290,7 @@ use crate::symbolic::unit_unification::unify_expression;
 
 pub unsafe extern "C" fn rssn_expr_create(
     json_ptr: *const c_char
-) -> usize {
+) -> usize { unsafe {
 
     if json_ptr.is_null() {
 
@@ -335,10 +335,10 @@ pub unsafe extern "C" fn rssn_expr_create(
             0
         },
     }
-}
+}}
 
 /// Frees the memory associated with an expression handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -367,7 +367,7 @@ pub unsafe extern "C" fn rssn_expr_free(
 /// Simplifies an expression handle and returns a handle to the new, simplified expression.
 ///
 /// Returns 0 on error (e.g., invalid handle).
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -385,7 +385,7 @@ pub unsafe extern "C" fn rssn_expr_free(
 
 pub unsafe extern "C" fn rssn_expr_simplify(
     handle: &usize
-) -> usize {
+) -> usize { unsafe {
 
     match HANDLE_MANAGER.get(*handle) {
         | Some(expr) => {
@@ -407,7 +407,7 @@ pub unsafe extern "C" fn rssn_expr_simplify(
             0
         },
     }
-}
+}}
 
 #[derive(Serialize, Deserialize)]
 /// A generic FFI-compatible result type, used for returning either a successful value or an error.
@@ -451,7 +451,7 @@ impl<T, E> FfiResult<T, E> {
             `rssn_expr_simplify` \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -463,7 +463,7 @@ impl<T, E> FfiResult<T, E> {
 
 pub unsafe extern "C" fn expr_simplify(
     handle: *mut Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     // 1. Check the pointer itself (now *mut Expr)
     if handle.is_null() {
@@ -486,7 +486,7 @@ pub unsafe extern "C" fn expr_simplify(
         simplified_expr,
     ))
     .cast_mut()
-}
+}}
 
 /// Attempts to unify the units within an expression.
 ///
@@ -494,7 +494,7 @@ pub unsafe extern "C" fn expr_simplify(
 /// new `Expr` object in the `ok` field or an error message in the `err` field.
 /// The caller can then use `expr_from_json` to get a handle to the new expression.
 /// The caller is responsible for freeing the returned string using `free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -585,7 +585,7 @@ pub unsafe extern "C" fn expr_unify_expression(
 ///    by calling `free_string` on the returned pointer.
 ///
 /// Returns a pointer to a null-terminated C string. The caller is responsible for freeing this string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -605,7 +605,7 @@ pub unsafe extern "C" fn rssn_test_string_passing(
 }
 
 /// Frees a C string that was allocated by this library.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -635,7 +635,7 @@ use crate::output::pretty_print::pretty_print;
 /// Converts an expression to a LaTeX string.
 ///
 /// The caller is responsible for freeing the returned string using `free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -676,7 +676,7 @@ pub unsafe extern "C" fn expr_to_latex(
 /// Converts an expression to a formatted, pretty-printed string.
 ///
 /// The caller is responsible for freeing the returned string using `free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -734,7 +734,7 @@ struct BezierInput {
 }
 
 /// Computes a Lagrange interpolating polynomial and returns its coefficients as a JSON string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -839,7 +839,7 @@ pub unsafe extern "C" fn interpolate_lagrange(
 }
 
 /// Evaluates a point on a Bézier curve and returns the coordinates as a JSON string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -970,9 +970,9 @@ struct TwoU64Input {
 }
 
 macro_rules! impl_ffi_1_vec_in_f64_out {
-    ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
+    ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         #[deprecated(since = "0.1.6", note = $note)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         /// Implements a FFI function that takes a JSON string representing a vector (Vec<f64>),
         /// calls a wrapped function that operates on it, and returns the f64 result as a JSON string.
         /// # Safety
@@ -1036,9 +1036,9 @@ macro_rules! impl_ffi_1_vec_in_f64_out {
 }
 
 macro_rules! impl_ffi_2_vec_in_f64_out {
-    ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
+    ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         #[deprecated(since = "0.1.6", note = $note)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         /// Implements a FFI function that takes a JSON string representing two vectors (Vec<f64>),
         /// calls a wrapped function that operates on them, and returns the f64 result as a JSON string.
         /// # Safety
@@ -1114,9 +1114,9 @@ macro_rules! impl_ffi_2_vec_in_f64_out {
 }
 
 macro_rules! impl_ffi_2_vec_in_vec_out {
-    ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
+    ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         #[deprecated(since = "0.1.6", note = $note)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         /// Implements a FFI function that takes a JSON string representing two vectors (Vec<f64>),
         /// calls a wrapped function that operates on them, and returns the Vec<f64> result as a JSON string.
         /// # Safety
@@ -1192,9 +1192,9 @@ macro_rules! impl_ffi_2_vec_in_vec_out {
 }
 
 macro_rules! impl_ffi_1_u64_in_f64_out {
-    ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
+    ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         #[deprecated(since = "0.1.6", note = $note)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         /// Implements a FFI function that takes a JSON string representing a u64,
         /// calls a wrapped function that operates on it, and returns the f64 result as a JSON string.
         /// # Safety
@@ -1256,9 +1256,9 @@ macro_rules! impl_ffi_1_u64_in_f64_out {
 }
 
 macro_rules! impl_ffi_2_u64_in_f64_out {
-    ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
+    ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         #[deprecated(since = "0.1.6", note = $note)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         /// Implements a FFI function that takes a JSON string representing two u64 values,
         /// calls a wrapped function that operates on them, and returns the f64 result as a JSON string.
         /// # Safety
@@ -1376,7 +1376,7 @@ impl_ffi_2_vec_in_vec_out!(
             rssn_vec_scalar_mul \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Multiplies a vector by a scalar.
 ///
@@ -1495,7 +1495,7 @@ impl_ffi_2_u64_in_f64_out!(
 /// # Safety
 /// The `data` pointer must point to a valid array of `len` f64 elements.
 /// The `result` pointer must point to a valid f64 location.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -1515,7 +1515,7 @@ pub unsafe extern "C" fn rssn_vec_norm(
     data: *const f64,
     len: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data.is_null()
         || result.is_null()
@@ -1544,7 +1544,7 @@ pub unsafe extern "C" fn rssn_vec_norm(
     };
 
     0
-}
+}}
 
 /// Computes the dot product of two vectors.
 ///
@@ -1561,7 +1561,7 @@ pub unsafe extern "C" fn rssn_vec_norm(
 /// # Safety
 /// The `d1` and `d2` pointers must point to valid arrays of `l1` and `l2` f64 elements respectively.
 /// The `result` pointer must point to a valid f64 location.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -1583,7 +1583,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
     d2: *const f64,
     l2: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if d1.is_null()
         || d2.is_null()
@@ -1630,7 +1630,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
             -1
         },
     }
-}
+}}
 
 /// Computes the factorial of a number `n`.
 ///
@@ -1643,7 +1643,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
 ///
 /// # Safety
 /// The `result` pointer must point to a valid f64 location.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -1662,7 +1662,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
 pub unsafe extern "C" fn rssn_comb_factorial(
     n: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -1682,7 +1682,7 @@ pub unsafe extern "C" fn rssn_comb_factorial(
     };
 
     0
-}
+}}
 
 /// Computes the number of permutations (nPk).
 ///
@@ -1696,7 +1696,7 @@ pub unsafe extern "C" fn rssn_comb_factorial(
 ///
 /// # Safety
 /// The `result` pointer must point to a valid f64 location.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -1716,7 +1716,7 @@ pub unsafe extern "C" fn rssn_comb_permutations(
     n: u64,
     k: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -1738,7 +1738,7 @@ pub unsafe extern "C" fn rssn_comb_permutations(
     };
 
     0
-}
+}}
 
 /// Computes the number of combinations (nCk).
 ///
@@ -1752,7 +1752,7 @@ pub unsafe extern "C" fn rssn_comb_permutations(
 ///
 /// # Safety
 /// The `result` pointer must point to a valid f64 location.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -1772,7 +1772,7 @@ pub unsafe extern "C" fn rssn_comb_combinations(
     n: u64,
     k: u64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -1794,7 +1794,7 @@ pub unsafe extern "C" fn rssn_comb_combinations(
     };
 
     0
-}
+}}
 
 use crate::numerical::number_theory as nt;
 
@@ -1827,12 +1827,12 @@ struct U64NtInput {
 }
 
 macro_rules! impl_ffi_2_u64_in_u64_out {
-    ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
+    ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         /// Computes `$wrapped_fn` from two `u64` values passed as a JSON string.
         ///
         /// This function is deprecated.
         #[deprecated(since = "0.1.6", note = $note)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         /// # Safety
         ///
         /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1895,12 +1895,12 @@ macro_rules! impl_ffi_2_u64_in_u64_out {
 }
 
 macro_rules! impl_ffi_1_u64_in_bool_out {
-    ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
+    ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         /// Computes `$wrapped_fn` from a single `u64` value passed as a JSON string and returns a boolean.
         ///
         /// This function is deprecated.
         #[deprecated(since = "0.1.6", note = $note)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         /// # Safety
         ///
         /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1982,7 +1982,7 @@ impl_ffi_1_u64_in_bool_out!(
     note = "Please use \
             rssn_nt_mod_pow instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -2069,7 +2069,7 @@ pub unsafe extern "C" fn nt_mod_pow(
             rssn_nt_mod_inverse \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -2165,9 +2165,9 @@ struct SpecialFunc2Input {
 }
 
 macro_rules! impl_special_fn_one_arg {
-    ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
+    ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         #[deprecated(since = "0.1.6", note = $note)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         /// Implements a FFI function that takes a JSON string representing a single f64 argument,
         /// calls a wrapped special function that operates on it, and returns the f64 result as a JSON string.
         /// # Safety
@@ -2242,9 +2242,9 @@ macro_rules! impl_special_fn_one_arg {
 }
 
 macro_rules! impl_special_fn_two_args {
-    ($fn_name:ident, $wrapped_fn:ident, $note:expr) => {
+    ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         #[deprecated(since = "0.1.6", note = $note)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         /// Implements a FFI function that takes a JSON string representing two f64 arguments,
         /// calls a wrapped special function that operates on them, and returns the f64 result as a JSON string.
         /// # Safety
@@ -2375,7 +2375,7 @@ macro_rules! impl_rssn_special_fn_one_arg {
         ///
         /// # Safety
         /// The `result` pointer must point to a valid `f64` location.
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         #[deprecated(
             since = "0.1.19",
             note = "This module is deprecated \
@@ -2392,7 +2392,7 @@ macro_rules! impl_rssn_special_fn_one_arg {
         pub unsafe extern "C" fn $fn_name(
             x : f64,
             result : *mut f64,
-        ) -> i32 {
+        ) -> i32 { unsafe {
 
             if result.is_null() {
 
@@ -2410,13 +2410,13 @@ macro_rules! impl_rssn_special_fn_one_arg {
             };
 
             0
-        }
+        }}
     };
 }
 
 macro_rules! impl_rssn_special_fn_two_args {
     ($fn_name:ident, $wrapped_fn:ident) => {
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         #[deprecated(
             since = "0.1.19",
             note = "This module is deprecated \
@@ -2438,7 +2438,7 @@ macro_rules! impl_rssn_special_fn_two_args {
             a : f64,
             b : f64,
             result : *mut f64,
-        ) -> i32 {
+        ) -> i32 { unsafe {
 
             if result.is_null() {
 
@@ -2456,7 +2456,7 @@ macro_rules! impl_rssn_special_fn_two_args {
             };
 
             0
-        }
+        }}
     };
 }
 
@@ -2507,7 +2507,7 @@ struct TransformsInput {
     note = "Please use rssn_fft \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -2606,7 +2606,7 @@ pub unsafe extern "C" fn transforms_fft(
     note = "Please use rssn_ifft \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -2703,7 +2703,7 @@ use crate::numerical::transforms::fft_slice;
 use crate::numerical::transforms::ifft_slice;
 
 /// Computes the Fast Fourier Transform (FFT) of a sequence of complex numbers in-place.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -2722,7 +2722,7 @@ use crate::numerical::transforms::ifft_slice;
 pub unsafe extern "C" fn rssn_fft(
     data: *mut Complex<f64>,
     len: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data.is_null() {
 
@@ -2745,10 +2745,10 @@ pub unsafe extern "C" fn rssn_fft(
     fft_slice(complex_slice);
 
     0
-}
+}}
 
 /// Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers in-place.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -2767,7 +2767,7 @@ pub unsafe extern "C" fn rssn_fft(
 pub unsafe extern "C" fn rssn_ifft(
     data: *mut Complex<f64>,
     len: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data.is_null() {
 
@@ -2790,7 +2790,7 @@ pub unsafe extern "C" fn rssn_ifft(
     ifft_slice(complex_slice);
 
     0
-}
+}}
 
 #[derive(Deserialize)]
 
@@ -2823,7 +2823,7 @@ struct PolyFromCoeffsInput {
             rssn_poly_is_polynomial \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -2873,7 +2873,7 @@ pub unsafe extern "C" fn poly_is_polynomial(
     note = "Please use \
             rssn_poly_degree instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -2922,7 +2922,7 @@ pub unsafe extern "C" fn poly_degree(
     since = "0.1.6",
     note = "Please use rssn_poly_leading_coefficient instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -2976,7 +2976,7 @@ pub unsafe extern "C" fn poly_leading_coefficient(
             rssn_poly_long_division \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -3081,7 +3081,7 @@ pub unsafe extern "C" fn poly_long_division(
             rssn_poly_to_coeffs \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -3182,7 +3182,7 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(
             rssn_poly_from_coeffs \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -3248,7 +3248,7 @@ pub unsafe extern "C" fn poly_from_coeffs_vec(
 /// # Safety
 /// The `var_ptr` must point to a valid null-terminated C string.
 /// The `result` pointer must point to a valid boolean location.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -3268,7 +3268,7 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
     expr_handle: usize,
     var_ptr: *const c_char,
     result: *mut bool,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null()
         || var_ptr.is_null()
@@ -3320,7 +3320,7 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
             -1
         },
     }
-}
+}}
 
 /// Computes the degree of a polynomial expression with respect to a given variable.
 ///
@@ -3335,7 +3335,7 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
 /// # Safety
 /// The `var_ptr` must point to a valid null-terminated C string.
 /// The `result` pointer must point to a valid `i64` location.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -3355,7 +3355,7 @@ pub unsafe extern "C" fn rssn_poly_degree(
     expr_handle: usize,
     var_ptr: *const c_char,
     result: *mut i64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null()
         || var_ptr.is_null()
@@ -3407,7 +3407,7 @@ pub unsafe extern "C" fn rssn_poly_degree(
             -1
         },
     }
-}
+}}
 
 /// Performs polynomial long division on two expressions with respect to a given variable.
 ///
@@ -3424,7 +3424,7 @@ pub unsafe extern "C" fn rssn_poly_degree(
 /// # Safety
 /// The `var_ptr` must point to a valid null-terminated C string.
 /// The `q_handle` and `r_handle` pointers must point to valid `usize` locations.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -3446,7 +3446,7 @@ pub unsafe extern "C" fn rssn_poly_long_division(
     var_ptr: *const c_char,
     q_handle: *mut usize,
     r_handle: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if q_handle.is_null()
         || r_handle.is_null()
@@ -3506,7 +3506,7 @@ pub unsafe extern "C" fn rssn_poly_long_division(
             -1
         },
     }
-}
+}}
 
 #[derive(Deserialize)]
 
@@ -3544,7 +3544,7 @@ struct RegressionResult {
 macro_rules! impl_stats_fn_single_data {
     ($fn_name:ident, $wrapped_fn:ident) => {
         /// Computes `$wrapped_fn` for a single vector of `f64` data passed as a JSON string.
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         #[deprecated(
             since = "0.1.19",
             note = "This module is deprecated \
@@ -3676,7 +3676,7 @@ impl_stats_fn_single_data!(
             rssn_stats_percentile \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -3773,7 +3773,7 @@ pub unsafe extern "C" fn stats_percentile(
 macro_rules! impl_stats_fn_two_data {
     ($fn_name:ident, $wrapped_fn:ident) => {
         /// Computes `$wrapped_fn` for two vectors of `f64` data passed as a JSON string.
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         #[deprecated(
             since = "0.1.19",
             note = "This module is deprecated \
@@ -3872,7 +3872,7 @@ impl_stats_fn_two_data!(
     since = "0.1.6",
     note = "Please use rssn_stats_simple_linear_regression instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -3978,7 +3978,7 @@ pub unsafe extern "C" fn stats_simple_linear_regression(
 /// # Safety
 /// The `data` pointer must point to a valid array of `len` f64 elements.
 /// The `result` pointer must point to a valid f64 location.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -3998,7 +3998,7 @@ pub unsafe extern "C" fn rssn_stats_mean(
     data: *const f64,
     len: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data.is_null()
         || result.is_null()
@@ -4028,7 +4028,7 @@ pub unsafe extern "C" fn rssn_stats_mean(
     };
 
     0
-}
+}}
 
 /// Computes the variance of a slice of f64 values.
 ///
@@ -4043,7 +4043,7 @@ pub unsafe extern "C" fn rssn_stats_mean(
 /// # Safety
 /// The `data` pointer must point to a valid array of `len` f64 elements.
 /// The `result` pointer must point to a valid f64 location.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -4063,7 +4063,7 @@ pub unsafe extern "C" fn rssn_stats_variance(
     data: *const f64,
     len: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data.is_null()
         || result.is_null()
@@ -4094,7 +4094,7 @@ pub unsafe extern "C" fn rssn_stats_variance(
     };
 
     0
-}
+}}
 
 /// Computes the standard deviation of a slice of f64 values.
 ///
@@ -4109,7 +4109,7 @@ pub unsafe extern "C" fn rssn_stats_variance(
 /// # Safety
 /// The `data` pointer must point to a valid array of `len` f64 elements.
 /// The `result` pointer must point to a valid f64 location.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -4129,7 +4129,7 @@ pub unsafe extern "C" fn rssn_stats_std_dev(
     data: *const f64,
     len: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data.is_null()
         || result.is_null()
@@ -4159,9 +4159,9 @@ pub unsafe extern "C" fn rssn_stats_std_dev(
     };
 
     0
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -4188,7 +4188,7 @@ pub unsafe extern "C" fn rssn_stats_covariance(
     d2: *const f64,
     len: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if d1.is_null()
         || d2.is_null()
@@ -4227,7 +4227,7 @@ pub unsafe extern "C" fn rssn_stats_covariance(
     };
 
     0
-}
+}}
 
 use crate::numerical::calculus::gradient;
 use crate::numerical::integrate::quadrature;
@@ -4272,7 +4272,7 @@ use crate::symbolic::solve::solve;
             rssn_expr_differentiate \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4325,7 +4325,7 @@ pub unsafe extern "C" fn expr_differentiate(
             rssn_expr_substitute \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4388,7 +4388,7 @@ pub unsafe extern "C" fn expr_substitute(
             rssn_expr_integrate \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4442,7 +4442,7 @@ pub unsafe extern "C" fn expr_integrate(
             rssn_definite_integrate \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4510,7 +4510,7 @@ pub unsafe extern "C" fn expr_definite_integrate(
     note = "Please use \
             rssn_expr_limit instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4567,7 +4567,7 @@ pub unsafe extern "C" fn expr_limit(
     note = "Please use \
             rssn_expr_solve instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4652,7 +4652,7 @@ pub unsafe extern "C" fn expr_solve(
     note = "Please use \
             rssn_matrix_add instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4694,7 +4694,7 @@ pub unsafe extern "C" fn matrix_add(
     note = "Please use \
             rssn_matrix_sub instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4736,7 +4736,7 @@ pub unsafe extern "C" fn matrix_sub(
     note = "Please use \
             rssn_matrix_mul instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4779,7 +4779,7 @@ pub unsafe extern "C" fn matrix_mul(
             rssn_matrix_transpose \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4816,7 +4816,7 @@ pub unsafe extern "C" fn matrix_transpose(
             rssn_matrix_determinant \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4853,7 +4853,7 @@ pub unsafe extern "C" fn matrix_determinant(
             rssn_matrix_inverse \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4890,7 +4890,7 @@ pub unsafe extern "C" fn matrix_inverse(
             rssn_matrix_identity \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4917,7 +4917,7 @@ pub unsafe extern "C" fn matrix_identity(
             rssn_matrix_scalar_mul \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -4964,7 +4964,7 @@ pub unsafe extern "C" fn matrix_scalar_mul(
     note = "Please use \
             rssn_matrix_trace instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -5045,7 +5045,7 @@ pub unsafe extern "C" fn matrix_trace(
     since = "0.1.6",
     note = "Please use rssn_matrix_characteristic_polynomial instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -5139,7 +5139,7 @@ pub unsafe extern "C" fn matrix_characteristic_polynomial(
     note = "Please use \
             rssn_matrix_rref instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -5221,7 +5221,7 @@ pub unsafe extern "C" fn matrix_rref(
     note = "Please use \
             rssn_null_space instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -5309,7 +5309,7 @@ struct MatrixPair {
     since = "0.1.6",
     note = "Please use rssn_matrix_lu_decomposition instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -5389,7 +5389,7 @@ pub unsafe extern "C" fn matrix_lu_decomposition(
     since = "0.1.6",
     note = "Please use rssn_matrix_eigen_decomposition instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -5480,7 +5480,7 @@ struct GradientInput {
             rssn_numerical_gradient \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the numerical gradient of an expression.
 ///
@@ -5622,7 +5622,7 @@ struct IntegrationInput {
             rssn_numerical_integrate \
             instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Performs numerical integration of an expression.
 ///
@@ -5752,7 +5752,7 @@ struct AdvectionDiffusion1DInput {
     since = "0.1.6",
     note = "Please use rssn_physics_solve_advection_diffusion_1d instead."
 )]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Solves the 1D advection-diffusion equation.
 ///
@@ -5860,7 +5860,7 @@ pub struct FfiPoint {
 
 /// Computes a Lagrange interpolating polynomial from a set of points.
 /// Returns a handle to the resulting polynomial expression.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -5880,7 +5880,7 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
     points_ptr: *const FfiPoint,
     num_points: usize,
     result_handle: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if points_ptr.is_null()
         || result_handle.is_null()
@@ -5934,10 +5934,10 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
             -1
         },
     }
-}
+}}
 
 /// Evaluates a point on a Bezier curve defined by control points.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[allow(clippy::indexing_slicing)]
 #[deprecated(
     since = "0.1.19",
@@ -5959,7 +5959,7 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
     num_points: usize,
     t: f64,
     result_ptr: *mut FfiPoint,
-) -> i32 {
+) -> i32 { unsafe {
 
     if points_ptr.is_null()
         || result_ptr.is_null()
@@ -6016,9 +6016,9 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
 
         -1
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6048,7 +6048,7 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
     n_steps: usize,
     method: u32,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if var.is_null() || result.is_null()
     {
@@ -6126,9 +6126,9 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6145,7 +6145,7 @@ pub unsafe extern "C" fn rssn_matrix_sub(
     h1: usize,
     h2: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result_h.is_null() {
 
@@ -6183,9 +6183,9 @@ pub unsafe extern "C" fn rssn_matrix_sub(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6202,7 +6202,7 @@ pub unsafe extern "C" fn rssn_matrix_mul(
     h1: usize,
     h2: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result_h.is_null() {
 
@@ -6240,9 +6240,9 @@ pub unsafe extern "C" fn rssn_matrix_mul(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6258,7 +6258,7 @@ pub unsafe extern "C" fn rssn_matrix_mul(
 pub unsafe extern "C" fn rssn_matrix_transpose(
     h: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result_h.is_null() {
 
@@ -6293,9 +6293,9 @@ pub unsafe extern "C" fn rssn_matrix_transpose(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6311,7 +6311,7 @@ pub unsafe extern "C" fn rssn_matrix_transpose(
 pub unsafe extern "C" fn rssn_matrix_determinant(
     h: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result_h.is_null() {
 
@@ -6346,9 +6346,9 @@ pub unsafe extern "C" fn rssn_matrix_determinant(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6364,7 +6364,7 @@ pub unsafe extern "C" fn rssn_matrix_determinant(
 pub unsafe extern "C" fn rssn_matrix_inverse(
     h: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result_h.is_null() {
 
@@ -6399,9 +6399,9 @@ pub unsafe extern "C" fn rssn_matrix_inverse(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6417,7 +6417,7 @@ pub unsafe extern "C" fn rssn_matrix_inverse(
 pub unsafe extern "C" fn rssn_matrix_identity(
     size: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result_h.is_null() {
 
@@ -6439,9 +6439,9 @@ pub unsafe extern "C" fn rssn_matrix_identity(
     };
 
     0
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6458,7 +6458,7 @@ pub unsafe extern "C" fn rssn_matrix_scalar_mul(
     scalar_h: usize,
     matrix_h: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result_h.is_null() {
 
@@ -6502,9 +6502,9 @@ pub unsafe extern "C" fn rssn_matrix_scalar_mul(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6535,7 +6535,7 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
     expr_h: usize,
     var: *const c_char,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if var.is_null()
         || result_h.is_null()
@@ -6582,9 +6582,9 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6616,7 +6616,7 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
     var: *const c_char,
     replacement_h: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if var.is_null()
         || result_h.is_null()
@@ -6667,9 +6667,9 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6700,7 +6700,7 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
     expr_h: usize,
     var: *const c_char,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if var.is_null()
         || result_h.is_null()
@@ -6752,9 +6752,9 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6787,7 +6787,7 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
     lower_h: usize,
     upper_h: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if var.is_null()
         || result_h.is_null()
@@ -6844,9 +6844,9 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6878,7 +6878,7 @@ pub unsafe extern "C" fn rssn_calculus_limit(
     var: *const c_char,
     to_h: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if var.is_null()
         || result_h.is_null()
@@ -6928,9 +6928,9 @@ pub unsafe extern "C" fn rssn_calculus_limit(
             -1
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -6956,7 +6956,7 @@ pub unsafe extern "C" fn rssn_solve(
     expr_h: usize,
     var: *const c_char,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     let handle_error =
         |err_msg: String| {
@@ -7029,9 +7029,9 @@ pub unsafe extern "C" fn rssn_solve(
     }
 
     0
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -7048,7 +7048,7 @@ pub unsafe extern "C" fn rssn_matrix_add(
     h1: usize,
     h2: usize,
     result_h: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     let handle_error =
         |err_msg: String| {
@@ -7098,9 +7098,9 @@ pub unsafe extern "C" fn rssn_matrix_add(
     };
 
     0
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -7130,7 +7130,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
     point: *const f64,
     point_len: usize,
     result_vec: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     let handle_error =
         |err_msg: String| {
@@ -7237,9 +7237,9 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
         },
         | Err(e) => handle_error(e),
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -7270,7 +7270,7 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
     dt: f64,
     steps: usize,
     result_ptr: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if initial_cond.is_null()
         || result_ptr.is_null()
@@ -7308,13 +7308,13 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
     }
 
     0
-}
+}}
 
 /// Computes the greatest common divisor (GCD) of two numbers.
 ///
 /// Returns 0 on success, -1 on error.
 /// On error, call `rssn_get_last_error` to get the error message.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -7334,7 +7334,7 @@ pub unsafe extern "C" fn rssn_nt_gcd(
     a: u64,
     b: u64,
     result: *mut u64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -7353,13 +7353,13 @@ pub unsafe extern "C" fn rssn_nt_gcd(
     }
 
     0
-}
+}}
 
 /// Checks if a number is prime using the Miller-Rabin test.
 ///
 /// Returns 0 on success, -1 on error.
 /// On error, call `rssn_get_last_error` to get the error message.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -7378,7 +7378,7 @@ pub unsafe extern "C" fn rssn_nt_gcd(
 pub unsafe extern "C" fn rssn_nt_is_prime(
     n: u64,
     result: *mut bool,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -7401,13 +7401,13 @@ pub unsafe extern "C" fn rssn_nt_is_prime(
     }
 
     0
-}
+}}
 
 /// Computes modular exponentiation (base^exp % modulus).
 ///
 /// Returns 0 on success, -1 on error.
 /// On error, call `rssn_get_last_error` to get the error message.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -7428,7 +7428,7 @@ pub unsafe extern "C" fn rssn_nt_mod_pow(
     exp: u64,
     modulus: u64,
     result: *mut u64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -7452,13 +7452,13 @@ pub unsafe extern "C" fn rssn_nt_mod_pow(
     }
 
     0
-}
+}}
 
 /// Computes the modular multiplicative inverse.
 ///
 /// Returns 0 on success, -1 on error (e.g., if no inverse exists).
 /// On error, call `rssn_get_last_error` to get the error message.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -7478,7 +7478,7 @@ pub unsafe extern "C" fn rssn_nt_mod_inverse(
     a: i64,
     b: i64,
     result: *mut i64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if result.is_null() {
 
@@ -7513,7 +7513,7 @@ pub unsafe extern "C" fn rssn_nt_mod_inverse(
             -1
         },
     }
-}
+}}
 
 static PLUGIN_MANAGER:
     std::sync::LazyLock<
@@ -7534,7 +7534,7 @@ static PLUGIN_MANAGER:
 /// # Returns
 /// 0 on success, -1 on failure. On failure, an error message can be retrieved
 /// with `rssn_get_last_error`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -7557,7 +7557,7 @@ static PLUGIN_MANAGER:
 
 pub unsafe extern "C" fn rssn_init_plugin_manager(
     plugin_dir_ptr: *const c_char
-) -> i32 {
+) -> i32 { unsafe {
 
     let handle_error =
         |err_msg: String| {
@@ -7602,7 +7602,7 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(
             ))
         },
     }
-}
+}}
 
 /// Executes a command on a loaded plugin.
 ///
@@ -7614,7 +7614,7 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(
 /// # Returns
 /// A handle to the resulting `Expr` object on success, or 0 on failure.
 /// On failure, an error message can be retrieved with `rssn_get_last_error`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(
     since = "0.1.19",
     note = "This module is deprecated \
@@ -7639,7 +7639,7 @@ pub unsafe extern "C" fn rssn_plugin_execute(
     plugin_name_ptr: *const c_char,
     command_ptr: *const c_char,
     args_handle: usize,
-) -> usize {
+) -> usize { unsafe {
 
     let handle_error =
         |err_msg: String| {
@@ -7697,4 +7697,4 @@ pub unsafe extern "C" fn rssn_plugin_execute(
             handle_error(format!("Plugin execution failed for '{plugin_name}': {e}"))
         },
     }
-}
+}}

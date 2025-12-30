@@ -3,7 +3,7 @@
 use crate::numerical::fractal_geometry_and_chaos;
 
 /// Computes the escape time for a single point in the Mandelbrot set.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_fractal_mandelbrot_escape_time(
     c_real: f64,
@@ -19,7 +19,7 @@ pub extern "C" fn rssn_num_fractal_mandelbrot_escape_time(
 }
 
 /// Computes the escape time for a single point in a Julia set.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_fractal_julia_escape_time(
     z_real: f64,
@@ -39,7 +39,7 @@ pub extern "C" fn rssn_num_fractal_julia_escape_time(
 }
 
 /// Computes the Lyapunov exponent for the logistic map.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_fractal_lyapunov_logistic(
     r: f64,
@@ -57,7 +57,7 @@ pub extern "C" fn rssn_num_fractal_lyapunov_logistic(
 }
 
 /// Computes the Lyapunov exponent for the Lorenz system.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_fractal_lyapunov_lorenz(
     x0: f64,
@@ -84,7 +84,7 @@ pub extern "C" fn rssn_num_fractal_lyapunov_lorenz(
 ///
 /// # Safety
 /// `out_ptr` must be a valid pointer to at least `num_steps * 3` f64 values.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor(
     dt: f64,
     num_steps: usize,
     out_ptr: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if out_ptr.is_null() {
 
@@ -127,13 +127,13 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor(
     }
 
     0
-}
+}}
 
 /// Generates Henon map points.
 ///
 /// # Safety
 /// `out_ptr` must be a valid pointer to at least `num_steps * 2` f64 values.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -150,7 +150,7 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map(
     a: f64,
     b: f64,
     out_ptr: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if out_ptr.is_null() {
 
@@ -175,13 +175,13 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map(
     }
 
     0
-}
+}}
 
 /// Iterates the logistic map.
 ///
 /// # Safety
 /// `out_ptr` must be a valid pointer to at least `num_steps + 1` f64 values.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -196,7 +196,7 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map(
     r: f64,
     num_steps: usize,
     out_ptr: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if out_ptr.is_null() {
 
@@ -214,13 +214,13 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map(
     }
 
     0
-}
+}}
 
 /// Computes box-counting dimension.
 ///
 /// # Safety
 /// `points_ptr` must be a valid pointer to `num_points * 2` f64 values.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -234,7 +234,7 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim(
     points_ptr: *const f64,
     num_points: usize,
     num_scales: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if points_ptr.is_null()
         || num_points == 0
@@ -257,13 +257,13 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim(
     }
 
     fractal_geometry_and_chaos::box_counting_dimension(&points, num_scales)
-}
+}}
 
 /// Computes correlation dimension.
 ///
 /// # Safety
 /// `points_ptr` must be a valid pointer to `num_points * 2` f64 values.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -277,7 +277,7 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim(
     points_ptr: *const f64,
     num_points: usize,
     num_radii: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if points_ptr.is_null()
         || num_points == 0
@@ -300,4 +300,4 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim(
     }
 
     fractal_geometry_and_chaos::correlation_dimension(&points, num_radii)
-}
+}}

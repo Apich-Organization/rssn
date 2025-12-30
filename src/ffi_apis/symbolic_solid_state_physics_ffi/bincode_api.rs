@@ -7,7 +7,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::solid_state_physics;
 
 /// Computes the density of states for a 3D electron gas using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_density_of_states_3d(
     energy_buf: BincodeBuffer,
@@ -28,12 +28,12 @@ pub extern "C" fn rssn_bincode_density_of_states_3d(
             &volume_buf,
         );
 
-    if let (
+    match (energy, mass, volume)
+    { (
         Some(energy),
         Some(mass),
         Some(volume),
-    ) = (energy, mass, volume)
-    {
+    ) => {
 
         to_bincode_buffer(
             &solid_state_physics::density_of_states_3d(
@@ -42,14 +42,14 @@ pub extern "C" fn rssn_bincode_density_of_states_3d(
                 &volume,
             ),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes Fermi energy for a 3D electron gas using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_fermi_energy_3d(
     concentration_buf: BincodeBuffer,
@@ -64,11 +64,11 @@ pub extern "C" fn rssn_bincode_fermi_energy_3d(
     let mass: Option<Expr> =
         from_bincode_buffer(&mass_buf);
 
-    if let (
+    match (concentration, mass)
+    { (
         Some(concentration),
         Some(mass),
-    ) = (concentration, mass)
-    {
+    ) => {
 
         to_bincode_buffer(
             &solid_state_physics::fermi_energy_3d(
@@ -76,14 +76,14 @@ pub extern "C" fn rssn_bincode_fermi_energy_3d(
                 &mass,
             ),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes Drude conductivity using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_drude_conductivity(
     n_buf: BincodeBuffer,
@@ -104,17 +104,17 @@ pub extern "C" fn rssn_bincode_drude_conductivity(
     let mass: Option<Expr> =
         from_bincode_buffer(&mass_buf);
 
-    if let (
+    match (n, e, tau, mass)
+    { (
         Some(n),
         Some(e),
         Some(tau),
         Some(mass),
-    ) = (n, e, tau, mass)
-    {
+    ) => {
 
         to_bincode_buffer(&solid_state_physics::drude_conductivity(&n, &e, &tau, &mass))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

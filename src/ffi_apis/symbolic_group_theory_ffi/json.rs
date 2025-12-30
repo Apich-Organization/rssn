@@ -7,7 +7,7 @@ use crate::symbolic::group_theory::Group;
 use crate::symbolic::group_theory::GroupElement;
 use crate::symbolic::group_theory::Representation;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Creates a group from a JSON-encoded description.
 ///
@@ -48,7 +48,7 @@ pub unsafe extern "C" fn rssn_json_group_create(
     to_json_string(&group)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Multiplies two group elements using a JSON-encoded group and elements.
 ///
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn rssn_json_group_multiply(
     to_json_string(&result)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the inverse of a group element using a JSON-encoded group.
 ///
@@ -149,7 +149,7 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
     to_json_string(&result)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Tests whether a group is Abelian using a JSON-encoded group.
 ///
@@ -191,7 +191,7 @@ pub unsafe extern "C" fn rssn_json_group_is_abelian(
     group.is_abelian()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the order of a group element using a JSON-encoded group.
 ///
@@ -245,7 +245,7 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
         .unwrap_or(0)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the conjugacy classes of a group using a JSON-encoded group.
 ///
@@ -289,7 +289,7 @@ pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
     to_json_string(&classes)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the center of a group using a JSON-encoded group.
 ///
@@ -331,7 +331,7 @@ pub unsafe extern "C" fn rssn_json_group_center(
     to_json_string(&center)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Creates a group representation from a JSON-encoded description.
 ///
@@ -372,7 +372,7 @@ pub unsafe extern "C" fn rssn_json_representation_create(
     to_json_string(&rep)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Checks whether a representation is valid for a given group using JSON-encoded inputs.
 ///
@@ -425,7 +425,7 @@ pub unsafe extern "C" fn rssn_json_representation_is_valid(
     rep.is_valid(&group)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the character of a representation using a JSON-encoded input.
 ///

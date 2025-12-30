@@ -13,7 +13,7 @@ pub type CubicSplineHandle =
     Arc<dyn Fn(f64) -> f64>;
 
 /// Computes Lagrange interpolation and returns a Polynomial pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -27,7 +27,7 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
     x_coords: *const f64,
     y_coords: *const f64,
     len: usize,
-) -> *mut Polynomial {
+) -> *mut Polynomial { unsafe {
 
     if x_coords.is_null()
         || y_coords.is_null()
@@ -70,10 +70,10 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Creates a cubic spline interpolator handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
     x_coords: *const f64,
     y_coords: *const f64,
     len: usize,
-) -> *mut CubicSplineHandle {
+) -> *mut CubicSplineHandle { unsafe {
 
     if x_coords.is_null()
         || y_coords.is_null()
@@ -130,10 +130,10 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Evaluates a cubic spline at a given x coordinate.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
 pub unsafe extern "C" fn rssn_num_cubic_spline_evaluate(
     handle: *const CubicSplineHandle,
     x: f64,
-) -> f64 {
+) -> f64 { unsafe {
 
     if handle.is_null() {
 
@@ -161,10 +161,10 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_evaluate(
     };
 
     spline(x)
-}
+}}
 
 /// Frees a cubic spline handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_free(
 
 /// Evaluates a Bézier curve at parameter t.
 /// `control_points` is a flattened array of size `n_points` * dim.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -254,7 +254,7 @@ pub unsafe extern "C" fn rssn_num_bezier_curve(
 }
 
 /// Evaluates a B-spline curve at parameter t.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -29,7 +29,7 @@ pub struct BuildInfo {
 
 /// Returns all build information as a JSON string.
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_build_info_json(
 ) -> *mut c_char {
@@ -52,7 +52,7 @@ pub extern "C" fn rssn_get_build_info_json(
 
 /// Returns the build date as a JSON string.
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_build_date_json(
 ) -> *mut c_char {
@@ -71,7 +71,7 @@ pub extern "C" fn rssn_get_build_date_json(
 
 /// Returns the commit SHA as a JSON string.
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_commit_sha_json(
 ) -> *mut c_char {
@@ -101,7 +101,7 @@ macro_rules! gen_ffi_json {
         /// # Safety
         ///
         /// The caller must free the returned string using `rssn_free_string`.
-        #[no_mangle]
+        #[unsafe(no_mangle)]
 
         pub extern "C" fn $ffi_name(
         ) -> *mut std::os::raw::c_char {

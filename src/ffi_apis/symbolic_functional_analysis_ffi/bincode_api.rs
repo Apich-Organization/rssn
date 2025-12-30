@@ -21,7 +21,7 @@ use crate::symbolic::functional_analysis::{HilbertSpace, inner_product, norm, gr
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; the caller
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -43,7 +43,7 @@ pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(
     to_bincode_buffer(&space)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the inner product of two functions in a Hilbert space using bincode serialization.
 ///
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn rssn_bincode_inner_product(
     to_bincode_buffer(&result)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the norm of a function in a Hilbert space using bincode serialization.
 ///
@@ -152,7 +152,7 @@ pub unsafe extern "C" fn rssn_bincode_norm(
     to_bincode_buffer(&result)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Applies the Gram–Schmidt process to produce an orthonormal basis in a Hilbert space.
 ///

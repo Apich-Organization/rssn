@@ -9,7 +9,7 @@ use crate::numerical::vector_calculus;
 use crate::symbolic::core::Expr;
 
 /// Computes the numerical divergence of a vector field at a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
     point: *const f64,
     n_vars: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if funcs.is_null()
         || vars.is_null()
@@ -96,10 +96,10 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence(
             -1
         },
     }
-}
+}}
 
 /// Computes the numerical curl of a 3D vector field at a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -113,7 +113,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
     funcs: *const *const Expr,
     vars: *const *const c_char,
     point: *const f64,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if funcs.is_null()
         || vars.is_null()
@@ -178,10 +178,10 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Computes the numerical Laplacian of a scalar field at a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -197,7 +197,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
     point: *const f64,
     n_vars: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if f.is_null()
         || vars.is_null()
@@ -257,10 +257,10 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian(
             -1
         },
     }
-}
+}}
 
 /// Computes the numerical directional derivative of a function at a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -277,7 +277,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
     direction: *const f64,
     n_vars: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if f.is_null()
         || vars.is_null()
@@ -345,4 +345,4 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_directional_derivative(
             -1
         },
     }
-}
+}}

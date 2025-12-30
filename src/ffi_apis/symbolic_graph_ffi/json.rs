@@ -14,7 +14,7 @@ use crate::symbolic::graph_algorithms::kruskal_mst;
 
 /// Creates a new graph from JSON specification.
 /// JSON format: {"`is_directed"`: true/false}
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_new(
     json: *const c_char
@@ -40,7 +40,7 @@ pub extern "C" fn rssn_json_graph_new(
 /// Adds a node to the graph.
 /// Input JSON: {"graph": <graph>, "label": "`node_label`"}
 /// Returns updated graph as JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_add_node(
     json: *const c_char
@@ -67,7 +67,7 @@ pub extern "C" fn rssn_json_graph_add_node(
 
 /// Adds an edge to the graph.
 /// Input JSON: {"graph": <graph>, "from": "label1", "to": "label2", "weight": <expr>}
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_add_edge(
     json: *const c_char
@@ -101,7 +101,7 @@ pub extern "C" fn rssn_json_graph_add_edge(
 /// Gets the adjacency matrix of the graph.
 /// Input JSON: <graph>
 /// Returns Expr (matrix) as JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_adjacency_matrix(
     json: *const c_char
@@ -119,7 +119,7 @@ pub extern "C" fn rssn_json_graph_adjacency_matrix(
 }
 
 /// Gets the Laplacian matrix of the graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_laplacian_matrix(
     json: *const c_char
@@ -138,7 +138,7 @@ pub extern "C" fn rssn_json_graph_laplacian_matrix(
 
 /// Performs BFS traversal.
 /// Input JSON: {"graph": <graph>, "`start_node"`: <index>}
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_bfs(
     json: *const c_char
@@ -165,7 +165,7 @@ pub extern "C" fn rssn_json_graph_bfs(
 }
 
 /// Performs DFS traversal.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_dfs(
     json: *const c_char
@@ -192,7 +192,7 @@ pub extern "C" fn rssn_json_graph_dfs(
 }
 
 /// Finds connected components.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_connected_components(
     json: *const c_char
@@ -211,7 +211,7 @@ pub extern "C" fn rssn_json_graph_connected_components(
 
 /// Computes maximum flow.
 /// Input JSON: {"graph": <graph>, "source": <index>, "sink": <index>}
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_max_flow(
     json: *const c_char
@@ -240,7 +240,7 @@ pub extern "C" fn rssn_json_graph_max_flow(
 }
 
 /// Computes MST using Kruskal's algorithm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_kruskal_mst(
     json: *const c_char
@@ -257,7 +257,7 @@ pub extern "C" fn rssn_json_graph_kruskal_mst(
 }
 
 /// Checks if graph has a cycle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_has_cycle(
     json: *const c_char
@@ -274,7 +274,7 @@ pub extern "C" fn rssn_json_graph_has_cycle(
 }
 
 /// Checks if graph is bipartite.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_is_bipartite(
     json: *const c_char

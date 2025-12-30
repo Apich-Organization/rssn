@@ -15,7 +15,7 @@ use crate::symbolic::core::Expr;
 
 /// Returns a C-style string containing the JSON-serialized analysis result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_analyze_convergence(
     term_json: *const c_char,
@@ -29,16 +29,15 @@ pub extern "C" fn rssn_json_analyze_convergence(
     let var: Option<String> =
         from_json_string(var_json);
 
-    if let (Some(t), Some(v)) =
-        (term, var)
-    {
+    match (term, var)
+    { (Some(t), Some(v)) => {
 
         let result =
             analyze_convergence(&t, &v);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

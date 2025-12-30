@@ -10,7 +10,7 @@ use crate::numerical::graph::page_rank;
 use crate::numerical::graph::Graph;
 
 /// Creates a new graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn rssn_num_graph_create(
 }
 
 /// Frees a graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -42,16 +42,16 @@ pub unsafe extern "C" fn rssn_num_graph_create(
 
 pub unsafe extern "C" fn rssn_num_graph_free(
     graph: *mut Graph
-) {
+) { unsafe {
 
     if !graph.is_null() {
 
         let _ = Box::from_raw(graph);
     }
-}
+}}
 
 /// Adds a directed edge.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -66,16 +66,16 @@ pub unsafe extern "C" fn rssn_num_graph_add_edge(
     u: usize,
     v: usize,
     weight: f64,
-) {
+) { unsafe {
 
     if let Some(g) = graph.as_mut() {
 
         g.add_edge(u, v, weight);
     }
-}
+}}
 
 /// Computes Dijkstra's algorithm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -90,7 +90,7 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra(
     start_node: usize,
     dist: *mut f64,
     prev: *mut isize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if graph.is_null()
         || dist.is_null()
@@ -136,10 +136,10 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra(
     }
 
     0
-}
+}}
 
 /// Computes BFS.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -153,7 +153,7 @@ pub unsafe extern "C" fn rssn_num_graph_bfs(
     graph: *mut Graph,
     start_node: usize,
     dist: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if graph.is_null() || dist.is_null()
     {
@@ -181,10 +181,10 @@ pub unsafe extern "C" fn rssn_num_graph_bfs(
     dist_slice.copy_from_slice(&d);
 
     0
-}
+}}
 
 /// Computes `PageRank`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -200,7 +200,7 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank(
     tolerance: f64,
     max_iter: usize,
     scores: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if graph.is_null()
         || scores.is_null()
@@ -235,10 +235,10 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank(
     scores_slice.copy_from_slice(&s);
 
     0
-}
+}}
 
 /// Computes Floyd-Warshall.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -251,7 +251,7 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank(
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall(
     graph: *mut Graph,
     dist_matrix: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if graph.is_null()
         || dist_matrix.is_null()
@@ -277,11 +277,11 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall(
     mat_slice.copy_from_slice(&mat);
 
     0
-}
+}}
 
 /// Computes Connected Components.
 /// Result array `components` must be allocated by caller with size `num_nodes`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -294,7 +294,7 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall(
 pub unsafe extern "C" fn rssn_num_graph_connected_components(
     graph: *mut Graph,
     components: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if graph.is_null()
         || components.is_null()
@@ -320,11 +320,11 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components(
     comp_slice.copy_from_slice(&comp);
 
     0
-}
+}}
 
 /// Computes Minimum Spanning Tree (MST).
 /// Returns a new Graph handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -336,7 +336,7 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components(
 
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree(
     graph: *mut Graph
-) -> *mut Graph {
+) -> *mut Graph { unsafe {
 
     if graph.is_null() {
 
@@ -352,4 +352,4 @@ pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree(
     let mst = crate::numerical::graph::minimum_spanning_tree(g);
 
     Box::into_raw(Box::new(mst))
-}
+}}

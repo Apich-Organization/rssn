@@ -15,7 +15,7 @@ use crate::symbolic::core::Expr;
 
 /// Returns a JSON-serialized `PathContinuation` object.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -35,7 +35,7 @@ pub unsafe extern "C" fn path_continuation_new_json(
     var: *const c_char,
     start_point_json: *const c_char,
     order: usize,
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
@@ -61,7 +61,7 @@ pub unsafe extern "C" fn path_continuation_new_json(
         );
 
     to_json_string(&path_continuation)
-}
+}}
 
 /// Continues the analytic continuation along a given path.
 
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn path_continuation_new_json(
 
 /// Returns a C-style string "OK" on success, or an error message on failure.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_json(
 
 /// Returns a JSON-serialized `Expr` representing the final expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -150,7 +150,7 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_json(
 
 /// Returns an `f64` representing the estimated radius of convergence.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -170,7 +170,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_json(
     var: *const c_char,
     center_json: *const c_char,
     order: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     let series_expr: Expr =
         match from_json_string(
@@ -200,7 +200,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_json(
         order,
     )
     .unwrap_or(0.0)
-}
+}}
 
 /// Calculates the distance between two complex numbers.
 
@@ -210,7 +210,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_json(
 
 /// Returns an `f64` representing the distance.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -252,7 +252,7 @@ pub unsafe extern "C" fn complex_distance_json(
 
 /// Returns a JSON-serialized `SingularityType` enum.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -272,7 +272,7 @@ pub unsafe extern "C" fn classify_singularity_json(
     var: *const c_char,
     singularity_json: *const c_char,
     order: usize,
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
@@ -297,7 +297,7 @@ pub unsafe extern "C" fn classify_singularity_json(
     );
 
     to_json_string(&singularity_type)
-}
+}}
 
 /// Computes the Laurent series of a function.
 
@@ -309,7 +309,7 @@ pub unsafe extern "C" fn classify_singularity_json(
 
 /// Returns a JSON-serialized `Expr` representing the Laurent series.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -329,7 +329,7 @@ pub unsafe extern "C" fn laurent_series_json(
     var: *const c_char,
     center_json: *const c_char,
     order: usize,
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
@@ -354,7 +354,7 @@ pub unsafe extern "C" fn laurent_series_json(
     );
 
     to_json_string(&series)
-}
+}}
 
 /// Calculates the residue of a function at a given singularity.
 
@@ -366,7 +366,7 @@ pub unsafe extern "C" fn laurent_series_json(
 
 /// Returns a JSON-serialized `Expr` representing the residue.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -385,7 +385,7 @@ pub unsafe extern "C" fn calculate_residue_json(
     func_json: *const c_char,
     var: *const c_char,
     singularity_json: *const c_char,
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
@@ -409,7 +409,7 @@ pub unsafe extern "C" fn calculate_residue_json(
     );
 
     to_json_string(&residue)
-}
+}}
 
 /// Calculates a contour integral using the residue theorem.
 
@@ -421,7 +421,7 @@ pub unsafe extern "C" fn calculate_residue_json(
 
 /// Returns a JSON string representing the `Expr` of the integral.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -440,7 +440,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_json(
     func_json: *const c_char,
     var: *const c_char,
     singularities_json: *const c_char,
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
@@ -464,7 +464,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_json(
     );
 
     to_json_string(&result)
-}
+}}
 
 /// Creates a new `MobiusTransformation` object from JSON-serialized coefficients.
 
@@ -474,7 +474,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_json(
 
 /// Returns a JSON-serialized `MobiusTransformation` object.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -544,7 +544,7 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
 
 /// Returns a JSON-serialized identity `MobiusTransformation` object.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn mobius_transformation_identity_json(
 ) -> *mut c_char {
@@ -564,7 +564,7 @@ pub extern "C" fn mobius_transformation_identity_json(
 
 /// Returns a JSON-serialized `Expr` representing the result of the transformation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -607,7 +607,7 @@ pub unsafe extern "C" fn mobius_transformation_apply_json(
 
 /// Returns a JSON-serialized `MobiusTransformation` object representing their composition.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -647,7 +647,7 @@ pub unsafe extern "C" fn mobius_transformation_compose_json(
 
 /// Returns a JSON-serialized `MobiusTransformation` object representing the inverse.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -681,7 +681,7 @@ pub unsafe extern "C" fn mobius_transformation_inverse_json(
 
 /// Returns a JSON-serialized `Expr` representing the result of the integral.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -702,7 +702,7 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
     var: *const c_char,
 
     z0_json: *const c_char,
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
@@ -722,7 +722,7 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
     let result = crate::symbolic::complex_analysis::cauchy_integral_formula(&func, var_str, &z0);
 
     to_json_string(&result)
-}
+}}
 
 /// Applies Cauchy's Derivative Formula to compute the nth derivative of a function at a given point.
 
@@ -734,7 +734,7 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
 
 /// Returns a JSON-serialized `Expr` representing the nth derivative.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -757,7 +757,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
     z0_json: *const c_char,
 
     n: usize,
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
@@ -782,7 +782,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
     );
 
     to_json_string(&result)
-}
+}}
 
 /// Computes the complex exponential of a given complex number.
 
@@ -792,7 +792,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
 
 /// Returns a JSON-serialized `Expr` representing `e^z`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -828,7 +828,7 @@ pub unsafe extern "C" fn complex_exp_json(
 
 /// Returns a JSON-serialized `Expr` representing `ln(z)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -864,7 +864,7 @@ pub unsafe extern "C" fn complex_log_json(
 
 /// Returns a JSON-serialized `Expr` representing the argument of `z`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -900,7 +900,7 @@ pub unsafe extern "C" fn complex_arg_json(
 
 /// Returns a JSON-serialized `Expr` representing the modulus of `z`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

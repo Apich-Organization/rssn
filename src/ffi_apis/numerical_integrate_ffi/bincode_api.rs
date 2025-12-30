@@ -24,7 +24,7 @@ struct QuadratureInput {
 }
 
 /// Performs numerical integration via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

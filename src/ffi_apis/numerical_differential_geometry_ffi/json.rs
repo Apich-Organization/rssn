@@ -19,7 +19,7 @@ struct DgPointInput {
 
 /// Computes the metric tensor at a given point using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -80,7 +80,7 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_json(
 
 /// Computes the Christoffel symbols at a given point using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_json(
 
 /// Computes the Ricci tensor at a given point using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -202,7 +202,7 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_json(
 
 /// Computes the Ricci scalar at a given point using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

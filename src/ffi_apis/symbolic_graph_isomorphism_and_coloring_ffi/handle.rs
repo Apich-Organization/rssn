@@ -6,7 +6,7 @@ use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_isomorphism_and_coloring::{are_isomorphic_heuristic, greedy_coloring, chromatic_number_exact};
 
 /// Checks if two graphs are potentially isomorphic using WL test.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_are_isomorphic_heuristic(
     g1: *const RssnGraph,
@@ -37,7 +37,7 @@ pub extern "C" fn rssn_are_isomorphic_heuristic(
 
 /// Finds a valid vertex coloring using greedy heuristic.
 /// Returns a JSON object mapping node IDs to colors.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -73,7 +73,7 @@ pub extern "C" fn rssn_greedy_coloring(
 }
 
 /// Finds the chromatic number exactly (NP-hard).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_chromatic_number_exact(
     graph: *const RssnGraph

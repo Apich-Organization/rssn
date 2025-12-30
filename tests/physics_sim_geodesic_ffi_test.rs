@@ -22,7 +22,7 @@ fn test_geodesic_handle_ffi() {
 
         assert_eq!(matrix.cols(), 2);
 
-        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(matrix_ptr);
+        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(matrix_ptr as *mut rssn::ffi_apis::numerical_matrix_ffi::handle::RssnMatrixHandle);
     }
 }
 

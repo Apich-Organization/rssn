@@ -36,7 +36,7 @@ struct Poisson1DInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -7,7 +7,7 @@ use std::os::raw::c_char;
 
 /// Returns the build date as a C string.
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_build_date(
 ) -> *mut c_char {
@@ -26,7 +26,7 @@ pub extern "C" fn rssn_get_build_date(
 
 /// Returns the commit SHA as a C string.
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_commit_sha(
 ) -> *mut c_char {
@@ -45,7 +45,7 @@ pub extern "C" fn rssn_get_commit_sha(
 
 /// Returns the rustc version as a C string.
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_rustc_version(
 ) -> *mut c_char {
@@ -62,7 +62,7 @@ pub extern "C" fn rssn_get_rustc_version(
 
 /// Returns the cargo target triple as a C string.
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_cargo_target_triple(
 ) -> *mut c_char {
@@ -79,7 +79,7 @@ pub extern "C" fn rssn_get_cargo_target_triple(
 
 /// Returns the system info as a C string.
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_system_info(
 ) -> *mut c_char {
@@ -104,7 +104,7 @@ macro_rules! gen_ffi_handle {
 ///
 /// The caller is responsible for memory management. The returned string must
 /// be freed using `rssn_free_string` to avoid memory leaks.
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         pub extern "C" fn $ffi_name() -> *mut std::os::raw::c_char {
             let value = $internal_getter();
 
@@ -258,7 +258,7 @@ gen_ffi_handle!(rssn_get_electron_charge_to_mass_quotient, crate::constant::get_
 
 gen_ffi_handle!(rssn_get_muon_magnetic_moment, crate::constant::get_muon_magnetic_moment);
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 /// Frees a C string that was allocated by the `rssn_get_*` functions in this module.
 ///
 /// # Safety
@@ -266,7 +266,7 @@ gen_ffi_handle!(rssn_get_muon_magnetic_moment, crate::constant::get_muon_magneti
 
 pub unsafe extern "C" fn rssn_free_string_constant(
     ptr: *mut c_char
-) {
+) { unsafe {
 
     if !ptr.is_null() {
 
@@ -276,4 +276,4 @@ pub unsafe extern "C" fn rssn_free_string_constant(
             ),
         );
     }
-}
+}}

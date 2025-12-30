@@ -7,7 +7,7 @@ use crate::symbolic::radicals::denest_sqrt;
 use crate::symbolic::radicals::simplify_radicals;
 
 /// Simplifies radical expressions (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_simplify_radicals(
     expr_json: *const c_char
@@ -29,7 +29,7 @@ pub extern "C" fn rssn_json_simplify_radicals(
 }
 
 /// Denests a nested square root (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_denest_sqrt(
     expr_json: *const c_char

@@ -45,7 +45,7 @@ struct VolumeIntegralInput {
 }
 
 /// Computes the line integral of a scalar field (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_line_integral_scalar_bincode(
     input_ptr: *const u8,
@@ -80,7 +80,7 @@ pub extern "C" fn rssn_line_integral_scalar_bincode(
 }
 
 /// Computes the line integral of a vector field (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_line_integral_vector_bincode(
     input_ptr: *const u8,
@@ -115,7 +115,7 @@ pub extern "C" fn rssn_line_integral_vector_bincode(
 }
 
 /// Computes the surface integral (flux) of a vector field (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_surface_integral_bincode(
     input_ptr: *const u8,
@@ -150,7 +150,7 @@ pub extern "C" fn rssn_surface_integral_bincode(
 }
 
 /// Computes the volume integral of a scalar field (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volume_integral_bincode(
     input_ptr: *const u8,

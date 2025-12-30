@@ -70,7 +70,7 @@ struct BinomialInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -126,7 +126,7 @@ pub unsafe extern "C" fn rssn_num_special_gamma_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -182,7 +182,7 @@ pub unsafe extern "C" fn rssn_num_special_ln_gamma_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -240,7 +240,7 @@ pub unsafe extern "C" fn rssn_num_special_digamma_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -300,7 +300,7 @@ pub unsafe extern "C" fn rssn_num_special_beta_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -360,7 +360,7 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -416,7 +416,7 @@ pub unsafe extern "C" fn rssn_num_special_erf_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -473,7 +473,7 @@ pub unsafe extern "C" fn rssn_num_special_erfc_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -527,7 +527,7 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j0_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -584,7 +584,7 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j1_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -640,7 +640,7 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -699,7 +699,7 @@ pub unsafe extern "C" fn rssn_num_special_chebyshev_t_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -755,7 +755,7 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -810,7 +810,7 @@ pub unsafe extern "C" fn rssn_num_special_factorial_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -865,7 +865,7 @@ pub unsafe extern "C" fn rssn_num_special_binomial_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -919,7 +919,7 @@ pub unsafe extern "C" fn rssn_num_special_sigmoid_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

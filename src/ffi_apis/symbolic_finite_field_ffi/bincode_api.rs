@@ -8,7 +8,7 @@ use crate::symbolic::finite_field::PrimeField;
 use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// Creates a new prime field element (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_prime_field_element_new(
     value_buf: BincodeBuffer,
@@ -42,7 +42,7 @@ pub extern "C" fn rssn_bincode_prime_field_element_new(
 }
 
 /// Adds two prime field elements (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_prime_field_element_add(
     a_buf: BincodeBuffer,
@@ -71,7 +71,7 @@ pub extern "C" fn rssn_bincode_prime_field_element_add(
 }
 
 /// Subtracts two prime field elements (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_prime_field_element_sub(
     a_buf: BincodeBuffer,
@@ -100,7 +100,7 @@ pub extern "C" fn rssn_bincode_prime_field_element_sub(
 }
 
 /// Multiplies two prime field elements (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_prime_field_element_mul(
     a_buf: BincodeBuffer,
@@ -129,7 +129,7 @@ pub extern "C" fn rssn_bincode_prime_field_element_mul(
 }
 
 /// Divides two prime field elements (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_prime_field_element_div(
     a_buf: BincodeBuffer,
@@ -158,7 +158,7 @@ pub extern "C" fn rssn_bincode_prime_field_element_div(
 }
 
 /// Computes the inverse of a prime field element (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_prime_field_element_inverse(
     elem_buf: BincodeBuffer
@@ -185,7 +185,7 @@ pub extern "C" fn rssn_bincode_prime_field_element_inverse(
 }
 
 /// Creates a new finite field polynomial (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_finite_field_polynomial_new(
     coeffs_buf: BincodeBuffer,
@@ -222,7 +222,7 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_new(
 }
 
 /// Gets the degree of a finite field polynomial (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_finite_field_polynomial_degree(
     poly_buf: BincodeBuffer
@@ -242,7 +242,7 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_degree(
 }
 
 /// Performs polynomial long division (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_finite_field_polynomial_long_division(
     dividend_buf: BincodeBuffer,

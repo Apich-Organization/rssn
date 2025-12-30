@@ -11,7 +11,7 @@ use crate::physics::physics_bem::{
 /// The `bcs_type` array should be 0 for Potential and 1 for Flux.
 /// # Safety
 /// This function is unsafe because it dereferences pointers.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -29,7 +29,7 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
     n: usize,
     out_u: *mut f64,
     out_q: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if points_x.is_null()
         || points_y.is_null()
@@ -98,4 +98,4 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
         },
         | Err(_) => -2,
     }
-}
+}}

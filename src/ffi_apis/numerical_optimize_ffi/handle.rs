@@ -43,7 +43,7 @@ pub struct FfiOptimizationResult {
 /// A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
 /// or null if the input is invalid or optimization fails. The caller must free
 /// the result using `numerical_optimize_drop_result_handle`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -140,7 +140,7 @@ pub extern "C" fn numerical_optimize_rosenbrock_gd_handle(
 /// A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
 /// or null if the input is invalid or optimization fails. The caller must free
 /// the result using `numerical_optimize_drop_result_handle`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -234,7 +234,7 @@ pub extern "C" fn numerical_optimize_rosenbrock_bfgs_handle(
 /// A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
 /// or null if the input is invalid or optimization fails. The caller must free
 /// the result using `numerical_optimize_drop_result_handle`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -315,7 +315,7 @@ pub extern "C" fn numerical_optimize_sphere_gd_handle(
 /// # Returns
 ///
 /// The minimum cost achieved, or `NaN` if the handle is null.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn numerical_optimize_get_result_cost_handle(
     handle : *const FfiOptimizationResult
@@ -341,7 +341,7 @@ pub const extern "C" fn numerical_optimize_get_result_cost_handle(
 /// # Returns
 ///
 /// The number of iterations performed, or 0 if the handle is null.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn numerical_optimize_get_result_iterations_handle(
     handle : *const FfiOptimizationResult
@@ -367,7 +367,7 @@ pub const extern "C" fn numerical_optimize_get_result_iterations_handle(
 /// # Returns
 ///
 /// The length of the optimal parameter vector, or 0 if the handle is null.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn numerical_optimize_get_result_param_len_handle(
     handle : *const FfiOptimizationResult
@@ -401,7 +401,7 @@ pub const extern "C" fn numerical_optimize_get_result_param_len_handle(
 ///
 /// The caller must ensure `buffer` points to an allocation with sufficient capacity
 /// to hold the parameter vector (obtainable via `numerical_optimize_get_result_param_len_handle`).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn numerical_optimize_get_result_param_handle(
     handle : *const FfiOptimizationResult,
@@ -441,7 +441,7 @@ pub const extern "C" fn numerical_optimize_get_result_param_handle(
 /// The caller must ensure the handle was previously returned by one of the optimization
 /// functions in this module and has not already been freed. Passing a null pointer is safe
 /// but has no effect.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn numerical_optimize_drop_result_handle(
     handle: *mut FfiOptimizationResult

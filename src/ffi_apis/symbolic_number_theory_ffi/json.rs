@@ -23,7 +23,7 @@ struct Congruence {
 
 /// and returns a JSON string representing the `Vec<Expr>` of solutions.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_diophantine(
     equation_json: *const c_char,
@@ -36,9 +36,8 @@ pub extern "C" fn rssn_json_solve_diophantine(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    if let (Some(eq), Some(v)) =
-        (equation, vars)
-    {
+    match (equation, vars)
+    { (Some(eq), Some(v)) => {
 
         let v_str: Vec<&str> = v
             .iter()
@@ -58,10 +57,10 @@ pub extern "C" fn rssn_json_solve_diophantine(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the extended greatest common divisor (GCD).
@@ -74,7 +73,7 @@ pub extern "C" fn rssn_json_solve_diophantine(
 
 /// and `x`, `y` are coefficients such that `ax + by = g`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_extended_gcd(
     a_json: *const c_char,
@@ -87,11 +86,11 @@ pub extern "C" fn rssn_json_extended_gcd(
     let b: Option<Expr> =
         from_json_string(b_json);
 
-    if let (
+    match (a, b)
+    { (
         Some(a_expr),
         Some(b_expr),
-    ) = (a, b)
-    {
+    ) => {
 
         let (g, x, y) = extended_gcd(
             &a_expr,
@@ -99,10 +98,10 @@ pub extern "C" fn rssn_json_extended_gcd(
         );
 
         to_json_string(&(g, x, y))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Checks if a number is prime.
@@ -113,7 +112,7 @@ pub extern "C" fn rssn_json_extended_gcd(
 
 /// and returns a JSON string representing a boolean indicating whether the number is prime.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_is_prime(
     n_json: *const c_char
@@ -141,7 +140,7 @@ pub extern "C" fn rssn_json_is_prime(
 
 /// and returns a JSON string representing the `Expr` solution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_chinese_remainder(
     congruences_json: *const c_char

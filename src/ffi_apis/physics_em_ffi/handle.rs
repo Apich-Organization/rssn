@@ -4,7 +4,7 @@ use crate::numerical::matrix::Matrix;
 use crate::physics::physics_em;
 
 /// Simulates the oscillator forward Euler scenario and returns the results as a Matrix handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_em_simulate_oscillator_forward(
 ) -> *mut Matrix<f64> {
@@ -40,7 +40,7 @@ pub extern "C" fn rssn_physics_em_simulate_oscillator_forward(
 }
 
 /// Simulates the gravity semi-implicit Euler scenario and returns the results as a Matrix handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_em_simulate_gravity_semi_implicit(
 ) -> *mut Matrix<f64> {
@@ -79,7 +79,7 @@ pub extern "C" fn rssn_physics_em_simulate_gravity_semi_implicit(
 }
 
 /// Simulates the stiff decay scenario using backward Euler and returns a Matrix handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_em_simulate_stiff_decay_backward(
 ) -> *mut Matrix<f64> {

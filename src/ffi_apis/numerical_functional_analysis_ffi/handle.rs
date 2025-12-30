@@ -18,7 +18,7 @@ unsafe fn to_points(
     x: *const f64,
     y: *const f64,
     len: usize,
-) -> Vec<(f64, f64)> {
+) -> Vec<(f64, f64)> { unsafe {
 
     let x_slice =
         std::slice::from_raw_parts(
@@ -35,10 +35,10 @@ unsafe fn to_points(
         .zip(y_slice.iter())
         .map(|(&xi, &yi)| (xi, yi))
         .collect()
-}
+}}
 
 /// Calculates the L1 norm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -52,7 +52,7 @@ pub unsafe extern "C" fn rssn_num_fa_l1_norm(
     x: *const f64,
     y: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if x.is_null() || y.is_null() {
 
@@ -64,10 +64,10 @@ pub unsafe extern "C" fn rssn_num_fa_l1_norm(
     functional_analysis::l1_norm(
         &points,
     )
-}
+}}
 
 /// Calculates the L2 norm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm(
     x: *const f64,
     y: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if x.is_null() || y.is_null() {
 
@@ -93,10 +93,10 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm(
     functional_analysis::l2_norm(
         &points,
     )
-}
+}}
 
 /// Calculates the L-infinity norm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -110,7 +110,7 @@ pub unsafe extern "C" fn rssn_num_fa_infinity_norm(
     x: *const f64,
     y: *const f64,
     len: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if x.is_null() || y.is_null() {
 
@@ -122,10 +122,10 @@ pub unsafe extern "C" fn rssn_num_fa_infinity_norm(
     functional_analysis::infinity_norm(
         &points,
     )
-}
+}}
 
 /// Calculates the inner product.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -143,7 +143,7 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product(
     y2: *const f64,
     len2: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if x1.is_null()
         || y1.is_null()
@@ -173,4 +173,4 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product(
             -1
         },
     }
-}
+}}

@@ -11,7 +11,7 @@ use crate::symbolic::special_functions;
 // ============================================================================
 
 /// Computes the symbolic Gamma function Γ(z).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -23,7 +23,7 @@ use crate::symbolic::special_functions;
 
 pub unsafe extern "C" fn rssn_gamma(
     arg: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if arg.is_null() {
 
@@ -35,10 +35,10 @@ pub unsafe extern "C" fn rssn_gamma(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic log-gamma function ln(Γ(z)).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rssn_gamma(
 
 pub unsafe extern "C" fn rssn_ln_gamma(
     arg: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if arg.is_null() {
 
@@ -62,10 +62,10 @@ pub unsafe extern "C" fn rssn_ln_gamma(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic Beta function B(a, b).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rssn_ln_gamma(
 pub unsafe extern "C" fn rssn_beta(
     a: *const Expr,
     b: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if a.is_null() || b.is_null() {
 
@@ -91,10 +91,10 @@ pub unsafe extern "C" fn rssn_beta(
             (*b).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic Digamma function ψ(z).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -106,7 +106,7 @@ pub unsafe extern "C" fn rssn_beta(
 
 pub unsafe extern "C" fn rssn_digamma(
     arg: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if arg.is_null() {
 
@@ -118,10 +118,10 @@ pub unsafe extern "C" fn rssn_digamma(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic Polygamma function ψ⁽ⁿ⁾(z).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rssn_digamma(
 pub unsafe extern "C" fn rssn_polygamma(
     n: *const Expr,
     z: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if n.is_null() || z.is_null() {
 
@@ -147,14 +147,14 @@ pub unsafe extern "C" fn rssn_polygamma(
             (*z).clone(),
         ),
     ))
-}
+}}
 
 // ============================================================================
 // Error Functions
 // ============================================================================
 
 /// Computes the symbolic error function erf(z).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -166,7 +166,7 @@ pub unsafe extern "C" fn rssn_polygamma(
 
 pub unsafe extern "C" fn rssn_erf(
     arg: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if arg.is_null() {
 
@@ -178,10 +178,10 @@ pub unsafe extern "C" fn rssn_erf(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic complementary error function erfc(z).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -193,7 +193,7 @@ pub unsafe extern "C" fn rssn_erf(
 
 pub unsafe extern "C" fn rssn_erfc(
     arg: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if arg.is_null() {
 
@@ -205,10 +205,10 @@ pub unsafe extern "C" fn rssn_erfc(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic imaginary error function erfi(z).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -220,7 +220,7 @@ pub unsafe extern "C" fn rssn_erfc(
 
 pub unsafe extern "C" fn rssn_erfi(
     arg: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if arg.is_null() {
 
@@ -232,14 +232,14 @@ pub unsafe extern "C" fn rssn_erfi(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 // ============================================================================
 // Riemann Zeta Function
 // ============================================================================
 
 /// Computes the symbolic Riemann zeta function ζ(s).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -251,7 +251,7 @@ pub unsafe extern "C" fn rssn_erfi(
 
 pub unsafe extern "C" fn rssn_zeta(
     arg: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if arg.is_null() {
 
@@ -263,14 +263,14 @@ pub unsafe extern "C" fn rssn_zeta(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 // ============================================================================
 // Bessel Functions
 // ============================================================================
 
 /// Computes the symbolic Bessel function of the first kind `J_n(x)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -283,7 +283,7 @@ pub unsafe extern "C" fn rssn_zeta(
 pub unsafe extern "C" fn rssn_bessel_j(
     order: *const Expr,
     arg: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if order.is_null() || arg.is_null()
     {
@@ -297,10 +297,10 @@ pub unsafe extern "C" fn rssn_bessel_j(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic Bessel function of the second kind `Y_n(x)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -313,7 +313,7 @@ pub unsafe extern "C" fn rssn_bessel_j(
 pub unsafe extern "C" fn rssn_bessel_y(
     order: *const Expr,
     arg: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if order.is_null() || arg.is_null()
     {
@@ -327,10 +327,10 @@ pub unsafe extern "C" fn rssn_bessel_y(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic modified Bessel function of the first kind `I_n(x)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -343,7 +343,7 @@ pub unsafe extern "C" fn rssn_bessel_y(
 pub unsafe extern "C" fn rssn_bessel_i(
     order: *const Expr,
     arg: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if order.is_null() || arg.is_null()
     {
@@ -357,10 +357,10 @@ pub unsafe extern "C" fn rssn_bessel_i(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic modified Bessel function of the second kind `K_n(x)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -373,7 +373,7 @@ pub unsafe extern "C" fn rssn_bessel_i(
 pub unsafe extern "C" fn rssn_bessel_k(
     order: *const Expr,
     arg: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if order.is_null() || arg.is_null()
     {
@@ -387,14 +387,14 @@ pub unsafe extern "C" fn rssn_bessel_k(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 // ============================================================================
 // Orthogonal Polynomials
 // ============================================================================
 
 /// Computes the symbolic Legendre polynomial `P_n(x)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -407,7 +407,7 @@ pub unsafe extern "C" fn rssn_bessel_k(
 pub unsafe extern "C" fn rssn_legendre_p(
     degree: *const Expr,
     arg: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if degree.is_null() || arg.is_null()
     {
@@ -421,10 +421,10 @@ pub unsafe extern "C" fn rssn_legendre_p(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic Laguerre polynomial `L_n(x)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -437,7 +437,7 @@ pub unsafe extern "C" fn rssn_legendre_p(
 pub unsafe extern "C" fn rssn_laguerre_l(
     degree: *const Expr,
     arg: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if degree.is_null() || arg.is_null()
     {
@@ -451,10 +451,10 @@ pub unsafe extern "C" fn rssn_laguerre_l(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic Generalized Laguerre polynomial `L_n^α(x)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -468,7 +468,7 @@ pub unsafe extern "C" fn rssn_generalized_laguerre(
     n: *const Expr,
     alpha: *const Expr,
     x: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if n.is_null()
         || alpha.is_null()
@@ -485,10 +485,10 @@ pub unsafe extern "C" fn rssn_generalized_laguerre(
             &(*x).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic Hermite polynomial `H_n(x)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -501,7 +501,7 @@ pub unsafe extern "C" fn rssn_generalized_laguerre(
 pub unsafe extern "C" fn rssn_hermite_h(
     degree: *const Expr,
     arg: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if degree.is_null() || arg.is_null()
     {
@@ -515,10 +515,10 @@ pub unsafe extern "C" fn rssn_hermite_h(
             (*arg).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic Chebyshev polynomial of the first kind `T_n(x)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -531,7 +531,7 @@ pub unsafe extern "C" fn rssn_hermite_h(
 pub unsafe extern "C" fn rssn_chebyshev_t(
     n: *const Expr,
     x: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if n.is_null() || x.is_null() {
 
@@ -544,10 +544,10 @@ pub unsafe extern "C" fn rssn_chebyshev_t(
             &(*x).clone(),
         ),
     ))
-}
+}}
 
 /// Computes the symbolic Chebyshev polynomial of the second kind `U_n(x)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -560,7 +560,7 @@ pub unsafe extern "C" fn rssn_chebyshev_t(
 pub unsafe extern "C" fn rssn_chebyshev_u(
     n: *const Expr,
     x: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if n.is_null() || x.is_null() {
 
@@ -573,14 +573,14 @@ pub unsafe extern "C" fn rssn_chebyshev_u(
             &(*x).clone(),
         ),
     ))
-}
+}}
 
 // ============================================================================
 // Differential Equations
 // ============================================================================
 
 /// Constructs Bessel's differential equation: x²y'' + xy' + (x² - n²)y = 0.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -594,7 +594,7 @@ pub unsafe extern "C" fn rssn_bessel_differential_equation(
     y: *const Expr,
     x: *const Expr,
     n: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if y.is_null()
         || x.is_null()
@@ -607,10 +607,10 @@ pub unsafe extern "C" fn rssn_bessel_differential_equation(
     Box::into_raw(Box::new(
         special_functions::bessel_differential_equation(&*y, &*x, &*n),
     ))
-}
+}}
 
 /// Constructs Legendre's differential equation: (1-x²)y'' - 2xy' + n(n+1)y = 0.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -624,7 +624,7 @@ pub unsafe extern "C" fn rssn_legendre_differential_equation(
     y: *const Expr,
     x: *const Expr,
     n: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if y.is_null()
         || x.is_null()
@@ -637,10 +637,10 @@ pub unsafe extern "C" fn rssn_legendre_differential_equation(
     Box::into_raw(Box::new(
         special_functions::legendre_differential_equation(&*y, &*x, &*n),
     ))
-}
+}}
 
 /// Constructs Laguerre's differential equation: xy'' + (1-x)y' + ny = 0.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -654,7 +654,7 @@ pub unsafe extern "C" fn rssn_laguerre_differential_equation(
     y: *const Expr,
     x: *const Expr,
     n: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if y.is_null()
         || x.is_null()
@@ -667,10 +667,10 @@ pub unsafe extern "C" fn rssn_laguerre_differential_equation(
     Box::into_raw(Box::new(
         special_functions::laguerre_differential_equation(&*y, &*x, &*n),
     ))
-}
+}}
 
 /// Constructs Hermite's differential equation: y'' - 2xy' + 2ny = 0.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -684,7 +684,7 @@ pub unsafe extern "C" fn rssn_hermite_differential_equation(
     y: *const Expr,
     x: *const Expr,
     n: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if y.is_null()
         || x.is_null()
@@ -697,10 +697,10 @@ pub unsafe extern "C" fn rssn_hermite_differential_equation(
     Box::into_raw(Box::new(
         special_functions::hermite_differential_equation(&*y, &*x, &*n),
     ))
-}
+}}
 
 /// Constructs Chebyshev's differential equation: (1-x²)y'' - xy' + n²y = 0.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -714,7 +714,7 @@ pub unsafe extern "C" fn rssn_chebyshev_differential_equation(
     y: *const Expr,
     x: *const Expr,
     n: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if y.is_null()
         || x.is_null()
@@ -727,14 +727,14 @@ pub unsafe extern "C" fn rssn_chebyshev_differential_equation(
     Box::into_raw(Box::new(
         special_functions::chebyshev_differential_equation(&*y, &*x, &*n),
     ))
-}
+}}
 
 // ============================================================================
 // Rodrigues Formulas
 // ============================================================================
 
 /// Constructs Rodrigues' formula for Legendre polynomials.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -747,7 +747,7 @@ pub unsafe extern "C" fn rssn_chebyshev_differential_equation(
 pub unsafe extern "C" fn rssn_legendre_rodrigues_formula(
     n: *const Expr,
     x: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if n.is_null() || x.is_null() {
 
@@ -757,10 +757,10 @@ pub unsafe extern "C" fn rssn_legendre_rodrigues_formula(
     Box::into_raw(Box::new(
         special_functions::legendre_rodrigues_formula(&*n, &*x),
     ))
-}
+}}
 
 /// Constructs Rodrigues' formula for Hermite polynomials.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -773,7 +773,7 @@ pub unsafe extern "C" fn rssn_legendre_rodrigues_formula(
 pub unsafe extern "C" fn rssn_hermite_rodrigues_formula(
     n: *const Expr,
     x: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if n.is_null() || x.is_null() {
 
@@ -783,4 +783,4 @@ pub unsafe extern "C" fn rssn_hermite_rodrigues_formula(
     Box::into_raw(Box::new(
         special_functions::hermite_rodrigues_formula(&*n, &*x),
     ))
-}
+}}

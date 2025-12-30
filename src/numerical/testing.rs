@@ -411,9 +411,8 @@ pub(crate) fn collect_coeffs(
             )
         },
         | Expr::Mul(l, r) => {
-            if let Some(c) =
-                eval_as_constant(l, var)
-            {
+            match eval_as_constant(l, var)
+            { Some(c) => {
 
                 let mut term_coeffs =
                     HashMap::new();
@@ -447,9 +446,8 @@ pub(crate) fn collect_coeffs(
                 }
 
                 Some(())
-            } else if let Some(c) =
-                eval_as_constant(r, var)
-            {
+            } _ => { match eval_as_constant(r, var)
+            { Some(c) => {
 
                 let mut term_coeffs =
                     HashMap::new();
@@ -483,10 +481,10 @@ pub(crate) fn collect_coeffs(
                 }
 
                 Some(())
-            } else {
+            } _ => {
 
                 None
-            }
+            }}}}
         },
         | Expr::Power(b, e) => {
 

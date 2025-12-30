@@ -11,7 +11,7 @@ use crate::numerical::physics;
 /// # Returns
 ///
 /// The speed of light c = 2.998 × 10⁸ m/s.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_physics_speed_of_light(
 ) -> f64 {
@@ -24,7 +24,7 @@ pub const extern "C" fn rssn_num_physics_speed_of_light(
 /// # Returns
 ///
 /// Planck's constant h = 6.626 × 10⁻³⁴ J·s.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_physics_planck_constant(
 ) -> f64 {
@@ -37,7 +37,7 @@ pub const extern "C" fn rssn_num_physics_planck_constant(
 /// # Returns
 ///
 /// The gravitational constant G = 6.674 × 10⁻¹¹ N·m²/kg².
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_physics_gravitational_constant(
 ) -> f64 {
@@ -50,7 +50,7 @@ pub const extern "C" fn rssn_num_physics_gravitational_constant(
 /// # Returns
 ///
 /// The Boltzmann constant `k_B` = 1.381 × 10⁻²³ J/K.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_physics_boltzmann_constant(
 ) -> f64 {
@@ -63,7 +63,7 @@ pub const extern "C" fn rssn_num_physics_boltzmann_constant(
 /// # Returns
 ///
 /// The elementary charge e = 1.602 × 10⁻¹⁹ Coulombs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_physics_elementary_charge(
 ) -> f64 {
@@ -76,7 +76,7 @@ pub const extern "C" fn rssn_num_physics_elementary_charge(
 /// # Returns
 ///
 /// The electron rest mass `m_e` = 9.109 × 10⁻³¹ kg.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_physics_electron_mass(
 ) -> f64 {
@@ -102,7 +102,7 @@ pub const extern "C" fn rssn_num_physics_electron_mass(
 /// # Returns
 ///
 /// The displacement x(t) (m).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_simple_harmonic_oscillator(
     amplitude: f64,
@@ -134,7 +134,7 @@ pub extern "C" fn rssn_num_physics_simple_harmonic_oscillator(
 /// # Returns
 ///
 /// The displacement x(t) for underdamped oscillation (m).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_damped_harmonic_oscillator(
     amplitude: f64,
@@ -170,7 +170,7 @@ pub extern "C" fn rssn_num_physics_damped_harmonic_oscillator(
 /// # Returns
 ///
 /// The Coulomb force magnitude F (Newtons, positive for repulsion).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_coulomb_force(
     q1: f64,
@@ -193,7 +193,7 @@ pub extern "C" fn rssn_num_physics_coulomb_force(
 /// # Returns
 ///
 /// The electric field magnitude E (N/C or V/m).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_electric_field_point_charge(
     q: f64,
@@ -217,7 +217,7 @@ pub extern "C" fn rssn_num_physics_electric_field_point_charge(
 /// # Returns
 ///
 /// The electric potential V (Volts).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_electric_potential_point_charge(
     q: f64,
@@ -239,7 +239,7 @@ pub extern "C" fn rssn_num_physics_electric_potential_point_charge(
 /// # Returns
 ///
 /// The magnetic field magnitude B (Tesla).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_magnetic_field_infinite_wire(
     current: f64,
@@ -263,7 +263,7 @@ pub extern "C" fn rssn_num_physics_magnetic_field_infinite_wire(
 /// # Returns
 ///
 /// The Lorentz force magnitude F (Newtons).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_lorentz_force(
     charge: f64,
@@ -294,7 +294,7 @@ pub extern "C" fn rssn_num_physics_lorentz_force(
 /// # Returns
 ///
 /// The cyclotron radius r (m).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_cyclotron_radius(
     mass: f64,
@@ -328,7 +328,7 @@ pub extern "C" fn rssn_num_physics_cyclotron_radius(
 /// # Returns
 ///
 /// The gas pressure P (Pascals).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_ideal_gas_pressure(
     n: f64,
@@ -352,7 +352,7 @@ pub extern "C" fn rssn_num_physics_ideal_gas_pressure(
 /// # Returns
 ///
 /// The gas volume V (m³).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_ideal_gas_volume(
     n: f64,
@@ -376,7 +376,7 @@ pub extern "C" fn rssn_num_physics_ideal_gas_volume(
 /// # Returns
 ///
 /// The absolute temperature T (Kelvin).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_ideal_gas_temperature(
     p: f64,
@@ -402,7 +402,7 @@ pub extern "C" fn rssn_num_physics_ideal_gas_temperature(
 /// # Returns
 ///
 /// The probability density f(v) (s/m).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_maxwell_boltzmann_speed_distribution(
     v: f64,
@@ -425,7 +425,7 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_speed_distribution(
 /// # Returns
 ///
 /// The mean speed ⟨v⟩ (m/s).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed(
     mass: f64,
@@ -447,7 +447,7 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed(
 /// # Returns
 ///
 /// The RMS speed `v_rms` (m/s).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_maxwell_boltzmann_rms_speed(
     mass: f64,
@@ -472,7 +472,7 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_rms_speed(
 /// # Returns
 ///
 /// The radiated power P (Watts).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_blackbody_power(
     area: f64,
@@ -496,7 +496,7 @@ pub extern "C" fn rssn_num_physics_blackbody_power(
 /// # Returns
 ///
 /// The peak wavelength `λ_max` (meters).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_wien_displacement_wavelength(
     temperature: f64
@@ -520,7 +520,7 @@ pub extern "C" fn rssn_num_physics_wien_displacement_wavelength(
 /// # Returns
 ///
 /// The Lorentz factor γ (dimensionless, ≥ 1).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_lorentz_factor(
     velocity: f64
@@ -541,7 +541,7 @@ pub extern "C" fn rssn_num_physics_lorentz_factor(
 /// # Returns
 ///
 /// The dilated time t (s).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_time_dilation(
     proper_time: f64,
@@ -566,7 +566,7 @@ pub extern "C" fn rssn_num_physics_time_dilation(
 /// # Returns
 ///
 /// The contracted length L (m).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_length_contraction(
     proper_length: f64,
@@ -591,7 +591,7 @@ pub extern "C" fn rssn_num_physics_length_contraction(
 /// # Returns
 ///
 /// The relativistic momentum p (kg·m/s).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_relativistic_momentum(
     mass: f64,
@@ -616,7 +616,7 @@ pub extern "C" fn rssn_num_physics_relativistic_momentum(
 /// # Returns
 ///
 /// The kinetic energy K (Joules).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_relativistic_kinetic_energy(
     mass: f64,
@@ -640,7 +640,7 @@ pub extern "C" fn rssn_num_physics_relativistic_kinetic_energy(
 /// # Returns
 ///
 /// The rest energy E (Joules).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_mass_energy(
     mass: f64
@@ -661,7 +661,7 @@ pub extern "C" fn rssn_num_physics_mass_energy(
 /// # Returns
 ///
 /// The combined velocity u (m/s).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_relativistic_velocity_addition(
     v: f64,
@@ -687,7 +687,7 @@ pub extern "C" fn rssn_num_physics_relativistic_velocity_addition(
 /// # Returns
 ///
 /// The energy eigenvalue `E_n` (Joules).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy(
     n: u64,
@@ -708,7 +708,7 @@ pub extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy(
 /// # Returns
 ///
 /// The energy level `E_n` (Joules, negative for bound states).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_hydrogen_energy_level(
     n: u64
@@ -728,7 +728,7 @@ pub extern "C" fn rssn_num_physics_hydrogen_energy_level(
 /// # Returns
 ///
 /// The de Broglie wavelength λ (meters).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_de_broglie_wavelength(
     momentum: f64
@@ -750,7 +750,7 @@ pub extern "C" fn rssn_num_physics_de_broglie_wavelength(
 /// # Returns
 ///
 /// The photon energy E (Joules).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_photon_energy(
     wavelength: f64
@@ -770,7 +770,7 @@ pub extern "C" fn rssn_num_physics_photon_energy(
 /// # Returns
 ///
 /// The photon wavelength λ (meters).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_photon_wavelength(
     energy: f64
@@ -790,7 +790,7 @@ pub extern "C" fn rssn_num_physics_photon_wavelength(
 /// # Returns
 ///
 /// The Compton wavelength `λ_C` (meters).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_physics_compton_wavelength(
     mass: f64

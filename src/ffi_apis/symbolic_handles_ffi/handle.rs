@@ -13,7 +13,7 @@ use crate::symbolic::handles::HANDLE_MANAGER;
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -25,7 +25,7 @@ use crate::symbolic::handles::HANDLE_MANAGER;
 
 pub unsafe extern "C" fn rssn_handle_insert(
     expr: *const Expr
-) -> usize {
+) -> usize { unsafe {
 
     if expr.is_null() {
 
@@ -36,7 +36,7 @@ pub unsafe extern "C" fn rssn_handle_insert(
 
     HANDLE_MANAGER
         .insert(expr_ref.clone())
-}
+}}
 
 /// Retrieves an expression from the handle manager.
 ///
@@ -44,7 +44,7 @@ pub unsafe extern "C" fn rssn_handle_insert(
 ///
 /// # Safety
 /// The caller must ensure the returned pointer is freed using `rssn_free_expr`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_handle_get(
 ///
 /// # Safety
 /// This function is safe to call with any handle value.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_exists(
     handle: usize
@@ -87,7 +87,7 @@ pub extern "C" fn rssn_handle_exists(
 ///
 /// # Safety
 /// This function is safe to call with any handle value.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_free(
     handle: usize
@@ -102,7 +102,7 @@ pub extern "C" fn rssn_handle_free(
 ///
 /// # Safety
 /// This function is always safe to call.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_count(
 ) -> usize {
@@ -116,7 +116,7 @@ pub extern "C" fn rssn_handle_count(
 ///
 /// # Safety
 /// This function is always safe to call, but will invalidate all handles.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_clear() {
 
@@ -129,7 +129,7 @@ pub extern "C" fn rssn_handle_clear() {
 ///
 /// # Safety
 /// The caller must free the returned string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_get_all(
 ) -> *mut c_char {
@@ -146,7 +146,7 @@ pub extern "C" fn rssn_handle_get_all(
 ///
 /// # Safety
 /// This function is safe to call with any handle value.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_clone(
     handle: usize
@@ -168,7 +168,7 @@ pub extern "C" fn rssn_handle_clone(
 ///
 /// # Safety
 /// The caller must free the returned string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_to_string(
     handle: usize

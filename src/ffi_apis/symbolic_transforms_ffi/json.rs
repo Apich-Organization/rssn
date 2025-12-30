@@ -20,7 +20,7 @@ use crate::symbolic::transforms;
 
 /// Returns a JSON string representing the `Expr` of the Fourier transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -45,21 +45,21 @@ pub unsafe extern "C" fn rssn_json_fourier_transform(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_json_string(&transforms::fourier_transform(&e, &iv, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the inverse Fourier transform of an expression.
@@ -70,7 +70,7 @@ pub unsafe extern "C" fn rssn_json_fourier_transform(
 
 /// Returns a JSON string representing the `Expr` of the inverse Fourier transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -95,21 +95,21 @@ pub unsafe extern "C" fn rssn_json_inverse_fourier_transform(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_json_string(&transforms::inverse_fourier_transform(&e, &iv, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the time shift property of the Fourier transform.
@@ -122,7 +122,7 @@ pub unsafe extern "C" fn rssn_json_inverse_fourier_transform(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -147,18 +147,18 @@ pub unsafe extern "C" fn rssn_json_fourier_time_shift(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_json_string(&transforms::fourier_time_shift(&f, &a, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the frequency shift property of the Fourier transform.
@@ -171,7 +171,7 @@ pub unsafe extern "C" fn rssn_json_fourier_time_shift(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -196,18 +196,18 @@ pub unsafe extern "C" fn rssn_json_fourier_frequency_shift(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_json_string(&transforms::fourier_frequency_shift(&f, &a, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the scaling property of the Fourier transform.
@@ -220,7 +220,7 @@ pub unsafe extern "C" fn rssn_json_fourier_frequency_shift(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -245,18 +245,18 @@ pub unsafe extern "C" fn rssn_json_fourier_scaling(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_json_string(&transforms::fourier_scaling(&f, &a, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the differentiation property of the Fourier transform.
@@ -267,7 +267,7 @@ pub unsafe extern "C" fn rssn_json_fourier_scaling(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -288,15 +288,14 @@ pub unsafe extern "C" fn rssn_json_fourier_differentiation(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (Some(f), Some(ov)) =
-        (f, out_var)
-    {
+    match (f, out_var)
+    { (Some(f), Some(ov)) => {
 
         to_json_string(&transforms::fourier_differentiation(&f, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 // --- Laplace Transform ---
@@ -309,7 +308,7 @@ pub unsafe extern "C" fn rssn_json_fourier_differentiation(
 
 /// Returns a JSON string representing the `Expr` of the Laplace transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -334,21 +333,21 @@ pub unsafe extern "C" fn rssn_json_laplace_transform(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_json_string(&transforms::laplace_transform(&e, &iv, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the inverse Laplace transform of an expression.
@@ -359,7 +358,7 @@ pub unsafe extern "C" fn rssn_json_laplace_transform(
 
 /// Returns a JSON string representing the `Expr` of the inverse Laplace transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -384,21 +383,21 @@ pub unsafe extern "C" fn rssn_json_inverse_laplace_transform(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_json_string(&transforms::inverse_laplace_transform(&e, &iv, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the time shift property of the Laplace transform.
@@ -411,7 +410,7 @@ pub unsafe extern "C" fn rssn_json_inverse_laplace_transform(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -436,18 +435,18 @@ pub unsafe extern "C" fn rssn_json_laplace_time_shift(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_json_string(&transforms::laplace_time_shift(&f, &a, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the frequency shift property of the Laplace transform.
@@ -460,7 +459,7 @@ pub unsafe extern "C" fn rssn_json_laplace_time_shift(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -485,18 +484,18 @@ pub unsafe extern "C" fn rssn_json_laplace_frequency_shift(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_json_string(&transforms::laplace_frequency_shift(&f, &a, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the scaling property of the Laplace transform.
@@ -509,7 +508,7 @@ pub unsafe extern "C" fn rssn_json_laplace_frequency_shift(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -534,18 +533,18 @@ pub unsafe extern "C" fn rssn_json_laplace_scaling(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_json_string(&transforms::laplace_scaling(&f, &a, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the differentiation property of the Laplace transform.
@@ -558,7 +557,7 @@ pub unsafe extern "C" fn rssn_json_laplace_scaling(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -583,18 +582,18 @@ pub unsafe extern "C" fn rssn_json_laplace_differentiation(
     let f_zero: Option<Expr> =
         from_json_string(f_zero_json);
 
-    if let (
+    match (f, out_var, f_zero)
+    { (
         Some(f),
         Some(ov),
         Some(fz),
-    ) = (f, out_var, f_zero)
-    {
+    ) => {
 
         to_json_string(&transforms::laplace_differentiation(&f, &ov, &fz))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the integration property of the Laplace transform.
@@ -605,7 +604,7 @@ pub unsafe extern "C" fn rssn_json_laplace_differentiation(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -626,15 +625,14 @@ pub unsafe extern "C" fn rssn_json_laplace_integration(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (Some(f), Some(ov)) =
-        (f, out_var)
-    {
+    match (f, out_var)
+    { (Some(f), Some(ov)) => {
 
         to_json_string(&transforms::laplace_integration(&f, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 // --- Z-Transform ---
@@ -647,7 +645,7 @@ pub unsafe extern "C" fn rssn_json_laplace_integration(
 
 /// Returns a JSON string representing the `Expr` of the Z-transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -672,25 +670,25 @@ pub unsafe extern "C" fn rssn_json_z_transform(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_json_string(
             &transforms::z_transform(
                 &e, &iv, &ov,
             ),
         )
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the inverse Z-transform of an expression.
@@ -701,7 +699,7 @@ pub unsafe extern "C" fn rssn_json_z_transform(
 
 /// Returns a JSON string representing the `Expr` of the inverse Z-transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -726,21 +724,21 @@ pub unsafe extern "C" fn rssn_json_inverse_z_transform(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_json_string(&transforms::inverse_z_transform(&e, &iv, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the time shift property of the Z-transform.
@@ -753,7 +751,7 @@ pub unsafe extern "C" fn rssn_json_inverse_z_transform(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -778,22 +776,22 @@ pub unsafe extern "C" fn rssn_json_z_time_shift(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
+    match (f, k, out_var)
+    { (
         Some(f),
         Some(k),
         Some(ov),
-    ) = (f, k, out_var)
-    {
+    ) => {
 
         to_json_string(
             &transforms::z_time_shift(
                 &f, &k, &ov,
             ),
         )
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the scaling property of the Z-transform.
@@ -806,7 +804,7 @@ pub unsafe extern "C" fn rssn_json_z_time_shift(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -831,22 +829,22 @@ pub unsafe extern "C" fn rssn_json_z_scaling(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_json_string(
             &transforms::z_scaling(
                 &f, &a, &ov,
             ),
         )
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies the differentiation property of the Z-transform.
@@ -857,7 +855,7 @@ pub unsafe extern "C" fn rssn_json_z_scaling(
 
 /// Returns a JSON string representing the `Expr` of the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -878,15 +876,14 @@ pub unsafe extern "C" fn rssn_json_z_differentiation(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (Some(f), Some(ov)) =
-        (f, out_var)
-    {
+    match (f, out_var)
+    { (Some(f), Some(ov)) => {
 
         to_json_string(&transforms::z_differentiation(&f, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 // --- Utils ---
@@ -901,7 +898,7 @@ pub unsafe extern "C" fn rssn_json_z_differentiation(
 
 /// Returns a JSON string representing the `Expr` of the convolution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -930,23 +927,23 @@ pub unsafe extern "C" fn rssn_json_convolution_fourier(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
-        Some(f),
-        Some(g),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         f,
         g,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(f),
+        Some(g),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_json_string(&transforms::convolution_fourier(&f, &g, &iv, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the convolution of two functions using the Laplace transform property.
@@ -959,7 +956,7 @@ pub unsafe extern "C" fn rssn_json_convolution_fourier(
 
 /// Returns a JSON string representing the `Expr` of the convolution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -988,23 +985,23 @@ pub unsafe extern "C" fn rssn_json_convolution_laplace(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    if let (
-        Some(f),
-        Some(g),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         f,
         g,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(f),
+        Some(g),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_json_string(&transforms::convolution_laplace(&f, &g, &iv, &ov))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the partial fraction decomposition of an expression.
@@ -1015,7 +1012,7 @@ pub unsafe extern "C" fn rssn_json_convolution_laplace(
 
 /// Returns a JSON string representing `Vec<Expr>` (partial fraction decomposition).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

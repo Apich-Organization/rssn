@@ -8,7 +8,7 @@ use crate::symbolic::calculus_of_variations;
 use crate::symbolic::core::Expr;
 
 /// Computes the Euler-Lagrange equation using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_euler_lagrange(
     lagrangian_json: *const c_char,
@@ -51,23 +51,23 @@ pub extern "C" fn rssn_json_euler_lagrange(
         }
     };
 
-    if let (Some(l), Some(f), Some(v)) = (
+    match (
         lagrangian,
         func_str,
         var_str,
-    ) {
+    ) { (Some(l), Some(f), Some(v)) => {
 
         let result = calculus_of_variations::euler_lagrange(&l, f, v);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Generates and attempts to solve the Euler-Lagrange equation using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_solve_euler_lagrange(
     lagrangian_json: *const c_char,
@@ -110,23 +110,23 @@ pub extern "C" fn rssn_json_solve_euler_lagrange(
         }
     };
 
-    if let (Some(l), Some(f), Some(v)) = (
+    match (
         lagrangian,
         func_str,
         var_str,
-    ) {
+    ) { (Some(l), Some(f), Some(v)) => {
 
         let result = calculus_of_variations::solve_euler_lagrange(&l, f, v);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Applies Hamilton's Principle using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_hamiltons_principle(
     lagrangian_json: *const c_char,
@@ -169,17 +169,17 @@ pub extern "C" fn rssn_json_hamiltons_principle(
         }
     };
 
-    if let (Some(l), Some(f), Some(v)) = (
+    match (
         lagrangian,
         func_str,
         var_str,
-    ) {
+    ) { (Some(l), Some(f), Some(v)) => {
 
         let result = calculus_of_variations::hamiltons_principle(&l, f, v);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

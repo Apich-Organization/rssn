@@ -3,7 +3,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::fractal_geometry_and_chaos::{IteratedFunctionSystem, ComplexDynamicalSystem, find_fixed_points, analyze_stability, lyapunov_exponent, lorenz_system};
 
 /// Creates a new `IteratedFunctionSystem` (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_ifs_create(
     functions_buf: BincodeBuffer,
@@ -27,11 +27,11 @@ pub extern "C" fn rssn_bincode_ifs_create(
             &variables_buf,
         );
 
-    if let (Some(f), Some(p), Some(v)) = (
+    match (
         functions,
         probabilities,
         variables,
-    ) {
+    ) { (Some(f), Some(p), Some(v)) => {
 
         let ifs =
             IteratedFunctionSystem::new(
@@ -39,14 +39,14 @@ pub extern "C" fn rssn_bincode_ifs_create(
             );
 
         to_bincode_buffer(&ifs)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Calculates similarity dimension (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_ifs_similarity_dimension(
     scaling_factors_buf: BincodeBuffer
@@ -69,7 +69,7 @@ pub extern "C" fn rssn_bincode_ifs_similarity_dimension(
 }
 
 /// Creates a new Mandelbrot family system (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_complex_system_new_mandelbrot(
     c_buf: BincodeBuffer
@@ -90,7 +90,7 @@ pub extern "C" fn rssn_bincode_complex_system_new_mandelbrot(
 }
 
 /// Iterates the system once (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_complex_system_iterate(
     system_buf: BincodeBuffer,
@@ -106,22 +106,21 @@ pub extern "C" fn rssn_bincode_complex_system_iterate(
     let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
-    if let (Some(sys), Some(z_val)) =
-        (system, z)
-    {
+    match (system, z)
+    { (Some(sys), Some(z_val)) => {
 
         let result =
             sys.iterate(&z_val);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Finds fixed points (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_complex_system_fixed_points(
     system_buf: BincodeBuffer
@@ -145,7 +144,7 @@ pub extern "C" fn rssn_bincode_complex_system_fixed_points(
 }
 
 /// Finds fixed points of a 1D map (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -184,7 +183,7 @@ pub extern "C" fn rssn_bincode_find_fixed_points(
 }
 
 /// Analyzes stability of a fixed point (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -233,7 +232,7 @@ pub extern "C" fn rssn_bincode_analyze_stability(
 }
 
 /// Calculates Lyapunov exponent (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -284,7 +283,7 @@ pub extern "C" fn rssn_bincode_lyapunov_exponent(
 }
 
 /// Returns Lorenz system equations (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_lorenz_system(
 ) -> BincodeBuffer {

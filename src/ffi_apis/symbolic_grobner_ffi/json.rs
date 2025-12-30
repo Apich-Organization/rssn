@@ -7,7 +7,7 @@ use crate::symbolic::grobner::buchberger;
 use crate::symbolic::grobner::poly_division_multivariate;
 use crate::symbolic::grobner::MonomialOrder;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes a Gröbner basis using Buchberger's algorithm and returns it as JSON-encoded polynomials.
 ///
@@ -38,9 +38,8 @@ pub extern "C" fn rssn_json_buchberger(
     let order: Option<MonomialOrder> =
         from_json_string(order_json);
 
-    if let (Some(b), Some(o)) =
-        (basis, order)
-    {
+    match (basis, order)
+    { (Some(b), Some(o)) => {
 
         match buchberger(&b, o) {
             | Ok(result) => {
@@ -50,13 +49,13 @@ pub extern "C" fn rssn_json_buchberger(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Divides a multivariate polynomial by a list of divisors under a given monomial order
 /// and returns quotients and remainder as JSON-encoded polynomials.
@@ -95,15 +94,15 @@ pub extern "C" fn rssn_json_poly_division_multivariate(
     let order: Option<MonomialOrder> =
         from_json_string(order_json);
 
-    if let (
-        Some(d),
-        Some(divs),
-        Some(o),
-    ) = (
+    match (
         dividend,
         divisors,
         order,
-    ) {
+    ) { (
+        Some(d),
+        Some(divs),
+        Some(o),
+    ) => {
 
         match poly_division_multivariate(
             &d, &divs, o,
@@ -115,8 +114,8 @@ pub extern "C" fn rssn_json_poly_division_multivariate(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

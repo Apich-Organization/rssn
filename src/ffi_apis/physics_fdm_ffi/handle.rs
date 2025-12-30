@@ -9,7 +9,7 @@ use crate::physics::physics_fdm::{
 };
 
 /// Creates a new `FdmGrid` handle with the given dimensions.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_fdm_grid_new(
     d1: usize,
@@ -34,7 +34,7 @@ pub extern "C" fn rssn_physics_fdm_grid_new(
 }
 
 /// Frees a `FdmGrid` handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -46,16 +46,16 @@ pub extern "C" fn rssn_physics_fdm_grid_new(
 
 pub unsafe extern "C" fn rssn_physics_fdm_grid_free(
     grid: *mut FdmGrid<f64>
-) {
+) { unsafe {
 
     if !grid.is_null() {
 
         let _ = Box::from_raw(grid);
     }
-}
+}}
 
 /// Returns the size of the grid data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_free(
 
 pub unsafe extern "C" fn rssn_physics_fdm_grid_len(
     grid: *mut FdmGrid<f64>
-) -> usize {
+) -> usize { unsafe {
 
     if grid.is_null() {
 
@@ -75,10 +75,10 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_len(
     }
 
     (*grid).len()
-}
+}}
 
 /// Returns a pointer to the grid data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -90,7 +90,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_len(
 
 pub unsafe extern "C" fn rssn_physics_fdm_grid_data(
     grid: *mut FdmGrid<f64>
-) -> *mut f64 {
+) -> *mut f64 { unsafe {
 
     if grid.is_null() {
 
@@ -100,10 +100,10 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_data(
     (*grid)
         .as_mut_slice()
         .as_mut_ptr()
-}
+}}
 
 /// Simulates 2D heat conduction and returns a new `FdmGrid` handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_fdm_simulate_heat_2d(
 ) -> *mut FdmGrid<f64> {
@@ -114,7 +114,7 @@ pub extern "C" fn rssn_physics_fdm_simulate_heat_2d(
 }
 
 /// Simulates 2D wave propagation and returns a new `FdmGrid` handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_fdm_simulate_wave_2d(
 ) -> *mut FdmGrid<f64> {

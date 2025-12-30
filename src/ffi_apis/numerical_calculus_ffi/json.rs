@@ -36,7 +36,7 @@ struct HessianInput {
 
 /// Computes the gradient of an expression at a given point using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -107,7 +107,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(
 
 /// Computes the Jacobian matrix of a set of expressions at a given point using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -178,7 +178,7 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(
 
 /// Computes the Hessian matrix of an expression at a given point using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

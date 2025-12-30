@@ -17,7 +17,7 @@ struct CadInput {
 /// Computes CAD for a set of polynomials via JSON interface.
 ///
 /// Input JSON should be an object: `{"polys": [Expr, ...], "vars": ["x", "y", ...]}`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

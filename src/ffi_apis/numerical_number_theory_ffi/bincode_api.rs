@@ -54,7 +54,7 @@ fn encode<T: Serialize>(
 }
 
 /// Factorizes a number via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

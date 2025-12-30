@@ -22,7 +22,7 @@ use crate::symbolic::error_correction::rs_error_count;
 ///
 /// # Safety
 /// Caller must ensure `data` points to 4 bytes and `out` points to 7 bytes of allocated memory.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -35,7 +35,7 @@ use crate::symbolic::error_correction::rs_error_count;
 pub unsafe extern "C" fn rssn_hamming_encode(
     data: *const u8,
     out: *mut u8,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data.is_null() || out.is_null() {
 
@@ -62,14 +62,14 @@ pub unsafe extern "C" fn rssn_hamming_encode(
         },
         | None => -1,
     }
-}
+}}
 
 /// Decodes a 7-bit Hamming(7,4) codeword, correcting single-bit errors.
 ///
 /// # Safety
 /// Caller must ensure `codeword` points to 7 bytes and `data_out` points to 4 bytes.
 /// `error_pos` will receive the 1-based error position or 0 if no error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -83,7 +83,7 @@ pub unsafe extern "C" fn rssn_hamming_decode(
     codeword: *const u8,
     data_out: *mut u8,
     error_pos: *mut u8,
-) -> i32 {
+) -> i32 { unsafe {
 
     if codeword.is_null()
         || data_out.is_null()
@@ -117,13 +117,13 @@ pub unsafe extern "C" fn rssn_hamming_decode(
         },
         | Err(_) => -1,
     }
-}
+}}
 
 /// Encodes data using Reed-Solomon code with `n_sym` error correction symbols.
 ///
 /// # Safety
 /// Caller must ensure `data` is valid. Returns allocated memory that must be freed.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -138,7 +138,7 @@ pub unsafe extern "C" fn rssn_rs_encode(
     data_len: usize,
     n_sym: usize,
     out_len: *mut usize,
-) -> *mut u8 {
+) -> *mut u8 { unsafe {
 
     if data.is_null()
         || out_len.is_null()
@@ -168,13 +168,13 @@ pub unsafe extern "C" fn rssn_rs_encode(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 /// Decodes a Reed-Solomon codeword, correcting errors if possible.
 ///
 /// # Safety
 /// Caller must ensure `codeword` is valid. Returns allocated memory that must be freed.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -189,7 +189,7 @@ pub unsafe extern "C" fn rssn_rs_decode(
     codeword_len: usize,
     n_sym: usize,
     out_len: *mut usize,
-) -> *mut u8 {
+) -> *mut u8 { unsafe {
 
     if codeword.is_null()
         || out_len.is_null()
@@ -219,13 +219,13 @@ pub unsafe extern "C" fn rssn_rs_decode(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 /// Frees memory allocated by `rs_encode` or `rs_decode`.
 ///
 /// # Safety
 /// Caller must ensure `ptr` was returned by `rssn_rs_encode` or `rssn_rs_decode`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -238,13 +238,13 @@ pub unsafe extern "C" fn rssn_rs_decode(
 pub unsafe extern "C" fn rssn_rs_free(
     ptr: *mut u8,
     len: usize,
-) {
+) { unsafe {
 
     if !ptr.is_null() && len > 0 {
 
         let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, len));
     }
-}
+}}
 
 // ============================================================================
 // Hamming Code Extensions
@@ -255,7 +255,7 @@ pub unsafe extern "C" fn rssn_rs_free(
 /// # Safety
 /// Caller must ensure `a` and `b` point to `len` bytes each.
 /// Returns -1 on error (null pointers or different lengths).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -270,7 +270,7 @@ pub unsafe extern "C" fn rssn_hamming_distance(
     a_len: usize,
     b: *const u8,
     b_len: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if a.is_null() || b.is_null() {
 
@@ -299,13 +299,13 @@ pub unsafe extern "C" fn rssn_hamming_distance(
         | Some(dist) => dist as i32,
         | None => -1,
     }
-}
+}}
 
 /// Computes Hamming weight (number of 1s) of a byte slice.
 ///
 /// # Safety
 /// Caller must ensure `data` points to `len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -318,7 +318,7 @@ pub unsafe extern "C" fn rssn_hamming_distance(
 pub unsafe extern "C" fn rssn_hamming_weight(
     data: *const u8,
     len: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data.is_null() {
 
@@ -331,14 +331,14 @@ pub unsafe extern "C" fn rssn_hamming_weight(
         );
 
     hamming_weight(slice) as i32
-}
+}}
 
 /// Checks if a Hamming(7,4) codeword is valid without correcting.
 ///
 /// # Safety
 /// Caller must ensure `codeword` points to 7 bytes.
 /// Returns 1 if valid, 0 if invalid, -1 on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -350,7 +350,7 @@ pub unsafe extern "C" fn rssn_hamming_weight(
 
 pub unsafe extern "C" fn rssn_hamming_check(
     codeword: *const u8
-) -> i32 {
+) -> i32 { unsafe {
 
     if codeword.is_null() {
 
@@ -364,7 +364,7 @@ pub unsafe extern "C" fn rssn_hamming_check(
         );
 
     i32::from(hamming_check(slice))
-}
+}}
 
 // ============================================================================
 // Reed-Solomon Enhancements
@@ -375,7 +375,7 @@ pub unsafe extern "C" fn rssn_hamming_check(
 /// # Safety
 /// Caller must ensure `codeword` points to `codeword_len` bytes.
 /// Returns 1 if valid, 0 if invalid, -1 on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -389,7 +389,7 @@ pub unsafe extern "C" fn rssn_rs_check(
     codeword: *const u8,
     codeword_len: usize,
     n_sym: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if codeword.is_null() {
 
@@ -405,14 +405,14 @@ pub unsafe extern "C" fn rssn_rs_check(
     i32::from(rs_check(
         slice, n_sym,
     ))
-}
+}}
 
 /// Estimates the number of errors in a Reed-Solomon codeword.
 ///
 /// # Safety
 /// Caller must ensure `codeword` points to `codeword_len` bytes.
 /// Returns error count or -1 on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -426,7 +426,7 @@ pub unsafe extern "C" fn rssn_rs_error_count(
     codeword: *const u8,
     codeword_len: usize,
     n_sym: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if codeword.is_null() {
 
@@ -440,7 +440,7 @@ pub unsafe extern "C" fn rssn_rs_error_count(
         );
 
     rs_error_count(slice, n_sym) as i32
-}
+}}
 
 // ============================================================================
 // CRC-32
@@ -450,7 +450,7 @@ pub unsafe extern "C" fn rssn_rs_error_count(
 ///
 /// # Safety
 /// Caller must ensure `data` points to `len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -463,7 +463,7 @@ pub unsafe extern "C" fn rssn_rs_error_count(
 pub unsafe extern "C" fn rssn_crc32_compute(
     data: *const u8,
     len: usize,
-) -> u32 {
+) -> u32 { unsafe {
 
     if data.is_null() {
 
@@ -476,14 +476,14 @@ pub unsafe extern "C" fn rssn_crc32_compute(
         );
 
     crc32_compute(slice)
-}
+}}
 
 /// Verifies CRC-32 checksum of data.
 ///
 /// # Safety
 /// Caller must ensure `data` points to `len` bytes.
 /// Returns 1 if valid, 0 if invalid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -497,7 +497,7 @@ pub unsafe extern "C" fn rssn_crc32_verify(
     data: *const u8,
     len: usize,
     expected_crc: u32,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data.is_null() {
 
@@ -513,14 +513,14 @@ pub unsafe extern "C" fn rssn_crc32_verify(
         slice,
         expected_crc,
     ))
-}
+}}
 
 /// Updates an existing CRC-32 with additional data (for incremental computation).
 ///
 /// # Safety
 /// Caller must ensure `data` points to `len` bytes.
 /// Use 0xFFFFFFFF as initial crc for first call.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -534,7 +534,7 @@ pub unsafe extern "C" fn rssn_crc32_update(
     crc: u32,
     data: *const u8,
     len: usize,
-) -> u32 {
+) -> u32 { unsafe {
 
     if data.is_null() {
 
@@ -547,10 +547,10 @@ pub unsafe extern "C" fn rssn_crc32_update(
         );
 
     crc32_update(crc, slice)
-}
+}}
 
 /// Finalizes a CRC-32 computation started with `crc32_update`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_crc32_finalize(
     crc: u32

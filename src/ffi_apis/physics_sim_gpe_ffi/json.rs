@@ -34,7 +34,7 @@ use crate::physics::physics_sim::gpe_superfluidity::{
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

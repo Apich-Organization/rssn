@@ -6,7 +6,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::proof;
 
 /// Verifies an equation solution using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -34,15 +34,15 @@ pub unsafe extern "C" fn rssn_json_verify_equation_solution(
     let free_vars: Option<Vec<String>> =
         from_json_string(free_vars_json);
 
-    if let (
-        Some(eqs),
-        Some(sol),
-        Some(free),
-    ) = (
+    match (
         equations,
         solution,
         free_vars,
-    ) {
+    ) { (
+        Some(eqs),
+        Some(sol),
+        Some(free),
+    ) => {
 
         let free_refs: Vec<&str> = free
             .iter()
@@ -54,14 +54,14 @@ pub unsafe extern "C" fn rssn_json_verify_equation_solution(
             &sol,
             &free_refs,
         )
-    } else {
+    } _ => {
 
         false
-    }
+    }}
 }
 
 /// Verifies an indefinite integral using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -90,25 +90,25 @@ pub unsafe extern "C" fn rssn_json_verify_indefinite_integral(
     let var: Option<String> =
         from_json_string(var_json);
 
-    if let (
-        Some(f),
-        Some(int),
-        Some(v),
-    ) = (
+    match (
         integrand,
         integral_result,
         var,
-    ) {
+    ) { (
+        Some(f),
+        Some(int),
+        Some(v),
+    ) => {
 
         proof::verify_indefinite_integral(&f, &int, &v)
-    } else {
+    } _ => {
 
         false
-    }
+    }}
 }
 
 /// Verifies a matrix inverse using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -129,15 +129,14 @@ pub unsafe extern "C" fn rssn_json_verify_matrix_inverse(
     let inverse: Option<Expr> =
         from_json_string(inverse_json);
 
-    if let (Some(orig), Some(inv)) =
-        (original, inverse)
-    {
+    match (original, inverse)
+    { (Some(orig), Some(inv)) => {
 
         proof::verify_matrix_inverse(
             &orig, &inv,
         )
-    } else {
+    } _ => {
 
         false
-    }
+    }}
 }

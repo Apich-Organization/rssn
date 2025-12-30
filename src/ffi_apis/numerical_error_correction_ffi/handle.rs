@@ -6,7 +6,7 @@ use crate::numerical::error_correction;
 ///
 /// # Safety
 /// `message_ptr` must be a valid pointer to `message_len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -22,7 +22,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
     n_parity: usize,
     out_ptr: *mut u8,
     out_len: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if message_ptr.is_null()
         || out_ptr.is_null()
@@ -57,13 +57,13 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
         },
         | Err(_) => -2,
     }
-}
+}}
 
 /// Reed-Solomon decode a codeword in place.
 ///
 /// # Safety
 /// `codeword_ptr` must be a valid pointer to `codeword_len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode(
     codeword_ptr: *mut u8,
     codeword_len: usize,
     n_parity: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if codeword_ptr.is_null() {
 
@@ -94,13 +94,13 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode(
         | Ok(()) => 0,
         | Err(_) => -2,
     }
-}
+}}
 
 /// Check if a Reed-Solomon codeword is valid.
 ///
 /// # Safety
 /// `codeword_ptr` must be a valid pointer to `codeword_len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -114,7 +114,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check(
     codeword_ptr: *const u8,
     codeword_len: usize,
     n_parity: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if codeword_ptr.is_null() {
 
@@ -128,14 +128,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check(
         );
 
     i32::from(error_correction::reed_solomon_check(codeword, n_parity))
-}
+}}
 
 /// Hamming encode a 4-bit data block.
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to 4 bytes.
 /// `out_ptr` must be a valid pointer to at least 7 bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -148,7 +148,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check(
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
     data_ptr: *const u8,
     out_ptr: *mut u8,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data_ptr.is_null()
         || out_ptr.is_null()
@@ -176,7 +176,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
         },
         | None => -2,
     }
-}
+}}
 
 /// Hamming decode a 7-bit codeword.
 ///
@@ -184,7 +184,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
 /// `codeword_ptr` must be a valid pointer to 7 bytes.
 /// `out_ptr` must be a valid pointer to at least 4 bytes.
 /// `error_pos_ptr` must be a valid pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -198,7 +198,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
     codeword_ptr: *const u8,
     out_ptr: *mut u8,
     error_pos_ptr: *mut i32,
-) -> i32 {
+) -> i32 { unsafe {
 
     if codeword_ptr.is_null()
         || out_ptr.is_null()
@@ -229,13 +229,13 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
         },
         | Err(_) => -2,
     }
-}
+}}
 
 /// Check if a Hamming codeword is valid.
 ///
 /// # Safety
 /// `codeword_ptr` must be a valid pointer to 7 bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -247,7 +247,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
 
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(
     codeword_ptr: *const u8
-) -> i32 {
+) -> i32 { unsafe {
 
     if codeword_ptr.is_null() {
 
@@ -261,13 +261,13 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(
         );
 
     i32::from(error_correction::hamming_check_numerical(codeword))
-}
+}}
 
 /// Compute Hamming distance between two byte arrays.
 ///
 /// # Safety
 /// `a_ptr` and `b_ptr` must be valid pointers to `len` bytes each.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -281,7 +281,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance(
     a_ptr: *const u8,
     b_ptr: *const u8,
     len: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if a_ptr.is_null()
         || b_ptr.is_null()
@@ -299,13 +299,13 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance(
     );
 
     error_correction::hamming_distance_numerical(a, b).map_or(-1, |d| d as i32)
-}
+}}
 
 /// Compute Hamming weight of a byte array.
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -318,7 +318,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance(
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight(
     data_ptr: *const u8,
     len: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data_ptr.is_null() {
 
@@ -332,13 +332,13 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight(
         );
 
     error_correction::hamming_weight_numerical(data) as i32
-}
+}}
 
 /// Compute CRC-32 checksum.
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -351,7 +351,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight(
 pub unsafe extern "C" fn rssn_num_error_correction_crc32(
     data_ptr: *const u8,
     len: usize,
-) -> u32 {
+) -> u32 { unsafe {
 
     if data_ptr.is_null() {
 
@@ -365,13 +365,13 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32(
         );
 
     error_correction::crc32_compute_numerical(data)
-}
+}}
 
 /// Verify CRC-32 checksum.
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -385,7 +385,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
     data_ptr: *const u8,
     len: usize,
     expected_crc: u32,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data_ptr.is_null() {
 
@@ -399,13 +399,13 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
         );
 
     i32::from(error_correction::crc32_verify_numerical(data, expected_crc))
-}
+}}
 
 /// Compute CRC-16 checksum.
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -418,7 +418,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
 pub unsafe extern "C" fn rssn_num_error_correction_crc16(
     data_ptr: *const u8,
     len: usize,
-) -> u16 {
+) -> u16 { unsafe {
 
     if data_ptr.is_null() {
 
@@ -434,13 +434,13 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16(
     error_correction::crc16_compute(
         data,
     )
-}
+}}
 
 /// Compute CRC-8 checksum.
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -453,7 +453,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16(
 pub unsafe extern "C" fn rssn_num_error_correction_crc8(
     data_ptr: *const u8,
     len: usize,
-) -> u8 {
+) -> u8 { unsafe {
 
     if data_ptr.is_null() {
 
@@ -467,14 +467,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8(
         );
 
     error_correction::crc8_compute(data)
-}
+}}
 
 /// Interleave data.
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 /// `out_ptr` must be a valid pointer to at least `len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -489,7 +489,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave(
     len: usize,
     depth: usize,
     out_ptr: *mut u8,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data_ptr.is_null()
         || out_ptr.is_null()
@@ -516,14 +516,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave(
     );
 
     0
-}
+}}
 
 /// De-interleave data.
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 /// `out_ptr` must be a valid pointer to at least `len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -538,7 +538,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave(
     len: usize,
     depth: usize,
     out_ptr: *mut u8,
-) -> i32 {
+) -> i32 { unsafe {
 
     if data_ptr.is_null()
         || out_ptr.is_null()
@@ -565,10 +565,10 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave(
     );
 
     0
-}
+}}
 
 /// Compute code rate.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_error_correction_code_rate(
     k: usize,
@@ -579,7 +579,7 @@ pub extern "C" fn rssn_num_error_correction_code_rate(
 }
 
 /// Compute error correction capability from minimum distance.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_error_correction_capability(
     min_distance: usize
@@ -589,7 +589,7 @@ pub const extern "C" fn rssn_num_error_correction_capability(
 }
 
 /// Compute error detection capability from minimum distance.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_error_detection_capability(
     min_distance: usize

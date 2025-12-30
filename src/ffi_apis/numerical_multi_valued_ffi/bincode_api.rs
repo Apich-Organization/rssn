@@ -36,7 +36,7 @@ struct ComplexResult {
 ///
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -112,7 +112,7 @@ struct LogSqrtInput {
 ///
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -167,7 +167,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
 ///
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -232,7 +232,7 @@ struct PowInput {
 ///
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

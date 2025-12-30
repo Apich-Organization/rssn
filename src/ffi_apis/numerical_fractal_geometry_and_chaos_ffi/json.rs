@@ -145,7 +145,7 @@ struct DimensionInput {
 
 // Mandelbrot set
 /// Generates the Mandelbrot set as an image (iterations per pixel) using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -200,7 +200,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
 
 /// Computes the escape time for a single point in the Mandelbrot set using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -253,7 +253,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
 
 // Julia set
 /// Generates the Julia set as an image (iterations per pixel) using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -309,7 +309,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
 
 /// Computes the escape time for a single point in the Julia set using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -364,7 +364,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
 
 // Lorenz attractor
 /// Generates data points for the Lorenz attractor using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -417,7 +417,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
 
 /// Generates data points for the Lorenz attractor with custom parameters using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -473,7 +473,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
 
 // Rossler attractor
 /// Generates data points for the Rossler attractor using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -529,7 +529,7 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
 
 // Henon map
 /// Generates data points for the Henon map using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -583,7 +583,7 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
 
 // Tinkerbell map
 /// Generates data points for the Tinkerbell map using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -639,7 +639,7 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
 
 // Logistic map
 /// Computes iterations of the logistic map using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -692,7 +692,7 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
 
 // Bifurcation diagram
 /// Generates data for a bifurcation diagram of the logistic map using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -747,7 +747,7 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
 
 // Lyapunov exponents
 /// Computes the Lyapunov exponent for the logistic map using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -801,7 +801,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
 
 /// Computes the Lyapunov exponent for the Lorenz attractor using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -857,7 +857,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
 
 // Dimension estimation
 /// Computes the box-counting dimension of a set of points using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -909,7 +909,7 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
 
 /// Computes the correlation dimension of a set of points using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

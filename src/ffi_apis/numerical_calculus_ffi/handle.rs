@@ -10,7 +10,7 @@ use crate::numerical::matrix::Matrix;
 use crate::symbolic::core::Expr;
 
 /// Computes the numerical partial derivative of a function with respect to a variable at a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -25,7 +25,7 @@ pub unsafe extern "C" fn rssn_num_calculus_partial_derivative(
     var: *const c_char,
     x: f64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if f.is_null()
         || var.is_null()
@@ -73,11 +73,11 @@ pub unsafe extern "C" fn rssn_num_calculus_partial_derivative(
             -1
         },
     }
-}
+}}
 
 /// Computes the numerical gradient of a function at a point.
 /// Returns a pointer to a Vec<f64> containing the gradient.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
     vars: *const *const c_char,
     point: *const f64,
     n_vars: usize,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if f.is_null()
         || vars.is_null()
@@ -162,11 +162,11 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Computes the numerical Jacobian matrix of a vector-valued function at a point.
 /// Returns a pointer to a Matrix<f64>.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -182,7 +182,7 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
     vars: *const *const c_char,
     point: *const f64,
     n_vars: usize,
-) -> *mut Matrix<f64> {
+) -> *mut Matrix<f64> { unsafe {
 
     if funcs.is_null()
         || vars.is_null()
@@ -275,11 +275,11 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Computes the numerical Hessian matrix of a scalar function at a point.
 /// Returns a pointer to a Matrix<f64>.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -294,7 +294,7 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
     vars: *const *const c_char,
     point: *const f64,
     n_vars: usize,
-) -> *mut Matrix<f64> {
+) -> *mut Matrix<f64> { unsafe {
 
     if f.is_null()
         || vars.is_null()
@@ -379,4 +379,4 @@ pub unsafe extern "C" fn rssn_num_calculus_hessian(
             ptr::null_mut()
         },
     }
-}
+}}

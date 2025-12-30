@@ -12,7 +12,7 @@ use crate::symbolic::stats_information_theory;
 unsafe fn collect_exprs(
     data: *const *const Expr,
     len: usize,
-) -> Vec<Expr> {
+) -> Vec<Expr> { unsafe {
 
     let mut exprs =
         Vec::with_capacity(len);
@@ -28,7 +28,7 @@ unsafe fn collect_exprs(
     }
 
     exprs
-}
+}}
 
 /// Computes the Shannon entropy of a probability distribution.
 
@@ -38,7 +38,7 @@ unsafe fn collect_exprs(
 
 /// Returns a raw pointer to an `Expr` representing the entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -51,7 +51,7 @@ unsafe fn collect_exprs(
 pub unsafe extern "C" fn rssn_shannon_entropy(
     probs: *const *const Expr,
     len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if probs.is_null() {
 
@@ -63,7 +63,7 @@ pub unsafe extern "C" fn rssn_shannon_entropy(
     Box::into_raw(Box::new(
         stats_information_theory::shannon_entropy(&p),
     ))
-}
+}}
 
 /// Computes the Kullback-Leibler divergence between two probability distributions.
 
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn rssn_shannon_entropy(
 
 /// Returns a raw pointer to an `Expr` representing the KL divergence.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rssn_kl_divergence(
     p_len: usize,
     q_probs: *const *const Expr,
     q_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if p_probs.is_null()
         || q_probs.is_null()
@@ -107,7 +107,7 @@ pub unsafe extern "C" fn rssn_kl_divergence(
         | Ok(res) => Box::into_raw(Box::new(res)),
         | Err(_) => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Computes the cross-entropy between two probability distributions.
 
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn rssn_kl_divergence(
 
 /// Returns a raw pointer to an `Expr` representing the cross-entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn rssn_cross_entropy(
     p_len: usize,
     q_probs: *const *const Expr,
     q_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if p_probs.is_null()
         || q_probs.is_null()
@@ -151,7 +151,7 @@ pub unsafe extern "C" fn rssn_cross_entropy(
         | Ok(res) => Box::into_raw(Box::new(res)),
         | Err(_) => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Computes the Gini impurity of a probability distribution.
 
@@ -161,7 +161,7 @@ pub unsafe extern "C" fn rssn_cross_entropy(
 
 /// Returns a raw pointer to an `Expr` representing the Gini impurity.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -174,7 +174,7 @@ pub unsafe extern "C" fn rssn_cross_entropy(
 pub unsafe extern "C" fn rssn_gini_impurity(
     probs: *const *const Expr,
     len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if probs.is_null() {
 
@@ -186,7 +186,7 @@ pub unsafe extern "C" fn rssn_gini_impurity(
     Box::into_raw(Box::new(
         stats_information_theory::gini_impurity(&p),
     ))
-}
+}}
 
 /// Computes the joint entropy of a joint probability distribution.
 
@@ -196,7 +196,7 @@ pub unsafe extern "C" fn rssn_gini_impurity(
 
 /// Returns a raw pointer to an `Expr` representing the joint entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -208,7 +208,7 @@ pub unsafe extern "C" fn rssn_gini_impurity(
 
 pub unsafe extern "C" fn rssn_joint_entropy(
     joint_probs: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if joint_probs.is_null() {
 
@@ -219,7 +219,7 @@ pub unsafe extern "C" fn rssn_joint_entropy(
         | Ok(res) => Box::into_raw(Box::new(res)),
         | Err(_) => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Computes the conditional entropy of a joint probability distribution.
 
@@ -229,7 +229,7 @@ pub unsafe extern "C" fn rssn_joint_entropy(
 
 /// Returns a raw pointer to an `Expr` representing the conditional entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -241,7 +241,7 @@ pub unsafe extern "C" fn rssn_joint_entropy(
 
 pub unsafe extern "C" fn rssn_conditional_entropy(
     joint_probs: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if joint_probs.is_null() {
 
@@ -252,7 +252,7 @@ pub unsafe extern "C" fn rssn_conditional_entropy(
         | Ok(res) => Box::into_raw(Box::new(res)),
         | Err(_) => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Computes the mutual information between two random variables from their joint probability distribution.
 
@@ -262,7 +262,7 @@ pub unsafe extern "C" fn rssn_conditional_entropy(
 
 /// Returns a raw pointer to an `Expr` representing the mutual information.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -274,7 +274,7 @@ pub unsafe extern "C" fn rssn_conditional_entropy(
 
 pub unsafe extern "C" fn rssn_mutual_information(
     joint_probs: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if joint_probs.is_null() {
 
@@ -285,4 +285,4 @@ pub unsafe extern "C" fn rssn_mutual_information(
         | Ok(res) => Box::into_raw(Box::new(res)),
         | Err(_) => std::ptr::null_mut(),
     }
-}
+}}

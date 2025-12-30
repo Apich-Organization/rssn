@@ -35,7 +35,7 @@ struct HessianInput {
 
 /// Computes the gradient of an expression at a given point using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -95,7 +95,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient_bincode(
 
 /// Computes the Jacobian matrix of a set of expressions at a given point using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_bincode(
 
 /// Computes the Hessian matrix of an expression at a given point using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

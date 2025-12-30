@@ -18,7 +18,7 @@ use crate::symbolic::graph_algorithms::topological_sort;
 /// Performs DFS traversal.
 /// Input: {"graph": Graph, "`start_node"`: usize}
 /// Output: [usize] (array of node indices)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -55,7 +55,7 @@ pub unsafe extern "C" fn rssn_json_graph_dfs_api(
 /// Performs BFS traversal.
 /// Input: {"graph": Graph, "`start_node"`: usize}
 /// Output: [usize]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rssn_json_graph_bfs_api(
 /// Finds connected components.
 /// Input: Graph
 /// Output: [[usize]] (array of arrays)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn rssn_json_graph_connected_components_api(
 /// Checks if graph is connected.
 /// Input: Graph
 /// Output: bool
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -147,7 +147,7 @@ pub unsafe extern "C" fn rssn_json_graph_is_connected(
 /// Finds strongly connected components.
 /// Input: Graph
 /// Output: [[usize]]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -177,7 +177,7 @@ pub unsafe extern "C" fn rssn_json_graph_strongly_connected_components(
 /// Checks if graph has a cycle.
 /// Input: Graph
 /// Output: bool
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -204,7 +204,7 @@ pub unsafe extern "C" fn rssn_json_graph_has_cycle_api(
 /// Finds bridges and articulation points.
 /// Input: Graph
 /// Output: {"bridges": [(usize, usize)], "`articulation_points"`: [usize]}
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -243,7 +243,7 @@ pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
 /// Computes MST using Kruskal's algorithm.
 /// Input: Graph
 /// Output: Graph (MST)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -288,7 +288,7 @@ pub unsafe extern "C" fn rssn_json_graph_kruskal_mst_api(
 /// Computes maximum flow using Edmonds-Karp.
 /// Input: {"graph": Graph, "source": usize, "sink": usize}
 /// Output: f64
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -327,7 +327,7 @@ pub unsafe extern "C" fn rssn_json_graph_edmonds_karp_max_flow(
 /// Computes maximum flow using Dinic's algorithm.
 /// Input: {"graph": Graph, "source": usize, "sink": usize}
 /// Output: f64
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -366,7 +366,7 @@ pub unsafe extern "C" fn rssn_json_graph_dinic_max_flow(
 /// Checks if graph is bipartite.
 /// Input: Graph
 /// Output: [i8] or null
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -393,7 +393,7 @@ pub unsafe extern "C" fn rssn_json_graph_is_bipartite_api(
 /// Finds maximum matching in bipartite graph.
 /// Input: {"graph": Graph, "partition": [i8]}
 /// Output: [(usize, usize)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -431,7 +431,7 @@ pub unsafe extern "C" fn rssn_json_graph_bipartite_maximum_matching(
 /// Performs topological sort.
 /// Input: Graph
 /// Output: [usize] or null
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -127,9 +127,9 @@ fn test_bincode_api_build_info() {
 
         let slice = buffer.as_slice();
 
-        let (info, _) : (BuildInfo, usize) = bincode::serde::decode_from_slice(
+        let (info, _) : (BuildInfo, usize) = bincode_next::serde::decode_from_slice(
             slice,
-            bincode::config::standard(),
+            bincode_next::config::standard(),
         )
         .unwrap();
 
@@ -162,9 +162,9 @@ fn test_bincode_api_build_date() {
 
         let slice = buffer.as_slice();
 
-        let (date, _) : (String, usize) = bincode::serde::decode_from_slice(
+        let (date, _) : (String, usize) = bincode_next::serde::decode_from_slice(
             slice,
-            bincode::config::standard(),
+            bincode_next::config::standard(),
         )
         .unwrap();
 
@@ -226,9 +226,9 @@ fn test_all_three_apis_consistency() {
             let slice =
                 buffer.as_slice();
 
-            let (d, _) : (String, usize) = bincode::serde::decode_from_slice(
+            let (d, _) : (String, usize) = bincode_next::serde::decode_from_slice(
                 slice,
-                bincode::config::standard(),
+                bincode_next::config::standard(),
             )
             .unwrap();
 

@@ -7,7 +7,7 @@ use crate::symbolic::stats;
 ///
 /// # Safety
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -20,7 +20,7 @@ use crate::symbolic::stats;
 pub unsafe extern "C" fn rssn_mean(
     data: *const *const Expr,
     len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if data.is_null() {
 
@@ -43,13 +43,13 @@ pub unsafe extern "C" fn rssn_mean(
     Box::into_raw(Box::new(
         stats::mean(&exprs),
     ))
-}
+}}
 
 /// Computes the symbolic variance of a set of expressions.
 ///
 /// # Safety
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -62,7 +62,7 @@ pub unsafe extern "C" fn rssn_mean(
 pub unsafe extern "C" fn rssn_variance(
     data: *const *const Expr,
     len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if data.is_null() {
 
@@ -85,13 +85,13 @@ pub unsafe extern "C" fn rssn_variance(
     Box::into_raw(Box::new(
         stats::variance(&exprs),
     ))
-}
+}}
 
 /// Computes the symbolic standard deviation of a set of expressions.
 ///
 /// # Safety
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rssn_variance(
 pub unsafe extern "C" fn rssn_std_dev(
     data: *const *const Expr,
     len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if data.is_null() {
 
@@ -127,13 +127,13 @@ pub unsafe extern "C" fn rssn_std_dev(
     Box::into_raw(Box::new(
         stats::std_dev(&exprs),
     ))
-}
+}}
 
 /// Computes the symbolic covariance of two sets of expressions.
 ///
 /// # Safety
 /// The caller must ensure `data1` and `data2` are valid pointers to arrays of `Expr` pointers.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -148,7 +148,7 @@ pub unsafe extern "C" fn rssn_covariance(
     len1: usize,
     data2: *const *const Expr,
     len2: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if data1.is_null()
         || data2.is_null()
@@ -189,13 +189,13 @@ pub unsafe extern "C" fn rssn_covariance(
             &exprs2,
         ),
     ))
-}
+}}
 
 /// Computes the symbolic Pearson correlation coefficient.
 ///
 /// # Safety
 /// The caller must ensure `data1` and `data2` are valid pointers to arrays of `Expr` pointers.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -210,7 +210,7 @@ pub unsafe extern "C" fn rssn_correlation(
     len1: usize,
     data2: *const *const Expr,
     len2: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if data1.is_null()
         || data2.is_null()
@@ -251,4 +251,4 @@ pub unsafe extern "C" fn rssn_correlation(
             &exprs2,
         ),
     ))
-}
+}}

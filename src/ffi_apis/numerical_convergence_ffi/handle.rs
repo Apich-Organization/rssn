@@ -13,7 +13,7 @@ use crate::numerical::convergence;
 ///
 /// # Returns
 /// A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -26,7 +26,7 @@ use crate::numerical::convergence;
 pub unsafe extern "C" fn rssn_convergence_aitken(
     data: *const f64,
     len: usize,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if data.is_null() {
 
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken(
     let res = convergence::aitken_acceleration(slice);
 
     Box::into_raw(Box::new(res))
-}
+}}
 
 /// Applies Richardson extrapolation to the input sequence.
 ///
@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken(
 ///
 /// # Returns
 /// A pointer to a new `Vec<f64>` containing the extrapolated sequence, or null on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -63,7 +63,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken(
 pub unsafe extern "C" fn rssn_convergence_richardson(
     data: *const f64,
     len: usize,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if data.is_null() {
 
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson(
     let res = convergence::richardson_extrapolation(slice);
 
     Box::into_raw(Box::new(res))
-}
+}}
 
 /// Applies Wynn's epsilon algorithm to the input sequence.
 ///
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson(
 ///
 /// # Returns
 /// A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson(
 pub unsafe extern "C" fn rssn_convergence_wynn(
     data: *const f64,
     len: usize,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if data.is_null() {
 
@@ -116,10 +116,10 @@ pub unsafe extern "C" fn rssn_convergence_wynn(
     );
 
     Box::into_raw(Box::new(res))
-}
+}}
 
 /// Frees a generic `Vec<f64>` pointer created by convergence functions.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -143,7 +143,7 @@ pub unsafe extern "C" fn rssn_convergence_free_vec(
 }
 
 /// Returns the length of the vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -170,7 +170,7 @@ pub const unsafe extern "C" fn rssn_convergence_get_vec_len(
 
 /// Copies the vector data into a provided buffer.
 /// buffer must have size at least `len * sizeof(f64)`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

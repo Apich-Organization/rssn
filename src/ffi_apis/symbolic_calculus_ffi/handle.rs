@@ -16,7 +16,7 @@ use crate::symbolic::core::Expr;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> {
+) -> Option<&'a str> { unsafe {
 
     if s.is_null() {
 
@@ -27,13 +27,13 @@ unsafe fn c_str_to_str<'a>(
             .to_str()
             .ok()
     }
-}
+}}
 
 /// Differentiates an expression: d/d(var) expr.
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -46,7 +46,7 @@ unsafe fn c_str_to_str<'a>(
 pub unsafe extern "C" fn rssn_differentiate(
     expr: *const Expr,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null() || var.is_null() {
 
@@ -70,13 +70,13 @@ pub unsafe extern "C" fn rssn_differentiate(
             var_str,
         ),
     ))
-}
+}}
 
 /// Integrates an expression: int(expr) d(var).
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -89,7 +89,7 @@ pub unsafe extern "C" fn rssn_differentiate(
 pub unsafe extern "C" fn rssn_integrate(
     expr: *const Expr,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null() || var.is_null() {
 
@@ -115,13 +115,13 @@ pub unsafe extern "C" fn rssn_integrate(
             None,
         ),
     ))
-}
+}}
 
 /// Checks if an expression is analytic with respect to a variable.
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rssn_integrate(
 pub unsafe extern "C" fn rssn_check_analytic(
     expr: *const Expr,
     var: *const c_char,
-) -> bool {
+) -> bool { unsafe {
 
     if expr.is_null() || var.is_null() {
 
@@ -153,13 +153,13 @@ pub unsafe extern "C" fn rssn_check_analytic(
         expr_ref,
         var_str,
     )
-}
+}}
 
 /// Computes the limit of an expression: limit(expr, var -> point).
 ///
 /// # Safety
 /// The caller must ensure `expr` and `point` are valid Expr pointers and `var` is a valid C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -173,7 +173,7 @@ pub unsafe extern "C" fn rssn_limit(
     expr: *const Expr,
     var: *const c_char,
     point: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null()
         || var.is_null()
@@ -203,10 +203,10 @@ pub unsafe extern "C" fn rssn_limit(
             point_ref,
         ),
     ))
-}
+}}
 
 /// Computes the definite integral of an expression.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -221,7 +221,7 @@ pub unsafe extern "C" fn rssn_definite_integrate(
     var: *const c_char,
     lower: *const Expr,
     upper: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null()
         || var.is_null()
@@ -255,10 +255,10 @@ pub unsafe extern "C" fn rssn_definite_integrate(
             upper_ref,
         ),
     ))
-}
+}}
 
 /// Evaluates an expression at a given point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -272,7 +272,7 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
     expr: *const Expr,
     var: *const c_char,
     value: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null()
         || var.is_null()
@@ -302,10 +302,10 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
             value_ref,
         ),
     ))
-}
+}}
 
 /// Finds poles of an expression.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -318,7 +318,7 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
 pub unsafe extern "C" fn rssn_find_poles(
     expr: *const Expr,
     var: *const c_char,
-) -> *mut Vec<Expr> {
+) -> *mut Vec<Expr> { unsafe {
 
     if expr.is_null() || var.is_null() {
 
@@ -342,7 +342,7 @@ pub unsafe extern "C" fn rssn_find_poles(
             var_str,
         ),
     ))
-}
+}}
 
 /// Returns the number of poles found for a given expression.
 ///
@@ -357,7 +357,7 @@ pub unsafe extern "C" fn rssn_find_poles(
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -369,7 +369,7 @@ pub unsafe extern "C" fn rssn_find_poles(
 
 pub const unsafe extern "C" fn rssn_poles_len(
     poles: *const Vec<Expr>
-) -> usize {
+) -> usize { unsafe {
 
     if poles.is_null() {
 
@@ -378,7 +378,7 @@ pub const unsafe extern "C" fn rssn_poles_len(
 
         (*poles).len()
     }
-}
+}}
 
 /// Returns a cloned pole expression at the given index.
 ///
@@ -396,7 +396,7 @@ pub const unsafe extern "C" fn rssn_poles_len(
 ///
 /// This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>` and
 /// returns ownership of a heap-allocated `Expr` to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -409,7 +409,7 @@ pub const unsafe extern "C" fn rssn_poles_len(
 pub unsafe extern "C" fn rssn_poles_get(
     poles: *const Vec<Expr>,
     index: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if poles.is_null() {
 
@@ -426,7 +426,7 @@ pub unsafe extern "C" fn rssn_poles_get(
     Box::into_raw(Box::new(
         poles_ref[index].clone(),
     ))
-}
+}}
 
 /// Frees a vector of pole expressions previously returned by `rssn_find_poles`.
 ///
@@ -443,7 +443,7 @@ pub unsafe extern "C" fn rssn_poles_get(
 /// This function is unsafe because it takes ownership of a raw pointer and frees the
 /// underlying allocation. The pointer must have been created by this library and must
 /// not be used after this call.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -455,16 +455,16 @@ pub unsafe extern "C" fn rssn_poles_get(
 
 pub unsafe extern "C" fn rssn_free_poles(
     poles: *mut Vec<Expr>
-) {
+) { unsafe {
 
     if !poles.is_null() {
 
         let _ = Box::from_raw(poles);
     }
-}
+}}
 
 /// Calculates the residue of a complex function at a given pole.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -478,7 +478,7 @@ pub unsafe extern "C" fn rssn_calculate_residue(
     expr: *const Expr,
     var: *const c_char,
     pole: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null()
         || var.is_null()
@@ -508,10 +508,10 @@ pub unsafe extern "C" fn rssn_calculate_residue(
             pole_ref,
         ),
     ))
-}
+}}
 
 /// Finds the order of a pole.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -525,7 +525,7 @@ pub unsafe extern "C" fn rssn_find_pole_order(
     expr: *const Expr,
     var: *const c_char,
     pole: *const Expr,
-) -> usize {
+) -> usize { unsafe {
 
     if expr.is_null()
         || var.is_null()
@@ -550,10 +550,10 @@ pub unsafe extern "C" fn rssn_find_pole_order(
         var_str,
         pole_ref,
     )
-}
+}}
 
 /// Substitutes a variable with an expression.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -567,7 +567,7 @@ pub unsafe extern "C" fn rssn_substitute(
     expr: *const Expr,
     var: *const c_char,
     replacement: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null()
         || var.is_null()
@@ -597,14 +597,14 @@ pub unsafe extern "C" fn rssn_substitute(
             replacement_ref,
         ),
     ))
-}
+}}
 
 /// Gets real and imaginary parts of an expression.
 ///
 /// Returns a pointer to a tuple (Expr, Expr) - represented as Vec<Expr> of size 2 for simplicity?
 /// Or return two out pointers?
 /// I'll return a Vec<Expr> of size 2.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -616,7 +616,7 @@ pub unsafe extern "C" fn rssn_substitute(
 
 pub unsafe extern "C" fn rssn_get_real_imag_parts(
     expr: *const Expr
-) -> *mut Vec<Expr> {
+) -> *mut Vec<Expr> { unsafe {
 
     if expr.is_null() {
 
@@ -633,10 +633,10 @@ pub unsafe extern "C" fn rssn_get_real_imag_parts(
     Box::into_raw(Box::new(vec![
         re, im,
     ]))
-}
+}}
 
 /// Computes a path integral.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -650,7 +650,7 @@ pub unsafe extern "C" fn rssn_path_integrate(
     expr: *const Expr,
     var: *const c_char,
     contour: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null()
         || var.is_null()
@@ -680,4 +680,4 @@ pub unsafe extern "C" fn rssn_path_integrate(
             contour_ref,
         ),
     ))
-}
+}}

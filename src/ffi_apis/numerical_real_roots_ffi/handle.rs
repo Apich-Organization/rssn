@@ -15,7 +15,7 @@ use crate::numerical::real_roots;
 ///
 /// # Returns
 /// A pointer to a `Vec<f64>` containing the sorted real roots, or null on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -29,7 +29,7 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots(
     coeffs_ptr: *const f64,
     len: usize,
     tolerance: f64,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if coeffs_ptr.is_null() || len == 0
     {
@@ -56,10 +56,10 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots(
         },
         | Err(_) => ptr::null_mut(),
     }
-}
+}}
 
 /// Frees a roots vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -71,16 +71,16 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots(
 
 pub unsafe extern "C" fn rssn_real_roots_free_vec(
     ptr: *mut Vec<f64>
-) {
+) { unsafe {
 
     if !ptr.is_null() {
 
         let _ = Box::from_raw(ptr);
     }
-}
+}}
 
 /// Gets the length of the roots vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rssn_real_roots_free_vec(
 
 pub const unsafe extern "C" fn rssn_real_roots_get_vec_len(
     ptr: *const Vec<f64>
-) -> usize {
+) -> usize { unsafe {
 
     if ptr.is_null() {
 
@@ -100,10 +100,10 @@ pub const unsafe extern "C" fn rssn_real_roots_get_vec_len(
     }
 
     (*ptr).len()
-}
+}}
 
 /// Gets the data of the roots vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -116,7 +116,7 @@ pub const unsafe extern "C" fn rssn_real_roots_get_vec_len(
 pub const unsafe extern "C" fn rssn_real_roots_get_vec_data(
     ptr: *const Vec<f64>,
     buffer: *mut f64,
-) {
+) { unsafe {
 
     if ptr.is_null() || buffer.is_null()
     {
@@ -131,4 +131,4 @@ pub const unsafe extern "C" fn rssn_real_roots_get_vec_data(
         buffer,
         vec.len(),
     );
-}
+}}

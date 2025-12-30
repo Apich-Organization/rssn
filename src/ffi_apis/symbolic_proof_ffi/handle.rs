@@ -17,7 +17,7 @@ use crate::symbolic::proof;
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
     len: usize,
-) -> Option<Vec<String>> {
+) -> Option<Vec<String>> { unsafe {
 
     if arr.is_null() && len > 0 {
 
@@ -50,10 +50,10 @@ unsafe fn parse_c_str_array(
     }
 
     Some(vars)
-}
+}}
 
 /// Verifies an equation solution (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
     sol_len: c_int,
     free_vars_ptr: *const *const c_char,
     free_vars_len: c_int,
-) -> bool {
+) -> bool { unsafe {
 
     if equations_ptr.is_null()
         || sol_vars_ptr.is_null()
@@ -147,10 +147,10 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
         &solution,
         &free_vars,
     )
-}
+}}
 
 /// Verifies an indefinite integral (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -164,7 +164,7 @@ pub unsafe extern "C" fn rssn_verify_indefinite_integral_handle(
     integrand_ptr: *const Expr,
     integral_result_ptr: *const Expr,
     var_ptr: *const c_char,
-) -> bool {
+) -> bool { unsafe {
 
     if integrand_ptr.is_null()
         || integral_result_ptr.is_null()
@@ -187,10 +187,10 @@ pub unsafe extern "C" fn rssn_verify_indefinite_integral_handle(
         &*integral_result_ptr,
         var,
     )
-}
+}}
 
 /// Verifies a definite integral (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -206,7 +206,7 @@ pub unsafe extern "C" fn rssn_verify_definite_integral_handle(
     lower: f64,
     upper: f64,
     symbolic_result_ptr: *const Expr,
-) -> bool {
+) -> bool { unsafe {
 
     if integrand_ptr.is_null()
         || var_ptr.is_null()
@@ -230,10 +230,10 @@ pub unsafe extern "C" fn rssn_verify_definite_integral_handle(
         (lower, upper),
         &*symbolic_result_ptr,
     )
-}
+}}
 
 /// Verifies an ODE solution (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -248,7 +248,7 @@ pub unsafe extern "C" fn rssn_verify_ode_solution_handle(
     solution_ptr: *const Expr,
     func_name_ptr: *const c_char,
     var_ptr: *const c_char,
-) -> bool {
+) -> bool { unsafe {
 
     if ode_ptr.is_null()
         || solution_ptr.is_null()
@@ -283,10 +283,10 @@ pub unsafe extern "C" fn rssn_verify_ode_solution_handle(
         func_name,
         var,
     )
-}
+}}
 
 /// Verifies a matrix inverse (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -299,7 +299,7 @@ pub unsafe extern "C" fn rssn_verify_ode_solution_handle(
 pub unsafe extern "C" fn rssn_verify_matrix_inverse_handle(
     original_ptr: *const Expr,
     inverse_ptr: *const Expr,
-) -> bool {
+) -> bool { unsafe {
 
     if original_ptr.is_null()
         || inverse_ptr.is_null()
@@ -312,10 +312,10 @@ pub unsafe extern "C" fn rssn_verify_matrix_inverse_handle(
         &*original_ptr,
         &*inverse_ptr,
     )
-}
+}}
 
 /// Verifies a derivative (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -329,7 +329,7 @@ pub unsafe extern "C" fn rssn_verify_derivative_handle(
     original_func_ptr: *const Expr,
     derivative_func_ptr: *const Expr,
     var_ptr: *const c_char,
-) -> bool {
+) -> bool { unsafe {
 
     if original_func_ptr.is_null()
         || derivative_func_ptr.is_null()
@@ -352,10 +352,10 @@ pub unsafe extern "C" fn rssn_verify_derivative_handle(
         &*derivative_func_ptr,
         var,
     )
-}
+}}
 
 /// Verifies a limit (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -370,7 +370,7 @@ pub unsafe extern "C" fn rssn_verify_limit_handle(
     var_ptr: *const c_char,
     target_ptr: *const Expr,
     limit_val_ptr: *const Expr,
-) -> bool {
+) -> bool { unsafe {
 
     if f_ptr.is_null()
         || var_ptr.is_null()
@@ -395,4 +395,4 @@ pub unsafe extern "C" fn rssn_verify_limit_handle(
         &*target_ptr,
         &*limit_val_ptr,
     )
-}
+}}

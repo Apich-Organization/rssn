@@ -5,7 +5,7 @@ use std::ptr;
 use crate::numerical::number_theory as nt;
 
 /// Computes the greatest common divisor (GCD).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_nt_gcd(
     a: u64,
@@ -16,7 +16,7 @@ pub extern "C" fn rssn_num_nt_gcd(
 }
 
 /// Computes the least common multiple (LCM).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_nt_lcm(
     a: u64,
@@ -27,7 +27,7 @@ pub extern "C" fn rssn_num_nt_lcm(
 }
 
 /// Computes (base^exp) % modulus.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_nt_mod_pow(
     base: u128,
@@ -40,7 +40,7 @@ pub extern "C" fn rssn_num_nt_mod_pow(
 
 /// Finds the modular multiplicative inverse.
 /// Returns 0 if no inverse exists (modulus cannot be 0).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_nt_mod_inverse(
     a: i64,
@@ -51,7 +51,7 @@ pub extern "C" fn rssn_num_nt_mod_inverse(
 }
 
 /// Tests if a number is prime using Miller-Rabin.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_nt_is_prime(
     n: u64
@@ -61,7 +61,7 @@ pub extern "C" fn rssn_num_nt_is_prime(
 }
 
 /// Computes Euler's totient function φ(n).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_nt_phi(
     n: u64
@@ -72,7 +72,7 @@ pub const extern "C" fn rssn_num_nt_phi(
 
 /// Returns the number of prime factors and writes them to `out_factors`.
 /// `out_factors` must be large enough.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -85,7 +85,7 @@ pub const extern "C" fn rssn_num_nt_phi(
 pub unsafe extern "C" fn rssn_num_nt_factorize(
     n: u64,
     out_factors: *mut u64,
-) -> usize {
+) -> usize { unsafe {
 
     let factors = nt::factorize(n);
 
@@ -99,4 +99,4 @@ pub unsafe extern "C" fn rssn_num_nt_factorize(
     }
 
     factors.len()
-}
+}}

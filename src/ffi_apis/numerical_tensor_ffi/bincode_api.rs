@@ -60,7 +60,7 @@ fn encode<T: Serialize>(
 }
 
 /// Tensor contraction via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

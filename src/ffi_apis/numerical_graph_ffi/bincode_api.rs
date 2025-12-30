@@ -72,7 +72,7 @@ struct PageRankInput {
 
 /// Computes Dijkstra's shortest path algorithm on a graph using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_bincode(
 
 /// Computes Breadth-First Search (BFS) on a graph using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -157,7 +157,7 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_bincode(
 
 /// Computes the `PageRank` scores for nodes in a graph using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -202,7 +202,7 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_bincode(
 
 /// Computes the Floyd-Warshall all-pairs shortest path algorithm on a graph using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -285,7 +285,7 @@ impl GraphDefOut {
 
 /// Computes the connected components of a graph using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -323,7 +323,7 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_bincode(
 
 /// Computes the Minimum Spanning Tree (MST) of a graph using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

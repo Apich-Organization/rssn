@@ -7,7 +7,7 @@ use crate::numerical::physics_md;
 // ============================================================================
 
 /// Returns Boltzmann constant in SI units.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_md_boltzmann_constant_si(
 ) -> f64 {
@@ -16,7 +16,7 @@ pub const extern "C" fn rssn_num_md_boltzmann_constant_si(
 }
 
 /// Returns Avogadro's number.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_md_avogadro_number(
 ) -> f64 {
@@ -25,7 +25,7 @@ pub const extern "C" fn rssn_num_md_avogadro_number(
 }
 
 /// Returns temperature unit for argon in reduced units.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_md_temperature_unit_argon(
 ) -> f64 {
@@ -38,7 +38,7 @@ pub const extern "C" fn rssn_num_md_temperature_unit_argon(
 // ============================================================================
 
 /// Calculates CFL number for MD stability.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_md_cfl_check(
     velocity: f64,
@@ -54,7 +54,7 @@ pub extern "C" fn rssn_num_md_cfl_check(
 // ============================================================================
 
 /// Applies minimum image convention to a 1D distance.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_md_minimum_image_1d(
     dx: f64,
@@ -75,7 +75,7 @@ pub extern "C" fn rssn_num_md_minimum_image_1d(
 }
 
 /// Applies periodic boundary condition to a 1D position.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_md_apply_pbc_1d(
     x: f64,

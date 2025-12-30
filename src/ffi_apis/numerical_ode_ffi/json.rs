@@ -45,7 +45,7 @@ struct OdeInput {
 /// This function is unsafe because it:
 /// - Receives a raw C string pointer that must be valid, null-terminated UTF-8
 /// - Returns a raw pointer that the caller must free using `rssn_free_string`
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

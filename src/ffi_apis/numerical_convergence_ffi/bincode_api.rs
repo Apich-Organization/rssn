@@ -52,7 +52,7 @@ fn encode<T: Serialize>(
 }
 
 /// Bincode FFI for Aitken acceleration.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -91,7 +91,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken_bincode(
 }
 
 /// Bincode FFI for Richardson extrapolation.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson_bincode(
 }
 
 /// Bincode FFI for Wynn's epsilon algorithm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -23,7 +23,7 @@ struct TwoGaInput {
 }
 
 /// JSON FFI for `ga_add`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -40,7 +40,7 @@ struct TwoGaInput {
 
 pub unsafe extern "C" fn rssn_num_ga_add_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -81,10 +81,10 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(
     )
     .unwrap()
     .into_raw()
-}
+}}
 
 /// JSON FFI for `ga_sub`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(
 
 pub unsafe extern "C" fn rssn_num_ga_sub_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -142,10 +142,10 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(
     )
     .unwrap()
     .into_raw()
-}
+}}
 
 /// JSON FFI for `ga_mul`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -162,7 +162,7 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(
 
 pub unsafe extern "C" fn rssn_num_ga_mul_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -203,10 +203,10 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(
     )
     .unwrap()
     .into_raw()
-}
+}}
 
 /// JSON FFI for `ga_wedge`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -223,7 +223,7 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(
 
 pub unsafe extern "C" fn rssn_num_ga_wedge_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -268,10 +268,10 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(
     )
     .unwrap()
     .into_raw()
-}
+}}
 
 /// JSON FFI for `ga_dot`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -288,7 +288,7 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(
 
 pub unsafe extern "C" fn rssn_num_ga_dot_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -333,10 +333,10 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(
     )
     .unwrap()
     .into_raw()
-}
+}}
 
 /// JSON FFI for `ga_reverse`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -353,7 +353,7 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(
 
 pub unsafe extern "C" fn rssn_num_ga_reverse_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -394,10 +394,10 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(
     )
     .unwrap()
     .into_raw()
-}
+}}
 
 /// JSON FFI for `ga_norm`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -414,7 +414,7 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(
 
 pub unsafe extern "C" fn rssn_num_ga_norm_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -455,10 +455,10 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(
     )
     .unwrap()
     .into_raw()
-}
+}}
 
 /// JSON FFI for `ga_inv`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -475,7 +475,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(
 
 pub unsafe extern "C" fn rssn_num_ga_inv_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -529,4 +529,4 @@ pub unsafe extern "C" fn rssn_num_ga_inv_json(
     )
     .unwrap()
     .into_raw()
-}
+}}

@@ -6,7 +6,7 @@ use crate::physics::physics_cnm;
 
 /// Solves 1D heat equation using CN and returns a flat array of doubles.
 /// The caller is responsible for freeing the memory using `rssn_free_f64_array`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -24,7 +24,7 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
     d_coeff: f64,
     steps: usize,
     out_size: *mut usize,
-) -> *mut f64 {
+) -> *mut f64 { unsafe {
 
     if initial_condition.is_null() {
 
@@ -55,10 +55,10 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
     std::mem::forget(res_boxed);
 
     ptr
-}
+}}
 
 /// Frees a float64 array allocated by the CNM FFI.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -71,10 +71,10 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
 pub unsafe extern "C" fn rssn_free_f64_cnm_array(
     ptr: *mut f64,
     size: usize,
-) {
+) { unsafe {
 
     if !ptr.is_null() {
 
         let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, size));
     }
-}
+}}

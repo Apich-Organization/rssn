@@ -8,7 +8,7 @@ use crate::numerical::matrix::Matrix;
 use crate::symbolic::coordinates::CoordinateSystem;
 
 /// Computes the metric tensor at a given point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -22,7 +22,7 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
     system: CoordinateSystem,
     point: *const f64,
     n_vars: usize,
-) -> *mut Matrix<f64> {
+) -> *mut Matrix<f64> { unsafe {
 
     if point.is_null() {
 
@@ -68,11 +68,11 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Computes the Christoffel symbols at a given point.
 /// Returns a flattened vector of size dim^3.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
     system: CoordinateSystem,
     point: *const f64,
     n_vars: usize,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if point.is_null() {
 
@@ -117,10 +117,10 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Computes the Ricci tensor at a given point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
     system: CoordinateSystem,
     point: *const f64,
     n_vars: usize,
-) -> *mut Matrix<f64> {
+) -> *mut Matrix<f64> { unsafe {
 
     if point.is_null() {
 
@@ -180,10 +180,10 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Computes the Ricci scalar at a given point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -198,7 +198,7 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar(
     point: *const f64,
     n_vars: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if point.is_null()
         || result.is_null()
@@ -227,4 +227,4 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar(
             -1
         },
     }
-}
+}}

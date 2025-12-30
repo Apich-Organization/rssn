@@ -4,7 +4,7 @@ use crate::numerical::matrix::Matrix;
 use crate::physics::physics_sim::linear_elasticity;
 
 /// Runs the 2D cantilever beam scenario and returns the displacement results as a Matrix handle (Nx2).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_sim_linear_elasticity_simulate_cantilever(
 ) -> *mut Matrix<f64> {

@@ -6,7 +6,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::proof;
 
 /// Verifies an equation solution using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -38,15 +38,15 @@ pub unsafe extern "C" fn rssn_bincode_verify_equation_solution(
             &free_vars_buf,
         );
 
-    if let (
-        Some(eqs),
-        Some(sol),
-        Some(free),
-    ) = (
+    match (
         equations,
         solution,
         free_vars,
-    ) {
+    ) { (
+        Some(eqs),
+        Some(sol),
+        Some(free),
+    ) => {
 
         let free_refs: Vec<&str> = free
             .iter()
@@ -58,14 +58,14 @@ pub unsafe extern "C" fn rssn_bincode_verify_equation_solution(
             &sol,
             &free_refs,
         )
-    } else {
+    } _ => {
 
         false
-    }
+    }}
 }
 
 /// Verifies an indefinite integral using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -94,19 +94,19 @@ pub unsafe extern "C" fn rssn_bincode_verify_indefinite_integral(
     let var: Option<String> =
         from_bincode_buffer(&var_buf);
 
-    if let (
-        Some(f),
-        Some(int),
-        Some(v),
-    ) = (
+    match (
         integrand,
         integral_result,
         var,
-    ) {
+    ) { (
+        Some(f),
+        Some(int),
+        Some(v),
+    ) => {
 
         proof::verify_indefinite_integral(&f, &int, &v)
-    } else {
+    } _ => {
 
         false
-    }
+    }}
 }

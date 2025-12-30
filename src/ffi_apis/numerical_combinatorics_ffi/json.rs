@@ -32,7 +32,7 @@ struct RecurrenceInput {
 
 /// Computes the factorial of a number using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -83,7 +83,7 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_json(
 
 /// Computes the number of permutations using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -136,7 +136,7 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_json(
 
 /// Computes the number of combinations using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -189,7 +189,7 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_json(
 
 /// Solves a linear recurrence relation using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -260,7 +260,7 @@ struct XNInput {
 
 /// Computes the Stirling number of the second kind using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -313,7 +313,7 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
 
 /// Computes the Bell number using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -363,7 +363,7 @@ pub unsafe extern "C" fn rssn_num_comb_bell_json(
 
 /// Computes the Catalan number using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -413,7 +413,7 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_json(
 
 /// Computes the rising factorial using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -466,7 +466,7 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
 
 /// Computes the falling factorial using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -8,7 +8,7 @@ use crate::compute::state::State;
 
 /// Creates a new State.
 /// The caller is responsible for freeing the memory using `rssn_state_free`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_state_new(
 ) -> *mut State {
@@ -19,7 +19,7 @@ pub extern "C" fn rssn_state_new(
 }
 
 /// Frees a State.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_state_free(
     state: *mut State
@@ -38,7 +38,7 @@ pub extern "C" fn rssn_state_free(
 
 /// Gets the intermediate value from the state.
 /// The returned string must be freed by the caller using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_state_get_intermediate_value(
     state: *const State
@@ -66,7 +66,7 @@ pub extern "C" fn rssn_state_get_intermediate_value(
 }
 
 /// Sets the intermediate value in the state.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_state_set_intermediate_value(
     state: *mut State,

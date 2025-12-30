@@ -781,15 +781,14 @@ pub fn transform_covariant_vector(
         );
     }
 
-    if let Expr::Matrix(rows) =
-        simplify(&final_comps_expr)
-    {
+    match simplify(&final_comps_expr)
+    { Expr::Matrix(rows) => {
 
         Ok(rows
             .into_iter()
             .map(|row| row[0].clone())
             .collect())
-    } else {
+    } _ => {
 
         Err(
             "Transformation resulted \
@@ -797,7 +796,7 @@ pub fn transform_covariant_vector(
              expression"
                 .to_string(),
         )
-    }
+    }}
 }
 
 /// Computes the Jacobian matrix for a set of transformation rules.

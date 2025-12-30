@@ -7,7 +7,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::relativity;
 
 /// Calculates Lorentz factor using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_lorentz_factor(
     velocity_buf: BincodeBuffer
@@ -32,7 +32,7 @@ pub extern "C" fn rssn_bincode_lorentz_factor(
 }
 
 /// Calculates mass-energy equivalence using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_mass_energy_equivalence(
     mass_buf: BincodeBuffer
@@ -51,7 +51,7 @@ pub extern "C" fn rssn_bincode_mass_energy_equivalence(
 }
 
 /// Calculates Schwarzschild radius using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_schwarzschild_radius(
     mass_buf: BincodeBuffer

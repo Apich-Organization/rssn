@@ -37,7 +37,7 @@ struct ComplexResult {
 ///
 /// # Returns
 /// JSON-encoded `FfiResult<ComplexResult, String>`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -127,7 +127,7 @@ struct LogSqrtInput {
 ///
 /// # Returns
 /// JSON-encoded `FfiResult<ComplexResult, String>`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -195,7 +195,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_json(
 ///
 /// # Returns
 /// JSON-encoded `FfiResult<ComplexResult, String>`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -273,7 +273,7 @@ struct PowInput {
 ///
 /// # Returns
 /// JSON-encoded `FfiResult<ComplexResult, String>`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

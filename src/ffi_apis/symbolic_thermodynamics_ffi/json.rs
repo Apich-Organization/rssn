@@ -8,7 +8,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::thermodynamics;
 
 /// Calculates ideal gas Law using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_ideal_gas_law(
     p_json: *const c_char,
@@ -33,24 +33,24 @@ pub extern "C" fn rssn_json_ideal_gas_law(
     let t: Option<Expr> =
         from_json_string(t_json);
 
-    if let (
+    match (p, v, n, r, t)
+    { (
         Some(p),
         Some(v),
         Some(n),
         Some(r),
         Some(t),
-    ) = (p, v, n, r, t)
-    {
+    ) => {
 
         to_json_string(&thermodynamics::ideal_gas_law(&p, &v, &n, &r, &t))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Calculates Gibbs Free Energy using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_gibbs_free_energy(
     h_json: *const c_char,
@@ -67,13 +67,12 @@ pub extern "C" fn rssn_json_gibbs_free_energy(
     let s: Option<Expr> =
         from_json_string(s_json);
 
-    if let (Some(h), Some(t), Some(s)) =
-        (h, t, s)
-    {
+    match (h, t, s)
+    { (Some(h), Some(t), Some(s)) => {
 
         to_json_string(&thermodynamics::gibbs_free_energy(&h, &t, &s))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

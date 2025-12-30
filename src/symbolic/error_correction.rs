@@ -125,7 +125,7 @@ pub fn hamming_distance(
     Some(
         a.iter()
             .zip(b.iter())
-            .filter(|(&x, &y)| x != y)
+            .filter(|&(&x, &y)| x != y)
             .count(),
     )
 }

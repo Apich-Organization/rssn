@@ -23,7 +23,7 @@ use crate::symbolic::stats_probability::Uniform;
 
 unsafe fn ptr_to_expr(
     ptr: *const Expr
-) -> Option<Expr> {
+) -> Option<Expr> { unsafe {
 
     if ptr.is_null() {
 
@@ -32,7 +32,7 @@ unsafe fn ptr_to_expr(
 
         Some((*ptr).clone())
     }
-}
+}}
 
 // --- Generic Helper to wrap a Distribution in Expr ---
 fn wrap_dist<
@@ -58,7 +58,7 @@ fn wrap_dist<
 
 /// Returns a raw pointer to an `Expr` representing the normal distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -71,7 +71,7 @@ fn wrap_dist<
 pub unsafe extern "C" fn rssn_dist_normal(
     mean: *const Expr,
     std_dev: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let mean = ptr_to_expr(mean)
         .unwrap_or(Expr::Constant(0.0));
@@ -83,7 +83,7 @@ pub unsafe extern "C" fn rssn_dist_normal(
         mean,
         std_dev,
     })
-}
+}}
 
 /// Creates a uniform distribution.
 
@@ -93,7 +93,7 @@ pub unsafe extern "C" fn rssn_dist_normal(
 
 /// Returns a raw pointer to an `Expr` representing the uniform distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -106,7 +106,7 @@ pub unsafe extern "C" fn rssn_dist_normal(
 pub unsafe extern "C" fn rssn_dist_uniform(
     min: *const Expr,
     max: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let min = ptr_to_expr(min)
         .unwrap_or(Expr::Constant(0.0));
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn rssn_dist_uniform(
         min,
         max,
     })
-}
+}}
 
 /// Creates a binomial distribution.
 
@@ -128,7 +128,7 @@ pub unsafe extern "C" fn rssn_dist_uniform(
 
 /// Returns a raw pointer to an `Expr` representing the binomial distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rssn_dist_uniform(
 pub unsafe extern "C" fn rssn_dist_binomial(
     n: *const Expr,
     p: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let n = ptr_to_expr(n)
         .unwrap_or(Expr::Constant(1.0));
@@ -153,7 +153,7 @@ pub unsafe extern "C" fn rssn_dist_binomial(
         n,
         p,
     })
-}
+}}
 
 /// Creates a Poisson distribution.
 
@@ -163,7 +163,7 @@ pub unsafe extern "C" fn rssn_dist_binomial(
 
 /// Returns a raw pointer to an `Expr` representing the Poisson distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -175,7 +175,7 @@ pub unsafe extern "C" fn rssn_dist_binomial(
 
 pub unsafe extern "C" fn rssn_dist_poisson(
     rate: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let rate = ptr_to_expr(rate)
         .unwrap_or(Expr::Constant(1.0));
@@ -183,7 +183,7 @@ pub unsafe extern "C" fn rssn_dist_poisson(
     wrap_dist(Poisson {
         rate,
     })
-}
+}}
 
 /// Creates a Bernoulli distribution.
 
@@ -193,7 +193,7 @@ pub unsafe extern "C" fn rssn_dist_poisson(
 
 /// Returns a raw pointer to an `Expr` representing the Bernoulli distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -205,7 +205,7 @@ pub unsafe extern "C" fn rssn_dist_poisson(
 
 pub unsafe extern "C" fn rssn_dist_bernoulli(
     p: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let p = ptr_to_expr(p)
         .unwrap_or(Expr::Constant(0.5));
@@ -213,7 +213,7 @@ pub unsafe extern "C" fn rssn_dist_bernoulli(
     wrap_dist(Bernoulli {
         p,
     })
-}
+}}
 
 /// Creates an exponential distribution.
 
@@ -223,7 +223,7 @@ pub unsafe extern "C" fn rssn_dist_bernoulli(
 
 /// Returns a raw pointer to an `Expr` representing the exponential distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -235,7 +235,7 @@ pub unsafe extern "C" fn rssn_dist_bernoulli(
 
 pub unsafe extern "C" fn rssn_dist_exponential(
     rate: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let rate = ptr_to_expr(rate)
         .unwrap_or(Expr::Constant(1.0));
@@ -243,7 +243,7 @@ pub unsafe extern "C" fn rssn_dist_exponential(
     wrap_dist(Exponential {
         rate,
     })
-}
+}}
 
 /// Creates a gamma distribution.
 
@@ -253,7 +253,7 @@ pub unsafe extern "C" fn rssn_dist_exponential(
 
 /// Returns a raw pointer to an `Expr` representing the gamma distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -266,7 +266,7 @@ pub unsafe extern "C" fn rssn_dist_exponential(
 pub unsafe extern "C" fn rssn_dist_gamma(
     shape: *const Expr,
     rate: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let shape = ptr_to_expr(shape)
         .unwrap_or(Expr::Constant(1.0));
@@ -278,7 +278,7 @@ pub unsafe extern "C" fn rssn_dist_gamma(
         shape,
         rate,
     })
-}
+}}
 
 /// Creates a beta distribution.
 
@@ -288,7 +288,7 @@ pub unsafe extern "C" fn rssn_dist_gamma(
 
 /// Returns a raw pointer to an `Expr` representing the beta distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -301,7 +301,7 @@ pub unsafe extern "C" fn rssn_dist_gamma(
 pub unsafe extern "C" fn rssn_dist_beta(
     alpha: *const Expr,
     beta: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let alpha = ptr_to_expr(alpha)
         .unwrap_or(Expr::Constant(1.0));
@@ -313,7 +313,7 @@ pub unsafe extern "C" fn rssn_dist_beta(
         alpha,
         beta,
     })
-}
+}}
 
 /// Creates a Student's t-distribution.
 
@@ -323,7 +323,7 @@ pub unsafe extern "C" fn rssn_dist_beta(
 
 /// Returns a raw pointer to an `Expr` representing the Student's t-distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -335,7 +335,7 @@ pub unsafe extern "C" fn rssn_dist_beta(
 
 pub unsafe extern "C" fn rssn_dist_student_t(
     nu: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let nu = ptr_to_expr(nu)
         .unwrap_or(Expr::Constant(1.0));
@@ -343,7 +343,7 @@ pub unsafe extern "C" fn rssn_dist_student_t(
     wrap_dist(StudentT {
         nu,
     })
-}
+}}
 
 // --- Methods on Distributions ---
 
@@ -355,7 +355,7 @@ pub unsafe extern "C" fn rssn_dist_student_t(
 
 /// Returns a raw pointer to an `Expr` representing the PDF at `x`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -368,7 +368,7 @@ pub unsafe extern "C" fn rssn_dist_student_t(
 pub unsafe extern "C" fn rssn_dist_pdf(
     dist: *const Expr,
     x: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let dist_expr = ptr_to_expr(dist);
 
@@ -386,7 +386,7 @@ pub unsafe extern "C" fn rssn_dist_pdf(
 
         std::ptr::null_mut()
     }
-}
+}}
 
 /// Computes the cumulative distribution function (CDF) of a distribution.
 
@@ -396,7 +396,7 @@ pub unsafe extern "C" fn rssn_dist_pdf(
 
 /// Returns a raw pointer to an `Expr` representing the CDF at `x`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -409,7 +409,7 @@ pub unsafe extern "C" fn rssn_dist_pdf(
 pub unsafe extern "C" fn rssn_dist_cdf(
     dist: *const Expr,
     x: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let dist_expr = ptr_to_expr(dist);
 
@@ -427,7 +427,7 @@ pub unsafe extern "C" fn rssn_dist_cdf(
 
         std::ptr::null_mut()
     }
-}
+}}
 
 /// Computes the expectation (mean) of a distribution.
 
@@ -437,7 +437,7 @@ pub unsafe extern "C" fn rssn_dist_cdf(
 
 /// Returns a raw pointer to an `Expr` representing the expectation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -449,7 +449,7 @@ pub unsafe extern "C" fn rssn_dist_cdf(
 
 pub unsafe extern "C" fn rssn_dist_expectation(
     dist: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let dist_expr = ptr_to_expr(dist);
 
@@ -464,7 +464,7 @@ pub unsafe extern "C" fn rssn_dist_expectation(
 
         std::ptr::null_mut()
     }
-}
+}}
 
 /// Computes the variance of a distribution.
 
@@ -474,7 +474,7 @@ pub unsafe extern "C" fn rssn_dist_expectation(
 
 /// Returns a raw pointer to an `Expr` representing the variance.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -486,7 +486,7 @@ pub unsafe extern "C" fn rssn_dist_expectation(
 
 pub unsafe extern "C" fn rssn_dist_variance(
     dist: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let dist_expr = ptr_to_expr(dist);
 
@@ -501,7 +501,7 @@ pub unsafe extern "C" fn rssn_dist_variance(
 
         std::ptr::null_mut()
     }
-}
+}}
 
 /// Computes the moment generating function (MGF) of a distribution.
 
@@ -511,7 +511,7 @@ pub unsafe extern "C" fn rssn_dist_variance(
 
 /// Returns a raw pointer to an `Expr` representing the MGF.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -524,7 +524,7 @@ pub unsafe extern "C" fn rssn_dist_variance(
 pub unsafe extern "C" fn rssn_dist_mgf(
     dist: *const Expr,
     t: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let dist_expr = ptr_to_expr(dist);
 
@@ -542,4 +542,4 @@ pub unsafe extern "C" fn rssn_dist_mgf(
 
         std::ptr::null_mut()
     }
-}
+}}

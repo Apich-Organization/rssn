@@ -6,7 +6,7 @@ use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::geometric_algebra::Multivector3D;
 
 /// Creates a new `Multivector3D`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[allow(clippy::too_many_arguments)]
 
 /// # Safety
@@ -37,7 +37,7 @@ pub unsafe extern "C" fn rssn_num_ga_create(
 }
 
 /// Frees a `Multivector3D`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -61,7 +61,7 @@ pub unsafe extern "C" fn rssn_num_ga_free(
 }
 
 /// Gets components of a `Multivector3D`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rssn_num_ga_get_components(
     b23: *mut f64,
     b31: *mut f64,
     pss: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if mv.is_null() {
 
@@ -136,10 +136,10 @@ pub unsafe extern "C" fn rssn_num_ga_get_components(
     }
 
     0
-}
+}}
 
 /// Performs multivector addition.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -173,7 +173,7 @@ pub unsafe extern "C" fn rssn_num_ga_add(
 }
 
 /// Performs multivector subtraction.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -207,7 +207,7 @@ pub unsafe extern "C" fn rssn_num_ga_sub(
 }
 
 /// Performs geometric product.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -241,7 +241,7 @@ pub unsafe extern "C" fn rssn_num_ga_mul(
 }
 
 /// Performs outer product.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -277,7 +277,7 @@ pub unsafe extern "C" fn rssn_num_ga_wedge(
 }
 
 /// Performs inner product.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -311,7 +311,7 @@ pub unsafe extern "C" fn rssn_num_ga_dot(
 }
 
 /// Returns the reverse of a `Multivector3D`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -341,7 +341,7 @@ pub unsafe extern "C" fn rssn_num_ga_reverse(
 }
 
 /// Returns the norm of a `Multivector3D`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -369,7 +369,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm(
 }
 
 /// Returns the inverse of a `Multivector3D`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -381,7 +381,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm(
 
 pub unsafe extern "C" fn rssn_num_ga_inv(
     mv: *const Multivector3D
-) -> *mut Multivector3D {
+) -> *mut Multivector3D { unsafe {
 
     if mv.is_null() {
 
@@ -408,4 +408,4 @@ pub unsafe extern "C" fn rssn_num_ga_inv(
             ptr::null_mut()
         },
     }
-}
+}}

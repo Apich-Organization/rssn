@@ -16,7 +16,7 @@ use crate::symbolic::ode;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> {
+) -> Option<&'a str> { unsafe {
 
     if s.is_null() {
 
@@ -27,13 +27,13 @@ unsafe fn c_str_to_str<'a>(
             .to_str()
             .ok()
     }
-}
+}}
 
 /// Solves an ordinary differential equation.
 ///
 /// # Safety
 /// The caller must ensure `ode_expr` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn rssn_solve_ode(
     ode_expr: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if ode_expr.is_null()
         || func.is_null()
@@ -85,13 +85,13 @@ pub unsafe extern "C" fn rssn_solve_ode(
             None,
         ),
     ))
-}
+}}
 
 /// Solves a separable ODE.
 ///
 /// # Safety
 /// The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -105,7 +105,7 @@ pub unsafe extern "C" fn rssn_solve_separable_ode(
     equation: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -147,13 +147,13 @@ pub unsafe extern "C" fn rssn_solve_separable_ode(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves a first-order linear ODE.
 ///
 /// # Safety
 /// The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -167,7 +167,7 @@ pub unsafe extern "C" fn rssn_solve_first_order_linear_ode(
     equation: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -205,13 +205,13 @@ pub unsafe extern "C" fn rssn_solve_first_order_linear_ode(
         | Some(solution) => Box::into_raw(Box::new(solution)),
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves a Bernoulli ODE.
 ///
 /// # Safety
 /// The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -225,7 +225,7 @@ pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
     equation: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -267,13 +267,13 @@ pub unsafe extern "C" fn rssn_solve_bernoulli_ode(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves a Riccati ODE with a known particular solution.
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -288,7 +288,7 @@ pub unsafe extern "C" fn rssn_solve_riccati_ode(
     func: *const c_char,
     var: *const c_char,
     y1: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -334,13 +334,13 @@ pub unsafe extern "C" fn rssn_solve_riccati_ode(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves a Cauchy-Euler ODE.
 ///
 /// # Safety
 /// The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -354,7 +354,7 @@ pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
     equation: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -396,13 +396,13 @@ pub unsafe extern "C" fn rssn_solve_cauchy_euler_ode(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves an exact ODE.
 ///
 /// # Safety
 /// The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -416,7 +416,7 @@ pub unsafe extern "C" fn rssn_solve_exact_ode(
     equation: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -458,13 +458,13 @@ pub unsafe extern "C" fn rssn_solve_exact_ode(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves a second-order ODE by reduction of order with a known solution.
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -479,7 +479,7 @@ pub unsafe extern "C" fn rssn_solve_by_reduction_of_order(
     func: *const c_char,
     var: *const c_char,
     y1: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -521,4 +521,4 @@ pub unsafe extern "C" fn rssn_solve_by_reduction_of_order(
         | Some(solution) => Box::into_raw(Box::new(solution)),
         | None => std::ptr::null_mut(),
     }
-}
+}}

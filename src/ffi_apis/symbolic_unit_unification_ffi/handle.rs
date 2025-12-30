@@ -9,7 +9,7 @@ use crate::symbolic::unit_unification::unify_expression;
 
 /// and returns a raw pointer to a new `Expr` representing the expression with unified units.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_unify_expression_handle(
     expr: *const Expr

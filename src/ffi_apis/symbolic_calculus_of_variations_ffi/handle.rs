@@ -16,7 +16,7 @@ use crate::symbolic::core::Expr;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> {
+) -> Option<&'a str> { unsafe {
 
     if s.is_null() {
 
@@ -27,13 +27,13 @@ unsafe fn c_str_to_str<'a>(
             .to_str()
             .ok()
     }
-}
+}}
 
 /// Computes the Euler-Lagrange equation for a given Lagrangian.
 ///
 /// # Safety
 /// The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
     lagrangian: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if lagrangian.is_null()
         || func.is_null()
@@ -84,13 +84,13 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
             var_str,
         ),
     ))
-}
+}}
 
 /// Generates and attempts to solve the Euler-Lagrange equation.
 ///
 /// # Safety
 /// The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
     lagrangian: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if lagrangian.is_null()
         || func.is_null()
@@ -141,13 +141,13 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
             var_str,
         ),
     ))
-}
+}}
 
 /// Applies Hamilton's Principle to derive the equations of motion.
 ///
 /// # Safety
 /// The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -161,7 +161,7 @@ pub unsafe extern "C" fn rssn_hamiltons_principle(
     lagrangian: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if lagrangian.is_null()
         || func.is_null()
@@ -198,4 +198,4 @@ pub unsafe extern "C" fn rssn_hamiltons_principle(
             var_str,
         ),
     ))
-}
+}}

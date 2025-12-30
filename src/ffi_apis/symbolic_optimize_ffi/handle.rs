@@ -20,7 +20,7 @@ use crate::symbolic::optimize::CriticalPoint;
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
     len: usize,
-) -> Option<Vec<String>> {
+) -> Option<Vec<String>> { unsafe {
 
     if arr.is_null() {
 
@@ -53,10 +53,10 @@ unsafe fn parse_c_str_array(
     }
 
     Some(vars)
-}
+}}
 
 /// Finds extrema of a function (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_find_extrema_handle(
     expr_ptr: *const Expr,
@@ -104,7 +104,7 @@ pub extern "C" fn rssn_find_extrema_handle(
 }
 
 /// Computes Hessian matrix (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_hessian_matrix_handle(
     expr_ptr: *const Expr,
@@ -145,7 +145,7 @@ pub extern "C" fn rssn_hessian_matrix_handle(
 }
 
 /// Finds constrained extrema (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_find_constrained_extrema_handle(
     expr_ptr: *const Expr,
@@ -200,7 +200,7 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
 }
 
 /// Frees a Vec<CriticalPoint> handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_critical_point_vec_handle(
     ptr: *mut Vec<CriticalPoint>
@@ -216,7 +216,7 @@ pub extern "C" fn rssn_free_critical_point_vec_handle(
 }
 
 /// Frees a Vec<`HashMap`<Expr, Expr>> handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_solution_vec_handle(
     ptr: *mut Vec<HashMap<Expr, Expr>>

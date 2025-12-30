@@ -6,7 +6,7 @@ use crate::numerical::graph::Graph;
 use crate::numerical::topology;
 
 /// Finds the connected components of a graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -18,7 +18,7 @@ use crate::numerical::topology;
 
 pub unsafe extern "C" fn rssn_num_topology_find_connected_components(
     graph_ptr: *const Graph
-) -> *mut Vec<Vec<usize>> {
+) -> *mut Vec<Vec<usize>> { unsafe {
 
     if graph_ptr.is_null() {
 
@@ -30,10 +30,10 @@ pub unsafe extern "C" fn rssn_num_topology_find_connected_components(
     let components = topology::find_connected_components(graph);
 
     Box::into_raw(Box::new(components))
-}
+}}
 
 /// Computes the Betti numbers for a point cloud.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers(
     epsilon: f64,
     max_dim: usize,
     result: *mut usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if points.is_null()
         || result.is_null()
@@ -87,10 +87,10 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers(
     );
 
     0
-}
+}}
 
 /// Computes the Euclidean distance between two points.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rssn_num_topology_euclidean_distance(
     p1: *const f64,
     p2: *const f64,
     dim: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     if p1.is_null() || p2.is_null() {
 
@@ -120,4 +120,4 @@ pub unsafe extern "C" fn rssn_num_topology_euclidean_distance(
     );
 
     topology::euclidean_distance(s1, s2)
-}
+}}

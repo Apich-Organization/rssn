@@ -30,7 +30,7 @@ use crate::symbolic::core::Expr;
 /// This function is unsafe because it dereferences raw C string pointers and returns
 /// ownership of a heap-allocated C string.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_json_permutations(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rssn_json_combinations(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn rssn_json_catalan_number(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -219,7 +219,7 @@ pub unsafe extern "C" fn rssn_json_stirling_number_second_kind(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

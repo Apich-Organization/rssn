@@ -20,7 +20,7 @@ pub struct IsingResultHandle {
 }
 
 /// Runs a 2D Ising model simulation and returns the final grid as a Matrix handle and the magnetization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_sim_ising_run(
     width: usize,
@@ -58,7 +58,7 @@ pub extern "C" fn rssn_physics_sim_ising_run(
 }
 
 /// Frees the Ising result handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -70,7 +70,7 @@ pub extern "C" fn rssn_physics_sim_ising_run(
 
 pub unsafe extern "C" fn rssn_physics_sim_ising_free_result(
     handle: IsingResultHandle
-) {
+) { unsafe {
 
     if !handle
         .grid
@@ -80,4 +80,4 @@ pub unsafe extern "C" fn rssn_physics_sim_ising_free_result(
         let _ =
             Box::from_raw(handle.grid);
     }
-}
+}}

@@ -51,7 +51,7 @@ fn encode<T: Serialize>(
 }
 
 /// Executes a plugin command via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

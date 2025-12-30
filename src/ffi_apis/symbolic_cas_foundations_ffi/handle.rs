@@ -11,7 +11,7 @@ use crate::symbolic::grobner::MonomialOrder;
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -23,7 +23,7 @@ use crate::symbolic::grobner::MonomialOrder;
 
 pub unsafe extern "C" fn rssn_cas_expand(
     expr: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null() {
 
@@ -37,13 +37,13 @@ pub unsafe extern "C" fn rssn_cas_expand(
             expr_ref.clone(),
         ),
     ))
-}
+}}
 
 /// Factorizes an expression.
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -55,7 +55,7 @@ pub unsafe extern "C" fn rssn_cas_expand(
 
 pub unsafe extern "C" fn rssn_cas_factorize(
     expr: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null() {
 
@@ -69,13 +69,13 @@ pub unsafe extern "C" fn rssn_cas_factorize(
             expr_ref.clone(),
         ),
     ))
-}
+}}
 
 /// Normalizes an expression to a canonical form.
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_cas_factorize(
 
 pub unsafe extern "C" fn rssn_cas_normalize(
     expr: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null() {
 
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rssn_cas_normalize(
             expr_ref.clone(),
         ),
     ))
-}
+}}
 
 /// Simplifies an expression using a set of polynomial side-relations.
 ///
@@ -115,7 +115,7 @@ pub unsafe extern "C" fn rssn_cas_normalize(
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
     vars: *const *const c_char,
     vars_len: usize,
     order_int: i32,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null()
         || (relations_len > 0
@@ -214,4 +214,4 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
             order,
         ),
     ))
-}
+}}

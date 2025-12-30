@@ -35,7 +35,7 @@ fn parse_bigint(
 
 /// Creates a new elliptic curve.
 /// Arguments: a (str), b (str), modulus (str)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn rssn_json_elliptic_curve_new(
 
 /// Creates an affine curve point.
 /// Arguments: x (str), y (str), modulus (str)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -125,7 +125,7 @@ pub unsafe extern "C" fn rssn_json_curve_point_affine(
 }
 
 /// Creates a point at infinity.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -144,7 +144,7 @@ pub unsafe extern "C" fn rssn_json_curve_point_infinity(
 }
 
 /// Checks if a point is on the curve.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn rssn_json_curve_is_on_curve(
 }
 
 /// Negates a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -212,7 +212,7 @@ pub unsafe extern "C" fn rssn_json_curve_negate(
 }
 
 /// Doubles a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -245,7 +245,7 @@ pub unsafe extern "C" fn rssn_json_curve_double(
 }
 
 /// Adds two points.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -285,7 +285,7 @@ pub unsafe extern "C" fn rssn_json_curve_add(
 }
 
 /// Scalar multiplication.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -326,7 +326,7 @@ pub unsafe extern "C" fn rssn_json_curve_scalar_mult(
 }
 
 /// Generates a key pair.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -344,13 +344,13 @@ pub unsafe extern "C" fn rssn_json_generate_keypair(
     let curve: Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let gen: Option<CurvePoint> =
+    let r#gen: Option<CurvePoint> =
         from_json_string(
             generator_json,
         );
 
     if let (Some(c), Some(g)) =
-        (curve, gen)
+        (curve, r#gen)
     {
 
         to_json_string(
@@ -363,7 +363,7 @@ pub unsafe extern "C" fn rssn_json_generate_keypair(
 }
 
 /// Generates a shared secret.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -414,7 +414,7 @@ pub unsafe extern "C" fn rssn_json_generate_shared_secret(
 }
 
 /// Signs a message.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -445,7 +445,7 @@ pub unsafe extern "C" fn rssn_json_ecdsa_sign(
     let curve: Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let gen: Option<CurvePoint> =
+    let r#gen: Option<CurvePoint> =
         from_json_string(
             generator_json,
         );
@@ -463,7 +463,7 @@ pub unsafe extern "C" fn rssn_json_ecdsa_sign(
         parse_bigint(hash_str),
         parse_bigint(pk_str),
         curve,
-        gen,
+        r#gen,
         parse_bigint(order_str),
     ) {
 
@@ -483,7 +483,7 @@ pub unsafe extern "C" fn rssn_json_ecdsa_sign(
 }
 
 /// Verifies a signature.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -520,7 +520,7 @@ pub unsafe extern "C" fn rssn_json_ecdsa_verify(
     let curve: Option<EllipticCurve> =
         from_json_string(curve_json);
 
-    let gen: Option<CurvePoint> =
+    let r#gen: Option<CurvePoint> =
         from_json_string(
             generator_json,
         );
@@ -540,7 +540,7 @@ pub unsafe extern "C" fn rssn_json_ecdsa_verify(
         sig,
         pub_key,
         curve,
-        gen,
+        r#gen,
         parse_bigint(order_str),
     ) {
 
@@ -554,7 +554,7 @@ pub unsafe extern "C" fn rssn_json_ecdsa_verify(
 }
 
 /// Compresses a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -594,7 +594,7 @@ pub unsafe extern "C" fn rssn_json_point_compress(
 }
 
 /// Decompresses a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

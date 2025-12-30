@@ -15,7 +15,7 @@ use crate::symbolic::elementary;
 ///
 /// # Returns
 /// JSON-serialized Expr or null on error
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rssn_sin_json(
 }
 
 /// Creates a cosine expression from JSON: cos(expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rssn_cos_json(
 }
 
 /// Creates a tangent expression from JSON: tan(expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -90,7 +90,7 @@ pub unsafe extern "C" fn rssn_tan_json(
 }
 
 /// Creates an exponential expression from JSON: e^(expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -115,7 +115,7 @@ pub unsafe extern "C" fn rssn_exp_json(
 }
 
 /// Creates a natural logarithm expression from JSON: ln(expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -140,7 +140,7 @@ pub unsafe extern "C" fn rssn_ln_json(
 }
 
 /// Creates a square root expression from JSON: sqrt(expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -169,7 +169,7 @@ pub unsafe extern "C" fn rssn_sqrt_json(
 /// # Arguments
 /// * `json_base` - JSON-serialized base Expr
 /// * `json_exp` - JSON-serialized exponent Expr
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -200,7 +200,7 @@ pub unsafe extern "C" fn rssn_pow_json(
 }
 
 /// Returns Pi as JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_pi_json(
 ) -> *mut c_char {
@@ -209,7 +209,7 @@ pub extern "C" fn rssn_pi_json(
 }
 
 /// Returns Euler's number (e) as JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_e_json(
 ) -> *mut c_char {
@@ -218,7 +218,7 @@ pub extern "C" fn rssn_e_json(
 }
 
 /// Expands a symbolic expression from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -243,7 +243,7 @@ pub unsafe extern "C" fn rssn_expand_json(
 }
 
 /// Computes binomial coefficient C(n, k) and returns as JSON string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_binomial_coefficient_json(
     n: usize,

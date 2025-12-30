@@ -18,7 +18,7 @@ use crate::symbolic::vector_calculus::ParametricCurve;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> {
+) -> Option<&'a str> { unsafe {
 
     if s.is_null() {
 
@@ -29,10 +29,10 @@ unsafe fn c_str_to_str<'a>(
             .to_str()
             .ok()
     }
-}
+}}
 
 /// Calculates kinetic energy: 1/2 * m * v^2.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -45,7 +45,7 @@ unsafe fn c_str_to_str<'a>(
 pub unsafe extern "C" fn rssn_kinetic_energy(
     mass: *const Expr,
     velocity: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if mass.is_null()
         || velocity.is_null()
@@ -57,10 +57,10 @@ pub unsafe extern "C" fn rssn_kinetic_energy(
     Box::into_raw(Box::new(
         classical_mechanics::kinetic_energy(&*mass, &*velocity),
     ))
-}
+}}
 
 /// Calculates Lagrangian: T - V.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn rssn_kinetic_energy(
 pub unsafe extern "C" fn rssn_lagrangian(
     t: *const Expr,
     v: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if t.is_null() || v.is_null() {
 
@@ -85,10 +85,10 @@ pub unsafe extern "C" fn rssn_lagrangian(
             &*t, &*v,
         ),
     ))
-}
+}}
 
 /// Calculates Hamiltonian: T + V.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn rssn_lagrangian(
 pub unsafe extern "C" fn rssn_hamiltonian(
     t: *const Expr,
     v: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if t.is_null() || v.is_null() {
 
@@ -111,10 +111,10 @@ pub unsafe extern "C" fn rssn_hamiltonian(
     Box::into_raw(Box::new(
         classical_mechanics::hamiltonian(&*t, &*v),
     ))
-}
+}}
 
 /// Computes Euler-Lagrange equation.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -129,7 +129,7 @@ pub unsafe extern "C" fn rssn_euler_lagrange_equation(
     q: *const c_char,
     q_dot: *const c_char,
     t_var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if lagrangian.is_null()
         || q.is_null()
@@ -173,10 +173,10 @@ pub unsafe extern "C" fn rssn_euler_lagrange_equation(
             t_str,
         ),
     ))
-}
+}}
 
 /// Calculates torque: r x F.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -189,7 +189,7 @@ pub unsafe extern "C" fn rssn_euler_lagrange_equation(
 pub unsafe extern "C" fn rssn_torque(
     r: *const Vector,
     force: *const Vector,
-) -> *mut Vector {
+) -> *mut Vector { unsafe {
 
     if r.is_null() || force.is_null() {
 
@@ -202,10 +202,10 @@ pub unsafe extern "C" fn rssn_torque(
             &*force,
         ),
     ))
-}
+}}
 
 /// Calculates power: F . v.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -218,7 +218,7 @@ pub unsafe extern "C" fn rssn_torque(
 pub unsafe extern "C" fn rssn_power(
     force: *const Vector,
     velocity: *const Vector,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if force.is_null()
         || velocity.is_null()
@@ -233,10 +233,10 @@ pub unsafe extern "C" fn rssn_power(
             &*velocity,
         ),
     ))
-}
+}}
 
 /// Calculates work done by a variable force field along a path.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -249,7 +249,7 @@ pub unsafe extern "C" fn rssn_power(
 pub unsafe extern "C" fn rssn_work_line_integral(
     force_field: *const Vector,
     path: *const ParametricCurve,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if force_field.is_null()
         || path.is_null()
@@ -264,4 +264,4 @@ pub unsafe extern "C" fn rssn_work_line_integral(
             &*path,
         ),
     ))
-}
+}}

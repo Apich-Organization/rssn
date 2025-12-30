@@ -22,7 +22,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 
 /// Generates a 3x3 2D translation matrix via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -43,21 +43,20 @@ pub unsafe extern "C" fn rssn_json_translation_2d(
     let ty: Option<Expr> =
         from_json_string(ty_json);
 
-    if let (Some(tx), Some(ty)) =
-        (tx, ty)
-    {
+    match (tx, ty)
+    { (Some(tx), Some(ty)) => {
 
         to_json_string(&translation_2d(
             tx, ty,
         ))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Generates a 4x4 3D translation matrix via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -82,24 +81,24 @@ pub unsafe extern "C" fn rssn_json_translation_3d(
     let tz: Option<Expr> =
         from_json_string(tz_json);
 
-    if let (
+    match (tx, ty, tz)
+    { (
         Some(tx),
         Some(ty),
         Some(tz),
-    ) = (tx, ty, tz)
-    {
+    ) => {
 
         to_json_string(&translation_3d(
             tx, ty, tz,
         ))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Generates a 3x3 2D rotation matrix via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -126,7 +125,7 @@ pub unsafe extern "C" fn rssn_json_rotation_2d(
 }
 
 /// Generates a 4x4 3D rotation matrix around X-axis via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -155,7 +154,7 @@ pub unsafe extern "C" fn rssn_json_rotation_3d_x(
 }
 
 /// Generates a 4x4 3D rotation matrix around Y-axis via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -184,7 +183,7 @@ pub unsafe extern "C" fn rssn_json_rotation_3d_y(
 }
 
 /// Generates a 4x4 3D rotation matrix around Z-axis via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -213,7 +212,7 @@ pub unsafe extern "C" fn rssn_json_rotation_3d_z(
 }
 
 /// Generates a 3x3 2D scaling matrix via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -234,21 +233,20 @@ pub unsafe extern "C" fn rssn_json_scaling_2d(
     let sy: Option<Expr> =
         from_json_string(sy_json);
 
-    if let (Some(sx), Some(sy)) =
-        (sx, sy)
-    {
+    match (sx, sy)
+    { (Some(sx), Some(sy)) => {
 
         to_json_string(&scaling_2d(
             sx, sy,
         ))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Generates a 4x4 3D scaling matrix via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -273,24 +271,24 @@ pub unsafe extern "C" fn rssn_json_scaling_3d(
     let sz: Option<Expr> =
         from_json_string(sz_json);
 
-    if let (
+    match (sx, sy, sz)
+    { (
         Some(sx),
         Some(sy),
         Some(sz),
-    ) = (sx, sy, sz)
-    {
+    ) => {
 
         to_json_string(&scaling_3d(
             sx, sy, sz,
         ))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Generates a 3x3 2D shear matrix via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -311,21 +309,20 @@ pub unsafe extern "C" fn rssn_json_shear_2d(
     let shy: Option<Expr> =
         from_json_string(shy_json);
 
-    if let (Some(shx), Some(shy)) =
-        (shx, shy)
-    {
+    match (shx, shy)
+    { (Some(shx), Some(shy)) => {
 
         to_json_string(&shear_2d(
             shx, shy,
         ))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Generates a 3x3 2D reflection matrix via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -354,7 +351,7 @@ pub unsafe extern "C" fn rssn_json_reflection_2d(
 }
 
 /// Generates a 4x4 3D reflection matrix via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -379,24 +376,24 @@ pub unsafe extern "C" fn rssn_json_reflection_3d(
     let nz: Option<Expr> =
         from_json_string(nz_json);
 
-    if let (
+    match (nx, ny, nz)
+    { (
         Some(nx),
         Some(ny),
         Some(nz),
-    ) = (nx, ny, nz)
-    {
+    ) => {
 
         to_json_string(&reflection_3d(
             nx, ny, nz,
         ))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Generates a 4x4 3D rotation around arbitrary axis via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -425,13 +422,13 @@ pub unsafe extern "C" fn rssn_json_rotation_axis_angle(
     let angle: Option<Expr> =
         from_json_string(angle_json);
 
-    if let (
+    match (ax, ay, az, angle)
+    { (
         Some(ax),
         Some(ay),
         Some(az),
         Some(a),
-    ) = (ax, ay, az, angle)
-    {
+    ) => {
 
         let axis =
             Vector::new(ax, ay, az);
@@ -441,8 +438,8 @@ pub unsafe extern "C" fn rssn_json_rotation_axis_angle(
                 &axis, a,
             ),
         )
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

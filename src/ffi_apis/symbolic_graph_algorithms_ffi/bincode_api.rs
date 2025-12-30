@@ -17,7 +17,7 @@ use crate::symbolic::graph_algorithms::strongly_connected_components;
 use crate::symbolic::graph_algorithms::topological_sort;
 
 /// Performs DFS traversal.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -52,7 +52,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs_api(
 }
 
 /// Performs BFS traversal.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs_api(
 }
 
 /// Finds connected components.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -113,7 +113,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_connected_components_api(
 }
 
 /// Checks if graph is connected.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -138,7 +138,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_connected(
 }
 
 /// Finds strongly connected components.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -166,7 +166,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_strongly_connected_components(
 }
 
 /// Checks if graph has a cycle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -191,7 +191,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_has_cycle_api(
 }
 
 /// Finds bridges and articulation points.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -228,7 +228,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
 }
 
 /// Computes MST using Kruskal's algorithm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -271,7 +271,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst_api(
 }
 
 /// Computes maximum flow using Edmonds-Karp.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -308,7 +308,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_edmonds_karp_max_flow(
 }
 
 /// Computes maximum flow using Dinic's algorithm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -345,7 +345,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_dinic_max_flow(
 }
 
 /// Checks if graph is bipartite.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -370,7 +370,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite_api(
 }
 
 /// Finds maximum matching in bipartite graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -406,7 +406,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bipartite_maximum_matching(
 }
 
 /// Performs topological sort.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

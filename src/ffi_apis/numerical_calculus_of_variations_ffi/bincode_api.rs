@@ -22,7 +22,7 @@ struct ActionInput {
 
 /// Evaluates the action for a given Lagrangian and path using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

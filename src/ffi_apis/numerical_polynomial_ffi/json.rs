@@ -17,7 +17,7 @@ struct PolyBinaryOpRequest {
 }
 
 /// Adds two polynomials from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rssn_num_poly_add_json(
 }
 
 /// Multiplies two polynomials from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

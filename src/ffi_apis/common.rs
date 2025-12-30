@@ -83,7 +83,7 @@ impl BincodeBuffer {
 
     pub const unsafe fn as_slice(
         &self
-    ) -> &[u8] {
+    ) -> &[u8] { unsafe {
 
         if self.is_null() {
 
@@ -95,7 +95,7 @@ impl BincodeBuffer {
                 self.len,
             )
         }
-    }
+    }}
 }
 
 /// Frees a string allocated by an FFI function.
@@ -103,7 +103,7 @@ impl BincodeBuffer {
 /// # Safety
 /// The string must have been allocated by an FFI function that returns `*mut c_char`.
 /// This function should only be called once per string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_string(
     s: *mut c_char
@@ -124,7 +124,7 @@ pub extern "C" fn rssn_free_string(
 /// # Safety
 /// The buffer must have been allocated by an FFI function that returns `BincodeBuffer`.
 /// This function should only be called once per buffer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_bincode_buffer(
     buffer: BincodeBuffer
@@ -280,7 +280,7 @@ pub fn from_bincode_buffer<
 
 pub unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> {
+) -> Option<&'a str> { unsafe {
 
     if s.is_null() {
 
@@ -291,7 +291,7 @@ pub unsafe fn c_str_to_str<'a>(
             .to_str()
             .ok()
     }
-}
+}}
 
 #[cfg(test)]
 

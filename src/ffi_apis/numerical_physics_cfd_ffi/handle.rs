@@ -7,7 +7,7 @@ use crate::numerical::physics_cfd;
 // ============================================================================
 
 /// Returns kinematic viscosity of air at 20°C.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_cfd_air_kinematic_viscosity(
 ) -> f64 {
@@ -17,7 +17,7 @@ pub extern "C" fn rssn_num_cfd_air_kinematic_viscosity(
 }
 
 /// Returns kinematic viscosity of water at 20°C.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_cfd_water_kinematic_viscosity(
 ) -> f64 {
@@ -28,7 +28,7 @@ pub extern "C" fn rssn_num_cfd_water_kinematic_viscosity(
 }
 
 /// Returns Prandtl number of air.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_cfd_air_prandtl_number(
 ) -> f64 {
@@ -38,7 +38,7 @@ pub extern "C" fn rssn_num_cfd_air_prandtl_number(
 }
 
 /// Returns Prandtl number of water.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_cfd_water_prandtl_number(
 ) -> f64 {
@@ -53,7 +53,7 @@ pub extern "C" fn rssn_num_cfd_water_prandtl_number(
 // ============================================================================
 
 /// Calculates Reynolds number.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_cfd_reynolds_number(
     velocity: f64,
@@ -69,7 +69,7 @@ pub extern "C" fn rssn_num_cfd_reynolds_number(
 }
 
 /// Calculates Mach number.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_cfd_mach_number(
     velocity: f64,
@@ -83,7 +83,7 @@ pub extern "C" fn rssn_num_cfd_mach_number(
 }
 
 /// Calculates Froude number.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_cfd_froude_number(
     velocity: f64,
@@ -99,7 +99,7 @@ pub extern "C" fn rssn_num_cfd_froude_number(
 }
 
 /// Calculates CFL number.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_cfd_cfl_number(
     velocity: f64,
@@ -115,7 +115,7 @@ pub extern "C" fn rssn_num_cfd_cfl_number(
 }
 
 /// Checks CFL stability.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_cfd_check_cfl_stability(
     velocity: f64,
@@ -133,7 +133,7 @@ pub extern "C" fn rssn_num_cfd_check_cfl_stability(
 }
 
 /// Calculates diffusion number.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_cfd_diffusion_number(
     alpha: f64,

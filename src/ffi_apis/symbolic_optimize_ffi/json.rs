@@ -8,7 +8,7 @@ use crate::symbolic::optimize::find_extrema;
 use crate::symbolic::optimize::hessian_matrix;
 
 /// Finds extrema of a function (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_find_extrema(
     expr_json: *const c_char,
@@ -21,9 +21,8 @@ pub extern "C" fn rssn_json_find_extrema(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    if let (Some(e), Some(v)) =
-        (expr, vars)
-    {
+    match (expr, vars)
+    { (Some(e), Some(v)) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -41,14 +40,14 @@ pub extern "C" fn rssn_json_find_extrema(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes Hessian matrix (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_hessian_matrix(
     expr_json: *const c_char,
@@ -61,9 +60,8 @@ pub extern "C" fn rssn_json_hessian_matrix(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    if let (Some(e), Some(v)) =
-        (expr, vars)
-    {
+    match (expr, vars)
+    { (Some(e), Some(v)) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -76,14 +74,14 @@ pub extern "C" fn rssn_json_hessian_matrix(
         );
 
         to_json_string(&hessian)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Finds constrained extrema (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_find_constrained_extrema(
     expr_json: *const c_char,
@@ -102,11 +100,11 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    if let (Some(e), Some(c), Some(v)) = (
+    match (
         expr,
         constraints,
         vars,
-    ) {
+    ) { (Some(e), Some(c), Some(v)) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -127,8 +125,8 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

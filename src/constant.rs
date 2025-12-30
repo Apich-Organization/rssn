@@ -133,7 +133,7 @@ pub const fn get_system_info(
 // --- Math & Physics Constants ---
 
 macro_rules! nist_const {
-    ($const_name:ident, $fn_name:ident, $value:expr, $unit:expr, $uncert:expr, $desc:expr) => {
+    ($const_name:ident, $fn_name:ident, $value:expr_2021, $unit:expr_2021, $uncert:expr_2021, $desc:expr_2021) => {
         #[doc = concat!($desc, "\n\n**Value:** ", stringify!($value), " ", $unit, "\n**Uncertainty:** ", $uncert)]
         pub const $const_name: f64 = $value;
 

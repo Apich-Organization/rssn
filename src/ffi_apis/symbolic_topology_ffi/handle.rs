@@ -10,7 +10,7 @@ use crate::symbolic::topology::SymbolicChain;
 // --- Simplex ---
 
 /// Creates a new Simplex (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplex_create(
     vertices_ptr: *const usize,
@@ -38,7 +38,7 @@ pub extern "C" fn rssn_simplex_create(
 }
 
 /// Frees a Simplex handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplex_free(
     ptr: *mut Simplex
@@ -54,7 +54,7 @@ pub extern "C" fn rssn_simplex_free(
 }
 
 /// Gets the dimension of a Simplex
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplex_dimension(
     ptr: *const Simplex
@@ -74,7 +74,7 @@ pub extern "C" fn rssn_simplex_dimension(
 // --- SimplicialComplex ---
 
 /// Creates a new `SimplicialComplex` (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplicial_complex_create(
 ) -> *mut SimplicialComplex {
@@ -86,7 +86,7 @@ pub extern "C" fn rssn_simplicial_complex_create(
 }
 
 /// Frees a `SimplicialComplex` handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplicial_complex_free(
     ptr: *mut SimplicialComplex
@@ -102,7 +102,7 @@ pub extern "C" fn rssn_simplicial_complex_free(
 }
 
 /// Adds a simplex to a `SimplicialComplex`
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplicial_complex_add_simplex(
     complex_ptr: *mut SimplicialComplex,
@@ -132,7 +132,7 @@ pub extern "C" fn rssn_simplicial_complex_add_simplex(
 }
 
 /// Gets the dimension of a `SimplicialComplex`
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplicial_complex_dimension(
     ptr: *const SimplicialComplex
@@ -153,7 +153,7 @@ pub extern "C" fn rssn_simplicial_complex_dimension(
 }
 
 /// Computes the Euler characteristic
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplicial_complex_euler_characteristic(
     ptr: *const SimplicialComplex
@@ -171,7 +171,7 @@ pub extern "C" fn rssn_simplicial_complex_euler_characteristic(
 }
 
 /// Gets the symbolic boundary matrix for dimension k
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplicial_complex_get_symbolic_boundary_matrix(
     complex_ptr : *const SimplicialComplex,
@@ -195,7 +195,7 @@ pub extern "C" fn rssn_simplicial_complex_get_symbolic_boundary_matrix(
 // --- SymbolicChain ---
 
 /// Creates a new `SymbolicChain` (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_symbolic_chain_create(
     dimension: usize
@@ -208,7 +208,7 @@ pub extern "C" fn rssn_symbolic_chain_create(
 }
 
 /// Frees a `SymbolicChain` handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_symbolic_chain_free(
     ptr: *mut SymbolicChain
@@ -224,7 +224,7 @@ pub extern "C" fn rssn_symbolic_chain_free(
 }
 
 /// Adds a term to a `SymbolicChain`
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_symbolic_chain_add_term(
     chain_ptr: *mut SymbolicChain,
@@ -259,7 +259,7 @@ pub extern "C" fn rssn_symbolic_chain_add_term(
 }
 
 /// Applies the symbolic boundary operator to a `SymbolicChain`
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplicial_complex_apply_symbolic_boundary_operator(
     complex_ptr : *const SimplicialComplex,
@@ -289,7 +289,7 @@ pub extern "C" fn rssn_simplicial_complex_apply_symbolic_boundary_operator(
 // --- Generators ---
 
 /// Creates a grid complex
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_create_grid_complex(
     width: usize,
@@ -305,7 +305,7 @@ pub extern "C" fn rssn_create_grid_complex(
 }
 
 /// Creates a torus complex
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_create_torus_complex(
     m: usize,

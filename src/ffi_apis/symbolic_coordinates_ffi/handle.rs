@@ -29,7 +29,7 @@ use crate::symbolic::core::Expr;
 ///
 /// This function is unsafe because it dereferences a raw pointer and returns ownership
 /// of a heap-allocated vector to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_transform_point_handle(
     point: *const Vec<Expr>,
@@ -77,7 +77,7 @@ pub extern "C" fn rssn_transform_point_handle(
 ///
 /// This function is unsafe because it dereferences a raw `Expr` pointer and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_transform_expression_handle(
     expr: *const Expr,
@@ -123,7 +123,7 @@ pub extern "C" fn rssn_transform_expression_handle(
 ///
 /// This function is unsafe at the FFI boundary; the returned pointer must be eventually
 /// freed by the caller using the appropriate deallocation routine.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_coordinates_get_metric_tensor_handle(
     system: CoordinateSystem
@@ -161,7 +161,7 @@ pub extern "C" fn rssn_coordinates_get_metric_tensor_handle(
 ///
 /// This function is unsafe because it dereferences a raw pointer to a vector and returns
 /// ownership of a heap-allocated vector to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_transform_contravariant_vector_handle(
     comps: *const Vec<Expr>,
@@ -210,7 +210,7 @@ pub extern "C" fn rssn_transform_contravariant_vector_handle(
 ///
 /// This function is unsafe because it dereferences a raw pointer to a vector and returns
 /// ownership of a heap-allocated vector to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_transform_covariant_vector_handle(
     comps: *const Vec<Expr>,
@@ -257,7 +257,7 @@ pub extern "C" fn rssn_transform_covariant_vector_handle(
 ///
 /// This function is unsafe because it dereferences a raw vector pointer and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_transform_divergence_handle(
     comps: *const Vec<Expr>,
@@ -302,7 +302,7 @@ pub extern "C" fn rssn_transform_divergence_handle(
 ///
 /// This function is unsafe because it dereferences a raw vector pointer and returns
 /// ownership of a heap-allocated vector to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_transform_curl_handle(
     comps: *const Vec<Expr>,
@@ -350,7 +350,7 @@ pub extern "C" fn rssn_transform_curl_handle(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns ownership
 /// of a heap-allocated vector to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_transform_gradient_handle(
     scalar: *const Expr,

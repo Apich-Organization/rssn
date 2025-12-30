@@ -7,7 +7,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::simplify;
 
 /// Simplifies an expression using the heuristic simplifier (Bincode input/output).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_heuristic_simplify(
     expr_buf: BincodeBuffer
@@ -29,7 +29,7 @@ pub extern "C" fn rssn_bincode_heuristic_simplify(
 }
 
 /// Simplifies an expression using the legacy simplifier (Bincode input/output).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_simplify(
     expr_buf: BincodeBuffer

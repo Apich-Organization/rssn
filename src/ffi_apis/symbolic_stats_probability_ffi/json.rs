@@ -36,7 +36,7 @@ fn parse_expr(
 
 /// Returns a JSON string representing the `Expr` of the normal distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rssn_json_dist_normal(
 
 /// Returns a JSON string representing the `Expr` of the uniform distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn rssn_json_dist_uniform(
 
 /// Returns a JSON string representing the `Expr` of the binomial distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -156,7 +156,7 @@ pub unsafe extern "C" fn rssn_json_dist_binomial(
 
 /// Returns a JSON string representing the `Expr` of the Poisson distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn rssn_json_dist_poisson(
 
 /// Returns a JSON string representing the `Expr` of the Bernoulli distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -224,7 +224,7 @@ pub unsafe extern "C" fn rssn_json_dist_bernoulli(
 
 /// Returns a JSON string representing the `Expr` of the exponential distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -258,7 +258,7 @@ pub unsafe extern "C" fn rssn_json_dist_exponential(
 
 /// Returns a JSON string representing the `Expr` of the gamma distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -297,7 +297,7 @@ pub unsafe extern "C" fn rssn_json_dist_gamma(
 
 /// Returns a JSON string representing the `Expr` of the beta distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -336,7 +336,7 @@ pub unsafe extern "C" fn rssn_json_dist_beta(
 
 /// Returns a JSON string representing the `Expr` of the Student's t-distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -372,7 +372,7 @@ pub unsafe extern "C" fn rssn_json_dist_student_t(
 
 /// Returns a JSON string representing the `Expr` of the PDF at `x`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -414,7 +414,7 @@ pub unsafe extern "C" fn rssn_json_dist_pdf(
 
 /// Returns a JSON string representing the `Expr` of the CDF at `x`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -456,7 +456,7 @@ pub unsafe extern "C" fn rssn_json_dist_cdf(
 
 /// Returns a JSON string representing the `Expr` of the expectation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -494,7 +494,7 @@ pub unsafe extern "C" fn rssn_json_dist_expectation(
 
 /// Returns a JSON string representing the `Expr` of the variance.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -532,7 +532,7 @@ pub unsafe extern "C" fn rssn_json_dist_variance(
 
 /// Returns a JSON string representing the `Expr` of the MGF.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

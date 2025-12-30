@@ -9,7 +9,7 @@ use crate::symbolic::electromagnetism;
 use crate::symbolic::vector::Vector;
 
 /// Calculates Lorentz force using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_lorentz_force(
     charge_json: *const c_char,
@@ -30,27 +30,27 @@ pub extern "C" fn rssn_json_lorentz_force(
     let b_field: Option<Vector> =
         from_json_string(b_field_json);
 
-    if let (
-        Some(q),
-        Some(e),
-        Some(v),
-        Some(b),
-    ) = (
+    match (
         charge,
         e_field,
         velocity,
         b_field,
-    ) {
+    ) { (
+        Some(q),
+        Some(e),
+        Some(v),
+        Some(b),
+    ) => {
 
         to_json_string(&electromagnetism::lorentz_force(&q, &e, &v, &b))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Calculates energy density using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_electromagnetic_energy_density(
     e_field_json: *const c_char,
@@ -63,13 +63,12 @@ pub extern "C" fn rssn_json_electromagnetic_energy_density(
     let b_field: Option<Vector> =
         from_json_string(b_field_json);
 
-    if let (Some(e), Some(b)) =
-        (e_field, b_field)
-    {
+    match (e_field, b_field)
+    { (Some(e), Some(b)) => {
 
         to_json_string(&electromagnetism::energy_density(&e, &b))
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

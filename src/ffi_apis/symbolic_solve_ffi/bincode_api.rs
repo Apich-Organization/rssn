@@ -14,7 +14,7 @@ use crate::symbolic::solve::solve_system;
 
 /// Returns a bincode-serialized `Expr` representing the solution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_solve(
     expr_buf: BincodeBuffer,
@@ -27,17 +27,16 @@ pub extern "C" fn rssn_bincode_solve(
     let var: Option<String> =
         from_bincode_buffer(&var_buf);
 
-    if let (Some(e), Some(v)) =
-        (expr, var)
-    {
+    match (expr, var)
+    { (Some(e), Some(v)) => {
 
         let result = solve(&e, &v);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Solves a system of equations for given variables.
@@ -48,7 +47,7 @@ pub extern "C" fn rssn_bincode_solve(
 
 /// Returns a bincode-serialized `Expr` representing the solution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_solve_system(
     equations_buf: BincodeBuffer,
@@ -63,9 +62,8 @@ pub extern "C" fn rssn_bincode_solve_system(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    if let (Some(eqs), Some(vs)) =
-        (equations, vars)
-    {
+    match (equations, vars)
+    { (Some(eqs), Some(vs)) => {
 
         let vars_str: Vec<&str> = vs
             .iter()
@@ -85,10 +83,10 @@ pub extern "C" fn rssn_bincode_solve_system(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Solves a linear system of equations.
@@ -99,7 +97,7 @@ pub extern "C" fn rssn_bincode_solve_system(
 
 /// Returns a bincode-serialized `Expr` representing the solution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_solve_linear_system(
     system_buf: BincodeBuffer,
@@ -114,9 +112,8 @@ pub extern "C" fn rssn_bincode_solve_linear_system(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    if let (Some(sys), Some(vs)) =
-        (system, vars)
-    {
+    match (system, vars)
+    { (Some(sys), Some(vs)) => {
 
         match solve_linear_system(
             &sys, &vs,
@@ -130,8 +127,8 @@ pub extern "C" fn rssn_bincode_solve_linear_system(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

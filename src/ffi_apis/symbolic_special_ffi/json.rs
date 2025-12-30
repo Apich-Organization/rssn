@@ -14,7 +14,7 @@ use crate::symbolic::special;
 // ============================================================================
 
 /// Computes the gamma function Γ(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -45,7 +45,7 @@ pub unsafe extern "C" fn rssn_json_gamma_numerical(
 }
 
 /// Computes ln(Γ(x)) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_json_ln_gamma_numerical(
 }
 
 /// Computes the digamma function ψ(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -103,7 +103,7 @@ pub unsafe extern "C" fn rssn_json_digamma_numerical(
 }
 
 /// Computes B(a, b) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -140,7 +140,7 @@ pub unsafe extern "C" fn rssn_json_beta_numerical(
 }
 
 /// Computes ln(B(a, b)) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -177,7 +177,7 @@ pub unsafe extern "C" fn rssn_json_ln_beta_numerical(
 }
 
 /// Computes the regularized incomplete beta Iₓ(a, b) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -217,7 +217,7 @@ pub unsafe extern "C" fn rssn_json_regularized_incomplete_beta(
 }
 
 /// Computes P(a, x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -249,7 +249,7 @@ pub unsafe extern "C" fn rssn_json_regularized_gamma_p(
 }
 
 /// Computes Q(a, x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -285,7 +285,7 @@ pub unsafe extern "C" fn rssn_json_regularized_gamma_q(
 // ============================================================================
 
 /// Computes erf(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -316,7 +316,7 @@ pub unsafe extern "C" fn rssn_json_erf_numerical(
 }
 
 /// Computes erfc(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -347,7 +347,7 @@ pub unsafe extern "C" fn rssn_json_erfc_numerical(
 }
 
 /// Computes erf⁻¹(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -376,7 +376,7 @@ pub unsafe extern "C" fn rssn_json_inverse_erf(
 }
 
 /// Computes erfc⁻¹(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -409,7 +409,7 @@ pub unsafe extern "C" fn rssn_json_inverse_erfc(
 // ============================================================================
 
 /// Computes n! via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -438,7 +438,7 @@ pub unsafe extern "C" fn rssn_json_factorial(
 }
 
 /// Computes n!! via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -469,7 +469,7 @@ pub unsafe extern "C" fn rssn_json_double_factorial(
 }
 
 /// Computes C(n, k) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -503,7 +503,7 @@ pub unsafe extern "C" fn rssn_json_binomial(
 }
 
 /// Computes the rising factorial (x)ₙ via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -539,7 +539,7 @@ pub unsafe extern "C" fn rssn_json_rising_factorial(
 }
 
 /// Computes the falling factorial (x)₍ₙ₎ via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -575,7 +575,7 @@ pub unsafe extern "C" fn rssn_json_falling_factorial(
 }
 
 /// Computes ln(n!) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -608,7 +608,7 @@ pub unsafe extern "C" fn rssn_json_ln_factorial(
 // ============================================================================
 
 /// Computes J₀(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -637,7 +637,7 @@ pub unsafe extern "C" fn rssn_json_bessel_j0(
 }
 
 /// Computes J₁(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -666,7 +666,7 @@ pub unsafe extern "C" fn rssn_json_bessel_j1(
 }
 
 /// Computes Y₀(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -695,7 +695,7 @@ pub unsafe extern "C" fn rssn_json_bessel_y0(
 }
 
 /// Computes Y₁(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -724,7 +724,7 @@ pub unsafe extern "C" fn rssn_json_bessel_y1(
 }
 
 /// Computes I₀(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -753,7 +753,7 @@ pub unsafe extern "C" fn rssn_json_bessel_i0(
 }
 
 /// Computes I₁(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -782,7 +782,7 @@ pub unsafe extern "C" fn rssn_json_bessel_i1(
 }
 
 /// Computes K₀(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -811,7 +811,7 @@ pub unsafe extern "C" fn rssn_json_bessel_k0(
 }
 
 /// Computes K₁(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -844,7 +844,7 @@ pub unsafe extern "C" fn rssn_json_bessel_k1(
 // ============================================================================
 
 /// Computes sinc(x) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -873,7 +873,7 @@ pub unsafe extern "C" fn rssn_json_sinc(
 }
 
 /// Computes ζ(s) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

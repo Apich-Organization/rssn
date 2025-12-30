@@ -7,7 +7,7 @@ use crate::symbolic::simplify_dag;
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -19,7 +19,7 @@ use crate::symbolic::simplify_dag;
 
 pub unsafe extern "C" fn rssn_simplify_dag(
     expr: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null() {
 
@@ -33,4 +33,4 @@ pub unsafe extern "C" fn rssn_simplify_dag(
             expr_ref,
         ),
     ))
-}
+}}

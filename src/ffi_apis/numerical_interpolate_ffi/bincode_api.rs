@@ -40,7 +40,7 @@ struct BSplineInput {
 
 /// Computes the Lagrange interpolation polynomial for a given set of points using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_bincode(
 
 /// Computes the cubic spline interpolation for a given set of points using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -126,7 +126,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_bincode(
 
 /// Computes a point on a Bezier curve given control points and a parameter t, using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -162,7 +162,7 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_bincode(
 
 /// Computes a point on a B-spline curve given control points, degree, knots, and a parameter t, using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

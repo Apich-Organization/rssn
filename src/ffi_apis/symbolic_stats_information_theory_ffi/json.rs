@@ -13,7 +13,7 @@ use crate::symbolic::stats_information_theory;
 
 /// Returns a JSON string representing the `Expr` of the entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rssn_json_shannon_entropy(
 
 /// Returns a JSON string representing the `Expr` of the KL divergence.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -70,18 +70,17 @@ pub unsafe extern "C" fn rssn_json_kl_divergence(
     let q_probs: Option<Vec<Expr>> =
         from_json_string(q_probs_json);
 
-    if let (Some(p), Some(q)) =
-        (p_probs, q_probs)
-    {
+    match (p_probs, q_probs)
+    { (Some(p), Some(q)) => {
 
         match stats_information_theory::kl_divergence(&p, &q) {
             | Ok(res) => to_json_string(&res),
             | Err(_) => std::ptr::null_mut(),
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the cross-entropy between two probability distributions.
@@ -92,7 +91,7 @@ pub unsafe extern "C" fn rssn_json_kl_divergence(
 
 /// Returns a JSON string representing the `Expr` of the cross-entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -113,18 +112,17 @@ pub unsafe extern "C" fn rssn_json_cross_entropy(
     let q_probs: Option<Vec<Expr>> =
         from_json_string(q_probs_json);
 
-    if let (Some(p), Some(q)) =
-        (p_probs, q_probs)
-    {
+    match (p_probs, q_probs)
+    { (Some(p), Some(q)) => {
 
         match stats_information_theory::cross_entropy(&p, &q) {
             | Ok(res) => to_json_string(&res),
             | Err(_) => std::ptr::null_mut(),
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the Gini impurity of a probability distribution.
@@ -135,7 +133,7 @@ pub unsafe extern "C" fn rssn_json_cross_entropy(
 
 /// Returns a JSON string representing the `Expr` of the Gini impurity.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -171,7 +169,7 @@ pub unsafe extern "C" fn rssn_json_gini_impurity(
 
 /// Returns a JSON string representing the `Expr` of the joint entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -210,7 +208,7 @@ pub unsafe extern "C" fn rssn_json_joint_entropy(
 
 /// Returns a JSON string representing the `Expr` of the conditional entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -249,7 +247,7 @@ pub unsafe extern "C" fn rssn_json_conditional_entropy(
 
 /// Returns a JSON string representing the `Expr` of the mutual information.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

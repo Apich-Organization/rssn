@@ -12,7 +12,7 @@ use crate::symbolic::stats_inference::{
 
 /// Returns a bincode-serialized `HypothesisTest` representing the test result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_one_sample_t_test(
     data_buf: BincodeBuffer,
@@ -27,17 +27,16 @@ pub extern "C" fn rssn_bincode_one_sample_t_test(
             &target_mean_buf,
         );
 
-    if let (Some(data), Some(target)) =
-        (data, target)
-    {
+    match (data, target)
+    { (Some(data), Some(target)) => {
 
         let result = stats_inference::one_sample_t_test_symbolic(&data, &target);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Performs a two-sample t-test.
@@ -48,7 +47,7 @@ pub extern "C" fn rssn_bincode_one_sample_t_test(
 
 /// Returns a bincode-serialized `HypothesisTest` representing the test result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_two_sample_t_test(
     data1_buf: BincodeBuffer,
@@ -67,20 +66,20 @@ pub extern "C" fn rssn_bincode_two_sample_t_test(
             &mu_diff_buf,
         );
 
-    if let (
+    match (data1, data2, diff)
+    { (
         Some(d1),
         Some(d2),
         Some(diff),
-    ) = (data1, data2, diff)
-    {
+    ) => {
 
         let result = stats_inference::two_sample_t_test_symbolic(&d1, &d2, &diff);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Performs a z-test.
@@ -91,7 +90,7 @@ pub extern "C" fn rssn_bincode_two_sample_t_test(
 
 /// Returns a bincode-serialized `HypothesisTest` representing the test result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_z_test(
     data_buf: BincodeBuffer,
@@ -112,12 +111,12 @@ pub extern "C" fn rssn_bincode_z_test(
             &pop_std_dev_buf,
         );
 
-    if let (
+    match (data, target, sigma)
+    { (
         Some(data),
         Some(target),
         Some(sigma),
-    ) = (data, target, sigma)
-    {
+    ) => {
 
         let result = stats_inference::z_test_symbolic(
             &data,
@@ -126,8 +125,8 @@ pub extern "C" fn rssn_bincode_z_test(
         );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

@@ -705,13 +705,13 @@ fn contains_nonlinear_terms(
             contains_nonlinear_terms(a, func) || contains_nonlinear_terms(b, func)
         },
         | Expr::Dag(node) => {
-            if let Ok(inner) = node.to_expr() {
+            match node.to_expr() { Ok(inner) => {
 
                 contains_nonlinear_terms(&inner, func)
-            } else {
+            } _ => {
 
                 false
-            }
+            }}
         },
         | _ => false,
     }
@@ -733,13 +733,13 @@ fn contains_function_or_derivative(
             contains_function_or_derivative(a, func) || contains_function_or_derivative(b, func)
         },
         | Expr::Dag(node) => {
-            if let Ok(inner) = node.to_expr() {
+            match node.to_expr() { Ok(inner) => {
 
                 contains_function_or_derivative(&inner, func)
-            } else {
+            } _ => {
 
                 false
-            }
+            }}
         },
         | _ => false,
     }
@@ -1802,25 +1802,25 @@ pub fn solve_second_order_pde(
         return None;
     }
 
-    if let Some((
+    match classify_second_order_pde(
+        equation,
+        func,
+        vars,
+    ) { Some((
         _a,
         _b,
         _c,
         pde_type,
-    )) = classify_second_order_pde(
-        equation,
-        func,
-        vars,
-    ) {
+    )) => {
 
         match pde_type.as_str() {
             | "Hyperbolic" => solve_wave_equation_1d_dalembert(equation, func, vars),
             | _ => None,
         }
-    } else {
+    } _ => {
 
         None
-    }
+    }}
 }
 
 /// Solves the 1D homogeneous wave equation `u_tt = c^2 * u_xx` using D'Alembert's formula.
@@ -2575,34 +2575,32 @@ pub fn solve_poisson_equation_2d(
 
     for term in terms {
 
-        if let Some(coeff) =
-            extract_coefficient(
+        match extract_coefficient(
                 &term, &u_xx,
             )
-        {
+        { Some(coeff) => {
 
             coeff_u_xx = Expr::new_add(
                 coeff_u_xx,
                 coeff,
             );
-        } else if let Some(coeff) =
-            extract_coefficient(
+        } _ => { match extract_coefficient(
                 &term, &u_yy,
             )
-        {
+        { Some(coeff) => {
 
             coeff_u_yy = Expr::new_add(
                 coeff_u_yy,
                 coeff,
             );
-        } else {
+        } _ => {
 
             // Terms without u derivatives are the source term
             source_term = Expr::new_add(
                 source_term,
                 term,
             );
-        }
+        }}}}
     }
 
     let coeff_u_xx =
@@ -3629,8 +3627,7 @@ pub(crate) fn parse_conditions(
         if let Expr::Eq(lhs, rhs) = cond
         {
 
-            if let Some(val_str) =
-                get_value_at_point(
+            match get_value_at_point(
                     lhs,
                     t_var,
                     &Expr::Constant(
@@ -3638,7 +3635,7 @@ pub(crate) fn parse_conditions(
                     ),
                     &vars_order,
                 )
-            {
+            { Some(val_str) => {
 
                 let val =
                     Expr::Variable(
@@ -3659,7 +3656,7 @@ pub(crate) fn parse_conditions(
 
                     initial_cond_deriv = Some(rhs.as_ref().clone());
                 }
-            } else if is_zero(rhs) {
+            } _ => if is_zero(rhs) {
 
                 if let Some(val_str) =
                     get_value_at_point(
@@ -3712,7 +3709,7 @@ pub(crate) fn parse_conditions(
                         ));
                     }
                 }
-            }
+            }}
         }
     }
 

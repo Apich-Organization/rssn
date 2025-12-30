@@ -14,7 +14,7 @@ use crate::numerical::special;
 /// # Returns
 ///
 /// The value Γ(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_gamma(
     x: f64
@@ -34,7 +34,7 @@ pub extern "C" fn rssn_num_special_gamma(
 /// # Returns
 ///
 /// The value ln(Γ(x)).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_ln_gamma(
     x: f64
@@ -54,7 +54,7 @@ pub extern "C" fn rssn_num_special_ln_gamma(
 /// # Returns
 ///
 /// The value ψ(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_digamma(
     x: f64
@@ -75,7 +75,7 @@ pub extern "C" fn rssn_num_special_digamma(
 /// # Returns
 ///
 /// The value γ(s, x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_lower_incomplete_gamma(
     s: f64,
@@ -99,7 +99,7 @@ pub extern "C" fn rssn_num_special_lower_incomplete_gamma(
 /// # Returns
 ///
 /// The value Γ(s, x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_upper_incomplete_gamma(
     s: f64,
@@ -122,7 +122,7 @@ pub extern "C" fn rssn_num_special_upper_incomplete_gamma(
 /// # Returns
 ///
 /// The value B(a, b).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_beta(
     a: f64,
@@ -144,7 +144,7 @@ pub extern "C" fn rssn_num_special_beta(
 /// # Returns
 ///
 /// The value ln(B(a, b)).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_ln_beta(
     a: f64,
@@ -167,7 +167,7 @@ pub extern "C" fn rssn_num_special_ln_beta(
 /// # Returns
 ///
 /// The value I(x; a, b) ∈ [0, 1].
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_regularized_beta(
     x: f64,
@@ -190,7 +190,7 @@ pub extern "C" fn rssn_num_special_regularized_beta(
 /// # Returns
 ///
 /// The value erf(x) ∈ [-1, 1].
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_erf(
     x: f64
@@ -210,7 +210,7 @@ pub extern "C" fn rssn_num_special_erf(
 /// # Returns
 ///
 /// The value erfc(x) ∈ [0, 2].
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_erfc(
     x: f64
@@ -230,7 +230,7 @@ pub extern "C" fn rssn_num_special_erfc(
 /// # Returns
 ///
 /// The value y such that erf(y) = x.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_inverse_erf(
     x: f64
@@ -251,7 +251,7 @@ pub extern "C" fn rssn_num_special_inverse_erf(
 /// # Returns
 ///
 /// The value J₀(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_bessel_j0(
     x: f64
@@ -271,7 +271,7 @@ pub extern "C" fn rssn_num_special_bessel_j0(
 /// # Returns
 ///
 /// The value J₁(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_bessel_j1(
     x: f64
@@ -291,7 +291,7 @@ pub extern "C" fn rssn_num_special_bessel_j1(
 /// # Returns
 ///
 /// The value Y₀(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_bessel_y0(
     x: f64
@@ -311,7 +311,7 @@ pub extern "C" fn rssn_num_special_bessel_y0(
 /// # Returns
 ///
 /// The value Y₁(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_bessel_y1(
     x: f64
@@ -331,7 +331,7 @@ pub extern "C" fn rssn_num_special_bessel_y1(
 /// # Returns
 ///
 /// The value I₀(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_bessel_i0(
     x: f64
@@ -351,7 +351,7 @@ pub extern "C" fn rssn_num_special_bessel_i0(
 /// # Returns
 ///
 /// The value I₁(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_bessel_i1(
     x: f64
@@ -373,7 +373,7 @@ pub extern "C" fn rssn_num_special_bessel_i1(
 /// # Returns
 ///
 /// The value Pₙ(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_legendre_p(
     n: u32,
@@ -395,7 +395,7 @@ pub extern "C" fn rssn_num_special_legendre_p(
 /// # Returns
 ///
 /// The value Tₙ(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_chebyshev_t(
     n: u32,
@@ -417,7 +417,7 @@ pub extern "C" fn rssn_num_special_chebyshev_t(
 /// # Returns
 ///
 /// The value Uₙ(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_chebyshev_u(
     n: u32,
@@ -439,7 +439,7 @@ pub extern "C" fn rssn_num_special_chebyshev_u(
 /// # Returns
 ///
 /// The value Hₙ(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_hermite_h(
     n: u32,
@@ -461,7 +461,7 @@ pub extern "C" fn rssn_num_special_hermite_h(
 /// # Returns
 ///
 /// The value Lₙ(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_laguerre_l(
     n: u32,
@@ -483,7 +483,7 @@ pub extern "C" fn rssn_num_special_laguerre_l(
 /// # Returns
 ///
 /// The value n! (as f64).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_factorial(
     n: u64
@@ -503,7 +503,7 @@ pub extern "C" fn rssn_num_special_factorial(
 /// # Returns
 ///
 /// The value n!! (as f64).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_double_factorial(
     n: u64
@@ -524,7 +524,7 @@ pub extern "C" fn rssn_num_special_double_factorial(
 /// # Returns
 ///
 /// The value C(n, k) (as f64).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_binomial(
     n: u64,
@@ -545,7 +545,7 @@ pub extern "C" fn rssn_num_special_binomial(
 /// # Returns
 ///
 /// The value ζ(s).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_zeta(
     s: f64
@@ -565,7 +565,7 @@ pub extern "C" fn rssn_num_special_zeta(
 /// # Returns
 ///
 /// The value sinc(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_sinc(
     x: f64
@@ -585,7 +585,7 @@ pub extern "C" fn rssn_num_special_sinc(
 /// # Returns
 ///
 /// The value σ(x) ∈ (0, 1).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_sigmoid(
     x: f64
@@ -605,7 +605,7 @@ pub extern "C" fn rssn_num_special_sigmoid(
 /// # Returns
 ///
 /// The value softplus(x) > 0.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_softplus(
     x: f64
@@ -625,7 +625,7 @@ pub extern "C" fn rssn_num_special_softplus(
 /// # Returns
 ///
 /// The value logit(p).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_special_logit(
     p: f64

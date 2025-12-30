@@ -18,7 +18,7 @@ use crate::symbolic::matrix::transpose_matrix;
 
 /// and returns a JSON string representing their sum.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_matrix_add(
     m1_json: *const c_char,
@@ -31,11 +31,11 @@ pub extern "C" fn rssn_json_matrix_add(
     let m2: Option<Expr> =
         from_json_string(m2_json);
 
-    if let (
+    match (m1, m2)
+    { (
         Some(matrix1),
         Some(matrix2),
-    ) = (m1, m2)
-    {
+    ) => {
 
         let result = add_matrices(
             &matrix1,
@@ -43,10 +43,10 @@ pub extern "C" fn rssn_json_matrix_add(
         );
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Performs matrix multiplication.
@@ -57,7 +57,7 @@ pub extern "C" fn rssn_json_matrix_add(
 
 /// and returns a JSON string representing their product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_matrix_mul(
     m1_json: *const c_char,
@@ -70,11 +70,11 @@ pub extern "C" fn rssn_json_matrix_mul(
     let m2: Option<Expr> =
         from_json_string(m2_json);
 
-    if let (
+    match (m1, m2)
+    { (
         Some(matrix1),
         Some(matrix2),
-    ) = (m1, m2)
-    {
+    ) => {
 
         let result = mul_matrices(
             &matrix1,
@@ -82,10 +82,10 @@ pub extern "C" fn rssn_json_matrix_mul(
         );
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Performs matrix transposition.
@@ -96,7 +96,7 @@ pub extern "C" fn rssn_json_matrix_mul(
 
 /// and returns a JSON string representing its transpose.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_matrix_transpose(
     matrix_json: *const c_char
@@ -125,7 +125,7 @@ pub extern "C" fn rssn_json_matrix_transpose(
 
 /// and returns a JSON string representing its determinant.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_matrix_determinant(
     matrix_json: *const c_char
@@ -153,7 +153,7 @@ pub extern "C" fn rssn_json_matrix_determinant(
 
 /// and returns a JSON string representing its inverse.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_matrix_inverse(
     matrix_json: *const c_char
@@ -181,7 +181,7 @@ pub extern "C" fn rssn_json_matrix_inverse(
 
 /// and returns a JSON string representing the solution vector X.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_matrix_solve_linear_system(
     a_json: *const c_char,
@@ -194,11 +194,11 @@ pub extern "C" fn rssn_json_matrix_solve_linear_system(
     let b: Option<Expr> =
         from_json_string(b_json);
 
-    if let (
+    match (a, b)
+    { (
         Some(matrix_a),
         Some(vector_b),
-    ) = (a, b)
-    {
+    ) => {
 
         match solve_linear_system(
             &matrix_a,
@@ -211,8 +211,8 @@ pub extern "C" fn rssn_json_matrix_solve_linear_system(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

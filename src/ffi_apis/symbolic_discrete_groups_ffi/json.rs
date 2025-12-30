@@ -13,7 +13,7 @@ use crate::symbolic::discrete_groups::symmetric_group;
 ///
 /// # Returns
 /// A raw pointer to a JSON string representing the group.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rssn_json_cyclic_group_create(
 ///
 /// # Returns
 /// A raw pointer to a JSON string representing the group.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rssn_json_dihedral_group_create(
 ///
 /// # Returns
 /// A raw pointer to a JSON string representing the group, or NULL if `n` is invalid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -93,7 +93,7 @@ pub unsafe extern "C" fn rssn_json_symmetric_group_create(
 ///
 /// # Returns
 /// A raw pointer to a JSON string representing the group.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

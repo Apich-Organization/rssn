@@ -12,7 +12,7 @@ use crate::symbolic::rewriting::RewriteRule;
 ///
 /// # Safety
 /// The caller must ensure `lhs` and `rhs` are valid Expr pointers.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -25,7 +25,7 @@ use crate::symbolic::rewriting::RewriteRule;
 pub unsafe extern "C" fn rssn_rewrite_rule_new(
     lhs: *const Expr,
     rhs: *const Expr,
-) -> *mut RewriteRule {
+) -> *mut RewriteRule { unsafe {
 
     if lhs.is_null() || rhs.is_null() {
 
@@ -38,13 +38,13 @@ pub unsafe extern "C" fn rssn_rewrite_rule_new(
     };
 
     Box::into_raw(Box::new(rule))
-}
+}}
 
 /// Frees a rewrite rule.
 ///
 /// # Safety
 /// The caller must ensure `rule` was created by this module and hasn't been freed yet.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -56,13 +56,13 @@ pub unsafe extern "C" fn rssn_rewrite_rule_new(
 
 pub unsafe extern "C" fn rssn_rewrite_rule_free(
     rule: *mut RewriteRule
-) {
+) { unsafe {
 
     if !rule.is_null() {
 
         let _ = Box::from_raw(rule);
     }
-}
+}}
 
 /// Gets the LHS of a rewrite rule.
 ///
@@ -70,7 +70,7 @@ pub unsafe extern "C" fn rssn_rewrite_rule_free(
 ///
 /// # Safety
 /// The caller must ensure `rule` is a valid `RewriteRule` pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -82,7 +82,7 @@ pub unsafe extern "C" fn rssn_rewrite_rule_free(
 
 pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(
     rule: *const RewriteRule
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if rule.is_null() {
 
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(
     Box::into_raw(Box::new(
         (*rule).lhs.clone(),
     ))
-}
+}}
 
 /// Gets the RHS of a rewrite rule.
 ///
@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(
 ///
 /// # Safety
 /// The caller must ensure `rule` is a valid `RewriteRule` pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -112,7 +112,7 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_lhs(
 
 pub unsafe extern "C" fn rssn_rewrite_rule_get_rhs(
     rule: *const RewriteRule
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if rule.is_null() {
 
@@ -122,13 +122,13 @@ pub unsafe extern "C" fn rssn_rewrite_rule_get_rhs(
     Box::into_raw(Box::new(
         (*rule).rhs.clone(),
     ))
-}
+}}
 
 /// Applies a set of rewrite rules to an expression until a normal form is reached.
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer and `rules` is a valid array.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
     expr: *const Expr,
     rules: *const *const RewriteRule,
     rules_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null()
         || (rules_len > 0
@@ -186,7 +186,7 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
         );
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Applies the Knuth-Bendix completion algorithm to a set of equations.
 ///
@@ -194,7 +194,7 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
 ///
 /// # Safety
 /// The caller must ensure `equations` is a valid array of Expr pointers.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -207,7 +207,7 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
 pub unsafe extern "C" fn rssn_knuth_bendix(
     equations: *const *const Expr,
     equations_len: usize,
-) -> *mut Vec<RewriteRule> {
+) -> *mut Vec<RewriteRule> { unsafe {
 
     if equations_len > 0
         && equations.is_null()
@@ -253,13 +253,13 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 /// Gets the length of a rules vector.
 ///
 /// # Safety
 /// The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -271,7 +271,7 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
 
 pub const unsafe extern "C" fn rssn_rules_vec_len(
     rules: *const Vec<RewriteRule>
-) -> usize {
+) -> usize { unsafe {
 
     if rules.is_null() {
 
@@ -280,7 +280,7 @@ pub const unsafe extern "C" fn rssn_rules_vec_len(
 
         (*rules).len()
     }
-}
+}}
 
 /// Gets a rule from a rules vector by index.
 ///
@@ -288,7 +288,7 @@ pub const unsafe extern "C" fn rssn_rules_vec_len(
 ///
 /// # Safety
 /// The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -301,7 +301,7 @@ pub const unsafe extern "C" fn rssn_rules_vec_len(
 pub unsafe extern "C" fn rssn_rules_vec_get(
     rules: *const Vec<RewriteRule>,
     index: usize,
-) -> *mut RewriteRule {
+) -> *mut RewriteRule { unsafe {
 
     if rules.is_null() {
 
@@ -318,13 +318,13 @@ pub unsafe extern "C" fn rssn_rules_vec_get(
     Box::into_raw(Box::new(
         rules_ref[index].clone(),
     ))
-}
+}}
 
 /// Frees a rules vector.
 ///
 /// # Safety
 /// The caller must ensure `rules` was created by this module and hasn't been freed yet.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -336,13 +336,13 @@ pub unsafe extern "C" fn rssn_rules_vec_get(
 
 pub unsafe extern "C" fn rssn_rules_vec_free(
     rules: *mut Vec<RewriteRule>
-) {
+) { unsafe {
 
     if !rules.is_null() {
 
         let _ = Box::from_raw(rules);
     }
-}
+}}
 
 /// Converts a rewrite rule to a string representation.
 ///
@@ -350,7 +350,7 @@ pub unsafe extern "C" fn rssn_rules_vec_free(
 ///
 /// # Safety
 /// The caller must free the returned string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -362,7 +362,7 @@ pub unsafe extern "C" fn rssn_rules_vec_free(
 
 pub unsafe extern "C" fn rssn_rewrite_rule_to_string(
     rule: *const RewriteRule
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     if rule.is_null() {
 
@@ -377,4 +377,4 @@ pub unsafe extern "C" fn rssn_rewrite_rule_to_string(
     );
 
     to_c_string(rule_str)
-}
+}}

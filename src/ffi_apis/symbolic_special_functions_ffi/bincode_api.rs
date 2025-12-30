@@ -12,7 +12,7 @@ use crate::symbolic::special_functions;
 
 /// and returns a bincode-serialized `Expr` representing Γ(z).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_gamma(
     arg_buf: BincodeBuffer
@@ -42,7 +42,7 @@ pub extern "C" fn rssn_bincode_gamma(
 
 /// and returns a bincode-serialized `Expr` representing ln(Γ(z)).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_ln_gamma(
     arg_buf: BincodeBuffer
@@ -68,7 +68,7 @@ pub extern "C" fn rssn_bincode_ln_gamma(
 
 /// and returns a bincode-serialized `Expr` representing B(a, b).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_beta(
     a_buf: BincodeBuffer,
@@ -81,19 +81,18 @@ pub extern "C" fn rssn_bincode_beta(
     let b: Option<Expr> =
         from_bincode_buffer(&b_buf);
 
-    if let (Some(val_a), Some(val_b)) =
-        (a, b)
-    {
+    match (a, b)
+    { (Some(val_a), Some(val_b)) => {
 
         to_bincode_buffer(
             &special_functions::beta(
                 val_a, val_b,
             ),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the error function erf(z).
@@ -104,7 +103,7 @@ pub extern "C" fn rssn_bincode_beta(
 
 /// and returns a bincode-serialized `Expr` representing erf(z).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_erf(
     arg_buf: BincodeBuffer
@@ -132,7 +131,7 @@ pub extern "C" fn rssn_bincode_erf(
 
 /// and returns a bincode-serialized `Expr` representing erfc(z).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_erfc(
     arg_buf: BincodeBuffer
@@ -160,7 +159,7 @@ pub extern "C" fn rssn_bincode_erfc(
 
 /// and returns a bincode-serialized `Expr` representing erfi(z).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_erfi(
     arg_buf: BincodeBuffer
@@ -188,7 +187,7 @@ pub extern "C" fn rssn_bincode_erfi(
 
 /// and returns a bincode-serialized `Expr` representing ζ(s).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_zeta(
     arg_buf: BincodeBuffer
@@ -216,7 +215,7 @@ pub extern "C" fn rssn_bincode_zeta(
 
 /// and returns a bincode-serialized `Expr` representing ψ(z).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_digamma(
     arg_buf: BincodeBuffer
@@ -246,7 +245,7 @@ pub extern "C" fn rssn_bincode_digamma(
 
 /// and returns a bincode-serialized `Expr` representing ψ⁽ⁿ⁾(z).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_polygamma(
     n_buf: BincodeBuffer,
@@ -259,13 +258,13 @@ pub extern "C" fn rssn_bincode_polygamma(
     let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
-    if let (Some(n), Some(z)) = (n, z) {
+    match (n, z) { (Some(n), Some(z)) => {
 
         to_bincode_buffer(&special_functions::polygamma(n, z))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Bessel function of the first kind `J_n(x)`.
@@ -276,7 +275,7 @@ pub extern "C" fn rssn_bincode_polygamma(
 
 /// and returns a bincode-serialized `Expr` representing `J_n(x)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_j(
     order_buf: BincodeBuffer,
@@ -289,15 +288,14 @@ pub extern "C" fn rssn_bincode_bessel_j(
     let arg: Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
-    if let (Some(o), Some(a)) =
-        (order, arg)
-    {
+    match (order, arg)
+    { (Some(o), Some(a)) => {
 
         to_bincode_buffer(&special_functions::bessel_j(o, a))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Bessel function of the second kind `Y_n(x)`.
@@ -308,7 +306,7 @@ pub extern "C" fn rssn_bincode_bessel_j(
 
 /// and returns a bincode-serialized `Expr` representing `Y_n(x)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_y(
     order_buf: BincodeBuffer,
@@ -321,15 +319,14 @@ pub extern "C" fn rssn_bincode_bessel_y(
     let arg: Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
-    if let (Some(o), Some(a)) =
-        (order, arg)
-    {
+    match (order, arg)
+    { (Some(o), Some(a)) => {
 
         to_bincode_buffer(&special_functions::bessel_y(o, a))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the modified Bessel function of the first kind `I_n(x)`.
@@ -340,7 +337,7 @@ pub extern "C" fn rssn_bincode_bessel_y(
 
 /// and returns a bincode-serialized `Expr` representing `I_n(x)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_i(
     order_buf: BincodeBuffer,
@@ -353,15 +350,14 @@ pub extern "C" fn rssn_bincode_bessel_i(
     let arg: Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
-    if let (Some(o), Some(a)) =
-        (order, arg)
-    {
+    match (order, arg)
+    { (Some(o), Some(a)) => {
 
         to_bincode_buffer(&special_functions::bessel_i(o, a))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the modified Bessel function of the second kind `K_n(x)`.
@@ -372,7 +368,7 @@ pub extern "C" fn rssn_bincode_bessel_i(
 
 /// and returns a bincode-serialized `Expr` representing `K_n(x)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_k(
     order_buf: BincodeBuffer,
@@ -385,15 +381,14 @@ pub extern "C" fn rssn_bincode_bessel_k(
     let arg: Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
-    if let (Some(o), Some(a)) =
-        (order, arg)
-    {
+    match (order, arg)
+    { (Some(o), Some(a)) => {
 
         to_bincode_buffer(&special_functions::bessel_k(o, a))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Legendre polynomial `P_n(x)`.
@@ -404,7 +399,7 @@ pub extern "C" fn rssn_bincode_bessel_k(
 
 /// and returns a bincode-serialized `Expr` representing `P_n(x)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_legendre_p(
     degree_buf: BincodeBuffer,
@@ -419,15 +414,14 @@ pub extern "C" fn rssn_bincode_legendre_p(
     let arg: Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
-    if let (Some(d), Some(a)) =
-        (degree, arg)
-    {
+    match (degree, arg)
+    { (Some(d), Some(a)) => {
 
         to_bincode_buffer(&special_functions::legendre_p(d, a))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Laguerre polynomial `L_n(x)`.
@@ -438,7 +432,7 @@ pub extern "C" fn rssn_bincode_legendre_p(
 
 /// and returns a bincode-serialized `Expr` representing `L_n(x)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_laguerre_l(
     degree_buf: BincodeBuffer,
@@ -453,15 +447,14 @@ pub extern "C" fn rssn_bincode_laguerre_l(
     let arg: Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
-    if let (Some(d), Some(a)) =
-        (degree, arg)
-    {
+    match (degree, arg)
+    { (Some(d), Some(a)) => {
 
         to_bincode_buffer(&special_functions::laguerre_l(d, a))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the generalized Laguerre polynomial `L_n^α(x)`.
@@ -472,7 +465,7 @@ pub extern "C" fn rssn_bincode_laguerre_l(
 
 /// and returns a bincode-serialized `Expr` representing `L_n^α(x)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_generalized_laguerre(
     n_buf: BincodeBuffer,
@@ -489,18 +482,18 @@ pub extern "C" fn rssn_bincode_generalized_laguerre(
     let x: Option<Expr> =
         from_bincode_buffer(&x_buf);
 
-    if let (
+    match (n, alpha, x)
+    { (
         Some(n),
         Some(alpha),
         Some(x),
-    ) = (n, alpha, x)
-    {
+    ) => {
 
         to_bincode_buffer(&special_functions::generalized_laguerre(&n, &alpha, &x))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Hermite polynomial `H_n(x)`.
@@ -511,7 +504,7 @@ pub extern "C" fn rssn_bincode_generalized_laguerre(
 
 /// and returns a bincode-serialized `Expr` representing `H_n(x)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hermite_h(
     degree_buf: BincodeBuffer,
@@ -526,15 +519,14 @@ pub extern "C" fn rssn_bincode_hermite_h(
     let arg: Option<Expr> =
         from_bincode_buffer(&arg_buf);
 
-    if let (Some(d), Some(a)) =
-        (degree, arg)
-    {
+    match (degree, arg)
+    { (Some(d), Some(a)) => {
 
         to_bincode_buffer(&special_functions::hermite_h(&d, a))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Chebyshev polynomial of the first kind `T_n(x)`.
@@ -545,7 +537,7 @@ pub extern "C" fn rssn_bincode_hermite_h(
 
 /// and returns a bincode-serialized `Expr` representing `T_n(x)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_chebyshev_t(
     n_buf: BincodeBuffer,
@@ -558,13 +550,13 @@ pub extern "C" fn rssn_bincode_chebyshev_t(
     let x: Option<Expr> =
         from_bincode_buffer(&x_buf);
 
-    if let (Some(n), Some(x)) = (n, x) {
+    match (n, x) { (Some(n), Some(x)) => {
 
         to_bincode_buffer(&special_functions::chebyshev_t(&n, &x))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Chebyshev polynomial of the second kind `U_n(x)`.
@@ -575,7 +567,7 @@ pub extern "C" fn rssn_bincode_chebyshev_t(
 
 /// and returns a bincode-serialized `Expr` representing `U_n(x)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_chebyshev_u(
     n_buf: BincodeBuffer,
@@ -588,13 +580,13 @@ pub extern "C" fn rssn_bincode_chebyshev_u(
     let x: Option<Expr> =
         from_bincode_buffer(&x_buf);
 
-    if let (Some(n), Some(x)) = (n, x) {
+    match (n, x) { (Some(n), Some(x)) => {
 
         to_bincode_buffer(&special_functions::chebyshev_u(&n, &x))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Bessel differential equation.
@@ -605,7 +597,7 @@ pub extern "C" fn rssn_bincode_chebyshev_u(
 
 /// and returns a bincode-serialized `Expr` representing the equation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_differential_equation(
     y_buf: BincodeBuffer,
@@ -622,15 +614,14 @@ pub extern "C" fn rssn_bincode_bessel_differential_equation(
     let n: Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    if let (Some(y), Some(x), Some(n)) =
-        (y, x, n)
-    {
+    match (y, x, n)
+    { (Some(y), Some(x), Some(n)) => {
 
         to_bincode_buffer(&special_functions::bessel_differential_equation(&y, &x, &n))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Legendre differential equation.
@@ -641,7 +632,7 @@ pub extern "C" fn rssn_bincode_bessel_differential_equation(
 
 /// and returns a bincode-serialized `Expr` representing the equation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_legendre_differential_equation(
     y_buf: BincodeBuffer,
@@ -658,15 +649,14 @@ pub extern "C" fn rssn_bincode_legendre_differential_equation(
     let n: Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    if let (Some(y), Some(x), Some(n)) =
-        (y, x, n)
-    {
+    match (y, x, n)
+    { (Some(y), Some(x), Some(n)) => {
 
         to_bincode_buffer(&special_functions::legendre_differential_equation(&y, &x, &n))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Laguerre differential equation.
@@ -677,7 +667,7 @@ pub extern "C" fn rssn_bincode_legendre_differential_equation(
 
 /// and returns a bincode-serialized `Expr` representing the equation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_laguerre_differential_equation(
     y_buf: BincodeBuffer,
@@ -694,15 +684,14 @@ pub extern "C" fn rssn_bincode_laguerre_differential_equation(
     let n: Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    if let (Some(y), Some(x), Some(n)) =
-        (y, x, n)
-    {
+    match (y, x, n)
+    { (Some(y), Some(x), Some(n)) => {
 
         to_bincode_buffer(&special_functions::laguerre_differential_equation(&y, &x, &n))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Hermite differential equation.
@@ -713,7 +702,7 @@ pub extern "C" fn rssn_bincode_laguerre_differential_equation(
 
 /// and returns a bincode-serialized `Expr` representing the equation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hermite_differential_equation(
     y_buf: BincodeBuffer,
@@ -730,15 +719,14 @@ pub extern "C" fn rssn_bincode_hermite_differential_equation(
     let n: Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    if let (Some(y), Some(x), Some(n)) =
-        (y, x, n)
-    {
+    match (y, x, n)
+    { (Some(y), Some(x), Some(n)) => {
 
         to_bincode_buffer(&special_functions::hermite_differential_equation(&y, &x, &n))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Chebyshev differential equation.
@@ -749,7 +737,7 @@ pub extern "C" fn rssn_bincode_hermite_differential_equation(
 
 /// and returns a bincode-serialized `Expr` representing the equation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_chebyshev_differential_equation(
     y_buf: BincodeBuffer,
@@ -766,15 +754,14 @@ pub extern "C" fn rssn_bincode_chebyshev_differential_equation(
     let n: Option<Expr> =
         from_bincode_buffer(&n_buf);
 
-    if let (Some(y), Some(x), Some(n)) =
-        (y, x, n)
-    {
+    match (y, x, n)
+    { (Some(y), Some(x), Some(n)) => {
 
         to_bincode_buffer(&special_functions::chebyshev_differential_equation(&y, &x, &n))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Rodrigues' formula for Legendre polynomials.
@@ -785,7 +772,7 @@ pub extern "C" fn rssn_bincode_chebyshev_differential_equation(
 
 /// and returns a bincode-serialized `Expr` representing the formula.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_legendre_rodrigues_formula(
     n_buf: BincodeBuffer,
@@ -798,13 +785,13 @@ pub extern "C" fn rssn_bincode_legendre_rodrigues_formula(
     let x: Option<Expr> =
         from_bincode_buffer(&x_buf);
 
-    if let (Some(n), Some(x)) = (n, x) {
+    match (n, x) { (Some(n), Some(x)) => {
 
         to_bincode_buffer(&special_functions::legendre_rodrigues_formula(&n, &x))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Rodrigues' formula for Hermite polynomials.
@@ -815,7 +802,7 @@ pub extern "C" fn rssn_bincode_legendre_rodrigues_formula(
 
 /// and returns a bincode-serialized `Expr` representing the formula.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hermite_rodrigues_formula(
     n_buf: BincodeBuffer,
@@ -828,11 +815,11 @@ pub extern "C" fn rssn_bincode_hermite_rodrigues_formula(
     let x: Option<Expr> =
         from_bincode_buffer(&x_buf);
 
-    if let (Some(n), Some(x)) = (n, x) {
+    match (n, x) { (Some(n), Some(x)) => {
 
         to_bincode_buffer(&special_functions::hermite_rodrigues_formula(&n, &x))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

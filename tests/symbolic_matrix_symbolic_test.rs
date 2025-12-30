@@ -114,7 +114,7 @@ fn test_symbolic_rref() {
         // We expect the simplifier to have reduced "a - a" to 0.
         // If not, we might need to improve simplify or the test expectation.
         let is_zero = matches!(val_0_1, Expr::Constant(v) if v.abs() < 1e-9)
-            || matches!(val_0_1, Expr::BigInt(ref v) if v.is_zero());
+            || matches!(val_0_1, Expr::BigInt(v) if v.is_zero());
 
         if !is_zero {
 

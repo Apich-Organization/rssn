@@ -12,7 +12,7 @@ use crate::symbolic::real_roots::isolate_real_roots;
 use crate::symbolic::real_roots::sturm_sequence;
 
 /// Generates the Sturm sequence for a given polynomial (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_sturm_sequence(
     expr_buf: BincodeBuffer,
@@ -64,7 +64,7 @@ pub extern "C" fn rssn_bincode_sturm_sequence(
 }
 
 /// Counts the number of distinct real roots in an interval (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_count_real_roots_in_interval(
     expr_buf: BincodeBuffer,
@@ -113,7 +113,7 @@ pub extern "C" fn rssn_bincode_count_real_roots_in_interval(
 }
 
 /// Isolates real roots in an interval (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_isolate_real_roots(
     expr_buf: BincodeBuffer,

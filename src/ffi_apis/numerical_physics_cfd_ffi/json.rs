@@ -116,7 +116,7 @@ struct Burgers1DInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -196,7 +196,7 @@ pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(
 /// # Safety
 ///
 /// This function is unsafe because it returns a raw pointer that the caller must free.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -256,7 +256,7 @@ pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(
 /// # Safety
 ///
 /// This function is unsafe because it returns a raw pointer that the caller must free.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -323,7 +323,7 @@ pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -396,7 +396,7 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -474,7 +474,7 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -551,7 +551,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -630,7 +630,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -708,7 +708,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

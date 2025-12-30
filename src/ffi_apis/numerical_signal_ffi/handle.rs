@@ -9,7 +9,7 @@ use crate::numerical::matrix::Matrix;
 use crate::numerical::signal;
 
 /// Computes the FFT and returns a Matrix<Complex<f64>> as a Matrix<f64> (real, imag interleaved).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -23,7 +23,7 @@ pub unsafe extern "C" fn rssn_num_signal_fft(
     real: *const f64,
     imag: *const f64,
     len: usize,
-) -> *mut Matrix<f64> {
+) -> *mut Matrix<f64> { unsafe {
 
     if real.is_null() || imag.is_null()
     {
@@ -65,10 +65,10 @@ pub unsafe extern "C" fn rssn_num_signal_fft(
     Box::into_raw(Box::new(
         Matrix::new(len, 2, flat),
     ))
-}
+}}
 
 /// Computes the convolution of two sequences.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -83,7 +83,7 @@ pub unsafe extern "C" fn rssn_num_signal_convolve(
     a_len: usize,
     v: *const f64,
     v_len: usize,
-) -> *mut Matrix<f64> {
+) -> *mut Matrix<f64> { unsafe {
 
     if a.is_null() || v.is_null() {
 
@@ -116,10 +116,10 @@ pub unsafe extern "C" fn rssn_num_signal_convolve(
     Box::into_raw(Box::new(
         Matrix::new(1, n, result),
     ))
-}
+}}
 
 /// Computes the cross-correlation of two sequences.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation(
     a_len: usize,
     v: *const f64,
     v_len: usize,
-) -> *mut Matrix<f64> {
+) -> *mut Matrix<f64> { unsafe {
 
     if a.is_null() || v.is_null() {
 
@@ -164,10 +164,10 @@ pub unsafe extern "C" fn rssn_num_signal_cross_correlation(
     Box::into_raw(Box::new(
         Matrix::new(1, n, result),
     ))
-}
+}}
 
 /// Generates a Hann window.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -189,7 +189,7 @@ pub unsafe extern "C" fn rssn_num_signal_hann_window(
 }
 
 /// Generates a Hamming window.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

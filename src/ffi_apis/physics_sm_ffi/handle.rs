@@ -4,7 +4,7 @@ use crate::numerical::matrix::Matrix;
 use crate::physics::physics_sm;
 
 /// Simulates the 1D advection-diffusion scenario and returns the results as a Matrix handle (1xN).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_sm_simulate_1d_advection(
 ) -> *mut Matrix<f64> {
@@ -19,7 +19,7 @@ pub extern "C" fn rssn_physics_sm_simulate_1d_advection(
 }
 
 /// Simulates the 2D advection-diffusion scenario and returns the results as a Matrix handle (`WxH`).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_sm_simulate_2d_advection(
 ) -> *mut Matrix<f64> {

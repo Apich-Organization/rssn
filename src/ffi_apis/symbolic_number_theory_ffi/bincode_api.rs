@@ -22,7 +22,7 @@ struct Congruence {
 
 /// representing variables. Returns a bincode-serialized `Vec<Expr>` of solutions.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_solve_diophantine(
     equation_buf: BincodeBuffer,
@@ -37,9 +37,8 @@ pub extern "C" fn rssn_bincode_solve_diophantine(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    if let (Some(eq), Some(v)) =
-        (equation, vars)
-    {
+    match (equation, vars)
+    { (Some(eq), Some(v)) => {
 
         let v_str: Vec<&str> = v
             .iter()
@@ -59,10 +58,10 @@ pub extern "C" fn rssn_bincode_solve_diophantine(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the extended greatest common divisor (GCD).
@@ -75,7 +74,7 @@ pub extern "C" fn rssn_bincode_solve_diophantine(
 
 /// and `x`, `y` are coefficients such that `ax + by = g`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_extended_gcd(
     a_buf: BincodeBuffer,
@@ -88,11 +87,11 @@ pub extern "C" fn rssn_bincode_extended_gcd(
     let b: Option<Expr> =
         from_bincode_buffer(&b_buf);
 
-    if let (
+    match (a, b)
+    { (
         Some(a_expr),
         Some(b_expr),
-    ) = (a, b)
-    {
+    ) => {
 
         let (g, x, y) = extended_gcd(
             &a_expr,
@@ -100,10 +99,10 @@ pub extern "C" fn rssn_bincode_extended_gcd(
         );
 
         to_bincode_buffer(&(g, x, y))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Checks if a number is prime.
@@ -114,7 +113,7 @@ pub extern "C" fn rssn_bincode_extended_gcd(
 
 /// and returns a bincode-serialized boolean indicating whether the number is prime.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_is_prime(
     n_buf: BincodeBuffer
@@ -142,7 +141,7 @@ pub extern "C" fn rssn_bincode_is_prime(
 
 /// and returns a bincode-serialized `Expr` representing the solution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_chinese_remainder(
     congruences_buf: BincodeBuffer

@@ -18,7 +18,7 @@ use crate::symbolic::coordinates::CoordinateSystem;
 ///
 /// # Returns
 /// A pointer to the transformed point (array of doubles), or null on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -83,7 +83,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
 }
 
 /// Transforms a point from one coordinate system to another (pure numerical).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -149,7 +149,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
 
 /// Computes the numerical Jacobian matrix.
 /// Returns a pointer to a flat array of doubles (row-major).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -222,7 +222,7 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
 }
 
 /// Frees a pointer allocated by the coordinate transformation functions.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

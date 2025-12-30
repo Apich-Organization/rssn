@@ -5,7 +5,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::quantum_field_theory;
 
 /// Computes a propagator using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -27,17 +27,17 @@ pub unsafe extern "C" fn rssn_bincode_qft_propagator(
     let m: Option<Expr> =
         from_bincode_buffer(&m_buf);
 
-    if let (Some(p), Some(m)) = (p, m) {
+    match (p, m) { (Some(p), Some(m)) => {
 
         to_bincode_buffer(&quantum_field_theory::propagator(&p, &m, is_fermion))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Lagrangian density for a scalar field using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -58,13 +58,12 @@ pub unsafe extern "C" fn rssn_bincode_scalar_field_lagrangian(
     let m: Option<Expr> =
         from_bincode_buffer(&m_buf);
 
-    if let (Some(phi), Some(m)) =
-        (phi, m)
-    {
+    match (phi, m)
+    { (Some(phi), Some(m)) => {
 
         to_bincode_buffer(&quantum_field_theory::scalar_field_lagrangian(&phi, &m))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

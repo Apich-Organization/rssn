@@ -140,7 +140,7 @@ pub(crate) fn build_expr_from_op_and_children(
 ) -> Expr {
 
     macro_rules! arc {
-        ($idx:expr) => {
+        ($idx:expr_2021) => {
 
             Arc::new(
                 children[$idx].clone(),

@@ -61,7 +61,7 @@ struct OptimizeResponse {
 ///
 /// The caller must free the returned string using `numerical_optimize_free_json`.
 /// Returns null if the input pointer is invalid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -265,7 +265,7 @@ pub extern "C" fn numerical_optimize_solve_json(
 /// The caller must ensure the pointer was previously returned by
 /// `numerical_optimize_solve_json` and has not already been freed.
 /// Passing a null pointer is safe but has no effect.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn numerical_optimize_free_json(
     ptr: *mut c_char

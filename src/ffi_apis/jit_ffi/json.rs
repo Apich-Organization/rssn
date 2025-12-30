@@ -18,7 +18,7 @@ struct JitCompileRequest {
 
 /// Compiles a sequence of instructions provided as JSON.
 /// Returns a JSON result containing the address (as usize) of the compiled function.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -36,7 +36,7 @@ struct JitCompileRequest {
 pub unsafe extern "C" fn rssn_jit_compile_json(
     engine: *mut JitEngine,
     json_ptr: *const c_char,
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     if engine.is_null()
         || json_ptr.is_null()
@@ -121,4 +121,4 @@ pub unsafe extern "C" fn rssn_jit_compile_json(
             .into_raw()
         },
     }
-}
+}}

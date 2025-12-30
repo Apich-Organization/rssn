@@ -19,7 +19,7 @@ pub struct NavierStokesResultHandles {
 }
 
 /// Runs the lid-driven cavity simulation and returns handles to the U, V, and P matrices.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
     nx: usize,
@@ -77,7 +77,7 @@ pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
 }
 
 /// Frees the result handles.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -89,7 +89,7 @@ pub extern "C" fn rssn_physics_sim_navier_stokes_run_lid_driven_cavity(
 
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_free_results(
     handles: NavierStokesResultHandles
-) {
+) { unsafe {
 
     if !handles.u.is_null() {
 
@@ -108,4 +108,4 @@ pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_free_results(
         let _ =
             Box::from_raw(handles.p);
     }
-}
+}}

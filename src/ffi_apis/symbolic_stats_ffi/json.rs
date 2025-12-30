@@ -8,7 +8,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::stats;
 
 /// Computes the symbolic mean of a set of expressions using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_mean(
     data_json: *const c_char
@@ -29,7 +29,7 @@ pub extern "C" fn rssn_json_mean(
 }
 
 /// Computes the symbolic variance of a set of expressions using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_variance(
     data_json: *const c_char
@@ -51,7 +51,7 @@ pub extern "C" fn rssn_json_variance(
 }
 
 /// Computes the symbolic standard deviation of a set of expressions using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_std_dev(
     data_json: *const c_char
@@ -72,7 +72,7 @@ pub extern "C" fn rssn_json_std_dev(
 }
 
 /// Computes the symbolic covariance of two sets of expressions using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_covariance(
     data1_json: *const c_char,
@@ -85,22 +85,21 @@ pub extern "C" fn rssn_json_covariance(
     let data2: Option<Vec<Expr>> =
         from_json_string(data2_json);
 
-    if let (Some(d1), Some(d2)) =
-        (data1, data2)
-    {
+    match (data1, data2)
+    { (Some(d1), Some(d2)) => {
 
         let result =
             stats::covariance(&d1, &d2);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the symbolic Pearson correlation coefficient using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_correlation(
     data1_json: *const c_char,
@@ -113,17 +112,16 @@ pub extern "C" fn rssn_json_correlation(
     let data2: Option<Vec<Expr>> =
         from_json_string(data2_json);
 
-    if let (Some(d1), Some(d2)) =
-        (data1, data2)
-    {
+    match (data1, data2)
+    { (Some(d1), Some(d2)) => {
 
         let result = stats::correlation(
             &d1, &d2,
         );
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

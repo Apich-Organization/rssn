@@ -8,7 +8,7 @@ use crate::symbolic::vector::Vector;
 
 /// Returns a raw pointer to an `Expr` representing its magnitude.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_vector_magnitude_handle(
     v: *const Vector
@@ -32,7 +32,7 @@ pub extern "C" fn rssn_vector_magnitude_handle(
 
 /// Returns a raw pointer to an `Expr` representing their dot product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_vector_dot_handle(
     v1: *const Vector,
@@ -62,7 +62,7 @@ pub extern "C" fn rssn_vector_dot_handle(
 
 /// Returns a raw pointer to a new `Vector` representing their cross product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_vector_cross_handle(
     v1: *const Vector,
@@ -92,7 +92,7 @@ pub extern "C" fn rssn_vector_cross_handle(
 
 /// Returns a raw pointer to a new `Vector` representing the normalized vector.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_vector_normalize_handle(
     v: *const Vector

@@ -22,7 +22,7 @@ struct TensordotRequest {
 }
 
 /// Tensor contraction from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -185,7 +185,7 @@ struct OuterProductRequest {
 }
 
 /// Outer product from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

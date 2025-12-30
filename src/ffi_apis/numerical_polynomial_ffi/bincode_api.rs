@@ -55,7 +55,7 @@ fn encode<T: Serialize>(
 }
 
 /// Adds two polynomials via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -9,7 +9,7 @@ use crate::symbolic::classical_mechanics;
 use crate::symbolic::core::Expr;
 
 /// Calculates kinetic energy using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_kinetic_energy(
     mass_buf: BincodeBuffer,
@@ -24,19 +24,18 @@ pub extern "C" fn rssn_bincode_kinetic_energy(
             &velocity_buf,
         );
 
-    if let (Some(m), Some(v)) =
-        (mass, velocity)
-    {
+    match (mass, velocity)
+    { (Some(m), Some(v)) => {
 
         to_bincode_buffer(&classical_mechanics::kinetic_energy(&m, &v))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes Euler-Lagrange equation using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_euler_lagrange_equation(
     lagrangian_buf: BincodeBuffer,
@@ -93,21 +92,21 @@ pub extern "C" fn rssn_bincode_euler_lagrange_equation(
         }
     };
 
-    if let (
-        Some(l),
-        Some(qs),
-        Some(qds),
-        Some(ts),
-    ) = (
+    match (
         lagrangian,
         q_str,
         q_dot_str,
         t_str,
-    ) {
+    ) { (
+        Some(l),
+        Some(qs),
+        Some(qds),
+        Some(ts),
+    ) => {
 
         to_bincode_buffer(&classical_mechanics::euler_lagrange_equation(&l, qs, qds, ts))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

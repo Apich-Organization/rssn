@@ -5,7 +5,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::geometric_algebra::Multivector;
 
 /// Creates a new scalar multivector (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_multivector_scalar(
     p: u32,
@@ -32,7 +32,7 @@ pub extern "C" fn rssn_json_multivector_scalar(
 }
 
 /// Computes geometric product (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_multivector_geometric_product(
     a_json: *const c_char,
@@ -45,22 +45,21 @@ pub extern "C" fn rssn_json_multivector_geometric_product(
     let b: Option<Multivector> =
         from_json_string(b_json);
 
-    if let (Some(mv_a), Some(mv_b)) =
-        (a, b)
-    {
+    match (a, b)
+    { (Some(mv_a), Some(mv_b)) => {
 
         let result = mv_a
             .geometric_product(&mv_b);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes outer product (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_multivector_outer_product(
     a_json: *const c_char,
@@ -73,22 +72,21 @@ pub extern "C" fn rssn_json_multivector_outer_product(
     let b: Option<Multivector> =
         from_json_string(b_json);
 
-    if let (Some(mv_a), Some(mv_b)) =
-        (a, b)
-    {
+    match (a, b)
+    { (Some(mv_a), Some(mv_b)) => {
 
         let result =
             mv_a.outer_product(&mv_b);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes inner product (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_multivector_inner_product(
     a_json: *const c_char,
@@ -101,22 +99,21 @@ pub extern "C" fn rssn_json_multivector_inner_product(
     let b: Option<Multivector> =
         from_json_string(b_json);
 
-    if let (Some(mv_a), Some(mv_b)) =
-        (a, b)
-    {
+    match (a, b)
+    { (Some(mv_a), Some(mv_b)) => {
 
         let result =
             mv_a.inner_product(&mv_b);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes reverse (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_multivector_reverse(
     mv_json: *const c_char
@@ -138,7 +135,7 @@ pub extern "C" fn rssn_json_multivector_reverse(
 }
 
 /// Computes grade projection (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_multivector_grade_projection(
     mv_json: *const c_char,
@@ -161,7 +158,7 @@ pub extern "C" fn rssn_json_multivector_grade_projection(
 }
 
 /// Computes magnitude (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_multivector_magnitude(
     mv_json: *const c_char

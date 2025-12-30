@@ -7,7 +7,7 @@ use crate::symbolic::integration::integrate_rational_function_expr;
 use crate::symbolic::integration::risch_norman_integrate;
 
 /// Integrates an expression using the Risch-Norman algorithm (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_risch_norman_integrate(
     expr_json: *const c_char,
@@ -20,9 +20,8 @@ pub extern "C" fn rssn_json_risch_norman_integrate(
     let x: Option<String> =
         from_json_string(x_json);
 
-    if let (Some(e), Some(var)) =
-        (expr, x)
-    {
+    match (expr, x)
+    { (Some(e), Some(var)) => {
 
         let result =
             risch_norman_integrate(
@@ -30,14 +29,14 @@ pub extern "C" fn rssn_json_risch_norman_integrate(
             );
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Integrates a rational function (JSON)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_integrate_rational_function(
     expr_json: *const c_char,
@@ -50,16 +49,15 @@ pub extern "C" fn rssn_json_integrate_rational_function(
     let x: Option<String> =
         from_json_string(x_json);
 
-    if let (Some(e), Some(var)) =
-        (expr, x)
-    {
+    match (expr, x)
+    { (Some(e), Some(var)) => {
 
         match integrate_rational_function_expr(&e, &var) {
             | Ok(result) => to_json_string(&result),
             | Err(_) => std::ptr::null_mut(),
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

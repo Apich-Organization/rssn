@@ -4,7 +4,7 @@ use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_operations::{induced_subgraph, union, intersection, cartesian_product, tensor_product, complement, disjoint_union, join};
 
 /// Creates an induced subgraph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_induced_subgraph(
 }
 
 /// Computes the union of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_union(
 }
 
 /// Computes the intersection of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -107,7 +107,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_intersection(
 }
 
 /// Computes the Cartesian product of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -144,7 +144,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_cartesian_product(
 }
 
 /// Computes the Tensor product of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -181,7 +181,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_tensor_product(
 }
 
 /// Computes the complement of a graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -206,7 +206,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_complement(
 }
 
 /// Computes the disjoint union of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -243,7 +243,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_disjoint_union(
 }
 
 /// Computes the join of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

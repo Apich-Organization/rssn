@@ -5,7 +5,7 @@ use crate::symbolic::graph_isomorphism_and_coloring::{are_isomorphic_heuristic, 
 /// Checks if two graphs are isomorphic.
 /// Input: {"g1": Graph, "g2": Graph}
 /// Output: bool
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -43,7 +43,7 @@ pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
 /// Greedy coloring.
 /// Input: Graph
 /// Output: {`node_id`: `color_id`}
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rssn_json_greedy_coloring(
 /// Exact chromatic number.
 /// Input: Graph
 /// Output: usize
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

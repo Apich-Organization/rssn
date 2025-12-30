@@ -14,7 +14,7 @@ use crate::symbolic::number_theory::solve_diophantine;
 /// # Safety
 /// `equation` must be a valid pointer to an `Expr`.
 /// `vars_ptr` must be a valid pointer to an array of C strings of length `vars_len`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_solve_diophantine_handle(
     equation: *const Expr,
@@ -81,7 +81,7 @@ pub extern "C" fn rssn_solve_diophantine_handle(
 ///
 /// # Safety
 /// `a` and `b` must be valid pointers to `Expr`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_extended_gcd_handle(
     a: *const Expr,
@@ -123,7 +123,7 @@ pub extern "C" fn rssn_extended_gcd_handle(
 ///
 /// # Safety
 /// `n` must be a valid pointer to an `Expr`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_is_prime_handle(
     n: *const Expr
@@ -149,7 +149,7 @@ pub extern "C" fn rssn_is_prime_handle(
 ///
 /// # Safety
 /// `remainders` and `moduli` must be valid pointers to arrays of `Expr` pointers of length `len`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_chinese_remainder_handle(
     remainders: *const *const Expr,

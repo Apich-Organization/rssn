@@ -6,7 +6,7 @@ use crate::symbolic::radicals::denest_sqrt;
 use crate::symbolic::radicals::simplify_radicals;
 
 /// Simplifies radical expressions (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_simplify_radicals(
     expr_buf: BincodeBuffer
@@ -28,7 +28,7 @@ pub extern "C" fn rssn_bincode_simplify_radicals(
 }
 
 /// Denests a nested square root (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_denest_sqrt(
     expr_buf: BincodeBuffer

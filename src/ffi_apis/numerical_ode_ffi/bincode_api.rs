@@ -43,7 +43,7 @@ struct OdeInput {
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer is valid bincode data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

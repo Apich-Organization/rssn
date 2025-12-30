@@ -17,7 +17,7 @@ use crate::symbolic::vector::Vector;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> {
+) -> Option<&'a str> { unsafe {
 
     if s.is_null() {
 
@@ -28,10 +28,10 @@ unsafe fn c_str_to_str<'a>(
             .to_str()
             .ok()
     }
-}
+}}
 
 /// Calculates the Lorentz force.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rssn_lorentz_force(
     e_field: *const Vector,
     velocity: *const Vector,
     b_field: *const Vector,
-) -> *mut Vector {
+) -> *mut Vector { unsafe {
 
     if charge.is_null()
         || e_field.is_null()
@@ -65,10 +65,10 @@ pub unsafe extern "C" fn rssn_lorentz_force(
             &*b_field,
         ),
     ))
-}
+}}
 
 /// Calculates the Poynting vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn rssn_lorentz_force(
 pub unsafe extern "C" fn rssn_poynting_vector(
     e_field: *const Vector,
     b_field: *const Vector,
-) -> *mut Vector {
+) -> *mut Vector { unsafe {
 
     if e_field.is_null()
         || b_field.is_null()
@@ -93,10 +93,10 @@ pub unsafe extern "C" fn rssn_poynting_vector(
     Box::into_raw(Box::new(
         electromagnetism::poynting_vector(&*e_field, &*b_field),
     ))
-}
+}}
 
 /// Calculates energy density.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn rssn_poynting_vector(
 pub unsafe extern "C" fn rssn_electromagnetic_energy_density(
     e_field: *const Vector,
     b_field: *const Vector,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if e_field.is_null()
         || b_field.is_null()
@@ -121,10 +121,10 @@ pub unsafe extern "C" fn rssn_electromagnetic_energy_density(
     Box::into_raw(Box::new(
         electromagnetism::energy_density(&*e_field, &*b_field),
     ))
-}
+}}
 
 /// Computes magnetic field from vector potential.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -139,7 +139,7 @@ pub unsafe extern "C" fn rssn_magnetic_field_from_vector_potential(
     x: *const c_char,
     y: *const c_char,
     z: *const c_char,
-) -> *mut Vector {
+) -> *mut Vector { unsafe {
 
     if a.is_null()
         || x.is_null()
@@ -174,10 +174,10 @@ pub unsafe extern "C" fn rssn_magnetic_field_from_vector_potential(
     Box::into_raw(Box::new(
         electromagnetism::magnetic_field_from_vector_potential(&*a, (xs, ys, zs)),
     ))
-}
+}}
 
 /// Computes electric field from scalar and vector potentials.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -194,7 +194,7 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
     y: *const c_char,
     z: *const c_char,
     t: *const c_char,
-) -> *mut Vector {
+) -> *mut Vector { unsafe {
 
     if v.is_null()
         || a.is_null()
@@ -243,10 +243,10 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
             ts,
         ),
     ))
-}
+}}
 
 /// Calculates Coulomb's Law field.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -259,7 +259,7 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
 pub unsafe extern "C" fn rssn_coulombs_law(
     charge: *const Expr,
     r: *const Vector,
-) -> *mut Vector {
+) -> *mut Vector { unsafe {
 
     if charge.is_null() || r.is_null() {
 
@@ -272,4 +272,4 @@ pub unsafe extern "C" fn rssn_coulombs_law(
             &*r,
         ),
     ))
-}
+}}

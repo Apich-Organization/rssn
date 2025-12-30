@@ -19,7 +19,7 @@ struct PluginExecutionRequest {
 }
 
 /// Executes a plugin command via JSON (args passed as JSON expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -36,7 +36,7 @@ struct PluginExecutionRequest {
 
 pub unsafe extern "C" fn rssn_plugins_execute_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     if json_ptr.is_null() {
 
@@ -144,4 +144,4 @@ pub unsafe extern "C" fn rssn_plugins_execute_json(
             .into_raw()
         },
     }
-}
+}}

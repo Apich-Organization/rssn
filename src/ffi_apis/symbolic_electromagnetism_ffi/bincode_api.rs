@@ -8,7 +8,7 @@ use crate::symbolic::electromagnetism;
 use crate::symbolic::vector::Vector;
 
 /// Calculates Lorentz force using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_lorentz_force(
     charge_buf: BincodeBuffer,
@@ -37,27 +37,27 @@ pub extern "C" fn rssn_bincode_lorentz_force(
             &b_field_buf,
         );
 
-    if let (
-        Some(q),
-        Some(e),
-        Some(v),
-        Some(b),
-    ) = (
+    match (
         charge,
         e_field,
         velocity,
         b_field,
-    ) {
+    ) { (
+        Some(q),
+        Some(e),
+        Some(v),
+        Some(b),
+    ) => {
 
         to_bincode_buffer(&electromagnetism::lorentz_force(&q, &e, &v, &b))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Calculates energy density using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_electromagnetic_energy_density(
     e_field_buf: BincodeBuffer,
@@ -74,13 +74,12 @@ pub extern "C" fn rssn_bincode_electromagnetic_energy_density(
             &b_field_buf,
         );
 
-    if let (Some(e), Some(b)) =
-        (e_field, b_field)
-    {
+    match (e_field, b_field)
+    { (Some(e), Some(b)) => {
 
         to_bincode_buffer(&electromagnetism::energy_density(&e, &b))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

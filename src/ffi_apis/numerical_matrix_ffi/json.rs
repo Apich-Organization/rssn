@@ -33,7 +33,7 @@ struct MatrixDecompositionRequest {
 }
 
 /// Evaluates a matrix addition from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -160,7 +160,7 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
 }
 
 /// Evaluates a matrix multiplication from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -285,7 +285,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
 }
 
 /// Computes determinant from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -386,7 +386,7 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(
 }
 
 /// Sets backend for a matrix (returns new matrix with backend set) from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -468,7 +468,7 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend_json(
 }
 
 /// Decomposes a matrix from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

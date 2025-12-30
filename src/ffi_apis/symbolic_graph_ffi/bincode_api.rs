@@ -12,7 +12,7 @@ use crate::symbolic::graph_algorithms::is_bipartite;
 use crate::symbolic::graph_algorithms::kruskal_mst;
 
 /// Creates a new graph from bincode specification.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -44,7 +44,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_new(
 }
 
 /// Adds a node to the graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_node(
 }
 
 /// Adds an edge to the graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_add_edge(
 }
 
 /// Gets the adjacency matrix.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -144,7 +144,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_adjacency_matrix(
 }
 
 /// Gets the Laplacian matrix.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -170,7 +170,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_laplacian_matrix(
 }
 
 /// Performs BFS traversal.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -205,7 +205,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs(
 }
 
 /// Performs DFS traversal.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -240,7 +240,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs(
 }
 
 /// Finds connected components.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -266,7 +266,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_connected_components(
 }
 
 /// Computes maximum flow.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -303,7 +303,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_max_flow(
 }
 
 /// Computes MST using Kruskal's algorithm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -328,7 +328,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst(
 }
 
 /// Checks if graph has a cycle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -354,7 +354,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_has_cycle(
 }
 
 /// Checks if graph is bipartite.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

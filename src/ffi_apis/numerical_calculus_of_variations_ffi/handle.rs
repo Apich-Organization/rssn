@@ -9,7 +9,7 @@ use crate::numerical::calculus_of_variations;
 use crate::symbolic::core::Expr;
 
 /// Evaluates the action for a given path.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -28,7 +28,7 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
     t_start: f64,
     t_end: f64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if lagrangian.is_null()
         || path.is_null()
@@ -115,11 +115,11 @@ pub unsafe extern "C" fn rssn_num_cov_evaluate_action(
             -1
         },
     }
-}
+}}
 
 /// Computes the Euler-Lagrange expression.
 /// Returns a pointer to a new Expr.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rssn_num_cov_euler_lagrange(
     t_var: *const c_char,
     path_var: *const c_char,
     path_dot_var: *const c_char,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if lagrangian.is_null()
         || t_var.is_null()
@@ -206,4 +206,4 @@ pub unsafe extern "C" fn rssn_num_cov_euler_lagrange(
     );
 
     Box::into_raw(Box::new(res))
-}
+}}

@@ -14,7 +14,7 @@ pub struct ExprPair {
 }
 
 /// Calculates the Lorentz factor.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -26,7 +26,7 @@ pub struct ExprPair {
 
 pub unsafe extern "C" fn rssn_lorentz_factor(
     velocity: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if velocity.is_null() {
 
@@ -38,10 +38,10 @@ pub unsafe extern "C" fn rssn_lorentz_factor(
             &*velocity,
         ),
     ))
-}
+}}
 
 /// Performs a Lorentz transformation in the x-direction.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -55,7 +55,7 @@ pub unsafe extern "C" fn rssn_lorentz_transformation_x(
     x: *const Expr,
     t: *const Expr,
     v: *const Expr,
-) -> ExprPair {
+) -> ExprPair { unsafe {
 
     if x.is_null()
         || t.is_null()
@@ -79,10 +79,10 @@ pub unsafe extern "C" fn rssn_lorentz_transformation_x(
             Box::new(tp),
         ),
     }
-}
+}}
 
 /// Calculates mass-energy equivalence.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rssn_lorentz_transformation_x(
 
 pub unsafe extern "C" fn rssn_mass_energy_equivalence(
     mass: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if mass.is_null() {
 
@@ -104,10 +104,10 @@ pub unsafe extern "C" fn rssn_mass_energy_equivalence(
     Box::into_raw(Box::new(
         relativity::mass_energy_equivalence(&*mass),
     ))
-}
+}}
 
 /// Calculates Schwarzschild radius.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rssn_mass_energy_equivalence(
 
 pub unsafe extern "C" fn rssn_schwarzschild_radius(
     mass: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if mass.is_null() {
 
@@ -129,4 +129,4 @@ pub unsafe extern "C" fn rssn_schwarzschild_radius(
     Box::into_raw(Box::new(
         relativity::schwarzschild_radius(&*mass),
     ))
-}
+}}

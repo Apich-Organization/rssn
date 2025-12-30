@@ -19,7 +19,7 @@ use crate::symbolic::transforms;
 
 /// Returns a bincode-serialized `Expr` representing the Fourier transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_fourier_transform(
     expr_buf: BincodeBuffer,
@@ -40,21 +40,21 @@ pub extern "C" fn rssn_bincode_fourier_transform(
             &out_var_buf,
         );
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_bincode_buffer(&transforms::fourier_transform(&e, &iv, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the inverse Fourier transform of an expression.
@@ -65,7 +65,7 @@ pub extern "C" fn rssn_bincode_fourier_transform(
 
 /// Returns a bincode-serialized `Expr` representing the inverse Fourier transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_inverse_fourier_transform(
     expr_buf: BincodeBuffer,
@@ -86,21 +86,21 @@ pub extern "C" fn rssn_bincode_inverse_fourier_transform(
             &out_var_buf,
         );
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_bincode_buffer(&transforms::inverse_fourier_transform(&e, &iv, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the time shift property of the Fourier transform.
@@ -113,7 +113,7 @@ pub extern "C" fn rssn_bincode_inverse_fourier_transform(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_fourier_time_shift(
     f_omega_buf: BincodeBuffer,
@@ -134,18 +134,18 @@ pub extern "C" fn rssn_bincode_fourier_time_shift(
             &out_var_buf,
         );
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_bincode_buffer(&transforms::fourier_time_shift(&f, &a, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the frequency shift property of the Fourier transform.
@@ -158,7 +158,7 @@ pub extern "C" fn rssn_bincode_fourier_time_shift(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_fourier_frequency_shift(
     f_omega_buf: BincodeBuffer,
@@ -179,18 +179,18 @@ pub extern "C" fn rssn_bincode_fourier_frequency_shift(
             &out_var_buf,
         );
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_bincode_buffer(&transforms::fourier_frequency_shift(&f, &a, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the scaling property of the Fourier transform.
@@ -203,7 +203,7 @@ pub extern "C" fn rssn_bincode_fourier_frequency_shift(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_fourier_scaling(
     f_omega_buf: BincodeBuffer,
@@ -224,18 +224,18 @@ pub extern "C" fn rssn_bincode_fourier_scaling(
             &out_var_buf,
         );
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_bincode_buffer(&transforms::fourier_scaling(&f, &a, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the differentiation property of the Fourier transform.
@@ -246,7 +246,7 @@ pub extern "C" fn rssn_bincode_fourier_scaling(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_fourier_differentiation(
     f_omega_buf: BincodeBuffer,
@@ -263,15 +263,14 @@ pub extern "C" fn rssn_bincode_fourier_differentiation(
             &out_var_buf,
         );
 
-    if let (Some(f), Some(ov)) =
-        (f, out_var)
-    {
+    match (f, out_var)
+    { (Some(f), Some(ov)) => {
 
         to_bincode_buffer(&transforms::fourier_differentiation(&f, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 // --- Laplace Transform ---
@@ -284,7 +283,7 @@ pub extern "C" fn rssn_bincode_fourier_differentiation(
 
 /// Returns a bincode-serialized `Expr` representing the Laplace transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_laplace_transform(
     expr_buf: BincodeBuffer,
@@ -305,21 +304,21 @@ pub extern "C" fn rssn_bincode_laplace_transform(
             &out_var_buf,
         );
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_bincode_buffer(&transforms::laplace_transform(&e, &iv, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the inverse Laplace transform of an expression.
@@ -330,7 +329,7 @@ pub extern "C" fn rssn_bincode_laplace_transform(
 
 /// Returns a bincode-serialized `Expr` representing the inverse Laplace transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_inverse_laplace_transform(
     expr_buf: BincodeBuffer,
@@ -351,21 +350,21 @@ pub extern "C" fn rssn_bincode_inverse_laplace_transform(
             &out_var_buf,
         );
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_bincode_buffer(&transforms::inverse_laplace_transform(&e, &iv, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the time shift property of the Laplace transform.
@@ -378,7 +377,7 @@ pub extern "C" fn rssn_bincode_inverse_laplace_transform(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_laplace_time_shift(
     f_s_buf: BincodeBuffer,
@@ -397,18 +396,18 @@ pub extern "C" fn rssn_bincode_laplace_time_shift(
             &out_var_buf,
         );
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_bincode_buffer(&transforms::laplace_time_shift(&f, &a, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the frequency shift property of the Laplace transform.
@@ -421,7 +420,7 @@ pub extern "C" fn rssn_bincode_laplace_time_shift(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_laplace_frequency_shift(
     f_s_buf: BincodeBuffer,
@@ -440,18 +439,18 @@ pub extern "C" fn rssn_bincode_laplace_frequency_shift(
             &out_var_buf,
         );
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_bincode_buffer(&transforms::laplace_frequency_shift(&f, &a, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the scaling property of the Laplace transform.
@@ -464,7 +463,7 @@ pub extern "C" fn rssn_bincode_laplace_frequency_shift(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_laplace_scaling(
     f_s_buf: BincodeBuffer,
@@ -483,18 +482,18 @@ pub extern "C" fn rssn_bincode_laplace_scaling(
             &out_var_buf,
         );
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_bincode_buffer(&transforms::laplace_scaling(&f, &a, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the differentiation property of the Laplace transform.
@@ -507,7 +506,7 @@ pub extern "C" fn rssn_bincode_laplace_scaling(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_laplace_differentiation(
     f_s_buf: BincodeBuffer,
@@ -528,18 +527,18 @@ pub extern "C" fn rssn_bincode_laplace_differentiation(
             &f_zero_buf,
         );
 
-    if let (
+    match (f, out_var, f_zero)
+    { (
         Some(f),
         Some(ov),
         Some(fz),
-    ) = (f, out_var, f_zero)
-    {
+    ) => {
 
         to_bincode_buffer(&transforms::laplace_differentiation(&f, &ov, &fz))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the integration property of the Laplace transform.
@@ -550,7 +549,7 @@ pub extern "C" fn rssn_bincode_laplace_differentiation(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_laplace_integration(
     f_s_buf: BincodeBuffer,
@@ -565,15 +564,14 @@ pub extern "C" fn rssn_bincode_laplace_integration(
             &out_var_buf,
         );
 
-    if let (Some(f), Some(ov)) =
-        (f, out_var)
-    {
+    match (f, out_var)
+    { (Some(f), Some(ov)) => {
 
         to_bincode_buffer(&transforms::laplace_integration(&f, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 // --- Z-Transform ---
@@ -586,7 +584,7 @@ pub extern "C" fn rssn_bincode_laplace_integration(
 
 /// Returns a bincode-serialized `Expr` representing the Z-transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_z_transform(
     expr_buf: BincodeBuffer,
@@ -607,25 +605,25 @@ pub extern "C" fn rssn_bincode_z_transform(
             &out_var_buf,
         );
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_bincode_buffer(
             &transforms::z_transform(
                 &e, &iv, &ov,
             ),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the inverse Z-transform of an expression.
@@ -636,7 +634,7 @@ pub extern "C" fn rssn_bincode_z_transform(
 
 /// Returns a bincode-serialized `Expr` representing the inverse Z-transform.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_inverse_z_transform(
     expr_buf: BincodeBuffer,
@@ -657,21 +655,21 @@ pub extern "C" fn rssn_bincode_inverse_z_transform(
             &out_var_buf,
         );
 
-    if let (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         expr,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(e),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_bincode_buffer(&transforms::inverse_z_transform(&e, &iv, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the time shift property of the Z-transform.
@@ -684,7 +682,7 @@ pub extern "C" fn rssn_bincode_inverse_z_transform(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_z_time_shift(
     f_z_buf: BincodeBuffer,
@@ -703,22 +701,22 @@ pub extern "C" fn rssn_bincode_z_time_shift(
             &out_var_buf,
         );
 
-    if let (
+    match (f, k, out_var)
+    { (
         Some(f),
         Some(k),
         Some(ov),
-    ) = (f, k, out_var)
-    {
+    ) => {
 
         to_bincode_buffer(
             &transforms::z_time_shift(
                 &f, &k, &ov,
             ),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the scaling property of the Z-transform.
@@ -731,7 +729,7 @@ pub extern "C" fn rssn_bincode_z_time_shift(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_z_scaling(
     f_z_buf: BincodeBuffer,
@@ -750,22 +748,22 @@ pub extern "C" fn rssn_bincode_z_scaling(
             &out_var_buf,
         );
 
-    if let (
+    match (f, a, out_var)
+    { (
         Some(f),
         Some(a),
         Some(ov),
-    ) = (f, a, out_var)
-    {
+    ) => {
 
         to_bincode_buffer(
             &transforms::z_scaling(
                 &f, &a, &ov,
             ),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies the differentiation property of the Z-transform.
@@ -776,7 +774,7 @@ pub extern "C" fn rssn_bincode_z_scaling(
 
 /// Returns a bincode-serialized `Expr` representing the transformed expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_z_differentiation(
     f_z_buf: BincodeBuffer,
@@ -791,15 +789,14 @@ pub extern "C" fn rssn_bincode_z_differentiation(
             &out_var_buf,
         );
 
-    if let (Some(f), Some(ov)) =
-        (f, out_var)
-    {
+    match (f, out_var)
+    { (Some(f), Some(ov)) => {
 
         to_bincode_buffer(&transforms::z_differentiation(&f, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 // --- Utils ---
@@ -814,7 +811,7 @@ pub extern "C" fn rssn_bincode_z_differentiation(
 
 /// Returns a bincode-serialized `Expr` representing the convolution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_convolution_fourier(
     f_buf: BincodeBuffer,
@@ -839,23 +836,23 @@ pub extern "C" fn rssn_bincode_convolution_fourier(
             &out_var_buf,
         );
 
-    if let (
-        Some(f),
-        Some(g),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         f,
         g,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(f),
+        Some(g),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_bincode_buffer(&transforms::convolution_fourier(&f, &g, &iv, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the convolution of two functions using the Laplace transform property.
@@ -868,7 +865,7 @@ pub extern "C" fn rssn_bincode_convolution_fourier(
 
 /// Returns a bincode-serialized `Expr` representing the convolution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_convolution_laplace(
     f_buf: BincodeBuffer,
@@ -893,23 +890,23 @@ pub extern "C" fn rssn_bincode_convolution_laplace(
             &out_var_buf,
         );
 
-    if let (
-        Some(f),
-        Some(g),
-        Some(iv),
-        Some(ov),
-    ) = (
+    match (
         f,
         g,
         in_var,
         out_var,
-    ) {
+    ) { (
+        Some(f),
+        Some(g),
+        Some(iv),
+        Some(ov),
+    ) => {
 
         to_bincode_buffer(&transforms::convolution_laplace(&f, &g, &iv, &ov))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the partial fraction decomposition of an expression.
@@ -920,7 +917,7 @@ pub extern "C" fn rssn_bincode_convolution_laplace(
 
 /// Returns a bincode-serialized `Expr` representing the partial fraction decomposition.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_partial_fraction_decomposition(
     expr_buf: BincodeBuffer,

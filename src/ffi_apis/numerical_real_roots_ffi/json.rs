@@ -36,7 +36,7 @@ struct FindRootsInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -53,7 +53,7 @@ struct FindRootsInput {
 
 pub unsafe extern "C" fn rssn_real_roots_find_roots_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let json_str = match CStr::from_ptr(
         json_ptr,
@@ -112,4 +112,4 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_json(
     )
     .unwrap()
     .into_raw()
-}
+}}

@@ -9,7 +9,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::pde;
 
 /// Solves a PDE using Bincode with automatic method selection.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_solve_pde(
     pde_buf: BincodeBuffer,
@@ -38,15 +38,15 @@ pub extern "C" fn rssn_bincode_solve_pde(
         }
     };
 
-    if let (
-        Some(pde),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         pde_expr,
         func_str,
         vars,
-    ) {
+    ) { (
+        Some(pde),
+        Some(f),
+        Some(v),
+    ) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -61,14 +61,14 @@ pub extern "C" fn rssn_bincode_solve_pde(
         );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Solves a PDE using the method of characteristics (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
     equation_buf: BincodeBuffer,
@@ -99,15 +99,15 @@ pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         equation,
         func_str,
         vars,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -118,14 +118,14 @@ pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Solves the 1D wave equation (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
     equation_buf: BincodeBuffer,
@@ -156,15 +156,15 @@ pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         equation,
         func_str,
         vars,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -175,14 +175,14 @@ pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Solves the 1D heat equation (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
     equation_buf: BincodeBuffer,
@@ -213,15 +213,15 @@ pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         equation,
         func_str,
         vars,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -232,14 +232,14 @@ pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Solves the 2D Laplace equation (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
     equation_buf: BincodeBuffer,
@@ -270,15 +270,15 @@ pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         equation,
         func_str,
         vars,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -289,14 +289,14 @@ pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Classifies a PDE (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_classify_pde(
     equation_buf: BincodeBuffer,
@@ -327,15 +327,15 @@ pub extern "C" fn rssn_bincode_classify_pde(
         }
     };
 
-    if let (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) = (
+    match (
         equation,
         func_str,
         vars,
-    ) {
+    ) { (
+        Some(eq),
+        Some(f),
+        Some(v),
+    ) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -352,8 +352,8 @@ pub extern "C" fn rssn_bincode_classify_pde(
         to_bincode_buffer(
             &classification,
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

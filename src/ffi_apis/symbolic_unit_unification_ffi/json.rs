@@ -13,7 +13,7 @@ use crate::symbolic::unit_unification::unify_expression;
 
 /// and returns a JSON string representing the expression with unified units.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_unify_expression(
     expr_json: *const c_char

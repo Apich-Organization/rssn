@@ -9,7 +9,7 @@ use crate::symbolic::numeric::evaluate_numerical;
 
 /// and returns an `f64` representing the numerical evaluation of that expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_evaluate_numerical_handle(
     expr: *const Expr

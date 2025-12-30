@@ -57,7 +57,7 @@ fn encode<T: Serialize>(
 }
 
 /// Transforms a point via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -111,7 +111,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_bincode(
 }
 
 /// Transforms a point (pure numerical) via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

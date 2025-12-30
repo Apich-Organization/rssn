@@ -7,7 +7,7 @@ use crate::symbolic::graph_operations::{induced_subgraph, union, intersection, c
 
 /// Creates an induced subgraph.
 /// Input JSON: {"graph": <graph>, "nodes": ["label1", "label2"]}
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_induced_subgraph(
     json: *const c_char
@@ -35,7 +35,7 @@ pub extern "C" fn rssn_json_graph_induced_subgraph(
 
 /// Computes the union of two graphs.
 /// Input JSON: {"g1": <graph>, "g2": <graph>}
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_union(
     json: *const c_char
@@ -60,7 +60,7 @@ pub extern "C" fn rssn_json_graph_union(
 }
 
 /// Computes the intersection of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_intersection(
     json: *const c_char
@@ -87,7 +87,7 @@ pub extern "C" fn rssn_json_graph_intersection(
 }
 
 /// Computes the Cartesian product of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_cartesian_product(
     json: *const c_char
@@ -116,7 +116,7 @@ pub extern "C" fn rssn_json_graph_cartesian_product(
 }
 
 /// Computes the Tensor product of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_tensor_product(
     json: *const c_char
@@ -145,7 +145,7 @@ pub extern "C" fn rssn_json_graph_tensor_product(
 }
 
 /// Computes the complement of a graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_complement(
     json: *const c_char
@@ -162,7 +162,7 @@ pub extern "C" fn rssn_json_graph_complement(
 }
 
 /// Computes the disjoint union of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_disjoint_union(
     json: *const c_char
@@ -191,7 +191,7 @@ pub extern "C" fn rssn_json_graph_disjoint_union(
 }
 
 /// Computes the join of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_join(
     json: *const c_char

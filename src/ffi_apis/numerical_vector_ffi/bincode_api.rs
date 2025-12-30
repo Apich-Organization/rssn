@@ -83,7 +83,7 @@ fn encode<T: Serialize>(
 }
 
 /// Bincode FFI for `vec_add`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -131,7 +131,7 @@ pub unsafe extern "C" fn rssn_vec_add_bincode(
 }
 
 /// Bincode FFI for `vec_sub`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn rssn_vec_sub_bincode(
 }
 
 /// Bincode FFI for `scalar_mul`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -217,7 +217,7 @@ pub unsafe extern "C" fn rssn_vec_scalar_mul_bincode(
 }
 
 /// Bincode FFI for `dot_product`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -263,7 +263,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product_bincode(
 }
 
 /// Bincode FFI for norm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -304,7 +304,7 @@ pub unsafe extern "C" fn rssn_vec_norm_bincode(
 }
 
 /// Bincode FFI for `lp_norm`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -340,7 +340,7 @@ pub unsafe extern "C" fn rssn_vec_lp_norm_bincode(
 }
 
 /// Bincode FFI for normalize.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -393,7 +393,7 @@ pub unsafe extern "C" fn rssn_vec_normalize_bincode(
 }
 
 /// Bincode FFI for `cross_product`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -442,7 +442,7 @@ pub unsafe extern "C" fn rssn_vec_cross_product_bincode(
 }
 
 /// Bincode FFI for distance.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -488,7 +488,7 @@ pub unsafe extern "C" fn rssn_vec_distance_bincode(
 }
 
 /// Bincode FFI for angle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -534,7 +534,7 @@ pub unsafe extern "C" fn rssn_vec_angle_bincode(
 }
 
 /// Bincode FFI for project.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -582,7 +582,7 @@ pub unsafe extern "C" fn rssn_vec_project_bincode(
 }
 
 /// Bincode FFI for reflect.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -630,7 +630,7 @@ pub unsafe extern "C" fn rssn_vec_reflect_bincode(
 }
 
 /// Bincode FFI for lerp.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -685,7 +685,7 @@ pub unsafe extern "C" fn rssn_vec_lerp_bincode(
 }
 
 /// Bincode FFI for `is_orthogonal`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -733,7 +733,7 @@ pub unsafe extern "C" fn rssn_vec_is_orthogonal_bincode(
 }
 
 /// Bincode FFI for `is_parallel`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -780,7 +780,7 @@ pub unsafe extern "C" fn rssn_vec_is_parallel_bincode(
 }
 
 /// Bincode FFI for `cosine_similarity`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -8,7 +8,7 @@ use crate::symbolic::group_theory::Representation;
 
 // --- Group ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Constructs a group from raw pointers describing its elements, multiplication table, and identity.
 ///
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rssn_group_create(
     values_ptr: *const *const Expr,
     table_len: usize,
     identity_ptr: *const Expr,
-) -> *mut Group {
+) -> *mut Group { unsafe {
 
     let elements_slice =
         std::slice::from_raw_parts(
@@ -120,9 +120,9 @@ pub unsafe extern "C" fn rssn_group_create(
     );
 
     Box::into_raw(Box::new(group))
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Frees a group previously created by [`rssn_group_create`].
 ///
@@ -150,15 +150,15 @@ pub unsafe extern "C" fn rssn_group_create(
 
 pub unsafe extern "C" fn rssn_group_free(
     ptr: *mut Group
-) {
+) { unsafe {
 
     if !ptr.is_null() {
 
         let _ = Box::from_raw(ptr);
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Multiplies two group elements using a group handle and returns the product expression.
 ///
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn rssn_group_multiply(
     group: *const Group,
     a: *const Expr,
     b: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let ga = GroupElement((*a).clone());
 
@@ -204,9 +204,9 @@ pub unsafe extern "C" fn rssn_group_multiply(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the inverse of a group element using a group handle.
 ///
@@ -236,7 +236,7 @@ pub unsafe extern "C" fn rssn_group_multiply(
 pub unsafe extern "C" fn rssn_group_inverse(
     group: *const Group,
     a: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let ga = GroupElement((*a).clone());
 
@@ -248,9 +248,9 @@ pub unsafe extern "C" fn rssn_group_inverse(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Tests whether a group is Abelian using a group handle.
 ///
@@ -279,12 +279,12 @@ pub unsafe extern "C" fn rssn_group_inverse(
 
 pub unsafe extern "C" fn rssn_group_is_abelian(
     group: *const Group
-) -> bool {
+) -> bool { unsafe {
 
     (*group).is_abelian()
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the order of a group element using a group handle.
 ///
@@ -316,16 +316,16 @@ pub unsafe extern "C" fn rssn_group_is_abelian(
 pub unsafe extern "C" fn rssn_group_element_order(
     group: *const Group,
     a: *const Expr,
-) -> usize {
+) -> usize { unsafe {
 
     let ga = GroupElement((*a).clone());
 
     (*group)
         .element_order(&ga)
         .unwrap_or(0)
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the center of a group and returns its elements as a dynamically allocated array of expressions.
 ///
@@ -359,7 +359,7 @@ pub unsafe extern "C" fn rssn_group_element_order(
 pub unsafe extern "C" fn rssn_group_center(
     group: *const Group,
     out_len: *mut usize,
-) -> *mut *mut Expr {
+) -> *mut *mut Expr { unsafe {
 
     let center = (*group).center();
 
@@ -382,11 +382,11 @@ pub unsafe extern "C" fn rssn_group_center(
     std::mem::forget(out_ptrs);
 
     ptr
-}
+}}
 
 // --- Representation ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Constructs a group representation from raw pointers describing its carrier set and action matrices.
 ///
@@ -426,7 +426,7 @@ pub unsafe extern "C" fn rssn_representation_create(
     keys_ptr: *const *const Expr,
     values_ptr: *const *const Expr,
     map_len: usize,
-) -> *mut Representation {
+) -> *mut Representation { unsafe {
 
     let elements_slice =
         std::slice::from_raw_parts(
@@ -477,9 +477,9 @@ pub unsafe extern "C" fn rssn_representation_create(
     );
 
     Box::into_raw(Box::new(rep))
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Frees a representation previously created by [`rssn_representation_create`].
 ///
@@ -507,15 +507,15 @@ pub unsafe extern "C" fn rssn_representation_create(
 
 pub unsafe extern "C" fn rssn_representation_free(
     ptr: *mut Representation
-) {
+) { unsafe {
 
     if !ptr.is_null() {
 
         let _ = Box::from_raw(ptr);
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Checks whether a representation is valid for a given group using handle-based APIs.
 ///
@@ -547,12 +547,12 @@ pub unsafe extern "C" fn rssn_representation_free(
 pub unsafe extern "C" fn rssn_representation_is_valid(
     rep: *const Representation,
     group: *const Group,
-) -> bool {
+) -> bool { unsafe {
 
     (*rep).is_valid(&*group)
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the character of a representation and returns its values via raw output buffers.
 ///
@@ -592,7 +592,7 @@ pub unsafe extern "C" fn rssn_character(
     out_len: *mut usize,
     out_keys: *mut *mut *mut Expr,
     out_values: *mut *mut *mut Expr,
-) {
+) { unsafe {
 
     let chars = character(&*rep);
 
@@ -623,4 +623,4 @@ pub unsafe extern "C" fn rssn_character(
     std::mem::forget(keys_vec);
 
     std::mem::forget(values_vec);
-}
+}}

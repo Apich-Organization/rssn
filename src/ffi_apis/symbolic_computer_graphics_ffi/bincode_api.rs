@@ -20,7 +20,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
 
 /// Generates a 3x3 2D translation matrix via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_translation_2d(
     tx_buf: BincodeBuffer,
@@ -33,21 +33,20 @@ pub extern "C" fn rssn_bincode_translation_2d(
     let ty: Option<Expr> =
         from_bincode_buffer(&ty_buf);
 
-    if let (Some(tx), Some(ty)) =
-        (tx, ty)
-    {
+    match (tx, ty)
+    { (Some(tx), Some(ty)) => {
 
         to_bincode_buffer(
             &translation_2d(tx, ty),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Generates a 4x4 3D translation matrix via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_translation_3d(
     tx_buf: BincodeBuffer,
@@ -64,24 +63,24 @@ pub extern "C" fn rssn_bincode_translation_3d(
     let tz: Option<Expr> =
         from_bincode_buffer(&tz_buf);
 
-    if let (
+    match (tx, ty, tz)
+    { (
         Some(tx),
         Some(ty),
         Some(tz),
-    ) = (tx, ty, tz)
-    {
+    ) => {
 
         to_bincode_buffer(
             &translation_3d(tx, ty, tz),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Generates a 3x3 2D rotation matrix via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_rotation_2d(
     angle_buf: BincodeBuffer
@@ -102,7 +101,7 @@ pub extern "C" fn rssn_bincode_rotation_2d(
 }
 
 /// Generates a 4x4 3D rotation matrix around X-axis via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_rotation_3d_x(
     angle_buf: BincodeBuffer
@@ -123,7 +122,7 @@ pub extern "C" fn rssn_bincode_rotation_3d_x(
 }
 
 /// Generates a 4x4 3D rotation matrix around Y-axis via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_rotation_3d_y(
     angle_buf: BincodeBuffer
@@ -144,7 +143,7 @@ pub extern "C" fn rssn_bincode_rotation_3d_y(
 }
 
 /// Generates a 4x4 3D rotation matrix around Z-axis via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_rotation_3d_z(
     angle_buf: BincodeBuffer
@@ -165,7 +164,7 @@ pub extern "C" fn rssn_bincode_rotation_3d_z(
 }
 
 /// Generates a 3x3 2D scaling matrix via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_scaling_2d(
     sx_buf: BincodeBuffer,
@@ -178,21 +177,20 @@ pub extern "C" fn rssn_bincode_scaling_2d(
     let sy: Option<Expr> =
         from_bincode_buffer(&sy_buf);
 
-    if let (Some(sx), Some(sy)) =
-        (sx, sy)
-    {
+    match (sx, sy)
+    { (Some(sx), Some(sy)) => {
 
         to_bincode_buffer(&scaling_2d(
             sx, sy,
         ))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Generates a 4x4 3D scaling matrix via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_scaling_3d(
     sx_buf: BincodeBuffer,
@@ -209,24 +207,24 @@ pub extern "C" fn rssn_bincode_scaling_3d(
     let sz: Option<Expr> =
         from_bincode_buffer(&sz_buf);
 
-    if let (
+    match (sx, sy, sz)
+    { (
         Some(sx),
         Some(sy),
         Some(sz),
-    ) = (sx, sy, sz)
-    {
+    ) => {
 
         to_bincode_buffer(&scaling_3d(
             sx, sy, sz,
         ))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Generates a 3x3 2D shear matrix via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_shear_2d(
     shx_buf: BincodeBuffer,
@@ -239,21 +237,20 @@ pub extern "C" fn rssn_bincode_shear_2d(
     let shy: Option<Expr> =
         from_bincode_buffer(&shy_buf);
 
-    if let (Some(shx), Some(shy)) =
-        (shx, shy)
-    {
+    match (shx, shy)
+    { (Some(shx), Some(shy)) => {
 
         to_bincode_buffer(&shear_2d(
             shx, shy,
         ))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Generates a 3x3 2D reflection matrix via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_reflection_2d(
     angle_buf: BincodeBuffer
@@ -274,7 +271,7 @@ pub extern "C" fn rssn_bincode_reflection_2d(
 }
 
 /// Generates a 4x4 3D reflection matrix via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_reflection_3d(
     nx_buf: BincodeBuffer,
@@ -291,24 +288,24 @@ pub extern "C" fn rssn_bincode_reflection_3d(
     let nz: Option<Expr> =
         from_bincode_buffer(&nz_buf);
 
-    if let (
+    match (nx, ny, nz)
+    { (
         Some(nx),
         Some(ny),
         Some(nz),
-    ) = (nx, ny, nz)
-    {
+    ) => {
 
         to_bincode_buffer(
             &reflection_3d(nx, ny, nz),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Generates a 4x4 3D rotation around arbitrary axis via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_rotation_axis_angle(
     axis_x_buf: BincodeBuffer,
@@ -335,13 +332,13 @@ pub extern "C" fn rssn_bincode_rotation_axis_angle(
     let angle: Option<Expr> =
         from_bincode_buffer(&angle_buf);
 
-    if let (
+    match (ax, ay, az, angle)
+    { (
         Some(ax),
         Some(ay),
         Some(az),
         Some(a),
-    ) = (ax, ay, az, angle)
-    {
+    ) => {
 
         let axis =
             Vector::new(ax, ay, az);
@@ -351,8 +348,8 @@ pub extern "C" fn rssn_bincode_rotation_axis_angle(
                 &axis, a,
             ),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

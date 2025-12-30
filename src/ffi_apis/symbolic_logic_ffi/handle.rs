@@ -8,7 +8,7 @@ use crate::symbolic::logic::to_dnf;
 ///
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplify_logic_handle(
     expr: *const Expr
@@ -35,7 +35,7 @@ pub extern "C" fn rssn_simplify_logic_handle(
 ///
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_to_cnf_handle(
     expr: *const Expr
@@ -61,7 +61,7 @@ pub extern "C" fn rssn_to_cnf_handle(
 ///
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_to_dnf_handle(
     expr: *const Expr
@@ -92,7 +92,7 @@ pub extern "C" fn rssn_to_dnf_handle(
 ///
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_is_satisfiable_handle(
     expr: *const Expr

@@ -65,7 +65,7 @@ fn encode<T: Serialize>(
 }
 
 /// Matrix addition via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -136,7 +136,7 @@ pub unsafe extern "C" fn rssn_num_matrix_add_bincode(
 }
 
 /// Matrix multiplication via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -205,7 +205,7 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_bincode(
 }
 
 /// Sets backend for a matrix via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -244,7 +244,7 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend_bincode(
 }
 
 /// Decomposes a matrix via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

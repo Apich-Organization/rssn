@@ -30,7 +30,7 @@ struct GramSchmidtInput {
 
 /// Computes the L2 norm of a function (represented by a series of points) using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -82,7 +82,7 @@ pub unsafe extern "C" fn rssn_num_fa_l2_norm_json(
 
 /// Computes the inner product of two functions (represented by series of points) using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rssn_num_fa_inner_product_json(
 
 /// Applies the Gram-Schmidt orthonormalization process to a set of basis functions using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

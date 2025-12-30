@@ -3,7 +3,7 @@
 use crate::numerical::computer_graphics;
 
 /// Computes the dot product of two 3D vectors.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_graphics_dot_product(
     x1: f64,
@@ -28,7 +28,7 @@ pub extern "C" fn rssn_num_graphics_dot_product(
 ///
 /// # Safety
 /// Pointers must be valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -48,7 +48,7 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product(
     out_x: *mut f64,
     out_y: *mut f64,
     out_z: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if out_x.is_null()
         || out_y.is_null()
@@ -71,13 +71,13 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product(
     *out_z = result.z;
 
     0
-}
+}}
 
 /// Normalizes a 3D vector.
 ///
 /// # Safety
 /// Pointers must be valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize(
     out_x: *mut f64,
     out_y: *mut f64,
     out_z: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if out_x.is_null()
         || out_y.is_null()
@@ -115,10 +115,10 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize(
     *out_z = result.z;
 
     0
-}
+}}
 
 /// Computes the magnitude of a 3D vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_graphics_magnitude(
     x: f64,
@@ -135,7 +135,7 @@ pub extern "C" fn rssn_num_graphics_magnitude(
 ///
 /// # Safety
 /// Pointers must be valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect(
     out_x: *mut f64,
     out_y: *mut f64,
     out_z: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if out_x.is_null()
         || out_y.is_null()
@@ -182,10 +182,10 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect(
     *out_z = result.z;
 
     0
-}
+}}
 
 /// Computes the angle between two 3D vectors in radians.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_graphics_angle_between(
     x1: f64,
@@ -206,7 +206,7 @@ pub extern "C" fn rssn_num_graphics_angle_between(
 }
 
 /// Converts degrees to radians.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_graphics_degrees_to_radians(
     degrees: f64
@@ -216,7 +216,7 @@ pub const extern "C" fn rssn_num_graphics_degrees_to_radians(
 }
 
 /// Converts radians to degrees.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_graphics_radians_to_degrees(
     radians: f64
@@ -229,7 +229,7 @@ pub const extern "C" fn rssn_num_graphics_radians_to_degrees(
 ///
 /// # Safety
 /// Pointers must be valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -252,7 +252,7 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
     out_x: *mut f64,
     out_y: *mut f64,
     out_z: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if out_w.is_null()
         || out_x.is_null()
@@ -278,14 +278,14 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
     *out_z = result.z;
 
     0
-}
+}}
 
 /// Rotation matrix around X axis.
 /// Output: 16 f64 values in row-major order.
 ///
 /// # Safety
 /// `out_ptr` must point to at least 16 f64 values.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -298,7 +298,7 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x(
     angle_rad: f64,
     out_ptr: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if out_ptr.is_null() {
 
@@ -314,11 +314,11 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x(
     }
 
     0
-}
+}}
 
 /// Ray-sphere intersection.
 /// Returns t value or -1 if no intersection.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
     ray_ox: f64,
@@ -365,7 +365,7 @@ pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
 ///
 /// # Safety
 /// Pointers must be valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -392,7 +392,7 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic(
     out_x: *mut f64,
     out_y: *mut f64,
     out_z: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if out_x.is_null()
         || out_y.is_null()
@@ -434,4 +434,4 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic(
     *out_z = result.z;
 
     0
-}
+}}

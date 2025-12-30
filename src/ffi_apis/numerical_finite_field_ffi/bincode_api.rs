@@ -56,7 +56,7 @@ fn encode<T: Serialize>(
 }
 
 /// GF(p) addition via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -95,7 +95,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_bincode(
 }
 
 /// GF(p) multiplication via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

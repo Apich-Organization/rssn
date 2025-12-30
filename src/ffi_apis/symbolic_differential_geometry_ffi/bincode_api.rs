@@ -4,7 +4,7 @@ use crate::symbolic::differential_geometry::{DifferentialForm, exterior_derivati
 use crate::symbolic::vector::Vector;
 
 /// Computes the exterior derivative of a differential form (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_exterior_derivative(
     form_buf: BincodeBuffer,
@@ -17,9 +17,8 @@ pub extern "C" fn rssn_bincode_exterior_derivative(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    if let (Some(f), Some(v)) =
-        (form, vars)
-    {
+    match (form, vars)
+    { (Some(f), Some(v)) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -33,14 +32,14 @@ pub extern "C" fn rssn_bincode_exterior_derivative(
             );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the wedge product of two differential forms (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_wedge_product(
     form1_buf: BincodeBuffer,
@@ -55,22 +54,21 @@ pub extern "C" fn rssn_bincode_wedge_product(
         DifferentialForm,
     > = from_bincode_buffer(&form2_buf);
 
-    if let (Some(f1), Some(f2)) =
-        (form1, form2)
-    {
+    match (form1, form2)
+    { (Some(f1), Some(f2)) => {
 
         let result =
             wedge_product(&f1, &f2);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the boundary of a domain (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_boundary(
     domain_buf: BincodeBuffer
@@ -93,7 +91,7 @@ pub extern "C" fn rssn_bincode_boundary(
 }
 
 /// Represents the generalized Stokes' theorem (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_generalized_stokes_theorem(
     omega_buf: BincodeBuffer,
@@ -113,11 +111,11 @@ pub extern "C" fn rssn_bincode_generalized_stokes_theorem(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    if let (Some(o), Some(m), Some(v)) = (
+    match (
         omega,
         manifold,
         vars,
-    ) {
+    ) { (Some(o), Some(m), Some(v)) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -132,14 +130,14 @@ pub extern "C" fn rssn_bincode_generalized_stokes_theorem(
             );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Represents Gauss's theorem (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_gauss_theorem(
     vector_field_buf: BincodeBuffer,
@@ -156,22 +154,21 @@ pub extern "C" fn rssn_bincode_gauss_theorem(
             &volume_buf,
         );
 
-    if let (Some(vf), Some(vol)) =
-        (vector_field, volume)
-    {
+    match (vector_field, volume)
+    { (Some(vf), Some(vol)) => {
 
         let result =
             gauss_theorem(&vf, &vol);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Represents Stokes' theorem (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_stokes_theorem(
     vector_field_buf: BincodeBuffer,
@@ -188,23 +185,23 @@ pub extern "C" fn rssn_bincode_stokes_theorem(
             &surface_buf,
         );
 
-    if let (Some(vf), Some(surf)) = (
+    match (
         vector_field,
         surface,
-    ) {
+    ) { (Some(vf), Some(surf)) => {
 
         let result =
             stokes_theorem(&vf, &surf);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Represents Green's theorem (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_greens_theorem(
     p_buf: BincodeBuffer,
@@ -223,12 +220,12 @@ pub extern "C" fn rssn_bincode_greens_theorem(
             &domain_buf,
         );
 
-    if let (
+    match (p, q, domain)
+    { (
         Some(p_expr),
         Some(q_expr),
         Some(d),
-    ) = (p, q, domain)
-    {
+    ) => {
 
         let result = greens_theorem(
             &p_expr,
@@ -237,8 +234,8 @@ pub extern "C" fn rssn_bincode_greens_theorem(
         );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

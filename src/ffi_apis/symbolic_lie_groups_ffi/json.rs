@@ -6,7 +6,7 @@ use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponentia
 
 // --- LieAlgebra Creation ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Constructs the Lie algebra \(\mathfrak{so}(3)\) and returns it as JSON.
 ///
@@ -43,7 +43,7 @@ pub unsafe extern "C" fn rssn_json_lie_algebra_so3(
     to_json_string(&algebra)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Constructs the Lie algebra \(\mathfrak{su}(2)\) and returns it as JSON.
 ///
@@ -82,7 +82,7 @@ pub unsafe extern "C" fn rssn_json_lie_algebra_su2(
 
 // --- Lie Bracket ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the Lie bracket of two elements of a Lie algebra using JSON serialization.
 ///
@@ -144,7 +144,7 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
 
 // --- Exponential Map ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Applies the exponential map to a Lie algebra element using JSON serialization.
 ///
@@ -199,7 +199,7 @@ pub unsafe extern "C" fn rssn_json_exponential_map(
 
 // --- Adjoint Representations ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Applies the adjoint representation of a Lie group element to a Lie algebra element using JSON.
 ///
@@ -265,7 +265,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Applies the adjoint representation of a Lie algebra element to another element using JSON.
 ///
@@ -333,7 +333,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
 
 // --- Commutator Table ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the commutator table of a Lie algebra using JSON serialization.
 ///
@@ -381,7 +381,7 @@ pub unsafe extern "C" fn rssn_json_commutator_table(
 
 // --- Jacobi Identity Check ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Checks whether a Lie algebra satisfies the Jacobi identity using JSON serialization.
 ///
@@ -432,7 +432,7 @@ pub unsafe extern "C" fn rssn_json_check_jacobi_identity(
 
 // --- Generators ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Returns the standard generators of \(\mathfrak{so}(3)\) as a JSON-encoded list of expressions.
 ///
@@ -473,7 +473,7 @@ pub unsafe extern "C" fn rssn_json_so3_generators(
 
 /// Returns the SU(2) Lie algebra generators as a JSON string.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

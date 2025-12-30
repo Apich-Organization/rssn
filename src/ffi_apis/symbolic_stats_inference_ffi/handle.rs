@@ -14,7 +14,7 @@ use crate::symbolic::stats_inference::{
 unsafe fn collect_exprs(
     data: *const *const Expr,
     len: usize,
-) -> Vec<Expr> {
+) -> Vec<Expr> { unsafe {
 
     let mut exprs =
         Vec::with_capacity(len);
@@ -30,7 +30,7 @@ unsafe fn collect_exprs(
     }
 
     exprs
-}
+}}
 
 // Convert HypothesisTest to a boxed Expr (representing a struct/map)
 // Since HypothesisTest is a struct, we maybe should return it as a serialized string or abstract handle?
@@ -70,7 +70,7 @@ unsafe fn collect_exprs(
 
 /// p-value formula, and degrees of freedom.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
     data: *const *const Expr,
     len: usize,
     target_mean: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if data.is_null() {
 
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
             df,
         ]),
     ))
-}
+}}
 
 /// Performs a two-sample t-test.
 
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
 
 /// p-value formula, and degrees of freedom.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
     data2: *const *const Expr,
     len2: usize,
     mu_diff: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if data1.is_null()
         || data2.is_null()
@@ -186,7 +186,7 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
             df,
         ]),
     ))
-}
+}}
 
 /// Performs a z-test.
 
@@ -200,7 +200,7 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
 
 /// p-value formula, and a placeholder for degrees of freedom.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -215,7 +215,7 @@ pub unsafe extern "C" fn rssn_z_test(
     len: usize,
     target_mean: *const Expr,
     pop_std_dev: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if data.is_null()
         || pop_std_dev.is_null()
@@ -252,4 +252,4 @@ pub unsafe extern "C" fn rssn_z_test(
             Expr::NoSolution, /* Placeholder for None */
         ]),
     ))
-}
+}}

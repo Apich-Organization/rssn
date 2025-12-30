@@ -6,7 +6,7 @@ use crate::physics::physics_fem;
 
 /// Solves 1D Poisson using FEM and returns a flat array of doubles.
 /// The caller is responsible for freeing the memory using `rssn_free_f64_array`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
     n_elements: usize,
@@ -48,7 +48,7 @@ pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
 }
 
 /// Frees a float64 array allocated by the FEM FFI.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -61,10 +61,10 @@ pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
 pub unsafe extern "C" fn rssn_free_f64_array(
     ptr: *mut f64,
     size: usize,
-) {
+) { unsafe {
 
     if !ptr.is_null() {
 
         let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, size));
     }
-}
+}}

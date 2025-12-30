@@ -4,7 +4,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::thermodynamics;
 
 /// Calculates ideal gas Law expression: PV - nRT.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -20,7 +20,7 @@ pub unsafe extern "C" fn rssn_ideal_gas_law(
     n: *const Expr,
     r: *const Expr,
     t: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if p.is_null()
         || v.is_null()
@@ -37,10 +37,10 @@ pub unsafe extern "C" fn rssn_ideal_gas_law(
             &*p, &*v, &*n, &*r, &*t,
         ),
     ))
-}
+}}
 
 /// Calculates enthalpy: U + PV.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn rssn_enthalpy(
     u: *const Expr,
     p: *const Expr,
     v: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if u.is_null()
         || p.is_null()
@@ -69,10 +69,10 @@ pub unsafe extern "C" fn rssn_enthalpy(
             &*u, &*p, &*v,
         ),
     ))
-}
+}}
 
 /// Calculates Gibbs Free Energy: H - TS.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn rssn_gibbs_free_energy(
     h: *const Expr,
     t: *const Expr,
     s: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if h.is_null()
         || t.is_null()
@@ -99,10 +99,10 @@ pub unsafe extern "C" fn rssn_gibbs_free_energy(
     Box::into_raw(Box::new(
         thermodynamics::gibbs_free_energy(&*h, &*t, &*s),
     ))
-}
+}}
 
 /// Calculates Carnot Efficiency: 1 - Tc/Th.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -115,7 +115,7 @@ pub unsafe extern "C" fn rssn_gibbs_free_energy(
 pub unsafe extern "C" fn rssn_carnot_efficiency(
     tc: *const Expr,
     th: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if tc.is_null() || th.is_null() {
 
@@ -125,10 +125,10 @@ pub unsafe extern "C" fn rssn_carnot_efficiency(
     Box::into_raw(Box::new(
         thermodynamics::carnot_efficiency(&*tc, &*th),
     ))
-}
+}}
 
 /// Calculates Boltzmann Distribution.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rssn_boltzmann_distribution(
     energy: *const Expr,
     temperature: *const Expr,
     partition_function: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if energy.is_null()
         || temperature.is_null()
@@ -159,4 +159,4 @@ pub unsafe extern "C" fn rssn_boltzmann_distribution(
             &*partition_function,
         ),
     ))
-}
+}}

@@ -19,7 +19,7 @@ use crate::symbolic::core::Expr;
 ///
 /// # Returns
 /// 0 on success, -1 on failure.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -35,7 +35,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
     vals: *const f64,
     num_vars: usize,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if expr_ptr.is_null()
         || result.is_null()
@@ -119,11 +119,11 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
             -1
         },
     }
-}
+}}
 
 /// Pure numerical functions exposed via FFI.
 /// Computes the sine of a f64 value.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_sin(
     x: f64
@@ -134,7 +134,7 @@ pub extern "C" fn rssn_num_pure_sin(
 
 /// Computes the cosine of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_cos(
     x: f64
@@ -145,7 +145,7 @@ pub extern "C" fn rssn_num_pure_cos(
 
 /// Computes the tangent of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_tan(
     x: f64
@@ -156,7 +156,7 @@ pub extern "C" fn rssn_num_pure_tan(
 
 /// Computes the arcsine of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_asin(
     x: f64
@@ -167,7 +167,7 @@ pub extern "C" fn rssn_num_pure_asin(
 
 /// Computes the arccosine of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_acos(
     x: f64
@@ -178,7 +178,7 @@ pub extern "C" fn rssn_num_pure_acos(
 
 /// Computes the arctangent of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_atan(
     x: f64
@@ -189,7 +189,7 @@ pub extern "C" fn rssn_num_pure_atan(
 
 /// Computes the arctangent of y/x using the signs of the arguments to determine the correct quadrant.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_atan2(
     y: f64,
@@ -202,7 +202,7 @@ pub extern "C" fn rssn_num_pure_atan2(
 
 /// Computes the hyperbolic sine of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_sinh(
     x: f64
@@ -213,7 +213,7 @@ pub extern "C" fn rssn_num_pure_sinh(
 
 /// Computes the hyperbolic cosine of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_cosh(
     x: f64
@@ -224,7 +224,7 @@ pub extern "C" fn rssn_num_pure_cosh(
 
 /// Computes the hyperbolic tangent of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_tanh(
     x: f64
@@ -235,7 +235,7 @@ pub extern "C" fn rssn_num_pure_tanh(
 
 /// Computes the absolute value of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_pure_abs(
     x: f64
@@ -246,7 +246,7 @@ pub const extern "C" fn rssn_num_pure_abs(
 
 /// Computes the square root of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_sqrt(
     x: f64
@@ -257,7 +257,7 @@ pub extern "C" fn rssn_num_pure_sqrt(
 
 /// Computes the natural logarithm of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_ln(
     x: f64
@@ -268,7 +268,7 @@ pub extern "C" fn rssn_num_pure_ln(
 
 /// Computes e raised to the power of a f64 value.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_exp(
     x: f64
@@ -279,7 +279,7 @@ pub extern "C" fn rssn_num_pure_exp(
 
 /// Computes `base` raised to the power of `exp`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_pure_pow(
     base: f64,

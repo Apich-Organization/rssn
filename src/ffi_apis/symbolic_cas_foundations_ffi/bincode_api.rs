@@ -20,7 +20,7 @@ struct SimplifyWithRelationsInput {
 }
 
 /// Expands an expression using algebraic rules (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_cas_expand_bincode(
     input: BincodeBuffer
@@ -44,7 +44,7 @@ pub extern "C" fn rssn_cas_expand_bincode(
 }
 
 /// Factorizes an expression (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_cas_factorize_bincode(
     input: BincodeBuffer
@@ -70,7 +70,7 @@ pub extern "C" fn rssn_cas_factorize_bincode(
 }
 
 /// Normalizes an expression to a canonical form (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_cas_normalize_bincode(
     input: BincodeBuffer
@@ -96,7 +96,7 @@ pub extern "C" fn rssn_cas_normalize_bincode(
 }
 
 /// Simplifies an expression using a set of polynomial side-relations (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_cas_simplify_with_relations_bincode(
     input: BincodeBuffer

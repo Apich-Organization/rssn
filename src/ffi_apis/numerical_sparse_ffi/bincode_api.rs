@@ -58,7 +58,7 @@ fn encode<T: Serialize>(
 }
 
 /// Sparse matrix-vector multiplication via Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

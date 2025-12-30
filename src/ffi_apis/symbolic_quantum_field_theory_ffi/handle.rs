@@ -2,7 +2,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::quantum_field_theory;
 
 /// Computes the Dirac adjoint of a fermion field.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -14,7 +14,7 @@ use crate::symbolic::quantum_field_theory;
 
 pub unsafe extern "C" fn rssn_dirac_adjoint(
     psi: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if psi.is_null() {
 
@@ -24,10 +24,10 @@ pub unsafe extern "C" fn rssn_dirac_adjoint(
     Box::into_raw(Box::new(
         quantum_field_theory::dirac_adjoint(&*psi),
     ))
-}
+}}
 
 /// Computes the Feynman slash notation.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn rssn_dirac_adjoint(
 
 pub unsafe extern "C" fn rssn_feynman_slash(
     v_mu: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if v_mu.is_null() {
 
@@ -49,10 +49,10 @@ pub unsafe extern "C" fn rssn_feynman_slash(
     Box::into_raw(Box::new(
         quantum_field_theory::feynman_slash(&*v_mu),
     ))
-}
+}}
 
 /// Lagrangian density for a free real scalar field.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rssn_feynman_slash(
 pub unsafe extern "C" fn rssn_scalar_field_lagrangian(
     phi: *const Expr,
     m: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if phi.is_null() || m.is_null() {
 
@@ -75,10 +75,10 @@ pub unsafe extern "C" fn rssn_scalar_field_lagrangian(
     Box::into_raw(Box::new(
         quantum_field_theory::scalar_field_lagrangian(&*phi, &*m),
     ))
-}
+}}
 
 /// Lagrangian density for QED.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rssn_qed_lagrangian(
     a_mu: *const Expr,
     m: *const Expr,
     e: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if psi_bar.is_null()
         || psi.is_null()
@@ -115,10 +115,10 @@ pub unsafe extern "C" fn rssn_qed_lagrangian(
             &*e,
         ),
     ))
-}
+}}
 
 /// Lagrangian density for QCD.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rssn_qcd_lagrangian(
     g_mu: *const Expr,
     m: *const Expr,
     gs: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if psi_bar.is_null()
         || psi.is_null()
@@ -155,10 +155,10 @@ pub unsafe extern "C" fn rssn_qcd_lagrangian(
             &*gs,
         ),
     ))
-}
+}}
 
 /// Computes a propagator for a particle in QFT.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -172,7 +172,7 @@ pub unsafe extern "C" fn rssn_qft_propagator(
     p: *const Expr,
     m: *const Expr,
     is_fermion: bool,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if p.is_null() || m.is_null() {
 
@@ -182,10 +182,10 @@ pub unsafe extern "C" fn rssn_qft_propagator(
     Box::into_raw(Box::new(
         quantum_field_theory::propagator(&*p, &*m, is_fermion),
     ))
-}
+}}
 
 /// Scattering cross-section.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -199,7 +199,7 @@ pub unsafe extern "C" fn rssn_qft_scattering_cross_section(
     matrix_element: *const Expr,
     flux: *const Expr,
     phase_space: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if matrix_element.is_null()
         || flux.is_null()
@@ -216,10 +216,10 @@ pub unsafe extern "C" fn rssn_qft_scattering_cross_section(
             &*phase_space,
         ),
     ))
-}
+}}
 
 /// Feynman propagator in position space.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -233,7 +233,7 @@ pub unsafe extern "C" fn rssn_feynman_propagator_position_space(
     x: *const Expr,
     y: *const Expr,
     m: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if x.is_null()
         || y.is_null()
@@ -246,4 +246,4 @@ pub unsafe extern "C" fn rssn_feynman_propagator_position_space(
     Box::into_raw(Box::new(
         quantum_field_theory::feynman_propagator_position_space(&*x, &*y, &*m),
     ))
-}
+}}

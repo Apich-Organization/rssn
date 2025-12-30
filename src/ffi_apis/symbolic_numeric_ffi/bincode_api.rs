@@ -12,7 +12,7 @@ use crate::symbolic::numeric::evaluate_numerical;
 
 /// and returns a bincode-serialized numerical evaluation of that expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_evaluate_numerical(
     expr_buf: BincodeBuffer

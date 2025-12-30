@@ -3,7 +3,7 @@ use crate::symbolic::radicals::denest_sqrt;
 use crate::symbolic::radicals::simplify_radicals;
 
 /// Simplifies radical expressions (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_simplify_radicals_handle(
     expr: *const Expr
@@ -27,7 +27,7 @@ pub extern "C" fn rssn_simplify_radicals_handle(
 }
 
 /// Denests a nested square root (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_denest_sqrt_handle(
     expr: *const Expr

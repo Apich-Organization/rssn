@@ -16,7 +16,7 @@ use crate::symbolic::stats_inference::{
 
 /// Returns a JSON string representing the `HypothesisTest` result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -39,17 +39,16 @@ pub unsafe extern "C" fn rssn_json_one_sample_t_test(
             target_mean_json,
         );
 
-    if let (Some(data), Some(target)) =
-        (data, target)
-    {
+    match (data, target)
+    { (Some(data), Some(target)) => {
 
         let result = stats_inference::one_sample_t_test_symbolic(&data, &target);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Performs a two-sample t-test.
@@ -60,7 +59,7 @@ pub unsafe extern "C" fn rssn_json_one_sample_t_test(
 
 /// Returns a JSON string representing the `HypothesisTest` result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -85,20 +84,20 @@ pub unsafe extern "C" fn rssn_json_two_sample_t_test(
     let diff: Option<Expr> =
         from_json_string(mu_diff_json);
 
-    if let (
+    match (data1, data2, diff)
+    { (
         Some(d1),
         Some(d2),
         Some(diff),
-    ) = (data1, data2, diff)
-    {
+    ) => {
 
         let result = stats_inference::two_sample_t_test_symbolic(&d1, &d2, &diff);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Performs a z-test.
@@ -109,7 +108,7 @@ pub unsafe extern "C" fn rssn_json_two_sample_t_test(
 
 /// Returns a JSON string representing the `HypothesisTest` result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -138,12 +137,12 @@ pub unsafe extern "C" fn rssn_json_z_test(
             pop_std_dev_json,
         );
 
-    if let (
+    match (data, target, sigma)
+    { (
         Some(data),
         Some(target),
         Some(sigma),
-    ) = (data, target, sigma)
-    {
+    ) => {
 
         let result = stats_inference::z_test_symbolic(
             &data,
@@ -152,8 +151,8 @@ pub unsafe extern "C" fn rssn_json_z_test(
         );
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

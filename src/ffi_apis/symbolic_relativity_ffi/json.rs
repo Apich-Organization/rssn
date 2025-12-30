@@ -8,7 +8,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::relativity;
 
 /// Calculates Lorentz factor using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_lorentz_factor(
     velocity_json: *const c_char
@@ -31,7 +31,7 @@ pub extern "C" fn rssn_json_lorentz_factor(
 }
 
 /// Calculates mass-energy equivalence using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_mass_energy_equivalence(
     mass_json: *const c_char
@@ -50,7 +50,7 @@ pub extern "C" fn rssn_json_mass_energy_equivalence(
 }
 
 /// Calculates Schwarzschild radius using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_schwarzschild_radius(
     mass_json: *const c_char

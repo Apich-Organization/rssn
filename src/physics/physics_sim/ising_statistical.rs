@@ -41,7 +41,7 @@ pub fn run_ising_simulation(
         .. params.width
             * params.height)
         .map(|_| {
-            if rng.gen::<bool>() {
+            if rng.r#gen::<bool>() {
 
                 1
             } else {
@@ -96,7 +96,7 @@ pub fn run_ising_simulation(
 
                             let delta_e = 2.0 * f64::from(*g.add(idx)) * sum_neighbors;
 
-                            if delta_e < 0.0 || local_rng.gen::<f64>() < (-delta_e * b).exp() {
+                            if delta_e < 0.0 || local_rng.r#gen::<f64>() < (-delta_e * b).exp() {
 
                                 *g.add(idx) *= -1;
                             }
@@ -134,7 +134,7 @@ pub fn run_ising_simulation(
 
                             let delta_e = 2.0 * f64::from(*g.add(idx)) * sum_neighbors;
 
-                            if delta_e < 0.0 || local_rng.gen::<f64>() < (-delta_e * b).exp() {
+                            if delta_e < 0.0 || local_rng.r#gen::<f64>() < (-delta_e * b).exp() {
 
                                 *g.add(idx) *= -1;
                             }

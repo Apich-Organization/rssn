@@ -7,7 +7,7 @@ use crate::physics::physics_sim::gpe_superfluidity::{
 };
 
 /// Runs the GPE ground state finder and returns the result as a Matrix handle (Nx x Ny).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_sim_gpe_run_ground_state_finder(
     nx: usize,

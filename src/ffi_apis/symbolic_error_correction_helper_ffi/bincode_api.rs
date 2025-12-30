@@ -16,7 +16,7 @@ use crate::symbolic::error_correction_helper::poly_mul_gf256;
 use crate::symbolic::error_correction_helper::FiniteField;
 
 /// Performs addition in GF(2^8) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_gf256_add(
     a_buf: BincodeBuffer,
@@ -42,7 +42,7 @@ pub extern "C" fn rssn_bincode_gf256_add(
 }
 
 /// Performs multiplication in GF(2^8) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_gf256_mul(
     a_buf: BincodeBuffer,
@@ -68,7 +68,7 @@ pub extern "C" fn rssn_bincode_gf256_mul(
 }
 
 /// Computes inverse in GF(2^8) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_gf256_inv(
     a_buf: BincodeBuffer
@@ -96,7 +96,7 @@ pub extern "C" fn rssn_bincode_gf256_inv(
 }
 
 /// Evaluates a polynomial over GF(2^8) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_poly_eval_gf256(
     poly_buf: BincodeBuffer,
@@ -123,7 +123,7 @@ pub extern "C" fn rssn_bincode_poly_eval_gf256(
 }
 
 /// Adds two polynomials over GF(2^8) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_poly_add_gf256(
     p1_buf: BincodeBuffer,
@@ -150,7 +150,7 @@ pub extern "C" fn rssn_bincode_poly_add_gf256(
 }
 
 /// Multiplies two polynomials over GF(2^8) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_poly_mul_gf256(
     p1_buf: BincodeBuffer,
@@ -177,7 +177,7 @@ pub extern "C" fn rssn_bincode_poly_mul_gf256(
 }
 
 /// Adds two polynomials over a general finite field via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_poly_add_gf(
     p1_buf: BincodeBuffer,
@@ -196,12 +196,12 @@ pub extern "C" fn rssn_bincode_poly_add_gf(
             &modulus_buf,
         );
 
-    if let (
+    match (p1, p2, modulus)
+    { (
         Some(v1),
         Some(v2),
         Some(m),
-    ) = (p1, p2, modulus)
-    {
+    ) => {
 
         let field = FiniteField::new(m);
 
@@ -219,14 +219,14 @@ pub extern "C" fn rssn_bincode_poly_add_gf(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Multiplies two polynomials over a general finite field via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_poly_mul_gf(
     p1_buf: BincodeBuffer,
@@ -245,12 +245,12 @@ pub extern "C" fn rssn_bincode_poly_mul_gf(
             &modulus_buf,
         );
 
-    if let (
+    match (p1, p2, modulus)
+    { (
         Some(v1),
         Some(v2),
         Some(m),
-    ) = (p1, p2, modulus)
-    {
+    ) => {
 
         let field = FiniteField::new(m);
 
@@ -268,8 +268,8 @@ pub extern "C" fn rssn_bincode_poly_mul_gf(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

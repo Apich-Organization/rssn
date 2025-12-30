@@ -10,7 +10,7 @@ use crate::symbolic::core::Expr;
 
 /// Computes the numerical Taylor series coefficients.
 /// Returns a pointer to a Vec<f64> containing the coefficients.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -25,7 +25,7 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
     var: *const c_char,
     at_point: f64,
     order: usize,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if f.is_null() || var.is_null() {
 
@@ -70,10 +70,10 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Evaluates a power series at a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
     coeffs: *const Vec<f64>,
     at_point: f64,
     x: f64,
-) -> f64 {
+) -> f64 { unsafe {
 
     if coeffs.is_null() {
 
@@ -99,10 +99,10 @@ pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
         at_point,
         x,
     )
-}
+}}
 
 /// Computes the sum of a series.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn rssn_numerical_sum_series(
     start: i64,
     end: i64,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if f.is_null()
         || var.is_null()
@@ -167,4 +167,4 @@ pub unsafe extern "C" fn rssn_numerical_sum_series(
             -1
         },
     }
-}
+}}

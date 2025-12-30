@@ -6,7 +6,7 @@ use crate::symbolic::grobner::buchberger;
 use crate::symbolic::grobner::poly_division_multivariate;
 use crate::symbolic::grobner::MonomialOrder;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes a Gröbner basis using Buchberger's algorithm and returns it via bincode serialization.
 ///
@@ -40,9 +40,8 @@ pub extern "C" fn rssn_bincode_buchberger(
     let order: Option<MonomialOrder> =
         from_bincode_buffer(&order_buf);
 
-    if let (Some(b), Some(o)) =
-        (basis, order)
-    {
+    match (basis, order)
+    { (Some(b), Some(o)) => {
 
         match buchberger(&b, o) {
             | Ok(result) => {
@@ -54,13 +53,13 @@ pub extern "C" fn rssn_bincode_buchberger(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Divides a multivariate polynomial by a list of divisors under a given monomial order,
 /// returning the quotients and remainder via bincode serialization.
@@ -103,15 +102,15 @@ pub extern "C" fn rssn_bincode_poly_division_multivariate(
     let order: Option<MonomialOrder> =
         from_bincode_buffer(&order_buf);
 
-    if let (
-        Some(d),
-        Some(divs),
-        Some(o),
-    ) = (
+    match (
         dividend,
         divisors,
         order,
-    ) {
+    ) { (
+        Some(d),
+        Some(divs),
+        Some(o),
+    ) => {
 
         match poly_division_multivariate(
             &d, &divs, o,
@@ -125,8 +124,8 @@ pub extern "C" fn rssn_bincode_poly_division_multivariate(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

@@ -24,7 +24,7 @@ use crate::symbolic::error_correction_helper::poly_scale_gf256;
 use crate::symbolic::error_correction_helper::FiniteField;
 
 /// Performs addition in GF(2^8) (XOR operation).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_gf256_add(
     a: u8,
@@ -35,7 +35,7 @@ pub const extern "C" fn rssn_gf256_add(
 }
 
 /// Performs multiplication in GF(2^8).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_gf256_mul(
     a: u8,
@@ -46,7 +46,7 @@ pub extern "C" fn rssn_gf256_mul(
 }
 
 /// Computes the exponentiation (anti-logarithm) in GF(2^8).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_gf256_exp(
     log_val: u8
@@ -57,7 +57,7 @@ pub extern "C" fn rssn_gf256_exp(
 
 /// Computes the discrete logarithm in GF(2^8).
 /// Returns 0 if input is 0 (error case, as log(0) is undefined).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_gf256_log(
     a: u8
@@ -67,7 +67,7 @@ pub extern "C" fn rssn_gf256_log(
 }
 
 /// Computes a^exp in GF(2^8).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_gf256_pow(
     a: u8,
@@ -79,7 +79,7 @@ pub extern "C" fn rssn_gf256_pow(
 
 /// Computes the multiplicative inverse in GF(2^8).
 /// Returns 0 if input is 0 (error case).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_gf256_inv(
     a: u8
@@ -90,7 +90,7 @@ pub extern "C" fn rssn_gf256_inv(
 
 /// Performs division in GF(2^8).
 /// Returns 0 if divisor is 0 (error case).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_gf256_div(
     a: u8,
@@ -104,7 +104,7 @@ pub extern "C" fn rssn_gf256_div(
 ///
 /// # Safety
 /// Caller must ensure `poly` is a valid pointer to an array of `len` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn rssn_poly_eval_gf256(
     poly: *const u8,
     len: usize,
     x: u8,
-) -> u8 {
+) -> u8 { unsafe {
 
     if poly.is_null() || len == 0 {
 
@@ -131,13 +131,13 @@ pub unsafe extern "C" fn rssn_poly_eval_gf256(
         );
 
     poly_eval_gf256(slice, x)
-}
+}}
 
 /// Adds two polynomials over GF(2^8).
 ///
 /// # Safety
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -153,7 +153,7 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
     p2: *const u8,
     p2_len: usize,
     out_len: *mut usize,
-) -> *mut u8 {
+) -> *mut u8 { unsafe {
 
     if p1.is_null()
         || p2.is_null()
@@ -181,13 +181,13 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
         result.into_boxed_slice();
 
     Box::into_raw(boxed).cast::<u8>()
-}
+}}
 
 /// Multiplies two polynomials over GF(2^8).
 ///
 /// # Safety
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -203,7 +203,7 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
     p2: *const u8,
     p2_len: usize,
     out_len: *mut usize,
-) -> *mut u8 {
+) -> *mut u8 { unsafe {
 
     if p1.is_null()
         || p2.is_null()
@@ -231,13 +231,13 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
         result.into_boxed_slice();
 
     Box::into_raw(boxed).cast::<u8>()
-}
+}}
 
 /// Scales a polynomial by a constant in GF(2^8).
 ///
 /// # Safety
 /// Caller must ensure pointer is valid. Result is allocated and must be freed.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -252,7 +252,7 @@ pub unsafe extern "C" fn rssn_poly_scale_gf256(
     len: usize,
     scalar: u8,
     out_len: *mut usize,
-) -> *mut u8 {
+) -> *mut u8 { unsafe {
 
     if poly.is_null()
         || out_len.is_null()
@@ -275,13 +275,13 @@ pub unsafe extern "C" fn rssn_poly_scale_gf256(
         result.into_boxed_slice();
 
     Box::into_raw(boxed).cast::<u8>()
-}
+}}
 
 /// Computes the formal derivative of a polynomial in GF(2^8).
 ///
 /// # Safety
 /// Caller must ensure pointer is valid. Result is allocated and must be freed.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -295,7 +295,7 @@ pub unsafe extern "C" fn rssn_poly_derivative_gf256(
     poly: *const u8,
     len: usize,
     out_len: *mut usize,
-) -> *mut u8 {
+) -> *mut u8 { unsafe {
 
     if poly.is_null()
         || out_len.is_null()
@@ -318,13 +318,13 @@ pub unsafe extern "C" fn rssn_poly_derivative_gf256(
         result.into_boxed_slice();
 
     Box::into_raw(boxed).cast::<u8>()
-}
+}}
 
 /// Computes the GCD of two polynomials over GF(2^8).
 ///
 /// # Safety
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -340,7 +340,7 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
     p2: *const u8,
     p2_len: usize,
     out_len: *mut usize,
-) -> *mut u8 {
+) -> *mut u8 { unsafe {
 
     if p1.is_null()
         || p2.is_null()
@@ -368,12 +368,12 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
         result.into_boxed_slice();
 
     Box::into_raw(boxed).cast::<u8>()
-}
+}}
 
 /// Creates a new finite field GF(modulus).
 ///
 /// Returns an opaque handle to the field.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_finite_field_new(
     modulus: i64
@@ -388,7 +388,7 @@ pub extern "C" fn rssn_finite_field_new(
 ///
 /// # Safety
 /// Caller must ensure `field` is a valid pointer returned by `rssn_finite_field_new`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -400,19 +400,19 @@ pub extern "C" fn rssn_finite_field_new(
 
 pub unsafe extern "C" fn rssn_finite_field_free(
     field: *mut Arc<FiniteField>
-) {
+) { unsafe {
 
     if !field.is_null() {
 
         drop(Box::from_raw(field));
     }
-}
+}}
 
 /// Adds two polynomials over a general finite field.
 ///
 /// # Safety
 /// Caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -426,7 +426,7 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
     p1: *const Expr,
     p2: *const Expr,
     field: *const Arc<FiniteField>,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if p1.is_null()
         || p2.is_null()
@@ -450,13 +450,13 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 /// Multiplies two polynomials over a general finite field.
 ///
 /// # Safety
 /// Caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -470,7 +470,7 @@ pub unsafe extern "C" fn rssn_poly_mul_gf(
     p1: *const Expr,
     p2: *const Expr,
     field: *const Arc<FiniteField>,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if p1.is_null()
         || p2.is_null()
@@ -494,4 +494,4 @@ pub unsafe extern "C" fn rssn_poly_mul_gf(
             std::ptr::null_mut()
         },
     }
-}
+}}

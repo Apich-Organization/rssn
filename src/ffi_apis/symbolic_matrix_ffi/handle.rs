@@ -14,7 +14,7 @@ use crate::symbolic::matrix::transpose_matrix;
 
 /// and returns a raw pointer to a new `Expr` representing their sum.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_matrix_add_handle(
     m1: *const Expr,
@@ -44,7 +44,7 @@ pub extern "C" fn rssn_matrix_add_handle(
 
 /// and returns a raw pointer to a new `Expr` representing their product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_matrix_mul_handle(
     m1: *const Expr,
@@ -74,7 +74,7 @@ pub extern "C" fn rssn_matrix_mul_handle(
 
 /// and returns a raw pointer to a new `Expr` representing its transpose.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_matrix_transpose_handle(
     matrix: *const Expr
@@ -99,7 +99,7 @@ pub extern "C" fn rssn_matrix_transpose_handle(
 
 /// and returns a raw pointer to a new `Expr` representing its determinant.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_matrix_determinant_handle(
     matrix: *const Expr
@@ -123,7 +123,7 @@ pub extern "C" fn rssn_matrix_determinant_handle(
 
 /// and returns a raw pointer to a new `Expr` representing its inverse.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_matrix_inverse_handle(
     matrix: *const Expr
@@ -147,7 +147,7 @@ pub extern "C" fn rssn_matrix_inverse_handle(
 
 /// and returns a raw pointer to a new `Expr` representing the solution vector X.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_matrix_solve_linear_system_handle(
     a: *const Expr,

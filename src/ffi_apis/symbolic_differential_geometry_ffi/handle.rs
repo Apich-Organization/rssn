@@ -17,7 +17,7 @@ use crate::symbolic::vector::Vector;
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
     len: usize,
-) -> Option<Vec<String>> {
+) -> Option<Vec<String>> { unsafe {
 
     if arr.is_null() {
 
@@ -50,10 +50,10 @@ unsafe fn parse_c_str_array(
     }
 
     Some(vars)
-}
+}}
 
 /// Computes the exterior derivative of a differential form (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_exterior_derivative_handle(
     form_ptr: *const DifferentialForm,
@@ -95,7 +95,7 @@ pub extern "C" fn rssn_exterior_derivative_handle(
 }
 
 /// Computes the wedge product of two differential forms (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_wedge_product_handle(
     form1_ptr: *const DifferentialForm,
@@ -123,7 +123,7 @@ pub extern "C" fn rssn_wedge_product_handle(
 }
 
 /// Computes the boundary of a domain (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_boundary_handle(
     domain_ptr: *const Expr
@@ -145,7 +145,7 @@ pub extern "C" fn rssn_boundary_handle(
 }
 
 /// Represents the generalized Stokes' theorem (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_generalized_stokes_theorem_handle(
     omega_ptr: *const DifferentialForm,
@@ -193,7 +193,7 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
 }
 
 /// Represents Gauss's theorem (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_gauss_theorem_handle(
     vector_field_ptr: *const Vector,
@@ -224,7 +224,7 @@ pub extern "C" fn rssn_gauss_theorem_handle(
 }
 
 /// Represents Stokes' theorem (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_stokes_theorem_handle(
     vector_field_ptr: *const Vector,
@@ -255,7 +255,7 @@ pub extern "C" fn rssn_stokes_theorem_handle(
 }
 
 /// Represents Green's theorem (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_greens_theorem_handle(
     p_ptr: *const Expr,
@@ -290,7 +290,7 @@ pub extern "C" fn rssn_greens_theorem_handle(
 }
 
 /// Frees a `DifferentialForm` handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_differential_form_handle(
     ptr: *mut DifferentialForm

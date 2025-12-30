@@ -7,7 +7,7 @@ use crate::symbolic::quantum_mechanics::{
 };
 
 /// Computes the expectation value using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_expectation_value(
     op_buf: BincodeBuffer,
@@ -20,19 +20,18 @@ pub extern "C" fn rssn_bincode_expectation_value(
     let psi: Option<Ket> =
         from_bincode_buffer(&psi_buf);
 
-    if let (Some(op), Some(psi)) =
-        (op, psi)
-    {
+    match (op, psi)
+    { (Some(op), Some(psi)) => {
 
         to_bincode_buffer(&quantum_mechanics::expectation_value(&op, &psi))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the uncertainty using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_uncertainty(
     op_buf: BincodeBuffer,
@@ -45,19 +44,18 @@ pub extern "C" fn rssn_bincode_uncertainty(
     let psi: Option<Ket> =
         from_bincode_buffer(&psi_buf);
 
-    if let (Some(op), Some(psi)) =
-        (op, psi)
-    {
+    match (op, psi)
+    { (Some(op), Some(psi)) => {
 
         to_bincode_buffer(&quantum_mechanics::uncertainty(&op, &psi))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the inner product <Bra|Ket> using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bra_ket(
     bra_buf: BincodeBuffer,
@@ -70,17 +68,16 @@ pub extern "C" fn rssn_bincode_bra_ket(
     let ket: Option<Ket> =
         from_bincode_buffer(&ket_buf);
 
-    if let (Some(bra), Some(ket)) =
-        (bra, ket)
-    {
+    match (bra, ket)
+    { (Some(bra), Some(ket)) => {
 
         to_bincode_buffer(
             &quantum_mechanics::bra_ket(
                 &bra, &ket,
             ),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

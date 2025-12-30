@@ -8,7 +8,7 @@ use crate::symbolic::logic::to_cnf;
 use crate::symbolic::logic::to_dnf;
 
 /// Simplifies a logical expression using bincode-based FFI.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_simplify_logic(
     expr_buf: BincodeBuffer
@@ -29,7 +29,7 @@ pub extern "C" fn rssn_bincode_simplify_logic(
 }
 
 /// Converts a logical expression to Conjunctive Normal Form (CNF) using bincode-based FFI.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_to_cnf(
     expr_buf: BincodeBuffer
@@ -50,7 +50,7 @@ pub extern "C" fn rssn_bincode_to_cnf(
 }
 
 /// Converts a logical expression to Disjunctive Normal Form (DNF) using bincode-based FFI.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_to_dnf(
     expr_buf: BincodeBuffer
@@ -76,7 +76,7 @@ pub extern "C" fn rssn_bincode_to_dnf(
 /// - `Some(true)` if satisfiable
 /// - `Some(false)` if unsatisfiable
 /// - `None` if the expression contains quantifiers (undecidable)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_is_satisfiable(
     expr_buf: BincodeBuffer

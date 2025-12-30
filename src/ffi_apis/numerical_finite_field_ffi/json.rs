@@ -20,7 +20,7 @@ struct PfeBinaryOpRequest {
 }
 
 /// GF(p) addition from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -97,7 +97,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(
 }
 
 /// GF(p) multiplication from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -181,7 +181,7 @@ struct Gf256OpRequest {
 }
 
 /// GF(2^8) multiplication from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

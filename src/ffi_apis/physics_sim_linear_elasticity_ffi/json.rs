@@ -33,7 +33,7 @@ use crate::physics::physics_sim::linear_elasticity::{
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

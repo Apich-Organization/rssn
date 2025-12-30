@@ -7,7 +7,7 @@ use crate::symbolic::optimize::find_extrema;
 use crate::symbolic::optimize::hessian_matrix;
 
 /// Finds extrema of a function (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_find_extrema(
     expr_buf: BincodeBuffer,
@@ -20,9 +20,8 @@ pub extern "C" fn rssn_bincode_find_extrema(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    if let (Some(e), Some(v)) =
-        (expr, vars)
-    {
+    match (expr, vars)
+    { (Some(e), Some(v)) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -42,14 +41,14 @@ pub extern "C" fn rssn_bincode_find_extrema(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes Hessian matrix (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hessian_matrix(
     expr_buf: BincodeBuffer,
@@ -62,9 +61,8 @@ pub extern "C" fn rssn_bincode_hessian_matrix(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    if let (Some(e), Some(v)) =
-        (expr, vars)
-    {
+    match (expr, vars)
+    { (Some(e), Some(v)) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -77,14 +75,14 @@ pub extern "C" fn rssn_bincode_hessian_matrix(
         );
 
         to_bincode_buffer(&hessian)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Finds constrained extrema (Bincode)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_find_constrained_extrema(
     expr_buf: BincodeBuffer,
@@ -103,11 +101,11 @@ pub extern "C" fn rssn_bincode_find_constrained_extrema(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    if let (Some(e), Some(c), Some(v)) = (
+    match (
         expr,
         constraints,
         vars,
-    ) {
+    ) { (Some(e), Some(c), Some(v)) => {
 
         let vars_refs: Vec<&str> = v
             .iter()
@@ -128,8 +126,8 @@ pub extern "C" fn rssn_bincode_find_constrained_extrema(
                 BincodeBuffer::empty()
             },
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

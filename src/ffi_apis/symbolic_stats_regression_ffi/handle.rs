@@ -17,7 +17,7 @@ unsafe fn collect_pairs(
     x_data: *const *const Expr,
     y_data: *const *const Expr,
     len: usize,
-) -> Vec<(Expr, Expr)> {
+) -> Vec<(Expr, Expr)> { unsafe {
 
     let mut data =
         Vec::with_capacity(len);
@@ -40,7 +40,7 @@ unsafe fn collect_pairs(
     }
 
     data
-}
+}}
 
 /// Performs a simple linear regression.
 
@@ -50,7 +50,7 @@ unsafe fn collect_pairs(
 
 /// Returns a raw pointer to an `Expr` (vector) containing the intercept and slope coefficients.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -64,7 +64,7 @@ pub unsafe extern "C" fn rssn_simple_linear_regression(
     x_data: *const *const Expr,
     y_data: *const *const Expr,
     len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if x_data.is_null()
         || y_data.is_null()
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn rssn_simple_linear_regression(
     Box::into_raw(Box::new(
         Expr::Vector(vec![b0, b1]),
     ))
-}
+}}
 
 /// Performs a polynomial regression.
 
@@ -96,7 +96,7 @@ pub unsafe extern "C" fn rssn_simple_linear_regression(
 
 /// Returns a raw pointer to an `Expr` (vector) containing the coefficients of the polynomial.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -111,7 +111,7 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
     y_data: *const *const Expr,
     len: usize,
     degree: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if x_data.is_null()
         || y_data.is_null()
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
         },
         | Err(_) => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Performs a nonlinear regression.
 
@@ -148,7 +148,7 @@ pub unsafe extern "C" fn rssn_polynomial_regression(
 
 /// Returns a raw pointer to an `Expr` representing the solutions (optimized parameter values).
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -167,7 +167,7 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
     vars_len: usize,
     params: *const *const c_char,
     params_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if x_data.is_null()
         || y_data.is_null()
@@ -237,4 +237,4 @@ pub unsafe extern "C" fn rssn_nonlinear_regression(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}

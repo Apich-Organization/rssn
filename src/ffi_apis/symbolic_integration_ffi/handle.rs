@@ -6,7 +6,7 @@ use crate::symbolic::integration::integrate_rational_function_expr;
 use crate::symbolic::integration::risch_norman_integrate;
 
 /// Integrates an expression using the Risch-Norman algorithm (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_risch_norman_integrate_handle(
     expr: *const Expr,
@@ -46,7 +46,7 @@ pub extern "C" fn rssn_risch_norman_integrate_handle(
 }
 
 /// Integrates a rational function (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_integrate_rational_function_handle(
     expr: *const Expr,

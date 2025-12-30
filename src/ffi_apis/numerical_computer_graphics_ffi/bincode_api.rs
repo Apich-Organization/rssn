@@ -73,7 +73,7 @@ struct TwoQuaternionsInput {
 
 /// Computes the dot product of two 3D vectors using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -124,7 +124,7 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
 
 /// Computes the cross product of two 3D vectors using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -176,7 +176,7 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
 
 /// Normalizes a 3D vector using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -222,7 +222,7 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
 
 /// Creates a 3D rotation matrix around the X-axis using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -258,7 +258,7 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
 
 /// Creates a 3D translation matrix using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -298,7 +298,7 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
 
 /// Multiplies two quaternions using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

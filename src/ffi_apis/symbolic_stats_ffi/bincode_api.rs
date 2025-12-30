@@ -7,7 +7,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::stats;
 
 /// Computes the symbolic mean of a set of expressions using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_mean(
     data_buf: BincodeBuffer
@@ -28,7 +28,7 @@ pub extern "C" fn rssn_bincode_mean(
 }
 
 /// Computes the symbolic variance of a set of expressions using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_variance(
     data_buf: BincodeBuffer
@@ -49,7 +49,7 @@ pub extern "C" fn rssn_bincode_variance(
 }
 
 /// Computes the symbolic standard deviation of a set of expressions using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_std_dev(
     data_buf: BincodeBuffer
@@ -70,7 +70,7 @@ pub extern "C" fn rssn_bincode_std_dev(
 }
 
 /// Computes the symbolic covariance of two sets of expressions using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_covariance(
     data1_buf: BincodeBuffer,
@@ -83,23 +83,22 @@ pub extern "C" fn rssn_bincode_covariance(
     let data2: Option<Vec<Expr>> =
         from_bincode_buffer(&data2_buf);
 
-    if let (Some(d1), Some(d2)) =
-        (data1, data2)
-    {
+    match (data1, data2)
+    { (Some(d1), Some(d2)) => {
 
         to_bincode_buffer(
             &stats::covariance(
                 &d1, &d2,
             ),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the symbolic Pearson correlation coefficient using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_correlation(
     data1_buf: BincodeBuffer,
@@ -112,17 +111,16 @@ pub extern "C" fn rssn_bincode_correlation(
     let data2: Option<Vec<Expr>> =
         from_bincode_buffer(&data2_buf);
 
-    if let (Some(d1), Some(d2)) =
-        (data1, data2)
-    {
+    match (data1, data2)
+    { (Some(d1), Some(d2)) => {
 
         to_bincode_buffer(
             &stats::correlation(
                 &d1, &d2,
             ),
         )
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

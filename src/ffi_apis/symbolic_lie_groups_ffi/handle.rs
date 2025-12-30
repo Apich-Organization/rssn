@@ -5,7 +5,7 @@ use crate::symbolic::lie_groups_and_algebras::{LieAlgebra, so3, su2, lie_bracket
 
 // --- LieAlgebra ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Constructs the Lie algebra \(\mathfrak{so}(3)\) and returns a heap-allocated handle.
 ///
@@ -41,7 +41,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_so3_create(
     Box::into_raw(Box::new(algebra))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Constructs the Lie algebra \(\mathfrak{su}(2)\) and returns a heap-allocated handle.
 ///
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
     Box::into_raw(Box::new(algebra))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Frees a Lie algebra previously created by one of the constructor functions.
 ///
@@ -106,15 +106,15 @@ pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
 
 pub unsafe extern "C" fn rssn_lie_algebra_free(
     ptr: *mut LieAlgebra
-) {
+) { unsafe {
 
     if !ptr.is_null() {
 
         let _ = Box::from_raw(ptr);
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Returns the dimension of a Lie algebra.
 ///
@@ -141,12 +141,12 @@ pub unsafe extern "C" fn rssn_lie_algebra_free(
 
 pub const unsafe extern "C" fn rssn_lie_algebra_get_dimension(
     ptr: *const LieAlgebra
-) -> usize {
+) -> usize { unsafe {
 
     (*ptr).dimension
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Returns the name of a Lie algebra as a newly allocated C string.
 ///
@@ -180,7 +180,7 @@ pub const unsafe extern "C" fn rssn_lie_algebra_get_dimension(
 
 pub unsafe extern "C" fn rssn_lie_algebra_get_name(
     ptr: *const LieAlgebra
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     let name = &(*ptr).name;
 
@@ -189,9 +189,9 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_name(
     )
     .unwrap()
     .into_raw()
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Returns a basis element of a Lie algebra as a symbolic expression.
 ///
@@ -221,7 +221,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_name(
 pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
     ptr: *const LieAlgebra,
     index: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let algebra = &*ptr;
 
@@ -235,11 +235,11 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
             .0
             .clone(),
     ))
-}
+}}
 
 // --- Lie Bracket ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the Lie bracket of two elements of a Lie algebra.
 ///
@@ -269,7 +269,7 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
 pub unsafe extern "C" fn rssn_lie_bracket(
     x: *const Expr,
     y: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     match lie_bracket(&*x, &*y) {
         | Ok(result) => {
@@ -281,11 +281,11 @@ pub unsafe extern "C" fn rssn_lie_bracket(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 // --- Exponential Map ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Applies the exponential map to a Lie algebra element, returning the corresponding group element.
 ///
@@ -317,7 +317,7 @@ pub unsafe extern "C" fn rssn_lie_bracket(
 pub unsafe extern "C" fn rssn_exponential_map(
     x: *const Expr,
     order: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     match exponential_map(&*x, order) {
         | Ok(result) => {
@@ -329,11 +329,11 @@ pub unsafe extern "C" fn rssn_exponential_map(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 // --- Adjoint Representations ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Applies the adjoint representation of a Lie group element to a Lie algebra element.
 ///
@@ -366,7 +366,7 @@ pub unsafe extern "C" fn rssn_exponential_map(
 pub unsafe extern "C" fn rssn_adjoint_representation_group(
     g: *const Expr,
     x: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     match adjoint_representation_group(
         &*g, &*x,
@@ -380,9 +380,9 @@ pub unsafe extern "C" fn rssn_adjoint_representation_group(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Applies the adjoint representation of a Lie algebra element to another element.
 ///
@@ -415,7 +415,7 @@ pub unsafe extern "C" fn rssn_adjoint_representation_group(
 pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
     x: *const Expr,
     y: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     match adjoint_representation_algebra(
         &*x, &*y,
@@ -429,11 +429,11 @@ pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 // --- Commutator Table ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the commutator table of a Lie algebra and returns it as a flattened array of expressions.
 ///
@@ -467,7 +467,7 @@ pub unsafe extern "C" fn rssn_commutator_table(
     algebra: *const LieAlgebra,
     out_rows: *mut usize,
     out_cols: *mut usize,
-) -> *mut *mut Expr {
+) -> *mut *mut Expr { unsafe {
 
     match commutator_table(&*algebra) {
         | Ok(table) => {
@@ -521,11 +521,11 @@ pub unsafe extern "C" fn rssn_commutator_table(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 // --- Jacobi Identity Check ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Checks whether a Lie algebra satisfies the Jacobi identity.
 ///
@@ -556,7 +556,7 @@ pub unsafe extern "C" fn rssn_commutator_table(
 
 pub unsafe extern "C" fn rssn_check_jacobi_identity(
     algebra: *const LieAlgebra
-) -> bool {
+) -> bool { unsafe {
 
     match check_jacobi_identity(
         &*algebra,
@@ -564,11 +564,11 @@ pub unsafe extern "C" fn rssn_check_jacobi_identity(
         | Ok(result) => result,
         | Err(_) => false,
     }
-}
+}}
 
 // --- Generators ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Returns the standard generators of \(\mathfrak{so}(3)\) as a dynamically allocated array of expressions.
 ///
@@ -597,7 +597,7 @@ pub unsafe extern "C" fn rssn_check_jacobi_identity(
 
 pub unsafe extern "C" fn rssn_so3_generators(
     out_len: *mut usize
-) -> *mut *mut Expr {
+) -> *mut *mut Expr { unsafe {
 
     let generators = so3_generators();
 
@@ -607,10 +607,10 @@ pub unsafe extern "C" fn rssn_so3_generators(
         generators.len(),
     );
 
-    for gen in generators {
+    for r#gen in generators {
 
         ptrs.push(Box::into_raw(
-            Box::new(gen.0),
+            Box::new(r#gen.0),
         ));
     }
 
@@ -619,9 +619,9 @@ pub unsafe extern "C" fn rssn_so3_generators(
     std::mem::forget(ptrs);
 
     ptr
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Returns the standard generators of \(\mathfrak{su}(2)\) as a dynamically allocated array of expressions.
 ///
@@ -650,7 +650,7 @@ pub unsafe extern "C" fn rssn_so3_generators(
 
 pub unsafe extern "C" fn rssn_su2_generators(
     out_len: *mut usize
-) -> *mut *mut Expr {
+) -> *mut *mut Expr { unsafe {
 
     let generators = su2_generators();
 
@@ -660,10 +660,10 @@ pub unsafe extern "C" fn rssn_su2_generators(
         generators.len(),
     );
 
-    for gen in generators {
+    for r#gen in generators {
 
         ptrs.push(Box::into_raw(
-            Box::new(gen.0),
+            Box::new(r#gen.0),
         ));
     }
 
@@ -672,4 +672,4 @@ pub unsafe extern "C" fn rssn_su2_generators(
     std::mem::forget(ptrs);
 
     ptr
-}
+}}

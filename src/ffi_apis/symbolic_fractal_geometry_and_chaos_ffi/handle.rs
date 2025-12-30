@@ -4,7 +4,7 @@ use crate::symbolic::fractal_geometry_and_chaos::{IteratedFunctionSystem, Comple
 // --- IteratedFunctionSystem ---
 
 /// Creates a new `IteratedFunctionSystem` (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_ifs_create(
     functions_ptr: *const *mut Expr,
@@ -83,7 +83,7 @@ pub extern "C" fn rssn_ifs_create(
 }
 
 /// Frees an `IteratedFunctionSystem` handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_ifs_free(
     ptr: *mut IteratedFunctionSystem
@@ -99,7 +99,7 @@ pub extern "C" fn rssn_ifs_free(
 }
 
 /// Calculates similarity dimension (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_ifs_similarity_dimension(
     scaling_factors_ptr : *const *mut Expr,
@@ -133,7 +133,7 @@ pub extern "C" fn rssn_ifs_similarity_dimension(
 // --- ComplexDynamicalSystem ---
 
 /// Creates a new Mandelbrot family system (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_complex_system_new_mandelbrot(
     c_ptr: *const Expr
@@ -155,7 +155,7 @@ pub extern "C" fn rssn_complex_system_new_mandelbrot(
 }
 
 /// Frees a `ComplexDynamicalSystem` handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_complex_system_free(
     ptr: *mut ComplexDynamicalSystem
@@ -171,7 +171,7 @@ pub extern "C" fn rssn_complex_system_free(
 }
 
 /// Iterates the system once (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_complex_system_iterate(
     system_ptr : *const ComplexDynamicalSystem,
@@ -198,7 +198,7 @@ pub extern "C" fn rssn_complex_system_iterate(
 }
 
 /// Finds fixed points (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_complex_system_fixed_points(
     system_ptr : *const ComplexDynamicalSystem,
@@ -246,7 +246,7 @@ pub extern "C" fn rssn_complex_system_fixed_points(
 // --- Chaos Theory Functions ---
 
 /// Finds fixed points of a 1D map (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_find_fixed_points(
     map_ptr: *const Expr,
@@ -303,7 +303,7 @@ pub extern "C" fn rssn_find_fixed_points(
 }
 
 /// Analyzes stability of a fixed point (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_analyze_stability(
     map_ptr: *const Expr,
@@ -344,7 +344,7 @@ pub extern "C" fn rssn_analyze_stability(
 }
 
 /// Calculates Lyapunov exponent (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_lyapunov_exponent(
     map_ptr: *const Expr,
@@ -386,7 +386,7 @@ pub extern "C" fn rssn_lyapunov_exponent(
 }
 
 /// Returns Lorenz system equations (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_lorenz_system(
     dx_out: *mut *mut Expr,

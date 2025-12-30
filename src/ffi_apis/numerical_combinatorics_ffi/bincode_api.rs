@@ -31,7 +31,7 @@ struct RecurrenceInput {
 
 /// Computes the factorial of a number using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -69,7 +69,7 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(
 
 /// Computes the number of permutations using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
 
 /// Computes the number of combinations using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -149,7 +149,7 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
 
 /// Solves a linear recurrence relation using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -206,7 +206,7 @@ struct XNInput {
 
 /// Computes the Stirling number of the second kind using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -246,7 +246,7 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
 
 /// Computes the Bell number using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -283,7 +283,7 @@ pub unsafe extern "C" fn rssn_num_comb_bell_bincode(
 
 /// Computes the Catalan number using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -320,7 +320,7 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(
 
 /// Computes the rising factorial using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -360,7 +360,7 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
 
 /// Computes the falling factorial using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -7,7 +7,7 @@ use crate::physics::physics_sim::geodesic_relativity::{
 };
 
 /// Runs a geodesic simulation and returns the resulting path as a Matrix handle (Nx2).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_physics_sim_geodesic_run(
     black_hole_mass: f64,

@@ -269,7 +269,7 @@ impl JitEngine {
             }
 
             macro_rules! push {
-                ($val:expr) => {{
+                ($val:expr_2021) => {{
 
                     let val = $val;
 

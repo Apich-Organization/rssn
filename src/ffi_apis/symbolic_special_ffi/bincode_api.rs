@@ -14,7 +14,7 @@ use crate::symbolic::special;
 // ============================================================================
 
 /// Computes Γ(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_gamma_numerical(
     val_buf: BincodeBuffer
@@ -37,7 +37,7 @@ pub extern "C" fn rssn_bincode_gamma_numerical(
 }
 
 /// Computes ln(Γ(x)) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_ln_gamma_numerical(
     val_buf: BincodeBuffer
@@ -56,7 +56,7 @@ pub extern "C" fn rssn_bincode_ln_gamma_numerical(
 }
 
 /// Computes ψ(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_digamma_numerical(
     val_buf: BincodeBuffer
@@ -79,7 +79,7 @@ pub extern "C" fn rssn_bincode_digamma_numerical(
 }
 
 /// Computes B(a, b) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_beta_numerical(
     a_buf: BincodeBuffer,
@@ -108,7 +108,7 @@ pub extern "C" fn rssn_bincode_beta_numerical(
 }
 
 /// Computes ln(B(a, b)) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_ln_beta_numerical(
     a_buf: BincodeBuffer,
@@ -137,7 +137,7 @@ pub extern "C" fn rssn_bincode_ln_beta_numerical(
 }
 
 /// Computes Iₓ(a, b) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_regularized_incomplete_beta(
     a_buf: BincodeBuffer,
@@ -169,7 +169,7 @@ pub extern "C" fn rssn_bincode_regularized_incomplete_beta(
 }
 
 /// Computes P(a, x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_regularized_gamma_p(
     a_buf: BincodeBuffer,
@@ -193,7 +193,7 @@ pub extern "C" fn rssn_bincode_regularized_gamma_p(
 }
 
 /// Computes Q(a, x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_regularized_gamma_q(
     a_buf: BincodeBuffer,
@@ -221,7 +221,7 @@ pub extern "C" fn rssn_bincode_regularized_gamma_q(
 // ============================================================================
 
 /// Computes erf(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_erf_numerical(
     val_buf: BincodeBuffer
@@ -242,7 +242,7 @@ pub extern "C" fn rssn_bincode_erf_numerical(
 }
 
 /// Computes erfc(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_erfc_numerical(
     val_buf: BincodeBuffer
@@ -263,7 +263,7 @@ pub extern "C" fn rssn_bincode_erfc_numerical(
 }
 
 /// Computes erf⁻¹(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_inverse_erf(
     val_buf: BincodeBuffer
@@ -284,7 +284,7 @@ pub extern "C" fn rssn_bincode_inverse_erf(
 }
 
 /// Computes erfc⁻¹(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_inverse_erfc(
     val_buf: BincodeBuffer
@@ -309,7 +309,7 @@ pub extern "C" fn rssn_bincode_inverse_erfc(
 // ============================================================================
 
 /// Computes n! via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_factorial(
     n_buf: BincodeBuffer
@@ -330,7 +330,7 @@ pub extern "C" fn rssn_bincode_factorial(
 }
 
 /// Computes n!! via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_double_factorial(
     n_buf: BincodeBuffer
@@ -353,7 +353,7 @@ pub extern "C" fn rssn_bincode_double_factorial(
 }
 
 /// Computes C(n, k) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_binomial(
     n_buf: BincodeBuffer,
@@ -379,7 +379,7 @@ pub extern "C" fn rssn_bincode_binomial(
 }
 
 /// Computes (x)ₙ via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_rising_factorial(
     x_buf: BincodeBuffer,
@@ -407,7 +407,7 @@ pub extern "C" fn rssn_bincode_rising_factorial(
 }
 
 /// Computes (x)₍ₙ₎ via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_falling_factorial(
     x_buf: BincodeBuffer,
@@ -435,7 +435,7 @@ pub extern "C" fn rssn_bincode_falling_factorial(
 }
 
 /// Computes ln(n!) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_ln_factorial(
     n_buf: BincodeBuffer
@@ -460,7 +460,7 @@ pub extern "C" fn rssn_bincode_ln_factorial(
 // ============================================================================
 
 /// Computes J₀(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_j0(
     val_buf: BincodeBuffer
@@ -481,7 +481,7 @@ pub extern "C" fn rssn_bincode_bessel_j0(
 }
 
 /// Computes J₁(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_j1(
     val_buf: BincodeBuffer
@@ -502,7 +502,7 @@ pub extern "C" fn rssn_bincode_bessel_j1(
 }
 
 /// Computes Y₀(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_y0(
     val_buf: BincodeBuffer
@@ -523,7 +523,7 @@ pub extern "C" fn rssn_bincode_bessel_y0(
 }
 
 /// Computes Y₁(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_y1(
     val_buf: BincodeBuffer
@@ -544,7 +544,7 @@ pub extern "C" fn rssn_bincode_bessel_y1(
 }
 
 /// Computes I₀(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_i0(
     val_buf: BincodeBuffer
@@ -565,7 +565,7 @@ pub extern "C" fn rssn_bincode_bessel_i0(
 }
 
 /// Computes I₁(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_i1(
     val_buf: BincodeBuffer
@@ -586,7 +586,7 @@ pub extern "C" fn rssn_bincode_bessel_i1(
 }
 
 /// Computes K₀(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_k0(
     val_buf: BincodeBuffer
@@ -607,7 +607,7 @@ pub extern "C" fn rssn_bincode_bessel_k0(
 }
 
 /// Computes K₁(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_bessel_k1(
     val_buf: BincodeBuffer
@@ -632,7 +632,7 @@ pub extern "C" fn rssn_bincode_bessel_k1(
 // ============================================================================
 
 /// Computes sinc(x) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_sinc(
     val_buf: BincodeBuffer
@@ -653,7 +653,7 @@ pub extern "C" fn rssn_bincode_sinc(
 }
 
 /// Computes ζ(s) via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_zeta_numerical(
     val_buf: BincodeBuffer

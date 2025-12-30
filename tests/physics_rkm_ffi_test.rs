@@ -22,7 +22,7 @@ fn test_lorenz_handle_ffi() {
         assert_eq!(matrix.cols(), 4); // time, x, y, z
                                       // Clean up
         let _ =
-            Box::from_raw(matrix_ptr);
+            Box::from_raw(matrix_ptr as *mut rssn::ffi_apis::numerical_matrix_ffi::handle::RssnMatrixHandle);
     }
 }
 

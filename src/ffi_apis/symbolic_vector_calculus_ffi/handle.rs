@@ -49,7 +49,7 @@ fn parse_expr_from_cstr(
 // ===== ParametricCurve Handle Functions =====
 
 /// Creates a new `ParametricCurve`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_parametric_curve_new(
     r_x: *const c_char,
@@ -116,7 +116,7 @@ pub extern "C" fn rssn_parametric_curve_new(
 }
 
 /// Frees a `ParametricCurve` handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_parametric_curve_free(
     curve: *mut ParametricCurve
@@ -135,7 +135,7 @@ pub extern "C" fn rssn_parametric_curve_free(
 // ===== ParametricSurface Handle Functions =====
 
 /// Creates a new `ParametricSurface`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_parametric_surface_new(
     r_x: *const c_char,
@@ -229,7 +229,7 @@ pub extern "C" fn rssn_parametric_surface_new(
 }
 
 /// Frees a `ParametricSurface` handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_parametric_surface_free(
     surface: *mut ParametricSurface
@@ -248,7 +248,7 @@ pub extern "C" fn rssn_parametric_surface_free(
 // ===== Volume Handle Functions =====
 
 /// Creates a new Volume.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volume_new(
     z_lower: *const c_char,
@@ -349,7 +349,7 @@ pub extern "C" fn rssn_volume_new(
 }
 
 /// Frees a Volume handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volume_free(
     volume: *mut Volume
@@ -368,7 +368,7 @@ pub extern "C" fn rssn_volume_free(
 // ===== Vector Calculus Operations =====
 
 /// Computes the line integral of a scalar field along a curve.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_line_integral_scalar(
     scalar_field: *const c_char,
@@ -410,7 +410,7 @@ pub extern "C" fn rssn_line_integral_scalar(
 }
 
 /// Computes the line integral of a vector field along a curve.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_line_integral_vector(
     field_x: *const c_char,
@@ -470,7 +470,7 @@ pub extern "C" fn rssn_line_integral_vector(
 }
 
 /// Computes the surface integral (flux) of a vector field.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_surface_integral(
     field_x: *const c_char,
@@ -529,7 +529,7 @@ pub extern "C" fn rssn_surface_integral(
 }
 
 /// Computes the volume integral of a scalar field.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volume_integral(
     scalar_field: *const c_char,

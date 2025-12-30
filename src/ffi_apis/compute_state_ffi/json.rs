@@ -7,7 +7,7 @@ use crate::ffi_apis::common::to_c_string;
 
 /// Creates a new State and returns it as a JSON string.
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_state_new_json(
 ) -> *mut c_char {
@@ -26,7 +26,7 @@ pub extern "C" fn rssn_state_new_json(
 /// Gets the intermediate value from a JSON state string.
 /// Returns the value as a plain string (not JSON-encoded).
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_state_get_intermediate_value_json(
     json_state: *const c_char
@@ -66,7 +66,7 @@ pub extern "C" fn rssn_state_get_intermediate_value_json(
 
 /// Sets the intermediate value in a JSON state string and returns the updated JSON.
 /// The caller must free the returned string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_state_set_intermediate_value_json(
     json_state: *const c_char,

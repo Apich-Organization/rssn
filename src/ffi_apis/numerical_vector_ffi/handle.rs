@@ -6,7 +6,7 @@ use crate::numerical::vector;
 
 /// Creates a new numerical vector from a raw array of doubles.
 /// The caller is responsible for freeing the returned pointer using `rssn_num_vec_free`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -19,7 +19,7 @@ use crate::numerical::vector;
 pub unsafe extern "C" fn rssn_num_vec_create(
     data: *const f64,
     len: usize,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if data.is_null() {
 
@@ -41,10 +41,10 @@ pub unsafe extern "C" fn rssn_num_vec_create(
     .to_vec();
 
     Box::into_raw(Box::new(v))
-}
+}}
 
 /// Frees a numerical vector allocated by the library.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -68,7 +68,7 @@ pub unsafe extern "C" fn rssn_num_vec_free(
 }
 
 /// Returns the length of a numerical vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -94,7 +94,7 @@ pub const unsafe extern "C" fn rssn_num_vec_len(
 }
 
 /// Returns a pointer to the underlying data of a numerical vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -120,7 +120,7 @@ pub const unsafe extern "C" fn rssn_num_vec_data(
 }
 
 /// Computes the sum of two vectors.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -133,7 +133,7 @@ pub const unsafe extern "C" fn rssn_num_vec_data(
 pub unsafe extern "C" fn rssn_num_vec_add(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if v1.is_null() || v2.is_null() {
 
@@ -162,10 +162,10 @@ pub unsafe extern "C" fn rssn_num_vec_add(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 /// Computes the difference of two vectors.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -178,7 +178,7 @@ pub unsafe extern "C" fn rssn_num_vec_add(
 pub unsafe extern "C" fn rssn_num_vec_sub(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if v1.is_null() || v2.is_null() {
 
@@ -207,10 +207,10 @@ pub unsafe extern "C" fn rssn_num_vec_sub(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 /// Multiplies a vector by a scalar.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -242,7 +242,7 @@ pub unsafe extern "C" fn rssn_num_vec_scalar_mul(
 }
 
 /// Computes the dot product of two vectors.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -256,7 +256,7 @@ pub unsafe extern "C" fn rssn_num_vec_dot_product(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if v1.is_null()
         || v2.is_null()
@@ -292,10 +292,10 @@ pub unsafe extern "C" fn rssn_num_vec_dot_product(
             -1
         },
     }
-}
+}}
 
 /// Computes the L2 norm of a vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -324,7 +324,7 @@ pub unsafe extern "C" fn rssn_num_vec_norm(
 }
 
 /// Computes the Lp norm of a vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -355,7 +355,7 @@ pub unsafe extern "C" fn rssn_num_vec_lp_norm(
 }
 
 /// Normalizes a vector.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -367,7 +367,7 @@ pub unsafe extern "C" fn rssn_num_vec_lp_norm(
 
 pub unsafe extern "C" fn rssn_num_vec_normalize(
     v: *const Vec<f64>
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if v.is_null() {
 
@@ -388,10 +388,10 @@ pub unsafe extern "C" fn rssn_num_vec_normalize(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 /// Computes the cross product of two 3D vectors.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -404,7 +404,7 @@ pub unsafe extern "C" fn rssn_num_vec_normalize(
 pub unsafe extern "C" fn rssn_num_vec_cross_product(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if v1.is_null() || v2.is_null() {
 
@@ -431,10 +431,10 @@ pub unsafe extern "C" fn rssn_num_vec_cross_product(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 /// Computes the angle between two vectors.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -448,7 +448,7 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if v1.is_null()
         || v2.is_null()
@@ -484,10 +484,10 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
             -1
         },
     }
-}
+}}
 
 /// Projects v1 onto v2.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -500,7 +500,7 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
 pub unsafe extern "C" fn rssn_num_vec_project(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if v1.is_null() || v2.is_null() {
 
@@ -527,10 +527,10 @@ pub unsafe extern "C" fn rssn_num_vec_project(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 /// Reflects v about n.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -543,7 +543,7 @@ pub unsafe extern "C" fn rssn_num_vec_project(
 pub unsafe extern "C" fn rssn_num_vec_reflect(
     v: *const Vec<f64>,
     n: *const Vec<f64>,
-) -> *mut Vec<f64> {
+) -> *mut Vec<f64> { unsafe {
 
     if v.is_null() || n.is_null() {
 
@@ -570,6 +570,6 @@ pub unsafe extern "C" fn rssn_num_vec_reflect(
             std::ptr::null_mut()
         },
     }
-}
+}}
 
 // Correction for reflect: vector::reflect(&*v, &*n)

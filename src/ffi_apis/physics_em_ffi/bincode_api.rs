@@ -46,7 +46,7 @@ struct EulerInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -26,7 +26,7 @@ use crate::symbolic::core::Expr;
 ///
 /// This function is unsafe because it dereferences raw bincode buffers that must
 /// contain valid serialized `Expr` values.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -74,7 +74,7 @@ pub unsafe extern "C" fn rssn_bincode_permutations(
 ///
 /// This function is unsafe because it dereferences raw bincode buffers that must
 /// contain valid serialized `Expr` values.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -122,7 +122,7 @@ pub unsafe extern "C" fn rssn_bincode_combinations(
 /// This function is unsafe because it is exposed as an FFI entry point, but it does
 /// not dereference raw pointers.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rssn_bincode_catalan_number(
     to_bincode_buffer(&result)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes a Stirling number of the second kind symbolically and returns it via bincode.
 ///
@@ -199,7 +199,7 @@ pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point, but it does
 /// not dereference raw pointers.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

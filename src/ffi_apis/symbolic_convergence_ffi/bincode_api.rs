@@ -14,7 +14,7 @@ use crate::symbolic::core::Expr;
 
 /// Returns a `BincodeBuffer` containing the analysis result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_analyze_convergence(
     term_buf: BincodeBuffer,
@@ -28,16 +28,15 @@ pub extern "C" fn rssn_bincode_analyze_convergence(
     let var: Option<String> =
         from_bincode_buffer(&var_buf);
 
-    if let (Some(t), Some(v)) =
-        (term, var)
-    {
+    match (term, var)
+    { (Some(t), Some(v)) => {
 
         let result =
             analyze_convergence(&t, &v);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

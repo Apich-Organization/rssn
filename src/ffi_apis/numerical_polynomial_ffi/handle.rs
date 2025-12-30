@@ -6,7 +6,7 @@ use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::polynomial::Polynomial;
 
 /// Creates a new polynomial from coefficients.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -19,7 +19,7 @@ use crate::numerical::polynomial::Polynomial;
 pub unsafe extern "C" fn rssn_num_poly_create(
     coeffs: *const f64,
     len: usize,
-) -> *mut Polynomial {
+) -> *mut Polynomial { unsafe {
 
     if coeffs.is_null() {
 
@@ -45,10 +45,10 @@ pub unsafe extern "C" fn rssn_num_poly_create(
             coeffs: c.to_vec(),
         },
     ))
-}
+}}
 
 /// Frees a polynomial object.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_num_poly_free(
 }
 
 /// Evaluates a polynomial at x.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -99,7 +99,7 @@ pub unsafe extern "C" fn rssn_num_poly_eval(
 }
 
 /// Returns the degree of a polynomial.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -125,7 +125,7 @@ pub const unsafe extern "C" fn rssn_num_poly_degree(
 }
 
 /// Computes the derivative.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -153,7 +153,7 @@ pub unsafe extern "C" fn rssn_num_poly_derivative(
 }
 
 /// Computes the integral.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -181,7 +181,7 @@ pub unsafe extern "C" fn rssn_num_poly_integral(
 }
 
 /// Adds two polynomials.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -210,7 +210,7 @@ pub unsafe extern "C" fn rssn_num_poly_add(
 }
 
 /// Subtracts two polynomials.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -239,7 +239,7 @@ pub unsafe extern "C" fn rssn_num_poly_sub(
 }
 
 /// Multiplies two polynomials.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -42,7 +42,7 @@ struct AirfoilInput {
 }
 
 /// Solves a Fredholm equation using the Neumann series method (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_fredholm_solve_neumann_json(
     input_json: *const c_char
@@ -69,7 +69,7 @@ pub extern "C" fn rssn_fredholm_solve_neumann_json(
 }
 
 /// Solves a Fredholm equation with a separable kernel (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_fredholm_solve_separable_json(
     input_json: *const c_char
@@ -102,7 +102,7 @@ pub extern "C" fn rssn_fredholm_solve_separable_json(
 }
 
 /// Solves a Volterra equation using successive approximations (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volterra_solve_successive_json(
     input_json: *const c_char
@@ -127,7 +127,7 @@ pub extern "C" fn rssn_volterra_solve_successive_json(
 }
 
 /// Solves a Volterra equation by differentiation (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volterra_solve_by_differentiation_json(
     input_json: *const c_char
@@ -157,7 +157,7 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation_json(
 }
 
 /// Solves the airfoil singular integral equation (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_solve_airfoil_equation_json(
     input_json: *const c_char

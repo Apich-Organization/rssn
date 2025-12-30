@@ -38,7 +38,7 @@ struct ErrorResponse {
 }
 
 /// Applies rewrite rules to an expression (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_apply_rules_to_normal_form_bincode(
     input: BincodeBuffer
@@ -66,7 +66,7 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_bincode(
 }
 
 /// Applies the Knuth-Bendix completion algorithm (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_knuth_bendix_bincode(
     input: BincodeBuffer
@@ -102,7 +102,7 @@ pub extern "C" fn rssn_knuth_bendix_bincode(
 }
 
 /// Creates a rewrite rule from Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_rewrite_rule_new_bincode(
     input: BincodeBuffer
@@ -128,7 +128,7 @@ pub extern "C" fn rssn_rewrite_rule_new_bincode(
 }
 
 /// Converts a rewrite rule to a human-readable string (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_rewrite_rule_to_string_bincode(
     input: BincodeBuffer

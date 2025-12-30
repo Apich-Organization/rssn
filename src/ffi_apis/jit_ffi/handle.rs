@@ -3,7 +3,7 @@
 use crate::jit::JitEngine;
 
 /// Creates a new JIT Engine instance.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_jit_create(
 ) -> *mut JitEngine {
@@ -14,7 +14,7 @@ pub extern "C" fn rssn_jit_create(
 }
 
 /// Frees a JIT Engine instance.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -26,20 +26,20 @@ pub extern "C" fn rssn_jit_create(
 
 pub unsafe extern "C" fn rssn_jit_free(
     engine: *mut JitEngine
-) {
+) { unsafe {
 
     if !engine.is_null() {
 
         let _ = Box::from_raw(engine);
     }
-}
+}}
 
 /// Executes a JIT-compiled function pointer.
 ///
 /// # Safety
 /// The function pointer must be a valid pointer returned by `rssn_jit_compile_*`.
 /// It assumes the function signature is `fn() -> f64`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rssn_jit_free(
 
 pub unsafe extern "C" fn rssn_jit_execute(
     func_ptr: *const u8
-) -> f64 {
+) -> f64 { unsafe {
 
     if func_ptr.is_null() {
 
@@ -68,14 +68,14 @@ pub unsafe extern "C" fn rssn_jit_execute(
     let func: unsafe extern "C" fn() -> f64 = std::mem::transmute(func_ptr);
 
     func()
-}
+}}
 
 /// Registers a custom instruction handler.
 ///
 /// `opcode`: The exact u32 opcode found in `Instruction::Custom`.
 /// `func_ptr`: Pointer to the C function to call. Signature must be `fn(i64, ...) -> i64` where `i64` represents a stack value.
 /// `arg_count`: Number of arguments the function expects (popped from stack).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -90,7 +90,7 @@ pub unsafe extern "C" fn rssn_jit_register_custom_op(
     opcode: u32,
     func_ptr: *const u8,
     arg_count: usize,
-) {
+) { unsafe {
 
     if engine.is_null()
         || func_ptr.is_null()
@@ -106,4 +106,4 @@ pub unsafe extern "C" fn rssn_jit_register_custom_op(
         func_ptr,
         arg_count,
     );
-}
+}}

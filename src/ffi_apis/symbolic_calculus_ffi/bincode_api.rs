@@ -9,7 +9,7 @@ use crate::symbolic::calculus;
 use crate::symbolic::core::Expr;
 
 /// Differentiates an expression using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_differentiate(
     expr_buf: BincodeBuffer,
@@ -34,9 +34,8 @@ pub extern "C" fn rssn_bincode_differentiate(
         }
     };
 
-    if let (Some(e), Some(v)) =
-        (expr, var_str)
-    {
+    match (expr, var_str)
+    { (Some(e), Some(v)) => {
 
         let result =
             calculus::differentiate(
@@ -44,14 +43,14 @@ pub extern "C" fn rssn_bincode_differentiate(
             );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Integrates an expression using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_integrate(
     expr_buf: BincodeBuffer,
@@ -76,9 +75,8 @@ pub extern "C" fn rssn_bincode_integrate(
         }
     };
 
-    if let (Some(e), Some(v)) =
-        (expr, var_str)
-    {
+    match (expr, var_str)
+    { (Some(e), Some(v)) => {
 
         let result =
             calculus::integrate(
@@ -86,14 +84,14 @@ pub extern "C" fn rssn_bincode_integrate(
             );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes definite integral using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_definite_integrate(
     expr_buf: BincodeBuffer,
@@ -126,29 +124,29 @@ pub extern "C" fn rssn_bincode_definite_integrate(
         }
     };
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(l),
-        Some(u),
-    ) = (
+    match (
         expr,
         var_str,
         lower,
         upper,
-    ) {
+    ) { (
+        Some(e),
+        Some(v),
+        Some(l),
+        Some(u),
+    ) => {
 
         let result = calculus::definite_integrate(&e, v, &l, &u);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Checks analytic using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_check_analytic(
     expr_buf: BincodeBuffer,
@@ -173,19 +171,18 @@ pub extern "C" fn rssn_bincode_check_analytic(
         }
     };
 
-    if let (Some(e), Some(v)) =
-        (expr, var_str)
-    {
+    match (expr, var_str)
+    { (Some(e), Some(v)) => {
 
         calculus::check_analytic(&e, v)
-    } else {
+    } _ => {
 
         false
-    }
+    }}
 }
 
 /// Computes limit using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_limit(
     expr_buf: BincodeBuffer,
@@ -214,22 +211,21 @@ pub extern "C" fn rssn_bincode_limit(
         }
     };
 
-    if let (Some(e), Some(v), Some(p)) =
-        (expr, var_str, point)
-    {
+    match (expr, var_str, point)
+    { (Some(e), Some(v), Some(p)) => {
 
         let result =
             calculus::limit(&e, v, &p);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Finds poles using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_find_poles(
     expr_buf: BincodeBuffer,
@@ -254,22 +250,21 @@ pub extern "C" fn rssn_bincode_find_poles(
         }
     };
 
-    if let (Some(e), Some(v)) =
-        (expr, var_str)
-    {
+    match (expr, var_str)
+    { (Some(e), Some(v)) => {
 
         let result =
             calculus::find_poles(&e, v);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Calculates residue using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_calculate_residue(
     expr_buf: BincodeBuffer,
@@ -298,9 +293,8 @@ pub extern "C" fn rssn_bincode_calculate_residue(
         }
     };
 
-    if let (Some(e), Some(v), Some(p)) =
-        (expr, var_str, pole)
-    {
+    match (expr, var_str, pole)
+    { (Some(e), Some(v), Some(p)) => {
 
         let result =
             calculus::calculate_residue(
@@ -308,14 +302,14 @@ pub extern "C" fn rssn_bincode_calculate_residue(
             );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Finds pole order using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_find_pole_order(
     expr_buf: BincodeBuffer,
@@ -344,21 +338,20 @@ pub extern "C" fn rssn_bincode_find_pole_order(
         }
     };
 
-    if let (Some(e), Some(v), Some(p)) =
-        (expr, var_str, pole)
-    {
+    match (expr, var_str, pole)
+    { (Some(e), Some(v), Some(p)) => {
 
         calculus::find_pole_order(
             &e, v, &p,
         )
-    } else {
+    } _ => {
 
         0
-    }
+    }}
 }
 
 /// Substitutes using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_substitute(
     expr_buf: BincodeBuffer,
@@ -389,11 +382,11 @@ pub extern "C" fn rssn_bincode_substitute(
         }
     };
 
-    if let (Some(e), Some(v), Some(r)) = (
+    match (
         expr,
         var_str,
         replacement,
-    ) {
+    ) { (Some(e), Some(v), Some(r)) => {
 
         let result =
             calculus::substitute(
@@ -401,14 +394,14 @@ pub extern "C" fn rssn_bincode_substitute(
             );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Gets real and imaginary parts using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_get_real_imag_parts(
     expr_buf: BincodeBuffer
@@ -429,7 +422,7 @@ pub extern "C" fn rssn_bincode_get_real_imag_parts(
 }
 
 /// Computes path integral using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_path_integrate(
     expr_buf: BincodeBuffer,
@@ -460,11 +453,11 @@ pub extern "C" fn rssn_bincode_path_integrate(
         }
     };
 
-    if let (Some(e), Some(v), Some(c)) = (
+    match (
         expr,
         var_str,
         contour,
-    ) {
+    ) { (Some(e), Some(v), Some(c)) => {
 
         let result =
             calculus::path_integrate(
@@ -472,14 +465,14 @@ pub extern "C" fn rssn_bincode_path_integrate(
             );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Evaluates at point using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_evaluate_at_point(
     expr_buf: BincodeBuffer,
@@ -508,12 +501,12 @@ pub extern "C" fn rssn_bincode_evaluate_at_point(
         }
     };
 
-    if let (
+    match (expr, var_str, value)
+    { (
         Some(e),
         Some(v),
         Some(val),
-    ) = (expr, var_str, value)
-    {
+    ) => {
 
         let result =
             calculus::evaluate_at_point(
@@ -521,8 +514,8 @@ pub extern "C" fn rssn_bincode_evaluate_at_point(
             );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

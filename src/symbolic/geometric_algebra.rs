@@ -221,7 +221,7 @@ impl Multivector {
                     | Expr::BigInt(b) => !b.is_zero(),
                     | Expr::Rational(r) => !r.is_zero(),
                     | Expr::Dag(node) => {
-                        if let Ok(expr) = node.to_expr() {
+                        match node.to_expr() { Ok(expr) => {
 
                             match expr {
                                 | Expr::Constant(c) => c.abs() > f64::EPSILON,
@@ -229,10 +229,10 @@ impl Multivector {
                                 | Expr::Rational(r) => !r.is_zero(),
                                 | _ => true,
                             }
-                        } else {
+                        } _ => {
 
                             true
-                        }
+                        }}
                     },
                     | _ => true, // Keep symbolic terms
                 }

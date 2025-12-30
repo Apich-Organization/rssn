@@ -3,7 +3,7 @@ use crate::symbolic::grobner::buchberger;
 use crate::symbolic::grobner::poly_division_multivariate;
 use crate::symbolic::grobner::MonomialOrder;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes a Gröbner basis using Buchberger's algorithm and returns it as a heap-allocated vector handle.
 ///
@@ -44,7 +44,7 @@ pub extern "C" fn rssn_buchberger_handle(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Divides a multivariate polynomial by a list of divisors under a given monomial order
 /// and returns quotient polynomials and remainder as a heap-allocated tuple.

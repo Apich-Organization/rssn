@@ -13,7 +13,7 @@ use crate::symbolic::elementary;
 ///
 /// # Returns
 /// Bincode-serialized Expr
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_sin_bincode(
     expr_buffer: BincodeBuffer
@@ -30,7 +30,7 @@ pub extern "C" fn rssn_sin_bincode(
 }
 
 /// Creates a cosine expression from bincode: cos(expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_cos_bincode(
     expr_buffer: BincodeBuffer
@@ -47,7 +47,7 @@ pub extern "C" fn rssn_cos_bincode(
 }
 
 /// Creates a tangent expression from bincode: tan(expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_tan_bincode(
     expr_buffer: BincodeBuffer
@@ -64,7 +64,7 @@ pub extern "C" fn rssn_tan_bincode(
 }
 
 /// Creates an exponential expression from bincode: e^(expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_exp_bincode(
     expr_buffer: BincodeBuffer
@@ -81,7 +81,7 @@ pub extern "C" fn rssn_exp_bincode(
 }
 
 /// Creates a natural logarithm expression from bincode: ln(expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_ln_bincode(
     expr_buffer: BincodeBuffer
@@ -98,7 +98,7 @@ pub extern "C" fn rssn_ln_bincode(
 }
 
 /// Creates a square root expression from bincode: sqrt(expr).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_sqrt_bincode(
     expr_buffer: BincodeBuffer
@@ -119,7 +119,7 @@ pub extern "C" fn rssn_sqrt_bincode(
 /// # Arguments
 /// * `base_buffer` - Bincode-serialized base Expr
 /// * `exp_buffer` - Bincode-serialized exponent Expr
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_pow_bincode(
     base_buffer: BincodeBuffer,
@@ -142,7 +142,7 @@ pub extern "C" fn rssn_pow_bincode(
 }
 
 /// Returns Pi as bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_pi_bincode(
 ) -> BincodeBuffer {
@@ -151,7 +151,7 @@ pub extern "C" fn rssn_pi_bincode(
 }
 
 /// Returns Euler's number (e) as bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_e_bincode(
 ) -> BincodeBuffer {
@@ -160,7 +160,7 @@ pub extern "C" fn rssn_e_bincode(
 }
 
 /// Expands a symbolic expression from bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_expand_bincode(
     expr_buffer: BincodeBuffer

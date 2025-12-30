@@ -21,7 +21,7 @@ use crate::symbolic::finite_field::PrimeField;
 use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// Creates a new elliptic curve via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_elliptic_curve_new(
     a_buf: BincodeBuffer,
@@ -56,7 +56,7 @@ pub extern "C" fn rssn_bincode_elliptic_curve_new(
 }
 
 /// Creates an affine curve point via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_curve_point_affine(
     x_buf: BincodeBuffer,
@@ -94,7 +94,7 @@ pub extern "C" fn rssn_bincode_curve_point_affine(
 }
 
 /// Creates a point at infinity via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_curve_point_infinity(
 ) -> BincodeBuffer {
@@ -105,7 +105,7 @@ pub extern "C" fn rssn_bincode_curve_point_infinity(
 }
 
 /// Checks if a point is on the curve.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_curve_is_on_curve(
     curve_buf: BincodeBuffer,
@@ -132,7 +132,7 @@ pub extern "C" fn rssn_bincode_curve_is_on_curve(
 }
 
 /// Negates a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_curve_negate(
     curve_buf: BincodeBuffer,
@@ -157,7 +157,7 @@ pub extern "C" fn rssn_bincode_curve_negate(
 }
 
 /// Doubles a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_curve_double(
     curve_buf: BincodeBuffer,
@@ -182,7 +182,7 @@ pub extern "C" fn rssn_bincode_curve_double(
 }
 
 /// Adds two points.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_curve_add(
     curve_buf: BincodeBuffer,
@@ -216,7 +216,7 @@ pub extern "C" fn rssn_bincode_curve_add(
 }
 
 /// Scalar multiplication.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_curve_scalar_mult(
     curve_buf: BincodeBuffer,
@@ -247,7 +247,7 @@ pub extern "C" fn rssn_bincode_curve_scalar_mult(
 }
 
 /// Generates a key pair.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_generate_keypair(
     curve_buf: BincodeBuffer,
@@ -257,13 +257,13 @@ pub extern "C" fn rssn_bincode_generate_keypair(
     let curve: Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let gen: Option<CurvePoint> =
+    let r#gen: Option<CurvePoint> =
         from_bincode_buffer(
             &generator_buf,
         );
 
     if let (Some(c), Some(g)) =
-        (curve, gen)
+        (curve, r#gen)
     {
 
         to_bincode_buffer(
@@ -276,7 +276,7 @@ pub extern "C" fn rssn_bincode_generate_keypair(
 }
 
 /// Generates a shared secret.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_generate_shared_secret(
     curve_buf: BincodeBuffer,
@@ -316,7 +316,7 @@ pub extern "C" fn rssn_bincode_generate_shared_secret(
 }
 
 /// Signs a message.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_ecdsa_sign(
     message_hash_buf: BincodeBuffer,
@@ -339,7 +339,7 @@ pub extern "C" fn rssn_bincode_ecdsa_sign(
     let curve: Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let gen: Option<CurvePoint> =
+    let r#gen: Option<CurvePoint> =
         from_bincode_buffer(
             &generator_buf,
         );
@@ -354,7 +354,7 @@ pub extern "C" fn rssn_bincode_ecdsa_sign(
         Some(g),
         Some(o),
     ) = (
-        hash, pk, curve, gen, order,
+        hash, pk, curve, r#gen, order,
     ) {
 
         if let Some(sig) = ecdsa_sign(
@@ -373,7 +373,7 @@ pub extern "C" fn rssn_bincode_ecdsa_sign(
 }
 
 /// Verifies a signature.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_ecdsa_verify(
     message_hash_buf: BincodeBuffer,
@@ -402,7 +402,7 @@ pub extern "C" fn rssn_bincode_ecdsa_verify(
     let curve: Option<EllipticCurve> =
         from_bincode_buffer(&curve_buf);
 
-    let gen: Option<CurvePoint> =
+    let r#gen: Option<CurvePoint> =
         from_bincode_buffer(
             &generator_buf,
         );
@@ -422,7 +422,7 @@ pub extern "C" fn rssn_bincode_ecdsa_verify(
         sig,
         pub_key,
         curve,
-        gen,
+        r#gen,
         order,
     ) {
 
@@ -439,7 +439,7 @@ pub extern "C" fn rssn_bincode_ecdsa_verify(
 }
 
 /// Compresses a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_point_compress(
     point_buf: BincodeBuffer
@@ -469,7 +469,7 @@ pub extern "C" fn rssn_bincode_point_compress(
 }
 
 /// Decompresses a point.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_point_decompress(
     x_buf: BincodeBuffer,

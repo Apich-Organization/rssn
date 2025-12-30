@@ -50,9 +50,9 @@ fn test_dag_serialization_bincode() {
 
     // Serialize to bincode
     let bytes =
-        bincode::serde::encode_to_vec(
+        bincode_next::serde::encode_to_vec(
             &expr,
-            bincode::config::standard(),
+            bincode_next::config::standard(),
         )
         .unwrap();
 
@@ -62,9 +62,9 @@ fn test_dag_serialization_bincode() {
     );
 
     // Deserialize from bincode
-    let (deserialized, _) : (Expr, usize) = bincode::serde::decode_from_slice(
+    let (deserialized, _) : (Expr, usize) = bincode_next::serde::decode_from_slice(
         &bytes,
-        bincode::config::standard(),
+        bincode_next::config::standard(),
     )
     .unwrap();
 

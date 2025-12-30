@@ -35,7 +35,7 @@ struct QuadratureInput {
 ///   "`n_steps"`: 100,
 ///   "method": "Simpson"
 /// }
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -52,7 +52,7 @@ struct QuadratureInput {
 
 pub unsafe extern "C" fn rssn_numerical_quadrature_json(
     json_ptr: *const c_char
-) -> *mut c_char {
+) -> *mut c_char { unsafe {
 
     if json_ptr.is_null() {
 
@@ -119,4 +119,4 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(
     )
     .unwrap()
     .into_raw()
-}
+}}

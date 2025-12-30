@@ -24,7 +24,7 @@ use crate::symbolic::core::Expr;
 /// This function is unsafe because it dereferences raw `Expr` pointers and returns
 /// ownership of a heap-allocated `Expr` to the caller.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -37,7 +37,7 @@ use crate::symbolic::core::Expr;
 pub unsafe extern "C" fn rssn_permutations(
     n: *const Expr,
     k: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let result = permutations(
         (*n).clone(),
@@ -45,7 +45,7 @@ pub unsafe extern "C" fn rssn_permutations(
     );
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 
 /// Computes the number of combinations symbolically as an `Expr`.
@@ -66,7 +66,7 @@ pub unsafe extern "C" fn rssn_permutations(
 ///
 /// This function is unsafe because it dereferences raw `Expr` pointers and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn rssn_permutations(
 pub unsafe extern "C" fn rssn_combinations(
     n: *const Expr,
     k: *const Expr,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     let result = combinations(
         &(*n),
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_combinations(
     );
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 
 /// Computes the \(n\)-th Catalan number symbolically and returns it as an `Expr` pointer.
@@ -107,7 +107,7 @@ pub unsafe extern "C" fn rssn_combinations(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -145,7 +145,7 @@ pub unsafe extern "C" fn rssn_catalan_number(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -184,7 +184,7 @@ pub unsafe extern "C" fn rssn_stirling_number_second_kind(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

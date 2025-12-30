@@ -19,7 +19,7 @@ struct CoordinateTransformRequest {
 }
 
 /// Transforms a point using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(
 }
 
 /// Transforms a point (pure numerical) using JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

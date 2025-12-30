@@ -12,7 +12,7 @@ use crate::symbolic::stats_information_theory;
 
 /// Returns a bincode-serialized `Expr` representing the entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_shannon_entropy(
     probs_buf: BincodeBuffer
@@ -40,7 +40,7 @@ pub extern "C" fn rssn_bincode_shannon_entropy(
 
 /// Returns a bincode-serialized `Expr` representing the KL divergence.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_kl_divergence(
     p_probs_buf: BincodeBuffer,
@@ -57,18 +57,17 @@ pub extern "C" fn rssn_bincode_kl_divergence(
             &q_probs_buf,
         );
 
-    if let (Some(p), Some(q)) =
-        (p_probs, q_probs)
-    {
+    match (p_probs, q_probs)
+    { (Some(p), Some(q)) => {
 
         match stats_information_theory::kl_divergence(&p, &q) {
             | Ok(res) => to_bincode_buffer(&res),
             | Err(_) => BincodeBuffer::empty(),
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the cross-entropy between two probability distributions.
@@ -79,7 +78,7 @@ pub extern "C" fn rssn_bincode_kl_divergence(
 
 /// Returns a bincode-serialized `Expr` representing the cross-entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_cross_entropy(
     p_probs_buf: BincodeBuffer,
@@ -96,18 +95,17 @@ pub extern "C" fn rssn_bincode_cross_entropy(
             &q_probs_buf,
         );
 
-    if let (Some(p), Some(q)) =
-        (p_probs, q_probs)
-    {
+    match (p_probs, q_probs)
+    { (Some(p), Some(q)) => {
 
         match stats_information_theory::cross_entropy(&p, &q) {
             | Ok(res) => to_bincode_buffer(&res),
             | Err(_) => BincodeBuffer::empty(),
         }
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Gini impurity of a probability distribution.
@@ -118,7 +116,7 @@ pub extern "C" fn rssn_bincode_cross_entropy(
 
 /// Returns a bincode-serialized `Expr` representing the Gini impurity.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_gini_impurity(
     probs_buf: BincodeBuffer
@@ -146,7 +144,7 @@ pub extern "C" fn rssn_bincode_gini_impurity(
 
 /// Returns a bincode-serialized `Expr` representing the joint entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_joint_entropy(
     joint_probs_buf: BincodeBuffer
@@ -177,7 +175,7 @@ pub extern "C" fn rssn_bincode_joint_entropy(
 
 /// Returns a bincode-serialized `Expr` representing the conditional entropy.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_conditional_entropy(
     joint_probs_buf: BincodeBuffer
@@ -208,7 +206,7 @@ pub extern "C" fn rssn_bincode_conditional_entropy(
 
 /// Returns a bincode-serialized `Expr` representing the mutual information.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_mutual_information(
     joint_probs_buf: BincodeBuffer

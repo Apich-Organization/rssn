@@ -14,7 +14,7 @@ use crate::symbolic::core::Expr;
 
 /// Retrieves an expression from the `ParsingCache` as a JSON string.
 /// Returns null if not found or error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_parsing_cache_get_json(
     cache: *mut ParsingCache,
@@ -48,7 +48,7 @@ pub extern "C" fn rssn_parsing_cache_get_json(
 }
 
 /// Stores an expression in the `ParsingCache` from a JSON string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_parsing_cache_set_json(
     cache: *mut ParsingCache,
@@ -93,7 +93,7 @@ pub extern "C" fn rssn_parsing_cache_set_json(
 
 /// Retrieves a value from the `ComputationResultCache` using a JSON expression key.
 /// Returns the value as a JSON string (e.g. "\"result\"").
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_computation_result_cache_get_json(
     cache: *mut ComputationResultCache,
@@ -127,7 +127,7 @@ pub extern "C" fn rssn_computation_result_cache_get_json(
 }
 
 /// Stores a value in the `ComputationResultCache` using JSON strings.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_computation_result_cache_set_json(
     cache: *mut ComputationResultCache,

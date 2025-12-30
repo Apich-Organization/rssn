@@ -7,7 +7,7 @@ use crate::symbolic::simplify;
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -19,7 +19,7 @@ use crate::symbolic::simplify;
 
 pub unsafe extern "C" fn rssn_heuristic_simplify(
     expr: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null() {
 
@@ -34,13 +34,13 @@ pub unsafe extern "C" fn rssn_heuristic_simplify(
             expr_ref.clone(),
         ),
     ))
-}
+}}
 
 /// Simplifies an expression using the legacy simplifier.
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -52,7 +52,7 @@ pub unsafe extern "C" fn rssn_heuristic_simplify(
 
 pub unsafe extern "C" fn rssn_simplify(
     expr: *const Expr
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if expr.is_null() {
 
@@ -67,4 +67,4 @@ pub unsafe extern "C" fn rssn_simplify(
             expr_ref.clone(),
         ),
     ))
-}
+}}

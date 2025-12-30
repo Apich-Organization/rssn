@@ -22,7 +22,7 @@ use crate::symbolic::error_correction::rs_encode;
 use crate::symbolic::error_correction::rs_error_count;
 
 /// Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hamming_encode(
     data_buf: BincodeBuffer
@@ -51,7 +51,7 @@ pub extern "C" fn rssn_bincode_hamming_encode(
 
 /// Decodes a 7-bit Hamming(7,4) codeword via Bincode interface.
 /// Returns tuple of (data, `error_pos`).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hamming_decode(
     codeword_buf: BincodeBuffer
@@ -82,7 +82,7 @@ pub extern "C" fn rssn_bincode_hamming_decode(
 }
 
 /// Encodes data using Reed-Solomon code via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_rs_encode(
     data_buf: BincodeBuffer,
@@ -116,7 +116,7 @@ pub extern "C" fn rssn_bincode_rs_encode(
 }
 
 /// Decodes a Reed-Solomon codeword via Bincode interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_rs_decode(
     codeword_buf: BincodeBuffer,
@@ -156,7 +156,7 @@ pub extern "C" fn rssn_bincode_rs_decode(
 /// Computes Hamming distance between two byte slices via Bincode interface.
 /// Input: (a: Vec<u8>, b: Vec<u8>)
 /// Returns: Option<usize>
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hamming_distance(
     a_buf: BincodeBuffer,
@@ -185,7 +185,7 @@ pub extern "C" fn rssn_bincode_hamming_distance(
 /// Computes Hamming weight of a byte slice via Bincode interface.
 /// Input: Vec<u8>
 /// Returns: usize
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hamming_weight(
     data_buf: BincodeBuffer
@@ -208,7 +208,7 @@ pub extern "C" fn rssn_bincode_hamming_weight(
 /// Checks if a Hamming(7,4) codeword is valid via Bincode interface.
 /// Input: Vec<u8> (7 bytes)
 /// Returns: bool
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hamming_check(
     codeword_buf: BincodeBuffer
@@ -237,7 +237,7 @@ pub extern "C" fn rssn_bincode_hamming_check(
 /// Checks if a Reed-Solomon codeword is valid via Bincode interface.
 /// Input: (codeword: Vec<u8>, `n_sym`: usize)
 /// Returns: bool
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_rs_check(
     codeword_buf: BincodeBuffer,
@@ -268,7 +268,7 @@ pub extern "C" fn rssn_bincode_rs_check(
 /// Estimates error count in a Reed-Solomon codeword via Bincode interface.
 /// Input: (codeword: Vec<u8>, `n_sym`: usize)
 /// Returns: usize
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_rs_error_count(
     codeword_buf: BincodeBuffer,
@@ -304,7 +304,7 @@ pub extern "C" fn rssn_bincode_rs_error_count(
 /// Computes CRC-32 checksum via Bincode interface.
 /// Input: Vec<u8>
 /// Returns: u32
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_crc32_compute(
     data_buf: BincodeBuffer
@@ -327,7 +327,7 @@ pub extern "C" fn rssn_bincode_crc32_compute(
 /// Verifies CRC-32 checksum via Bincode interface.
 /// Input: (data: Vec<u8>, `expected_crc`: u32)
 /// Returns: bool
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_crc32_verify(
     data_buf: BincodeBuffer,
@@ -359,7 +359,7 @@ pub extern "C" fn rssn_bincode_crc32_verify(
 /// Updates CRC-32 incrementally via Bincode interface.
 /// Input: (crc: u32, data: Vec<u8>)
 /// Returns: u32
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_crc32_update(
     crc_buf: BincodeBuffer,
@@ -389,7 +389,7 @@ pub extern "C" fn rssn_bincode_crc32_update(
 /// Finalizes CRC-32 computation via Bincode interface.
 /// Input: u32 (running crc)
 /// Returns: u32 (final crc)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_crc32_finalize(
     crc_buf: BincodeBuffer

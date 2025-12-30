@@ -21,7 +21,7 @@ use crate::symbolic::series::taylor_series;
 
 /// Returns a bincode-serialized `Expr` representing the Taylor series.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_taylor_series(
     expr_buf: BincodeBuffer,
@@ -44,27 +44,27 @@ pub extern "C" fn rssn_bincode_taylor_series(
     let order: Option<usize> =
         from_bincode_buffer(&order_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(c),
-        Some(o),
-    ) = (
+    match (
         expr,
         var,
         center,
         order,
-    ) {
+    ) { (
+        Some(e),
+        Some(v),
+        Some(c),
+        Some(o),
+    ) => {
 
         let result = taylor_series(
             &e, &v, &c, o,
         );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Laurent series expansion of an expression.
@@ -77,7 +77,7 @@ pub extern "C" fn rssn_bincode_taylor_series(
 
 /// Returns a bincode-serialized `Expr` representing the Laurent series.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_laurent_series(
     expr_buf: BincodeBuffer,
@@ -100,27 +100,27 @@ pub extern "C" fn rssn_bincode_laurent_series(
     let order: Option<usize> =
         from_bincode_buffer(&order_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(c),
-        Some(o),
-    ) = (
+    match (
         expr,
         var,
         center,
         order,
-    ) {
+    ) { (
+        Some(e),
+        Some(v),
+        Some(c),
+        Some(o),
+    ) => {
 
         let result = laurent_series(
             &e, &v, &c, o,
         );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the Fourier series expansion of an expression.
@@ -133,7 +133,7 @@ pub extern "C" fn rssn_bincode_laurent_series(
 
 /// Returns a bincode-serialized `Expr` representing the Fourier series.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_fourier_series(
     expr_buf: BincodeBuffer,
@@ -156,27 +156,27 @@ pub extern "C" fn rssn_bincode_fourier_series(
     let order: Option<usize> =
         from_bincode_buffer(&order_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(p),
-        Some(o),
-    ) = (
+    match (
         expr,
         var,
         period,
         order,
-    ) {
+    ) { (
+        Some(e),
+        Some(v),
+        Some(p),
+        Some(o),
+    ) => {
 
         let result = fourier_series(
             &e, &v, &p, o,
         );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the summation of an expression.
@@ -189,7 +189,7 @@ pub extern "C" fn rssn_bincode_fourier_series(
 
 /// Returns a bincode-serialized `Expr` representing the summation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_summation(
     expr_buf: BincodeBuffer,
@@ -210,23 +210,23 @@ pub extern "C" fn rssn_bincode_summation(
     let upper: Option<Expr> =
         from_bincode_buffer(&upper_buf);
 
-    if let (
+    match (
+        expr, var, lower, upper,
+    ) { (
         Some(e),
         Some(v),
         Some(l),
         Some(u),
-    ) = (
-        expr, var, lower, upper,
-    ) {
+    ) => {
 
         let result =
             summation(&e, &v, &l, &u);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the product of an expression.
@@ -239,7 +239,7 @@ pub extern "C" fn rssn_bincode_summation(
 
 /// Returns a bincode-serialized `Expr` representing the product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_product(
     expr_buf: BincodeBuffer,
@@ -260,23 +260,23 @@ pub extern "C" fn rssn_bincode_product(
     let upper: Option<Expr> =
         from_bincode_buffer(&upper_buf);
 
-    if let (
+    match (
+        expr, var, lower, upper,
+    ) { (
         Some(e),
         Some(v),
         Some(l),
         Some(u),
-    ) = (
-        expr, var, lower, upper,
-    ) {
+    ) => {
 
         let result =
             product(&e, &v, &l, &u);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Analyzes the convergence of a series.
@@ -287,7 +287,7 @@ pub extern "C" fn rssn_bincode_product(
 
 /// Returns a bincode-serialized `Expr` representing the convergence analysis result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_series_bincode_analyze_convergence(
     series_buf: BincodeBuffer,
@@ -302,18 +302,17 @@ pub extern "C" fn rssn_series_bincode_analyze_convergence(
     let var: Option<String> =
         from_bincode_buffer(&var_buf);
 
-    if let (Some(s), Some(v)) =
-        (series, var)
-    {
+    match (series, var)
+    { (Some(s), Some(v)) => {
 
         let result =
             analyze_convergence(&s, &v);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the asymptotic expansion of an expression.
@@ -326,7 +325,7 @@ pub extern "C" fn rssn_series_bincode_analyze_convergence(
 
 /// Returns a bincode-serialized `Expr` representing the asymptotic expansion.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_asymptotic_expansion(
     expr_buf: BincodeBuffer,
@@ -347,14 +346,14 @@ pub extern "C" fn rssn_bincode_asymptotic_expansion(
     let order: Option<usize> =
         from_bincode_buffer(&order_buf);
 
-    if let (
+    match (
+        expr, var, point, order,
+    ) { (
         Some(e),
         Some(v),
         Some(p),
         Some(o),
-    ) = (
-        expr, var, point, order,
-    ) {
+    ) => {
 
         let result =
             asymptotic_expansion(
@@ -362,10 +361,10 @@ pub extern "C" fn rssn_bincode_asymptotic_expansion(
             );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Computes the analytic continuation of a series.
@@ -378,7 +377,7 @@ pub extern "C" fn rssn_bincode_asymptotic_expansion(
 
 /// Returns a bincode-serialized `Expr` representing the analytic continuation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_analytic_continuation(
     expr_buf: BincodeBuffer,
@@ -407,19 +406,19 @@ pub extern "C" fn rssn_bincode_analytic_continuation(
     let order: Option<usize> =
         from_bincode_buffer(&order_buf);
 
-    if let (
-        Some(e),
-        Some(v),
-        Some(oc),
-        Some(nc),
-        Some(o),
-    ) = (
+    match (
         expr,
         var,
         orig_center,
         new_center,
         order,
-    ) {
+    ) { (
+        Some(e),
+        Some(v),
+        Some(oc),
+        Some(nc),
+        Some(o),
+    ) => {
 
         let result =
             analytic_continuation(
@@ -427,8 +426,8 @@ pub extern "C" fn rssn_bincode_analytic_continuation(
             );
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

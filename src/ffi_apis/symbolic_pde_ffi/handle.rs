@@ -16,7 +16,7 @@ use crate::symbolic::pde;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> {
+) -> Option<&'a str> { unsafe {
 
     if s.is_null() {
 
@@ -27,14 +27,14 @@ unsafe fn c_str_to_str<'a>(
             .to_str()
             .ok()
     }
-}
+}}
 
 /// Solves a partial differential equation using automatic method selection.
 ///
 /// # Safety
 /// The caller must ensure `pde_expr` is a valid Expr pointer, `func` and `vars` are valid C strings,
 /// and `vars_len` accurately represents the number of variables.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rssn_solve_pde(
     func: *const c_char,
     vars: *const *const c_char,
     vars_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if pde_expr.is_null()
         || func.is_null()
@@ -98,13 +98,13 @@ pub unsafe extern "C" fn rssn_solve_pde(
     );
 
     Box::into_raw(Box::new(result))
-}
+}}
 
 /// Solves a PDE using the method of characteristics.
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
     func: *const c_char,
     vars: *const *const c_char,
     vars_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -168,13 +168,13 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
         | Some(solution) => Box::into_raw(Box::new(solution)),
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves the 1D wave equation using D'Alembert's formula.
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -189,7 +189,7 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
     func: *const c_char,
     vars: *const *const c_char,
     vars_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -238,13 +238,13 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
         | Some(solution) => Box::into_raw(Box::new(solution)),
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves the 1D heat equation.
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -259,7 +259,7 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
     func: *const c_char,
     vars: *const *const c_char,
     vars_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -312,13 +312,13 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves the 2D Laplace equation.
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -333,7 +333,7 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
     func: *const c_char,
     vars: *const *const c_char,
     vars_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -386,13 +386,13 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves the 2D Poisson equation.
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -407,7 +407,7 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
     func: *const c_char,
     vars: *const *const c_char,
     vars_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -460,13 +460,13 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves the Helmholtz equation.
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -481,7 +481,7 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
     func: *const c_char,
     vars: *const *const c_char,
     vars_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -534,13 +534,13 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
         },
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves the Schrödinger equation.
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -555,7 +555,7 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
     func: *const c_char,
     vars: *const *const c_char,
     vars_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -604,13 +604,13 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
         | Some(solution) => Box::into_raw(Box::new(solution)),
         | None => std::ptr::null_mut(),
     }
-}
+}}
 
 /// Solves the Klein-Gordon equation.
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -625,7 +625,7 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
     func: *const c_char,
     vars: *const *const c_char,
     vars_len: usize,
-) -> *mut Expr {
+) -> *mut Expr { unsafe {
 
     if equation.is_null()
         || func.is_null()
@@ -674,4 +674,4 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
         | Some(solution) => Box::into_raw(Box::new(solution)),
         | None => std::ptr::null_mut(),
     }
-}
+}}

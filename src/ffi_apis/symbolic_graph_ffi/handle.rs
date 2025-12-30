@@ -21,7 +21,7 @@ pub struct RssnGraph {
 }
 
 /// Creates a new graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_new(
     is_directed: c_int
@@ -36,7 +36,7 @@ pub extern "C" fn rssn_graph_new(
 }
 
 /// Frees a graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_free(
     ptr: *mut RssnGraph
@@ -56,7 +56,7 @@ pub extern "C" fn rssn_graph_free(
 }
 
 /// Adds a node to the graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_add_node(
     ptr: *mut RssnGraph,
@@ -86,7 +86,7 @@ pub extern "C" fn rssn_graph_add_node(
 }
 
 /// Adds an edge to the graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_add_edge(
     ptr: *mut RssnGraph,
@@ -137,7 +137,7 @@ pub extern "C" fn rssn_graph_add_edge(
 }
 
 /// Gets the number of nodes in the graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_graph_node_count(
     ptr: *const RssnGraph
@@ -157,7 +157,7 @@ pub const extern "C" fn rssn_graph_node_count(
 }
 
 /// Gets the adjacency matrix of the graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_adjacency_matrix(
     ptr: *const RssnGraph
@@ -179,7 +179,7 @@ pub extern "C" fn rssn_graph_adjacency_matrix(
 }
 
 /// Gets the incidence matrix of the graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_incidence_matrix(
     ptr: *const RssnGraph
@@ -201,7 +201,7 @@ pub extern "C" fn rssn_graph_incidence_matrix(
 }
 
 /// Gets the Laplacian matrix of the graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_laplacian_matrix(
     ptr: *const RssnGraph
@@ -224,7 +224,7 @@ pub extern "C" fn rssn_graph_laplacian_matrix(
 
 /// Performs BFS traversal from a start node.
 /// Returns a JSON string containing the node IDs in visit order.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -263,7 +263,7 @@ pub extern "C" fn rssn_graph_bfs(
 
 /// Performs DFS traversal from a start node.
 /// Returns a JSON string containing the node IDs in visit order.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -302,7 +302,7 @@ pub extern "C" fn rssn_graph_dfs(
 
 /// Finds connected components.
 /// Returns a JSON string containing the components.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -340,7 +340,7 @@ pub extern "C" fn rssn_graph_connected_components(
 }
 
 /// Computes maximum flow using Edmonds-Karp algorithm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_max_flow(
     ptr: *const RssnGraph,
@@ -367,7 +367,7 @@ pub extern "C" fn rssn_graph_max_flow(
 
 /// Computes minimum spanning tree using Kruskal's algorithm.
 /// Returns a JSON string containing the MST edges.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -421,7 +421,7 @@ pub extern "C" fn rssn_graph_kruskal_mst(
 }
 
 /// Checks if the graph has a cycle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_has_cycle(
     ptr: *const RssnGraph
@@ -442,7 +442,7 @@ pub extern "C" fn rssn_graph_has_cycle(
 
 /// Checks if the graph is bipartite.
 /// Returns 1 if bipartite, 0 otherwise.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_is_bipartite(
     ptr: *const RssnGraph

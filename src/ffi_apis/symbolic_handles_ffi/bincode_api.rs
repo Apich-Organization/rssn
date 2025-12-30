@@ -41,7 +41,7 @@ struct HandleListResponse {
 }
 
 /// Inserts an expression (Bincode) into the handle manager.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_insert_bincode(
     input: BincodeBuffer
@@ -69,7 +69,7 @@ pub extern "C" fn rssn_handle_insert_bincode(
 }
 
 /// Retrieves an expression by handle (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_get_bincode(
     input: BincodeBuffer
@@ -100,7 +100,7 @@ pub extern "C" fn rssn_handle_get_bincode(
 }
 
 /// Checks if a handle exists (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_exists_bincode(
     input: BincodeBuffer
@@ -128,7 +128,7 @@ pub extern "C" fn rssn_handle_exists_bincode(
 }
 
 /// Frees a handle (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_free_bincode(
     input: BincodeBuffer
@@ -157,7 +157,7 @@ pub extern "C" fn rssn_handle_free_bincode(
 }
 
 /// Returns all active handles (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_get_all_bincode(
 ) -> BincodeBuffer {
@@ -174,7 +174,7 @@ pub extern "C" fn rssn_handle_get_all_bincode(
 }
 
 /// Clears all handles (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_clear_bincode(
 ) -> BincodeBuffer {
@@ -187,7 +187,7 @@ pub extern "C" fn rssn_handle_clear_bincode(
 }
 
 /// Clones a handle (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_handle_clone_bincode(
     input: BincodeBuffer

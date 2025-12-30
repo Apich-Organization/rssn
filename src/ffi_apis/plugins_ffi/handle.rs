@@ -14,7 +14,7 @@ use crate::symbolic::handles::HANDLE_MANAGER;
 ///
 /// # Returns
 /// True if successful, false otherwise.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -26,7 +26,7 @@ use crate::symbolic::handles::HANDLE_MANAGER;
 
 pub unsafe extern "C" fn rssn_plugins_load(
     path: *const c_char
-) -> bool {
+) -> bool { unsafe {
 
     if let Some(path_str) =
         c_str_to_str(path)
@@ -61,12 +61,12 @@ pub unsafe extern "C" fn rssn_plugins_load(
 
         false
     }
-}
+}}
 
 /// Returns a JSON array of loaded plugin names.
 ///
 /// The caller must free the string using `rssn_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_plugins_get_loaded(
 ) -> *mut c_char {
@@ -83,7 +83,7 @@ pub extern "C" fn rssn_plugins_get_loaded(
 }
 
 /// Unloads a plugin by name.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -95,7 +95,7 @@ pub extern "C" fn rssn_plugins_get_loaded(
 
 pub unsafe extern "C" fn rssn_plugins_unload(
     name: *const c_char
-) -> bool {
+) -> bool { unsafe {
 
     if let Some(name_str) =
         c_str_to_str(name)
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rssn_plugins_unload(
 
         false
     }
-}
+}}
 
 /// Executes a plugin command.
 ///
@@ -127,7 +127,7 @@ pub unsafe extern "C" fn rssn_plugins_unload(
 ///
 /// # Returns
 /// Handle to the result expression, or 0 on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rssn_plugins_execute(
     name: *const c_char,
     command: *const c_char,
     args_handle: usize,
-) -> usize {
+) -> usize { unsafe {
 
     let name_str =
         match c_str_to_str(name) {
@@ -192,4 +192,4 @@ pub unsafe extern "C" fn rssn_plugins_execute(
             0
         },
     }
-}
+}}

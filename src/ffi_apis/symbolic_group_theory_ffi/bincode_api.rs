@@ -6,7 +6,7 @@ use crate::symbolic::group_theory::Group;
 use crate::symbolic::group_theory::GroupElement;
 use crate::symbolic::group_theory::Representation;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Creates a group from a bincode-encoded description.
 ///
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn rssn_bincode_group_create(
     to_bincode_buffer(&group)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Multiplies two group elements using a bincode-encoded group.
 ///
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn rssn_bincode_group_multiply(
     to_bincode_buffer(&result)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the inverse of a group element using a bincode-encoded group.
 ///
@@ -151,7 +151,7 @@ pub unsafe extern "C" fn rssn_bincode_group_inverse(
     to_bincode_buffer(&result)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Tests whether a bincode-encoded group is Abelian.
 ///
@@ -195,7 +195,7 @@ pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
     group.is_abelian()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the order of a group element using a bincode-encoded group.
 ///
@@ -251,7 +251,7 @@ pub unsafe extern "C" fn rssn_bincode_group_element_order(
         .unwrap_or(0)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the conjugacy classes of a bincode-encoded group.
 ///
@@ -295,7 +295,7 @@ pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
     to_bincode_buffer(&classes)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the center of a bincode-encoded group.
 ///
@@ -338,7 +338,7 @@ pub unsafe extern "C" fn rssn_bincode_group_center(
     to_bincode_buffer(&center)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Creates a group representation from a bincode-encoded description.
 ///
@@ -379,7 +379,7 @@ pub unsafe extern "C" fn rssn_bincode_representation_create(
     to_bincode_buffer(&rep)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Checks whether a representation is valid for a given group using bincode serialization.
 ///
@@ -433,7 +433,7 @@ pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
     rep.is_valid(&group)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the character of a representation using bincode serialization.
 ///

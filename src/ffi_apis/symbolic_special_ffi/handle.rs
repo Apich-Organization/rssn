@@ -13,7 +13,7 @@ use crate::symbolic::special;
 // ============================================================================
 
 /// Computes the gamma function Γ(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_gamma_numerical(
     x: c_double
@@ -23,7 +23,7 @@ pub extern "C" fn rssn_gamma_numerical(
 }
 
 /// Computes the natural logarithm of the gamma function ln(Γ(x)).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_ln_gamma_numerical(
     x: c_double
@@ -33,7 +33,7 @@ pub extern "C" fn rssn_ln_gamma_numerical(
 }
 
 /// Computes the digamma function ψ(x) = d/dx ln(Γ(x)).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_digamma_numerical(
     x: c_double
@@ -43,7 +43,7 @@ pub extern "C" fn rssn_digamma_numerical(
 }
 
 /// Computes the beta function B(a, b).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_beta_numerical(
     a: c_double,
@@ -54,7 +54,7 @@ pub extern "C" fn rssn_beta_numerical(
 }
 
 /// Computes the natural logarithm of the beta function ln(B(a, b)).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_ln_beta_numerical(
     a: c_double,
@@ -65,7 +65,7 @@ pub extern "C" fn rssn_ln_beta_numerical(
 }
 
 /// Computes the regularized incomplete beta function Iₓ(a, b).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_regularized_incomplete_beta(
     a: c_double,
@@ -79,7 +79,7 @@ pub extern "C" fn rssn_regularized_incomplete_beta(
 }
 
 /// Computes the regularized lower incomplete gamma function P(a, x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_regularized_gamma_p(
     a: c_double,
@@ -90,7 +90,7 @@ pub extern "C" fn rssn_regularized_gamma_p(
 }
 
 /// Computes the regularized upper incomplete gamma function Q(a, x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_regularized_gamma_q(
     a: c_double,
@@ -105,7 +105,7 @@ pub extern "C" fn rssn_regularized_gamma_q(
 // ============================================================================
 
 /// Computes the error function erf(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_erf_numerical(
     x: c_double
@@ -115,7 +115,7 @@ pub extern "C" fn rssn_erf_numerical(
 }
 
 /// Computes the complementary error function erfc(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_erfc_numerical(
     x: c_double
@@ -125,7 +125,7 @@ pub extern "C" fn rssn_erfc_numerical(
 }
 
 /// Computes the inverse error function erf⁻¹(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_inverse_erf(
     x: c_double
@@ -135,7 +135,7 @@ pub extern "C" fn rssn_inverse_erf(
 }
 
 /// Computes the inverse complementary error function erfc⁻¹(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_inverse_erfc(
     x: c_double
@@ -149,7 +149,7 @@ pub extern "C" fn rssn_inverse_erfc(
 // ============================================================================
 
 /// Computes the factorial n!.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_factorial(
     n: u64
@@ -159,7 +159,7 @@ pub extern "C" fn rssn_factorial(
 }
 
 /// Computes the double factorial n!!.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_double_factorial(
     n: u64
@@ -169,7 +169,7 @@ pub const extern "C" fn rssn_double_factorial(
 }
 
 /// Computes the binomial coefficient C(n, k).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_binomial(
     n: u64,
@@ -180,7 +180,7 @@ pub extern "C" fn rssn_binomial(
 }
 
 /// Computes the rising factorial (Pochhammer symbol) (x)ₙ.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_rising_factorial(
     x: c_double,
@@ -191,7 +191,7 @@ pub extern "C" fn rssn_rising_factorial(
 }
 
 /// Computes the falling factorial (x)₍ₙ₎.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_falling_factorial(
     x: c_double,
@@ -202,7 +202,7 @@ pub extern "C" fn rssn_falling_factorial(
 }
 
 /// Computes the natural logarithm of the factorial ln(n!).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_ln_factorial(
     n: u64
@@ -216,7 +216,7 @@ pub extern "C" fn rssn_ln_factorial(
 // ============================================================================
 
 /// Computes the Bessel function of the first kind J₀(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bessel_j0(
     x: c_double
@@ -226,7 +226,7 @@ pub extern "C" fn rssn_bessel_j0(
 }
 
 /// Computes the Bessel function of the first kind J₁(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bessel_j1(
     x: c_double
@@ -236,7 +236,7 @@ pub extern "C" fn rssn_bessel_j1(
 }
 
 /// Computes the Bessel function of the second kind Y₀(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bessel_y0(
     x: c_double
@@ -246,7 +246,7 @@ pub extern "C" fn rssn_bessel_y0(
 }
 
 /// Computes the Bessel function of the second kind Y₁(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bessel_y1(
     x: c_double
@@ -256,7 +256,7 @@ pub extern "C" fn rssn_bessel_y1(
 }
 
 /// Computes the modified Bessel function of the first kind I₀(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bessel_i0(
     x: c_double
@@ -266,7 +266,7 @@ pub extern "C" fn rssn_bessel_i0(
 }
 
 /// Computes the modified Bessel function of the first kind I₁(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bessel_i1(
     x: c_double
@@ -276,7 +276,7 @@ pub extern "C" fn rssn_bessel_i1(
 }
 
 /// Computes the modified Bessel function of the second kind K₀(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bessel_k0(
     x: c_double
@@ -286,7 +286,7 @@ pub extern "C" fn rssn_bessel_k0(
 }
 
 /// Computes the modified Bessel function of the second kind K₁(x).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bessel_k1(
     x: c_double
@@ -300,7 +300,7 @@ pub extern "C" fn rssn_bessel_k1(
 // ============================================================================
 
 /// Computes the normalized sinc function sin(πx)/(πx).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_sinc(
     x: c_double
@@ -310,7 +310,7 @@ pub extern "C" fn rssn_sinc(
 }
 
 /// Computes the Riemann zeta function ζ(s).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_zeta_numerical(
     s: c_double

@@ -79,7 +79,7 @@ struct HammingDecodeResult {
 
 // Reed-Solomon functions
 /// Encodes a message using Reed-Solomon codes with JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_json(
 
 /// Decodes a Reed-Solomon codeword with JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -207,7 +207,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_json(
 
 /// Checks if a Reed-Solomon codeword is valid with JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -259,7 +259,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_json(
 
 // Hamming functions
 /// Encodes a message using Hamming codes with JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -319,7 +319,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_json(
 
 /// Decodes a Hamming codeword and corrects errors with JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -384,7 +384,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_json(
 
 /// Checks a Hamming codeword for errors with JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -433,7 +433,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_json(
 
 /// Computes the Hamming distance between two byte vectors with JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -493,7 +493,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_json(
 
 /// Computes the Hamming weight of a byte vector with JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -542,7 +542,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_json(
 
 // CRC functions
 /// Computes the CRC32 checksum of a byte vector with JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -591,7 +591,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_json(
 
 /// Verifies the CRC32 checksum of a byte vector with JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -643,7 +643,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_json(
 
 /// Computes the CRC16 checksum of a byte vector with JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -695,7 +695,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_json(
 
 /// Computes the CRC8 checksum of a byte vector with JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -747,7 +747,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_json(
 
 // Interleaving functions
 /// Interleaves a byte vector with a given depth using JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -800,7 +800,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_json(
 
 /// Deinterleaves a byte vector with a given depth using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -853,7 +853,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_json(
 
 // Code theory functions
 /// Computes the code rate (k/n) of a code with JSON for serialization.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -906,7 +906,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_json(
 
 /// Computes the error correction capability of a code given its minimum distance, using JSON for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

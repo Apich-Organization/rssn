@@ -9,7 +9,7 @@ use crate::symbolic::integral_equations::FredholmEquation;
 use crate::symbolic::integral_equations::VolterraEquation;
 
 /// Creates a new Fredholm integral equation.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_fredholm_new(
     y_x: *const Expr,
@@ -64,7 +64,7 @@ pub extern "C" fn rssn_fredholm_new(
 }
 
 /// Frees a Fredholm integral equation.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_fredholm_free(
     ptr: *mut FredholmEquation
@@ -80,7 +80,7 @@ pub extern "C" fn rssn_fredholm_free(
 }
 
 /// Solves a Fredholm equation using the Neumann series method.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_fredholm_solve_neumann(
     eq: *const FredholmEquation,
@@ -105,7 +105,7 @@ pub extern "C" fn rssn_fredholm_solve_neumann(
 }
 
 /// Solves a Fredholm equation with a separable kernel.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_fredholm_solve_separable(
     eq: *const FredholmEquation,
@@ -181,7 +181,7 @@ pub extern "C" fn rssn_fredholm_solve_separable(
 }
 
 /// Creates a new Volterra integral equation.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volterra_new(
     y_x: *const Expr,
@@ -233,7 +233,7 @@ pub extern "C" fn rssn_volterra_new(
 }
 
 /// Frees a Volterra integral equation.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volterra_free(
     ptr: *mut VolterraEquation
@@ -249,7 +249,7 @@ pub extern "C" fn rssn_volterra_free(
 }
 
 /// Solves a Volterra equation using successive approximations.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volterra_solve_successive(
     eq: *const VolterraEquation,
@@ -271,7 +271,7 @@ pub extern "C" fn rssn_volterra_solve_successive(
 }
 
 /// Solves a Volterra equation by differentiation.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volterra_solve_by_differentiation(
     eq: *const VolterraEquation
@@ -301,7 +301,7 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation(
 }
 
 /// Solves the airfoil singular integral equation.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_solve_airfoil_equation(
     f_x: *const Expr,

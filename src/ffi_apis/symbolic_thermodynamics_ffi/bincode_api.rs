@@ -7,7 +7,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::thermodynamics;
 
 /// Calculates ideal gas Law using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_ideal_gas_law(
     p_buf: BincodeBuffer,
@@ -32,24 +32,24 @@ pub extern "C" fn rssn_bincode_ideal_gas_law(
     let t: Option<Expr> =
         from_bincode_buffer(&t_buf);
 
-    if let (
+    match (p, v, n, r, t)
+    { (
         Some(p),
         Some(v),
         Some(n),
         Some(r),
         Some(t),
-    ) = (p, v, n, r, t)
-    {
+    ) => {
 
         to_bincode_buffer(&thermodynamics::ideal_gas_law(&p, &v, &n, &r, &t))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Calculates Gibbs Free Energy using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_gibbs_free_energy(
     h_buf: BincodeBuffer,
@@ -66,13 +66,12 @@ pub extern "C" fn rssn_bincode_gibbs_free_energy(
     let s: Option<Expr> =
         from_bincode_buffer(&s_buf);
 
-    if let (Some(h), Some(t), Some(s)) =
-        (h, t, s)
-    {
+    match (h, t, s)
+    { (Some(h), Some(t), Some(s)) => {
 
         to_bincode_buffer(&thermodynamics::gibbs_free_energy(&h, &t, &s))
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

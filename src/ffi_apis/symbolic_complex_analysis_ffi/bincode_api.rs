@@ -27,7 +27,7 @@ use crate::symbolic::core::Expr;
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and expects
 /// valid bincode-encoded `Expr` values.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn path_continuation_new_bincode(
     var: *const c_char,
     start_point_bincode: BincodeBuffer,
     order: usize,
-) -> BincodeBuffer {
+) -> BincodeBuffer { unsafe {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
         | Some(e) => e,
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn path_continuation_new_bincode(
     to_bincode_buffer(
         &path_continuation,
     )
-}
+}}
 
 /// Continues the analytic continuation along a given path.
 
@@ -85,7 +85,7 @@ pub unsafe extern "C" fn path_continuation_new_bincode(
 
 /// Returns a bincode-serialized string "OK" on success, or an error message on failure.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
 
 /// Returns a bincode-serialized `Expr` representing the final expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -166,7 +166,7 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
 
 /// Returns an `f64` representing the estimated radius of convergence.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -186,7 +186,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
     var: *const c_char,
     center_bincode: BincodeBuffer,
     order: usize,
-) -> f64 {
+) -> f64 { unsafe {
 
     let series_expr: Expr =
         match from_bincode_buffer(
@@ -216,7 +216,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
         order,
     )
     .unwrap_or(0.0)
-}
+}}
 
 /// Calculates the distance between two complex numbers.
 
@@ -226,7 +226,7 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
 
 /// Returns an `f64` representing the distance.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -270,7 +270,7 @@ pub unsafe extern "C" fn complex_distance_bincode(
 
 /// Returns a bincode-serialized `SingularityType` enum.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -290,7 +290,7 @@ pub unsafe extern "C" fn classify_singularity_bincode(
     var: *const c_char,
     singularity_bincode: BincodeBuffer,
     order: usize,
-) -> BincodeBuffer {
+) -> BincodeBuffer { unsafe {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
         | Some(e) => e,
@@ -315,7 +315,7 @@ pub unsafe extern "C" fn classify_singularity_bincode(
     );
 
     to_bincode_buffer(&singularity_type)
-}
+}}
 
 /// Computes the Laurent series of a function.
 
@@ -327,7 +327,7 @@ pub unsafe extern "C" fn classify_singularity_bincode(
 
 /// Returns a bincode-serialized `Expr` representing the Laurent series.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -347,7 +347,7 @@ pub unsafe extern "C" fn laurent_series_bincode(
     var: *const c_char,
     center_bincode: BincodeBuffer,
     order: usize,
-) -> BincodeBuffer {
+) -> BincodeBuffer { unsafe {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
         | Some(e) => e,
@@ -372,7 +372,7 @@ pub unsafe extern "C" fn laurent_series_bincode(
     );
 
     to_bincode_buffer(&series)
-}
+}}
 
 /// Calculates the residue of a function at a given singularity.
 
@@ -384,7 +384,7 @@ pub unsafe extern "C" fn laurent_series_bincode(
 
 /// Returns a bincode-serialized `Expr` representing the residue.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -403,7 +403,7 @@ pub unsafe extern "C" fn calculate_residue_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
     singularity_bincode: BincodeBuffer,
-) -> BincodeBuffer {
+) -> BincodeBuffer { unsafe {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
         | Some(e) => e,
@@ -427,7 +427,7 @@ pub unsafe extern "C" fn calculate_residue_bincode(
     );
 
     to_bincode_buffer(&residue)
-}
+}}
 
 /// Calculates a contour integral using the residue theorem.
 
@@ -439,7 +439,7 @@ pub unsafe extern "C" fn calculate_residue_bincode(
 
 /// Returns a bincode-serialized `Expr` representing the result of the integral.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -458,7 +458,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
     singularities_bincode : BincodeBuffer,
-) -> BincodeBuffer {
+) -> BincodeBuffer { unsafe {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
         | Some(e) => e,
@@ -482,7 +482,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
     );
 
     to_bincode_buffer(&result)
-}
+}}
 
 /// Creates a new Mobius transformation.
 
@@ -492,7 +492,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
 
 /// Returns a bincode-serialized `MobiusTransformation` object.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -543,7 +543,7 @@ pub unsafe extern "C" fn mobius_transformation_new_bincode(
 
 /// Takes no arguments and returns a bincode-serialized `MobiusTransformation` object.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn mobius_transformation_identity_bincode(
 ) -> BincodeBuffer {
@@ -563,7 +563,7 @@ pub extern "C" fn mobius_transformation_identity_bincode(
 
 /// Returns a bincode-serialized `Expr` representing the result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -601,7 +601,7 @@ pub unsafe extern "C" fn mobius_transformation_apply_bincode(
 
 /// Returns a bincode-serialized `MobiusTransformation` representing their composition.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -640,7 +640,7 @@ pub unsafe extern "C" fn mobius_transformation_compose_bincode(
 
 /// Returns a bincode-serialized `MobiusTransformation` representing its inverse.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -674,7 +674,7 @@ pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
 
 /// Returns a bincode-serialized `Expr` representing the value of the function at `z0`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -693,7 +693,7 @@ pub unsafe extern "C" fn cauchy_integral_formula_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
     z0_bincode: BincodeBuffer,
-) -> BincodeBuffer {
+) -> BincodeBuffer { unsafe {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
         | Some(e) => e,
@@ -713,7 +713,7 @@ pub unsafe extern "C" fn cauchy_integral_formula_bincode(
     let result = crate::symbolic::complex_analysis::cauchy_integral_formula(&func, var_str, &z0);
 
     to_bincode_buffer(&result)
-}
+}}
 
 /// Applies Cauchy's derivative formula.
 
@@ -725,7 +725,7 @@ pub unsafe extern "C" fn cauchy_integral_formula_bincode(
 
 /// Returns a bincode-serialized `Expr` representing the nth derivative of the function at `z0`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -745,7 +745,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
     var: *const c_char,
     z0_bincode: BincodeBuffer,
     n: usize,
-) -> BincodeBuffer {
+) -> BincodeBuffer { unsafe {
 
     let func : Expr = match from_bincode_buffer(&func_bincode) {
         | Some(e) => e,
@@ -770,7 +770,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
     );
 
     to_bincode_buffer(&result)
-}
+}}
 
 /// Computes the complex exponential `e^z`.
 
@@ -780,7 +780,7 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
 
 /// Returns a bincode-serialized `Expr` representing `e^z`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -812,7 +812,7 @@ pub unsafe extern "C" fn complex_exp_bincode(
 
 /// Returns a bincode-serialized `Expr` representing `log(z)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -844,7 +844,7 @@ pub unsafe extern "C" fn complex_log_bincode(
 
 /// Returns a bincode-serialized `Expr` representing `arg(z)`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -882,7 +882,7 @@ pub unsafe extern "C" fn complex_arg_bincode(
 ///
 /// This function is unsafe because it dereferences a bincode buffer that must contain
 /// a valid serialized `Expr`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

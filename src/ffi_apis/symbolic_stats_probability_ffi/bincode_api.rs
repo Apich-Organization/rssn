@@ -28,7 +28,7 @@ fn parse_expr(
 
 /// Returns a bincode-serialized `Expr` representing the normal distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_normal(
     mean_buf: BincodeBuffer,
@@ -62,7 +62,7 @@ pub extern "C" fn rssn_bincode_dist_normal(
 
 /// Returns a bincode-serialized `Expr` representing the uniform distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_uniform(
     min_buf: BincodeBuffer,
@@ -93,7 +93,7 @@ pub extern "C" fn rssn_bincode_dist_uniform(
 
 /// Returns a bincode-serialized `Expr` representing the binomial distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_binomial(
     n_buf: BincodeBuffer,
@@ -124,7 +124,7 @@ pub extern "C" fn rssn_bincode_dist_binomial(
 
 /// Returns a bincode-serialized `Expr` representing the Poisson distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_poisson(
     rate_buf: BincodeBuffer
@@ -150,7 +150,7 @@ pub extern "C" fn rssn_bincode_dist_poisson(
 
 /// Returns a bincode-serialized `Expr` representing the Bernoulli distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_bernoulli(
     p_buf: BincodeBuffer
@@ -176,7 +176,7 @@ pub extern "C" fn rssn_bincode_dist_bernoulli(
 
 /// Returns a bincode-serialized `Expr` representing the exponential distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_exponential(
     rate_buf: BincodeBuffer
@@ -202,7 +202,7 @@ pub extern "C" fn rssn_bincode_dist_exponential(
 
 /// Returns a bincode-serialized `Expr` representing the gamma distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_gamma(
     shape_buf: BincodeBuffer,
@@ -233,7 +233,7 @@ pub extern "C" fn rssn_bincode_dist_gamma(
 
 /// Returns a bincode-serialized `Expr` representing the beta distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_beta(
     alpha_buf: BincodeBuffer,
@@ -264,7 +264,7 @@ pub extern "C" fn rssn_bincode_dist_beta(
 
 /// Returns a bincode-serialized `Expr` representing the Student's t-distribution.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_student_t(
     nu_buf: BincodeBuffer
@@ -292,7 +292,7 @@ pub extern "C" fn rssn_bincode_dist_student_t(
 
 /// Returns a bincode-serialized `Expr` representing the PDF at `x`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_pdf(
     dist_buf: BincodeBuffer,
@@ -326,7 +326,7 @@ pub extern "C" fn rssn_bincode_dist_pdf(
 
 /// Returns a bincode-serialized `Expr` representing the CDF at `x`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_cdf(
     dist_buf: BincodeBuffer,
@@ -360,7 +360,7 @@ pub extern "C" fn rssn_bincode_dist_cdf(
 
 /// Returns a bincode-serialized `Expr` representing the expectation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_expectation(
     dist_buf: BincodeBuffer
@@ -390,7 +390,7 @@ pub extern "C" fn rssn_bincode_dist_expectation(
 
 /// Returns a bincode-serialized `Expr` representing the variance.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_variance(
     dist_buf: BincodeBuffer
@@ -420,7 +420,7 @@ pub extern "C" fn rssn_bincode_dist_variance(
 
 /// Returns a bincode-serialized `Expr` representing the MGF.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_dist_mgf(
     dist_buf: BincodeBuffer,

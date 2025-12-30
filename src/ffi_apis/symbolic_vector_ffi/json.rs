@@ -16,7 +16,7 @@ use crate::symbolic::vector::Vector;
 
 /// Returns a JSON string representing the `Expr` of its magnitude.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_vector_magnitude(
     v_json: *const c_char
@@ -44,7 +44,7 @@ pub extern "C" fn rssn_json_vector_magnitude(
 
 /// Returns a JSON string representing the `Expr` of their dot product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_vector_dot(
     v1_json: *const c_char,
@@ -57,17 +57,16 @@ pub extern "C" fn rssn_json_vector_dot(
     let v2: Option<Vector> =
         from_json_string(v2_json);
 
-    if let (Some(vec1), Some(vec2)) =
-        (v1, v2)
-    {
+    match (v1, v2)
+    { (Some(vec1), Some(vec2)) => {
 
         let result = vec1.dot(&vec2);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the cross product of two vectors.
@@ -78,7 +77,7 @@ pub extern "C" fn rssn_json_vector_dot(
 
 /// Returns a JSON string representing the `Vector` of their cross product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_vector_cross(
     v1_json: *const c_char,
@@ -91,17 +90,16 @@ pub extern "C" fn rssn_json_vector_cross(
     let v2: Option<Vector> =
         from_json_string(v2_json);
 
-    if let (Some(vec1), Some(vec2)) =
-        (v1, v2)
-    {
+    match (v1, v2)
+    { (Some(vec1), Some(vec2)) => {
 
         let result = vec1.cross(&vec2);
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Normalizes a vector.
@@ -112,7 +110,7 @@ pub extern "C" fn rssn_json_vector_cross(
 
 /// Returns a JSON string representing the normalized `Vector`.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_vector_normalize(
     v_json: *const c_char
@@ -148,7 +146,7 @@ pub extern "C" fn rssn_json_vector_normalize(
 
 /// Returns a JSON string representing the `Vector` of the gradient.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_vector_gradient(
     scalar_field_json: *const c_char,
@@ -207,26 +205,26 @@ pub extern "C" fn rssn_json_vector_gradient(
         }
     };
 
-    if let (
-        Some(field),
-        Some(x),
-        Some(y),
-        Some(z),
-    ) = (
+    match (
         scalar_field,
         x_str,
         y_str,
         z_str,
-    ) {
+    ) { (
+        Some(field),
+        Some(x),
+        Some(y),
+        Some(z),
+    ) => {
 
         let result =
             gradient(&field, (x, y, z));
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the divergence of a vector field.
@@ -237,7 +235,7 @@ pub extern "C" fn rssn_json_vector_gradient(
 
 /// Returns a JSON string representing the `Expr` of the divergence.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_vector_divergence(
     v_json: *const c_char,
@@ -294,14 +292,14 @@ pub extern "C" fn rssn_json_vector_divergence(
         }
     };
 
-    if let (
+    match (
+        v, x_str, y_str, z_str,
+    ) { (
         Some(vector),
         Some(x),
         Some(y),
         Some(z),
-    ) = (
-        v, x_str, y_str, z_str,
-    ) {
+    ) => {
 
         let result = divergence(
             &vector,
@@ -309,10 +307,10 @@ pub extern "C" fn rssn_json_vector_divergence(
         );
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Computes the curl of a 3D vector field.
@@ -323,7 +321,7 @@ pub extern "C" fn rssn_json_vector_divergence(
 
 /// Returns a JSON string representing the `Vector` of the curl.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_vector_curl(
     v_json: *const c_char,
@@ -380,21 +378,21 @@ pub extern "C" fn rssn_json_vector_curl(
         }
     };
 
-    if let (
+    match (
+        v, x_str, y_str, z_str,
+    ) { (
         Some(vector),
         Some(x),
         Some(y),
         Some(z),
-    ) = (
-        v, x_str, y_str, z_str,
-    ) {
+    ) => {
 
         let result =
             curl(&vector, (x, y, z));
 
         to_json_string(&result)
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

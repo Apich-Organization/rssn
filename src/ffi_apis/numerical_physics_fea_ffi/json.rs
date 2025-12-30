@@ -130,7 +130,7 @@ struct MeshOutput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -209,7 +209,7 @@ pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
 /// # Safety
 ///
 /// This function is unsafe because it returns a raw pointer that the caller must free.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -274,7 +274,7 @@ pub unsafe extern "C" fn rssn_num_fea_material_steel_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -355,7 +355,7 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -433,7 +433,7 @@ pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -507,7 +507,7 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -581,7 +581,7 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -664,7 +664,7 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -747,7 +747,7 @@ pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

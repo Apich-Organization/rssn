@@ -57,7 +57,7 @@ struct PbcInput {
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -147,7 +147,7 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

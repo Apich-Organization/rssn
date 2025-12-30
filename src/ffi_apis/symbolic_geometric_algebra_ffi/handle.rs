@@ -2,7 +2,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::geometric_algebra::Multivector;
 
 /// Creates a new scalar multivector (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_multivector_scalar_handle(
     p: u32,
@@ -31,7 +31,7 @@ pub extern "C" fn rssn_multivector_scalar_handle(
 }
 
 /// Computes geometric product (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_multivector_geometric_product_handle(
     a: *const Multivector,
@@ -67,7 +67,7 @@ pub extern "C" fn rssn_multivector_geometric_product_handle(
 }
 
 /// Computes outer product (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_multivector_outer_product_handle(
     a: *const Multivector,
@@ -103,7 +103,7 @@ pub extern "C" fn rssn_multivector_outer_product_handle(
 }
 
 /// Computes inner product (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_multivector_inner_product_handle(
     a: *const Multivector,
@@ -139,7 +139,7 @@ pub extern "C" fn rssn_multivector_inner_product_handle(
 }
 
 /// Computes reverse (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_multivector_reverse_handle(
     mv: *const Multivector
@@ -162,7 +162,7 @@ pub extern "C" fn rssn_multivector_reverse_handle(
 }
 
 /// Computes grade projection (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_multivector_grade_projection_handle(
     mv: *const Multivector,
@@ -187,7 +187,7 @@ pub extern "C" fn rssn_multivector_grade_projection_handle(
 }
 
 /// Computes magnitude (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_multivector_magnitude_handle(
     mv: *const Multivector
@@ -210,7 +210,7 @@ pub extern "C" fn rssn_multivector_magnitude_handle(
 }
 
 /// Frees a multivector (Handle)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_multivector_handle(
     ptr: *mut Multivector

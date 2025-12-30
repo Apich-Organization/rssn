@@ -8,7 +8,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag;
 
 /// Simplifies an expression using the DAG-based simplifier (JSON input/output).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_simplify_dag(
     expr_json: *const c_char

@@ -11,7 +11,7 @@ use crate::numerical::ode::{
 use crate::symbolic::core::Expr;
 
 /// Solves a system of ODEs and returns the results as a Matrix handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
     x_end: f64,
     num_steps: usize,
     method: i32,
-) -> *mut Matrix<f64> {
+) -> *mut Matrix<f64> { unsafe {
 
     if funcs.is_null() || y0.is_null() {
 
@@ -130,4 +130,4 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
             ptr::null_mut()
         },
     }
-}
+}}

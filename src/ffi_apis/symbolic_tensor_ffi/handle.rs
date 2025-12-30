@@ -8,7 +8,7 @@ use crate::symbolic::tensor::Tensor;
 
 /// and returns a raw pointer to a new `Tensor` representing their sum.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_tensor_add_handle(
     t1: *const Tensor,
@@ -45,7 +45,7 @@ pub extern "C" fn rssn_tensor_add_handle(
 
 /// Returns a raw pointer to a new `Tensor` representing the result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_tensor_scalar_mul_handle(
     t: *const Tensor,
@@ -82,7 +82,7 @@ pub extern "C" fn rssn_tensor_scalar_mul_handle(
 
 /// and returns a raw pointer to a new `Tensor` representing their outer product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_tensor_outer_product_handle(
     t1: *const Tensor,
@@ -119,7 +119,7 @@ pub extern "C" fn rssn_tensor_outer_product_handle(
 
 /// Returns a raw pointer to a new `Tensor` representing the contracted tensor.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_tensor_contract_handle(
     t: *const Tensor,

@@ -9,7 +9,7 @@ use crate::symbolic::logic::to_cnf;
 use crate::symbolic::logic::to_dnf;
 
 /// Simplifies a logical expression using JSON-based FFI.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_simplify_logic(
     expr_json: *const c_char
@@ -30,7 +30,7 @@ pub extern "C" fn rssn_json_simplify_logic(
 }
 
 /// Converts a logical expression to Conjunctive Normal Form (CNF) using JSON-based FFI.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_to_cnf(
     expr_json: *const c_char
@@ -51,7 +51,7 @@ pub extern "C" fn rssn_json_to_cnf(
 }
 
 /// Converts a logical expression to Disjunctive Normal Form (DNF) using JSON-based FFI.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_to_dnf(
     expr_json: *const c_char
@@ -77,7 +77,7 @@ pub extern "C" fn rssn_json_to_dnf(
 /// - `{"result": "satisfiable"}` if satisfiable
 /// - `{"result": "unsatisfiable"}` if unsatisfiable
 /// - `{"result": "undecidable"}` if the expression contains quantifiers
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_is_satisfiable(
     expr_json: *const c_char

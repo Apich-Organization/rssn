@@ -9,7 +9,7 @@ use crate::numerical::finite_field::{
 };
 
 /// Creates a new `PrimeFieldElement`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_ff_pfe_new(
     value: u64,
@@ -25,7 +25,7 @@ pub extern "C" fn rssn_num_ff_pfe_new(
 }
 
 /// Frees a `PrimeFieldElement`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_free(
 }
 
 /// Computes the inverse of a `PrimeFieldElement`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -61,7 +61,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_free(
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
     pfe: *const PrimeFieldElement
-) -> *mut PrimeFieldElement {
+) -> *mut PrimeFieldElement { unsafe {
 
     if pfe.is_null() {
 
@@ -86,10 +86,10 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
             ptr::null_mut()
         },
     }
-}
+}}
 
 /// Computes (pfe^exp) mod modulus.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_pow(
 }
 
 /// Performs addition in GF(p).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -147,7 +147,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add(
 }
 
 /// Performs multiplication in GF(p).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -176,7 +176,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul(
 }
 
 /// GF(2^8) addition.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub const extern "C" fn rssn_num_ff_gf256_add(
     a: u8,
@@ -187,7 +187,7 @@ pub const extern "C" fn rssn_num_ff_gf256_add(
 }
 
 /// GF(2^8) multiplication.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_ff_gf256_mul(
     a: u8,
@@ -199,7 +199,7 @@ pub extern "C" fn rssn_num_ff_gf256_mul(
 
 /// GF(2^8) division.
 /// Returns 0 and sets error if divisor is 0.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_num_ff_gf256_div(
     a: u8,

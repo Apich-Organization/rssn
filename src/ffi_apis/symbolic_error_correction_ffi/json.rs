@@ -22,7 +22,7 @@ use crate::symbolic::error_correction::rs_encode;
 use crate::symbolic::error_correction::rs_error_count;
 
 /// Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -59,7 +59,7 @@ pub unsafe extern "C" fn rssn_json_hamming_encode(
 
 /// Decodes a 7-bit Hamming(7,4) codeword via JSON interface.
 /// Returns JSON object with "data" and "`error_pos`" fields.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -100,7 +100,7 @@ pub unsafe extern "C" fn rssn_json_hamming_decode(
 
 /// Encodes data using Reed-Solomon code via JSON interface.
 /// Input: {"data": [bytes], "`n_sym"`: number}
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rssn_json_rs_encode(
 }
 
 /// Decodes a Reed-Solomon codeword via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -188,7 +188,7 @@ pub unsafe extern "C" fn rssn_json_rs_decode(
 /// Computes Hamming distance between two byte slices via JSON interface.
 /// Input: {"a": [bytes], "b": [bytes]}
 /// Returns: distance as integer, or null on error
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -230,7 +230,7 @@ pub unsafe extern "C" fn rssn_json_hamming_distance(
 /// Computes Hamming weight of a byte slice via JSON interface.
 /// Input: [bytes]
 /// Returns: weight as integer
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -261,7 +261,7 @@ pub unsafe extern "C" fn rssn_json_hamming_weight(
 /// Checks if a Hamming(7,4) codeword is valid via JSON interface.
 /// Input: [7 bytes]
 /// Returns: boolean
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -295,7 +295,7 @@ pub unsafe extern "C" fn rssn_json_hamming_check(
 
 /// Checks if a Reed-Solomon codeword is valid via JSON interface.
 /// Returns: boolean
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -331,7 +331,7 @@ pub unsafe extern "C" fn rssn_json_rs_check(
 
 /// Estimates error count in a Reed-Solomon codeword via JSON interface.
 /// Returns: error count as integer
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -373,7 +373,7 @@ pub unsafe extern "C" fn rssn_json_rs_error_count(
 /// Computes CRC-32 checksum via JSON interface.
 /// Input: [bytes]
 /// Returns: u32 checksum
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -404,7 +404,7 @@ pub unsafe extern "C" fn rssn_json_crc32_compute(
 /// Verifies CRC-32 checksum via JSON interface.
 /// Input: data as [bytes], `expected_crc` as u32
 /// Returns: boolean
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -444,7 +444,7 @@ pub unsafe extern "C" fn rssn_json_crc32_verify(
 /// Updates CRC-32 incrementally via JSON interface.
 /// Input: current crc as u32, data as [bytes]
 /// Returns: updated crc as u32
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -482,7 +482,7 @@ pub unsafe extern "C" fn rssn_json_crc32_update(
 /// Finalizes CRC-32 computation via JSON interface.
 /// Input: running crc as u32
 /// Returns: final crc as u32
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

@@ -58,7 +58,7 @@ fn encode<T: Serialize>(
 }
 
 /// Evaluates an expression from a Bincode buffer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

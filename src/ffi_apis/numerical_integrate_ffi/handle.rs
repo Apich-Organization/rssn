@@ -28,7 +28,7 @@ use crate::symbolic::core::Expr;
 ///
 /// # Returns
 /// 0 on success, -1 on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
     n_steps: usize,
     method: i32,
     result: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if expr_ptr.is_null()
         || var_ptr.is_null()
@@ -118,4 +118,4 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
             -1
         },
     }
-}
+}}

@@ -18,7 +18,7 @@ fn test_em_simulate_oscillator_handle_ffi(
         assert!(matrix.rows() > 0);
 
         assert_eq!(matrix.cols(), 3); // time, y0, y1
-        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(matrix_ptr);
+        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(matrix_ptr as *mut rssn::ffi_apis::numerical_matrix_ffi::handle::RssnMatrixHandle);
     }
 }
 

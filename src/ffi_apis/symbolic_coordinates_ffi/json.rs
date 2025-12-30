@@ -33,7 +33,7 @@ use crate::symbolic::core::Expr;
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_transform_point(
     point_json: *const c_char,
@@ -79,7 +79,7 @@ pub extern "C" fn rssn_json_transform_point(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_transform_expression(
     expr_json: *const c_char,
@@ -122,7 +122,7 @@ pub extern "C" fn rssn_json_transform_expression(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_coordinates_get_metric_tensor(
     system: CoordinateSystem
@@ -156,7 +156,7 @@ pub extern "C" fn rssn_json_coordinates_get_metric_tensor(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_transform_contravariant_vector(
     comps_json: *const c_char,
@@ -197,7 +197,7 @@ pub extern "C" fn rssn_json_transform_contravariant_vector(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_transform_covariant_vector(
     comps_json: *const c_char,
@@ -241,7 +241,7 @@ pub extern "C" fn rssn_json_transform_covariant_vector(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_transform_divergence(
     comps_json: *const c_char,
@@ -269,7 +269,7 @@ pub extern "C" fn rssn_json_transform_divergence(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the curl of a vector field in a given coordinate system using JSON serialization.
 ///
@@ -311,7 +311,7 @@ pub extern "C" fn rssn_json_transform_curl(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the gradient of a scalar field and transforms it between coordinate systems
 /// using JSON serialization.
@@ -346,9 +346,8 @@ pub extern "C" fn rssn_json_transform_gradient(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    if let (Some(s), Some(v)) =
-        (scalar, vars)
-    {
+    match (scalar, vars)
+    { (Some(s), Some(v)) => {
 
         match transform_gradient(
             &s, &v, from, to,
@@ -360,8 +359,8 @@ pub extern "C" fn rssn_json_transform_gradient(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

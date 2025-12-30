@@ -348,7 +348,7 @@ pub fn simulate_ising_model(
         for j in 0 .. size {
 
             lattice[i][j] =
-                if rng.gen::<bool>() {
+                if rng.r#gen::<bool>() {
 
                     1
                 } else {
@@ -386,7 +386,7 @@ pub fn simulate_ising_model(
             * f64::from(neighbor_sum);
 
         if delta_e < 0.0
-            || rng.gen::<f64>()
+            || rng.r#gen::<f64>()
                 < (-delta_e
                     / temperature)
                     .exp()

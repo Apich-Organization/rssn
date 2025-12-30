@@ -16,7 +16,7 @@ struct FactorizeRequest {
 }
 
 /// Factorizes a number from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -100,7 +100,7 @@ struct ModInverseRequest {
 }
 
 /// Modular inverse from JSON.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

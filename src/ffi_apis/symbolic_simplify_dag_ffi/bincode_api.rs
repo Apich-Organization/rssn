@@ -7,7 +7,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag;
 
 /// Simplifies an expression using the DAG-based simplifier (Bincode input/output).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_simplify_dag(
     expr_buf: BincodeBuffer

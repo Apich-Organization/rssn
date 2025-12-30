@@ -16,7 +16,7 @@ struct CadInput {
 /// Computes CAD for a set of polynomials via Bincode interface.
 ///
 /// Input buffer should contain a serialized `CadInput`: `{"polys": [Expr, ...], "vars": ["x", "y", ...]}`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_cad(
     input_buf: BincodeBuffer

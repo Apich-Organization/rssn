@@ -52,7 +52,7 @@ pub(crate) fn convert_expr_graph_to_string_graph(
 }
 
 /// Creates an induced subgraph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_induced_subgraph(
     ptr: *const RssnGraph,
@@ -107,7 +107,7 @@ pub extern "C" fn rssn_graph_induced_subgraph(
 }
 
 /// Computes the union of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_union(
     ptr1: *const RssnGraph,
@@ -137,7 +137,7 @@ pub extern "C" fn rssn_graph_union(
 }
 
 /// Computes the intersection of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_intersection(
     ptr1: *const RssnGraph,
@@ -167,7 +167,7 @@ pub extern "C" fn rssn_graph_intersection(
 }
 
 /// Computes the Cartesian product of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_cartesian_product(
     ptr1: *const RssnGraph,
@@ -200,7 +200,7 @@ pub extern "C" fn rssn_graph_cartesian_product(
 }
 
 /// Computes the Tensor product of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_tensor_product(
     ptr1: *const RssnGraph,
@@ -233,7 +233,7 @@ pub extern "C" fn rssn_graph_tensor_product(
 }
 
 /// Computes the complement of a graph.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_complement(
     ptr: *const RssnGraph
@@ -256,7 +256,7 @@ pub extern "C" fn rssn_graph_complement(
 }
 
 /// Computes the disjoint union of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_disjoint_union(
     ptr1: *const RssnGraph,
@@ -289,7 +289,7 @@ pub extern "C" fn rssn_graph_disjoint_union(
 }
 
 /// Computes the join of two graphs.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_join(
     ptr1: *const RssnGraph,

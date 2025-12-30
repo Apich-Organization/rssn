@@ -4,7 +4,7 @@ use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponentia
 
 // --- LieAlgebra Creation ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Constructs the Lie algebra \(\mathfrak{so}(3)\) and returns it via bincode serialization.
 ///
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3(
     to_bincode_buffer(&algebra)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Constructs the Lie algebra \(\mathfrak{su}(2)\) and returns it via bincode serialization.
 ///
@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2(
 
 // --- Lie Bracket ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the Lie bracket \([x, y]\) of two elements of a Lie algebra using bincode serialization.
 ///
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn rssn_bincode_lie_bracket(
 
 // --- Exponential Map ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the exponential map from a Lie algebra element to the corresponding Lie group element.
 ///
@@ -184,7 +184,7 @@ pub unsafe extern "C" fn rssn_bincode_exponential_map(
 
 // --- Adjoint Representations ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Applies the adjoint representation of a Lie group element to a Lie algebra element.
 ///
@@ -241,7 +241,7 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Applies the adjoint representation of a Lie algebra element to another element.
 ///
@@ -301,7 +301,7 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
 
 // --- Commutator Table ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Computes the commutator table (structure constants) of a Lie algebra.
 ///
@@ -349,7 +349,7 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
 
 // --- Jacobi Identity Check ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Checks whether a Lie algebra satisfies the Jacobi identity.
 ///
@@ -400,7 +400,7 @@ pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
 
 // --- Generators ---
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Returns the standard generators of \(\mathfrak{so}(3)\) via bincode serialization.
 ///
@@ -439,7 +439,7 @@ pub unsafe extern "C" fn rssn_bincode_so3_generators(
     to_bincode_buffer(&exprs)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// Returns the standard generators of \(\mathfrak{su}(2)\) via bincode serialization.
 ///

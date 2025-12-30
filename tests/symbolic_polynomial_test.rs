@@ -287,20 +287,20 @@ fn test_leading_coefficient() {
         | Expr::Dag(_) => {
 
             // If it's a DAG, convert and check
-            if let Ok(Expr::Constant(
+            match lc.to_ast()
+            { Ok(Expr::Constant(
                 c,
-            )) = lc.to_ast()
-            {
+            )) => {
 
                 assert!(
                     (c - 5.0).abs()
                         < 1e-10
                 );
-            } else {
+            } _ => {
 
                 // Just check that we got a result
                 assert!(true);
-            }
+            }}
         },
         | _ => {
 

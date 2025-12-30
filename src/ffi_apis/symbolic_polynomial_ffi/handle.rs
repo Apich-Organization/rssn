@@ -11,7 +11,7 @@ use crate::symbolic::polynomial::polynomial_degree;
 use crate::symbolic::polynomial::polynomial_long_division;
 
 /// Checks if an expression is a polynomial in the given variable (handle-based)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -39,7 +39,7 @@ pub extern "C" fn polynomial_is_polynomial_handle(
 }
 
 /// Computes the degree of a polynomial (handle-based)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -67,7 +67,7 @@ pub extern "C" fn polynomial_degree_handle(
 }
 
 /// Performs polynomial long division (handle-based)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -119,7 +119,7 @@ pub extern "C" fn polynomial_long_division_handle(
 }
 
 /// Finds the leading coefficient of a polynomial (handle-based)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -152,7 +152,7 @@ pub extern "C" fn polynomial_leading_coefficient_handle(
 }
 
 /// Checks if an expression contains a variable (handle-based)
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -180,7 +180,7 @@ pub extern "C" fn polynomial_contains_var_handle(
 }
 
 /// Frees an Expr handle
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn polynomial_free_expr_handle(
     expr_handle: *mut Expr

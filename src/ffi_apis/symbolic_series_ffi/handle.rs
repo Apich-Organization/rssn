@@ -18,7 +18,7 @@ use crate::symbolic::series::taylor_series;
 
 /// Returns a raw pointer to a new `Expr` representing the Taylor series.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_taylor_series_handle(
     expr: *const Expr,
@@ -70,7 +70,7 @@ pub extern "C" fn rssn_taylor_series_handle(
 
 /// Returns a raw pointer to a new `Expr` representing the Laurent series.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_laurent_series_handle(
     expr: *const Expr,
@@ -122,7 +122,7 @@ pub extern "C" fn rssn_laurent_series_handle(
 
 /// Returns a raw pointer to a new `Expr` representing the Fourier series.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_fourier_series_handle(
     expr: *const Expr,
@@ -174,7 +174,7 @@ pub extern "C" fn rssn_fourier_series_handle(
 
 /// Returns a raw pointer to a new `Expr` representing the summation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_summation_handle(
     expr: *const Expr,
@@ -231,7 +231,7 @@ pub extern "C" fn rssn_summation_handle(
 
 /// Returns a raw pointer to a new `Expr` representing the product.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_product_handle(
     expr: *const Expr,
@@ -286,7 +286,7 @@ pub extern "C" fn rssn_product_handle(
 
 /// Returns a raw pointer to a `ConvergenceResult` representing the convergence analysis result.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_series_analyze_convergence_handle(
     series: *const Expr,
@@ -326,7 +326,7 @@ pub extern "C" fn rssn_series_analyze_convergence_handle(
 
 /// Returns a raw pointer to a new `Expr` representing the asymptotic expansion.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_asymptotic_expansion_handle(
     expr: *const Expr,
@@ -378,7 +378,7 @@ pub extern "C" fn rssn_asymptotic_expansion_handle(
 
 /// Returns a raw pointer to a new `Expr` representing the analytic continuation.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_analytic_continuation_handle(
     expr: *const Expr,

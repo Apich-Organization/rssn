@@ -18,7 +18,7 @@ use crate::symbolic::error_correction_helper::poly_mul_gf256;
 use crate::symbolic::error_correction_helper::FiniteField;
 
 /// Performs addition in GF(2^8) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -52,7 +52,7 @@ pub unsafe extern "C" fn rssn_json_gf256_add(
 }
 
 /// Performs multiplication in GF(2^8) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn rssn_json_gf256_mul(
 }
 
 /// Computes inverse in GF(2^8) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn rssn_json_gf256_inv(
 }
 
 /// Evaluates a polynomial over GF(2^8) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rssn_json_poly_eval_gf256(
 }
 
 /// Adds two polynomials over GF(2^8) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf256(
 }
 
 /// Multiplies two polynomials over GF(2^8) via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -225,7 +225,7 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf256(
 }
 
 /// Adds two polynomials over a general finite field via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -250,12 +250,12 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf(
     let modulus: Option<i64> =
         from_json_string(modulus_json);
 
-    if let (
+    match (p1, p2, modulus)
+    { (
         Some(v1),
         Some(v2),
         Some(m),
-    ) = (p1, p2, modulus)
-    {
+    ) => {
 
         let field = FiniteField::new(m);
 
@@ -271,14 +271,14 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }
 
 /// Multiplies two polynomials over a general finite field via JSON interface.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -303,12 +303,12 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf(
     let modulus: Option<i64> =
         from_json_string(modulus_json);
 
-    if let (
+    match (p1, p2, modulus)
+    { (
         Some(v1),
         Some(v2),
         Some(m),
-    ) = (p1, p2, modulus)
-    {
+    ) => {
 
         let field = FiniteField::new(m);
 
@@ -324,8 +324,8 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf(
                 std::ptr::null_mut()
             },
         }
-    } else {
+    } _ => {
 
         std::ptr::null_mut()
-    }
+    }}
 }

@@ -54,7 +54,7 @@ struct AdvectionDiffusion2DInput {
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

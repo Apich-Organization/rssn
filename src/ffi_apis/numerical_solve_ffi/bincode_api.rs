@@ -57,7 +57,7 @@ fn encode<T: Serialize>(
 }
 
 /// Bincode FFI for solving linear systems.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

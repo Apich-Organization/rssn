@@ -13,7 +13,7 @@ use crate::symbolic::numeric::evaluate_numerical;
 
 /// and returns a JSON string representing the numerical evaluation of that expression.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_evaluate_numerical(
     expr_json: *const c_char

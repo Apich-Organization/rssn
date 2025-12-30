@@ -9,7 +9,7 @@ use crate::symbolic::calculus_of_variations;
 use crate::symbolic::core::Expr;
 
 /// Computes the Euler-Lagrange equation using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_euler_lagrange(
     lagrangian_buf: BincodeBuffer,
@@ -52,23 +52,23 @@ pub extern "C" fn rssn_bincode_euler_lagrange(
         }
     };
 
-    if let (Some(l), Some(f), Some(v)) = (
+    match (
         lagrangian,
         func_str,
         var_str,
-    ) {
+    ) { (Some(l), Some(f), Some(v)) => {
 
         let result = calculus_of_variations::euler_lagrange(&l, f, v);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Generates and attempts to solve the Euler-Lagrange equation using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_solve_euler_lagrange(
     lagrangian_buf: BincodeBuffer,
@@ -111,23 +111,23 @@ pub extern "C" fn rssn_bincode_solve_euler_lagrange(
         }
     };
 
-    if let (Some(l), Some(f), Some(v)) = (
+    match (
         lagrangian,
         func_str,
         var_str,
-    ) {
+    ) { (Some(l), Some(f), Some(v)) => {
 
         let result = calculus_of_variations::solve_euler_lagrange(&l, f, v);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }
 
 /// Applies Hamilton's Principle using Bincode.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hamiltons_principle(
     lagrangian_buf: BincodeBuffer,
@@ -170,17 +170,17 @@ pub extern "C" fn rssn_bincode_hamiltons_principle(
         }
     };
 
-    if let (Some(l), Some(f), Some(v)) = (
+    match (
         lagrangian,
         func_str,
         var_str,
-    ) {
+    ) { (Some(l), Some(f), Some(v)) => {
 
         let result = calculus_of_variations::hamiltons_principle(&l, f, v);
 
         to_bincode_buffer(&result)
-    } else {
+    } _ => {
 
         BincodeBuffer::empty()
-    }
+    }}
 }

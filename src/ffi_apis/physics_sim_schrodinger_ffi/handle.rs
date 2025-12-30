@@ -9,7 +9,7 @@ use crate::physics::physics_sim::schrodinger_quantum::{
 };
 
 /// Runs a Schrodinger simulation and returns the final probability density as a Matrix handle (`NxxNy`).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -31,7 +31,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
     potential_ptr: *const f64,
     initial_psi_re_ptr: *const f64,
     initial_psi_im_ptr: *const f64,
-) -> *mut Matrix<f64> {
+) -> *mut Matrix<f64> { unsafe {
 
     if potential_ptr.is_null()
         || initial_psi_re_ptr.is_null()
@@ -109,4 +109,4 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_2d(
         },
         | Err(_) => std::ptr::null_mut(),
     }
-}
+}}

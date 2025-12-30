@@ -453,7 +453,7 @@ impl PluginManager {
         &mut self,
         library_path: &std::path::Path,
     ) -> Result<(), Box<dyn Error>>
-    {
+    { unsafe {
 
         let library =
             Library::new(library_path)?;
@@ -541,7 +541,7 @@ impl PluginManager {
             );
 
         Ok(())
-    }
+    }}
 
     /// Loads a single plugin from a dynamic library file.
 
@@ -565,7 +565,7 @@ impl PluginManager {
         &mut self,
         library_path: &std::path::Path,
     ) -> Result<(), Box<dyn Error>>
-    {
+    { unsafe {
 
         let library =
             Library::new(library_path)?;
@@ -656,7 +656,7 @@ impl PluginManager {
             );
 
         Ok(())
-    }
+    }}
 
     /// Spawns a background thread to periodically perform health checks on all plugins.
 

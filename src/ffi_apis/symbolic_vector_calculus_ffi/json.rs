@@ -46,7 +46,7 @@ struct VolumeIntegralInput {
 }
 
 /// Computes the line integral of a scalar field (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_line_integral_scalar_json(
     input_json: *const c_char
@@ -72,7 +72,7 @@ pub extern "C" fn rssn_line_integral_scalar_json(
 }
 
 /// Computes the line integral of a vector field (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_line_integral_vector_json(
     input_json: *const c_char
@@ -98,7 +98,7 @@ pub extern "C" fn rssn_line_integral_vector_json(
 }
 
 /// Computes the surface integral (flux) of a vector field (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_surface_integral_json(
     input_json: *const c_char
@@ -124,7 +124,7 @@ pub extern "C" fn rssn_surface_integral_json(
 }
 
 /// Computes the volume integral of a scalar field (JSON).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volume_integral_json(
     input_json: *const c_char

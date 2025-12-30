@@ -11,7 +11,7 @@ use crate::symbolic::solve::solve_system;
 
 /// Returns a raw pointer to a `Vec<Expr>` representing the solutions.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_solve_handle(
     expr: *const Expr,
@@ -50,7 +50,7 @@ pub extern "C" fn rssn_solve_handle(
 
 /// Returns a raw pointer to a `Vec<(Expr, Expr)>` representing the solutions.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_solve_system_handle(
     equations: *const Vec<Expr>,
@@ -95,7 +95,7 @@ pub extern "C" fn rssn_solve_system_handle(
 
 /// Returns a raw pointer to a `Vec<Expr>` representing the solutions.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_solve_linear_system_handle(
     system: *const Expr,

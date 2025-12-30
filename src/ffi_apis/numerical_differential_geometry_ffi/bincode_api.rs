@@ -18,7 +18,7 @@ struct DgPointInput {
 
 /// Computes the metric tensor at a given point using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor_bincode(
 
 /// Computes the Christoffel symbols at a given point using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -124,7 +124,7 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols_bincode(
 
 /// Computes the Ricci tensor at a given point using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -177,7 +177,7 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor_bincode(
 
 /// Computes the Ricci scalar at a given point using bincode for serialization.
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///

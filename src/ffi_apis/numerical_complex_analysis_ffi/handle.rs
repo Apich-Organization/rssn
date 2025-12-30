@@ -11,7 +11,7 @@ use crate::numerical::complex_analysis;
 use crate::symbolic::core::Expr;
 
 /// Evaluates a symbolic expression to a complex number.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -29,7 +29,7 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
     n_vars: usize,
     res_re: *mut f64,
     res_im: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if expr_ptr.is_null()
         || res_re.is_null()
@@ -81,10 +81,10 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
             -1
         },
     }
-}
+}}
 
 /// Computes a contour integral of a symbolic expression.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
     path_len: usize,
     res_re: *mut f64,
     res_im: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if expr_ptr.is_null()
         || var_ptr.is_null()
@@ -149,10 +149,10 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
             -1
         },
     }
-}
+}}
 
 /// Computes the residue of a symbolic expression.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -171,7 +171,7 @@ pub unsafe extern "C" fn rssn_num_complex_residue(
     n_points: usize,
     res_re: *mut f64,
     res_im: *mut f64,
-) -> i32 {
+) -> i32 { unsafe {
 
     if expr_ptr.is_null()
         || var_ptr.is_null()
@@ -217,4 +217,4 @@ pub unsafe extern "C" fn rssn_num_complex_residue(
             -1
         },
     }
-}
+}}

@@ -7,7 +7,7 @@ use crate::ffi_apis::constant_ffi::json::BuildInfo;
 
 /// Returns all build information as a `bincode_next` buffer.
 /// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_build_info_bincode(
 ) -> BincodeBuffer {
@@ -31,7 +31,7 @@ pub extern "C" fn rssn_get_build_info_bincode(
 
 /// Returns the build date as a `bincode_next` buffer.
 /// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_build_date_bincode(
 ) -> BincodeBuffer {
@@ -51,7 +51,7 @@ pub extern "C" fn rssn_get_build_date_bincode(
 
 /// Returns the commit SHA as a `bincode_next` buffer.
 /// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_get_commit_sha_bincode(
 ) -> BincodeBuffer {
@@ -77,7 +77,7 @@ macro_rules! gen_ffi_bincode {
 /// # Safety
 ///
 /// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         pub extern "C" fn $ffi_name() -> BincodeBuffer {
             let value = $internal_getter();
 

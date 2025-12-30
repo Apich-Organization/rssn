@@ -8,7 +8,7 @@ use crate::symbolic::graph_algorithms::{dfs, bfs, connected_components, is_conne
 
 /// Performs DFS traversal starting from a given node.
 /// Returns a JSON array of node indices in visit order.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -46,7 +46,7 @@ pub extern "C" fn rssn_graph_dfs_api(
 
 /// Performs BFS traversal starting from a given node.
 /// Returns a JSON array of node indices in visit order.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -84,7 +84,7 @@ pub extern "C" fn rssn_graph_bfs_api(
 
 /// Finds all connected components in an undirected graph.
 /// Returns a JSON array of arrays, where each inner array is a component.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -121,7 +121,7 @@ pub extern "C" fn rssn_graph_connected_components_api(
 }
 
 /// Checks if the graph is connected.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_is_connected(
     graph: *const RssnGraph
@@ -143,7 +143,7 @@ pub extern "C" fn rssn_graph_is_connected(
 
 /// Finds all strongly connected components in a directed graph.
 /// Returns a JSON array of arrays.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -179,7 +179,7 @@ pub extern "C" fn rssn_graph_strongly_connected_components(
 }
 
 /// Checks if the graph has a cycle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_has_cycle_api(
     graph: *const RssnGraph
@@ -201,7 +201,7 @@ pub extern "C" fn rssn_graph_has_cycle_api(
 
 /// Finds bridges and articulation points.
 /// Returns a JSON object with "bridges" and "`articulation_points`" fields.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -252,7 +252,7 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
 
 /// Computes the minimum spanning tree using Kruskal's algorithm.
 /// Returns a new graph containing only the MST edges.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_kruskal_mst_api(
     graph: *const RssnGraph
@@ -298,7 +298,7 @@ pub extern "C" fn rssn_graph_kruskal_mst_api(
 }
 
 /// Computes maximum flow using Edmonds-Karp algorithm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_edmonds_karp_max_flow(
     graph: *const RssnGraph,
@@ -325,7 +325,7 @@ pub extern "C" fn rssn_graph_edmonds_karp_max_flow(
 }
 
 /// Computes maximum flow using Dinic's algorithm.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_graph_dinic_max_flow(
     graph: *const RssnGraph,
@@ -349,7 +349,7 @@ pub extern "C" fn rssn_graph_dinic_max_flow(
 
 /// Checks if a graph is bipartite.
 /// Returns a JSON array of partition assignments (0 or 1 for each node), or null if not bipartite.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -391,7 +391,7 @@ pub extern "C" fn rssn_graph_is_bipartite_api(
 /// Finds maximum matching in a bipartite graph.
 /// `partition_json` should be a JSON array of 0s and 1s indicating the partition.
 /// Returns a JSON array of [u, v] pairs representing the matching.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -447,7 +447,7 @@ pub extern "C" fn rssn_graph_bipartite_maximum_matching(
 
 /// Performs topological sort on a DAG.
 /// Returns a JSON array of node indices in topological order, or null if the graph has a cycle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Panics
 ///
@@ -487,7 +487,7 @@ pub extern "C" fn rssn_graph_topological_sort(
 }
 
 /// Frees a C string returned by other functions.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_string_api(
     ptr: *mut c_char

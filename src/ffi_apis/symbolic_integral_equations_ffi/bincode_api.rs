@@ -40,7 +40,7 @@ struct AirfoilInput {
 }
 
 /// Solves a Fredholm equation using the Neumann series method (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_fredholm_solve_neumann_bincode(
     input_ptr: *const u8,
@@ -76,7 +76,7 @@ pub extern "C" fn rssn_fredholm_solve_neumann_bincode(
 }
 
 /// Solves a Fredholm equation with a separable kernel (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_fredholm_solve_separable_bincode(
     input_ptr: *const u8,
@@ -118,7 +118,7 @@ pub extern "C" fn rssn_fredholm_solve_separable_bincode(
 }
 
 /// Solves a Volterra equation using successive approximations (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volterra_solve_successive_bincode(
     input_ptr: *const u8,
@@ -152,7 +152,7 @@ pub extern "C" fn rssn_volterra_solve_successive_bincode(
 }
 
 /// Solves a Volterra equation by differentiation (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_volterra_solve_by_differentiation_bincode(
     input_ptr: *const u8,
@@ -191,7 +191,7 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation_bincode(
 }
 
 /// Solves the airfoil singular integral equation (Bincode).
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_solve_airfoil_equation_bincode(
     input_ptr: *const u8,

@@ -15,7 +15,7 @@ use crate::numerical::transforms;
 ///
 /// # Returns
 /// 0 on success, -1 on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -29,7 +29,7 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
     real: *mut f64,
     imag: *mut f64,
     len: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if real.is_null() || imag.is_null()
     {
@@ -76,10 +76,10 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
     }
 
     0
-}
+}}
 
 /// Computes the Inverse Fast Fourier Transform (IFFT) in-place.
-#[no_mangle]
+#[unsafe(no_mangle)]
 
 /// # Safety
 ///
@@ -93,7 +93,7 @@ pub unsafe extern "C" fn rssn_num_ifft_inplace(
     real: *mut f64,
     imag: *mut f64,
     len: usize,
-) -> i32 {
+) -> i32 { unsafe {
 
     if real.is_null() || imag.is_null()
     {
@@ -140,4 +140,4 @@ pub unsafe extern "C" fn rssn_num_ifft_inplace(
     }
 
     0
-}
+}}
