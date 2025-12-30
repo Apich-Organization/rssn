@@ -304,7 +304,11 @@
     clippy::empty_line_after_outer_attr,
     clippy::manual_let_else,
     // It is always reporting on normal math writings.
-    clippy::doc_markdown
+    clippy::doc_markdown,
+    // We thinks do not collapsible if makes the code more extensible.
+    clippy::collapsible_if,
+    clippy::collapsible_match,
+    clippy::collapsible_else_if
 )]
 
 /// Computation engine and task management.

@@ -2942,20 +2942,10 @@ pub(crate) fn simplify_add(
 
                         if is_numeric_node(c) {
 
-                        match get_numeric_value(c) { Some(val) => {
-
-                            // Neg(c * b) -> (-c) * b
-                            (
-                                neg_em(&val),
-                                b.clone(),
-                            )
-                        } _ => {
-
-                            (
-                                Expr::Constant(-1.0),
-                                child.clone(),
-                            )
-                        }}
+                        get_numeric_value(c).map_or_else(
+                            || (Expr::Constant(-1.0), child.clone()),
+                            |val| (neg_em(&val), b.clone()),
+                        )
                     } else {
 
                         (
@@ -2998,28 +2988,16 @@ pub(crate) fn simplify_add(
 
                     if is_numeric_node(c) {
 
-                    match get_numeric_value(c) { Some(val) => {
-
-                        (val, b.clone())
-                    } _ => {
-
-                        (
-                            Expr::BigInt(BigInt::one()),
-                            simplified_term.clone(),
-                        )
-                    }}
+                    get_numeric_value(c).map_or_else(
+                        || (Expr::BigInt(BigInt::one()), simplified_term.clone()),
+                        |val| (val, b.clone()),
+                    )
                 } else if is_numeric_node(b) {
 
-                    match get_numeric_value(b) { Some(val) => {
-
-                        (val, c.clone())
-                    } _ => {
-
-                        (
-                            Expr::BigInt(BigInt::one()),
-                            simplified_term.clone(),
-                        )
-                    }}
+                    get_numeric_value(b).map_or_else(
+                        || (Expr::BigInt(BigInt::one()), simplified_term.clone()),
+                        |val| (val, c.clone()),
+                    )
                 } else {
 
                     (

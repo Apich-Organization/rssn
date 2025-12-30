@@ -2770,23 +2770,16 @@ pub fn collect_and_order_terms(
         },
     );
 
-    let constant_term =
-        if let Some(pos) = sorted_terms
-            .iter()
-            .position(|(b, _)| {
-
-                is_one(b)
-            })
-        {
-
-            let (_, c) = sorted_terms
-                .remove(pos);
-
-            c
-        } else {
-
-            Expr::BigInt(BigInt::zero())
-        };
+    let constant_term = sorted_terms
+        .iter()
+        .position(|(b, _)| is_one(b))
+        .map_or_else(
+            || Expr::BigInt(BigInt::zero()),
+            |pos| {
+                let (_, c) = sorted_terms.remove(pos);
+                c
+            },
+        );
 
     (
         constant_term,
@@ -2951,15 +2944,10 @@ pub(crate) fn fold_constants(
             }
         },
         | Expr::Neg(arg) => {
-            if let Some(v) =
-                as_f64(&arg)
-            {
-
-                Expr::Constant(-v)
-            } else {
-
-                Expr::new_neg(arg)
-            }
+            as_f64(&arg).map_or_else(
+                || Expr::new_neg(arg),
+                |v| Expr::Constant(-v),
+            )
         },
         | _ => expr,
     }

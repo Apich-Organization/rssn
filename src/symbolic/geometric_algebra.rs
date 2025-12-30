@@ -516,19 +516,12 @@ impl Multivector {
         let scalar_part =
             product.grade_projection(0);
 
-        if let Some(scalar_coeff) =
-            scalar_part
-                .terms
-                .get(&0)
-        {
-
-            simplify(&Expr::new_sqrt(
-                scalar_coeff.clone(),
-            ))
-        } else {
-
-            Expr::Constant(0.0)
-        }
+        scalar_part.terms.get(&0).map_or_else(
+            || Expr::Constant(0.0),
+            |scalar_coeff| {
+                simplify(&Expr::new_sqrt(scalar_coeff.clone()))
+            },
+        )
     }
 
     /// Computes the dual of the multivector with respect to the pseudoscalar.
