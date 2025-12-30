@@ -90,7 +90,7 @@ pub unsafe extern "C" fn rssn_num_ga_get_components(
         return -1;
     }
 
-    let m = unsafe {
+    let m =  {
 
         &*mv
     };
@@ -388,7 +388,7 @@ pub unsafe extern "C" fn rssn_num_ga_inv(
         return ptr::null_mut();
     }
 
-    let a = unsafe {
+    let a =  {
 
         &*mv
     };

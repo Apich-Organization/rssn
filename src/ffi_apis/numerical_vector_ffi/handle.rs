@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rssn_num_vec_create(
         return std::ptr::null_mut();
     }
 
-    let v = unsafe {
+    let v =  {
 
         std::slice::from_raw_parts(
             data, len,
@@ -141,11 +141,11 @@ pub unsafe extern "C" fn rssn_num_vec_add(
     }
 
     let res = vector::vec_add(
-        unsafe {
+         {
 
             &*v1
         },
-        unsafe {
+         {
 
             &*v2
         },
@@ -186,11 +186,11 @@ pub unsafe extern "C" fn rssn_num_vec_sub(
     }
 
     let res = vector::vec_sub(
-        unsafe {
+         {
 
             &*v1
         },
-        unsafe {
+         {
 
             &*v2
         },
@@ -267,18 +267,18 @@ pub unsafe extern "C" fn rssn_num_vec_dot_product(
     }
 
     match vector::dot_product(
-        unsafe {
+         {
 
             &*v1
         },
-        unsafe {
+         {
 
             &*v2
         },
     ) {
         | Ok(val) => {
 
-            unsafe {
+             {
 
                 *result = val;
             }
@@ -374,7 +374,7 @@ pub unsafe extern "C" fn rssn_num_vec_normalize(
         return std::ptr::null_mut();
     }
 
-    match vector::normalize(unsafe {
+    match vector::normalize( {
 
         &*v
     }) {
@@ -412,11 +412,11 @@ pub unsafe extern "C" fn rssn_num_vec_cross_product(
     }
 
     match vector::cross_product(
-        unsafe {
+         {
 
             &*v1
         },
-        unsafe {
+         {
 
             &*v2
         },
@@ -459,18 +459,18 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
     }
 
     match vector::angle(
-        unsafe {
+         {
 
             &*v1
         },
-        unsafe {
+         {
 
             &*v2
         },
     ) {
         | Ok(val) => {
 
-            unsafe {
+             {
 
                 *result = val;
             }
@@ -508,11 +508,11 @@ pub unsafe extern "C" fn rssn_num_vec_project(
     }
 
     match vector::project(
-        unsafe {
+         {
 
             &*v1
         },
-        unsafe {
+         {
 
             &*v2
         },
@@ -551,11 +551,11 @@ pub unsafe extern "C" fn rssn_num_vec_reflect(
     }
 
     match vector::reflect(
-        unsafe {
+         {
 
             &*v
         },
-        unsafe {
+         {
 
             &*n
         },

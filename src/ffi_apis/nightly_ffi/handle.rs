@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rssn_num_matrix_create_nightly(
 
     let len = rows * cols;
 
-    let slice = unsafe {
+    let slice =  {
 
         std::slice::from_raw_parts(
             data, len,
@@ -180,14 +180,14 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data_nightly(
         return -1;
     }
 
-    let m = unsafe {
+    let m =  {
 
         &*matrix.cast::<Matrix<f64>>()
     };
 
     let data = m.data();
 
-    unsafe {
+     {
 
         ptr::copy_nonoverlapping(
             data.as_ptr(),
@@ -222,12 +222,12 @@ pub unsafe extern "C" fn rssn_num_matrix_add_nightly(
         return ptr::null_mut();
     }
 
-    let v1 = unsafe {
+    let v1 =  {
 
         &*m1.cast::<Matrix<f64>>()
     };
 
-    let v2 = unsafe {
+    let v2 =  {
 
         &*m2.cast::<Matrix<f64>>()
     };
@@ -274,12 +274,12 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_nightly(
         return ptr::null_mut();
     }
 
-    let v1 = unsafe {
+    let v1 =  {
 
         &*m1.cast::<Matrix<f64>>()
     };
 
-    let v2 = unsafe {
+    let v2 =  {
 
         &*m2.cast::<Matrix<f64>>()
     };
@@ -358,7 +358,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant_nightly(
         return -1;
     }
 
-    let m = unsafe {
+    let m =  {
 
         &*matrix.cast::<Matrix<f64>>()
     };
@@ -366,7 +366,7 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant_nightly(
     match m.determinant() {
         | Ok(d) => {
 
-            unsafe {
+             {
 
                 *result = d;
             };
@@ -403,7 +403,7 @@ pub unsafe extern "C" fn rssn_num_matrix_inverse_nightly(
         return ptr::null_mut();
     }
 
-    let m = unsafe {
+    let m =  {
 
         &*matrix.cast::<Matrix<f64>>()
     };
@@ -529,7 +529,7 @@ pub unsafe extern "C" fn rssn_num_matrix_rank_nightly(
         return -1;
     }
 
-    let m = unsafe {
+    let m =  {
 
         &*matrix.cast::<Matrix<f64>>()
     };
@@ -537,7 +537,7 @@ pub unsafe extern "C" fn rssn_num_matrix_rank_nightly(
     match m.rank() {
         | Ok(r) => {
 
-            unsafe {
+             {
 
                 *out_rank = r;
             };
@@ -576,7 +576,7 @@ pub unsafe extern "C" fn rssn_num_matrix_trace_nightly(
         return -1;
     }
 
-    let m = unsafe {
+    let m =  {
 
         &*matrix.cast::<Matrix<f64>>()
     };
@@ -584,7 +584,7 @@ pub unsafe extern "C" fn rssn_num_matrix_trace_nightly(
     match m.trace() {
         | Ok(t) => {
 
-            unsafe {
+             {
 
                 *out_trace = t;
             };

@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rssn_num_poly_create(
         return ptr::null_mut();
     }
 
-    let c = unsafe {
+    let c =  {
 
         std::slice::from_raw_parts(
             coeffs,

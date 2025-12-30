@@ -40,14 +40,14 @@ pub unsafe extern "C" fn rssn_num_tensor_create(
         return ptr::null_mut();
     }
 
-    let s = unsafe {
+    let s =  {
 
         std::slice::from_raw_parts(
             shape, ndim,
         )
     };
 
-    let d = unsafe {
+    let d =  {
 
         std::slice::from_raw_parts(
             data,
@@ -195,17 +195,17 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
         return ptr::null_mut();
     }
 
-    let ta = unsafe {
+    let ta =  {
 
         &*a
     };
 
-    let tb = unsafe {
+    let tb =  {
 
         &*b
     };
 
-    let aa = unsafe {
+    let aa =  {
 
         std::slice::from_raw_parts(
             axes_a,
@@ -213,7 +213,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
         )
     };
 
-    let ab = unsafe {
+    let ab =  {
 
         std::slice::from_raw_parts(
             axes_b,
@@ -257,12 +257,12 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product(
         return ptr::null_mut();
     }
 
-    let ta = unsafe {
+    let ta =  {
 
         &*a
     };
 
-    let tb = unsafe {
+    let tb =  {
 
         &*b
     };
