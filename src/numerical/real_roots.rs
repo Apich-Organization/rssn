@@ -306,7 +306,7 @@ pub fn refine_root_bisection(
         return b;
     }
 
-    while (b - a) > tolerance {
+    while (b - a).abs() > tolerance {
 
         mid = f64::midpoint(a, b);
 

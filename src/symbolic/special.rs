@@ -379,12 +379,12 @@ pub fn inverse_erf(x: f64) -> f64 {
     // Use rational approximation followed by Newton-Raphson refinement
     if x.abs() >= 1.0 {
 
-        if x == 1.0 {
+        if (x - 1.0).abs() < f64::EPSILON {
 
             return f64::INFINITY;
         }
 
-        if x == -1.0 {
+        if (x + 1.0).abs() < f64::EPSILON {
 
             return f64::NEG_INFINITY;
         }

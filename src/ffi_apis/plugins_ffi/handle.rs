@@ -71,13 +71,10 @@ pub unsafe extern "C" fn rssn_plugins_load(
 pub extern "C" fn rssn_plugins_get_loaded(
 ) -> *mut c_char {
 
-    let manager = match GLOBAL_PLUGIN_MANAGER.read() {
-        Ok(m) => m,
+    let names = match GLOBAL_PLUGIN_MANAGER.read() {
+        Ok(m) => m.get_loaded_plugin_names(),
         Err(_) => return std::ptr::null_mut(),
     };
-
-    let names = manager
-        .get_loaded_plugin_names();
 
     to_json_string(&names)
 }
@@ -101,17 +98,10 @@ pub unsafe extern "C" fn rssn_plugins_unload(
         c_str_to_str(name)
     {
 
-        let manager =
-            match GLOBAL_PLUGIN_MANAGER
-                .read()
-            {
-                | Ok(m) => m,
-                | Err(_) => {
-                    return false
-                },
-            };
-
-        manager.unload_plugin(name_str)
+        match GLOBAL_PLUGIN_MANAGER.read() {
+            Ok(m) => m.unload_plugin(name_str),
+            Err(_) => false,
+        }
     } else {
 
         false
@@ -162,33 +152,17 @@ pub unsafe extern "C" fn rssn_plugins_execute(
         | None => return 0,
     };
 
-    let manager =
-        match GLOBAL_PLUGIN_MANAGER
-            .read()
-        {
-            | Ok(m) => m,
-            | Err(_) => return 0,
-        };
+    let result = match GLOBAL_PLUGIN_MANAGER.read() {
+        Ok(m) => m.execute_plugin(name_str, command_str, &args_expr),
+        Err(_) => return 0,
+    };
 
-    // We need to clone args to pass potentially? execute takes &Expr.
-    // PluginManager::execute_plugin takes &Expr.
-
-    match manager.execute_plugin(
-        name_str,
-        command_str,
-        &args_expr,
-    ) {
+    match result {
         | Ok(result_expr) => {
-            HANDLE_MANAGER
-                .insert(result_expr)
+            HANDLE_MANAGER.insert(result_expr)
         },
         | Err(e) => {
-
-            eprintln!(
-                "Plugin execution \
-                 failed: {e}"
-            );
-
+            eprintln!("Plugin execution failed: {e}");
             0
         },
     }

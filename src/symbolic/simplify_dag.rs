@@ -83,6 +83,7 @@ use super::core::DAG_MANAGER;
 #[must_use]
 
 pub fn simplify(expr: &Expr) -> Expr {
+    const MAX_ITERATIONS: usize = 1000; // Prevent infinite loops
 
     // Get the initial root node of the DAG from the input expression.
     let mut root_node =
@@ -99,8 +100,6 @@ pub fn simplify(expr: &Expr) -> Expr {
     // This loop continues until a full pass over the DAG results in no changes.
     // We limit iterations to prevent infinite loops in case of bugs in simplification rules
     let mut iterations = 0;
-
-    const MAX_ITERATIONS: usize = 1000; // Prevent infinite loops
 
     loop {
 
@@ -149,32 +148,22 @@ pub fn simplify(expr: &Expr) -> Expr {
 pub(crate) fn bottom_up_simplify_pass(
     root: Arc<DagNode>
 ) -> (Arc<DagNode>, bool) {
+    const MAX_NODES_PER_PASS: usize = 10000;
 
     // `memo` stores the simplified version of each node encountered in this pass.
     // Key: hash of the original node, Value: the simplified node.
-    let mut memo: HashMap<
-        u64,
-        Arc<DagNode>,
-    > = HashMap::new();
+    let mut memo: HashMap<u64, Arc<DagNode>> = HashMap::new();
 
     // `work_stack` manages the nodes to be visited.
-    let mut work_stack: Vec<
-        Arc<DagNode>,
-    > = vec![root.clone()];
+    let mut work_stack: Vec<Arc<DagNode>> = vec![root.clone()];
 
     // `visited` keeps track of nodes pushed to the stack to avoid cycles and redundant work.
-    let mut visited: HashMap<
-        u64,
-        bool,
-    > = HashMap::new();
+    let mut visited: HashMap<u64, bool> = HashMap::new();
 
     let mut changed_in_pass = false;
 
     // Limit the number of nodes to prevent infinite loops in case of issues
     let mut processed_nodes = 0;
-
-    const MAX_NODES_PER_PASS: usize =
-        10000;
 
     while let Some(node) =
         work_stack.pop()
@@ -2443,7 +2432,7 @@ pub(crate) fn is_one_expr(
 
     match expr {
         | Expr::Constant(c)
-            if *c == 1.0 =>
+            if (*c - 1.0).abs() < f64::EPSILON =>
         {
             true
         },
@@ -2508,7 +2497,7 @@ pub(crate) fn is_const_node(
     val: f64,
 ) -> bool {
 
-    matches!(&node.op, DagOp::Constant(c) if c.into_inner() == val)
+    matches!(&node.op, DagOp::Constant(c) if (c.into_inner() - val).abs() < f64::EPSILON)
 }
 
 #[inline]
@@ -2574,7 +2563,7 @@ pub(crate) fn is_neg_one_node(
     node: &Arc<DagNode>
 ) -> bool {
 
-    matches!(&node.op, DagOp::Constant(c) if c.into_inner() == -1.0)
+    matches!(&node.op, DagOp::Constant(c) if (c.into_inner() + 1.0).abs() < f64::EPSILON)
 }
 
 #[inline]

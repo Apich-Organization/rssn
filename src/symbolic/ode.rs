@@ -1302,7 +1302,7 @@ pub fn solve_separable_ode(
                 // Check if it's -1 * something or something * -1
                 if let Expr::Constant(c) = a.as_ref() {
 
-                    if *c == -1.0 {
+                    if (*c + 1.0).abs() < f64::EPSILON {
 
                         (
                             Expr::Constant(1.0),
@@ -1314,7 +1314,7 @@ pub fn solve_separable_ode(
                     }
                 } else if let Expr::Constant(c) = b.as_ref() {
 
-                    if *c == -1.0 {
+                    if (*c + 1.0).abs() < f64::EPSILON {
 
                         (
                             Expr::Constant(1.0),
@@ -1572,7 +1572,9 @@ pub fn solve_bernoulli_ode(
             .get("n")?
             .to_f64()?;
 
-        if n == 1.0 || n == 0.0 {
+        if (n - 1.0).abs() < f64::EPSILON
+            || n.abs() < f64::EPSILON
+        {
 
             return None;
         }

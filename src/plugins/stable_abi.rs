@@ -4,6 +4,8 @@
     clippy::no_mangle_with_rust_abi
 )]
 #![allow(non_local_definitions)]
+#![allow(clippy::cast_ptr_alignment)]
+#![allow(clippy::used_underscore_binding)]
 
 use abi_stable::sabi_trait;
 use abi_stable::std_types::RBox;

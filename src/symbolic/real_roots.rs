@@ -282,7 +282,7 @@ pub fn isolate_real_roots(
 
             let mut high = b;
 
-            while high - low > precision
+            while (high - low).abs() > precision
             {
 
                 let mid = f64::midpoint(

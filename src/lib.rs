@@ -287,6 +287,8 @@
     clippy::cast_possible_truncation,
     clippy::dbg_macro,
     clippy::todo,
+    // This is usually a sign of dead code --- but for development purposes, we will just warn it.
+    clippy::used_underscore_binding,
     clippy::unnecessary_safety_comment
 )]
 // -------------------------------------------------------------------------
