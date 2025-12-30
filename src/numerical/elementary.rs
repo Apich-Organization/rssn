@@ -298,7 +298,7 @@ pub fn eval_expr<
 
             let val = eval_expr(a, vars)?;
 
-            if base <= 0.0 || base == 1.0 {
+            if base <= 0.0 || (base - 1.0).abs() < f64::EPSILON {
 
                 return Err("Invalid logarithm base".to_string());
             }

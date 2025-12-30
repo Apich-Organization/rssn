@@ -308,13 +308,7 @@ pub fn wynn_epsilon(
     let mut eps =
         vec![vec![0.0; n]; n + 1];
 
-    for i in 0 .. n {
-
-        eps[0][i] = sequence[i]; // k=0
-                                 // epsilon_{-1} is virtually 0.0, but handled by logic below?
-                                 // Actually the formula relates eps(k+1) to eps(k-1) and eps(k).
-                                 // Standard initialized with eps_-1 = 0
-    }
+    eps[0][..n].copy_from_slice(&sequence[..n]);
 
     for k in 0 .. n - 1 {
 
@@ -357,16 +351,7 @@ pub fn wynn_epsilon(
     // Usually the logic is to look at the "lower diagonal" or the last computed even column.
 
     // Let's collect the values from the highest available even k for each index.
-    let mut result = Vec::new();
 
-    for i in 0 .. n {
-
-        // Let's return the sequence eps[2][i] (First order Shanks).
-        if i < n - 2 {
-
-            result.push(eps[2][i]);
-        }
-    }
 
     // Note: Aitken is eps[2]. So this gives the same as Aitken.
     // To give more power, we should perhaps return the "diagonal": eps[2k][0].

@@ -86,7 +86,7 @@ impl PrimeFieldElement {
             let inv = (x % m + m) % m;
 
             Some(Self::new(
-                inv as u64,
+                u64::try_from(inv).unwrap(),
                 self.modulus,
             ))
         } else {

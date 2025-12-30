@@ -567,11 +567,11 @@ pub fn riemann_tensor(
                     let mut sum_product =
                         0.0;
 
-                    for lambda in
-                        0 .. dim
-                    {
-
-                        sum_product += gamma[rho][lambda][mu].mul_add(gamma[lambda][sigma][nu], -(gamma[rho][lambda][nu] * gamma[lambda][sigma][mu]));
+                    for (g_rho_lambda, g_lambda) in gamma[rho].iter().zip(gamma.iter()) {
+                        sum_product += g_rho_lambda[mu].mul_add(
+                            g_lambda[sigma][nu],
+                            -(g_rho_lambda[nu] * g_lambda[sigma][mu]),
+                        );
                     }
 
                     riemann[rho]
@@ -681,10 +681,8 @@ pub fn ricci_tensor(
 
             let mut sum = 0.0;
 
-            for mu in 0 .. dim {
-
-                sum += riemann[mu]
-                    [sigma][mu][nu];
+            for (mu, r_mu) in riemann.iter().enumerate() {
+                sum += r_mu[sigma][mu][nu];
             }
 
             ricci[sigma][nu] = sum;
