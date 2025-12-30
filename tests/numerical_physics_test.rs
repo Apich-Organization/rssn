@@ -172,17 +172,18 @@ fn test_damped_harmonic_oscillator() {
 
 fn test_projectile_motion_with_drag() {
 
-    let trajectory =
-        projectile_motion_with_drag(
-            10.0,     // v0
-            PI / 4.0, // 45 degrees
-            1.0,      // mass
-            0.47, // drag coefficient
-            0.01, // area
-            1.225, // air density
-            0.001, // dt
-            10.0, // max time
-        );
+    let params = ProjectileParams {
+        v0: 10.0,
+        angle: PI / 4.0,
+        mass: 1.0,
+        drag_coeff: 0.47,
+        area: 0.01,
+        air_density: 1.225,
+        dt: 0.001,
+        max_time: 10.0,
+    };
+
+    let trajectory = projectile_motion_with_drag(params);
 
     assert!(!trajectory.is_empty());
 

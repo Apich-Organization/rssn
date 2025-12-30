@@ -319,8 +319,8 @@ pub fn primes_sieve(
 
     is_prime[1] = false;
 
-    for p in 2 ..= (limit as f64).sqrt()
-        as usize
+    let sqrt_limit = (limit as f64).sqrt();
+    for p in 2 ..= sqrt_limit as usize
     {
 
         if is_prime[p] {

@@ -275,14 +275,9 @@ pub fn page_rank(
         vec![0.0; num_nodes];
 
     // Calculate out-degree for each node
-    let mut out_degree =
+    let  _out_degree =
         vec![0; num_nodes];
-
-    for u in 0 .. num_nodes {
-
-        out_degree[u] =
-            graph.adj(u).len();
-    }
+    let out_degree: Vec<usize> = (0..num_nodes).map(|u| graph.adj(u).len()).collect();
 
     for _ in 0 .. max_iter {
 
@@ -305,11 +300,7 @@ pub fn page_rank(
             * total_sink_score
             / num_nodes as f64;
 
-        for v in 0 .. num_nodes {
-
-            new_scores[v] =
-                base_score + sink_share;
-        }
+        new_scores.iter_mut().for_each(|score| *score = base_score + sink_share);
 
         for u in 0 .. num_nodes {
 

@@ -195,19 +195,25 @@ impl Multivector3D {
 
     pub fn norm_sq(self) -> f64 {
 
-        self.v3.mul_add(
-            self.v3,
-            self.v2.mul_add(
-                self.v2,
-                self.s.mul_add(
-                    self.s,
-                    self.v1 * self.v1,
+        self.pss.mul_add(
+            self.pss,
+            self.b31.mul_add(
+                self.b31,
+                self.b23.mul_add(
+                    self.b23,
+                    self.b12.mul_add(
+                        self.b12,
+                        self.v3.mul_add(
+                            self.v3,
+                            self.v2.mul_add(
+                                self.v2,
+                                self.s.mul_add(self.s, self.v1 * self.v1),
+                            ),
+                        ),
+                    ),
                 ),
             ),
-        ) + self.b12 * self.b12
-            + self.b23 * self.b23
-            + self.b31 * self.b31
-            + self.pss * self.pss
+        )
     }
 
     /// Returns the norm of the multivector.
@@ -305,22 +311,25 @@ impl Multivector3D {
                     ),
                 ),
             ),
-            pss: self.v3.mul_add(
-                rhs.b12,
-                self.v2.mul_add(
-                    rhs.b31,
-                    self.v1.mul_add(
-                        rhs.b23,
-                        self.s.mul_add(
-                            rhs.pss,
-                            self.pss
-                                * rhs.s,
+            pss: self.b31.mul_add(
+                rhs.v2,
+                self.b23.mul_add(
+                    rhs.v1,
+                    self.b12.mul_add(
+                        rhs.v3,
+                        self.v3.mul_add(
+                            rhs.b12,
+                            self.v2.mul_add(
+                                rhs.b31,
+                                self.v1.mul_add(
+                                    rhs.b23,
+                                    self.s.mul_add(rhs.pss, self.pss * rhs.s),
+                                ),
+                            ),
                         ),
                     ),
                 ),
-            ) + self.b12 * rhs.v3
-                + self.b23 * rhs.v1
-                + self.b31 * rhs.v2,
+            ),
         }
     }
 
@@ -335,64 +344,85 @@ impl Multivector3D {
         // The inner product is the grade-decreasing part of the geometric product.
         // A . B = sum_{r,s} <<a>_r <b>_s>_{|r-s|}
         Self {
-            s: self.b12.mul_add(
-                -rhs.b12,
-                self.v3.mul_add(
-                    rhs.v3,
-                    self.v2.mul_add(
-                        rhs.v2,
-                        self.s.mul_add(
-                            rhs.s,
-                            self.v1
-                                * rhs
-                                    .v1,
+            s: (-self.pss).mul_add(
+                rhs.pss,
+                (-self.b31).mul_add(
+                    rhs.b31,
+                    (-self.b23).mul_add(
+                        rhs.b23,
+                        self.b12.mul_add(
+                            -rhs.b12,
+                            self.v3.mul_add(
+                                rhs.v3,
+                                self.v2.mul_add(
+                                    rhs.v2,
+                                    self.s.mul_add(rhs.s, self.v1 * rhs.v1),
+                                ),
+                            ),
                         ),
                     ),
                 ),
-            ) - self.b23 * rhs.b23
-                - self.b31 * rhs.b31
-                - self.pss * rhs.pss,
-            v1: self.v3.mul_add(
-                rhs.b31,
-                self.v2.mul_add(
-                    -rhs.b12,
-                    self.s.mul_add(
-                        rhs.v1,
-                        self.v1 * rhs.s,
-                    ),
-                ),
-            ) + self.b12 * rhs.v2
-                - self.b31 * rhs.v3
-                - self.b23 * rhs.pss
-                - self.pss * rhs.b23,
-            v2: self.v3.mul_add(
-                -rhs.b23,
-                self.v2.mul_add(
-                    rhs.s,
-                    self.s.mul_add(
-                        rhs.v2,
-                        self.v1
-                            * rhs.b12,
-                    ),
-                ),
-            ) - self.b12 * rhs.v1
-                + self.b23 * rhs.v3
-                - self.b31 * rhs.pss
-                - self.pss * rhs.b31,
-            v3: self.v3.mul_add(
-                rhs.s,
-                self.v2.mul_add(
-                    rhs.b23,
-                    self.s.mul_add(
+            ),
+            v1: (-self.pss).mul_add(
+                rhs.b23,
+                (-self.b23).mul_add(
+                    rhs.pss,
+                    (-self.b31).mul_add(
                         rhs.v3,
-                        -(self.v1
-                            * rhs.b31),
+                        self.b12.mul_add(
+                            rhs.v2,
+                            self.v3.mul_add(
+                                rhs.b31,
+                                self.v2.mul_add(
+                                    -rhs.b12,
+                                    self.s.mul_add(rhs.v1, self.v1 * rhs.s),
+                                ),
+                            ),
+                        ),
                     ),
                 ),
-            ) - self.b12 * rhs.pss
-                - self.b23 * rhs.v2
-                + self.b31 * rhs.v1
-                - self.pss * rhs.b12,
+            ),
+            v2: (-self.pss).mul_add(
+                rhs.b31,
+                (-self.b31).mul_add(
+                    rhs.pss,
+                    self.b23.mul_add(
+                        rhs.v3,
+                        (-self.b12).mul_add(
+                            rhs.v1,
+                            self.v3.mul_add(
+                                -rhs.b23,
+                                self.v2.mul_add(
+                                    rhs.s,
+                                    self.s.mul_add(rhs.v2, self.v1 * rhs.b12),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            v3: (-self.pss).mul_add(
+                rhs.b12,
+                (-self.b12).mul_add(
+                    rhs.pss,
+                    self.b31.mul_add(
+                        rhs.v1,
+                        (-self.b23).mul_add(
+                            rhs.v2,
+                            self.v3.mul_add(
+                                rhs.s,
+                                self.v2.mul_add(
+                                    rhs.b23,
+                                    self.s.mul_add(
+                                        rhs.v3,
+                                        -(self.v1 * rhs.b31),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
             b12: self.b31.mul_add(
                 rhs.b23,
                 self.b23.mul_add(
@@ -443,135 +473,161 @@ impl std::ops::Mul for Multivector3D {
     ) -> Self::Output {
 
         Self {
-            s: self.b12.mul_add(
-                -rhs.b12,
-                self.v3.mul_add(
-                    rhs.v3,
-                    self.v2.mul_add(
-                        rhs.v2,
-                        self.s.mul_add(
-                            rhs.s,
-                            self.v1
-                                * rhs
-                                    .v1,
-                        ),
-                    ),
-                ),
-            ) - self.b23 * rhs.b23
-                - self.b31 * rhs.b31
-                - self.pss * rhs.pss,
-            v1: self.b12.mul_add(
-                rhs.v2,
-                self.v3.mul_add(
+            s: (-self.pss).mul_add(
+                rhs.pss,
+                (-self.b31).mul_add(
                     rhs.b31,
-                    self.v2.mul_add(
-                        -rhs.b12,
-                        self.s.mul_add(
-                            rhs.v1,
-                            self.v1
-                                * rhs.s,
-                        ),
-                    ),
-                ),
-            ) - self.b31 * rhs.v3
-                - self.b23 * rhs.pss
-                - self.pss * rhs.b23,
-            v2: self.b12.mul_add(
-                -rhs.v1,
-                self.v3.mul_add(
-                    -rhs.b23,
-                    self.v1.mul_add(
-                        rhs.b12,
-                        self.s.mul_add(
-                            rhs.v2,
-                            self.v2
-                                * rhs.s,
-                        ),
-                    ),
-                ),
-            ) + self.b23 * rhs.v3
-                - self.b31 * rhs.pss
-                - self.pss * rhs.b31,
-            v3: self.b31.mul_add(
-                rhs.v1,
-                self.v2.mul_add(
-                    rhs.b23,
-                    self.v1.mul_add(
-                        -rhs.b31,
-                        self.s.mul_add(
-                            rhs.v3,
-                            self.v3
-                                * rhs.s,
-                        ),
-                    ),
-                ),
-            ) - self.b23 * rhs.v2
-                - self.b12 * rhs.pss
-                - self.pss * rhs.b12,
-            b12: self.v3.mul_add(
-                rhs.pss,
-                self.v2.mul_add(
-                    -rhs.v1,
-                    self.v1.mul_add(
-                        rhs.v2,
-                        self.s.mul_add(
-                            rhs.b12,
-                            self.b12
-                                * rhs.s,
-                        ),
-                    ),
-                ),
-            ) + self.pss * rhs.v3
-                - self.b23 * rhs.b31
-                + self.b31 * rhs.b23,
-            b23: self.v1.mul_add(
-                rhs.pss,
-                self.v3.mul_add(
-                    -rhs.v2,
-                    self.v2.mul_add(
-                        rhs.v3,
-                        self.s.mul_add(
-                            rhs.b23,
-                            self.b23
-                                * rhs.s,
-                        ),
-                    ),
-                ),
-            ) + self.pss * rhs.v1
-                - self.b31 * rhs.b12
-                + self.b12 * rhs.b31,
-            b31: self.v2.mul_add(
-                rhs.pss,
-                self.v1.mul_add(
-                    -rhs.v3,
-                    self.v3.mul_add(
-                        rhs.v1,
-                        self.s.mul_add(
-                            rhs.b31,
-                            self.b31
-                                * rhs.s,
-                        ),
-                    ),
-                ),
-            ) + self.pss * rhs.v2
-                - self.b12 * rhs.b23
-                + self.b23 * rhs.b12,
-            pss: self.v3.mul_add(
-                rhs.b12,
-                self.v2.mul_add(
-                    rhs.b31,
-                    self.v1.mul_add(
+                    (-self.b23).mul_add(
                         rhs.b23,
-                        self.s.mul_add(
-                            rhs.pss,
-                            self.pss
-                                * rhs.s,
+                        self.b12.mul_add(
+                            -rhs.b12,
+                            self.v3.mul_add(
+                                rhs.v3,
+                                self.v2.mul_add(
+                                    rhs.v2,
+                                    self.s.mul_add(rhs.s, self.v1 * rhs.v1),
+                                ),
+                            ),
                         ),
                     ),
                 ),
-            ) + self.b12 * rhs.v3
-                + self.b23 * rhs.v1
-                + self.b31 * rhs.v2,
+            ),
+            v1: (-self.pss).mul_add(
+                rhs.b23,
+                (-self.b23).mul_add(
+                    rhs.pss,
+                    (-self.b31).mul_add(
+                        rhs.v3,
+                        self.b12.mul_add(
+                            rhs.v2,
+                            self.v3.mul_add(
+                                rhs.b31,
+                                self.v2.mul_add(
+                                    -rhs.b12,
+                                    self.s.mul_add(rhs.v1, self.v1 * rhs.s),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            v2: (-self.pss).mul_add(
+                rhs.b31,
+                (-self.b31).mul_add(
+                    rhs.pss,
+                    self.b23.mul_add(
+                        rhs.v3,
+                        (-self.b12).mul_add(
+                            rhs.v1,
+                            self.v3.mul_add(
+                                -rhs.b23,
+                                self.v1.mul_add(
+                                    rhs.b12,
+                                    self.s.mul_add(rhs.v2, self.v2 * rhs.s),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            v3: (-self.pss).mul_add(
+                rhs.b12,
+                (-self.b12).mul_add(
+                    rhs.pss,
+                    self.b31.mul_add(
+                        rhs.v1,
+                        (-self.b23).mul_add(
+                            rhs.v2,
+                            self.b31.mul_add(
+                                rhs.v1,
+                                self.v2.mul_add(
+                                    rhs.b23,
+                                    self.v1.mul_add(
+                                        -rhs.b31,
+                                        self.s.mul_add(rhs.v3, self.v3 * rhs.s),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            b12: self.b31.mul_add(
+                rhs.b23,
+                (-self.b23).mul_add(
+                    rhs.b31,
+                    self.pss.mul_add(
+                        rhs.v3,
+                        self.v3.mul_add(
+                            rhs.pss,
+                            self.v2.mul_add(
+                                -rhs.v1,
+                                self.v1.mul_add(
+                                    rhs.v2,
+                                    self.s.mul_add(rhs.b12, self.b12 * rhs.s),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            b23: self.b12.mul_add(
+                rhs.b31,
+                (-self.b31).mul_add(
+                    rhs.b12,
+                    self.pss.mul_add(
+                        rhs.v1,
+                        self.v1.mul_add(
+                            rhs.pss,
+                            self.v3.mul_add(
+                                -rhs.v2,
+                                self.v2.mul_add(
+                                    rhs.v3,
+                                    self.s.mul_add(rhs.b23, self.b23 * rhs.s),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            b31: self.b23.mul_add(
+                rhs.b12,
+                (-self.b12).mul_add(
+                    rhs.b23,
+                    self.pss.mul_add(
+                        rhs.v2,
+                        self.v2.mul_add(
+                            rhs.pss,
+                            self.v1.mul_add(
+                                -rhs.v3,
+                                self.v3.mul_add(
+                                    rhs.v1,
+                                    self.s.mul_add(rhs.b31, self.b31 * rhs.s),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            pss: self.b31.mul_add(
+                rhs.v2,
+                self.b23.mul_add(
+                    rhs.v1,
+                    self.b12.mul_add(
+                        rhs.v3,
+                        self.v3.mul_add(
+                            rhs.b12,
+                            self.v2.mul_add(
+                                rhs.b31,
+                                self.v1.mul_add(
+                                    rhs.b23,
+                                    self.s.mul_add(rhs.pss, self.pss * rhs.s),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
         }
     }
 }
