@@ -368,7 +368,7 @@ fn count_pole_order(
                     exp.to_f64()
                 {
 
-                    return n as usize;
+                    return n.max(0.0) as usize;
                 }
 
                 return 1;

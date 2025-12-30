@@ -485,7 +485,7 @@ pub(crate) fn expand_power(
         },
         | (Expr::Add(a, b), Expr::Constant(c)) if c.fract() == 0.0 && c >= 0.0 => {
 
-            let n_usize = c as usize;
+            let n_usize = c.max(0.0) as usize;
 
             expand_binomial(a, b, n_usize)
         },

@@ -127,9 +127,9 @@ pub(crate) fn build_and_solve_hermite_system(
     String,
 > {
 
-    let deg_d = d.degree(x) as usize;
+    let deg_d = d.degree(x).max(0) as usize;
 
-    let deg_b = b.degree(x) as usize;
+    let deg_b = b.degree(x).max(0) as usize;
 
     let a_coeffs: Vec<_> = (0 .. deg_b)
         .map(|i| {
@@ -401,7 +401,7 @@ pub(crate) fn integrate_poly_log(
     }
 
     let n =
-        p_in_t.degree(t_var) as usize;
+        p_in_t.degree(t_var).max(0) as usize;
 
     let p_coeffs =
         p_in_t.get_coeffs_as_vec(t_var);
@@ -607,7 +607,7 @@ pub fn integrate_poly_exp(
     let p_coeffs =
         p_in_t.get_coeffs_as_vec(x);
 
-    let n = p_in_t.degree(x) as usize;
+    let n = p_in_t.degree(x).max(0) as usize;
 
     let mut q_coeffs = vec![
             Expr::Constant(0.0);
@@ -843,9 +843,9 @@ pub(crate) fn sylvester_matrix(
     x: &str,
 ) -> Expr {
 
-    let n = p.degree(x) as usize;
+    let n = p.degree(x).max(0) as usize;
 
-    let m = q.degree(x) as usize;
+    let m = q.degree(x).max(0) as usize;
 
     let mut matrix = vec![
         vec![

@@ -72,7 +72,7 @@ pub extern "C" fn rssn_exterior_derivative_handle(
 
         let vars_strings = match parse_c_str_array(
             vars_ptr,
-            vars_len as usize,
+            vars_len.max(0) as usize,
         ) {
             | Some(v) => v,
             | None => return std::ptr::null_mut(),
@@ -169,7 +169,7 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
 
         let vars_strings = match parse_c_str_array(
             vars_ptr,
-            vars_len as usize,
+            vars_len.max(0) as usize,
         ) {
             | Some(v) => v,
             | None => return std::ptr::null_mut(),

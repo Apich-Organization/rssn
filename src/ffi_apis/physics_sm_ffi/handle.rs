@@ -31,7 +31,7 @@ pub extern "C" fn rssn_physics_sm_simulate_2d_advection(
     let n = results.len();
 
     let dim =
-        (n as f64).sqrt() as usize;
+        (n as f64).sqrt().max(0.0) as usize;
 
     if dim * dim == n {
 

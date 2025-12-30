@@ -89,7 +89,7 @@ pub fn poly_derivative_gf(
                 .saturating_sub(1),
         );
 
-    let degree = p.degree() as usize;
+    let degree = p.degree().max(0) as usize;
 
     for i in 0 .. degree {
 
@@ -223,7 +223,7 @@ pub fn berlekamp_factorization(
         },
     };
 
-    let n = f.degree() as usize;
+    let n = f.degree().max(0) as usize;
 
     if n <= 1 {
 
@@ -728,7 +728,7 @@ pub fn cantor_zassenhaus(
         ddf_factors
     {
 
-        if poly_product.degree()
+        if poly_product.degree().max(0)
             as usize
             == degree
         {
@@ -837,7 +837,7 @@ pub fn distinct_degree_factorization(
 
         factors.push((
             f_star.clone(),
-            f_star.degree() as usize,
+            f_star.degree().max(0) as usize,
         ));
     }
 
@@ -859,7 +859,7 @@ pub(crate) fn equal_degree_splitting(
     String,
 > {
 
-    if f.degree() as usize == d {
+    if f.degree().max(0) as usize == d {
 
         return Ok(vec![f.clone()]);
     }
@@ -872,7 +872,7 @@ pub(crate) fn equal_degree_splitting(
         factors.pop()
     {
 
-        if (current_f.degree() as usize)
+        if (current_f.degree().max(0) as usize)
             == d
         {
 
@@ -893,6 +893,7 @@ pub(crate) fn equal_degree_splitting(
 
             let a = random_poly(
                 current_f.degree()
+                    .max(0)
                     as usize
                     - 1,
                 current_f

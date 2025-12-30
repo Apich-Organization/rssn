@@ -1968,7 +1968,7 @@ pub(crate) fn parse_root_of(
         expr(input)?;
 
     let index = match index_expr {
-        | Expr::Constant(c) => c as u32,
+        | Expr::Constant(c) => c.max(0.0) as u32,
         | _ => return nom::combinator::fail(input),
     };
 
