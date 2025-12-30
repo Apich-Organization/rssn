@@ -1018,9 +1018,8 @@ pub fn radial_distribution_function(
                 let r = norm(&r_mic);
 
                 if r < r_max {
-
-                    let bin = (r / dr)
-                        as usize;
+                    // Safe to cast as r and dr are positive
+                    let bin = ((r / dr) as isize) as usize;
 
                     if bin < num_bins {
 
