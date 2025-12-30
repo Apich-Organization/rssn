@@ -215,13 +215,11 @@ pub(crate) fn v_cycle(
         let correction =
             prolongate(&coarse_grid.u);
 
-        for (i, _vars) in correction
-            .iter()
-            .enumerate()
-            .take(grid.size())
-        {
+        let n = grid.size();
 
-            grid.u[i] += correction[i];
+        for (u_i, &corr_i) in grid.u.iter_mut().zip(&correction).take(n) {
+
+            *u_i += corr_i;
         }
     }
 
@@ -250,7 +248,7 @@ pub fn solve_poisson_1d_multigrid(
 
     let num_levels = (n as f64 + 1.0)
         .log2()
-        as usize;
+        .max(0.0) as usize;
 
     if (2_usize.pow(num_levels as u32)
         - 1)
@@ -435,7 +433,7 @@ pub(crate) fn calculate_residual_2d(
 
             let i = i_offset + 1;
 
-            for j in 1 .. n - 1 {
+            for (j, val) in row.iter_mut().enumerate().take(n - 1).skip(1) {
 
                 let a_u = (4.0f64
                     .mul_add(
@@ -455,7 +453,7 @@ pub(crate) fn calculate_residual_2d(
                         + (j + 1)])
                     * h_sq_inv;
 
-                row[j] = grid.f
+                *val = grid.f
                     [i * n + j]
                     - a_u;
             }
@@ -679,10 +677,9 @@ pub(crate) fn v_cycle_2d(
         let correction_grid =
             prolongate_2d(&coarse_grid);
 
-        for i in 0 .. grid.u.len() {
+        for (u_i, &corr_i) in grid.u.iter_mut().zip(&correction_grid.u) {
 
-            grid.u[i] +=
-                correction_grid.u[i];
+            *u_i += corr_i;
         }
     }
 

@@ -270,7 +270,7 @@ pub fn simulate_double_slit_scenario(
         NY as f64 / 2.0,
     );
 
-    let initial_momentum = (5.0, 0.0);
+    let initial_momentum = (5.0_f64, 0.0_f64);
 
     let packet_width_sq = 100.0;
 
@@ -288,8 +288,7 @@ pub fn simulate_double_slit_scenario(
                 dx * dx + dy * dy;
 
             let phase =
-                (initial_momentum.0
-                    as f64)
+                initial_momentum.0
                     .mul_add(
                         dx,
                         initial_momentum

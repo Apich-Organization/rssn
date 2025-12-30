@@ -6,6 +6,11 @@ use serde::Serialize;
 use crate::numerical::sparse::csr_from_triplets;
 use crate::numerical::sparse::solve_conjugate_gradient;
 
+type FemTriplet = (usize, usize, f64);
+type ElementData1D = (Vec<FemTriplet>, [f64; 2]);
+type ElementData2D = (Vec<FemTriplet>, [f64; 4], [usize; 4]);
+type ElementData3D = (Vec<FemTriplet>, [f64; 8], [usize; 8]);
+
 #[allow(dead_code)]
 #[derive(
     Clone, Debug, Serialize, Deserialize,
@@ -67,10 +72,7 @@ where
     let force_fn = &force_fn;
 
     // Parallel element assembly
-    let element_data: Vec<(
-        Vec<(usize, usize, f64)>,
-        [f64; 2],
-    )> = (0 .. n_elements)
+    let element_data: Vec<ElementData1D> = (0 .. n_elements)
         .into_par_iter()
         .map(move |i| {
 
@@ -231,11 +233,7 @@ where
 
     let force_fn = &force_fn;
 
-    let element_data : Vec<(
-        Vec<(usize, usize, f64)>,
-        [f64; 4],
-        [usize; 4],
-    )> = (0 .. ny)
+    let element_data: Vec<ElementData2D> = (0 .. ny)
         .into_par_iter()
         .flat_map(move |j| {
 
@@ -494,11 +492,7 @@ where
 
     let force_fn = &force_fn;
 
-    let element_data : Vec<(
-        Vec<(usize, usize, f64)>,
-        [f64; 8],
-        [usize; 8],
-    )> = (0 .. nz)
+    let element_data: Vec<ElementData3D> = (0 .. nz)
         .into_par_iter()
         .flat_map(move |k_el| {
 

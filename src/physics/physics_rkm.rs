@@ -71,13 +71,17 @@ pub fn solve_rk4<
 
     let mut y_temp = vec![0.0; dim];
 
-    while t < t_end {
+    for _ in 0 .. steps {
 
         let mut current_dt = dt;
 
         if t + current_dt > t_end {
 
             current_dt = t_end - t;
+        }
+
+        if current_dt <= 0.0 {
+            break;
         }
 
         system.eval(t, &y, &mut k1);
@@ -313,7 +317,7 @@ impl DormandPrince54 {
         let mut k =
             vec![vec![0.0; dim]; 7];
 
-        while t < t_end {
+        while (t_end - t) > 1e-15 {
 
             if t + dt > t_end {
 
@@ -368,14 +372,14 @@ impl DormandPrince54 {
 
                 let mut y4_i = y[i];
 
-                for j in 0 .. 7 {
+                for (j, kj) in k.iter().enumerate().take(7) {
 
                     y5_i += dt
-                        * k[j][i]
+                        * kj[i]
                         * self.b5[j];
 
                     y4_i += dt
-                        * k[j][i]
+                        * kj[i]
                         * self.b4[j];
                 }
 
@@ -408,9 +412,9 @@ impl DormandPrince54 {
                 y.par_iter_mut()
                     .enumerate()
                     .for_each(|(i, yi)| {
-                        for j in 0 .. 7 {
+                        for (j, kj) in k.iter().enumerate().take(7) {
 
-                            *yi += dt * k[j][i] * self.b5[j];
+                            *yi += dt * kj[i] * self.b5[j];
                         }
                     });
 
@@ -540,7 +544,7 @@ impl CashKarp45 {
         let mut k =
             vec![vec![0.0; dim]; 6];
 
-        while t < t_end {
+        while (t_end - t) > 1e-15 {
 
             if t + dt > t_end {
 
@@ -558,7 +562,7 @@ impl CashKarp45 {
                 let mut y_temp =
                     y.clone();
 
-                for j in 0 .. i {
+                for (j, kj) in k.iter().enumerate().take(i) {
 
                     let a_val = self.a
                         [i - 1][j];
@@ -567,10 +571,10 @@ impl CashKarp45 {
 
                         y_temp
                             .par_iter_mut()
-                            .zip(&k[j])
-                            .for_each(|(yt, &kj)| {
+                            .zip(kj)
+                            .for_each(|(yt, &kj_i)| {
 
-                                *yt += dt * a_val * kj;
+                                *yt += dt * a_val * kj_i;
                             });
                     }
                 }
@@ -591,14 +595,14 @@ impl CashKarp45 {
 
                 let mut y4_i = y[i];
 
-                for j in 0 .. 6 {
+                for (j, kj) in k.iter().enumerate().take(6) {
 
                     y5_i += dt
-                        * k[j][i]
+                        * kj[i]
                         * self.b5[j];
 
                     y4_i += dt
-                        * k[j][i]
+                        * kj[i]
                         * self.b4[j];
                 }
 
@@ -631,9 +635,9 @@ impl CashKarp45 {
                 y.par_iter_mut()
                     .enumerate()
                     .for_each(|(i, yi)| {
-                        for j in 0 .. 6 {
+                        for (j, kj) in k.iter().enumerate().take(6) {
 
-                            *yi += dt * k[j][i] * self.b5[j];
+                            *yi += dt * kj[i] * self.b5[j];
                         }
                     });
 
@@ -730,7 +734,7 @@ impl BogackiShampine23 {
         let mut k =
             vec![vec![0.0; dim]; 4];
 
-        while t < t_end {
+        while (t_end - t) > 1e-15 {
 
             if t + dt > t_end {
 
@@ -748,7 +752,7 @@ impl BogackiShampine23 {
                 let mut y_temp =
                     y.clone();
 
-                for j in 0 .. i {
+                for (j, kj) in k.iter().enumerate().take(i) {
 
                     let a_val = self.a
                         [i - 1][j];
@@ -757,10 +761,10 @@ impl BogackiShampine23 {
 
                         y_temp
                             .par_iter_mut()
-                            .zip(&k[j])
-                            .for_each(|(yt, &kj)| {
+                            .zip(kj)
+                            .for_each(|(yt, &kj_i)| {
 
-                                *yt += dt * a_val * kj;
+                                *yt += dt * a_val * kj_i;
                             });
                     }
                 }
@@ -781,14 +785,14 @@ impl BogackiShampine23 {
 
                 let mut y2_i = y[i];
 
-                for j in 0 .. 4 {
+                for (j, kj) in k.iter().enumerate().take(4) {
 
                     y3_i += dt
-                        * k[j][i]
+                        * kj[i]
                         * self.b3[j];
 
                     y2_i += dt
-                        * k[j][i]
+                        * kj[i]
                         * self.b2[j];
                 }
 
@@ -821,9 +825,9 @@ impl BogackiShampine23 {
                 y.par_iter_mut()
                     .enumerate()
                     .for_each(|(i, yi)| {
-                        for j in 0 .. 4 {
+                        for (j, kj) in k.iter().enumerate().take(4) {
 
-                            *yi += dt * k[j][i] * self.b3[j];
+                            *yi += dt * kj[i] * self.b3[j];
                         }
                     });
 
