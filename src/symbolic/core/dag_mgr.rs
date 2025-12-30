@@ -9,9 +9,9 @@ use std::fmt::Write;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::sync::Mutex;
 
-use lazy_static::lazy_static;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use ordered_float::OrderedFloat;
@@ -20,11 +20,9 @@ use super::expr::Expr;
 use super::expr::PathType;
 use super::expr::SparsePolynomial;
 
-lazy_static! {
-    /// Global singleton instance of the DagManager.
-    pub static ref DAG_MANAGER: DagManager =
-        DagManager::new();
-}
+/// Global singleton instance of the DagManager.
+pub static DAG_MANAGER: LazyLock<DagManager> = LazyLock::new(DagManager::new);
+
 
 /// Represents a node in a Direct Acyclic Graph (DAG) for expression deduplication.
 #[derive(

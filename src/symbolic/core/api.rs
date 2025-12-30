@@ -4,9 +4,9 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::hash::Hasher;
+use std::sync::LazyLock;
 use std::sync::RwLock;
 
-use lazy_static::lazy_static;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use ordered_float::OrderedFloat;
@@ -1317,13 +1317,13 @@ pub struct DynamicOpProperties {
     pub is_commutative: bool,
 }
 
-lazy_static! {
-    /// Global registry for dynamically registered operations.
-    ///
-    /// This registry maps operation names to their properties. It's thread-safe
-    /// and can be accessed from multiple threads simultaneously.
-    pub static ref DYNAMIC_OP_REGISTRY: RwLock<HashMap<String, DynamicOpProperties>> = RwLock::new(HashMap::new());
-}
+/// Global registry for dynamically registered operations.
+///
+/// This registry maps operation names to their properties. It's thread-safe
+/// and can be accessed from multiple threads simultaneously.
+pub static DYNAMIC_OP_REGISTRY: LazyLock<RwLock<HashMap<String, DynamicOpProperties>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+
 
 /// Registers a dynamic operation with the global registry.
 ///

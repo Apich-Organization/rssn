@@ -78,7 +78,7 @@ pub fn cad(
     }
 
     let projections =
-        projection_phase(polys, vars)?;
+        projection_phase(polys, vars);
 
     let cells = lifting_phase(
         &projections,
@@ -96,10 +96,7 @@ pub fn cad(
 pub(crate) fn projection_phase(
     polys: &[SparsePolynomial],
     vars: &[&str],
-) -> Result<
-    Vec<Vec<SparsePolynomial>>,
-    String,
-> {
+) -> Vec<Vec<SparsePolynomial>> {
 
     let mut projection_sets =
         vec![polys.to_vec()];
@@ -193,7 +190,7 @@ pub(crate) fn projection_phase(
 
     projection_sets.reverse();
 
-    Ok(projection_sets)
+    projection_sets
 }
 
 /// Performs the lifting phase of CAD.
@@ -278,32 +275,22 @@ pub(crate) fn lifting_phase(
             );
 
             // Interval (root, next_root) or (root, inf)
-            if i + 1 < all_roots.len() {
-
-                current_cells.push(
-                    CadCell {
-                        sample_point:
-                            vec![
-                        f64::midpoint(
-                            *root,
-                            all_roots
-                                [i + 1],
-                        ),
-                    ],
-                        dim: 1,
-                        index: vec![
-                            2 * i + 2,
+            current_cells.push(
+                CadCell {
+                    sample_point:
+                        vec![
+                            if i + 1 < all_roots.len() {
+                                f64::midpoint(*root, all_roots[i + 1])
+                            } else {
+                                *root + 1.0
+                            },
                         ],
-                    },
-                );
-            } else {
-
-                current_cells.push(CadCell {
-                    sample_point : vec![*root + 1.0],
-                    dim : 1,
-                    index : vec![2 * i + 2],
-                });
-            }
+                    dim: 1,
+                    index: vec![
+                        2 * i + 2,
+                    ],
+                },
+            );
         }
     }
 
@@ -405,19 +392,13 @@ pub(crate) fn lifting_phase(
                 },
             );
 
+            let mut new_sample = cell.sample_point.clone();
+            let mut new_index = cell.index.clone();
+
             if roots_at_sample
                 .is_empty()
             {
-
-                let mut new_sample =
-                    cell.sample_point
-                        .clone();
-
                 new_sample.push(0.0);
-
-                let mut new_index =
-                    cell.index.clone();
-
                 new_index.push(0);
 
                 next_level_cells.push(
@@ -433,17 +414,10 @@ pub(crate) fn lifting_phase(
             } else {
 
                 // Interval (-inf, first_root)
-                let mut new_sample =
-                    cell.sample_point
-                        .clone();
-
                 new_sample.push(
                     roots_at_sample[0]
                         - 1.0,
                 );
-
-                let mut new_index =
-                    cell.index.clone();
 
                 new_index.push(0);
 

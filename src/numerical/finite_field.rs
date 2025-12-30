@@ -65,6 +65,10 @@ impl PrimeFieldElement {
     /// # Returns
     /// * `Some(PrimeFieldElement)` containing the inverse if it exists.
     /// * `None` if the element is not invertible (i.e., its value is not coprime to the modulus).
+    /// # Panics
+    /// Panics if the internal modular inverse calculation results in a value
+    /// that cannot be converted to `u64`. This is not expected to happen if
+    /// the modulus is a valid `u64`.
     #[must_use]
 
     pub fn inverse(

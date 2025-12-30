@@ -121,15 +121,9 @@ pub(crate) fn is_positive(
         &substitute(f_n, n, &large_n),
     );
 
-    if let Some(v) =
-        val_at_large_n.to_f64()
-    {
-
-        v > 0.0
-    } else {
-
-        false
-    }
+    val_at_large_n
+        .to_f64()
+        .map_or(false, |v| v > 0.0)
 }
 
 /// Checks if a function is eventually monotonically decreasing for large values of the variable.
@@ -162,15 +156,9 @@ pub(crate) fn is_eventually_decreasing(
             &large_n,
         ));
 
-    if let Some(v) =
-        deriv_at_large_n.to_f64()
-    {
-
-        v <= 0.0
-    } else {
-
-        false
-    }
+    deriv_at_large_n
+        .to_f64()
+        .map_or(false, |v| v <= 0.0)
 }
 
 /// Analyzes the convergence of a series given its general term `a_n`.
@@ -203,9 +191,7 @@ pub fn analyze_convergence(
     let a_n = match simplified {
         | Expr::Dag(ref node) => {
             node.to_expr()
-                .unwrap_or(
-                    simplified.clone(),
-                )
+                .unwrap_or_else(|_| simplified.clone())
         },
         | _ => simplified,
     };

@@ -325,14 +325,7 @@ impl EllipticCurve {
     ) -> CurvePoint {
 
         match (p1, p2) {
-            | (
-                CurvePoint::Infinity,
-                p,
-            ) => p.clone(),
-            | (
-                p,
-                CurvePoint::Infinity,
-            ) => p.clone(),
+            | (CurvePoint::Infinity, p) | (p, CurvePoint::Infinity) => p.clone(),
             | (
                 CurvePoint::Affine {
                     x: x1,
@@ -754,10 +747,7 @@ fn mod_inverse(
     m: &BigInt,
 ) -> Option<BigInt> {
 
-    let (g, x, _) = extended_gcd(
-        a.clone(),
-        m.clone(),
-    );
+    let (g, x, _) = extended_gcd(a, m);
 
     if g != BigInt::one() {
 
@@ -770,8 +760,8 @@ fn mod_inverse(
 /// Extended Euclidean algorithm.
 
 fn extended_gcd(
-    a: BigInt,
-    b: BigInt,
+    a: &BigInt,
+    b: &BigInt,
 ) -> (
     BigInt,
     BigInt,
@@ -781,21 +771,21 @@ fn extended_gcd(
     if b.is_zero() {
 
         (
-            a,
+            a.clone(),
             BigInt::one(),
             BigInt::zero(),
         )
     } else {
 
         let (g, x, y) = extended_gcd(
-            b.clone(),
-            &a % &b,
+            b,
+            &(a % b),
         );
 
         (
             g,
             y.clone(),
-            x - (&a / &b) * y,
+            x - (a / b) * y,
         )
     }
 }

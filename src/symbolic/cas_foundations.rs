@@ -429,11 +429,7 @@ pub fn expand(expr: Expr) -> Expr {
                         ref node,
                     ) => {
                         node.to_expr()
-                            .unwrap_or(
-                            exp_a
-                                .clone(
-                                ),
-                        )
+                            .unwrap_or_else(|_| exp_a.clone())
                     },
                     | _ => exp_a,
                 };
@@ -444,11 +440,7 @@ pub fn expand(expr: Expr) -> Expr {
                         ref node,
                     ) => {
                         node.to_expr()
-                            .unwrap_or(
-                            exp_b
-                                .clone(
-                                ),
-                        )
+                            .unwrap_or_else(|_| exp_b.clone())
                     },
                     | _ => exp_b,
                 };
@@ -988,17 +980,11 @@ pub(crate) fn build_product_from_vecs(
     }
 
     for factor in other_factors {
-
-        if let Some(t) = tree {
-
-            tree = Some(Expr::new_mul(
-                t,
-                factor,
-            ));
+        tree = Some(if let Some(t) = tree {
+            Expr::new_mul(t, factor)
         } else {
-
-            tree = Some(factor);
-        }
+            factor
+        });
     }
 
     tree.unwrap_or(Expr::Constant(1.0))
