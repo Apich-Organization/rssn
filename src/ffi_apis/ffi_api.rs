@@ -303,11 +303,8 @@ pub unsafe extern "C" fn rssn_expr_create(
         return 0;
     }
 
-    let json_str = match  {
-
-        CStr::from_ptr(json_ptr)
-            .to_str()
-    } {
+    let json_str = match CStr::from_ptr(json_ptr).to_str()
+     {
         | Ok(s) => s,
         | Err(e) => {
 
@@ -3283,10 +3280,8 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
         return -1;
     }
 
-    let var = match  {
-
-        CStr::from_ptr(var_ptr).to_str()
-    } {
+    let var = match CStr::from_ptr(var_ptr).to_str()
+     {
         | Ok(s) => s,
         | Err(e) => {
 
@@ -3370,10 +3365,8 @@ pub unsafe extern "C" fn rssn_poly_degree(
         return -1;
     }
 
-    let var = match {
-
-        CStr::from_ptr(var_ptr).to_str()
-    } {
+    let var = match CStr::from_ptr(var_ptr).to_str()
+    {
         | Ok(s) => s,
         | Err(e) => {
 
@@ -3462,10 +3455,7 @@ pub unsafe extern "C" fn rssn_poly_long_division(
         return -1;
     }
 
-    let var = match  {
-
-        CStr::from_ptr(var_ptr).to_str()
-    } {
+    let var = match CStr::from_ptr(var_ptr).to_str() {
         | Ok(s) => s,
         | Err(e) => {
 
@@ -6062,10 +6052,7 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
         return -1;
     }
 
-    let var_str = match  {
-
-        CStr::from_ptr(var).to_str()
-    } {
+    let var_str = match CStr::from_ptr(var).to_str() {
         | Ok(s) => s,
         | Err(e) => {
 
@@ -6977,10 +6964,7 @@ pub unsafe extern "C" fn rssn_solve(
         );
     }
 
-    let var_str = match  {
-
-        CStr::from_ptr(var).to_str()
-    } {
+    let var_str = match CStr::from_ptr(var).to_str() {
         | Ok(s) => s,
         | Err(e) => {
             return handle_error(
@@ -7185,10 +7169,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
             );
         }
 
-        let v_str = match  {
-
-            CStr::from_ptr(v_ptr).to_str()
-        } {
+        let v_str = match CStr::from_ptr(v_ptr).to_str() {
             | Ok(s) => s,
             | Err(e) => {
                 return handle_error(format!(
@@ -7567,11 +7548,7 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(
             -1
         };
 
-    let plugin_dir = match  {
-
-        CStr::from_ptr(plugin_dir_ptr)
-            .to_str()
-    } {
+    let plugin_dir = match CStr::from_ptr(plugin_dir_ptr).to_str(){
         | Ok(s) => s,
         | Err(e) => {
             return handle_error(
@@ -7643,18 +7620,18 @@ pub unsafe extern "C" fn rssn_plugin_execute(
             0
         };
 
-    let plugin_name = match  {
+    let plugin_name = match 
         CStr::from_ptr(plugin_name_ptr).to_str()
-    } {
+     {
         | Ok(s) => s,
         | Err(e) => {
             return handle_error(format!("Invalid UTF-8 in plugin_name: {e}"));
         },
     };
 
-    let command = match  {
+    let command = match 
         CStr::from_ptr(command_ptr).to_str()
-    } {
+     {
         | Ok(s) => s,
         | Err(e) => {
             return handle_error(format!("Invalid UTF-8 in command: {e}"));

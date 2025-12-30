@@ -75,7 +75,7 @@ pub extern "C" fn rssn_find_extrema_handle(
 
         let vars_strings = match parse_c_str_array(
             vars_ptr,
-            (vars_len as i64).try_into().unwrap_or(0),
+            i64::from(vars_len).try_into().unwrap_or(0),
         ) {
             | Some(v) => v,
             | None => return std::ptr::null_mut(),
@@ -123,7 +123,7 @@ pub extern "C" fn rssn_hessian_matrix_handle(
 
         let vars_strings = match parse_c_str_array(
             vars_ptr,
-            (vars_len as i64).try_into().unwrap_or(0),
+            i64::from(vars_len).try_into().unwrap_or(0),
         ) {
             | Some(v) => v,
             | None => return std::ptr::null_mut(),
@@ -170,7 +170,7 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
 
         let vars_strings = match parse_c_str_array(
             vars_ptr,
-            (vars_len as i64).try_into().unwrap_or(0),
+            i64::from(vars_len).try_into().unwrap_or(0),
         ) {
             | Some(v) => v,
             | None => return std::ptr::null_mut(),
@@ -218,6 +218,7 @@ pub extern "C" fn rssn_free_critical_point_vec_handle(
 /// Frees a Vec<`HashMap`<Expr, Expr>> handle
 #[unsafe(no_mangle)]
 
+#[allow(clippy::implicit_hasher)]
 pub extern "C" fn rssn_free_solution_vec_handle(
     ptr: *mut Vec<HashMap<Expr, Expr>>
 ) {

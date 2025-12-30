@@ -83,13 +83,13 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
 
     let mut equations =
         Vec::with_capacity(
-            (equations_len as i64).try_into().unwrap_or(0)
+            i64::from(equations_len).try_into().unwrap_or(0)
         );
 
     for i in 0 .. equations_len {
 
         let ptr = *equations_ptr
-            .add((i as i64).try_into().unwrap_or(0));
+            .add(i64::from(i).try_into().unwrap_or(0));
 
         if ptr.is_null() {
 
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
     let sol_vars =
         match parse_c_str_array(
             sol_vars_ptr,
-            (sol_len as i64).try_into().unwrap_or(0),
+            i64::from(sol_len).try_into().unwrap_or(0),
         ) {
             | Some(v) => v,
             | None => return false,
@@ -113,7 +113,7 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
     for i in 0 .. sol_len {
 
         let expr_ptr = *sol_exprs_ptr
-            .add((i as i64).try_into().unwrap_or(0));
+            .add(i64::from(i).try_into().unwrap_or(0));
 
         if expr_ptr.is_null() {
 
@@ -121,7 +121,7 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
         }
 
         solution.insert(
-            sol_vars[(i as i64).try_into().unwrap_or(0)]
+            sol_vars[i64::from(i).try_into().unwrap_or(0)]
                 .clone(),
             (*expr_ptr).clone(),
         );
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn rssn_verify_equation_solution_handle(
     let free_vars_strings =
         match parse_c_str_array(
             free_vars_ptr,
-            (free_vars_len as i64).try_into().unwrap_or(0),
+            i64::from(free_vars_len).try_into().unwrap_or(0),
         ) {
             | Some(v) => v,
             | None => return false,

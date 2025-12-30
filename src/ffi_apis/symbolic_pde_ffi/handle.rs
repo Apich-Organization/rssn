@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rssn_solve_pde(
     }
 
     let vars_refs: Vec<&str> =
-        vars_vec.to_vec();
+        vars_vec.clone();
 
     let result = pde::solve_pde(
         pde_ref,
@@ -158,7 +158,7 @@ pub unsafe extern "C" fn rssn_solve_pde_by_characteristics(
     }
 
     let vars_refs: Vec<&str> =
-        vars_vec.to_vec();
+        vars_vec.clone();
 
     match pde::solve_pde_by_characteristics(
         eq_ref,
@@ -228,7 +228,7 @@ pub unsafe extern "C" fn rssn_solve_wave_equation_1d_dalembert(
     }
 
     let vars_refs: Vec<&str> =
-        vars_vec.to_vec();
+        vars_vec.clone();
 
     match pde::solve_wave_equation_1d_dalembert(
         eq_ref,
@@ -298,7 +298,7 @@ pub unsafe extern "C" fn rssn_solve_heat_equation_1d(
     }
 
     let vars_refs: Vec<&str> =
-        vars_vec.to_vec();
+        vars_vec.clone();
 
     match pde::solve_heat_equation_1d(
         eq_ref,
@@ -372,7 +372,7 @@ pub unsafe extern "C" fn rssn_solve_laplace_equation_2d(
     }
 
     let vars_refs: Vec<&str> =
-        vars_vec.to_vec();
+        vars_vec.clone();
 
     match pde::solve_laplace_equation_2d(
         eq_ref,
@@ -446,7 +446,7 @@ pub unsafe extern "C" fn rssn_solve_poisson_equation_2d(
     }
 
     let vars_refs: Vec<&str> =
-        vars_vec.to_vec();
+        vars_vec.clone();
 
     match pde::solve_poisson_equation_2d(
         eq_ref,
@@ -520,7 +520,7 @@ pub unsafe extern "C" fn rssn_solve_helmholtz_equation(
     }
 
     let vars_refs: Vec<&str> =
-        vars_vec.to_vec();
+        vars_vec.clone();
 
     match pde::solve_helmholtz_equation(
         eq_ref,
@@ -594,7 +594,7 @@ pub unsafe extern "C" fn rssn_solve_schrodinger_equation(
     }
 
     let vars_refs: Vec<&str> =
-        vars_vec.to_vec();
+        vars_vec.clone();
 
     match pde::solve_schrodinger_equation(
         eq_ref,
@@ -664,7 +664,7 @@ pub unsafe extern "C" fn rssn_solve_klein_gordon_equation(
     }
 
     let vars_refs: Vec<&str> =
-        vars_vec.to_vec();
+        vars_vec.clone();
 
     match pde::solve_klein_gordon_equation(
         eq_ref,

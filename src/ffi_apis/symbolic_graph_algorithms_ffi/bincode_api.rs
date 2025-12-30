@@ -205,6 +205,12 @@ pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
 
+    #[derive(serde::Serialize)]
+    struct BridgesResult {
+        bridges: Vec<(usize, usize)>,
+        articulation_points: Vec<usize>,
+    }
+
     let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
@@ -212,14 +218,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
 
     let (bridges, aps) = find_bridges_and_articulation_points(&graph);
 
-    #[derive(serde::Serialize)]
-
-    struct Result {
-        bridges: Vec<(usize, usize)>,
-        articulation_points: Vec<usize>,
-    }
-
-    let result = Result {
+    let result = BridgesResult {
         bridges,
         articulation_points: aps,
     };

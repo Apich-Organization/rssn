@@ -196,11 +196,10 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
     }
 
     let vars_refs: Vec<&str> =
-        vars_vec.to_vec();
+        vars_vec.clone();
 
     // Convert order
     let order = match order_int {
-        | 0 => MonomialOrder::Lexicographical,
         | 1 => MonomialOrder::GradedLexicographical,
         | 2 => MonomialOrder::GradedReverseLexicographical,
         | _ => MonomialOrder::Lexicographical, // Default

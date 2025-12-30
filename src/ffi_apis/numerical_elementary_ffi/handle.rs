@@ -72,11 +72,8 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
             return -1;
         }
 
-        let name = match  {
-
-            CStr::from_ptr(name_ptr)
-                .to_str()
-        } {
+        let name = match CStr::from_ptr(name_ptr).to_str()
+         {
             | Ok(s) => s.to_string(),
             | Err(e) => {
 

@@ -860,7 +860,7 @@ pub const unsafe extern "C" fn rssn_expr_list_len(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[allow(clippy::needless_borrow)]
 pub unsafe extern "C" fn rssn_expr_list_get(
     list: *const ExprList,
     index: usize,
