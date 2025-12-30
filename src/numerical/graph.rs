@@ -300,9 +300,7 @@ pub fn page_rank(
             * total_sink_score
             / num_nodes as f64;
 
-        for score in &mut new_scores {
-            *score = base_score + sink_share;
-        }
+        new_scores.fill(base_score + sink_share);
 
         for u in 0 .. num_nodes {
 

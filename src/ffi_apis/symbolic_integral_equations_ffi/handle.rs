@@ -6,7 +6,9 @@ use std::os::raw::c_char;
 use crate::symbolic::core::Expr;
 use crate::symbolic::integral_equations::solve_airfoil_equation;
 use crate::symbolic::integral_equations::FredholmEquation;
+use crate::symbolic::integral_equations::FredholmEquationParams;
 use crate::symbolic::integral_equations::VolterraEquation;
+use crate::symbolic::integral_equations::VolterraEquationParams;
 
 /// Creates a new Fredholm integral equation.
 #[unsafe(no_mangle)]
@@ -48,16 +50,18 @@ pub extern "C" fn rssn_fredholm_new(
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let eq = FredholmEquation::new(
-            (*y_x).clone(),
-            (*f_x).clone(),
-            (*lambda).clone(),
-            (*kernel).clone(),
-            (*lower_bound).clone(),
-            (*upper_bound).clone(),
-            var_x_str,
-            var_t_str,
-        );
+        let params = FredholmEquationParams {
+            y_x: (*y_x).clone(),
+            f_x: (*f_x).clone(),
+            lambda: (*lambda).clone(),
+            kernel: (*kernel).clone(),
+            lower_bound: (*lower_bound).clone(),
+            upper_bound: (*upper_bound).clone(),
+            var_x: var_x_str,
+            var_t: var_t_str,
+        };
+
+        let eq = FredholmEquation::new(params);
 
         Box::into_raw(Box::new(eq))
     }
@@ -218,15 +222,17 @@ pub extern "C" fn rssn_volterra_new(
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let eq = VolterraEquation::new(
-            (*y_x).clone(),
-            (*f_x).clone(),
-            (*lambda).clone(),
-            (*kernel).clone(),
-            (*lower_bound).clone(),
-            var_x_str,
-            var_t_str,
-        );
+        let params = VolterraEquationParams {
+            y_x: (*y_x).clone(),
+            f_x: (*f_x).clone(),
+            lambda: (*lambda).clone(),
+            kernel: (*kernel).clone(),
+            lower_bound: (*lower_bound).clone(),
+            var_x: var_x_str,
+            var_t: var_t_str,
+        };
+
+        let eq = VolterraEquation::new(params);
 
         Box::into_raw(Box::new(eq))
     }

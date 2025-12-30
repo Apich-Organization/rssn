@@ -19,14 +19,29 @@ use crate::symbolic::solve::solve_linear_system;
 ///
 /// The equation has the form: `y(x) = f(x) + lambda * integral_a_b(K(x, t) * y(t) dt)`,
 /// where `y(x)` is the unknown function to be solved for.
-#[derive(
-    Debug,
-    Clone,
-    serde::Serialize,
-    serde::Deserialize,
-)]
-
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FredholmEquation {
+    /// The unknown function `y(x)`.
+    pub y_x: Expr,
+    /// The known function `f(x)`.
+    pub f_x: Expr,
+    /// The constant parameter `lambda`.
+    pub lambda: Expr,
+    /// The kernel of the integral, `K(x, t)`.
+    pub kernel: Expr,
+    /// The lower bound of integration, `a`.
+    pub lower_bound: Expr,
+    /// The upper bound of integration, `b`.
+    pub upper_bound: Expr,
+    /// The main variable of the functions, `x`.
+    pub var_x: String,
+    /// The integration variable, `t`.
+    pub var_t: String,
+}
+
+/// Parameters for creating a `FredholmEquation`.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct FredholmEquationParams {
     /// The unknown function `y(x)`.
     pub y_x: Expr,
     /// The known function `f(x)`.
@@ -62,26 +77,16 @@ impl FredholmEquation {
     /// A new `FredholmEquation` instance.
     #[must_use]
 
-    pub const fn new(
-        y_x: Expr,
-        f_x: Expr,
-        lambda: Expr,
-        kernel: Expr,
-        lower_bound: Expr,
-        upper_bound: Expr,
-        var_x: String,
-        var_t: String,
-    ) -> Self {
-
+    pub fn new(params: FredholmEquationParams) -> Self {
         Self {
-            y_x,
-            f_x,
-            lambda,
-            kernel,
-            lower_bound,
-            upper_bound,
-            var_x,
-            var_t,
+            y_x: params.y_x,
+            f_x: params.f_x,
+            lambda: params.lambda,
+            kernel: params.kernel,
+            lower_bound: params.lower_bound,
+            upper_bound: params.upper_bound,
+            var_x: params.var_x,
+            var_t: params.var_t,
         }
     }
 
@@ -368,14 +373,27 @@ impl FredholmEquation {
 ///
 /// The equation has the form: `y(x) = f(x) + lambda * integral_a_x(K(x, t) * y(t) dt)`.
 /// It is similar to the Fredholm equation, but the upper limit of integration is the variable `x`.
-#[derive(
-    Debug,
-    Clone,
-    serde::Serialize,
-    serde::Deserialize,
-)]
-
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct VolterraEquation {
+    /// The unknown function `y(x)`.
+    pub y_x: Expr,
+    /// The known function `f(x)`.
+    pub f_x: Expr,
+    /// The constant parameter `lambda`.
+    pub lambda: Expr,
+    /// The kernel of the integral, `K(x, t)`.
+    pub kernel: Expr,
+    /// The lower bound of integration, `a`.
+    pub lower_bound: Expr,
+    /// The main variable of the functions, `x`.
+    pub var_x: String,
+    /// The integration variable, `t`.
+    pub var_t: String,
+}
+
+/// Parameters for creating a `VolterraEquation`.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct VolterraEquationParams {
     /// The unknown function `y(x)`.
     pub y_x: Expr,
     /// The known function `f(x)`.
@@ -408,24 +426,15 @@ impl VolterraEquation {
     /// A new `VolterraEquation` instance.
     #[must_use]
 
-    pub const fn new(
-        y_x: Expr,
-        f_x: Expr,
-        lambda: Expr,
-        kernel: Expr,
-        lower_bound: Expr,
-        var_x: String,
-        var_t: String,
-    ) -> Self {
-
+    pub fn new(params: VolterraEquationParams) -> Self {
         Self {
-            y_x,
-            f_x,
-            lambda,
-            kernel,
-            lower_bound,
-            var_x,
-            var_t,
+            y_x: params.y_x,
+            f_x: params.f_x,
+            lambda: params.lambda,
+            kernel: params.kernel,
+            lower_bound: params.lower_bound,
+            var_x: params.var_x,
+            var_t: params.var_t,
         }
     }
 

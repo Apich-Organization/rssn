@@ -333,15 +333,15 @@ pub fn gram_schmidt(
     let mut orthogonal_basis =
         Vec::new();
 
-    for i in 0 .. basis.len() {
+    for b in basis {
 
-        let mut v = basis[i].clone();
+        let mut v = b.clone();
 
         for u in &orthogonal_basis {
 
             let proj = project(
                 space,
-                &basis[i],
+                b,
                 u,
             );
 

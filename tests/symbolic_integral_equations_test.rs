@@ -1,7 +1,9 @@
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::integral_equations::solve_airfoil_equation;
 use rssn::symbolic::integral_equations::FredholmEquation;
+use rssn::symbolic::integral_equations::FredholmEquationParams;
 use rssn::symbolic::integral_equations::VolterraEquation;
+use rssn::symbolic::integral_equations::VolterraEquationParams;
 use rssn::symbolic::simplify_dag::simplify;
 
 #[test]
@@ -32,16 +34,16 @@ fn test_fredholm_neumann_series() {
 
     let upper = Expr::Constant(1.0);
 
-    let eq = FredholmEquation::new(
-        Expr::new_variable("y"), /* Placeholder */
+    let eq = FredholmEquation::new(FredholmEquationParams {
+        y_x: Expr::new_variable("y"), /* Placeholder */
         f_x,
         lambda,
         kernel,
         lower,
         upper,
-        "x".to_string(),
-        "t".to_string(),
-    );
+        var_x: "x".to_string(),
+        var_t: "t".to_string(),
+    });
 
     // 1st iteration: y_0 = x
     // y_1 = x + 0.1 * int_0^1 x*t * t dt = x + 0.1 * x * [t^3/3]_0^1 = x + 0.1*x/3
@@ -88,16 +90,16 @@ fn test_fredholm_separable_kernel() {
 
     let upper = Expr::Constant(1.0);
 
-    let eq = FredholmEquation::new(
-        Expr::new_variable("y"),
+    let eq = FredholmEquation::new(FredholmEquationParams {
+        y_x: Expr::new_variable("y"),
         f_x,
         lambda,
         kernel,
         lower,
         upper,
-        "x".to_string(),
-        "t".to_string(),
-    );
+        var_x: "x".to_string(),
+        var_t: "t".to_string(),
+    });
 
     let a_funcs = vec![x.clone()];
 
@@ -174,15 +176,15 @@ fn test_volterra_successive_approximations(
 
     let lower = Expr::Constant(0.0);
 
-    let eq = VolterraEquation::new(
-        Expr::new_variable("y"),
+    let eq = VolterraEquation::new(VolterraEquationParams {
+        y_x: Expr::new_variable("y"),
         f_x,
         lambda,
         kernel,
         lower,
-        "x".to_string(),
-        "t".to_string(),
-    );
+        var_x: "x".to_string(),
+        var_t: "t".to_string(),
+    });
 
     // 3 iterations
     // y_0 = 1

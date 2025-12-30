@@ -2195,17 +2195,10 @@ pub(crate) fn mul_em(
             {
 
                 // Handle overflow/invalid results gracefully
-                if va.is_infinite()
-                    && is_zero_expr(b)
+                if (va.is_infinite() && is_zero_expr(b))
+                    || (vb.is_infinite() && is_zero_expr(a))
                 {
-
                     Expr::Constant(0.0) // 0 * inf = 0 (though mathematically indeterminate, for calculation purposes)
-                } else if vb
-                    .is_infinite()
-                    && is_zero_expr(a)
-                {
-
-                    Expr::Constant(0.0) // 0 * inf = 0
                 } else {
 
                     Expr::Constant(*va) // Return a as a fallback
@@ -2738,18 +2731,11 @@ pub(crate) fn simplify_mul(
 
     if !is_one_expr(&constant) {
 
-        match DAG_MANAGER.get_or_create(
-                &constant,
-            )
-        { Ok(constant_node) => {
-
-            new_factors.insert(
-                0,
-                constant_node,
-            );
-        } _ => {
-            // If creating the constant fails, skip it (equivalent to multiplying by 1)
-        }}
+        if let Ok(constant_node) =
+            DAG_MANAGER.get_or_create(&constant)
+        {
+            new_factors.insert(0, constant_node);
+        }
     }
 
     if new_factors.is_empty() {
@@ -2763,23 +2749,16 @@ pub(crate) fn simplify_mul(
     let mut result =
         new_factors[0].clone();
 
-    for i in 1 .. new_factors.len() {
-
-        result = match DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Mul,
-                vec![
-                    result.clone(),
-                    new_factors[i]
-                        .clone(),
-                ],
-            ) {
-            | Ok(node) => node,
-            | Err(_) => {
-
+    for factor in new_factors.iter().skip(1) {
+        result = match DAG_MANAGER.get_or_create_normalized(
+            DagOp::Mul,
+            vec![result.clone(), factor.clone()],
+        ) {
+            Ok(node) => node,
+            Err(_) => {
                 // If creating the multiplication fails, return the left operand
                 break;
-            },
+            }
         };
     }
 
@@ -3065,16 +3044,11 @@ pub(crate) fn simplify_add(
 
     if !is_zero_expr(&constant) {
 
-        match DAG_MANAGER.get_or_create(
-                &constant,
-            )
-        { Ok(constant_node) => {
-
-            new_terms
-                .push(constant_node);
-        } _ => {
-            // If creating the constant fails, skip it (equivalent to adding 0)
-        }}
+        if let Ok(constant_node) =
+            DAG_MANAGER.get_or_create(&constant)
+        {
+            new_terms.push(constant_node);
+        }
     }
 
     if new_terms.is_empty() {
@@ -3088,23 +3062,16 @@ pub(crate) fn simplify_add(
     let mut result =
         new_terms[0].clone();
 
-    for i in 1 .. new_terms.len() {
-
-        result = match DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Add,
-                vec![
-                    result.clone(),
-                    new_terms[i]
-                        .clone(),
-                ],
-            ) {
-            | Ok(node) => node,
-            | Err(_) => {
-
+    for term in new_terms.iter().skip(1) {
+        result = match DAG_MANAGER.get_or_create_normalized(
+            DagOp::Add,
+            vec![result.clone(), term.clone()],
+        ) {
+            Ok(node) => node,
+            Err(_) => {
                 // If creating the addition fails, return the left operand
                 break;
-            },
+            }
         };
     }
 
@@ -3544,9 +3511,9 @@ pub(crate) fn pattern_match_recursive(
 /// # Returns
 /// A new `Expr` with patterns substituted.
 
-pub fn substitute_patterns(
+pub fn substitute_patterns<S: std::hash::BuildHasher>(
     template: &Expr,
-    assignments: &HashMap<String, Expr>,
+    assignments: &HashMap<String, Expr, S>,
 ) -> Expr {
 
     let template_unwrapped =

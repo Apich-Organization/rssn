@@ -822,8 +822,7 @@ pub(crate) fn apply_rules(
                 (*a).clone(),
                 (*b).clone(),
             ) {
-                | Ok(value) => value,
-                | Err(value) => value,
+                | Ok(value) | Err(value) => value,
             }
         },
         | Expr::Sub(a, b) => {
@@ -2131,9 +2130,9 @@ pub(crate) fn get_default_rules(
 /// # Returns
 /// A new `Expr` with patterns substituted.
 
-pub fn substitute_patterns(
+pub fn substitute_patterns<S: std::hash::BuildHasher>(
     template: &Expr,
-    assignments: &HashMap<String, Expr>,
+    assignments: &HashMap<String, Expr, S>,
 ) -> Expr {
 
     match template {
@@ -2501,11 +2500,11 @@ pub fn heuristic_simplify(
     expr: Expr
 ) -> Expr {
 
+    const MAX_ITERATIONS: usize = 10;
+
     let mut current_expr = expr;
 
     let rules = get_default_rules();
-
-    const MAX_ITERATIONS: usize = 10;
 
     for _ in 0 .. MAX_ITERATIONS {
 
