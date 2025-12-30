@@ -7586,13 +7586,7 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(
     match PluginManager::new(plugin_dir)
     {
         | Ok(manager) => {
-
-            let mut pm_guard = PLUGIN_MANAGER
-                .lock()
-                .expect("Plugin Manager error");
-
-            *pm_guard = Some(manager);
-
+            *PLUGIN_MANAGER.lock().expect("Plugin Manager error") = Some(manager);
             0
         },
         | Err(e) => {
@@ -7674,25 +7668,17 @@ pub unsafe extern "C" fn rssn_plugin_execute(
         },
     };
 
-    let result = {
-        let pm_guard = PLUGIN_MANAGER.lock().expect("Plugin Manager Error");
-
-        let pm = match &*pm_guard {
-            | Some(manager) => manager,
-            | None => {
-                return handle_error(
-                    "Plugin manager not initialized. Call rssn_init_plugin_manager first.".to_string(),
-                );
-            },
-        };
-
-        pm.execute_plugin(plugin_name, command, &args_expr)
+    let result = match &*PLUGIN_MANAGER.lock().expect("Plugin Manager Error") {
+        | Some(pm) => pm.execute_plugin(plugin_name, command, &args_expr),
+        | None => {
+            return handle_error(
+                "Plugin manager not initialized. Call rssn_init_plugin_manager first.".to_string(),
+            );
+        },
     };
 
     match result {
-        | Ok(result_expr) => {
-            HANDLE_MANAGER.insert(result_expr)
-        },
+        | Ok(result_expr) => HANDLE_MANAGER.insert(result_expr),
         | Err(e) => {
             handle_error(format!("Plugin execution failed for '{plugin_name}': {e}"))
         },

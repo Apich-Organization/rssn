@@ -938,19 +938,7 @@ pub fn differentiate(
                     )),
                 ))
             },
-            | Expr::ArcTanh(arg) => {
-                simplify(&Expr::new_div(
-                    cache[arg.as_ref()].clone(),
-                    Expr::new_sub(
-                        Expr::BigInt(BigInt::one()),
-                        Expr::new_pow(
-                            arg.as_ref().clone(),
-                            Expr::BigInt(BigInt::from(2)),
-                        ),
-                    ),
-                ))
-            },
-            | Expr::ArcCoth(arg) => {
+            | Expr::ArcTanh(arg) | Expr::ArcCoth(arg) => {
                 simplify(&Expr::new_div(
                     cache[arg.as_ref()].clone(),
                     Expr::new_sub(
@@ -5099,35 +5087,28 @@ pub fn limit_internal(
                         den, var,
                     );
 
-                if deg_num < deg_den {
+                match deg_num.cmp(&deg_den) {
+                    std::cmp::Ordering::Less => {
+                        return Expr::BigInt(BigInt::zero());
+                    }
+                    std::cmp::Ordering::Greater => {
+                        return if matches!(to, Expr::NegativeInfinity) {
+                            Expr::NegativeInfinity
+                        } else {
+                            Expr::Infinity
+                        };
+                    }
+                    std::cmp::Ordering::Equal => {
+                        let lead_num = leading_coefficient(num, var);
+                        let lead_den = leading_coefficient(den, var);
 
-                    return Expr::BigInt(BigInt::zero());
-                } else if deg_num
-                    > deg_den
-                {
-
-                    return if matches!(
-                        to,
-                        Expr::NegativeInfinity
-                    ) {
-
-                        Expr::NegativeInfinity
-                    } else {
-
-                        Expr::Infinity
-                    };
-                } else {
-
-                    let lead_num = leading_coefficient(num, var);
-
-                    let lead_den = leading_coefficient(den, var);
-
-                    return simplify(
-                        &Expr::new_div(
-                            lead_num,
-                            lead_den,
-                        ),
-                    );
+                        return simplify(
+                            &Expr::new_div(
+                                lead_num,
+                                lead_den,
+                            ),
+                        );
+                    }
                 }
             }
         }

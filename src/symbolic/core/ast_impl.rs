@@ -413,8 +413,7 @@ impl fmt::Display for Expr {
             | Self::BigInt(i) => write!(f, "{i}"),
             | Self::Rational(r) => write!(f, "{r}"),
             | Self::Boolean(b) => write!(f, "{b}"),
-            | Self::Variable(s) => write!(f, "{s}"),
-            | Self::Pattern(s) => write!(f, "{s}"),
+            | Self::Variable(s) | Self::Pattern(s) => write!(f, "{s}"),
             | Self::Add(a, b) => write!(f, "({a} + {b})"),
             | Self::AddList(list) => {
 
@@ -1216,11 +1215,9 @@ impl Expr {
             | Self::Boolean(_) => 3,
             | Self::Variable(_) => 4,
             | Self::Pattern(_) => 5,
-            | Self::Add(_, _) => 6,
-            | Self::AddList(_) => 6, // Same order as Add
+            | Self::Add(_, _) | Self::AddList(_) => 6,
             | Self::Sub(_, _) => 7,
-            | Self::Mul(_, _) => 8,
-            | Self::MulList(_) => 8, // Same order as Mul
+            | Self::Mul(_, _) | Self::MulList(_) => 8,
             | Self::Div(_, _) => 9,
             | Self::Power(_, _) => 10,
             | Self::Sin(_) => 11,
@@ -1234,12 +1231,7 @@ impl Expr {
             | Self::Vector(_) => 19,
             | Self::Complex(_, _) => 20,
             | Self::Derivative(_, _) => 21,
-            | Self::Integral {
-                ..
-            } => 22,
-            | Self::Sum {
-                ..
-            } => 22, // Assign same order as Integral for now
+            | Self::Integral { .. } | Self::Sum { .. } => 22,
             | Self::Path(_, _, _) => 23,
             | Self::Abs(_) => 24,
             | Self::Sqrt(_) => 25,

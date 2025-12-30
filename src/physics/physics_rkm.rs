@@ -317,7 +317,7 @@ impl DormandPrince54 {
         let mut k =
             vec![vec![0.0; dim]; 7];
 
-        while (t_end - t) > 1e-15 {
+        while (t_end - t).abs() > 1e-15 {
 
             if t + dt > t_end {
 
@@ -544,7 +544,7 @@ impl CashKarp45 {
         let mut k =
             vec![vec![0.0; dim]; 6];
 
-        while (t_end - t) > 1e-15 {
+        while (t_end - t).abs() > 1e-15 {
 
             if t + dt > t_end {
 
@@ -734,7 +734,7 @@ impl BogackiShampine23 {
         let mut k =
             vec![vec![0.0; dim]; 4];
 
-        while (t_end - t) > 1e-15 {
+        while (t_end - t).abs() > 1e-15 {
 
             if t + dt > t_end {
 

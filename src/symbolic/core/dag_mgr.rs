@@ -579,10 +579,10 @@ impl DagManager {
         mut children: Vec<Arc<DagNode>>,
     ) -> Result<Arc<DagNode>, String>
     {
-
         // Safety check: limit number of children to prevent excessive memory usage
-        const MAX_CHILDREN: usize =
-            10000;
+        const MAX_CHILDREN: usize = 10000;
+        // Prevent excessive memory usage by limiting bucket size
+        const MAX_BUCKET_SIZE: usize = 1000;
 
         if children.len() > MAX_CHILDREN
         {
@@ -636,9 +636,6 @@ impl DagManager {
                 },
             };
 
-        // Prevent excessive memory usage by limiting bucket size
-        const MAX_BUCKET_SIZE: usize =
-            1000;
 
         // Ensure the bucket is a vector of candidates to support collision buckets.
         // nodes: HashMap<u64, Vec<Arc<DagNode>>>
@@ -819,6 +816,8 @@ impl DagManager {
         expr: &Expr,
     ) -> Result<Arc<DagNode>, String>
     {
+        // Limit the number of children to prevent excessive memory allocation
+        const MAX_CHILDREN_PER_NODE: usize = 10000;
 
         if let Expr::Dag(node) = expr {
 
@@ -834,9 +833,6 @@ impl DagManager {
         let children_exprs = expr
             .get_children_internal();
 
-        // Limit the number of children to prevent excessive memory allocation
-        const MAX_CHILDREN_PER_NODE:
-            usize = 10000;
 
         if children_exprs.len()
             > MAX_CHILDREN_PER_NODE

@@ -576,7 +576,7 @@ pub fn is_one(expr: &Expr) -> bool {
             )
         },
         | Expr::Constant(val)
-            if *val == 1.0 =>
+            if (*val - 1.0).abs() < f64::EPSILON =>
         {
             true
         },
@@ -1269,8 +1269,8 @@ pub(crate) fn apply_rules(
             if !non_constants.is_empty()
             {
 
-                if constant_product
-                    != 1.0
+                if (constant_product - 1.0).abs()
+                    > f64::EPSILON
                 {
 
                     non_constants.insert(
@@ -1291,8 +1291,8 @@ pub(crate) fn apply_rules(
                         non_constants,
                     )
                 }
-            } else if constant_product
-                != 1.0
+            } else if (constant_product - 1.0).abs()
+                > f64::EPSILON
             {
 
                 Expr::Constant(
