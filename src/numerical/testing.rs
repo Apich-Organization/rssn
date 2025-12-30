@@ -39,16 +39,11 @@ pub fn solve(
     var: &str,
 ) -> Vec<Expr> {
 
-    let mut equation = expr.clone();
-
-    if let Expr::Eq(left, right) = expr
-    {
-
-        equation = Expr::new_sub(
-            left.clone(),
-            right.clone(),
-        );
-    }
+    let equation = if let Expr::Eq(left, right) = expr {
+        Expr::new_sub(left.clone(), right.clone())
+    } else {
+        expr.clone()
+    };
 
     let simplified_expr =
         simplify(&equation);
@@ -495,7 +490,9 @@ pub(crate) fn collect_coeffs(
             {
 
                 if v == var {
-
+                    if *p < 0.0 || p.fract() != 0.0 {
+                        return None;
+                    }
                     *coeffs
                         .entry(*p as u32)
                         .or_insert(Expr::BigInt(

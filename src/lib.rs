@@ -308,7 +308,8 @@
     // We thinks do not collapsible if makes the code more extensible.
     clippy::collapsible_if,
     clippy::collapsible_match,
-    clippy::collapsible_else_if
+    clippy::collapsible_else_if,
+    clippy::no_effect_underscore_binding
 )]
 
 /// Computation engine and task management.

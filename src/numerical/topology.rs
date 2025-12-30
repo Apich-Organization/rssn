@@ -284,18 +284,12 @@ pub fn compute_persistence(
     max_dim: usize,
 ) -> Vec<PersistenceDiagram> {
 
-    let mut diagrams = vec![
-        PersistenceDiagram {
-            dimension : 0,
-            intervals : Vec::new()
-        };
-        max_dim + 1
-    ];
-
-    for d in 0 ..= max_dim {
-
-        diagrams[d].dimension = d;
-    }
+    let mut diagrams: Vec<PersistenceDiagram> = (0..=max_dim)
+        .map(|d| PersistenceDiagram {
+            dimension: d,
+            intervals: Vec::new(),
+        })
+        .collect();
 
     // This is a naive implementation: we track Betti number changes.
     // Real persistent homology requires tracking individual cycles, but for FFI start

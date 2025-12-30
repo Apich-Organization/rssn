@@ -119,7 +119,7 @@ pub fn solve_linear_system(
         let mut particular =
             vec![0.0; cols];
 
-        let mut pivot_cols = Vec::new();
+        let mut _pivot_cols = Vec::new();
 
         let mut lead = 0;
 
@@ -139,7 +139,7 @@ pub fn solve_linear_system(
 
             if i < cols {
 
-                pivot_cols.push(i);
+                _pivot_cols.push(i);
 
                 particular[i] =
                     *augmented

@@ -201,7 +201,7 @@ pub fn lp_norm(
         return f64::NAN;
     }
 
-    if p == 1.0 {
+    if (p - 1.0).abs() < f64::EPSILON {
 
         return l1_norm(v);
     }
