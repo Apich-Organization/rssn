@@ -82,7 +82,8 @@ pub fn run_lid_driven_cavity(
     let mg_size_k =
         ((nx.max(ny) - 1) as f64)
             .log2()
-            .ceil() as u32;
+            .ceil()
+            .max(0.0) as u32;
 
     let mg_size =
         2_usize.pow(mg_size_k) + 1;

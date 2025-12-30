@@ -953,8 +953,7 @@ where
                     velocity.2,
                 );
 
-                *next_val = (dt / dy).mul_add(-(flux_north - flux_south), (dt / dx).mul_add(-(flux_east - flux_west), u_ijk))
-                    - (dt / dz) * (flux_front - flux_back);
+                *next_val = (dt / dz).mul_add(-(flux_front - flux_back), (dt / dy).mul_add(-(flux_north - flux_south), (dt / dx).mul_add(-(flux_east - flux_west), u_ijk)));
             });
 
         current_values.copy_from_slice(

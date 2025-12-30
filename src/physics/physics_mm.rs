@@ -224,7 +224,7 @@ impl SpikyKernel {
 }
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize,
+    Debug, Clone, Serialize,
 )]
 /// The SPH system.
 
@@ -245,6 +245,36 @@ pub struct SPHSystem {
     pub rest_density: f64,
     /// The bounds of the simulation.
     pub bounds: Vector2D,
+}
+
+impl<'de> Deserialize<'de> for SPHSystem {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct SPHSystemData {
+            particles: Vec<Particle>,
+            poly6: Poly6Kernel,
+            spiky: SpikyKernel,
+            gravity: Vector2D,
+            viscosity: f64,
+            gas_const: f64,
+            rest_density: f64,
+            bounds: Vector2D,
+        }
+        let data = SPHSystemData::deserialize(deserializer)?;
+        Ok(Self {
+            particles: data.particles,
+            poly6: data.poly6,
+            spiky: data.spiky,
+            gravity: data.gravity,
+            viscosity: data.viscosity,
+            gas_const: data.gas_const,
+            rest_density: data.rest_density,
+            bounds: data.bounds,
+        })
+    }
 }
 
 impl SPHSystem {
