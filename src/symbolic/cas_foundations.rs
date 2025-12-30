@@ -590,7 +590,7 @@ pub fn expand(expr: Expr) -> Expr {
                 {
 
                     let n_us =
-                        n.max(0.0) as usize;
+                        (n as i64).try_into().unwrap_or(0);
 
                     let mut result =
                         exp_base

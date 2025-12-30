@@ -39,9 +39,9 @@ pub fn solve_forward_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        .max(0.0) as usize;
+    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+        .try_into()
+        .unwrap_or(0);
 
     let mut t = t_start;
 
@@ -88,9 +88,9 @@ pub fn solve_midpoint_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        .max(0.0) as usize;
+    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+        .try_into()
+        .unwrap_or(0);
 
     let mut t = t_start;
 
@@ -161,9 +161,9 @@ pub fn solve_heun_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        .max(0.0) as usize;
+    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+        .try_into()
+        .unwrap_or(0);
 
     let mut t = t_start;
 
@@ -285,9 +285,9 @@ pub fn solve_semi_implicit_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        .max(0.0) as usize;
+    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+        .try_into()
+        .unwrap_or(0);
 
     let mut t = t_start;
 
@@ -502,9 +502,9 @@ pub fn solve_backward_euler_linear<
 
     let (t_start, t_end) = t_span;
 
-    let steps = ((t_end - t_start) / dt)
-        .ceil()
-        .max(0.0) as usize;
+    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+        .try_into()
+        .unwrap_or(0);
 
     let mut t = t_start;
 

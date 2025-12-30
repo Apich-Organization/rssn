@@ -560,9 +560,9 @@ pub(crate) fn sylvester_matrix(
     var: &str,
 ) -> Expr {
 
-    let n = p.degree(var).max(0) as usize;
+    let n = p.degree(var).try_into().unwrap_or(0);
 
-    let m = q.degree(var).max(0) as usize;
+    let m = q.degree(var).try_into().unwrap_or(0);
 
     if n == 0 && m == 0 {
 

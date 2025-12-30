@@ -30,8 +30,10 @@ pub extern "C" fn rssn_physics_sm_simulate_2d_advection(
     // otherwise a single row. The scenario uses 64x64.
     let n = results.len();
 
-    let dim =
-        (n as f64).sqrt().max(0.0) as usize;
+    let dim: usize =
+        ((n as f64).sqrt() as i64)
+            .try_into()
+            .unwrap_or(0);
 
     if dim * dim == n {
 

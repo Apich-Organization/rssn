@@ -328,10 +328,9 @@ pub fn plot_vector_field_2d(
 
     let mut arrows = Vec::new();
 
-    let steps = (conf.samples as f64)
-        .sqrt()
-        .max(0.0)
-        .round() as usize;
+    let steps: usize = ((conf.samples as f64).sqrt().round() as i64)
+        .try_into()
+        .unwrap_or(0);
 
     for i in 0 .. steps {
 
@@ -471,10 +470,9 @@ pub fn plot_surface_3d(
 
     let (x_var, y_var) = vars;
 
-    let steps = (conf.samples as f64)
-        .sqrt()
-        .max(0.0)
-        .round() as usize;
+    let steps: usize = ((conf.samples as f64).sqrt().round() as i64)
+        .try_into()
+        .unwrap_or(0);
 
     let _ = chart.draw_series(
         SurfaceSeries::xoz(
@@ -672,10 +670,9 @@ pub fn plot_vector_field_3d(
 
     let mut arrows = Vec::new();
 
-    let steps = (conf.samples as f64)
-        .cbrt()
-        .max(0.0)
-        .round() as usize;
+    let steps: usize = ((conf.samples as f64).cbrt().round() as i64)
+        .try_into()
+        .unwrap_or(0);
 
     for i in 0 .. steps {
 

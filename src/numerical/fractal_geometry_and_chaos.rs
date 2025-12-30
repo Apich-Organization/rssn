@@ -1609,8 +1609,8 @@ pub fn orbit_density(
             && y < y_range.1
         {
 
-            let xi = ((x - x_range.0) / x_scale) as isize as usize;
-            let yi = ((y - y_range.0) / y_scale) as isize as usize;
+            let xi: usize = (((x - x_range.0) / x_scale) as i64).try_into().unwrap_or(0);
+            let yi: usize = (((y - y_range.0) / y_scale) as i64).try_into().unwrap_or(0);
 
             if xi < x_bins
                 && yi < y_bins

@@ -145,7 +145,7 @@ pub fn gamma(arg: Expr) -> Expr {
 
             return Expr::Constant(
                 factorial(
-                    (n - 1.0).max(0.0) as usize,
+                    ((n - 1.0) as i64).try_into().unwrap_or(0),
                 ),
             );
         }
@@ -1519,7 +1519,7 @@ pub fn legendre_rodrigues_formula(
 
     let n_factorial = Expr::Constant(
         if n_f64 >= 0.0 {
-            factorial(n_f64.max(0.0) as usize)
+            factorial((n_f64 as i64).try_into().unwrap_or(0))
         } else {
             f64::NAN
         },

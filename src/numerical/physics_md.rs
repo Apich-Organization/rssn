@@ -1019,7 +1019,7 @@ pub fn radial_distribution_function(
 
                 if r < r_max {
                     // Safe to cast as r and dr are positive
-                    let bin = ((r / dr) as isize) as usize;
+                    let bin: usize = ((r / dr) as i64).try_into().unwrap_or(0);
 
                     if bin < num_bins {
 

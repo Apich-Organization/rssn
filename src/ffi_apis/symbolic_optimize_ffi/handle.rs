@@ -75,7 +75,7 @@ pub extern "C" fn rssn_find_extrema_handle(
 
         let vars_strings = match parse_c_str_array(
             vars_ptr,
-            vars_len.max(0) as usize,
+            (vars_len as i64).try_into().unwrap_or(0),
         ) {
             | Some(v) => v,
             | None => return std::ptr::null_mut(),
@@ -123,7 +123,7 @@ pub extern "C" fn rssn_hessian_matrix_handle(
 
         let vars_strings = match parse_c_str_array(
             vars_ptr,
-            vars_len.max(0) as usize,
+            (vars_len as i64).try_into().unwrap_or(0),
         ) {
             | Some(v) => v,
             | None => return std::ptr::null_mut(),
@@ -170,7 +170,7 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
 
         let vars_strings = match parse_c_str_array(
             vars_ptr,
-            vars_len.max(0) as usize,
+            (vars_len as i64).try_into().unwrap_or(0),
         ) {
             | Some(v) => v,
             | None => return std::ptr::null_mut(),
