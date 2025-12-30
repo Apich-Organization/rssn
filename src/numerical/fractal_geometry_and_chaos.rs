@@ -1367,10 +1367,8 @@ pub fn box_counting_dimension(
             / f64::from(num_boxes);
 
         // Count occupied boxes using a hash set
-        use std::collections::HashSet;
-
         let mut occupied =
-            HashSet::new();
+            std::collections::HashSet::new();
 
         for &(x, y) in points {
 
