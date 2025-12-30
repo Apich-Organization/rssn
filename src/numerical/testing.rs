@@ -493,13 +493,14 @@ pub(crate) fn collect_coeffs(
                     if *p < 0.0 || p.fract() != 0.0 {
                         return None;
                     }
+                    let p_u32: u32 = (*p as i64).try_into().unwrap_or(0);
                     *coeffs
-                        .entry(*p as u32)
+                        .entry(p_u32)
                         .or_insert(Expr::BigInt(
                             BigInt::zero(),
                         )) = simplify(&Expr::new_add(
                         coeffs
-                            .get(&(*p as u32))
+                            .get(&p_u32)
                             .unwrap_or(&Expr::BigInt(
                                 BigInt::zero(),
                             ))

@@ -17,14 +17,13 @@ use std::time::Duration;
 
 use bincode_next::config;
 use bincode_next::serde;
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
 use libloading::Library;
 use libloading::Symbol;
 
-lazy_static! {
-    /// Global instance of the PluginManager for FFI access.
-    pub static ref GLOBAL_PLUGIN_MANAGER: RwLock<PluginManager> = RwLock::new(PluginManager::empty());
-}
+/// Global instance of the PluginManager for FFI access.
+pub static GLOBAL_PLUGIN_MANAGER: LazyLock<RwLock<PluginManager>> =
+    LazyLock::new(|| RwLock::new(PluginManager::empty()));
 
 use crate::plugins::plugin_c::Plugin;
 use crate::plugins::plugin_c::PluginError;
@@ -194,19 +193,13 @@ impl PluginManager {
         command: &str,
         args: &Expr,
     ) -> Result<Expr, PluginError> {
-
-        let stable_plugins_map = self
+        if let Some(managed_plugin) = self
             .stable_plugins
             .read()
-            .expect("Lock poisoned");
-
-        if let Some(managed_plugin) =
-            stable_plugins_map
-                .get(plugin_name)
+            .expect("Lock poisoned")
+            .get(plugin_name)
         {
-
-            let config =
-                config::standard();
+            let config = config::standard();
 
             let args_vec = serde::encode_to_vec(args, config).map_err(|e| {
                 PluginError::new(PluginErrorKind::SerializationError, &e.to_string())
@@ -218,37 +211,24 @@ impl PluginManager {
                 .into_result()
                 .map_err(|e| PluginError::new(PluginErrorKind::ExecutionFailed, &e.to_string()))?;
 
-            let config =
-                config::standard();
-
             let (result_expr, _) = serde::decode_from_slice(&result_vec, config)
                 .map_err(|e| PluginError::new(PluginErrorKind::SerializationError, &e.to_string()))?;
 
             return Ok(result_expr);
         }
 
-        let plugins_map = self
+        if let Some(managed_plugin) = self
             .plugins
             .read()
-            .expect("Lock poisoned");
-
-        if let Some(managed_plugin) =
-            plugins_map.get(plugin_name)
+            .expect("Lock poisoned")
+            .get(plugin_name)
         {
-
-            return managed_plugin
-                .plugin
-                .execute(
-                    command,
-                    args,
-                );
+            return managed_plugin.plugin.execute(command, args);
         }
 
         Err(PluginError::new(
             PluginErrorKind::NotFound,
-            &format!(
-                "Plugin '{plugin_name}' not found"
-            ),
+            &format!("Plugin '{plugin_name}' not found"),
         ))
     }
 
@@ -327,25 +307,19 @@ impl PluginManager {
         name: &str,
     ) -> bool {
 
-        let mut plugins_map = self
+        if self
             .plugins
             .write()
-            .expect("Lock poisoned");
-
-        if plugins_map
+            .expect("Lock poisoned")
             .remove(name)
             .is_some()
         {
-
             return true;
         }
 
-        let mut stable_map = self
-            .stable_plugins
+        self.stable_plugins
             .write()
-            .expect("Lock poisoned");
-
-        stable_map
+            .expect("Lock poisoned")
             .remove(name)
             .is_some()
     }
@@ -358,34 +332,17 @@ impl PluginManager {
     #[must_use]
 
     pub fn get_plugin_metadata(
-        &self
-    ) -> HashMap<
-        String,
-        HashMap<String, String>,
-    > {
+        &self,
+    ) -> HashMap<String, HashMap<String, String>> {
+        let mut all_metadata = HashMap::new();
 
-        let mut all_metadata =
-            HashMap::new();
-
-        let plugins_map = self
-            .plugins
-            .read()
-            .expect("Lock poisoned");
-
-        for (name, managed) in
-            plugins_map.iter()
         {
+            let plugins_map = self.plugins.read().expect("Lock poisoned");
 
-            all_metadata.insert(
-                name.clone(),
-                managed
-                    .plugin
-                    .metadata(),
-            );
+            for (name, managed) in plugins_map.iter() {
+                all_metadata.insert(name.clone(), managed.plugin.metadata());
+            }
         }
-
-        // Stable plugins might not expose metadata as easily due to FFI boundaries
-        // unless we add it to StablePlugin trait. For now we just return for regular plugins.
 
         all_metadata
     }

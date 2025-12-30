@@ -11,6 +11,8 @@ use statrs::function::erf::erfc;
 use statrs::function::gamma::digamma;
 use statrs::function::gamma::gamma;
 use statrs::function::gamma::ln_gamma;
+use std::f64::consts::FRAC_2_PI;
+use std::f64::consts::FRAC_PI_4;
 
 // ============================================================================
 // Gamma Functions
@@ -459,7 +461,7 @@ pub fn bessel_j0(x: f64) -> f64 {
         let y = z * z;
 
         let xx =
-            ax - 0.785_398_163_397_448;
+            ax - FRAC_PI_4;
 
         let ans1 = 1.0
             + y * (-0.109_862_862_7e-2
@@ -469,7 +471,7 @@ pub fn bessel_j0(x: f64) -> f64 {
             + y * (0.143_048_876_5e-3
                 + y * (-0.691_114_765_1e-5 + y * (0.762_109_516_1e-6 - y * 0.934_945_152e-7)));
 
-        (0.636_619_772 / ax).sqrt()
+        (FRAC_2_PI / ax).sqrt()
             * xx.cos().mul_add(
                 ans1,
                 -(z * xx.sin() * ans2),
@@ -532,7 +534,7 @@ pub fn bessel_j1(x: f64) -> f64 {
             + y * (-0.200_269_087_3e-3
                 + y * (0.844_919_909_6e-5 + y * (-0.882_289_87e-6 + y * 0.105_787_412e-6)));
 
-        let ans = (0.636_619_772 / ax)
+        let ans = (FRAC_2_PI / ax)
             .sqrt()
             * xx.cos().mul_add(
                 ans1,
@@ -585,7 +587,7 @@ pub fn bessel_y0(x: f64) -> f64 {
             4_007_654_426.9,
         );
 
-        (0.636_619_772 * bessel_j0(x))
+        (FRAC_2_PI * bessel_j0(x))
             .mul_add(
                 x.ln(),
                 ans1 / ans2,
@@ -597,7 +599,7 @@ pub fn bessel_y0(x: f64) -> f64 {
         let y = z * z;
 
         let xx =
-            x - 0.785_398_163_397_448;
+            x - FRAC_PI_4;
 
         let ans1 = 1.0
             + y * (-0.109_862_862_7e-2
@@ -607,7 +609,7 @@ pub fn bessel_y0(x: f64) -> f64 {
             + y * (0.143_048_876_5e-3
                 + y * (-0.691_114_765_1e-5 + y * (0.762_109_516_1e-6 + y * (-0.934_945_152e-7))));
 
-        (0.636_619_772 / x).sqrt()
+        (FRAC_2_PI / x).sqrt()
             * xx.sin().mul_add(
                 ans1,
                 z * xx.cos() * ans2,
@@ -654,7 +656,7 @@ pub fn bessel_y1(x: f64) -> f64 {
             24_995_805_700_000_000.0,
         );
 
-        0.636_619_772f64.mul_add(
+        FRAC_2_PI.mul_add(
             bessel_j1(x).mul_add(
                 x.ln(),
                 -(1.0 / x),
@@ -677,7 +679,7 @@ pub fn bessel_y1(x: f64) -> f64 {
             + y * (-0.200_269_087_3e-3
                 + y * (0.844_919_909_6e-5 + y * (-0.882_289_87e-6 + y * 0.105_787_412e-6)));
 
-        (0.636_619_772 / x).sqrt()
+        (FRAC_2_PI / x).sqrt()
             * xx.sin().mul_add(
                 ans1,
                 z * xx.cos() * ans2,

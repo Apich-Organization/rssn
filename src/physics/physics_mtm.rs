@@ -246,9 +246,9 @@ pub fn solve_poisson_1d_multigrid(
     num_cycles: usize,
 ) -> Result<Vec<f64>, String> {
 
-    let num_levels = (n as f64 + 1.0)
-        .log2()
-        .max(0.0) as usize;
+    let num_levels: usize = ((n as f64 + 1.0).log2() as i64)
+        .try_into()
+        .unwrap_or(0);
 
     if (2_usize.pow(num_levels as u32)
         - 1)
@@ -698,9 +698,9 @@ pub fn solve_poisson_2d_multigrid(
     num_cycles: usize,
 ) -> Result<Vec<f64>, String> {
 
-    let num_levels = (n as f64 - 1.0)
-        .log2()
-        .max(0.0) as usize;
+    let num_levels: usize = ((n as f64 - 1.0).log2() as i64)
+        .try_into()
+        .unwrap_or(0);
 
     if (2_usize.pow(num_levels as u32)
         + 1)

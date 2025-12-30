@@ -1871,7 +1871,7 @@ pub fn solve_riccati_ode(
                 if v == "y" {
 
                     let entry = coeffs
-                        .entry(n.max(0.0) as usize)
+                        .entry((n as i64).try_into().unwrap_or(0))
                         .or_insert(Expr::Constant(0.0));
 
                     *entry = simplify(&Expr::new_add(
@@ -1922,7 +1922,7 @@ pub fn solve_riccati_ode(
 
                         (
                             a.as_ref().clone(),
-                            n.max(0.0) as usize,
+                            (n as i64).try_into().unwrap_or(0),
                         )
                     } else {
 
@@ -1955,7 +1955,7 @@ pub fn solve_riccati_ode(
 
                         (
                             b.as_ref().clone(),
-                            n.max(0.0) as usize,
+                            (n as i64).try_into().unwrap_or(0),
                         )
                     } else {
 
