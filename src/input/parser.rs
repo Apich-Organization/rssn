@@ -1193,17 +1193,7 @@ pub(crate) fn parse_function_call(
             ))
         },
 
-        | "predicate" => {
-            Ok((
-                input,
-                Expr::Predicate {
-                    name : func_name.to_string(),
-                    args,
-                },
-            ))
-        },
-
-        | _ => {
+        | "predicate" | _ => {
             Ok((
                 input,
                 Expr::Predicate {

@@ -474,7 +474,7 @@ pub(crate) fn expand_power(
         | (Expr::Add(a, b), Expr::BigInt(n)) => {
             if let Some(n_usize) = n.to_usize() {
 
-                expand_binomial(a, b, n_usize)
+                expand_binomial(&a, &b, n_usize)
             } else {
 
                 Expr::Power(
@@ -487,7 +487,7 @@ pub(crate) fn expand_power(
 
             let n_usize = (c as i64).try_into().unwrap_or(0);
 
-            expand_binomial(a, b, n_usize)
+            expand_binomial(&a, &b, n_usize)
         },
         | (b, e) => {
             Expr::Power(
@@ -499,8 +499,8 @@ pub(crate) fn expand_power(
 }
 
 fn expand_binomial(
-    a: Arc<Expr>,
-    b: Arc<Expr>,
+    a: &Arc<Expr>,
+    b: &Arc<Expr>,
     n: usize,
 ) -> Expr {
 

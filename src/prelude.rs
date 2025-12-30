@@ -3944,7 +3944,7 @@ pub use argmin::core::Solver as core_Solver;
 pub use bigdecimal::BigDecimal;
 pub use dashmap::DashMap;
 pub use itertools::Itertools as itertools_Itertools;
-pub use lazy_static::lazy_static;
+pub use std::sync::LazyLock;
 pub use nalgebra::DMatrix;
 pub use nalgebra::DVector;
 pub use nalgebra::Matrix3;

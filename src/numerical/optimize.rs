@@ -716,16 +716,13 @@ impl EquationOptimizer {
         .configure(|state| {
 
             state
-                .param(
-                    initial_param
-                        .clone(),
-                )
                 .inv_hessian(
                     Array2::eye(
                         initial_param
                             .len(),
                     ),
                 )
+                .param(initial_param)
                 .max_iters(
                     config.max_iters,
                 )

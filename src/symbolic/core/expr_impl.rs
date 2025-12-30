@@ -407,9 +407,11 @@ impl Expr {
             },
             // N-ary operators
             | Self::Matrix(m) => {
-                m.iter()
-                    .flatten()
-                    .for_each(|e| e.pre_order_walk(f));
+                for row in m.iter() {
+                    for e in row.iter() {
+                        e.pre_order_walk(f);
+                    }
+                }
             },
             | Self::Vector(v)
             | Self::Tuple(v)
@@ -421,20 +423,22 @@ impl Expr {
             | Self::Solutions(v)
             | Self::AddList(v)
             | Self::MulList(v) => {
-                v.iter()
-                    .for_each(|e| e.pre_order_walk(f));
+                for e in v.iter() {
+                    e.pre_order_walk(f);
+                }
             },
             | Self::Predicate {
                 args,
                 ..
             } => {
-                args.iter()
-                    .for_each(|e| e.pre_order_walk(f));
+                for e in args.iter() {
+                    e.pre_order_walk(f);
+                }
             },
             | Self::SparsePolynomial(p) => {
-                p.terms
-                    .values()
-                    .for_each(|c| c.pre_order_walk(f));
+                for c in p.terms.values() {
+                    c.pre_order_walk(f);
+                }
             },
             // More complex operators
             | Self::Sum {
@@ -601,8 +605,9 @@ impl Expr {
                 e.pre_order_walk(f);
             },
             | Self::CustomVecOne(v) => {
-                v.iter()
-                    .for_each(|e| e.pre_order_walk(f));
+                for e in v.iter() {
+                    e.pre_order_walk(f);
+                }
             },
             | Self::CustomVecTwo(v1, v2) => {
 
@@ -835,9 +840,11 @@ impl Expr {
             },
             // N-ary operators
             | Self::Matrix(m) => {
-                m.iter()
-                    .flatten()
-                    .for_each(|e| e.post_order_walk(f));
+                for row in m.iter() {
+                    for e in row.iter() {
+                        e.post_order_walk(f);
+                    }
+                }
             },
             | Self::Vector(v)
             | Self::Tuple(v)
@@ -849,20 +856,22 @@ impl Expr {
             | Self::Solutions(v)
             | Self::AddList(v)
             | Self::MulList(v) => {
-                v.iter()
-                    .for_each(|e| e.post_order_walk(f));
+                for e in v.iter() {
+                    e.post_order_walk(f);
+                }
             },
             | Self::Predicate {
                 args,
                 ..
             } => {
-                args.iter()
-                    .for_each(|e| e.post_order_walk(f));
+                for e in args.iter() {
+                    e.post_order_walk(f);
+                }
             },
             | Self::SparsePolynomial(p) => {
-                p.terms
-                    .values()
-                    .for_each(|c| c.post_order_walk(f));
+                for c in p.terms.values() {
+                    c.post_order_walk(f);
+                }
             },
             // More complex operators
             | Self::Integral {
