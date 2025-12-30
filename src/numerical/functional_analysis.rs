@@ -230,14 +230,14 @@ pub fn gram_schmidt(
         Vec<(f64, f64)>,
     > = Vec::new();
 
-    for i in 0 .. basis.len() {
+    for b in basis {
 
-        let mut v = basis[i].clone();
+        let mut v = b.clone();
 
         for u in &orthogonal_basis {
 
             let proj =
-                project(&basis[i], u)?;
+                project(b, u)?;
 
             for (j, (_, py)) in proj
                 .into_iter()

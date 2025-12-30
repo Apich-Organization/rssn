@@ -1225,33 +1225,40 @@ pub fn solve_wave_equation_1d(
 // Additional Classical Mechanics
 // ============================================================================
 
-/// Simulates projectile motion with air drag.
+/// Parameters for projectile motion simulation.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct ProjectileParams {
+    /// Initial velocity (m/s)
+    pub v0: f64,
+    /// Launch angle (radians)
+    pub angle: f64,
+    /// Mass of the projectile (kg)
+    pub mass: f64,
+    /// Drag coefficient (dimensionless)
+    pub drag_coeff: f64,
+    /// Cross-sectional area (m²)
+    pub area: f64,
+    /// Air density (kg/m³)
+    pub air_density: f64,
+    /// Time step (s)
+    pub dt: f64,
+    /// Maximum simulation time (s)
+    pub max_time: f64,
+}
+
+/// Simulates projectile motion with air resistance (drag).
 ///
-/// Uses `F_drag` = -0.5 * `C_d` * ρ * A * v² in the direction opposite to velocity.
+/// Uses Euler integration to solve equations of motion:
+/// F_drag = -0.5 * ρ * A * Cd * v² * v_hat
 ///
 /// # Arguments
-/// * `v0` - Initial velocity magnitude (m/s)
-/// * `angle` - Launch angle from horizontal (radians)
-/// * `mass` - Projectile mass (kg)
-/// * `drag_coeff` - Drag coefficient `C_d` (dimensionless)
-/// * `area` - Cross-sectional area (m²)
-/// * `air_density` - Air density (kg/m³), typically 1.225 at sea level
-/// * `dt` - Time step (s)
-/// * `max_time` - Maximum simulation time (s)
+/// * `params` - Simulation parameters
 ///
 /// # Returns
 /// Vector of (time, x, y, vx, vy) tuples
 #[must_use]
-
 pub fn projectile_motion_with_drag(
-    v0: f64,
-    angle: f64,
-    mass: f64,
-    drag_coeff: f64,
-    area: f64,
-    air_density: f64,
-    dt: f64,
-    max_time: f64,
+    params: ProjectileParams,
 ) -> Vec<(
     f64,
     f64,
@@ -1259,6 +1266,16 @@ pub fn projectile_motion_with_drag(
     f64,
     f64,
 )> {
+    let ProjectileParams {
+        v0,
+        angle,
+        mass,
+        drag_coeff,
+        area,
+        air_density,
+        dt,
+        max_time,
+    } = params;
 
     let mut results = Vec::new();
 
@@ -2055,13 +2072,14 @@ pub fn hydrogen_energy_level(
     n: u64
 ) -> f64 {
 
+    const RYDBERG_ENERGY_J: f64 =
+        2.179_872_361e-18; // 13.6 eV in Joules
+
     if n == 0 {
 
         return f64::NEG_INFINITY;
     }
 
-    const RYDBERG_ENERGY_J: f64 =
-        2.179_872_361e-18; // 13.6 eV in Joules
     -RYDBERG_ENERGY_J
         / (n as f64 * n as f64)
 }
