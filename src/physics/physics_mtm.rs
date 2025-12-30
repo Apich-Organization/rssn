@@ -703,7 +703,7 @@ pub fn solve_poisson_2d_multigrid(
 
     let num_levels = (n as f64 - 1.0)
         .log2()
-        as usize;
+        .max(0.0) as usize;
 
     if (2_usize.pow(num_levels as u32)
         + 1)

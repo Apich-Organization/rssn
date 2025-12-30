@@ -263,7 +263,7 @@ pub fn simulate_1d_advection_scenario(
     let total_time = 0.5;
 
     let steps = (total_time / dt).ceil()
-        as usize;
+        .max(0.0) as usize;
 
     let mut mesh = Mesh::new(
         NUM_CELLS,
@@ -690,7 +690,7 @@ pub fn simulate_2d_advection_scenario(
     let total_time = 0.6;
 
     let steps = (total_time / dt).ceil()
-        as usize;
+        .max(0.0) as usize;
 
     let mut mesh = Mesh2D::new(
         WIDTH,
@@ -1007,7 +1007,7 @@ pub fn simulate_3d_advection_scenario(
     let total_time = 0.7;
 
     let steps = (total_time / dt).ceil()
-        as usize;
+        .max(0.0) as usize;
 
     let mut mesh = Mesh3D::new(
         WIDTH,

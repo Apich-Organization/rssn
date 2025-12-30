@@ -329,24 +329,65 @@ impl<T> IndexMut<(usize, usize, usize)>
 }
 
 // ============================================================================
+// Solver Configuration
+// ============================================================================
+
+/// Configuration for 2D FDM solvers (heat, wave equations).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FdmSolverConfig2D {
+    /// Grid width (number of points in x direction).
+    pub width: usize,
+    /// Grid height (number of points in y direction).
+    pub height: usize,
+    /// Grid spacing in x direction.
+    pub dx: f64,
+    /// Grid spacing in y direction.
+    pub dy: f64,
+    /// Time step.
+    pub dt: f64,
+    /// Number of time steps.
+    pub steps: usize,
+}
+
+/// Configuration for 2D Poisson solver.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PoissonSolverConfig2D {
+    /// Grid width (number of points in x direction).
+    pub width: usize,
+    /// Grid height (number of points in y direction).
+    pub height: usize,
+    /// Grid spacing in x direction.
+    pub dx: f64,
+    /// Grid spacing in y direction.
+    pub dy: f64,
+    /// Relaxation factor for SOR (typically 1.0 < omega < 2.0).
+    pub omega: f64,
+    /// Maximum number of iterations.
+    pub max_iter: usize,
+    /// Convergence tolerance.
+    pub tolerance: f64,
+}
+
+// ============================================================================
 // Solvers
 // ============================================================================
 
 /// Solves a 2D heat equation `u_t = alpha * ∇²u` using the finite difference method.
 
 pub fn solve_heat_equation_2d<F>(
-    width: usize,
-    height: usize,
+    config: &FdmSolverConfig2D,
     alpha: f64,
-    dx: f64,
-    dy: f64,
-    dt: f64,
-    steps: usize,
     initial_conditions: F,
 ) -> FdmGrid<f64>
 where
     F: Fn(usize, usize) -> f64 + Sync,
 {
+    let width = config.width;
+    let height = config.height;
+    let dx = config.dx;
+    let dy = config.dy;
+    let dt = config.dt;
+    let steps = config.steps;
 
     let dims =
         Dimensions::D2(width, height);
@@ -445,18 +486,19 @@ where
 /// Solves 2D Wave equation `u_tt = c^2 * ∇²u`.
 
 pub fn solve_wave_equation_2d<F>(
-    width: usize,
-    height: usize,
+    config: &FdmSolverConfig2D,
     c: f64,
-    dx: f64,
-    dy: f64,
-    dt: f64,
-    steps: usize,
     initial_u: F,
 ) -> FdmGrid<f64>
 where
     F: Fn(usize, usize) -> f64 + Sync,
 {
+    let width = config.width;
+    let height = config.height;
+    let dx = config.dx;
+    let dy = config.dy;
+    let dt = config.dt;
+    let steps = config.steps;
 
     let dims =
         Dimensions::D2(width, height);
@@ -580,15 +622,16 @@ where
 #[must_use]
 
 pub fn solve_poisson_2d(
-    width: usize,
-    height: usize,
+    config: &PoissonSolverConfig2D,
     source: &FdmGrid<f64>,
-    dx: f64,
-    dy: f64,
-    omega: f64,
-    max_iter: usize,
-    tolerance: f64,
 ) -> FdmGrid<f64> {
+    let width = config.width;
+    let height = config.height;
+    let dx = config.dx;
+    let dy = config.dy;
+    let omega = config.omega;
+    let max_iter = config.max_iter;
+    let tolerance = config.tolerance;
 
     let dims =
         Dimensions::D2(width, height);
@@ -832,22 +875,18 @@ pub fn simulate_2d_heat_conduction_scenario(
 
     const ALPHA: f64 = 0.02;
 
-    const DX: f64 = 1.0;
-
-    const DY: f64 = 1.0;
-
-    const DT: f64 = 0.1;
-
-    const STEPS: usize = 1000;
+    let config = FdmSolverConfig2D {
+        width: WIDTH,
+        height: HEIGHT,
+        dx: 1.0,
+        dy: 1.0,
+        dt: 0.1,
+        steps: 1000,
+    };
 
     solve_heat_equation_2d(
-        WIDTH,
-        HEIGHT,
+        &config,
         ALPHA,
-        DX,
-        DY,
-        DT,
-        STEPS,
         |x, y| {
 
             let dx_cen = x as f64
@@ -884,22 +923,18 @@ pub fn simulate_2d_wave_propagation_scenario(
 
     const C: f64 = 1.0;
 
-    const DX: f64 = 1.0;
-
-    const DY: f64 = 1.0;
-
-    const DT: f64 = 0.5;
-
-    const STEPS: usize = 200;
+    let config = FdmSolverConfig2D {
+        width: WIDTH,
+        height: HEIGHT,
+        dx: 1.0,
+        dy: 1.0,
+        dt: 0.5,
+        steps: 200,
+    };
 
     solve_wave_equation_2d(
-        WIDTH,
-        HEIGHT,
+        &config,
         C,
-        DX,
-        DY,
-        DT,
-        STEPS,
         |x, y| {
 
             let dx_cen = x as f64
