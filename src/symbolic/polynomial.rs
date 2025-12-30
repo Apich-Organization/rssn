@@ -709,22 +709,13 @@ pub fn leading_coefficient(
                     &b, var,
                 );
 
-            if deg_a > deg_b {
-
-                leading_coefficient(
-                    &a, var,
-                )
-            } else if deg_b > deg_a {
-
-                leading_coefficient(
-                    &b, var,
-                )
-            } else {
-
-                simplify(&Expr::new_add(
+            match deg_a.cmp(&deg_b) {
+                std::cmp::Ordering::Greater => leading_coefficient(&a, var),
+                std::cmp::Ordering::Less => leading_coefficient(&b, var),
+                std::cmp::Ordering::Equal => simplify(&Expr::new_add(
                     leading_coefficient(&a, var),
                     leading_coefficient(&b, var),
-                ))
+                )),
             }
         },
         | Expr::Sub(a, b) => {
@@ -739,22 +730,13 @@ pub fn leading_coefficient(
                     &b, var,
                 );
 
-            if deg_a > deg_b {
-
-                leading_coefficient(
-                    &a, var,
-                )
-            } else if deg_b > deg_a {
-
-                simplify(&Expr::new_neg(
-                    leading_coefficient(&b, var),
-                ))
-            } else {
-
-                simplify(&Expr::new_sub(
+            match deg_a.cmp(&deg_b) {
+                std::cmp::Ordering::Greater => leading_coefficient(&a, var),
+                std::cmp::Ordering::Less => simplify(&Expr::new_neg(leading_coefficient(&b, var))),
+                std::cmp::Ordering::Equal => simplify(&Expr::new_sub(
                     leading_coefficient(&a, var),
                     leading_coefficient(&b, var),
-                ))
+                )),
             }
         },
         | Expr::Mul(a, b) => {
@@ -855,6 +837,8 @@ pub fn polynomial_long_division(
         }
     }
 
+    const MAX_TOTAL_ITERATIONS: usize = 100;
+
     let mut q =
         Expr::BigInt(BigInt::zero());
 
@@ -877,9 +861,6 @@ pub fn polynomial_long_division(
     let mut iterations = 0;
 
     let mut total_iterations = 0;
-
-    const MAX_TOTAL_ITERATIONS: usize =
-        100;
 
     while r_deg >= d_deg
         && !is_zero_local(&r)
@@ -2110,6 +2091,7 @@ impl SparsePolynomial {
         divisor: Self,
         var: &str,
     ) -> (Self, Self) {
+        const MAX_ITERATIONS: usize = 1000;
 
         if divisor
             .terms
@@ -2135,9 +2117,6 @@ impl SparsePolynomial {
             divisor.degree(var);
 
         let mut iterations = 0;
-
-        const MAX_ITERATIONS: usize =
-            1000;
 
         while remainder.degree(var)
             >= divisor_deg

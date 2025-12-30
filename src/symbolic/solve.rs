@@ -507,39 +507,24 @@ pub fn solve_linear_system_mat(
 
     let mut lead = 0;
 
-    for r in 0 .. a_rows {
-
+    for row in rref_mat.iter().take(a_rows) {
         if lead >= a_cols {
-
             break;
         }
 
         let mut i = lead;
 
-        while i < a_cols
-            && is_zero(&rref_mat[r][i])
-        {
-
+        while i < a_cols && is_zero(&row[i]) {
             i += 1;
         }
 
         if i < a_cols {
-
             pivot_cols.push(i);
-
             lead = i + 1;
         }
     }
 
-    let free_cols: Vec<usize> = (0
-        .. a_cols)
-        .filter(|c| {
-
-            !pivot_cols.contains(c)
-        })
-        .collect();
-
-    if free_cols.is_empty() {
+    if (0..a_cols).all(|c| pivot_cols.contains(&c)) {
 
         let mut solution =
             create_empty_matrix(
@@ -830,20 +815,13 @@ pub fn solve_linear_system_gauss(
                 return Err("Matrix is singular or underdetermined".to_string());
             }
 
-            for j in i .. n {
-
-                matrix_a[i][j] =
-                    simplify(
-                        &Expr::new_div(
-                            matrix_a[i]
-                                [j]
-                                .clone(
-                                ),
-                            pivot
-                                .clone(
-                                ),
-                        ),
-                    );
+            for item in matrix_a[i].iter_mut().take(n).skip(i) {
+                *item = simplify(
+                    &Expr::new_div(
+                        item.clone(),
+                        pivot.clone(),
+                    ),
+                );
             }
 
             vector_b[i] = simplify(
@@ -861,15 +839,22 @@ pub fn solve_linear_system_gauss(
                         matrix_a[k][i]
                             .clone();
 
-                    for j in i .. n {
+                    let (row_i, row_k) = if i < k {
+                        let (start, end) = matrix_a.split_at_mut(k);
+                        (&start[i], &mut end[0])
+                    } else {
+                        let (start, end) = matrix_a.split_at_mut(i);
+                        (&end[0], &mut start[k])
+                    };
 
+                    for (item_k, item_i) in row_k.iter_mut().zip(row_i.iter()).take(n).skip(i) {
                         let term = simplify(&Expr::new_mul(
                             factor.clone(),
-                            matrix_a[i][j].clone(),
+                            item_i.clone(),
                         ));
 
-                        matrix_a[k][j] = simplify(&Expr::new_sub(
-                            matrix_a[k][j].clone(),
+                        *item_k = simplify(&Expr::new_sub(
+                            item_k.clone(),
                             term,
                         ));
                     }

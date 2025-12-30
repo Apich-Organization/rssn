@@ -123,7 +123,7 @@ pub(crate) fn is_positive(
 
     val_at_large_n
         .to_f64()
-        .map_or(false, |v| v > 0.0)
+        .is_some_and(|v| v > 0.0)
 }
 
 /// Checks if a function is eventually monotonically decreasing for large values of the variable.
@@ -158,7 +158,7 @@ pub(crate) fn is_eventually_decreasing(
 
     deriv_at_large_n
         .to_f64()
-        .map_or(false, |v| v <= 0.0)
+        .is_some_and(|v| v <= 0.0)
 }
 
 /// Analyzes the convergence of a series given its general term `a_n`.

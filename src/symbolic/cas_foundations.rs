@@ -970,14 +970,11 @@ pub(crate) fn build_product_from_vecs(
             > ERROR_MARGIN
             || other_factors.is_empty();
 
-    let mut tree: Option<Expr> = None;
-
-    if has_numeric_term {
-
-        tree = Some(Expr::Constant(
-            numeric_product,
-        ));
-    }
+    let mut tree: Option<Expr> = if has_numeric_term {
+        Some(Expr::Constant(numeric_product))
+    } else {
+        None
+    };
 
     for factor in other_factors {
         tree = Some(if let Some(t) = tree {

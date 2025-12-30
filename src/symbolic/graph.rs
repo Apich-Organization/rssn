@@ -359,19 +359,18 @@ where
             n
         ];
 
-        for u in 0 .. n {
+        for (u, neighbors) in self
+            .adj
+            .iter()
+            .enumerate()
+        {
 
-            if let Some(neighbors) =
-                self.adj.get(u)
+            for &(v, ref weight) in
+                neighbors
             {
 
-                for &(v, ref weight) in
-                    neighbors
-                {
-
-                    matrix[u][v] =
-                        weight.clone();
-                }
+                matrix[u][v] =
+                    weight.clone();
             }
         }
 
@@ -417,17 +416,14 @@ where
                     Expr::Constant(
                         -1.0,
                     );
-
-                matrix[v][j] =
-                    Expr::Constant(1.0);
             } else {
 
                 matrix[u][j] =
                     Expr::Constant(1.0);
-
-                matrix[v][j] =
-                    Expr::Constant(1.0);
             }
+
+            matrix[v][j] =
+                Expr::Constant(1.0);
         }
 
         Expr::Matrix(matrix)
@@ -473,15 +469,17 @@ where
             n
         ];
 
-        for i in 0 .. n {
+        for (i, row) in deg_matrix
+            .iter_mut()
+            .enumerate()
+        {
 
             let degree =
                 self.out_degree(i);
 
-            deg_matrix[i][i] =
-                Expr::Constant(
-                    degree as f64,
-                );
+            row[i] = Expr::Constant(
+                degree as f64,
+            );
         }
 
         crate::symbolic::matrix::sub_matrices(

@@ -51,9 +51,9 @@ const NUM_SAMPLES: usize = 100;
 /// `true` if the solution is numerically verified, `false` otherwise.
 #[must_use]
 
-pub fn verify_equation_solution(
+pub fn verify_equation_solution<S: std::hash::BuildHasher>(
     equations: &[Expr],
-    solution: &HashMap<String, Expr>,
+    solution: &HashMap<String, Expr, S>,
     free_vars: &[&str],
 ) -> bool {
 
@@ -229,23 +229,15 @@ pub fn verify_definite_integral(
         | Err(_) => return false,
     };
 
-    if let Ok(numerical_val) =
-        quadrature(
-            integrand,
-            var,
-            range,
-            1000,
-            &QuadratureMethod::Simpson,
-        )
-    {
-
-        (symbolic_val - numerical_val)
-            .abs()
-            < TOLERANCE
-    } else {
-
-        false
-    }
+    quadrature(
+        integrand,
+        var,
+        range,
+        1000,
+        &QuadratureMethod::Simpson,
+    ).map_or(false, |numerical_val| {
+        (symbolic_val - numerical_val).abs() < TOLERANCE
+    })
 }
 
 /// Verifies a solution to an ODE `G(x, y, y', y'', ...) = 0` by numerical sampling.
@@ -367,39 +359,19 @@ pub fn verify_matrix_inverse(
         simplified_product
     {
 
-        let n = prod_mat.len();
+        let _n = prod_mat.len();
 
-        for i in 0 .. n {
+        for (i, row) in prod_mat.iter().enumerate() {
+            for (j, item) in row.iter().enumerate() {
+                let expected = if i == j { 1.0 } else { 0.0 };
 
-            for j in 0 .. n {
-
-                let expected = if i == j
-                {
-
-                    1.0
-                } else {
-
-                    0.0
-                };
-
-                match eval_expr(
-                    &prod_mat[i][j],
-                    &HashMap::new(),
-                ) {
-                    | Ok(val) => {
-
-                        if (val
-                            - expected)
-                            .abs()
-                            > TOLERANCE
-                        {
-
+                match eval_expr(item, &HashMap::new()) {
+                    Ok(val) => {
+                        if (val - expected).abs() > TOLERANCE {
                             return false;
                         }
-                    },
-                    | Err(_) => {
-                        return false
-                    },
+                    }
+                    Err(_) => return false,
                 }
             }
         }

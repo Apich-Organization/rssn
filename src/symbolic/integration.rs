@@ -98,7 +98,7 @@ pub fn integrate_rational_function(
         sparse_poly_to_expr(&d),
     );
 
-    let integral_of_transcendental_part = integrate_square_free_rational_part(&a_poly, &b, x)?;
+    let integral_of_transcendental_part = integrate_square_free_rational_part(&a_poly, &b, x);
 
     Ok(simplify(
         &Expr::new_add(
@@ -308,11 +308,10 @@ pub fn risch_norman_integrate(
         )
     {
 
-        if let Ok((a_t, d_t)) =
+        let (a_t, d_t) =
             expr_to_rational_poly(
                 expr, &t, x,
-            )
-        {
+            );
 
             let (p_t, r_t) = a_t
                 .long_division(
@@ -366,7 +365,6 @@ pub fn risch_norman_integrate(
                         pi, ri,
                     ),
                 );
-            }
         }
     }
 
@@ -497,7 +495,7 @@ pub(crate) fn integrate_poly_log(
                 Expr::new_mul(
                     q_n.clone(),
                     Expr::Constant(
-                        n as f64,
+                        f64::from(n),
                     ),
                 ),
                 dt_dx,
@@ -527,7 +525,7 @@ pub(crate) fn integrate_poly_log(
         q_n,
         Expr::new_pow(
             t.clone(),
-            Expr::Constant(n as f64),
+            Expr::Constant(f64::from(n)),
         ),
     );
 
@@ -1023,7 +1021,7 @@ pub fn hermite_integrate_rational(
         sparse_poly_to_expr(&d),
     );
 
-    let integral_of_transcendental_part = integrate_square_free_rational_part(&a_poly, &b, x)?;
+    let integral_of_transcendental_part = integrate_square_free_rational_part(&a_poly, &b, x);
 
     Ok(simplify(
         &Expr::new_add(
@@ -1042,7 +1040,7 @@ pub(crate) fn integrate_square_free_rational_part(
     a: &SparsePolynomial,
     b: &SparsePolynomial,
     x: &str,
-) -> Result<Expr, String> {
+) -> Expr {
 
     let z =
         Expr::Variable("z".to_string());
@@ -1069,7 +1067,7 @@ pub(crate) fn integrate_square_free_rational_part(
 
     if roots_c.is_empty() {
 
-        return Ok(Expr::Constant(0.0));
+        return Expr::Constant(0.0);
     }
 
     let mut total_log_sum =
@@ -1107,7 +1105,7 @@ pub(crate) fn integrate_square_free_rational_part(
             ));
     }
 
-    Ok(total_log_sum)
+    total_log_sum
 }
 
 /// Converts an expression into a rational function A(t)/D(t) of a transcendental element t.
@@ -1116,13 +1114,7 @@ pub(crate) fn expr_to_rational_poly(
     expr: &Expr,
     t: &Expr,
     _x: &str,
-) -> Result<
-    (
-        SparsePolynomial,
-        SparsePolynomial,
-    ),
-    String,
-> {
+) -> (SparsePolynomial, SparsePolynomial) {
 
     // Substitute t with a variable "t_var" to convert to polynomial
     // First, we need to replace occurrences of t in expr with a variable
@@ -1147,7 +1139,7 @@ pub(crate) fn expr_to_rational_poly(
         )]),
     };
 
-    Ok((poly, one_poly))
+    (poly, one_poly)
 }
 
 /// Helper to substitute an expression with a variable name

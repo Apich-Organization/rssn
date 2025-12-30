@@ -107,9 +107,9 @@ pub(crate) fn collect_poly_terms_recursive(
         {
 
             node.to_expr()
-                .unwrap_or(
-                    simplified.clone(),
-                )
+                .unwrap_or_else(|_| {
+                    simplified.clone()
+                })
         } else {
 
             simplified
@@ -314,7 +314,7 @@ pub(crate) fn collect_poly_terms_recursive(
             collect_poly_terms_recursive(
                 &node
                     .to_expr()
-                    .unwrap_or(expr.clone()),
+                    .unwrap_or_else(|_| expr.clone()),
                 terms,
                 current_coeff,
             );
@@ -697,10 +697,10 @@ pub fn solve_diophantine(
             {
 
                 node.to_expr()
-                    .unwrap_or(
+                    .unwrap_or_else(|_| {
                         raw_coeff
-                            .clone(),
-                    )
+                            .clone()
+                    })
             } else {
 
                 raw_coeff.clone()
@@ -790,9 +790,9 @@ pub fn solve_diophantine(
                     {
 
                         node.to_expr()
-                            .unwrap_or(
-                            c.clone(),
-                        )
+                            .unwrap_or_else(|_| {
+                            c.clone()
+                        })
                     } else {
 
                         c.clone()
@@ -816,9 +816,9 @@ pub fn solve_diophantine(
                 {
 
                     node.to_expr()
-                        .unwrap_or(
-                            c.clone(),
-                        )
+                        .unwrap_or_else(|_| {
+                            c.clone()
+                        })
                 } else {
 
                     c.clone()
@@ -846,11 +846,11 @@ pub fn solve_diophantine(
                     {
 
                         node.to_expr()
-                            .unwrap_or(
+                            .unwrap_or_else(|_| {
                             raw_coeff
                                 .clone(
-                                ),
-                        )
+                                )
+                        })
                     } else {
 
                         raw_coeff
@@ -934,10 +934,10 @@ pub fn solve_pell_from_poly(
             {
 
                 node.to_expr()
-                    .unwrap_or(
+                    .unwrap_or_else(|_| {
                         raw_coeff
-                            .clone(),
-                    )
+                            .clone()
+                    })
             } else {
 
                 raw_coeff.clone()

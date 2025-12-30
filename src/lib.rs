@@ -311,7 +311,8 @@
     clippy::collapsible_if,
     clippy::collapsible_match,
     clippy::collapsible_else_if,
-    clippy::no_effect_underscore_binding
+    clippy::no_effect_underscore_binding,
+    clippy::must_use_candidate
 )]
 
 /// Computation engine and task management.

@@ -1193,7 +1193,7 @@ pub(crate) fn parse_function_call(
             ))
         },
 
-        | "predicate" | _ => {
+        | _ => {
             Ok((
                 input,
                 Expr::Predicate {

@@ -221,18 +221,15 @@ impl Multivector {
                     | Expr::BigInt(b) => !b.is_zero(),
                     | Expr::Rational(r) => !r.is_zero(),
                     | Expr::Dag(node) => {
-                        match node.to_expr() { Ok(expr) => {
-
-                            match expr {
-                                | Expr::Constant(c) => c.abs() > f64::EPSILON,
-                                | Expr::BigInt(b) => !b.is_zero(),
-                                | Expr::Rational(r) => !r.is_zero(),
-                                | _ => true,
-                            }
-                        } _ => {
-
-                            true
-                        }}
+                        node.to_expr().map_or(
+                            true,
+                            |expr| match expr {
+                                Expr::Constant(c) => c.abs() > f64::EPSILON,
+                                Expr::BigInt(b) => !b.is_zero(),
+                                Expr::Rational(r) => !r.is_zero(),
+                                _ => true,
+                            },
+                        )
                     },
                     | _ => true, // Keep symbolic terms
                 }
