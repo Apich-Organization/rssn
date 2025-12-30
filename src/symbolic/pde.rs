@@ -3487,28 +3487,22 @@ pub(crate) fn classify_second_order_pde(
             ),
         ));
 
-    let pde_type = if let Some(d) =
-        discriminant.to_f64()
-    {
-
-        if d > 0.0 {
-
-            "Hyperbolic".to_string()
-        } else if d == 0.0 {
-
-            "Parabolic".to_string()
-        } else {
-
-            "Elliptic".to_string()
-        }
-    } else {
-
-        format!(
-            "Undetermined \
-             (discriminant is \
-             symbolic: {discriminant})"
-        )
-    };
+    let pde_type = discriminant.to_f64().map_or_else(
+        || {
+            format!(
+                "Undetermined (discriminant is symbolic: {discriminant})"
+            )
+        },
+        |d| {
+            if d > 0.0 {
+                "Hyperbolic".to_string()
+            } else if d == 0.0 {
+                "Parabolic".to_string()
+            } else {
+                "Elliptic".to_string()
+            }
+        },
+    );
 
     Some((a, b, c, pde_type))
 }

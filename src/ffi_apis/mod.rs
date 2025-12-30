@@ -12,6 +12,10 @@
 #![allow(
     clippy::not_unsafe_ptr_arg_deref
 )]
+// This is enforced by clippy::nursery. It has too high false positive rate.
+#![allow(
+    clippy::option_if_let_else
+)]
 
 #[macro_use]
 /// FFI macros.
