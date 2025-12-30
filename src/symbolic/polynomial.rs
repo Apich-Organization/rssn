@@ -1661,7 +1661,7 @@ pub(crate) fn collect_terms_recursive(
                     };
 
                     for _ in
-                        0 .. (e as u32)
+                        0 .. (e.max(0.0) as u32)
                     {
 
                         result = result
@@ -2236,7 +2236,7 @@ impl SparsePolynomial {
 
         let mut coeffs = vec![
                 Expr::Constant(0.0);
-                (deg + 1) as usize
+                (deg + 1).max(0) as usize
             ];
 
         for (mono, coeff) in &self.terms

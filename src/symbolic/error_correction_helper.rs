@@ -566,7 +566,7 @@ pub fn gf256_inv(
         GF256_TABLES.exp[(255
             - u16::from(
                 GF256_TABLES.log
-                    [a as usize],
+                    [a.max(0) as usize],
             ))
             as usize],
     )

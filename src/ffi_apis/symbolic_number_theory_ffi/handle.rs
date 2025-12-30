@@ -37,7 +37,7 @@ pub extern "C" fn rssn_solve_diophantine_handle(
 
         slice::from_raw_parts(
             vars_ptr,
-            vars_len as usize,
+            vars_len.max(0) as usize,
         )
         .iter()
         .map(|&p| {
@@ -161,7 +161,7 @@ pub extern "C" fn rssn_chinese_remainder_handle(
 
         slice::from_raw_parts(
             remainders,
-            len as usize,
+            len.max(0) as usize,
         )
     };
 
@@ -169,13 +169,13 @@ pub extern "C" fn rssn_chinese_remainder_handle(
 
         slice::from_raw_parts(
             moduli,
-            len as usize,
+            len.max(0) as usize,
         )
     };
 
     let mut congruences = Vec::new();
 
-    for i in 0 .. len as usize {
+    for i in 0 .. len.max(0) as usize {
 
         let r_ptr = remainders_slice[i];
 

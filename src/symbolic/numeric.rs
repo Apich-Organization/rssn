@@ -315,7 +315,7 @@ pub fn evaluate_complex(
                 let mut result = 1.0;
 
                 for i in
-                    2 ..= val.re as u64
+                    2 ..= val.re.max(0.0) as u64
                 {
 
                     result *= i as f64;
