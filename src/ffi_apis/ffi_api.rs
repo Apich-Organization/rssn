@@ -303,7 +303,7 @@ pub unsafe extern "C" fn rssn_expr_create(
         return 0;
     }
 
-    let json_str = match unsafe {
+    let json_str = match  {
 
         CStr::from_ptr(json_ptr)
             .to_str()
@@ -1530,14 +1530,14 @@ pub unsafe extern "C" fn rssn_vec_norm(
         return -1;
     }
 
-    let vec_slice = unsafe {
+    let vec_slice =  {
 
         std::slice::from_raw_parts(
             data, len,
         )
     };
 
-    unsafe {
+     {
 
         *result =
             vector::norm(vec_slice);
@@ -1599,14 +1599,14 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
         return -1;
     }
 
-    let v1 = unsafe {
+    let v1 =  {
 
         std::slice::from_raw_parts(
             d1, l1,
         )
     };
 
-    let v2 = unsafe {
+    let v2 =  {
 
         std::slice::from_raw_parts(
             d2, l2,
@@ -1616,7 +1616,7 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
     match vector::dot_product(v1, v2) {
         | Ok(val) => {
 
-            unsafe {
+             {
 
                 *result = val;
             };
@@ -1675,7 +1675,7 @@ pub unsafe extern "C" fn rssn_comb_factorial(
         return -1;
     }
 
-    unsafe {
+     {
 
         *result =
             combinatorics::factorial(n);
@@ -1729,7 +1729,7 @@ pub unsafe extern "C" fn rssn_comb_permutations(
         return -1;
     }
 
-    unsafe {
+     {
 
         *result =
             combinatorics::permutations(
@@ -1785,7 +1785,7 @@ pub unsafe extern "C" fn rssn_comb_combinations(
         return -1;
     }
 
-    unsafe {
+     {
 
         *result =
             combinatorics::combinations(
@@ -2404,7 +2404,7 @@ macro_rules! impl_rssn_special_fn_one_arg {
                 return -1;
             }
 
-            unsafe {
+             {
 
                 *result = special_module::$wrapped_fn(x)
             };
@@ -2450,7 +2450,7 @@ macro_rules! impl_rssn_special_fn_two_args {
                 return -1;
             }
 
-            unsafe {
+             {
 
                 *result = special_module::$wrapped_fn(a, b)
             };
@@ -2735,7 +2735,7 @@ pub unsafe extern "C" fn rssn_fft(
         return -1;
     }
 
-    let complex_slice = unsafe {
+    let complex_slice =  {
 
         std::slice::from_raw_parts_mut(
             data, len,
@@ -2780,7 +2780,7 @@ pub unsafe extern "C" fn rssn_ifft(
         return -1;
     }
 
-    let complex_slice = unsafe {
+    let complex_slice =  {
 
         std::slice::from_raw_parts_mut(
             data, len,
@@ -3283,7 +3283,7 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
         return -1;
     }
 
-    let var = match unsafe {
+    let var = match  {
 
         CStr::from_ptr(var_ptr).to_str()
     } {
@@ -3304,7 +3304,7 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
     {
         | Some(expr) => {
 
-            unsafe {
+             {
 
                 *result = poly_module::is_polynomial(&expr, var);
             };
@@ -3370,7 +3370,7 @@ pub unsafe extern "C" fn rssn_poly_degree(
         return -1;
     }
 
-    let var = match unsafe {
+    let var = match {
 
         CStr::from_ptr(var_ptr).to_str()
     } {
@@ -3391,7 +3391,7 @@ pub unsafe extern "C" fn rssn_poly_degree(
     {
         | Some(expr) => {
 
-            unsafe {
+             {
 
                 *result = poly_module::polynomial_degree(&expr, var);
             };
@@ -3462,7 +3462,7 @@ pub unsafe extern "C" fn rssn_poly_long_division(
         return -1;
     }
 
-    let var = match unsafe {
+    let var = match  {
 
         CStr::from_ptr(var_ptr).to_str()
     } {
@@ -3486,7 +3486,7 @@ pub unsafe extern "C" fn rssn_poly_long_division(
 
             let (q, r) = poly_module::polynomial_long_division(&n, &d, var);
 
-            unsafe {
+             {
 
                 *q_handle =
                     HANDLE_MANAGER
@@ -4013,14 +4013,14 @@ pub unsafe extern "C" fn rssn_stats_mean(
         return -1;
     }
 
-    let data_slice = unsafe {
+    let data_slice =  {
 
         std::slice::from_raw_parts(
             data, len,
         )
     };
 
-    unsafe {
+     {
 
         *result = stats_module::mean(
             data_slice,
@@ -4078,14 +4078,14 @@ pub unsafe extern "C" fn rssn_stats_variance(
         return -1;
     }
 
-    let data_slice = unsafe {
+    let data_slice =  {
 
         std::slice::from_raw_parts(
             data, len,
         )
     };
 
-    unsafe {
+     {
 
         *result =
             stats_module::variance(
@@ -4144,14 +4144,14 @@ pub unsafe extern "C" fn rssn_stats_std_dev(
         return -1;
     }
 
-    let data_slice = unsafe {
+    let data_slice =  {
 
         std::slice::from_raw_parts(
             data, len,
         )
     };
 
-    unsafe {
+     {
 
         *result = stats_module::std_dev(
             data_slice,
@@ -4204,21 +4204,21 @@ pub unsafe extern "C" fn rssn_stats_covariance(
         return -1;
     }
 
-    let s1 = unsafe {
+    let s1 =  {
 
         std::slice::from_raw_parts(
             d1, len,
         )
     };
 
-    let s2 = unsafe {
+    let s2 =  {
 
         std::slice::from_raw_parts(
             d2, len,
         )
     };
 
-    unsafe {
+     {
 
         *result =
             stats_module::covariance(
@@ -5895,7 +5895,7 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
         return -1;
     }
 
-    let points_slice = unsafe {
+    let points_slice =  {
 
         std::slice::from_raw_parts(
             points_ptr,
@@ -5920,7 +5920,7 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
 
             let poly_expr = Expr::Polynomial(expr_coeffs);
 
-            unsafe {
+             {
 
                 *result_handle = HANDLE_MANAGER.insert(poly_expr);
             };
@@ -5974,7 +5974,7 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
         return -1;
     }
 
-    let points_slice = unsafe {
+    let points_slice =  {
 
         std::slice::from_raw_parts(
             points_ptr,
@@ -5996,7 +5996,7 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
 
     if result_vec.len() >= 2 {
 
-        unsafe {
+         {
 
             (*result_ptr).x =
                 result_vec[0];
@@ -6062,7 +6062,7 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
         return -1;
     }
 
-    let var_str = match unsafe {
+    let var_str = match  {
 
         CStr::from_ptr(var).to_str()
     } {
@@ -6100,7 +6100,7 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
             ) {
                 | Ok(val) => {
 
-                    unsafe {
+                     {
 
                         *result = val;
                     };
@@ -6167,7 +6167,7 @@ pub unsafe extern "C" fn rssn_matrix_sub(
             let result =
                 sub_matrices(&m1, &m2);
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6224,7 +6224,7 @@ pub unsafe extern "C" fn rssn_matrix_mul(
             let result =
                 mul_matrices(&m1, &m2);
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6277,7 +6277,7 @@ pub unsafe extern "C" fn rssn_matrix_transpose(
             let result =
                 transpose_matrix(&m);
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6330,7 +6330,7 @@ pub unsafe extern "C" fn rssn_matrix_determinant(
             let result =
                 determinant(&m);
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6383,7 +6383,7 @@ pub unsafe extern "C" fn rssn_matrix_inverse(
             let result =
                 inverse_matrix(&m);
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6432,7 +6432,7 @@ pub unsafe extern "C" fn rssn_matrix_identity(
 
     let result = identity_matrix(size);
 
-    unsafe {
+     {
 
         *result_h = HANDLE_MANAGER
             .insert(result);
@@ -6486,7 +6486,7 @@ pub unsafe extern "C" fn rssn_matrix_scalar_mul(
                     &matrix,
                 );
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6546,7 +6546,7 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
         return -1;
     }
 
-    let var_str = unsafe {
+    let var_str =  {
 
         CStr::from_ptr(var)
             .to_str()
@@ -6562,7 +6562,7 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
                     var_str,
                 );
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6631,7 +6631,7 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
         return -1;
     }
 
-    let var_str = unsafe {
+    let var_str =  {
 
         CStr::from_ptr(var)
             .to_str()
@@ -6651,7 +6651,7 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
                 &rep,
             );
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6715,7 +6715,7 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
         return -1;
     }
 
-    let var_str = unsafe {
+    let var_str =  {
 
         CStr::from_ptr(var)
             .to_str()
@@ -6732,7 +6732,7 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
                 None,
             );
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6798,7 +6798,7 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
         return -1;
     }
 
-    let var_str = unsafe {
+    let var_str =  {
 
         CStr::from_ptr(var)
             .to_str()
@@ -6824,7 +6824,7 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
                     &upper,
                 );
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6893,7 +6893,7 @@ pub unsafe extern "C" fn rssn_calculus_limit(
         return -1;
     }
 
-    let var_str = unsafe {
+    let var_str =  {
 
         CStr::from_ptr(var)
             .to_str()
@@ -6912,7 +6912,7 @@ pub unsafe extern "C" fn rssn_calculus_limit(
                 &to,
             );
 
-            unsafe {
+             {
 
                 *result_h =
                     HANDLE_MANAGER
@@ -6977,7 +6977,7 @@ pub unsafe extern "C" fn rssn_solve(
         );
     }
 
-    let var_str = match unsafe {
+    let var_str = match  {
 
         CStr::from_ptr(var).to_str()
     } {
@@ -7011,14 +7011,14 @@ pub unsafe extern "C" fn rssn_solve(
 
     if solutions.is_empty() {
 
-        unsafe {
+         {
 
             *result_h = 0;
         };
     } else {
 
         // Return first solution for now, or could wrap in BinaryList
-        unsafe {
+         {
 
             *result_h = HANDLE_MANAGER
                 .insert(
@@ -7091,7 +7091,7 @@ pub unsafe extern "C" fn rssn_matrix_add(
 
     let res = crate::symbolic::matrix::add_matrices(&m1, &m2);
 
-    unsafe {
+     {
 
         *result_h =
             HANDLE_MANAGER.insert(res);
@@ -7171,7 +7171,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
 
     for i in 0 .. num_vars {
 
-        let v_ptr = unsafe {
+        let v_ptr =  {
 
             *vars.add(i)
         };
@@ -7185,7 +7185,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
             );
         }
 
-        let v_str = match unsafe {
+        let v_str = match  {
 
             CStr::from_ptr(v_ptr).to_str()
         } {
@@ -7200,7 +7200,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
         vars_vec.push(v_str);
     }
 
-    let point_slice = unsafe {
+    let point_slice =  {
 
         std::slice::from_raw_parts(
             point,
@@ -7224,7 +7224,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
                 ));
             }
 
-            unsafe {
+             {
 
                 std::ptr::copy_nonoverlapping(
                     grad.as_ptr(),
@@ -7281,7 +7281,7 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
         return -1;
     }
 
-    let init_slice = unsafe {
+    let init_slice =  {
 
         std::slice::from_raw_parts(
             initial_cond,
@@ -7298,7 +7298,7 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
         steps,
     );
 
-    unsafe {
+     {
 
         std::ptr::copy_nonoverlapping(
             res.as_ptr(),
@@ -7347,7 +7347,7 @@ pub unsafe extern "C" fn rssn_nt_gcd(
         return -1;
     }
 
-    unsafe {
+     {
 
         *result = nt::gcd(a, b);
     }
@@ -7392,7 +7392,7 @@ pub unsafe extern "C" fn rssn_nt_is_prime(
         return -1;
     }
 
-    unsafe {
+     {
 
         *result =
             nt::is_prime_miller_rabin(
@@ -7442,7 +7442,7 @@ pub unsafe extern "C" fn rssn_nt_mod_pow(
         return -1;
     }
 
-    unsafe {
+     {
 
         *result = nt::mod_pow(
             u128::from(base),
@@ -7495,7 +7495,7 @@ pub unsafe extern "C" fn rssn_nt_mod_inverse(
     match nt::mod_inverse(a, b) {
         | Some(inverse) => {
 
-            unsafe {
+             {
 
                 *result = inverse;
             };
@@ -7567,7 +7567,7 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(
             -1
         };
 
-    let plugin_dir = match unsafe {
+    let plugin_dir = match  {
 
         CStr::from_ptr(plugin_dir_ptr)
             .to_str()
@@ -7649,7 +7649,7 @@ pub unsafe extern "C" fn rssn_plugin_execute(
             0
         };
 
-    let plugin_name = match unsafe {
+    let plugin_name = match  {
         CStr::from_ptr(plugin_name_ptr).to_str()
     } {
         | Ok(s) => s,
@@ -7658,7 +7658,7 @@ pub unsafe extern "C" fn rssn_plugin_execute(
         },
     };
 
-    let command = match unsafe {
+    let command = match  {
         CStr::from_ptr(command_ptr).to_str()
     } {
         | Ok(s) => s,

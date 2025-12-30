@@ -68,7 +68,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
         return ptr::null_mut();
     }
 
-    match unsafe {
+    match  {
 
         (*pfe).inverse()
     } {

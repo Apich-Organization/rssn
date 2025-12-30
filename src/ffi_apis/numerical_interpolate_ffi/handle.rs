@@ -38,7 +38,7 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
         return ptr::null_mut();
     }
 
-    let x_slice = unsafe {
+    let x_slice =  {
 
         std::slice::from_raw_parts(
             x_coords,
@@ -46,7 +46,7 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
         )
     };
 
-    let y_slice = unsafe {
+    let y_slice =  {
 
         std::slice::from_raw_parts(
             y_coords,
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
         return ptr::null_mut();
     }
 
-    let x_slice = unsafe {
+    let x_slice =  {
 
         std::slice::from_raw_parts(
             x_coords,
@@ -106,7 +106,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
         )
     };
 
-    let y_slice = unsafe {
+    let y_slice =  {
 
         std::slice::from_raw_parts(
             y_coords,
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_evaluate(
         return f64::NAN;
     }
 
-    let spline = unsafe {
+    let spline =  {
 
         &*handle
     };

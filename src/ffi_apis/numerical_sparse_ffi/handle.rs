@@ -54,7 +54,7 @@ pub unsafe extern "C" fn rssn_num_sparse_create(
         return ptr::null_mut();
     }
 
-    let r_idx = unsafe {
+    let r_idx =  {
 
         std::slice::from_raw_parts(
             row_indices,
@@ -62,7 +62,7 @@ pub unsafe extern "C" fn rssn_num_sparse_create(
         )
     };
 
-    let c_idx = unsafe {
+    let c_idx =  {
 
         std::slice::from_raw_parts(
             col_indices,
@@ -70,7 +70,7 @@ pub unsafe extern "C" fn rssn_num_sparse_create(
         )
     };
 
-    let vals = unsafe {
+    let vals =  {
 
         std::slice::from_raw_parts(
             values,
@@ -236,12 +236,12 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
         return -1;
     }
 
-    let m = unsafe {
+    let m =  {
 
         &*matrix
     };
 
-    let v = unsafe {
+    let v =  {
 
         std::slice::from_raw_parts(
             vector,
@@ -332,7 +332,7 @@ pub unsafe extern "C" fn rssn_num_sparse_trace(
         return -1;
     }
 
-    let m = unsafe {
+    let m =  {
 
         &*matrix
     };
@@ -340,7 +340,7 @@ pub unsafe extern "C" fn rssn_num_sparse_trace(
     match sparse::trace(m) {
         | Ok(t) => {
 
-            unsafe {
+             {
 
                 *out_trace = t;
             };

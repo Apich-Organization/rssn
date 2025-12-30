@@ -57,7 +57,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
 
     for i in 0 .. num_vars {
 
-        let name_ptr = unsafe {
+        let name_ptr =  {
 
             *vars.add(i)
         };
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
             return -1;
         }
 
-        let name = match unsafe {
+        let name = match  {
 
             CStr::from_ptr(name_ptr)
                 .to_str()
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
             },
         };
 
-        let val = unsafe {
+        let val =  {
 
             *vals.add(i)
         };
@@ -97,7 +97,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
     }
 
     match elementary::eval_expr(
-        unsafe {
+         {
 
             &*expr_ptr
         },
@@ -105,7 +105,7 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
     ) {
         | Ok(v) => {
 
-            unsafe {
+             {
 
                 *result = v;
             };
