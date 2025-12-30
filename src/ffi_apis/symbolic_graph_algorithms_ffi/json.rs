@@ -218,6 +218,12 @@ pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
 
+    #[derive(serde::Serialize)]
+    struct BridgesResult {
+        bridges: Vec<(usize, usize)>,
+        articulation_points: Vec<usize>,
+    }
+
     let graph : Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
@@ -225,14 +231,7 @@ pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
 
     let (bridges, aps) = find_bridges_and_articulation_points(&graph);
 
-    #[derive(serde::Serialize)]
-
-    struct Result {
-        bridges: Vec<(usize, usize)>,
-        articulation_points: Vec<usize>,
-    }
-
-    let result = Result {
+    let result = BridgesResult {
         bridges,
         articulation_points: aps,
     };

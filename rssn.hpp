@@ -15427,7 +15427,10 @@ char *rssn_json_graph_has_cycle_api(const char *aJson)
 
 /*
  Creates an induced subgraph.
- Input JSON: {"graph": <graph>, "nodes": ["label1", "label2"]}
+ Input JSON:
+ ```json
+ {"graph": <graph>, "nodes": ["label1", "label2"]}
+ ```
  */
 rssn_
 char *rssn_json_graph_induced_subgraph(const char *aJson)

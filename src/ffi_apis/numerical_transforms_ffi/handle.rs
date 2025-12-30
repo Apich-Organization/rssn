@@ -68,11 +68,11 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
 
     transforms::fft_slice(&mut data);
 
-    for i in 0 .. len {
+    for (i, c) in data.iter().enumerate() {
 
-        *real.add(i) = data[i].re;
+        *real.add(i) = c.re;
 
-        *imag.add(i) = data[i].im;
+        *imag.add(i) = c.im;
     }
 
     0
@@ -132,11 +132,11 @@ pub unsafe extern "C" fn rssn_num_ifft_inplace(
 
     transforms::ifft_slice(&mut data);
 
-    for i in 0 .. len {
+    for (i, c) in data.iter().enumerate() {
 
-        *real.add(i) = data[i].re;
+        *real.add(i) = c.re;
 
-        *imag.add(i) = data[i].im;
+        *imag.add(i) = c.im;
     }
 
     0

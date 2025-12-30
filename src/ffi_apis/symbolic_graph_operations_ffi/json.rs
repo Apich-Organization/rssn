@@ -6,7 +6,10 @@ use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_operations::{induced_subgraph, union, intersection, cartesian_product, tensor_product, complement, disjoint_union, join};
 
 /// Creates an induced subgraph.
-/// Input JSON: {"graph": <graph>, "nodes": ["label1", "label2"]}
+/// Input JSON:
+/// ```json
+/// {"graph": <graph>, "nodes": ["label1", "label2"]}
+/// ```
 #[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_induced_subgraph(

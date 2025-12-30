@@ -212,6 +212,12 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
     graph: *const RssnGraph
 ) -> *mut c_char {
 
+    #[derive(serde::Serialize)]
+    struct BridgesResult {
+        bridges: Vec<(usize, usize)>,
+        articulation_points: Vec<usize>,
+    }
+
     if graph.is_null() {
 
         return std::ptr::null_mut();
@@ -224,16 +230,7 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
 
         let (bridges, aps) = find_bridges_and_articulation_points(g);
 
-        #[derive(serde::Serialize)]
-
-        struct Result {
-            bridges:
-                Vec<(usize, usize)>,
-            articulation_points:
-                Vec<usize>,
-        }
-
-        let result = Result {
+        let result = BridgesResult {
             bridges,
             articulation_points: aps,
         };
