@@ -383,11 +383,11 @@ pub fn solve_laplace_bem_2d(
 
     let mut b_vec = vec![0.0; n];
 
-    for i in 0 .. n {
+    for (i, b_val) in b_vec.iter_mut().enumerate() {
 
-        for j in 0 .. n {
+        for (j, bc) in bcs.iter().enumerate() {
 
-            match bcs[j] {
+            match bc {
                 // Unknown depends on element j's BC type
                 | BoundaryCondition::Potential(u_val) => {
 
@@ -395,7 +395,7 @@ pub fn solve_laplace_bem_2d(
                     *a_mat.get_mut(i, j) = -*g_mat.get(i, j);
 
                     // Known contribution from H_ij * u_j goes to RHS with minus
-                    b_vec[i] -= *h_mat.get(i, j) * u_val;
+                    *b_val -= *h_mat.get(i, j) * u_val;
                 },
                 | BoundaryCondition::Flux(q_val) => {
 
@@ -403,7 +403,7 @@ pub fn solve_laplace_bem_2d(
                     *a_mat.get_mut(i, j) = *h_mat.get(i, j);
 
                     // Known contribution from G_ij * q_j goes to RHS
-                    b_vec[i] += *g_mat.get(i, j) * q_val;
+                    *b_val += *g_mat.get(i, j) * q_val;
                 },
             }
         }

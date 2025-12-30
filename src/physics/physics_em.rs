@@ -41,7 +41,7 @@ pub fn solve_forward_euler<
 
     let steps = ((t_end - t_start) / dt)
         .ceil()
-        as usize;
+        .max(0.0) as usize;
 
     let mut t = t_start;
 
@@ -90,7 +90,7 @@ pub fn solve_midpoint_euler<
 
     let steps = ((t_end - t_start) / dt)
         .ceil()
-        as usize;
+        .max(0.0) as usize;
 
     let mut t = t_start;
 
@@ -163,7 +163,7 @@ pub fn solve_heun_euler<
 
     let steps = ((t_end - t_start) / dt)
         .ceil()
-        as usize;
+        .max(0.0) as usize;
 
     let mut t = t_start;
 
@@ -287,7 +287,7 @@ pub fn solve_semi_implicit_euler<
 
     let steps = ((t_end - t_start) / dt)
         .ceil()
-        as usize;
+        .max(0.0) as usize;
 
     let mut t = t_start;
 
@@ -504,7 +504,7 @@ pub fn solve_backward_euler_linear<
 
     let steps = ((t_end - t_start) / dt)
         .ceil()
-        as usize;
+        .max(0.0) as usize;
 
     let mut t = t_start;
 

@@ -7,6 +7,7 @@ use crate::ffi_apis::common::to_bincode_buffer;
 use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_fdm::FdmGrid;
+use crate::physics::physics_fdm::FdmSolverConfig2D;
 use crate::physics::physics_fdm::{
     self,
 };
@@ -75,14 +76,18 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(
         },
     };
 
+    let config = FdmSolverConfig2D {
+        width: input.width,
+        height: input.height,
+        dx: input.dx,
+        dy: input.dy,
+        dt: input.dt,
+        steps: input.steps,
+    };
+
     let result = physics_fdm::solve_wave_equation_2d(
-        input.width,
-        input.height,
+        &config,
         input.c,
-        input.dx,
-        input.dy,
-        input.dt,
-        input.steps,
         |x, y| {
 
             let dx_cen = x as f64 - (input.width / 2) as f64;

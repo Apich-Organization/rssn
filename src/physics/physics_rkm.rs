@@ -48,7 +48,7 @@ pub fn solve_rk4<
 
     let steps = ((t_end - t_start) / dt)
         .ceil()
-        as usize;
+        .max(0.0) as usize;
 
     let mut t = t_start;
 

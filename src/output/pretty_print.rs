@@ -356,15 +356,15 @@ pub(crate) fn to_box(
 
                     let mut col_widths = vec![0; cols];
                     for c in 0..cols {
-                        for r in 0..rows {
-                            col_widths[c] = col_widths[c].max(grid[r][c].width);
+                        for row in &grid {
+                            col_widths[c] = col_widths[c].max(row[c].width);
                         }
                     }
 
                     let mut row_heights = vec![0; rows];
                     for r in 0..rows {
-                        for c in 0..cols {
-                            row_heights[r] = row_heights[r].max(grid[r][c].height);
+                        for cell in &grid[r] {
+                            row_heights[r] = row_heights[r].max(cell.height);
                         }
                     }
 

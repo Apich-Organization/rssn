@@ -434,10 +434,7 @@ pub fn solve_heat_equation_2d_cn_adi(
                     &mut d,
                 );
 
-                for i in 0 .. config.nx {
-
-                    row_half[i] = row_sol[i];
-                }
+                row_half[..config.nx].copy_from_slice(&row_sol[..config.nx]);
             });
 
         // Step 2: Solve implicitly in y, explicitly in x
@@ -499,10 +496,7 @@ pub fn solve_heat_equation_2d_cn_adi(
                     &mut d_transposed,
                 );
 
-                for j in 0 .. config.ny {
-
-                    row_next_t[j] = col_sol[j];
-                }
+                row_next_t[..config.ny].copy_from_slice(&col_sol[..config.ny]);
             });
 
         // Transpose back

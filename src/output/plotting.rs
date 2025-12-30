@@ -330,7 +330,8 @@ pub fn plot_vector_field_2d(
 
     let steps = (conf.samples as f64)
         .sqrt()
-        as usize;
+        .max(0.0)
+        .round() as usize;
 
     for i in 0 .. steps {
 
@@ -472,7 +473,8 @@ pub fn plot_surface_3d(
 
     let steps = (conf.samples as f64)
         .sqrt()
-        as usize;
+        .max(0.0)
+        .round() as usize;
 
     let _ = chart.draw_series(
         SurfaceSeries::xoz(
@@ -672,7 +674,8 @@ pub fn plot_vector_field_3d(
 
     let steps = (conf.samples as f64)
         .cbrt()
-        as usize;
+        .max(0.0)
+        .round() as usize;
 
     for i in 0 .. steps {
 
