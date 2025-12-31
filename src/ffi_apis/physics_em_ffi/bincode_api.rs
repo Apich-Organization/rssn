@@ -130,6 +130,7 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(
             )
         },
         | _ => {
+
             return to_bincode_buffer(
                 &FfiResult::<
                     Vec<(

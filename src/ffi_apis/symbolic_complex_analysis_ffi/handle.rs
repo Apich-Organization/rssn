@@ -122,6 +122,7 @@ pub unsafe extern "C" fn path_continuation_continue_along_path(
             path_points_slice
                 .iter()
                 .map(|&ptr| {
+
                     (*ptr).clone()
                 })
                 .collect();

@@ -2220,8 +2220,7 @@ impl SparsePolynomial {
             return vec![];
         }
 
-        let mut coeffs =
-            vec![
+        let mut coeffs = vec![
                 Expr::Constant(0.0);
                 (deg + 1)
                     .try_into()

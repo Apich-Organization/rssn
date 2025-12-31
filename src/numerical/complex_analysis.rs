@@ -285,6 +285,7 @@ pub fn contour_integral_expr(
 
         eval_complex_expr(expr, &vars)
             .unwrap_or_else(|_| {
+
                 Complex::zero()
             })
     };
@@ -320,6 +321,7 @@ pub fn residue_expr(
 
         eval_complex_expr(expr, &vars)
             .unwrap_or_else(|_| {
+
                 Complex::zero()
             })
     };

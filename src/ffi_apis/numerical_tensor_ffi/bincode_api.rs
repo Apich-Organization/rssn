@@ -90,6 +90,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
     let a = match req.a.to_arrayd() {
         | Ok(arr) => arr,
         | Err(e) => {
+
             return encode(
                 &FfiResult::<
                     TensorData,
@@ -105,6 +106,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
     let b = match req.b.to_arrayd() {
         | Ok(arr) => arr,
         | Err(e) => {
+
             return encode(
                 &FfiResult::<
                     TensorData,

@@ -26,6 +26,7 @@ use libloading::Symbol;
 pub static GLOBAL_PLUGIN_MANAGER:
     LazyLock<RwLock<PluginManager>> =
     LazyLock::new(|| {
+
         RwLock::new(
             PluginManager::empty(),
         )

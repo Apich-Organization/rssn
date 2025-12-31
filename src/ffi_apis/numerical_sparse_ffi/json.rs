@@ -51,7 +51,9 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -192,7 +194,9 @@ pub unsafe extern "C" fn rssn_num_sparse_solve_cg_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

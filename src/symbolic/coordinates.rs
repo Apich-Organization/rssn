@@ -786,6 +786,7 @@ pub fn transform_covariant_vector(
             Ok(rows
                 .into_iter()
                 .map(|row| {
+
                     row[0].clone()
                 })
                 .collect())

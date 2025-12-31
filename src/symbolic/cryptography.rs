@@ -640,6 +640,7 @@ pub fn ecdsa_sign(
             ..
         } => x.value.clone() % order,
         | CurvePoint::Infinity => {
+
             return None;
         },
     };

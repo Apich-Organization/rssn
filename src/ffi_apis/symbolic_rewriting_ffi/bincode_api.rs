@@ -51,6 +51,7 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_bincode(
     let input_data = match input_data {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -78,6 +79,7 @@ pub extern "C" fn rssn_knuth_bendix_bincode(
     let equations = match equations {
         | Some(e) => e,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -114,6 +116,7 @@ pub extern "C" fn rssn_rewrite_rule_new_bincode(
     let input_data = match input_data {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -140,6 +143,7 @@ pub extern "C" fn rssn_rewrite_rule_to_string_bincode(
     let rule = match rule {
         | Some(r) => r,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },

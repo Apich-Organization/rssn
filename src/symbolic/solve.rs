@@ -535,6 +535,7 @@ pub fn solve_linear_system_mat(
     }
 
     if (0 .. a_cols).all(|c| {
+
         pivot_cols.contains(&c)
     }) {
 
@@ -731,6 +732,7 @@ pub fn solve_linear_system_gauss(
                     (l, r)
                 },
                 | _ => {
+
                     return Err(
                         format!(
                         "Item {i} is \

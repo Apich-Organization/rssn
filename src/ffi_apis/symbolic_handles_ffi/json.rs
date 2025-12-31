@@ -48,7 +48,9 @@ pub extern "C" fn rssn_handle_insert_json(
     let expr = match expr {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -82,7 +84,9 @@ pub extern "C" fn rssn_handle_get_json(
     let req = match req {
         | Some(r) => r,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -117,7 +121,9 @@ pub extern "C" fn rssn_handle_exists_json(
     let req = match req {
         | Some(r) => r,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -151,7 +157,9 @@ pub extern "C" fn rssn_handle_free_json(
     let req = match req {
         | Some(r) => r,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -240,7 +248,9 @@ pub extern "C" fn rssn_handle_clone_json(
     let req = match req {
         | Some(r) => r,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

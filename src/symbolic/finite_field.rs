@@ -282,6 +282,7 @@ impl Div for PrimeFieldElement {
             match rhs.inverse() {
                 | Some(inv) => inv,
                 | None => {
+
                     return Self::new(
                         Zero::zero(),
                         self.field,

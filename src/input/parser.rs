@@ -473,6 +473,8 @@ pub(crate) fn parse_boolean_and_infinities(
     ))(input)
 }
 
+#[allow(clippy::too_many_lines)]
+
 pub(crate) fn parse_function_call(
     input: &str
 ) -> IResult<&str, Expr> {
@@ -3637,11 +3639,17 @@ mod tests {
     {
 
         assert_eq!(
-            parse_expr("quantity_with_value(10, \"m\")"),
+            parse_expr(
+                "quantity_with_value(10, \"m\")"
+            ),
             Ok((
                 "",
                 Expr::QuantityWithValue(
-                    Arc::new(Expr::Constant(10.0)),
+                    Arc::new(
+                        Expr::Constant(
+                            10.0
+                        )
+                    ),
                     "m".to_string()
                 )
             ))

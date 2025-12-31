@@ -33,6 +33,7 @@ fn parse_expr_from_cstr(
             {
                 | Ok(s) => s,
                 | Err(_) => {
+
                     return None;
                 },
             };

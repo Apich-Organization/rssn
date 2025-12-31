@@ -1104,6 +1104,7 @@ pub fn simplify_with_relations(
         ) {
             | Ok(basis) => basis,
             | Err(_) => {
+
                 return expr.clone();
             }, /* Return original on failure */
         };

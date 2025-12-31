@@ -92,7 +92,9 @@ pub unsafe extern "C" fn rssn_json_inner_product(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -101,7 +103,9 @@ pub unsafe extern "C" fn rssn_json_inner_product(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -155,7 +159,9 @@ pub unsafe extern "C" fn rssn_json_norm(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

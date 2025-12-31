@@ -130,6 +130,7 @@ fn try_numeric_value(
             node.to_expr()
                 .ok()
                 .and_then(|inner| {
+
                     try_numeric_value(
                         &inner,
                     )

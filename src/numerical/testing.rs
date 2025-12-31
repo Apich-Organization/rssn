@@ -1055,6 +1055,7 @@ pub fn solve_transcendental_numerical(
         let y = match f(x0) {
             | Some(val) => val,
             | None => {
+
                 return vec![
                     Expr::Solve(
                         Arc::new(
@@ -1071,6 +1072,7 @@ pub fn solve_transcendental_numerical(
         {
             | Some(val) => val,
             | None => {
+
                 return vec![
                     Expr::Solve(
                         Arc::new(
@@ -1543,9 +1545,10 @@ pub fn solve_system(
             symbolic_matrix,
             symbolic_rhs,
         )
-        .map_or_else(Vec::new, |sol| {
-            vec![sol]
-        })
+        .map_or_else(
+            Vec::new,
+            |sol| vec![sol],
+        )
     } else {
 
         solve_nonlinear_system_numerical(

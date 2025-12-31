@@ -192,6 +192,7 @@ pub fn analyze_convergence(
         | Expr::Dag(ref node) => {
             node.to_expr()
                 .unwrap_or_else(|_| {
+
                     simplified.clone()
                 })
         },

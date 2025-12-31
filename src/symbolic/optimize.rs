@@ -100,6 +100,7 @@ pub fn find_extrema(
         ) {
             | Some(sol) => sol,
             | None => {
+
                 return Ok(vec![]);
             },
         };

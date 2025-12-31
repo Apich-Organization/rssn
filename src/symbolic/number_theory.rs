@@ -663,6 +663,7 @@ pub fn solve_diophantine(
     let (lhs, rhs) = match equation {
         | Expr::Eq(l, r) => (l, r),
         | _ => {
+
             return Err("Input must \
                         be an equation.\
                         "

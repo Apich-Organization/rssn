@@ -86,7 +86,9 @@ pub extern "C" fn numerical_optimize_solve_json(
     {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

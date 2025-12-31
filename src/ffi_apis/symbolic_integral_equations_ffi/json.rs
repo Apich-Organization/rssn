@@ -55,7 +55,9 @@ pub extern "C" fn rssn_fredholm_solve_neumann_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -82,7 +84,9 @@ pub extern "C" fn rssn_fredholm_solve_separable_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -115,7 +119,9 @@ pub extern "C" fn rssn_volterra_solve_successive_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -140,7 +146,9 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation_json(
     let equation = match equation {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -169,7 +177,9 @@ pub extern "C" fn rssn_solve_airfoil_equation_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

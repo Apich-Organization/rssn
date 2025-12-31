@@ -53,6 +53,7 @@ pub extern "C" fn rssn_handle_insert_bincode(
     let expr = match expr {
         | Some(e) => e,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -81,6 +82,7 @@ pub extern "C" fn rssn_handle_get_bincode(
     let req = match req {
         | Some(r) => r,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -112,6 +114,7 @@ pub extern "C" fn rssn_handle_exists_bincode(
     let req = match req {
         | Some(r) => r,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -140,6 +143,7 @@ pub extern "C" fn rssn_handle_free_bincode(
     let req = match req {
         | Some(r) => r,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -199,6 +203,7 @@ pub extern "C" fn rssn_handle_clone_bincode(
     let req = match req {
         | Some(r) => r,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },

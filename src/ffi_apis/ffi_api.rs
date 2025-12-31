@@ -799,6 +799,7 @@ pub unsafe extern "C" fn interpolate_lagrange(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -904,6 +905,7 @@ pub unsafe extern "C" fn interpolate_bezier_curve(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -1432,6 +1434,7 @@ pub unsafe extern "C" fn vector_scalar_mul(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -2051,6 +2054,7 @@ pub unsafe extern "C" fn nt_mod_pow(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -2138,6 +2142,7 @@ pub unsafe extern "C" fn nt_mod_inverse(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -2587,6 +2592,7 @@ pub unsafe extern "C" fn transforms_fft(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -2686,6 +2692,7 @@ pub unsafe extern "C" fn transforms_ifft(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -2998,6 +3005,7 @@ pub unsafe extern "C" fn poly_leading_coefficient(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -3062,6 +3070,7 @@ pub unsafe extern "C" fn poly_long_division(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -3167,6 +3176,7 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -3251,6 +3261,7 @@ pub unsafe extern "C" fn poly_from_coeffs_vec(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -3782,6 +3793,7 @@ pub unsafe extern "C" fn stats_percentile(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -3974,6 +3986,7 @@ pub unsafe extern "C" fn stats_simple_linear_regression(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -4382,6 +4395,7 @@ pub unsafe extern "C" fn expr_differentiate(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -4437,6 +4451,7 @@ pub unsafe extern "C" fn expr_substitute(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -4498,6 +4513,7 @@ pub unsafe extern "C" fn expr_integrate(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -4556,6 +4572,7 @@ pub unsafe extern "C" fn expr_definite_integrate(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -4622,6 +4639,7 @@ pub unsafe extern "C" fn expr_limit(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -4694,6 +4712,7 @@ pub unsafe extern "C" fn expr_solve(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -5168,6 +5187,7 @@ pub unsafe extern "C" fn matrix_characteristic_polynomial(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -5604,6 +5624,7 @@ pub unsafe extern "C" fn numerical_gradient(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -5742,6 +5763,7 @@ pub unsafe extern "C" fn numerical_integrate(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -5872,6 +5894,7 @@ pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
     } {
         | Ok(s) => s,
         | Err(_) => {
+
             return ptr::null_mut();
         },
     };
@@ -7152,6 +7175,7 @@ pub unsafe extern "C" fn rssn_solve(
             {
                 | Ok(s) => s,
                 | Err(e) => {
+
                     return handle_error(
                         format!(
                     "Invalid UTF-8 in \
@@ -7167,6 +7191,7 @@ pub unsafe extern "C" fn rssn_solve(
         {
             | Some(e) => e,
             | None => {
+
                 return handle_error(
                     format!(
                     "Invalid handle: \
@@ -7244,6 +7269,7 @@ pub unsafe extern "C" fn rssn_matrix_add(
         {
             | Some(e) => e,
             | None => {
+
                 return handle_error(
                     format!(
                     "Invalid handle \
@@ -7258,6 +7284,7 @@ pub unsafe extern "C" fn rssn_matrix_add(
         {
             | Some(e) => e,
             | None => {
+
                 return handle_error(
                     format!(
                     "Invalid handle \
@@ -7340,6 +7367,7 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
         {
             | Some(e) => e,
             | None => {
+
                 return handle_error(
                     format!(
                     "Invalid handle: \
@@ -7780,6 +7808,7 @@ pub unsafe extern "C" fn rssn_init_plugin_manager(
             {
                 | Ok(s) => s,
                 | Err(e) => {
+
                     return handle_error(
                         format!(
                     "Invalid UTF-8 in \
