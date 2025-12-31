@@ -207,7 +207,7 @@ fn test_finite_field_polynomial_creation()
 
     let poly =
         FiniteFieldPolynomial::new(
-            coeffs,
+            &coeffs,
             field.clone(),
         );
 
@@ -228,7 +228,7 @@ fn test_finite_field_polynomial_degree()
     // Zero polynomial
     let zero_poly =
         FiniteFieldPolynomial::new(
-            vec![],
+            &[],
             field.clone(),
         );
 
@@ -240,7 +240,7 @@ fn test_finite_field_polynomial_degree()
     // Constant polynomial
     let const_poly =
         FiniteFieldPolynomial::new(
-            vec![
+            &[
                 PrimeFieldElement::new(
                     BigInt::from(3),
                     field.clone(),
@@ -257,7 +257,7 @@ fn test_finite_field_polynomial_degree()
     // Degree 2 polynomial
     let poly =
         FiniteFieldPolynomial::new(
-            vec![
+            &[
                 PrimeFieldElement::new(
                     BigInt::from(1),
                     field.clone(),
@@ -288,7 +288,7 @@ fn test_finite_field_polynomial_addition()
 
     // p1 = x + 2
     let p1 = FiniteFieldPolynomial::new(
-        vec![
+        &[
             PrimeFieldElement::new(
                 BigInt::from(1),
                 field.clone(),
@@ -303,7 +303,7 @@ fn test_finite_field_polynomial_addition()
 
     // p2 = 2x + 3
     let p2 = FiniteFieldPolynomial::new(
-        vec![
+        &[
             PrimeFieldElement::new(
                 BigInt::from(2),
                 field.clone(),
@@ -345,7 +345,7 @@ fn test_finite_field_polynomial_multiplication()
 
     // p1 = x + 1
     let p1 = FiniteFieldPolynomial::new(
-        vec![
+        &[
             PrimeFieldElement::new(
                 BigInt::from(1),
                 field.clone(),
@@ -360,7 +360,7 @@ fn test_finite_field_polynomial_multiplication()
 
     // p2 = x + 2
     let p2 = FiniteFieldPolynomial::new(
-        vec![
+        &[
             PrimeFieldElement::new(
                 BigInt::from(1),
                 field.clone(),
@@ -404,7 +404,7 @@ fn test_finite_field_polynomial_long_division()
     // dividend = x^2 + 2x + 3
     let dividend =
         FiniteFieldPolynomial::new(
-            vec![
+            &[
                 PrimeFieldElement::new(
                     BigInt::from(1),
                     field.clone(),
@@ -424,7 +424,7 @@ fn test_finite_field_polynomial_long_division()
     // divisor = x + 1
     let divisor =
         FiniteFieldPolynomial::new(
-            vec![
+            &[
                 PrimeFieldElement::new(
                     BigInt::from(1),
                     field.clone(),
@@ -465,7 +465,7 @@ fn test_extension_field_element_creation()
     // Create irreducible polynomial x^2 + 2 over GF(5)
     let irreducible =
         FiniteFieldPolynomial::new(
-            vec![
+            &[
                 PrimeFieldElement::new(
                     BigInt::from(1),
                     prime_field.clone(),
@@ -493,7 +493,7 @@ fn test_extension_field_element_creation()
     // Create element x + 1
     let poly =
         FiniteFieldPolynomial::new(
-            vec![
+            &[
                 PrimeFieldElement::new(
                     BigInt::from(1),
                     prime_field.clone(),
@@ -527,7 +527,7 @@ fn test_extension_field_element_arithmetic()
     // Create irreducible polynomial x^2 + 2 over GF(5)
     let irreducible =
         FiniteFieldPolynomial::new(
-            vec![
+            &[
                 PrimeFieldElement::new(
                     BigInt::from(1),
                     prime_field.clone(),
@@ -555,7 +555,7 @@ fn test_extension_field_element_arithmetic()
     // Create two elements
     let poly1 =
         FiniteFieldPolynomial::new(
-            vec![
+            &[
                 PrimeFieldElement::new(
                     BigInt::from(1),
                     prime_field.clone(),
@@ -570,7 +570,7 @@ fn test_extension_field_element_arithmetic()
 
     let poly2 =
         FiniteFieldPolynomial::new(
-            vec![
+            &[
                 PrimeFieldElement::new(
                     BigInt::from(2),
                     prime_field.clone(),
