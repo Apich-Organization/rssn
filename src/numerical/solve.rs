@@ -55,12 +55,10 @@ pub fn solve_linear_system(
     a: &Matrix<f64>,
     b: &[f64],
 ) -> Result<LinearSolution, String> {
-
     let (rows, cols) =
         (a.rows(), a.cols());
 
     if rows != b.len() {
-
         return Err("Matrix and \
                     vector dimensions \
                     are incompatible.\
@@ -71,10 +69,8 @@ pub fn solve_linear_system(
     let mut augmented_data =
         vec![0.0; rows * (cols + 1)];
 
-    for i in 0 .. rows {
-
-        for j in 0 .. cols {
-
+    for i in 0..rows {
+        for j in 0..cols {
             augmented_data
                 [i * (cols + 1) + j] =
                 *a.get(i, j);
@@ -94,8 +90,7 @@ pub fn solve_linear_system(
     let rank = augmented.rref()?;
 
     // Check for inconsistency: if any row has a leading 1 in the last column (the constant vector column)
-    for i in 0 .. rank {
-
+    for i in 0..rank {
         let mut pivot_col = 0;
 
         while pivot_col < cols + 1
@@ -104,27 +99,24 @@ pub fn solve_linear_system(
                 .abs()
                 < 1e-9
         {
-
             pivot_col += 1;
         }
 
         if pivot_col == cols {
-
             return Ok(LinearSolution::NoSolution);
         }
     }
 
     if rank < cols {
-
         let mut particular =
             vec![0.0; cols];
         #[warn(clippy::collection_is_never_read)]
-        let mut _pivot_cols = Vec::new();
+        let mut _pivot_cols =
+            Vec::new();
 
         let mut lead = 0;
 
-        for r in 0 .. rank {
-
+        for r in 0..rank {
             let mut i = lead;
 
             while i < cols
@@ -133,12 +125,10 @@ pub fn solve_linear_system(
                     .abs()
                     < 1e-9
             {
-
                 i += 1;
             }
 
             if i < cols {
-
                 _pivot_cols.push(i);
 
                 particular[i] =
@@ -159,7 +149,6 @@ pub fn solve_linear_system(
             },
         )
     } else {
-
         let mut solution =
             vec![0.0; cols];
 
@@ -168,7 +157,6 @@ pub fn solve_linear_system(
             .enumerate()
             .take(rank)
         {
-
             *var =
                 *augmented.get(i, cols);
         }
@@ -206,15 +194,12 @@ pub fn solve_nonlinear_system(
     tolerance: f64,
     max_iter: usize,
 ) -> Result<Vec<f64>, String> {
-
     let mut x_n = start_point.to_vec();
 
-    for _ in 0 .. max_iter {
-
+    for _ in 0..max_iter {
         let mut f_at_x = Vec::new();
 
         for func in funcs {
-
             let mut vars_map =
                 HashMap::new();
 
@@ -222,7 +207,6 @@ pub fn solve_nonlinear_system(
                 .iter()
                 .enumerate()
             {
-
                 vars_map.insert(
                     var.to_string(),
                     x_n[i],
@@ -239,7 +223,6 @@ pub fn solve_nonlinear_system(
             Vec::new();
 
         for func in funcs {
-
             jacobian_rows.push(
                 gradient(
                     func, vars, &x_n,
@@ -263,8 +246,7 @@ pub fn solve_nonlinear_system(
             | _ => return Err("Jacobian is singular; Newton's method failed.".to_string()),
         };
 
-        for i in 0 .. x_n.len() {
-
+        for i in 0..x_n.len() {
             x_n[i] += delta_x[i];
         }
 
@@ -275,7 +257,6 @@ pub fn solve_nonlinear_system(
             .sqrt();
 
         if norm_delta < tolerance {
-
             return Ok(x_n);
         }
     }

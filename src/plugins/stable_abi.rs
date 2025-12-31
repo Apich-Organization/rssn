@@ -5,16 +5,22 @@
 )]
 #![allow(non_local_definitions)]
 #![allow(clippy::cast_ptr_alignment)]
-#![allow(clippy::used_underscore_binding)]
-#![allow(clippy::elidable_lifetime_names)]
-#![allow(clippy::expl_impl_clone_on_copy)]
+#![allow(
+    clippy::used_underscore_binding
+)]
+#![allow(
+    clippy::elidable_lifetime_names
+)]
+#![allow(
+    clippy::expl_impl_clone_on_copy
+)]
 
+use abi_stable::StableAbi;
 use abi_stable::sabi_trait;
 use abi_stable::std_types::RBox;
 use abi_stable::std_types::RResult;
 use abi_stable::std_types::RString;
 use abi_stable::std_types::RVec;
-use abi_stable::StableAbi;
 
 use crate::plugins::plugin_c::PluginHealth;
 

@@ -7,12 +7,12 @@
 
 use std::collections::HashMap;
 
-use rand::thread_rng;
 use rand::Rng;
+use rand::thread_rng;
 
 use crate::numerical::elementary::eval_expr;
-use crate::numerical::integrate::quadrature;
 use crate::numerical::integrate::QuadratureMethod;
+use crate::numerical::integrate::quadrature;
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
@@ -51,16 +51,16 @@ const NUM_SAMPLES: usize = 100;
 /// `true` if the solution is numerically verified, `false` otherwise.
 #[must_use]
 
-pub fn verify_equation_solution<S: std::hash::BuildHasher>(
+pub fn verify_equation_solution<
+    S: std::hash::BuildHasher,
+>(
     equations: &[Expr],
     solution: &HashMap<String, Expr, S>,
     free_vars: &[&str],
 ) -> bool {
-
     let mut rng = thread_rng();
 
     for eq in equations {
-
         let unwrapped_eq =
             unwrap_dag(eq.clone());
 
@@ -68,7 +68,6 @@ pub fn verify_equation_solution<S: std::hash::BuildHasher>(
             if let Expr::Eq(lhs, rhs) =
                 unwrapped_eq
             {
-
                 simplify(
                     &Expr::new_sub(
                         lhs.clone(),
@@ -76,22 +75,19 @@ pub fn verify_equation_solution<S: std::hash::BuildHasher>(
                     ),
                 )
             } else {
-
                 unwrapped_eq.clone()
             };
 
-        for _ in 0 .. NUM_SAMPLES {
-
+        for _ in 0..NUM_SAMPLES {
             let mut current_vars =
                 HashMap::new();
 
             // Random values for free variables
             for var in free_vars {
-
                 current_vars.insert(
                     (*var).to_string(),
                     rng.gen_range(
-                        -10.0 .. 10.0,
+                        -10.0..10.0,
                     ),
                 );
             }
@@ -103,7 +99,6 @@ pub fn verify_equation_solution<S: std::hash::BuildHasher>(
             for (var, sol_expr) in
                 solution
             {
-
                 substituted_expr = substitute(
                     &substituted_expr,
                     var,
@@ -118,16 +113,13 @@ pub fn verify_equation_solution<S: std::hash::BuildHasher>(
                 &current_vars,
             ) {
                 | Ok(val) => {
-
                     if val.abs()
                         > TOLERANCE
                     {
-
                         return false;
                     }
                 },
                 | Err(_) => {
-
                     // Try another point if evaluation fails (e.g., division by zero at a specific random point)
                     continue;
                 },
@@ -139,14 +131,10 @@ pub fn verify_equation_solution<S: std::hash::BuildHasher>(
 }
 
 fn unwrap_dag(expr: Expr) -> Expr {
-
     match expr {
-        | Expr::Dag(node) => {
-            node.to_expr()
-                .unwrap_or(Expr::Dag(
-                    node,
-                ))
-        },
+        | Expr::Dag(node) => node
+            .to_expr()
+            .unwrap_or(Expr::Dag(node)),
         | _ => expr,
     }
 }
@@ -159,7 +147,6 @@ pub fn verify_indefinite_integral(
     integral_result: &Expr,
     var: &str,
 ) -> bool {
-
     let derivative_of_result =
         differentiate(
             integral_result,
@@ -182,11 +169,10 @@ pub fn verify_indefinite_integral(
         && attempt_count
             < NUM_SAMPLES * 2
     {
-
         let mut vars = HashMap::new();
 
-        let x_val = rng
-            .gen_range(-10.0 .. 10.0);
+        let x_val =
+            rng.gen_range(-10.0..10.0);
 
         vars.insert(
             var.to_string(),
@@ -196,9 +182,7 @@ pub fn verify_indefinite_integral(
         if let Ok(val) =
             eval_expr(&diff, &vars)
         {
-
             if val.abs() > TOLERANCE {
-
                 return false;
             }
 
@@ -220,7 +204,6 @@ pub fn verify_definite_integral(
     range: (f64, f64),
     symbolic_result: &Expr,
 ) -> bool {
-
     let symbolic_val = match eval_expr(
         &simplify(symbolic_result),
         &HashMap::new(),
@@ -235,8 +218,11 @@ pub fn verify_definite_integral(
         range,
         1000,
         &QuadratureMethod::Simpson,
-    ).is_ok_and(|numerical_val| {
-        (symbolic_val - numerical_val).abs() < TOLERANCE
+    )
+    .is_ok_and(|numerical_val| {
+        (symbolic_val - numerical_val)
+            .abs()
+            < TOLERANCE
     })
 }
 
@@ -249,7 +235,6 @@ pub fn verify_ode_solution(
     func_name: &str,
     var: &str,
 ) -> bool {
-
     // 1. Convert ODE to f(x, y, y', y'', ...) = 0 form
     let unwrapped_ode =
         unwrap_dag(ode.clone());
@@ -258,19 +243,16 @@ pub fn verify_ode_solution(
         if let Expr::Eq(lhs, rhs) =
             unwrapped_ode
         {
-
             Expr::new_sub(lhs, rhs)
         } else {
-
             unwrapped_ode
         };
 
     let mut rng = thread_rng();
 
-    for _ in 0 .. NUM_SAMPLES {
-
-        let x_val = rng
-            .gen_range(-10.0 .. 10.0);
+    for _ in 0..NUM_SAMPLES {
+        let x_val =
+            rng.gen_range(-10.0..10.0);
 
         let mut vars = HashMap::new();
 
@@ -323,11 +305,9 @@ pub fn verify_ode_solution(
             &vars,
         ) {
             | Ok(val) => {
-
                 if val.abs()
                     > TOLERANCE * 10.0
                 {
-
                     // ODEs can be more sensitive
                     return false;
                 }
@@ -346,7 +326,6 @@ pub fn verify_matrix_inverse(
     original: &Expr,
     inverse: &Expr,
 ) -> bool {
-
     let product = matrix::mul_matrices(
         original,
         inverse,
@@ -358,20 +337,39 @@ pub fn verify_matrix_inverse(
     if let Expr::Matrix(prod_mat) =
         simplified_product
     {
-
         let _n = prod_mat.len();
 
-        for (i, row) in prod_mat.iter().enumerate() {
-            for (j, item) in row.iter().enumerate() {
-                let expected = if i == j { 1.0 } else { 0.0 };
+        for (i, row) in prod_mat
+            .iter()
+            .enumerate()
+        {
+            for (j, item) in row
+                .iter()
+                .enumerate()
+            {
+                let expected = if i == j
+                {
+                    1.0
+                } else {
+                    0.0
+                };
 
-                match eval_expr(item, &HashMap::new()) {
-                    Ok(val) => {
-                        if (val - expected).abs() > TOLERANCE {
+                match eval_expr(
+                    item,
+                    &HashMap::new(),
+                ) {
+                    | Ok(val) => {
+                        if (val
+                            - expected)
+                            .abs()
+                            > TOLERANCE
+                        {
                             return false;
                         }
-                    }
-                    Err(_) => return false,
+                    },
+                    | Err(_) => {
+                        return false;
+                    },
                 }
             }
         }
@@ -390,13 +388,11 @@ pub fn verify_derivative(
     derivative_func: &Expr,
     var: &str,
 ) -> bool {
-
     let mut rng = thread_rng();
 
-    for _ in 0 .. NUM_SAMPLES {
-
-        let x_val = rng
-            .gen_range(-10.0 .. 10.0);
+    for _ in 0..NUM_SAMPLES {
+        let x_val =
+            rng.gen_range(-10.0..10.0);
 
         let mut vars_map =
             HashMap::new();
@@ -429,7 +425,6 @@ pub fn verify_derivative(
             .abs()
             > TOLERANCE * 100.0
         {
-
             return false;
         }
     }
@@ -446,7 +441,6 @@ pub fn verify_limit(
     target: &Expr,
     limit_val: &Expr,
 ) -> bool {
-
     let x0 = match eval_expr(
         &simplify(target),
         &HashMap::new(),
@@ -466,7 +460,6 @@ pub fn verify_limit(
     let epsilons = [1e-3, 1e-5, 1e-7];
 
     for &eps in &epsilons {
-
         let mut vars = HashMap::new();
 
         vars.insert(
@@ -477,14 +470,12 @@ pub fn verify_limit(
         if let Ok(val) =
             eval_expr(f, &vars)
         {
-
             if (val - l).abs()
                 > eps.mul_add(
                     100.0,
                     TOLERANCE,
                 )
             {
-
                 return false;
             }
         }
@@ -497,14 +488,12 @@ pub fn verify_limit(
         if let Ok(val) =
             eval_expr(f, &vars)
         {
-
             if (val - l).abs()
                 > eps.mul_add(
                     100.0,
                     TOLERANCE,
                 )
             {
-
                 return false;
             }
         }

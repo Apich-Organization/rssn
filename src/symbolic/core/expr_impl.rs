@@ -5,9 +5,7 @@ use std::cmp::Ordering;
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::fmt::Write;
-use std::fmt::{
-    self,
-};
+use std::fmt::{self};
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;
@@ -25,21 +23,17 @@ impl PartialEq for Expr {
         &self,
         other: &Self,
     ) -> bool {
-
         if let (
             Self::Dag(n1),
             Self::Dag(n2),
         ) = (self, other)
         {
-
             if Arc::ptr_eq(n1, n2) {
-
                 return true;
             }
         }
 
         if self.op() != other.op() {
-
             return false;
         }
 
@@ -143,7 +137,6 @@ impl PartialEq for Expr {
         if self_children.len()
             != other_children.len()
         {
-
             return false;
         }
 
@@ -155,7 +148,6 @@ impl PartialEq for Expr {
                     l_child_expr,
                     r_child_expr,
                 )| {
-
                     l_child_expr.eq(
                         r_child_expr,
                     )
@@ -164,15 +156,13 @@ impl PartialEq for Expr {
     }
 }
 
-impl Eq for Expr {
-}
+impl Eq for Expr {}
 
 impl Hash for Expr {
     fn hash<H: Hasher>(
         &self,
         state: &mut H,
     ) {
-
         // Use the unified view
         let op = self.op();
 
@@ -189,20 +179,16 @@ impl Hash for Expr {
             | DagOp::Xor
             | DagOp::Equivalent
             | DagOp::Eq => {
-
                 // Commutative: hash children in a specified order (sorted)
                 // to ensure the hash is canonical.
                 children.sort(); // Relies on Ord
                 for child in children {
-
                     child.hash(state);
                 }
             },
             | _ => {
-
                 // Non-commutative: hash children in order.
                 for child in children {
-
                     child.hash(state);
                 }
             },
@@ -215,7 +201,6 @@ impl PartialOrd for Expr {
         &self,
         other: &Self,
     ) -> Option<Ordering> {
-
         Some(self.cmp(other))
     }
 }
@@ -225,16 +210,13 @@ impl Ord for Expr {
         &self,
         other: &Self,
     ) -> Ordering {
-
         // Fast path for identical DAG nodes.
         if let (
             Self::Dag(n1),
             Self::Dag(n2),
         ) = (self, other)
         {
-
             if Arc::ptr_eq(n1, n2) {
-
                 return Ordering::Equal;
             }
         }
@@ -247,7 +229,6 @@ impl Ord for Expr {
         if op_ordering
             != Ordering::Equal
         {
-
             return op_ordering;
         }
 
@@ -272,10 +253,8 @@ impl fmt::Display for SymbolicError {
         &self,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
-
         match self {
             | Self::Msg(s) => {
-
                 write!(f, "{s}")
             },
         }
@@ -284,14 +263,12 @@ impl fmt::Display for SymbolicError {
 
 impl From<String> for SymbolicError {
     fn from(s: String) -> Self {
-
         Self::Msg(s)
     }
 }
 
 impl From<&str> for SymbolicError {
     fn from(s: &str) -> Self {
-
         Self::Msg(s.to_string())
     }
 }
@@ -309,7 +286,6 @@ impl Expr {
     ) where
         F: FnMut(&Self),
     {
-
         f(self); // Visit parent
         match self {
             // Binary operators
@@ -743,7 +719,6 @@ impl Expr {
     ) where
         F: FnMut(&Self),
     {
-
         match self {
             // Binary operators
             | Self::Add(a, b)
@@ -1103,7 +1078,6 @@ impl Expr {
     ) where
         F: FnMut(&Self),
     {
-
         match self {
             // Binary operators
             | Self::Add(a, b)
@@ -1619,7 +1593,6 @@ impl Expr {
     pub(crate) fn get_children_internal(
         &self
     ) -> Vec<Self> {
-
         match self {
             | Self::Add(a, b)
             | Self::Sub(a, b)
@@ -1962,10 +1935,8 @@ impl Expr {
     /// This helps in identifying identical expressions that differ only in terms of operand order.
 
     pub fn normalize(&self) -> Self {
-
         match self {
             | Self::Add(a, b) => {
-
                 let mut children = [
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -1985,12 +1956,10 @@ impl Expr {
                 )
             },
             | Self::AddList(list) => {
-
                 let mut children =
                     Vec::new();
 
                 for child in list {
-
                     if let Self::AddList(sub_list) = child {
 
                         children.extend(sub_list.clone());
@@ -2005,7 +1974,6 @@ impl Expr {
                 Self::AddList(children)
             },
             | Self::Mul(a, b) => {
-
                 let mut children = [
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -2025,12 +1993,10 @@ impl Expr {
                 )
             },
             | Self::MulList(list) => {
-
                 let mut children =
                     Vec::new();
 
                 for child in list {
-
                     if let Self::MulList(sub_list) = child {
 
                         children.extend(sub_list.clone());
@@ -2045,7 +2011,6 @@ impl Expr {
                 Self::MulList(children)
             },
             | Self::Sub(a, b) => {
-
                 let mut children = [
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -2065,7 +2030,6 @@ impl Expr {
                 )
             },
             | Self::Div(a, b) => {
-
                 let mut children = [
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -2097,7 +2061,6 @@ impl Expr {
                 a,
                 b,
             ) => {
-
                 let mut children = [
                     a.as_ref().clone(),
                     b.as_ref().clone(),
@@ -2127,7 +2090,6 @@ impl Expr {
                 s,
                 list,
             ) => {
-
                 let mut children =
                     list.clone();
 
@@ -2159,7 +2121,6 @@ impl Expr {
     pub(crate) fn to_dag_op_internal(
         &self
     ) -> Result<DagOp, String> {
-
         match self {
             | Self::Constant(c) => {
                 Ok(DagOp::Constant(

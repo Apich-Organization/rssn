@@ -1,4 +1,6 @@
-#![allow(clippy::wildcard_in_or_patterns)]
+#![allow(
+    clippy::wildcard_in_or_patterns
+)]
 
 use std::sync::Arc;
 
@@ -29,7 +31,6 @@ use crate::symbolic::core::PathType;
 /// Checks if a character is a valid identifier character.
 
 fn is_identifier_char(c: char) -> bool {
-
     c.is_alphanumeric()
         || c == '_'
         || c == '\''
@@ -38,7 +39,6 @@ fn is_identifier_char(c: char) -> bool {
 pub(crate) fn identifier_name(
     input: &str
 ) -> IResult<&str, &str> {
-
     recognize(pair(
         alpha1,
         // nom::multi::many0(nom::character::complete::alphanumeric1)
@@ -49,7 +49,6 @@ pub(crate) fn identifier_name(
 pub(crate) fn parse_rational_structure(
     input: &str
 ) -> IResult<&str, ()> {
-
     let (input, _) = nom_i64(input)?;
 
     let (input, _) = char('/')(input)?;
@@ -74,7 +73,6 @@ pub(crate) fn parse_rational_structure(
 pub fn parse_expr(
     input: &str
 ) -> IResult<&str, Expr> {
-
     expr(input)
 }
 
@@ -82,7 +80,6 @@ pub fn parse_expr(
 pub(crate) fn expr(
     input: &str
 ) -> IResult<&str, Expr> {
-
     comparison_expr(input)
 }
 
@@ -90,7 +87,6 @@ pub(crate) fn expr(
 pub(crate) fn comparison_expr(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, init) =
         additive_expr(input)?;
 
@@ -106,41 +102,28 @@ pub(crate) fn comparison_expr(
             additive_expr,
         ),
         move || init.clone(),
-        |acc, (op, val)| {
-
-            match op {
-                | "=" => {
-                    Expr::Eq(
-                        Arc::new(acc),
-                        Arc::new(val),
-                    )
-                },
-                | "<" => {
-                    Expr::Lt(
-                        Arc::new(acc),
-                        Arc::new(val),
-                    )
-                },
-                | ">" => {
-                    Expr::Gt(
-                        Arc::new(acc),
-                        Arc::new(val),
-                    )
-                },
-                | "<=" => {
-                    Expr::Le(
-                        Arc::new(acc),
-                        Arc::new(val),
-                    )
-                },
-                | ">=" => {
-                    Expr::Ge(
-                        Arc::new(acc),
-                        Arc::new(val),
-                    )
-                },
-                | _ => unreachable!(),
-            }
+        |acc, (op, val)| match op {
+            | "=" => Expr::Eq(
+                Arc::new(acc),
+                Arc::new(val),
+            ),
+            | "<" => Expr::Lt(
+                Arc::new(acc),
+                Arc::new(val),
+            ),
+            | ">" => Expr::Gt(
+                Arc::new(acc),
+                Arc::new(val),
+            ),
+            | "<=" => Expr::Le(
+                Arc::new(acc),
+                Arc::new(val),
+            ),
+            | ">=" => Expr::Ge(
+                Arc::new(acc),
+                Arc::new(val),
+            ),
+            | _ => unreachable!(),
         },
     )(input)
 }
@@ -149,7 +132,6 @@ pub(crate) fn comparison_expr(
 pub(crate) fn additive_expr(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, init) = term(input)?;
 
     fold_many0(
@@ -160,13 +142,11 @@ pub(crate) fn additive_expr(
         move || init.clone(),
         |acc, (op, val)| {
             if op == '+' {
-
                 Expr::Add(
                     Arc::new(acc),
                     Arc::new(val),
                 )
             } else {
-
                 Expr::Sub(
                     Arc::new(acc),
                     Arc::new(val),
@@ -180,7 +160,6 @@ pub(crate) fn additive_expr(
 pub(crate) fn term(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, init) = factor(input)?;
 
     fold_many0(
@@ -191,13 +170,11 @@ pub(crate) fn term(
         move || init.clone(),
         |acc, (op, val)| {
             if op == '*' {
-
                 Expr::Mul(
                     Arc::new(acc),
                     Arc::new(val),
                 )
             } else {
-
                 Expr::Div(
                     Arc::new(acc),
                     Arc::new(val),
@@ -211,7 +188,6 @@ pub(crate) fn term(
 pub(crate) fn factor(
     input: &str
 ) -> IResult<&str, Expr> {
-
     delimited(
         multispace0,
         alt((
@@ -226,7 +202,6 @@ pub(crate) fn factor(
 pub(crate) fn unary(
     input: &str
 ) -> IResult<&str, Expr> {
-
     // println!("in unary staring");
     // println!("{}",input);
     let original_input = input;
@@ -243,7 +218,6 @@ pub(crate) fn unary(
     // println!("{}",input);
     ////println!("{}",neg);
     if neg.is_some() {
-
         if let Ok((_, ())) = nom::combinator::peek(parse_rational_structure)(input) {
 
             // If it looks like a rational number, we need to parse it differently
@@ -257,17 +231,14 @@ pub(crate) fn unary(
 
     // println!("in unary start again");
     if neg.is_some() {
-
         // Special case: -Infinity should be NegativeInfinity, not Neg(Infinity)
         if matches!(
             expr,
             Expr::Infinity
         ) {
-
             expr =
                 Expr::NegativeInfinity;
         } else {
-
             expr = Expr::Neg(Arc::new(
                 expr,
             ));
@@ -275,7 +246,6 @@ pub(crate) fn unary(
     }
 
     if not_op.is_some() {
-
         expr =
             Expr::Not(Arc::new(expr));
     }
@@ -287,7 +257,6 @@ pub(crate) fn unary(
 pub(crate) fn power(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, base) = atom(input)?;
 
     let (input, power_expr) = opt(
@@ -302,7 +271,6 @@ pub(crate) fn power(
     let mut result = base;
 
     if let Some(p) = power_expr {
-
         result = Expr::Power(
             Arc::new(result),
             Arc::new(p),
@@ -310,7 +278,6 @@ pub(crate) fn power(
     }
 
     if factorial_op.is_some() {
-
         result = Expr::Factorial(
             Arc::new(result),
         );
@@ -322,9 +289,7 @@ pub(crate) fn power(
 pub(crate) fn parse_bigint(
     input: &str
 ) -> IResult<&str, Expr> {
-
     map(nom_i64, |n| {
-
         Expr::BigInt(BigInt::from(n))
     })(input)
 }
@@ -340,7 +305,6 @@ pub(crate) fn parse_bigint(
 pub(crate) fn parse_rational(
     input: &str
 ) -> IResult<&str, Expr> {
-
     // println!("parse_rational start");
     let (input, sign) =
         opt(char('-'))(input)?;
@@ -358,12 +322,10 @@ pub(crate) fn parse_rational(
     // println!("{}", denominator);
     let final_numerator =
         if sign.is_some() {
-
             // println!("matched -");
             // println!("{}", -numerator);
             BigInt::from(-numerator)
         } else {
-
             // println!("not matched -");
             BigInt::from(numerator)
         };
@@ -372,7 +334,6 @@ pub(crate) fn parse_rational(
     // println!("parse_rational end");
 
     if denominator <= 0 {
-
         return nom::combinator::fail(
             input,
         );
@@ -401,14 +362,11 @@ pub(crate) fn parse_rational(
 pub(crate) fn parse_boolean(
     input: &str
 ) -> IResult<&str, Expr> {
-
     alt((
         map(tag("true"), |_| {
-
             Expr::Boolean(true)
         }),
         map(tag("false"), |_| {
-
             Expr::Boolean(false)
         }),
     ))(input)
@@ -417,7 +375,6 @@ pub(crate) fn parse_boolean(
 pub(crate) fn parse_infinity(
     input: &str
 ) -> IResult<&str, Expr> {
-
     map(
         tag("Infinity"),
         |_| Expr::Infinity,
@@ -427,7 +384,6 @@ pub(crate) fn parse_infinity(
 pub(crate) fn parse_negative_infinity(
     input: &str
 ) -> IResult<&str, Expr> {
-
     map(
         tag("-Infinity"),
         |_| Expr::NegativeInfinity,
@@ -437,7 +393,6 @@ pub(crate) fn parse_negative_infinity(
 pub(crate) fn parse_string_literal(
     input: &str
 ) -> IResult<&str, Expr> {
-
     map(
         delimited(
             char('"'),
@@ -451,7 +406,6 @@ pub(crate) fn parse_string_literal(
 pub(crate) fn parse_numeric_literals(
     input: &str
 ) -> IResult<&str, Expr> {
-
     // println!("in numeric");
     alt((
         parse_rational,
@@ -464,7 +418,6 @@ pub(crate) fn parse_numeric_literals(
 pub(crate) fn parse_boolean_and_infinities(
     input: &str
 ) -> IResult<&str, Expr> {
-
     alt((
         parse_boolean,
         parse_infinity,
@@ -475,7 +428,6 @@ pub(crate) fn parse_boolean_and_infinities(
 pub(crate) fn parse_function_call(
     input: &str
 ) -> IResult<&str, Expr> {
-
     // println!("parse function call");
     // let (input, func_name) = alpha1(input)?;
     let (input, func_name) =
@@ -1209,7 +1161,6 @@ pub(crate) fn parse_function_call(
 pub(crate) fn parse_matrix(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) =
         tag("matrix")(input)?;
 
@@ -1250,7 +1201,6 @@ pub(crate) fn parse_matrix(
 pub(crate) fn parse_pde(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) = tag("pde")(input)?;
 
     let (input, _) = char('(')(input)?;
@@ -1299,7 +1249,6 @@ pub(crate) fn parse_pde(
             vars: vars_list
                 .iter()
                 .map(|s| {
-
                     (*s).to_string()
                 })
                 .collect(),
@@ -1311,10 +1260,8 @@ pub(crate) fn parse_pde(
 pub(crate) fn parse_path_type(
     input: &str
 ) -> IResult<&str, PathType> {
-
     alt((
         map(tag("Line"), |_| {
-
             PathType::Line
         }),
         map(
@@ -1331,7 +1278,6 @@ pub(crate) fn parse_path_type(
 pub(crate) fn parse_path(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) =
         tag("path")(input)?;
 
@@ -1371,7 +1317,6 @@ pub(crate) fn parse_path(
 pub(crate) fn parse_interval(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) =
         tag("interval")(input)?;
 
@@ -1429,7 +1374,6 @@ pub(crate) fn parse_interval(
 pub(crate) fn parse_quantifier(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, quantifier_type) =
         alt((
             tag("forall"),
@@ -1451,26 +1395,20 @@ pub(crate) fn parse_quantifier(
     let (input, body) = expr(input)?;
 
     match quantifier_type {
-        | "forall" => {
-            Ok((
-                input,
-                Expr::ForAll(
-                    var_name
-                        .to_string(),
-                    Arc::new(body),
-                ),
-            ))
-        },
-        | "exists" => {
-            Ok((
-                input,
-                Expr::Exists(
-                    var_name
-                        .to_string(),
-                    Arc::new(body),
-                ),
-            ))
-        },
+        | "forall" => Ok((
+            input,
+            Expr::ForAll(
+                var_name.to_string(),
+                Arc::new(body),
+            ),
+        )),
+        | "exists" => Ok((
+            input,
+            Expr::Exists(
+                var_name.to_string(),
+                Arc::new(body),
+            ),
+        )),
         | _ => unreachable!(),
     }
 }
@@ -1478,7 +1416,6 @@ pub(crate) fn parse_quantifier(
 pub(crate) fn parse_domain(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) =
         tag("domain")(input)?;
 
@@ -1500,7 +1437,6 @@ pub(crate) fn parse_domain(
 pub(crate) fn parse_ode(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) = tag("ode")(input)?;
 
     let (input, _) = char('(')(input)?;
@@ -1543,7 +1479,6 @@ pub(crate) fn parse_ode(
 pub(crate) fn parse_sum(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) = tag("sum")(input)?;
 
     // println!("step1");
@@ -1602,7 +1537,6 @@ pub(crate) fn parse_sum(
 pub(crate) fn parse_integral(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) =
         tag("integral")(input)?;
 
@@ -1659,7 +1593,6 @@ pub(crate) fn parse_integral(
 pub(crate) fn parse_series_like_function(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, func_name) =
         alt((
             tag("series"),
@@ -1704,39 +1637,33 @@ pub(crate) fn parse_series_like_function(
     let (input, _) = char(')')(input)?;
 
     match func_name {
-        | "series" => {
-            Ok((
-                input,
-                Expr::Series(
-                    Arc::new(arg1),
-                    var_name,
-                    Arc::new(arg3),
-                    Arc::new(arg4),
-                ),
-            ))
-        },
-        | "summation" => {
-            Ok((
-                input,
-                Expr::Summation(
-                    Arc::new(arg1),
-                    var_name,
-                    Arc::new(arg3),
-                    Arc::new(arg4),
-                ),
-            ))
-        },
-        | "product" => {
-            Ok((
-                input,
-                Expr::Product(
-                    Arc::new(arg1),
-                    var_name,
-                    Arc::new(arg3),
-                    Arc::new(arg4),
-                ),
-            ))
-        },
+        | "series" => Ok((
+            input,
+            Expr::Series(
+                Arc::new(arg1),
+                var_name,
+                Arc::new(arg3),
+                Arc::new(arg4),
+            ),
+        )),
+        | "summation" => Ok((
+            input,
+            Expr::Summation(
+                Arc::new(arg1),
+                var_name,
+                Arc::new(arg3),
+                Arc::new(arg4),
+            ),
+        )),
+        | "product" => Ok((
+            input,
+            Expr::Product(
+                Arc::new(arg1),
+                var_name,
+                Arc::new(arg3),
+                Arc::new(arg4),
+            ),
+        )),
         | _ => unreachable!(),
     }
 }
@@ -1744,7 +1671,6 @@ pub(crate) fn parse_series_like_function(
 pub(crate) fn parse_asymptotic_expansion(
     input: &str
 ) -> IResult<&str, Expr> {
-
     // println!("asymptotic_expansion started");
     let (input, _) = tag(
         "asymptotic_expansion",
@@ -1814,7 +1740,6 @@ pub(crate) fn parse_asymptotic_expansion(
 pub(crate) fn parse_fredholm(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) =
         tag("fredholm")(input)?;
 
@@ -1862,7 +1787,6 @@ pub(crate) fn parse_fredholm(
 pub(crate) fn parse_volterra(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) =
         tag("volterra")(input)?;
 
@@ -1910,7 +1834,6 @@ pub(crate) fn parse_volterra(
 pub(crate) fn parse_parametric_solution(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) = tag(
         "parametric_solution",
     )(input)?;
@@ -1941,7 +1864,6 @@ pub(crate) fn parse_parametric_solution(
 pub(crate) fn parse_root_of(
     input: &str
 ) -> IResult<&str, Expr> {
-
     let (input, _) =
         tag("root_of")(input)?;
 
@@ -1977,7 +1899,6 @@ pub(crate) fn parse_root_of(
 pub(crate) fn atom(
     input: &str
 ) -> IResult<&str, Expr> {
-
     alt((
         parse_numeric_literals,
         parse_series_like_function,
@@ -2009,7 +1930,6 @@ pub(crate) fn atom(
 pub(crate) fn parse_float(
     input: &str
 ) -> IResult<&str, f64> {
-
     map_res(
         recognize(pair(
             opt(char('-')),
@@ -2039,7 +1959,6 @@ pub(crate) fn parse_float(
 pub(crate) fn parse_number(
     input: &str
 ) -> IResult<&str, Expr> {
-
     map(
         parse_float,
         Expr::Constant,
@@ -2050,14 +1969,11 @@ pub(crate) fn parse_number(
 pub(crate) fn parse_constant(
     input: &str
 ) -> IResult<&str, Expr> {
-
     alt((
         map(tag("Pi"), |_| {
-
             Expr::Pi
         }),
         map(tag("E"), |_| {
-
             Expr::E
         }),
         map(
@@ -2075,20 +1991,16 @@ pub(crate) fn parse_constant(
 pub(crate) fn parse_variable(
     input: &str
 ) -> IResult<&str, Expr> {
-
     map(
         identifier_name,
         |s: &str| {
-
             // If the identifier contains a quote, treat it as a Predicate (e.g., y'', y')
             if s.contains('\'') {
-
                 Expr::Predicate {
                     name: s.to_string(),
                     args: vec![],
                 }
             } else {
-
                 Expr::Variable(
                     s.to_string(),
                 )
@@ -2101,7 +2013,6 @@ pub(crate) fn parse_variable(
 pub(crate) fn parenthesized_expr(
     input: &str
 ) -> IResult<&str, Expr> {
-
     delimited(
         char('('),
         expr,
@@ -2121,7 +2032,6 @@ mod tests {
     #[test]
 
     fn test_parse_number() {
-
         assert_eq!(
             parse_expr("123.45"),
             Ok((
@@ -2134,7 +2044,6 @@ mod tests {
     #[test]
 
     fn test_parse_variable() {
-
         assert_eq!(
             parse_expr("x"),
             Ok((
@@ -2149,7 +2058,6 @@ mod tests {
     #[test]
 
     fn test_parse_addition() {
-
         assert_eq!(
             parse_expr("x + 2"),
             Ok((
@@ -2167,7 +2075,6 @@ mod tests {
     #[test]
 
     fn test_parse_subtraction() {
-
         assert_eq!(
             parse_expr("y - 3.14"),
             Ok((
@@ -2185,7 +2092,6 @@ mod tests {
     #[test]
 
     fn test_parse_multiplication() {
-
         assert_eq!(
             parse_expr("a * b"),
             Ok((
@@ -2205,7 +2111,6 @@ mod tests {
     #[test]
 
     fn test_parse_division() {
-
         assert_eq!(
             parse_expr("z / 2.5"),
             Ok((
@@ -2223,7 +2128,6 @@ mod tests {
     #[test]
 
     fn test_parse_parentheses() {
-
         assert_eq!(
             parse_expr("(a + b) * c"),
             Ok((
@@ -2248,7 +2152,6 @@ mod tests {
     #[test]
 
     fn test_parse_complex_expression() {
-
         assert_eq!(
             parse_expr("x + y * (z - 1)"),
             Ok((
@@ -2276,7 +2179,6 @@ mod tests {
     #[test]
 
     fn test_parse_unary_negation() {
-
         assert_eq!(
             parse_expr("-x"),
             Ok((
@@ -2293,7 +2195,6 @@ mod tests {
     #[test]
 
     fn test_parse_pi() {
-
         assert_eq!(
             parse_expr("Pi"),
             Ok(("", Expr::Pi))
@@ -2303,7 +2204,6 @@ mod tests {
     #[test]
 
     fn test_parse_e() {
-
         assert_eq!(
             parse_expr("E"),
             Ok(("", Expr::E))
@@ -2313,7 +2213,6 @@ mod tests {
     #[test]
 
     fn test_parse_bigint() {
-
         let expected = Expr::Neg(
             Arc::new(Expr::BigInt(
                 BigInt::from(456),
@@ -2339,7 +2238,6 @@ mod tests {
     #[test]
 
     fn test_parse_rational() {
-
         let expected = Expr::Neg(
             Arc::new(Expr::Div(
                 Arc::new(Expr::BigInt(
@@ -2376,7 +2274,6 @@ mod tests {
     #[test]
 
     fn test_parse_boolean() {
-
         assert_eq!(
             parse_expr("true"),
             Ok((
@@ -2397,7 +2294,6 @@ mod tests {
     #[test]
 
     fn test_parse_infinity() {
-
         assert_eq!(
             parse_expr("Infinity"),
             Ok(("", Expr::Infinity))
@@ -2407,7 +2303,6 @@ mod tests {
     #[test]
 
     fn test_parse_negative_infinity() {
-
         assert_eq!(
             parse_expr("-Infinity"),
             Ok((
@@ -2420,7 +2315,6 @@ mod tests {
     #[test]
 
     fn test_parse_eq() {
-
         assert_eq!(
             parse_expr("x = 5"),
             Ok((
@@ -2438,7 +2332,6 @@ mod tests {
     #[test]
 
     fn test_parse_lt() {
-
         assert_eq!(
             parse_expr("x < 5"),
             Ok((
@@ -2456,7 +2349,6 @@ mod tests {
     #[test]
 
     fn test_parse_gt() {
-
         assert_eq!(
             parse_expr("x > 5"),
             Ok((
@@ -2474,7 +2366,6 @@ mod tests {
     #[test]
 
     fn test_parse_le() {
-
         assert_eq!(
             parse_expr("x <= 5"),
             Ok((
@@ -2492,7 +2383,6 @@ mod tests {
     #[test]
 
     fn test_parse_ge() {
-
         assert_eq!(
             parse_expr("x >= 5"),
             Ok((
@@ -2510,7 +2400,6 @@ mod tests {
     #[test]
 
     fn test_parse_sin() {
-
         assert_eq!(
             parse_expr("sin(x)"),
             Ok((
@@ -2527,7 +2416,6 @@ mod tests {
     #[test]
 
     fn test_parse_cos() {
-
         assert_eq!(
             parse_expr("cos(y+1)"),
             Ok((
@@ -2545,7 +2433,6 @@ mod tests {
     #[test]
 
     fn test_parse_power() {
-
         assert_eq!(
             parse_expr("x^2"),
             Ok((
@@ -2563,7 +2450,6 @@ mod tests {
     #[test]
 
     fn test_parse_sec() {
-
         assert_eq!(
             parse_expr("sec(x)"),
             Ok((
@@ -2580,7 +2466,6 @@ mod tests {
     #[test]
 
     fn test_parse_csc() {
-
         assert_eq!(
             parse_expr("csc(x)"),
             Ok((
@@ -2597,7 +2482,6 @@ mod tests {
     #[test]
 
     fn test_parse_cot() {
-
         assert_eq!(
             parse_expr("cot(x)"),
             Ok((
@@ -2614,7 +2498,6 @@ mod tests {
     #[test]
 
     fn test_parse_arcsin() {
-
         assert_eq!(
             parse_expr("asin(x)"),
             Ok((
@@ -2631,7 +2514,6 @@ mod tests {
     #[test]
 
     fn test_parse_arccos() {
-
         assert_eq!(
             parse_expr("acos(x)"),
             Ok((
@@ -2648,7 +2530,6 @@ mod tests {
     #[test]
 
     fn test_parse_arctan() {
-
         assert_eq!(
             parse_expr("atan(x)"),
             Ok((
@@ -2665,7 +2546,6 @@ mod tests {
     #[test]
 
     fn test_parse_arcsec() {
-
         assert_eq!(
             parse_expr("asec(x)"),
             Ok((
@@ -2682,7 +2562,6 @@ mod tests {
     #[test]
 
     fn test_parse_arccsc() {
-
         assert_eq!(
             parse_expr("acsc(x)"),
             Ok((
@@ -2699,7 +2578,6 @@ mod tests {
     #[test]
 
     fn test_parse_arccot() {
-
         assert_eq!(
             parse_expr("acot(x)"),
             Ok((
@@ -2716,7 +2594,6 @@ mod tests {
     #[test]
 
     fn test_parse_sinh() {
-
         assert_eq!(
             parse_expr("sinh(x)"),
             Ok((
@@ -2733,7 +2610,6 @@ mod tests {
     #[test]
 
     fn test_parse_cosh() {
-
         assert_eq!(
             parse_expr("cosh(x)"),
             Ok((
@@ -2750,7 +2626,6 @@ mod tests {
     #[test]
 
     fn test_parse_tanh() {
-
         assert_eq!(
             parse_expr("tanh(x)"),
             Ok((
@@ -2767,7 +2642,6 @@ mod tests {
     #[test]
 
     fn test_parse_sech() {
-
         assert_eq!(
             parse_expr("sech(x)"),
             Ok((
@@ -2784,7 +2658,6 @@ mod tests {
     #[test]
 
     fn test_parse_csch() {
-
         assert_eq!(
             parse_expr("csch(x)"),
             Ok((
@@ -2801,7 +2674,6 @@ mod tests {
     #[test]
 
     fn test_parse_coth() {
-
         assert_eq!(
             parse_expr("coth(x)"),
             Ok((
@@ -2818,7 +2690,6 @@ mod tests {
     #[test]
 
     fn test_parse_arcsinh() {
-
         assert_eq!(
             parse_expr("asinh(x)"),
             Ok((
@@ -2833,7 +2704,6 @@ mod tests {
     #[test]
 
     fn test_parse_arccosh() {
-
         assert_eq!(
             parse_expr("acosh(x)"),
             Ok((
@@ -2848,7 +2718,6 @@ mod tests {
     #[test]
 
     fn test_parse_arctanh() {
-
         assert_eq!(
             parse_expr("atanh(x)"),
             Ok((
@@ -2863,7 +2732,6 @@ mod tests {
     #[test]
 
     fn test_parse_arcsech() {
-
         assert_eq!(
             parse_expr("asech(x)"),
             Ok((
@@ -2878,7 +2746,6 @@ mod tests {
     #[test]
 
     fn test_parse_arccsch() {
-
         assert_eq!(
             parse_expr("acsch(x)"),
             Ok((
@@ -2893,7 +2760,6 @@ mod tests {
     #[test]
 
     fn test_parse_arccoth() {
-
         assert_eq!(
             parse_expr("acoth(x)"),
             Ok((
@@ -2908,7 +2774,6 @@ mod tests {
     #[test]
 
     fn test_parse_gamma() {
-
         assert_eq!(
             parse_expr("gamma(x)"),
             Ok((
@@ -2925,7 +2790,6 @@ mod tests {
     #[test]
 
     fn test_parse_beta() {
-
         assert_eq!(
             parse_expr("beta(a, b)"),
             Ok((
@@ -2945,7 +2809,6 @@ mod tests {
     #[test]
 
     fn test_parse_erf() {
-
         assert_eq!(
             parse_expr("erf(x)"),
             Ok((
@@ -2962,7 +2825,6 @@ mod tests {
     #[test]
 
     fn test_parse_erfc() {
-
         assert_eq!(
             parse_expr("erfc(x)"),
             Ok((
@@ -2979,7 +2841,6 @@ mod tests {
     #[test]
 
     fn test_parse_erfi() {
-
         assert_eq!(
             parse_expr("erfi(x)"),
             Ok((
@@ -2996,7 +2857,6 @@ mod tests {
     #[test]
 
     fn test_parse_zeta() {
-
         assert_eq!(
             parse_expr("zeta(s)"),
             Ok((
@@ -3013,7 +2873,6 @@ mod tests {
     #[test]
 
     fn test_parse_digamma() {
-
         assert_eq!(
             parse_expr("digamma(x)"),
             Ok((
@@ -3028,7 +2887,6 @@ mod tests {
     #[test]
 
     fn test_parse_besselj() {
-
         assert_eq!(
             parse_expr("besselj(n, x)"),
             Ok((
@@ -3048,7 +2906,6 @@ mod tests {
     #[test]
 
     fn test_parse_bessely() {
-
         assert_eq!(
             parse_expr("bessely(n, x)"),
             Ok((
@@ -3068,7 +2925,6 @@ mod tests {
     #[test]
 
     fn test_parse_legendrep() {
-
         assert_eq!(
             parse_expr("legendrep(n, x)"),
             Ok((
@@ -3088,7 +2944,6 @@ mod tests {
     #[test]
 
     fn test_parse_laguerrel() {
-
         assert_eq!(
             parse_expr("laguerrel(n, x)"),
             Ok((
@@ -3108,7 +2963,6 @@ mod tests {
     #[test]
 
     fn test_parse_hermiteh() {
-
         assert_eq!(
             parse_expr("hermiteh(n, x)"),
             Ok((
@@ -3128,7 +2982,6 @@ mod tests {
     #[test]
 
     fn test_parse_xor() {
-
         assert_eq!(
             parse_expr("xor(a, b)"),
             Ok((
@@ -3148,7 +3001,6 @@ mod tests {
     #[test]
 
     fn test_parse_implies() {
-
         assert_eq!(
             parse_expr("implies(a, b)"),
             Ok((
@@ -3168,7 +3020,6 @@ mod tests {
     #[test]
 
     fn test_parse_and() {
-
         assert_eq!(
             parse_expr("and(a, b, c)"),
             Ok((
@@ -3191,7 +3042,6 @@ mod tests {
     #[test]
 
     fn test_parse_forall() {
-
         assert_eq!(
             parse_expr("forall x. P(x)"),
             Ok((
@@ -3212,7 +3062,6 @@ mod tests {
     #[test]
 
     fn test_parse_floor() {
-
         assert_eq!(
             parse_expr("floor(3.14)"),
             Ok((
@@ -3229,7 +3078,6 @@ mod tests {
     #[test]
 
     fn test_parse_is_prime() {
-
         assert_eq!(
             parse_expr("is_prime(7)"),
             Ok((
@@ -3248,7 +3096,6 @@ mod tests {
     #[test]
 
     fn test_parse_gcd() {
-
         assert_eq!(
             parse_expr("gcd(12, 18)"),
             Ok((
@@ -3272,7 +3119,6 @@ mod tests {
     #[test]
 
     fn test_parse_mod() {
-
         assert_eq!(
             parse_expr("mod(10, 3)"),
             Ok((
@@ -3296,7 +3142,6 @@ mod tests {
     #[test]
 
     fn test_parse_vector() {
-
         assert_eq!(
             parse_expr(
                 "vector(1, 2, 3)"
@@ -3315,7 +3160,6 @@ mod tests {
     #[test]
 
     fn test_parse_complex() {
-
         assert_eq!(
             parse_expr("complex(1, 2)"),
             Ok((
@@ -3339,7 +3183,6 @@ mod tests {
     #[test]
 
     fn test_parse_transpose() {
-
         assert_eq!(
             parse_expr("transpose(A)"),
             Ok((
@@ -3354,7 +3197,6 @@ mod tests {
     #[test]
 
     fn test_parse_inverse() {
-
         assert_eq!(
             parse_expr("inverse(A)"),
             Ok((
@@ -3369,7 +3211,6 @@ mod tests {
     #[test]
 
     fn test_parse_matrix_mul() {
-
         assert_eq!(
             parse_expr("matrix_mul(A, B)"),
             Ok((
@@ -3389,7 +3230,6 @@ mod tests {
     #[test]
 
     fn test_parse_derivative_n() {
-
         assert_eq!(
             parse_expr("derivative_n(f(x), x, 2)"),
             Ok((
@@ -3411,7 +3251,6 @@ mod tests {
     #[test]
 
     fn test_parse_volume_integral() {
-
         assert_eq!(
             parse_expr("volume_integral(f(x,y,z), V)"),
             Ok((
@@ -3436,7 +3275,6 @@ mod tests {
     #[test]
 
     fn test_parse_series() {
-
         assert_eq!(
             parse_expr("series(f(x), x, 0, 3)"),
             Ok((
@@ -3459,7 +3297,6 @@ mod tests {
     #[test]
 
     fn test_parse_summation() {
-
         assert_eq!(
             parse_expr("summation(i, i, 1, N)"),
             Ok((
@@ -3482,7 +3319,6 @@ mod tests {
 
     fn test_parse_convergence_analysis()
     {
-
         assert_eq!(
             parse_expr("convergence_analysis(sum(1/n, n, 1, inf), n)"),
             Ok((
@@ -3512,7 +3348,6 @@ mod tests {
     #[test]
 
     fn test_parse_general_solution() {
-
         assert_eq!(
             parse_expr("general_solution(C1*cos(x) + C2*sin(x))"),
             Ok((
@@ -3543,7 +3378,6 @@ mod tests {
 
     fn test_parse_particular_solution()
     {
-
         assert_eq!(
             parse_expr("particular_solution(sin(x))"),
             Ok((
@@ -3560,7 +3394,6 @@ mod tests {
     #[test]
 
     fn test_parse_fredholm() {
-
         assert_eq!(
             parse_expr("fredholm(K(x,t), f(t), a, b)"),
             Ok((
@@ -3593,7 +3426,6 @@ mod tests {
     #[test]
 
     fn test_parse_apply() {
-
         assert_eq!(
             parse_expr("apply(f, x)"),
             Ok((
@@ -3613,7 +3445,6 @@ mod tests {
     #[test]
 
     fn test_parse_max() {
-
         assert_eq!(
             parse_expr("max(x, y)"),
             Ok((
@@ -3634,7 +3465,6 @@ mod tests {
 
     fn test_parse_quantity_with_value()
     {
-
         assert_eq!(
             parse_expr("quantity_with_value(10, \"m\")"),
             Ok((
@@ -3650,7 +3480,6 @@ mod tests {
     #[test]
 
     fn test_parse_tuple() {
-
         assert_eq!(
             parse_expr(
                 "tuple(1, x, true)"
@@ -3671,7 +3500,6 @@ mod tests {
     #[test]
 
     fn test_parse_system() {
-
         assert_eq!(
             parse_expr(
                 "system(eq1, eq2)"
@@ -3697,7 +3525,6 @@ mod tests {
     #[test]
 
     fn test_parse_solutions() {
-
         assert_eq!(
             parse_expr(
                 "solutions(sol1, sol2)"
@@ -3723,7 +3550,6 @@ mod tests {
     #[test]
 
     fn test_parse_boundary() {
-
         assert_eq!(
             parse_expr("boundary(D)"),
             Ok((
@@ -3738,7 +3564,6 @@ mod tests {
     #[test]
 
     fn test_parse_domain() {
-
         assert_eq!(
             parse_expr("domain(R)"),
             Ok((
@@ -3753,7 +3578,6 @@ mod tests {
     #[test]
 
     fn test_parse_solve() {
-
         assert_eq!(
             parse_expr("solve(x^2 - 4 = 0, x)"),
             Ok((
@@ -3781,7 +3605,6 @@ mod tests {
 
     fn test_parse_parametric_solution()
     {
-
         assert_eq!(
             parse_expr("parametric_solution(t^2, t)"),
             Ok((
@@ -3804,7 +3627,6 @@ mod tests {
     #[test]
 
     fn test_parse_infinite_solutions() {
-
         assert_eq!(
             parse_expr(
                 "InfiniteSolutions"
@@ -3819,7 +3641,6 @@ mod tests {
     #[test]
 
     fn test_parse_no_solution() {
-
         assert_eq!(
             parse_expr("NoSolution"),
             Ok(("", Expr::NoSolution))
@@ -3829,7 +3650,6 @@ mod tests {
     #[test]
 
     fn test_parse_root_of() {
-
         assert_eq!(
             parse_expr("root_of(x^2 - 1, 1)"),
             Ok((
@@ -3853,7 +3673,6 @@ mod tests {
     #[test]
 
     fn test_parse_substitute() {
-
         assert_eq!(
             parse_expr("substitute(x^2, x, 2)"),
             Ok((
@@ -3875,7 +3694,6 @@ mod tests {
     #[test]
 
     fn test_parse_path() {
-
         assert_eq!(
             parse_expr(
                 "path(Line, 0, 1)"
@@ -3902,7 +3720,6 @@ mod tests {
     #[test]
 
     fn test_parse_volterra() {
-
         assert_eq!(
             parse_expr("volterra(K(x,t), f(t), a, x)"),
             Ok((
@@ -3935,7 +3752,6 @@ mod tests {
     #[test]
 
     fn test_parse_pde() {
-
         assert_eq!(
             parse_expr("pde(u_xx + u_yy = 0, u, [x, y])"),
             Ok((
@@ -3967,7 +3783,6 @@ mod tests {
     #[test]
 
     fn test_parse_ode() {
-
         assert_eq!(
             parse_expr("ode(y'' + y = 0, y, x)"),
             Ok((
@@ -3996,7 +3811,6 @@ mod tests {
 
     fn test_parse_asymptotic_expansion()
     {
-
         assert_eq!(
             parse_expr("asymptotic_expansion(f(x), x, 0, 3)"),
             Ok((
@@ -4019,7 +3833,6 @@ mod tests {
     #[test]
 
     fn test_parse_product() {
-
         assert_eq!(
             parse_expr("product(i, i, 1, N)"),
             Ok((
@@ -4041,7 +3854,6 @@ mod tests {
     #[test]
 
     fn test_parse_sum() {
-
         assert_eq!(
             parse_expr("sum(i^2, i, 1, 10)"),
             Ok((
@@ -4066,7 +3878,6 @@ mod tests {
     #[test]
 
     fn test_parse_surface_integral() {
-
         assert_eq!(
             parse_expr("surface_integral(F(x,y,z), S)"),
             Ok((
@@ -4091,7 +3902,6 @@ mod tests {
     #[test]
 
     fn test_parse_integral() {
-
         assert_eq!(
             parse_expr("integral(x^2, x, 0, 1)"),
             Ok((
@@ -4116,7 +3926,6 @@ mod tests {
     #[test]
 
     fn test_parse_limit() {
-
         assert_eq!(
             parse_expr("limit(f(x), x, 0)"),
             Ok((
@@ -4138,7 +3947,6 @@ mod tests {
     #[test]
 
     fn test_parse_derivative() {
-
         assert_eq!(
             parse_expr("derivative(x^2, x)"),
             Ok((
@@ -4159,7 +3967,6 @@ mod tests {
     #[test]
 
     fn test_parse_matrix() {
-
         assert_eq!(
             parse_expr(
                 "matrix([[1, 2], [3, \
@@ -4192,7 +3999,6 @@ mod tests {
     #[test]
 
     fn test_parse_matrix_vec_mul() {
-
         assert_eq!(
             parse_expr("matrix_vec_mul(A, v)"),
             Ok((
@@ -4212,7 +4018,6 @@ mod tests {
     #[test]
 
     fn test_parse_polynomial() {
-
         print_type_of(&parse_expr(
             "polynomial(1, 2, 3)",
         ));
@@ -4250,7 +4055,6 @@ mod tests {
 
     fn test_parse_polynomial_unwrapped()
     {
-
         let expected_tuple = (
             "",
             Expr::Polynomial(vec![
@@ -4288,7 +4092,6 @@ mod tests {
     #[test]
 
     fn dag_test() {
-
         let a = Expr::new_variable("a");
 
         let b = Expr::new_variable("b");
@@ -4302,7 +4105,6 @@ mod tests {
     #[test]
 
     fn prove_type02() {
-
         let static_string : &'static str = "hello";
 
         let local_string: &str =
@@ -4325,7 +4127,6 @@ mod tests {
     #[test]
 
     fn prove_type() {
-
         let u: i32 = 3;
 
         let i: i32 = 3;
@@ -4345,7 +4146,6 @@ mod tests {
     #[test]
 
     fn test_parse_polynomial02() {
-
         print_type_of(&parse_expr(
             "polynomial(1, 2, 3)",
         ));
@@ -4363,7 +4163,6 @@ mod tests {
     #[test]
 
     fn test_parse_interval() {
-
         print_type_of(&parse_expr(
             "polynomial(1, 2, 3)",
         ));
@@ -4396,7 +4195,6 @@ mod tests {
     #[test]
 
     fn test_parse_union() {
-
         assert_eq!(
             parse_expr(
                 "union(A, B, C)"
@@ -4421,7 +4219,6 @@ mod tests {
     #[test]
 
     fn test_parse_exists() {
-
         assert_eq!(
             parse_expr("exists y. Q(y)"),
             Ok((
@@ -4442,7 +4239,6 @@ mod tests {
     #[test]
 
     fn test_parse_predicate() {
-
         assert_eq!(
             parse_expr("is_prime(x)"),
             Ok((
@@ -4474,7 +4270,6 @@ mod tests {
     #[test]
 
     fn test_parse_or() {
-
         assert_eq!(
             parse_expr("or(x, y)"),
             Ok((
@@ -4494,7 +4289,6 @@ mod tests {
     #[test]
 
     fn test_parse_equivalent() {
-
         assert_eq!(
             parse_expr("equivalent(a, b)"),
             Ok((
@@ -4514,7 +4308,6 @@ mod tests {
     #[test]
 
     fn test_parse_not() {
-
         assert_eq!(
             parse_expr("not x"),
             Ok((
@@ -4546,7 +4339,6 @@ mod tests {
     #[test]
 
     fn test_parse_kronecker_delta() {
-
         assert_eq!(
             parse_expr("kronecker_delta(i, j)"),
             Ok((
@@ -4566,7 +4358,6 @@ mod tests {
     #[test]
 
     fn test_parse_factorial() {
-
         assert_eq!(
             parse_expr("x!"),
             Ok((
@@ -4594,7 +4385,6 @@ mod tests {
     #[test]
 
     fn test_parse_binomial() {
-
         assert_eq!(
             parse_expr("binomial(n, k)"),
             Ok((
@@ -4614,7 +4404,6 @@ mod tests {
     #[test]
 
     fn test_parse_permutation() {
-
         assert_eq!(
             parse_expr("permutation(n, k)"),
             Ok((
@@ -4634,7 +4423,6 @@ mod tests {
     #[test]
 
     fn test_parse_combination() {
-
         assert_eq!(
             parse_expr("combination(n, k)"),
             Ok((
@@ -4654,7 +4442,6 @@ mod tests {
     #[test]
 
     fn test_parse_falling_factorial() {
-
         assert_eq!(
             parse_expr("falling_factorial(x, n)"),
             Ok((
@@ -4674,7 +4461,6 @@ mod tests {
     #[test]
 
     fn test_parse_rising_factorial() {
-
         assert_eq!(
             parse_expr("rising_factorial(x, n)"),
             Ok((
@@ -4694,7 +4480,6 @@ mod tests {
     #[test]
 
     fn test_parse_log_base() {
-
         assert_eq!(
             parse_expr(
                 "log_base(2, 8)"
@@ -4720,7 +4505,6 @@ mod tests {
     #[test]
 
     fn test_parse_atan2() {
-
         assert_eq!(
             parse_expr("atan2(y, x)"),
             Ok((
@@ -4740,7 +4524,6 @@ mod tests {
     #[test]
 
     fn test_parse_power_and_negation() {
-
         assert_eq!(
             parse_expr("-x^2"),
             Ok((
