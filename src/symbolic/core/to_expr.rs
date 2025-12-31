@@ -1,6 +1,5 @@
 #![allow(deprecated)]
 
-
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;
@@ -19,6 +18,7 @@ impl DagNode {
     /// # Errors
     /// Returns an error if the node limit is exceeded or if any child cannot be converted.
 
+    #[allow(clippy::too_many_lines)]
     pub fn to_expr(
         &self
     ) -> Result<Expr, String> {

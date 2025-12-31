@@ -2216,6 +2216,8 @@ pub fn bipartite_minimum_vertex_cover<
 ///
 /// # Returns
 /// A `Vec<(usize, usize)>` representing the edges `(u, v)` in the maximum matching.
+// We keep this unused here because it is makes it pretty easy to read and also easier to debug if a issue is here.
+#[allow(unused_assignments)]
 #[allow(unused_variables)]
 #[must_use]
 
@@ -2434,6 +2436,8 @@ pub(crate) fn hopcroft_karp_dfs<
 /// This function will return an error if a common ancestor cannot be found during
 /// blossom contraction, indicating an internal inconsistency in the algorithm's
 /// state or an invalid graph structure.
+// We keep this unused here because it is makes it pretty easy to read and also easier to debug if a issue is here.
+#[allow(unused_assignments)]
 #[allow(unused_variables)]
 
 pub fn blossom_algorithm<

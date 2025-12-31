@@ -6,6 +6,8 @@
 #![allow(non_local_definitions)]
 #![allow(clippy::cast_ptr_alignment)]
 #![allow(clippy::used_underscore_binding)]
+#![allow(clippy::elidable_lifetime_names)]
+#![allow(clippy::expl_impl_clone_on_copy)]
 
 use abi_stable::sabi_trait;
 use abi_stable::std_types::RBox;

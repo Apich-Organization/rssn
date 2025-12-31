@@ -1,5 +1,8 @@
 //! Handle-based FFI API for numerical integration.
 
+// In this module, some of our docs need these kind of styles.
+#![allow(clippy::doc_overindented_list_items)]
+
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
