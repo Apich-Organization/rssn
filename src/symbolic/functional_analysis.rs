@@ -122,10 +122,7 @@ pub enum LinearOperator {
     /// A multiplication operator `M_g(f)` = g * f.
     Multiplication(Expr),
     /// A composition of two operators (A ∘ B).
-    Composition(
-        Box<LinearOperator>,
-        Box<LinearOperator>,
-    ),
+    Composition(Box<Self>, Box<Self>),
 }
 
 impl LinearOperator {
