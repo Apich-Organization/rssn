@@ -118,7 +118,7 @@ pub fn solve_linear_system(
 
         let mut particular =
             vec![0.0; cols];
-
+        #[warn(clippy::collection_is_never_read)]
         let mut _pivot_cols = Vec::new();
 
         let mut lead = 0;

@@ -887,15 +887,7 @@ pub fn solve_linear_system(
         }
     }
 
-    let free_cols: Vec<usize> = (0
-        .. a_cols)
-        .filter(|c| {
-
-            !pivot_cols.contains(c)
-        })
-        .collect();
-
-    if free_cols.is_empty() {
+    if pivot_cols.len() == a_cols {
 
         let mut solution =
             create_empty_matrix(

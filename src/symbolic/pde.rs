@@ -1792,25 +1792,16 @@ pub fn solve_second_order_pde(
         return None;
     }
 
-    match classify_second_order_pde(
+    let (_a, _b, _c, pde_type) = classify_second_order_pde(
         equation,
         func,
         vars,
-    ) { Some((
-        _a,
-        _b,
-        _c,
-        pde_type,
-    )) => {
+    );
 
-        match pde_type.as_str() {
-            | "Hyperbolic" => solve_wave_equation_1d_dalembert(equation, func, vars),
-            | _ => None,
-        }
-    } _ => {
-
-        None
-    }}
+    match pde_type.as_str() {
+        | "Hyperbolic" => solve_wave_equation_1d_dalembert(equation, func, vars),
+        | _ => None,
+    }
 }
 
 /// Solves the 1D homogeneous wave equation `u_tt = c^2 * u_xx` using D'Alembert's formula.
@@ -3368,12 +3359,7 @@ pub(crate) fn classify_second_order_pde(
     equation: &Expr,
     func: &str,
     vars: &[&str],
-) -> Option<(
-    Expr,
-    Expr,
-    Expr,
-    String,
-)> {
+) -> (Expr, Expr, Expr, String) {
 
     let x = &vars[0];
 
@@ -3494,7 +3480,7 @@ pub(crate) fn classify_second_order_pde(
         },
     );
 
-    Some((a, b, c, pde_type))
+    (a, b, c, pde_type)
 }
 
 pub(crate) fn identify_differential_operator(

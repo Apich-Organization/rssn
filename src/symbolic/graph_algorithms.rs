@@ -3109,10 +3109,7 @@ pub fn algebraic_connectivity<V>(
     graph: &Graph<V>
 ) -> Result<Expr, String>
 where
-    V: Clone,
-    V: Debug,
-    V: Eq,
-    V: Hash,
+    V: Clone + Debug + Eq + Hash,
 {
 
     let laplacian =
