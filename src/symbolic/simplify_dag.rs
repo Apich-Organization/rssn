@@ -521,10 +521,7 @@ pub(crate) fn apply_rules_cot(
                 | Err(_) =>  Some(node.clone()), // Return original if sin(x) fails
             }
         },
-        | Err(_) => {
-
-             Some(node.clone())
-        }, /* Return original if cos(x) fails */
+        | Err(_) => Some(node.clone()), /* Return original if cos(x) fails */
     }
 }
 
@@ -570,10 +567,7 @@ pub(crate) fn apply_rules_csc(
                 | Err(_) =>  Some(node.clone()), // Return original if sin(x) fails
             }
         },
-        | Err(_) => {
-
-             Some(node.clone())
-        }, /* Return original if constant creation fails */
+        | Err(_) => Some(node.clone()), /* Return original if constant creation fails */
     }
 }
 
@@ -619,10 +613,7 @@ pub(crate) fn apply_rules_sec(
                 | Err(_) =>  Some(node.clone()), // Return original if cos(x) fails
             }
         },
-        | Err(_) => {
-
-             Some(node.clone())
-        }, /* Return original if constant creation fails */
+        | Err(_) => Some(node.clone()), /* Return original if constant creation fails */
     }
 }
 
@@ -682,10 +673,7 @@ pub(crate) fn apply_rules_tan(
                 | Err(_) =>  Some(node.clone()), // Return original if cos(x) fails
             }
         },
-        | Err(_) => {
-
-             Some(node.clone())
-        }, /* Return original if sin(x) fails */
+        | Err(_) => Some(node.clone()), /* Return original if sin(x) fails */
     }
 }
 
@@ -1158,10 +1146,7 @@ pub(crate) fn apply_rules_logbase(
                 | Err(_) =>  Some(node.clone()), // Return original if log(base) fails
             }
         },
-        | Err(_) => {
-
-             Some(node.clone())
-        }, /* Return original if log(arg) fails */
+        | Err(_) => Some(node.clone()), /* Return original if log(arg) fails */
     }
 }
 
@@ -1573,10 +1558,7 @@ pub(crate) fn apply_rules_div(
                 | Err(_) =>  Some(node.clone()), // Return original if power operation fails
             }
         },
-        | Err(_) => {
-
-             Some(node.clone())
-        }, /* Return original if neg_one creation fails */
+        | Err(_) => Some(node.clone()), /* Return original if neg_one creation fails */
     }
 }
 

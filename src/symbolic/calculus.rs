@@ -3376,6 +3376,7 @@ pub fn improper_integral(
 }
 
 #[allow(clippy::too_many_lines)]
+
 pub(crate) fn integrate_by_rules(
     expr: &Expr,
     var: &str,

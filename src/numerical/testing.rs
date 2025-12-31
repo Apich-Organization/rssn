@@ -1545,9 +1545,10 @@ pub fn solve_system(
             symbolic_matrix,
             symbolic_rhs,
         )
-        .map_or_else(Vec::new, |sol| {
-            vec![sol]
-        })
+        .map_or_else(
+            Vec::new,
+            |sol| vec![sol],
+        )
     } else {
 
         solve_nonlinear_system_numerical(
