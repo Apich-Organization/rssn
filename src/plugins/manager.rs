@@ -8,22 +8,28 @@
 
 use std::collections::HashMap;
 use std::error::Error;
+use std::sync::Arc;
+use std::sync::LazyLock;
+use std::sync::RwLock;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
 
 use bincode_next::config;
 use bincode_next::serde;
-use std::sync::LazyLock;
 use libloading::Library;
 use libloading::Symbol;
 
 /// Global instance of the PluginManager for FFI access.
-pub static GLOBAL_PLUGIN_MANAGER: LazyLock<RwLock<PluginManager>> =
-    LazyLock::new(|| RwLock::new(PluginManager::empty()));
+
+pub static GLOBAL_PLUGIN_MANAGER:
+    LazyLock<RwLock<PluginManager>> =
+    LazyLock::new(|| {
+        RwLock::new(
+            PluginManager::empty(),
+        )
+    });
 
 use crate::plugins::plugin_c::Plugin;
 use crate::plugins::plugin_c::PluginError;
@@ -44,9 +50,9 @@ type PluginCreate =
 use abi_stable::std_types::RBox;
 
 /// Holds the plugin instance and its current health state.
-use crate::plugins::stable_abi::StablePluginModule;
-/// Holds the plugin instance and its current health state.
 use crate::plugins::stable_abi::StablePlugin_TO;
+/// Holds the plugin instance and its current health state.
+use crate::plugins::stable_abi::StablePluginModule;
 
 /// Holds the plugin instance and its current health state.
 
@@ -193,13 +199,16 @@ impl PluginManager {
         command: &str,
         args: &Expr,
     ) -> Result<Expr, PluginError> {
-        if let Some(managed_plugin) = self
-            .stable_plugins
-            .read()
-            .expect("Lock poisoned")
-            .get(plugin_name)
+
+        if let Some(managed_plugin) =
+            self.stable_plugins
+                .read()
+                .expect("Lock poisoned")
+                .get(plugin_name)
         {
-            let config = config::standard();
+
+            let config =
+                config::standard();
 
             let args_vec = serde::encode_to_vec(args, config).map_err(|e| {
                 PluginError::new(PluginErrorKind::SerializationError, &e.to_string())
@@ -217,13 +226,19 @@ impl PluginManager {
             return Ok(result_expr);
         }
 
-        if let Some(managed_plugin) = self
-            .plugins
-            .read()
-            .expect("Lock poisoned")
-            .get(plugin_name)
+        if let Some(managed_plugin) =
+            self.plugins
+                .read()
+                .expect("Lock poisoned")
+                .get(plugin_name)
         {
-            return managed_plugin.plugin.execute(command, args);
+
+            return managed_plugin
+                .plugin
+                .execute(
+                    command,
+                    args,
+                );
         }
 
         Err(PluginError::new(
@@ -314,6 +329,7 @@ impl PluginManager {
             .remove(name)
             .is_some()
         {
+
             return true;
         }
 
@@ -332,15 +348,34 @@ impl PluginManager {
     #[must_use]
 
     pub fn get_plugin_metadata(
-        &self,
-    ) -> HashMap<String, HashMap<String, String>> {
-        let mut all_metadata = HashMap::new();
+        &self
+    ) -> HashMap<
+        String,
+        HashMap<String, String>,
+    > {
+
+        let mut all_metadata =
+            HashMap::new();
 
         {
-            let plugins_map = self.plugins.read().expect("Lock poisoned");
 
-            for (name, managed) in plugins_map.iter() {
-                all_metadata.insert(name.clone(), managed.plugin.metadata());
+            let plugins_map = self
+                .plugins
+                .read()
+                .expect(
+                    "Lock poisoned",
+                );
+
+            for (name, managed) in
+                plugins_map.iter()
+            {
+
+                all_metadata.insert(
+                    name.clone(),
+                    managed
+                        .plugin
+                        .metadata(),
+                );
             }
         }
 
@@ -410,54 +445,60 @@ impl PluginManager {
         &mut self,
         library_path: &std::path::Path,
     ) -> Result<(), Box<dyn Error>>
-    { unsafe {
+    {
 
-        let library =
-            Library::new(library_path)?;
+        unsafe {
 
-        self.libraries
-            .push(library);
+            let library = Library::new(
+                library_path,
+            )?;
 
-        let library = self
-            .libraries
-            .last()
-            .expect("Library invalid");
+            self.libraries
+                .push(library);
 
-        let module: Symbol<
+            let library = self
+                .libraries
+                .last()
+                .expect(
+                    "Library invalid",
+                );
+
+            let module: Symbol<
             '_,
             *const StablePluginModule,
         > = library.get(
             b"STABLE_PLUGIN_MODULE",
         )?;
 
-        let module = &**module;
+            let module = &**module;
 
-        let plugin = (module.new)();
+            let plugin = (module.new)();
 
-        let plugin_name =
-            (module.name)();
+            let plugin_name =
+                (module.name)();
 
-        let plugin_api_version =
-            (module.version)();
+            let plugin_api_version =
+                (module.version)();
 
-        let crate_version =
-            env!("CARGO_PKG_VERSION");
+            let crate_version = env!(
+                "CARGO_PKG_VERSION"
+            );
 
-        let (p_major, p_minor) =
-            parse_version(
-                &plugin_api_version,
-            )?;
+            let (p_major, p_minor) =
+                parse_version(
+                    &plugin_api_version,
+                )?;
 
-        let (c_major, c_minor) =
-            parse_version(
-                crate_version,
-            )?;
+            let (c_major, c_minor) =
+                parse_version(
+                    crate_version,
+                )?;
 
-        if p_major != c_major
-            || p_minor != c_minor
-        {
+            if p_major != c_major
+                || p_minor != c_minor
+            {
 
-            return Err(format!(
+                return Err(format!(
                 "Plugin '{plugin_name}' has \
                  incompatible API \
                  version {plugin_api_version}. Expected \
@@ -465,23 +506,23 @@ impl PluginManager {
                  with {crate_version}."
             )
             .into());
-        }
+            }
 
-        println!(
+            println!(
             "Successfully loaded \
              stable plugin: {plugin_name} (API \
              version: {plugin_api_version})"
         );
 
-        plugin
-            .on_load()
-            .into_result()
-            .map_err(|e| {
+            plugin
+                .on_load()
+                .into_result()
+                .map_err(|e| {
 
-                e.to_string()
-            })?;
+                    e.to_string()
+                })?;
 
-        let managed_plugin =
+            let managed_plugin =
             ManagedStablePlugin {
                 plugin,
                 health: RwLock::new(
@@ -489,16 +530,20 @@ impl PluginManager {
                 ),
             };
 
-        self.stable_plugins
-            .write()
-            .expect("Unexpected Error")
-            .insert(
-                plugin_name.to_string(),
-                managed_plugin,
-            );
+            self.stable_plugins
+                .write()
+                .expect(
+                    "Unexpected Error",
+                )
+                .insert(
+                    plugin_name
+                        .to_string(),
+                    managed_plugin,
+                );
 
-        Ok(())
-    }}
+            Ok(())
+        }
+    }
 
     /// Loads a single plugin from a dynamic library file.
 
@@ -522,55 +567,63 @@ impl PluginManager {
         &mut self,
         library_path: &std::path::Path,
     ) -> Result<(), Box<dyn Error>>
-    { unsafe {
+    {
 
-        let library =
-            Library::new(library_path)?;
+        unsafe {
 
-        self.libraries
-            .push(library);
-
-        let library = self
-            .libraries
-            .last()
-            .expect("Library invalid");
-
-        let constructor: Symbol<
-            '_,
-            PluginCreate,
-        > = library
-            .get(b"_plugin_create")?;
-
-        let plugin_box_ptr =
-            constructor();
-
-        let plugin_box = Box::from_raw(
-            plugin_box_ptr,
-        );
-
-        let plugin = *plugin_box;
-
-        let plugin_api_version =
-            plugin.api_version();
-
-        let crate_version =
-            env!("CARGO_PKG_VERSION");
-
-        let (p_major, p_minor) =
-            parse_version(
-                plugin_api_version,
+            let library = Library::new(
+                library_path,
             )?;
 
-        let (c_major, c_minor) =
-            parse_version(
-                crate_version,
+            self.libraries
+                .push(library);
+
+            let library = self
+                .libraries
+                .last()
+                .expect(
+                    "Library invalid",
+                );
+
+            let constructor: Symbol<
+                '_,
+                PluginCreate,
+            > = library.get(
+                b"_plugin_create",
             )?;
 
-        if p_major != c_major
-            || p_minor != c_minor
-        {
+            let plugin_box_ptr =
+                constructor();
 
-            return Err(format!(
+            let plugin_box =
+                Box::from_raw(
+                    plugin_box_ptr,
+                );
+
+            let plugin = *plugin_box;
+
+            let plugin_api_version =
+                plugin.api_version();
+
+            let crate_version = env!(
+                "CARGO_PKG_VERSION"
+            );
+
+            let (p_major, p_minor) =
+                parse_version(
+                    plugin_api_version,
+                )?;
+
+            let (c_major, c_minor) =
+                parse_version(
+                    crate_version,
+                )?;
+
+            if p_major != c_major
+                || p_minor != c_minor
+            {
+
+                return Err(format!(
                 "Plugin '{}' has \
                  incompatible API \
                  version {}. Expected \
@@ -580,20 +633,20 @@ impl PluginManager {
                 plugin_api_version,
                 crate_version
             )
-            .into());
-        }
+                .into());
+            }
 
-        println!(
-            "Successfully loaded \
-             plugin: {} (API version: \
-             {})",
-            plugin.name(),
-            plugin_api_version
-        );
+            println!(
+                "Successfully loaded \
+                 plugin: {} (API \
+                 version: {})",
+                plugin.name(),
+                plugin_api_version
+            );
 
-        plugin.on_load()?;
+            plugin.on_load()?;
 
-        let managed_plugin =
+            let managed_plugin =
             ManagedPlugin {
                 plugin,
                 health: RwLock::new(
@@ -601,19 +654,22 @@ impl PluginManager {
                 ),
             };
 
-        self.plugins
-            .write()
-            .expect("Unexpected Error")
-            .insert(
-                managed_plugin
-                    .plugin
-                    .name()
-                    .to_string(),
-                managed_plugin,
-            );
+            self.plugins
+                .write()
+                .expect(
+                    "Unexpected Error",
+                )
+                .insert(
+                    managed_plugin
+                        .plugin
+                        .name()
+                        .to_string(),
+                    managed_plugin,
+                );
 
-        Ok(())
-    }}
+            Ok(())
+        }
+    }
 
     /// Spawns a background thread to periodically perform health checks on all plugins.
 

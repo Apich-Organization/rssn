@@ -202,8 +202,8 @@ pub unsafe extern "C" fn rssn_pow_json(
 /// Returns Pi as JSON.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_pi_json(
-) -> *mut c_char {
+pub extern "C" fn rssn_pi_json()
+-> *mut c_char {
 
     to_json_string(&elementary::pi())
 }
@@ -211,8 +211,8 @@ pub extern "C" fn rssn_pi_json(
 /// Returns Euler's number (e) as JSON.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_e_json(
-) -> *mut c_char {
+pub extern "C" fn rssn_e_json()
+-> *mut c_char {
 
     to_json_string(&elementary::e())
 }

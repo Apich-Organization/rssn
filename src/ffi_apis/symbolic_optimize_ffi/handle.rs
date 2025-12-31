@@ -4,10 +4,10 @@ use std::os::raw::c_char;
 use std::os::raw::c_int;
 
 use crate::symbolic::core::Expr;
+use crate::symbolic::optimize::CriticalPoint;
 use crate::symbolic::optimize::find_constrained_extrema;
 use crate::symbolic::optimize::find_extrema;
 use crate::symbolic::optimize::hessian_matrix;
-use crate::symbolic::optimize::CriticalPoint;
 
 /// # Safety
 ///
@@ -20,40 +20,46 @@ use crate::symbolic::optimize::CriticalPoint;
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
     len: usize,
-) -> Option<Vec<String>> { unsafe {
+) -> Option<Vec<String>> {
 
-    if arr.is_null() {
+    unsafe {
 
-        return None;
-    }
-
-    let mut vars =
-        Vec::with_capacity(len);
-
-    for i in 0 .. len {
-
-        let ptr = *arr.add(i);
-
-        if ptr.is_null() {
+        if arr.is_null() {
 
             return None;
         }
 
-        let c_str = CStr::from_ptr(ptr);
+        let mut vars =
+            Vec::with_capacity(len);
 
-        match c_str.to_str() {
-            | Ok(s) => {
+        for i in 0 .. len {
 
-                vars.push(
-                    s.to_string(),
-                );
-            },
-            | Err(_) => return None,
+            let ptr = *arr.add(i);
+
+            if ptr.is_null() {
+
+                return None;
+            }
+
+            let c_str =
+                CStr::from_ptr(ptr);
+
+            match c_str.to_str() {
+                | Ok(s) => {
+
+                    vars.push(
+                        s.to_string(),
+                    );
+                },
+                | Err(_) => {
+                    return None;
+                },
+            }
         }
-    }
 
-    Some(vars)
-}}
+        Some(vars)
+    }
+}
 
 /// Finds extrema of a function (Handle)
 #[unsafe(no_mangle)]
@@ -217,8 +223,8 @@ pub extern "C" fn rssn_free_critical_point_vec_handle(
 
 /// Frees a Vec<`HashMap`<Expr, Expr>> handle
 #[unsafe(no_mangle)]
-
 #[allow(clippy::implicit_hasher)]
+
 pub extern "C" fn rssn_free_solution_vec_handle(
     ptr: *mut Vec<HashMap<Expr, Expr>>
 ) {

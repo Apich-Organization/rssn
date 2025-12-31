@@ -236,8 +236,7 @@ pub fn gram_schmidt(
 
         for u in &orthogonal_basis {
 
-            let proj =
-                project(b, u)?;
+            let proj = project(b, u)?;
 
             for (j, (_, py)) in proj
                 .into_iter()

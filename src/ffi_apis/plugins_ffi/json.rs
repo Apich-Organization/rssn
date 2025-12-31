@@ -36,14 +36,17 @@ struct PluginExecutionRequest {
 
 pub unsafe extern "C" fn rssn_plugins_execute_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    if json_ptr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if json_ptr.is_null() {
 
-    let json_str = match CStr::from_ptr(
+            return std::ptr::null_mut(
+            );
+        }
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -54,7 +57,7 @@ pub unsafe extern "C" fn rssn_plugins_execute_json(
         },
     };
 
-    let req: PluginExecutionRequest =
+        let req: PluginExecutionRequest =
         match serde_json::from_str(
             json_str,
         ) {
@@ -75,14 +78,14 @@ pub unsafe extern "C" fn rssn_plugins_execute_json(
             },
         };
 
-    let manager =
-        match GLOBAL_PLUGIN_MANAGER
-            .read()
-        {
-            | Ok(m) => m,
-            | Err(_) => {
+        let manager =
+            match GLOBAL_PLUGIN_MANAGER
+                .read()
+            {
+                | Ok(m) => m,
+                | Err(_) => {
 
-                let res: FfiResult<
+                    let res: FfiResult<
                     Expr,
                     String,
                 > = FfiResult {
@@ -94,26 +97,49 @@ pub unsafe extern "C" fn rssn_plugins_execute_json(
                     ),
                 };
 
-                return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
+                    return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
+                },
+            };
+
+        match manager.execute_plugin(
+            &req.plugin_name,
+            &req.command,
+            &req.args,
+        ) {
+            | Ok(result_expr) => {
+
+                let res: FfiResult<
+                    Expr,
+                    String,
+                > = FfiResult {
+                    ok: Some(
+                        result_expr,
+                    ),
+                    err: None,
+                };
+
+                CString::new(
+                serde_json::to_string(
+                    &res,
+                )
+                .unwrap(),
+            )
+            .unwrap()
+            .into_raw()
             },
-        };
+            | Err(e) => {
 
-    match manager.execute_plugin(
-        &req.plugin_name,
-        &req.command,
-        &req.args,
-    ) {
-        | Ok(result_expr) => {
+                let res: FfiResult<
+                    Expr,
+                    String,
+                > = FfiResult {
+                    ok: None,
+                    err: Some(
+                        e.to_string(),
+                    ),
+                };
 
-            let res: FfiResult<
-                Expr,
-                String,
-            > = FfiResult {
-                ok: Some(result_expr),
-                err: None,
-            };
-
-            CString::new(
+                CString::new(
                 serde_json::to_string(
                     &res,
                 )
@@ -121,27 +147,7 @@ pub unsafe extern "C" fn rssn_plugins_execute_json(
             )
             .unwrap()
             .into_raw()
-        },
-        | Err(e) => {
-
-            let res: FfiResult<
-                Expr,
-                String,
-            > = FfiResult {
-                ok: None,
-                err: Some(
-                    e.to_string(),
-                ),
-            };
-
-            CString::new(
-                serde_json::to_string(
-                    &res,
-                )
-                .unwrap(),
-            )
-            .unwrap()
-            .into_raw()
-        },
+            },
+        }
     }
-}}
+}

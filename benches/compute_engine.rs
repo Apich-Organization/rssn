@@ -1,8 +1,8 @@
 use std::hint::black_box;
 use std::sync::Arc;
 
-use criterion::criterion_group;
 use criterion::Criterion;
+use criterion::criterion_group;
 use rssn::compute::engine::ComputeEngine;
 use rssn::symbolic::core::Expr;
 

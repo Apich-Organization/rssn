@@ -62,7 +62,7 @@ pub extern "C" fn rssn_fredholm_solve_neumann_bincode(
         | Some(i) => i,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -98,7 +98,7 @@ pub extern "C" fn rssn_fredholm_solve_separable_bincode(
         | Some(i) => i,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -140,7 +140,7 @@ pub extern "C" fn rssn_volterra_solve_successive_bincode(
         | Some(i) => i,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -174,7 +174,7 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation_bincode(
         | Some(e) => e,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -212,7 +212,7 @@ pub extern "C" fn rssn_solve_airfoil_equation_bincode(
         | Some(i) => i,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 

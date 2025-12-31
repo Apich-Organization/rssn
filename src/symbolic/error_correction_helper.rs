@@ -427,7 +427,11 @@ static GF256_TABLES:
 
         let mut x: u16 = 1;
 
-        for (i, entry) in exp_table.iter_mut().enumerate().take(255) {
+        for (i, entry) in exp_table
+            .iter_mut()
+            .enumerate()
+            .take(255)
+        {
 
             *entry = x as u8;
 
@@ -1235,12 +1239,14 @@ pub fn poly_div_gf(
     let lead_den_inv = den
         .first()
         .ok_or_else(|| {
+
             "Divisor polynomial is \
              empty."
                 .to_string()
         })?
         .inverse()
         .ok_or_else(|| {
+
             "Leading coefficient is \
              not invertible"
                 .to_string()

@@ -118,20 +118,23 @@ pub unsafe extern "C" fn rssn_poly_eval_gf256(
     poly: *const u8,
     len: usize,
     x: u8,
-) -> u8 { unsafe {
+) -> u8 {
 
-    if poly.is_null() || len == 0 {
+    unsafe {
 
-        return 0;
+        if poly.is_null() || len == 0 {
+
+            return 0;
+        }
+
+        let slice =
+            std::slice::from_raw_parts(
+                poly, len,
+            );
+
+        poly_eval_gf256(slice, x)
     }
-
-    let slice =
-        std::slice::from_raw_parts(
-            poly, len,
-        );
-
-    poly_eval_gf256(slice, x)
-}}
+}
 
 /// Adds two polynomials over GF(2^8).
 ///
@@ -153,35 +156,43 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
     p2: *const u8,
     p2_len: usize,
     out_len: *mut usize,
-) -> *mut u8 { unsafe {
+) -> *mut u8 {
 
-    if p1.is_null()
-        || p2.is_null()
-        || out_len.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if p1.is_null()
+            || p2.is_null()
+            || out_len.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let s1 =
+            std::slice::from_raw_parts(
+                p1,
+                p1_len,
+            );
+
+        let s2 =
+            std::slice::from_raw_parts(
+                p2,
+                p2_len,
+            );
+
+        let result =
+            poly_add_gf256(s1, s2);
+
+        *out_len = result.len();
+
+        let boxed =
+            result.into_boxed_slice();
+
+        Box::into_raw(boxed)
+            .cast::<u8>()
     }
-
-    let s1 = std::slice::from_raw_parts(
-        p1,
-        p1_len,
-    );
-
-    let s2 = std::slice::from_raw_parts(
-        p2,
-        p2_len,
-    );
-
-    let result = poly_add_gf256(s1, s2);
-
-    *out_len = result.len();
-
-    let boxed =
-        result.into_boxed_slice();
-
-    Box::into_raw(boxed).cast::<u8>()
-}}
+}
 
 /// Multiplies two polynomials over GF(2^8).
 ///
@@ -203,35 +214,43 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
     p2: *const u8,
     p2_len: usize,
     out_len: *mut usize,
-) -> *mut u8 { unsafe {
+) -> *mut u8 {
 
-    if p1.is_null()
-        || p2.is_null()
-        || out_len.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if p1.is_null()
+            || p2.is_null()
+            || out_len.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let s1 =
+            std::slice::from_raw_parts(
+                p1,
+                p1_len,
+            );
+
+        let s2 =
+            std::slice::from_raw_parts(
+                p2,
+                p2_len,
+            );
+
+        let result =
+            poly_mul_gf256(s1, s2);
+
+        *out_len = result.len();
+
+        let boxed =
+            result.into_boxed_slice();
+
+        Box::into_raw(boxed)
+            .cast::<u8>()
     }
-
-    let s1 = std::slice::from_raw_parts(
-        p1,
-        p1_len,
-    );
-
-    let s2 = std::slice::from_raw_parts(
-        p2,
-        p2_len,
-    );
-
-    let result = poly_mul_gf256(s1, s2);
-
-    *out_len = result.len();
-
-    let boxed =
-        result.into_boxed_slice();
-
-    Box::into_raw(boxed).cast::<u8>()
-}}
+}
 
 /// Scales a polynomial by a constant in GF(2^8).
 ///
@@ -252,30 +271,37 @@ pub unsafe extern "C" fn rssn_poly_scale_gf256(
     len: usize,
     scalar: u8,
     out_len: *mut usize,
-) -> *mut u8 { unsafe {
+) -> *mut u8 {
 
-    if poly.is_null()
-        || out_len.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if poly.is_null()
+            || out_len.is_null()
+        {
 
-    let slice =
-        std::slice::from_raw_parts(
-            poly, len,
+            return std::ptr::null_mut(
+            );
+        }
+
+        let slice =
+            std::slice::from_raw_parts(
+                poly, len,
+            );
+
+        let result = poly_scale_gf256(
+            slice,
+            scalar,
         );
 
-    let result =
-        poly_scale_gf256(slice, scalar);
+        *out_len = result.len();
 
-    *out_len = result.len();
+        let boxed =
+            result.into_boxed_slice();
 
-    let boxed =
-        result.into_boxed_slice();
-
-    Box::into_raw(boxed).cast::<u8>()
-}}
+        Box::into_raw(boxed)
+            .cast::<u8>()
+    }
+}
 
 /// Computes the formal derivative of a polynomial in GF(2^8).
 ///
@@ -295,30 +321,37 @@ pub unsafe extern "C" fn rssn_poly_derivative_gf256(
     poly: *const u8,
     len: usize,
     out_len: *mut usize,
-) -> *mut u8 { unsafe {
+) -> *mut u8 {
 
-    if poly.is_null()
-        || out_len.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if poly.is_null()
+            || out_len.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let slice =
+            std::slice::from_raw_parts(
+                poly, len,
+            );
+
+        let result =
+            poly_derivative_gf256(
+                slice,
+            );
+
+        *out_len = result.len();
+
+        let boxed =
+            result.into_boxed_slice();
+
+        Box::into_raw(boxed)
+            .cast::<u8>()
     }
-
-    let slice =
-        std::slice::from_raw_parts(
-            poly, len,
-        );
-
-    let result =
-        poly_derivative_gf256(slice);
-
-    *out_len = result.len();
-
-    let boxed =
-        result.into_boxed_slice();
-
-    Box::into_raw(boxed).cast::<u8>()
-}}
+}
 
 /// Computes the GCD of two polynomials over GF(2^8).
 ///
@@ -340,35 +373,43 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
     p2: *const u8,
     p2_len: usize,
     out_len: *mut usize,
-) -> *mut u8 { unsafe {
+) -> *mut u8 {
 
-    if p1.is_null()
-        || p2.is_null()
-        || out_len.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if p1.is_null()
+            || p2.is_null()
+            || out_len.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let s1 =
+            std::slice::from_raw_parts(
+                p1,
+                p1_len,
+            );
+
+        let s2 =
+            std::slice::from_raw_parts(
+                p2,
+                p2_len,
+            );
+
+        let result =
+            poly_gcd_gf256(s1, s2);
+
+        *out_len = result.len();
+
+        let boxed =
+            result.into_boxed_slice();
+
+        Box::into_raw(boxed)
+            .cast::<u8>()
     }
-
-    let s1 = std::slice::from_raw_parts(
-        p1,
-        p1_len,
-    );
-
-    let s2 = std::slice::from_raw_parts(
-        p2,
-        p2_len,
-    );
-
-    let result = poly_gcd_gf256(s1, s2);
-
-    *out_len = result.len();
-
-    let boxed =
-        result.into_boxed_slice();
-
-    Box::into_raw(boxed).cast::<u8>()
-}}
+}
 
 /// Creates a new finite field GF(modulus).
 ///
@@ -400,13 +441,16 @@ pub extern "C" fn rssn_finite_field_new(
 
 pub unsafe extern "C" fn rssn_finite_field_free(
     field: *mut Arc<FiniteField>
-) { unsafe {
+) {
 
-    if !field.is_null() {
+    unsafe {
 
-        drop(Box::from_raw(field));
+        if !field.is_null() {
+
+            drop(Box::from_raw(field));
+        }
     }
-}}
+}
 
 /// Adds two polynomials over a general finite field.
 ///
@@ -426,31 +470,35 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
     p1: *const Expr,
     p2: *const Expr,
     field: *const Arc<FiniteField>,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if p1.is_null()
-        || p2.is_null()
-        || field.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if p1.is_null()
+            || p2.is_null()
+            || field.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        match poly_add_gf(
+            &*p1,
+            &*p2,
+            &*field,
+        ) {
+            | Ok(result) => {
+                Box::into_raw(Box::new(
+                    result,
+                ))
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
+        }
     }
-
-    match poly_add_gf(
-        &*p1,
-        &*p2,
-        &*field,
-    ) {
-        | Ok(result) => {
-            Box::into_raw(Box::new(
-                result,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
-    }
-}}
+}
 
 /// Multiplies two polynomials over a general finite field.
 ///
@@ -470,28 +518,32 @@ pub unsafe extern "C" fn rssn_poly_mul_gf(
     p1: *const Expr,
     p2: *const Expr,
     field: *const Arc<FiniteField>,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if p1.is_null()
-        || p2.is_null()
-        || field.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if p1.is_null()
+            || p2.is_null()
+            || field.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        match poly_mul_gf(
+            &*p1,
+            &*p2,
+            &*field,
+        ) {
+            | Ok(result) => {
+                Box::into_raw(Box::new(
+                    result,
+                ))
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
+        }
     }
-
-    match poly_mul_gf(
-        &*p1,
-        &*p2,
-        &*field,
-    ) {
-        | Ok(result) => {
-            Box::into_raw(Box::new(
-                result,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
-    }
-}}
+}

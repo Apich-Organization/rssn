@@ -55,8 +55,8 @@ fn test_gradient_x_squared() {
 /// At (x, y) = (1, 2), the gradient is (2, 4).
 #[test]
 
-fn test_gradient_x_squared_plus_y_squared(
-) {
+fn test_gradient_x_squared_plus_y_squared()
+ {
 
     let x =
         Expr::Variable("x".to_string());

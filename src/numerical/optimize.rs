@@ -750,9 +750,9 @@ impl EquationOptimizer {
     ) -> PsoSolveResult<C, Error>
     where
         C: CostFunction<
-            Param = Array1<f64>,
-            Output = f64,
-        >,
+                Param = Array1<f64>,
+                Output = f64,
+            >,
     {
 
         let solver = ParticleSwarm::new(
@@ -810,9 +810,9 @@ impl ResultAnalyzer {
 
     pub fn print_optimization_result<
         S: State<
-            Param = Array1<f64>,
-            Float = f64,
-        >,
+                Param = Array1<f64>,
+                Float = f64,
+            >,
     >(
         state: &S
     ) {

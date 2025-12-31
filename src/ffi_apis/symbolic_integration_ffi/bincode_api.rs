@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::integration::integrate_rational_function_expr;
 use crate::symbolic::integration::risch_norman_integrate;
@@ -19,19 +19,18 @@ pub extern "C" fn rssn_bincode_risch_norman_integrate(
     let x: Option<String> =
         from_bincode_buffer(&x_buf);
 
-    match (expr, x)
-    { (Some(e), Some(var)) => {
+    match (expr, x) {
+        | (Some(e), Some(var)) => {
 
-        let result =
-            risch_norman_integrate(
-                &e, &var,
-            );
+            let result =
+                risch_norman_integrate(
+                    &e, &var,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Integrates a rational function (Bincode)

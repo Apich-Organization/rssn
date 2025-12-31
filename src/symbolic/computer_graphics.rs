@@ -819,9 +819,10 @@ impl BezierCurve {
 
         let mut pyramid: Vec<
             Vec<Vector>,
-        > = vec![self
-            .control_points
-            .clone()];
+        > = vec![
+            self.control_points
+                .clone(),
+        ];
 
         // Build the De Casteljau pyramid
         for level in 1 .. n {

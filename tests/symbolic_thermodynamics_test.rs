@@ -64,7 +64,9 @@ fn test_boltzmann_entropy() {
 
     assert!(s_str.contains("k_B"));
 
-    assert!(s_str.contains("ln(Omega)"));
+    assert!(
+        s_str.contains("ln(Omega)")
+    );
 }
 
 #[test]

@@ -9,15 +9,15 @@ use num_bigint::BigInt;
 
 use crate::ffi_apis::common::from_json_string;
 use crate::ffi_apis::common::to_json_string;
+use crate::symbolic::cryptography::CurvePoint;
+use crate::symbolic::cryptography::EcdsaSignature;
+use crate::symbolic::cryptography::EllipticCurve;
 use crate::symbolic::cryptography::ecdsa_sign;
 use crate::symbolic::cryptography::ecdsa_verify;
 use crate::symbolic::cryptography::generate_keypair;
 use crate::symbolic::cryptography::generate_shared_secret;
 use crate::symbolic::cryptography::point_compress;
 use crate::symbolic::cryptography::point_decompress;
-use crate::symbolic::cryptography::CurvePoint;
-use crate::symbolic::cryptography::EcdsaSignature;
-use crate::symbolic::cryptography::EllipticCurve;
 use crate::symbolic::finite_field::PrimeField;
 use crate::symbolic::finite_field::PrimeFieldElement;
 
@@ -135,8 +135,8 @@ pub unsafe extern "C" fn rssn_json_curve_point_affine(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_json_curve_point_infinity(
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_curve_point_infinity()
+-> *mut c_char {
 
     to_json_string(
         &CurvePoint::Infinity,

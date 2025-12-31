@@ -283,7 +283,11 @@ pub fn isolate_real_roots(
             let mut high = b;
 
             loop {
-                if (high - low).abs() <= precision {
+
+                if (high - low).abs()
+                    <= precision
+                {
+
                     break;
                 }
 
@@ -397,7 +401,9 @@ pub(crate) fn root_bound(
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
 
-pub fn eval_expr<S: std::hash::BuildHasher>(
+pub fn eval_expr<
+    S: std::hash::BuildHasher,
+>(
     expr: &Expr,
     vars: &HashMap<String, f64, S>,
 ) -> f64 {

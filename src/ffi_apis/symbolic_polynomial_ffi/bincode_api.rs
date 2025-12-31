@@ -2,9 +2,9 @@
 
 use std::os::raw::c_char;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::contains_var;
 use crate::symbolic::polynomial::is_polynomial;
@@ -39,14 +39,12 @@ pub extern "C" fn rssn_bincode_polynomial_is_polynomial(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
-
-        is_polynomial(&e, v)
-    } _ => {
-
-        false
-    }}
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
+            is_polynomial(&e, v)
+        },
+        | _ => false,
+    }
 }
 
 /// Computes the degree of a polynomial (bincode)
@@ -75,14 +73,12 @@ pub extern "C" fn rssn_bincode_polynomial_degree(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
-
-        polynomial_degree(&e, v)
-    } _ => {
-
-        -1
-    }}
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
+            polynomial_degree(&e, v)
+        },
+        | _ => -1,
+    }
 }
 
 /// Performs polynomial long division (bincode)
@@ -123,25 +119,25 @@ pub extern "C" fn rssn_bincode_polynomial_long_division(
         dividend,
         divisor,
         var_str,
-    ) { (
-        Some(d),
-        Some(div),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(d),
+            Some(div),
+            Some(v),
+        ) => {
 
-        let (quotient, remainder) =
-            polynomial_long_division(
-                &d, &div, v,
-            );
+            let (quotient, remainder) =
+                polynomial_long_division(
+                    &d, &div, v,
+                );
 
-        let result =
-            (quotient, remainder);
+            let result =
+                (quotient, remainder);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Finds the leading coefficient of a polynomial (bincode)
@@ -170,17 +166,18 @@ pub extern "C" fn rssn_bincode_polynomial_leading_coefficient(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
 
-        let result =
-            leading_coefficient(&e, v);
+            let result =
+                leading_coefficient(
+                    &e, v,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Converts polynomial to coefficient vector (bincode)
@@ -209,19 +206,18 @@ pub extern "C" fn rssn_bincode_polynomial_to_coeffs_vec(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
 
-        let coeffs =
+            let coeffs =
             to_polynomial_coeffs_vec(
                 &e, v,
             );
 
-        to_bincode_buffer(&coeffs)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&coeffs)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Checks if an expression contains a variable (bincode)
@@ -250,12 +246,10 @@ pub extern "C" fn rssn_bincode_polynomial_contains_var(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
-
-        contains_var(&e, v)
-    } _ => {
-
-        false
-    }}
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
+            contains_var(&e, v)
+        },
+        | _ => false,
+    }
 }

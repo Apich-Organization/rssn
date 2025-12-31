@@ -288,8 +288,10 @@ fn test_cad_ffi_json() {
     .to_str()
     .unwrap();
 
-    assert!(result_json
-        .contains("\"cells\""));
+    assert!(
+        result_json
+            .contains("\"cells\"")
+    );
 
     assert!(result_json.contains("5"));
 

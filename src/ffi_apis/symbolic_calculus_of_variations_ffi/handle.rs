@@ -16,18 +16,21 @@ use crate::symbolic::core::Expr;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> { unsafe {
+) -> Option<&'a str> {
 
-    if s.is_null() {
+    unsafe {
 
-        None
-    } else {
+        if s.is_null() {
 
-        CStr::from_ptr(s)
-            .to_str()
-            .ok()
+            None
+        } else {
+
+            CStr::from_ptr(s)
+                .to_str()
+                .ok()
+        }
     }
-}}
+}
 
 /// Computes the Euler-Lagrange equation for a given Lagrangian.
 ///
@@ -47,19 +50,23 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
     lagrangian: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if lagrangian.is_null()
-        || func.is_null()
-        || var.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if lagrangian.is_null()
+            || func.is_null()
+            || var.is_null()
+        {
 
-    let lagrangian_ref = &*lagrangian;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let func_str = match c_str_to_str(
+        let lagrangian_ref =
+            &*lagrangian;
+
+        let func_str = match c_str_to_str(
         func,
     ) {
         | Some(s) => s,
@@ -68,7 +75,7 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
         },
     };
 
-    let var_str = match c_str_to_str(
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -77,14 +84,15 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
         },
     };
 
-    Box::into_raw(Box::new(
+        Box::into_raw(Box::new(
         calculus_of_variations::euler_lagrange(
             lagrangian_ref,
             func_str,
             var_str,
         ),
     ))
-}}
+    }
+}
 
 /// Generates and attempts to solve the Euler-Lagrange equation.
 ///
@@ -104,19 +112,23 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
     lagrangian: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if lagrangian.is_null()
-        || func.is_null()
-        || var.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if lagrangian.is_null()
+            || func.is_null()
+            || var.is_null()
+        {
 
-    let lagrangian_ref = &*lagrangian;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let func_str = match c_str_to_str(
+        let lagrangian_ref =
+            &*lagrangian;
+
+        let func_str = match c_str_to_str(
         func,
     ) {
         | Some(s) => s,
@@ -125,7 +137,7 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
         },
     };
 
-    let var_str = match c_str_to_str(
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -134,14 +146,15 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
         },
     };
 
-    Box::into_raw(Box::new(
+        Box::into_raw(Box::new(
         calculus_of_variations::solve_euler_lagrange(
             lagrangian_ref,
             func_str,
             var_str,
         ),
     ))
-}}
+    }
+}
 
 /// Applies Hamilton's Principle to derive the equations of motion.
 ///
@@ -161,19 +174,23 @@ pub unsafe extern "C" fn rssn_hamiltons_principle(
     lagrangian: *const Expr,
     func: *const c_char,
     var: *const c_char,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if lagrangian.is_null()
-        || func.is_null()
-        || var.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if lagrangian.is_null()
+            || func.is_null()
+            || var.is_null()
+        {
 
-    let lagrangian_ref = &*lagrangian;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let func_str = match c_str_to_str(
+        let lagrangian_ref =
+            &*lagrangian;
+
+        let func_str = match c_str_to_str(
         func,
     ) {
         | Some(s) => s,
@@ -182,7 +199,7 @@ pub unsafe extern "C" fn rssn_hamiltons_principle(
         },
     };
 
-    let var_str = match c_str_to_str(
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -191,11 +208,12 @@ pub unsafe extern "C" fn rssn_hamiltons_principle(
         },
     };
 
-    Box::into_raw(Box::new(
+        Box::into_raw(Box::new(
         calculus_of_variations::hamiltons_principle(
             lagrangian_ref,
             func_str,
             var_str,
         ),
     ))
-}}
+    }
+}

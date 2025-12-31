@@ -5,8 +5,8 @@ use crate::jit::JitEngine;
 /// Creates a new JIT Engine instance.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_jit_create(
-) -> *mut JitEngine {
+pub extern "C" fn rssn_jit_create()
+-> *mut JitEngine {
 
     Box::into_raw(Box::new(
         JitEngine::new(),
@@ -26,13 +26,17 @@ pub extern "C" fn rssn_jit_create(
 
 pub unsafe extern "C" fn rssn_jit_free(
     engine: *mut JitEngine
-) { unsafe {
+) {
 
-    if !engine.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(engine);
+        if !engine.is_null() {
+
+            let _ =
+                Box::from_raw(engine);
+        }
     }
-}}
+}
 
 /// Executes a JIT-compiled function pointer.
 ///
@@ -51,14 +55,16 @@ pub unsafe extern "C" fn rssn_jit_free(
 
 pub unsafe extern "C" fn rssn_jit_execute(
     func_ptr: *const u8
-) -> f64 { unsafe {
+) -> f64 {
 
-    if func_ptr.is_null() {
+    unsafe {
 
-        return 0.0;
-    }
+        if func_ptr.is_null() {
 
-    /// # Safety
+            return 0.0;
+        }
+
+        /// # Safety
     ///
     /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
     /// The caller must ensure:
@@ -67,8 +73,9 @@ pub unsafe extern "C" fn rssn_jit_execute(
     /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
     let func: unsafe extern "C" fn() -> f64 = std::mem::transmute(func_ptr);
 
-    func()
-}}
+        func()
+    }
+}
 
 /// Registers a custom instruction handler.
 ///
@@ -90,20 +97,23 @@ pub unsafe extern "C" fn rssn_jit_register_custom_op(
     opcode: u32,
     func_ptr: *const u8,
     arg_count: usize,
-) { unsafe {
+) {
 
-    if engine.is_null()
-        || func_ptr.is_null()
-    {
+    unsafe {
 
-        return;
+        if engine.is_null()
+            || func_ptr.is_null()
+        {
+
+            return;
+        }
+
+        let engine = &mut *engine;
+
+        engine.register_custom_op(
+            opcode,
+            func_ptr,
+            arg_count,
+        );
     }
-
-    let engine = &mut *engine;
-
-    engine.register_custom_op(
-        opcode,
-        func_ptr,
-        arg_count,
-    );
-}}
+}

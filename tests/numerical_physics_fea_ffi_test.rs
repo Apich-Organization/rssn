@@ -8,8 +8,8 @@ use std::ffi::CString;
 
 #[test]
 
-fn test_material_steel_shear_modulus_handle(
-) {
+fn test_material_steel_shear_modulus_handle()
+ {
 
     let g = rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_material_steel_shear_modulus();
 
@@ -18,8 +18,8 @@ fn test_material_steel_shear_modulus_handle(
 
 #[test]
 
-fn test_material_aluminum_shear_modulus_handle(
-) {
+fn test_material_aluminum_shear_modulus_handle()
+ {
 
     let g = rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_material_aluminum_shear_modulus();
 
@@ -50,8 +50,8 @@ fn test_bulk_modulus_handle() {
 
 #[test]
 
-fn test_linear_element_1d_stiffness_handle(
-) {
+fn test_linear_element_1d_stiffness_handle()
+ {
 
     let k =
         rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_linear_element_1d_stiffness(
@@ -131,8 +131,8 @@ fn test_safety_factor_handle() {
 
 #[test]
 
-fn test_thermal_element_1d_conductivity_handle(
-) {
+fn test_thermal_element_1d_conductivity_handle()
+ {
 
     let k = rssn::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_thermal_element_1d_conductivity(
         1.0, 50.0, 0.001,
@@ -186,8 +186,8 @@ fn test_material_steel_json() {
 
 #[test]
 
-fn test_linear_element_1d_stiffness_json(
-) {
+fn test_linear_element_1d_stiffness_json()
+ {
 
     let input = r#"{"length": 1.0, "youngs_modulus": 200e9, "area": 0.001}"#;
 

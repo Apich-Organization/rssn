@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::convergence::analyze_convergence;
 use crate::symbolic::core::Expr;
 
@@ -28,15 +28,16 @@ pub extern "C" fn rssn_bincode_analyze_convergence(
     let var: Option<String> =
         from_bincode_buffer(&var_buf);
 
-    match (term, var)
-    { (Some(t), Some(v)) => {
+    match (term, var) {
+        | (Some(t), Some(v)) => {
 
-        let result =
-            analyze_convergence(&t, &v);
+            let result =
+                analyze_convergence(
+                    &t, &v,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

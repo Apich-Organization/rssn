@@ -25,34 +25,37 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
     var: *const c_char,
     at_point: f64,
     order: usize,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if f.is_null() || var.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
-    }
-
-    let f_expr = &*f;
-
-    let var_str =
-        match CStr::from_ptr(var)
-            .to_str()
+        if f.is_null() || var.is_null()
         {
-            | Ok(s) => s,
-            | Err(_) => {
 
-                update_last_error(
+            return ptr::null_mut();
+        }
+
+        let f_expr = &*f;
+
+        let var_str =
+            match CStr::from_ptr(var)
+                .to_str()
+            {
+                | Ok(s) => s,
+                | Err(_) => {
+
+                    update_last_error(
                     "Invalid UTF-8 \
                      string for \
                      variable name"
                         .to_string(),
                 );
 
-                return ptr::null_mut();
-            },
-        };
+                    return ptr::null_mut();
+                },
+            };
 
-    match series::taylor_coefficients(
+        match series::taylor_coefficients(
         f_expr,
         var_str,
         at_point,
@@ -70,7 +73,8 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
             ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 /// Evaluates a power series at a point.
 #[unsafe(no_mangle)]
@@ -87,19 +91,22 @@ pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
     coeffs: *const Vec<f64>,
     at_point: f64,
     x: f64,
-) -> f64 { unsafe {
+) -> f64 {
 
-    if coeffs.is_null() {
+    unsafe {
 
-        return 0.0;
+        if coeffs.is_null() {
+
+            return 0.0;
+        }
+
+        series::evaluate_power_series(
+            &*coeffs,
+            at_point,
+            x,
+        )
     }
-
-    series::evaluate_power_series(
-        &*coeffs,
-        at_point,
-        x,
-    )
-}}
+}
 
 /// Computes the sum of a series.
 #[unsafe(no_mangle)]
@@ -118,53 +125,56 @@ pub unsafe extern "C" fn rssn_numerical_sum_series(
     start: i64,
     end: i64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if f.is_null()
-        || var.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        return -1;
-    }
-
-    let f_expr = &*f;
-
-    let var_str =
-        match CStr::from_ptr(var)
-            .to_str()
+        if f.is_null()
+            || var.is_null()
+            || result.is_null()
         {
-            | Ok(s) => s,
-            | Err(_) => {
 
-                update_last_error(
+            return -1;
+        }
+
+        let f_expr = &*f;
+
+        let var_str =
+            match CStr::from_ptr(var)
+                .to_str()
+            {
+                | Ok(s) => s,
+                | Err(_) => {
+
+                    update_last_error(
                     "Invalid UTF-8 \
                      string for \
                      variable name"
                         .to_string(),
                 );
 
-                return -1;
+                    return -1;
+                },
+            };
+
+        match series::sum_series(
+            f_expr,
+            var_str,
+            start,
+            end,
+        ) {
+            | Ok(val) => {
+
+                *result = val;
+
+                0
             },
-        };
+            | Err(e) => {
 
-    match series::sum_series(
-        f_expr,
-        var_str,
-        start,
-        end,
-    ) {
-        | Ok(val) => {
+                update_last_error(e);
 
-            *result = val;
-
-            0
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            -1
-        },
+                -1
+            },
+        }
     }
-}}
+}

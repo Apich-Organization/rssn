@@ -1,9 +1,9 @@
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::expr_to_sparse_poly;
 use crate::symbolic::polynomial::sparse_poly_to_expr;

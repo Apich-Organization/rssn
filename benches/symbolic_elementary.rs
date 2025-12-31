@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
-use criterion::criterion_group;
 use criterion::Criterion;
+use criterion::criterion_group;
 use num_bigint::BigInt;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::elementary::*;

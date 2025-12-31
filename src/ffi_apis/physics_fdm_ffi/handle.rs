@@ -46,13 +46,16 @@ pub extern "C" fn rssn_physics_fdm_grid_new(
 
 pub unsafe extern "C" fn rssn_physics_fdm_grid_free(
     grid: *mut FdmGrid<f64>
-) { unsafe {
+) {
 
-    if !grid.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(grid);
+        if !grid.is_null() {
+
+            let _ = Box::from_raw(grid);
+        }
     }
-}}
+}
 
 /// Returns the size of the grid data.
 #[unsafe(no_mangle)]
@@ -67,15 +70,18 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_free(
 
 pub unsafe extern "C" fn rssn_physics_fdm_grid_len(
     grid: *mut FdmGrid<f64>
-) -> usize { unsafe {
+) -> usize {
 
-    if grid.is_null() {
+    unsafe {
 
-        return 0;
+        if grid.is_null() {
+
+            return 0;
+        }
+
+        (*grid).len()
     }
-
-    (*grid).len()
-}}
+}
 
 /// Returns a pointer to the grid data.
 #[unsafe(no_mangle)]
@@ -90,23 +96,26 @@ pub unsafe extern "C" fn rssn_physics_fdm_grid_len(
 
 pub unsafe extern "C" fn rssn_physics_fdm_grid_data(
     grid: *mut FdmGrid<f64>
-) -> *mut f64 { unsafe {
+) -> *mut f64 {
 
-    if grid.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
+        if grid.is_null() {
+
+            return ptr::null_mut();
+        }
+
+        (*grid)
+            .as_mut_slice()
+            .as_mut_ptr()
     }
-
-    (*grid)
-        .as_mut_slice()
-        .as_mut_ptr()
-}}
+}
 
 /// Simulates 2D heat conduction and returns a new `FdmGrid` handle.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_physics_fdm_simulate_heat_2d(
-) -> *mut FdmGrid<f64> {
+pub extern "C" fn rssn_physics_fdm_simulate_heat_2d()
+-> *mut FdmGrid<f64> {
 
     Box::into_raw(Box::new(
         physics_fdm::simulate_2d_heat_conduction_scenario(),
@@ -116,8 +125,8 @@ pub extern "C" fn rssn_physics_fdm_simulate_heat_2d(
 /// Simulates 2D wave propagation and returns a new `FdmGrid` handle.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_physics_fdm_simulate_wave_2d(
-) -> *mut FdmGrid<f64> {
+pub extern "C" fn rssn_physics_fdm_simulate_wave_2d()
+-> *mut FdmGrid<f64> {
 
     Box::into_raw(Box::new(
         physics_fdm::simulate_2d_wave_propagation_scenario(),

@@ -38,8 +38,8 @@ fn test_stiffness_matrix_symmetry() {
 
 #[test]
 
-fn test_simulate_cantilever_beam_scenario(
-) {
+fn test_simulate_cantilever_beam_scenario()
+ {
 
     println!(
         "Running 2D Cantilever Beam \
@@ -52,8 +52,8 @@ fn test_simulate_cantilever_beam_scenario(
 
 #[test]
 
-fn test_run_elasticity_simulation_basic(
-) {
+fn test_run_elasticity_simulation_basic()
+ {
 
     let nodes = vec![
         (0.0, 0.0),

@@ -43,8 +43,8 @@ fn test_gravitational_constant_handle()
 
 #[test]
 
-fn test_simple_harmonic_oscillator_handle(
-) {
+fn test_simple_harmonic_oscillator_handle()
+ {
 
     let x =
         rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_simple_harmonic_oscillator(
@@ -99,8 +99,8 @@ fn test_mass_energy_handle() {
 
 #[test]
 
-fn test_quantum_harmonic_oscillator_energy_handle(
-) {
+fn test_quantum_harmonic_oscillator_energy_handle()
+ {
 
     let e = rssn::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_quantum_harmonic_oscillator_energy(0, 1.0);
 
@@ -155,8 +155,8 @@ fn test_photon_energy_handle() {
 
 #[test]
 
-fn test_simple_harmonic_oscillator_json(
-) {
+fn test_simple_harmonic_oscillator_json()
+ {
 
     let input = r#"{"amplitude": 2.0, "omega": 1.0, "phase": 0.0, "time": 0.0}"#;
 
@@ -394,8 +394,8 @@ fn test_mass_energy_json() {
 
 #[test]
 
-fn test_quantum_harmonic_oscillator_energy_json(
-) {
+fn test_quantum_harmonic_oscillator_energy_json()
+ {
 
     let input =
         r#"{"n": 0, "omega": 1.0}"#;

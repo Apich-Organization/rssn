@@ -3,9 +3,9 @@ use ndarray::Array1;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::numerical::optimize::EquationOptimizer;
 use crate::numerical::optimize::OptimizationConfig;
 use crate::numerical::optimize::ProblemType;

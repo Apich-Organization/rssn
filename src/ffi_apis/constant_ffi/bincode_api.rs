@@ -9,8 +9,8 @@ use crate::ffi_apis::constant_ffi::json::BuildInfo;
 /// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_build_info_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_get_build_info_bincode()
+-> BincodeBuffer {
 
     let info = BuildInfo {
         build_date : crate::constant::get_build_date().to_string(),
@@ -33,8 +33,8 @@ pub extern "C" fn rssn_get_build_info_bincode(
 /// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_build_date_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_get_build_date_bincode()
+-> BincodeBuffer {
 
     let date =
         crate::constant::get_build_date(
@@ -53,8 +53,8 @@ pub extern "C" fn rssn_get_build_date_bincode(
 /// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_commit_sha_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_get_commit_sha_bincode()
+-> BincodeBuffer {
 
     let sha =
         crate::constant::get_commit_sha(

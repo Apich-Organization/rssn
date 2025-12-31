@@ -61,10 +61,13 @@ pub extern "C" fn rssn_physics_fem_solve_poisson_1d(
 pub unsafe extern "C" fn rssn_free_f64_array(
     ptr: *mut f64,
     size: usize,
-) { unsafe {
+) {
 
-    if !ptr.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, size));
+        if !ptr.is_null() {
+
+            let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, size));
+        }
     }
-}}
+}

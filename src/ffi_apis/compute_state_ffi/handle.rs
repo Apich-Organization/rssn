@@ -10,8 +10,8 @@ use crate::compute::state::State;
 /// The caller is responsible for freeing the memory using `rssn_state_free`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_state_new(
-) -> *mut State {
+pub extern "C" fn rssn_state_new()
+-> *mut State {
 
     Box::into_raw(Box::new(
         State::new(),

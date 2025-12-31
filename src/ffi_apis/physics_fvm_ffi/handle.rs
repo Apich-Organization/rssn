@@ -35,13 +35,16 @@ pub extern "C" fn rssn_physics_fvm_mesh_new(
 
 pub unsafe extern "C" fn rssn_physics_fvm_mesh_free(
     mesh: *mut Mesh
-) { unsafe {
+) {
 
-    if !mesh.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(mesh);
+        if !mesh.is_null() {
+
+            let _ = Box::from_raw(mesh);
+        }
     }
-}}
+}
 
 /// Returns a pointer to the mesh data.
 #[unsafe(no_mangle)]
@@ -56,24 +59,27 @@ pub unsafe extern "C" fn rssn_physics_fvm_mesh_free(
 
 pub unsafe extern "C" fn rssn_physics_fvm_mesh_data(
     mesh: *mut Mesh
-) -> *mut f64 { unsafe {
+) -> *mut f64 {
 
-    if mesh.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
+        if mesh.is_null() {
+
+            return ptr::null_mut();
+        }
+
+        (*mesh)
+            .cells
+            .as_mut_ptr()
+            .cast::<f64>()
     }
-
-    (*mesh)
-        .cells
-        .as_mut_ptr()
-        .cast::<f64>()
-}}
+}
 
 /// Simulates 1D advection and returns the final values in a new buffer.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_physics_fvm_simulate_advection_1d(
-) -> *mut f64 {
+pub extern "C" fn rssn_physics_fvm_simulate_advection_1d()
+-> *mut f64 {
 
     let result = physics_fvm::simulate_1d_advection_scenario();
 

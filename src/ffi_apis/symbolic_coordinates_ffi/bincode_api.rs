@@ -1,6 +1,7 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
+use crate::symbolic::coordinates::CoordinateSystem;
 use crate::symbolic::coordinates::get_metric_tensor;
 use crate::symbolic::coordinates::transform_contravariant_vector;
 use crate::symbolic::coordinates::transform_covariant_vector;
@@ -9,7 +10,6 @@ use crate::symbolic::coordinates::transform_divergence;
 use crate::symbolic::coordinates::transform_expression;
 use crate::symbolic::coordinates::transform_gradient;
 use crate::symbolic::coordinates::transform_point;
-use crate::symbolic::coordinates::CoordinateSystem;
 use crate::symbolic::core::Expr;
 
 /// Transforms a point from one coordinate system to another using bincode-serialized inputs.
@@ -41,24 +41,29 @@ pub extern "C" fn rssn_bincode_transform_point(
     let to: Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
-    match (point, from, to)
-    { (Some(p), Some(f), Some(t)) => {
+    match (point, from, to) {
+        | (
+            Some(p),
+            Some(f),
+            Some(t),
+        ) => {
 
-        match transform_point(&p, f, t)
-        {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            match transform_point(
+                &p, f, t,
+            ) {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Transforms an expression from one coordinate system to another using bincode-serialized inputs.
@@ -90,25 +95,28 @@ pub extern "C" fn rssn_bincode_transform_expression(
     let to: Option<CoordinateSystem> =
         from_bincode_buffer(&to_buf);
 
-    match (expr, from, to)
-    { (Some(e), Some(f), Some(t)) => {
-
-        match transform_expression(
-            &e, f, t,
-        ) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (expr, from, to) {
+        | (
+            Some(e),
+            Some(f),
+            Some(t),
+        ) => {
+            match transform_expression(
+                &e, f, t,
+            ) {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Gets the metric tensor for a given coordinate system using bincode-serialized input.
@@ -263,25 +271,24 @@ pub extern "C" fn rssn_bincode_transform_divergence(
     let from: Option<CoordinateSystem> =
         from_bincode_buffer(&from_buf);
 
-    match (comps, from)
-    { (Some(c), Some(f)) => {
-
-        match transform_divergence(
-            &c, f,
-        ) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (comps, from) {
+        | (Some(c), Some(f)) => {
+            match transform_divergence(
+                &c, f,
+            ) {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Transforms the curl of a vector field from one coordinate system to another using bincode-serialized inputs.
@@ -306,23 +313,23 @@ pub extern "C" fn rssn_bincode_transform_curl(
     let from: Option<CoordinateSystem> =
         from_bincode_buffer(&from_buf);
 
-    match (comps, from)
-    { (Some(c), Some(f)) => {
-
-        match transform_curl(&c, f) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (comps, from) {
+        | (Some(c), Some(f)) => {
+            match transform_curl(&c, f)
+            {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Transforms the gradient of a scalar function from one coordinate system to another using bincode-serialized inputs.
@@ -366,27 +373,28 @@ pub extern "C" fn rssn_bincode_transform_gradient(
         vars,
         from,
         to,
-    ) { (
-        Some(s),
-        Some(v),
-        Some(f),
-        Some(t),
-    ) => {
+    ) {
+        | (
+            Some(s),
+            Some(v),
+            Some(f),
+            Some(t),
+        ) => {
 
-        match transform_gradient(
-            &s, &v, f, t,
-        ) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            match transform_gradient(
+                &s, &v, f, t,
+            ) {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

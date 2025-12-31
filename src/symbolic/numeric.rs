@@ -314,11 +314,14 @@ pub fn evaluate_complex(
 
                 let mut result = 1.0;
 
-                for i in
-                    2 ..= (val.re as i64).try_into().unwrap_or(0)
+                for i in 2 ..= (val.re
+                    as i64)
+                    .try_into()
+                    .unwrap_or(0)
                 {
 
-                    result *= f64::from(i);
+                    result *=
+                        f64::from(i);
                 }
 
                 Some(Complex64::new(

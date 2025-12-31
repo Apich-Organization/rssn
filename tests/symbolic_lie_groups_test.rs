@@ -368,19 +368,24 @@ fn test_adjoint_representation_group() {
     assert!(result.is_ok());
 
     // Result should be a matrix
-    match result.unwrap()
-    { Expr::Matrix(rows) => {
+    match result.unwrap() {
+        | Expr::Matrix(rows) => {
 
-        assert_eq!(rows.len(), 2);
+            assert_eq!(rows.len(), 2);
 
-        assert_eq!(rows[0].len(), 2);
-    } _ => {
+            assert_eq!(
+                rows[0].len(),
+                2
+            );
+        },
+        | _ => {
 
-        panic!(
+            panic!(
             "Adjoint representation \
              did not return a matrix"
         );
-    }}
+        },
+    }
 }
 
 #[test]

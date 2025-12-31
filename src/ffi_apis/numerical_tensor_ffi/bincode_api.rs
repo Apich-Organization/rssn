@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
                     ok: None,
                     err: Some(e),
                 },
-            )
+            );
         },
     };
 
@@ -113,7 +113,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_bincode(
                     ok: None,
                     err: Some(e),
                 },
-            )
+            );
         },
     };
 

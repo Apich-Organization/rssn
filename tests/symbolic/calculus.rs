@@ -21,8 +21,8 @@ use rssn::symbolic::simplify_dag;
 // --- 1. Standard Unit/Integration Tests ---
 #[test]
 
-fn test_initial_conditions_or_edge_cases(
-) {
+fn test_initial_conditions_or_edge_cases()
+ {
     // Example: Test a function with input '0' or large, known values.
     // let result = symbolic::calculus::some_function(42.0);
     // assert_approx_eq!(result, 1.0, 1e-6);

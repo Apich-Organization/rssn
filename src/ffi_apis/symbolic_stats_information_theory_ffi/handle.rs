@@ -12,23 +12,28 @@ use crate::symbolic::stats_information_theory;
 unsafe fn collect_exprs(
     data: *const *const Expr,
     len: usize,
-) -> Vec<Expr> { unsafe {
+) -> Vec<Expr> {
 
-    let mut exprs =
-        Vec::with_capacity(len);
+    unsafe {
 
-    for i in 0 .. len {
+        let mut exprs =
+            Vec::with_capacity(len);
 
-        let ptr = *data.add(i);
+        for i in 0 .. len {
 
-        if !ptr.is_null() {
+            let ptr = *data.add(i);
 
-            exprs.push((*ptr).clone());
+            if !ptr.is_null() {
+
+                exprs.push(
+                    (*ptr).clone(),
+                );
+            }
         }
-    }
 
-    exprs
-}}
+        exprs
+    }
+}
 
 /// Computes the Shannon entropy of a probability distribution.
 
@@ -51,19 +56,24 @@ unsafe fn collect_exprs(
 pub unsafe extern "C" fn rssn_shannon_entropy(
     probs: *const *const Expr,
     len: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if probs.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if probs.is_null() {
 
-    let p = collect_exprs(probs, len);
+            return std::ptr::null_mut(
+            );
+        }
 
-    Box::into_raw(Box::new(
+        let p =
+            collect_exprs(probs, len);
+
+        Box::into_raw(Box::new(
         stats_information_theory::shannon_entropy(&p),
     ))
-}}
+    }
+}
 
 /// Computes the Kullback-Leibler divergence between two probability distributions.
 
@@ -88,26 +98,34 @@ pub unsafe extern "C" fn rssn_kl_divergence(
     p_len: usize,
     q_probs: *const *const Expr,
     q_len: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if p_probs.is_null()
-        || q_probs.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if p_probs.is_null()
+            || q_probs.is_null()
+        {
 
-    let p =
-        collect_exprs(p_probs, p_len);
+            return std::ptr::null_mut(
+            );
+        }
 
-    let q =
-        collect_exprs(q_probs, q_len);
+        let p = collect_exprs(
+            p_probs,
+            p_len,
+        );
 
-    match stats_information_theory::kl_divergence(&p, &q) {
+        let q = collect_exprs(
+            q_probs,
+            q_len,
+        );
+
+        match stats_information_theory::kl_divergence(&p, &q) {
         | Ok(res) => Box::into_raw(Box::new(res)),
         | Err(_) => std::ptr::null_mut(),
     }
-}}
+    }
+}
 
 /// Computes the cross-entropy between two probability distributions.
 
@@ -132,26 +150,34 @@ pub unsafe extern "C" fn rssn_cross_entropy(
     p_len: usize,
     q_probs: *const *const Expr,
     q_len: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if p_probs.is_null()
-        || q_probs.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if p_probs.is_null()
+            || q_probs.is_null()
+        {
 
-    let p =
-        collect_exprs(p_probs, p_len);
+            return std::ptr::null_mut(
+            );
+        }
 
-    let q =
-        collect_exprs(q_probs, q_len);
+        let p = collect_exprs(
+            p_probs,
+            p_len,
+        );
 
-    match stats_information_theory::cross_entropy(&p, &q) {
+        let q = collect_exprs(
+            q_probs,
+            q_len,
+        );
+
+        match stats_information_theory::cross_entropy(&p, &q) {
         | Ok(res) => Box::into_raw(Box::new(res)),
         | Err(_) => std::ptr::null_mut(),
     }
-}}
+    }
+}
 
 /// Computes the Gini impurity of a probability distribution.
 
@@ -174,19 +200,24 @@ pub unsafe extern "C" fn rssn_cross_entropy(
 pub unsafe extern "C" fn rssn_gini_impurity(
     probs: *const *const Expr,
     len: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if probs.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if probs.is_null() {
 
-    let p = collect_exprs(probs, len);
+            return std::ptr::null_mut(
+            );
+        }
 
-    Box::into_raw(Box::new(
+        let p =
+            collect_exprs(probs, len);
+
+        Box::into_raw(Box::new(
         stats_information_theory::gini_impurity(&p),
     ))
-}}
+    }
+}
 
 /// Computes the joint entropy of a joint probability distribution.
 
@@ -208,18 +239,22 @@ pub unsafe extern "C" fn rssn_gini_impurity(
 
 pub unsafe extern "C" fn rssn_joint_entropy(
     joint_probs: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if joint_probs.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if joint_probs.is_null() {
 
-    match stats_information_theory::joint_entropy(&*joint_probs) {
+            return std::ptr::null_mut(
+            );
+        }
+
+        match stats_information_theory::joint_entropy(&*joint_probs) {
         | Ok(res) => Box::into_raw(Box::new(res)),
         | Err(_) => std::ptr::null_mut(),
     }
-}}
+    }
+}
 
 /// Computes the conditional entropy of a joint probability distribution.
 
@@ -241,18 +276,22 @@ pub unsafe extern "C" fn rssn_joint_entropy(
 
 pub unsafe extern "C" fn rssn_conditional_entropy(
     joint_probs: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if joint_probs.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if joint_probs.is_null() {
 
-    match stats_information_theory::conditional_entropy(&*joint_probs) {
+            return std::ptr::null_mut(
+            );
+        }
+
+        match stats_information_theory::conditional_entropy(&*joint_probs) {
         | Ok(res) => Box::into_raw(Box::new(res)),
         | Err(_) => std::ptr::null_mut(),
     }
-}}
+    }
+}
 
 /// Computes the mutual information between two random variables from their joint probability distribution.
 
@@ -274,15 +313,19 @@ pub unsafe extern "C" fn rssn_conditional_entropy(
 
 pub unsafe extern "C" fn rssn_mutual_information(
     joint_probs: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if joint_probs.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if joint_probs.is_null() {
 
-    match stats_information_theory::mutual_information(&*joint_probs) {
+            return std::ptr::null_mut(
+            );
+        }
+
+        match stats_information_theory::mutual_information(&*joint_probs) {
         | Ok(res) => Box::into_raw(Box::new(res)),
         | Err(_) => std::ptr::null_mut(),
     }
-}}
+    }
+}

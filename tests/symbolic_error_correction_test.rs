@@ -248,8 +248,8 @@ fn test_hamming_distance_all_different()
 
 #[test]
 
-fn test_hamming_distance_length_mismatch(
-) {
+fn test_hamming_distance_length_mismatch()
+ {
 
     let a = vec![0u8, 1, 0];
 
@@ -648,8 +648,8 @@ fn test_hamming_roundtrip_with_check() {
 
 #[test]
 
-fn test_hamming_error_detection_distance(
-) {
+fn test_hamming_error_detection_distance()
+ {
 
     let data = vec![1u8, 0, 1, 1];
 

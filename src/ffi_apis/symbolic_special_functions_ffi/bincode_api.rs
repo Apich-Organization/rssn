@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::special_functions;
 
@@ -81,18 +81,17 @@ pub extern "C" fn rssn_bincode_beta(
     let b: Option<Expr> =
         from_bincode_buffer(&b_buf);
 
-    match (a, b)
-    { (Some(val_a), Some(val_b)) => {
-
-        to_bincode_buffer(
+    match (a, b) {
+        | (
+            Some(val_a),
+            Some(val_b),
+        ) => to_bincode_buffer(
             &special_functions::beta(
                 val_a, val_b,
             ),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+        ),
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the error function erf(z).
@@ -143,7 +142,9 @@ pub extern "C" fn rssn_bincode_erfc(
     if let Some(a) = arg {
 
         to_bincode_buffer(
-            &special_functions::erfc(&a),
+            &special_functions::erfc(
+                &a,
+            ),
         )
     } else {
 
@@ -199,7 +200,9 @@ pub extern "C" fn rssn_bincode_zeta(
     if let Some(a) = arg {
 
         to_bincode_buffer(
-            &special_functions::zeta(&a),
+            &special_functions::zeta(
+                &a,
+            ),
         )
     } else {
 

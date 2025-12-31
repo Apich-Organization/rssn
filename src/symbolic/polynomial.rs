@@ -839,7 +839,8 @@ pub fn polynomial_long_division(
         }
     }
 
-    const MAX_TOTAL_ITERATIONS: usize = 100;
+    const MAX_TOTAL_ITERATIONS: usize =
+        100;
 
     let mut q =
         Expr::BigInt(BigInt::zero());
@@ -1643,8 +1644,10 @@ pub(crate) fn collect_terms_recursive(
                         )]),
                     };
 
-                    for _ in
-                        0 .. ((e as i64).try_into().unwrap_or(0))
+                    for _ in 0 .. ((e
+                        as i64)
+                        .try_into()
+                        .unwrap_or(0))
                     {
 
                         result = result
@@ -2093,7 +2096,9 @@ impl SparsePolynomial {
         divisor: &Self,
         var: &str,
     ) -> (Self, Self) {
-        const MAX_ITERATIONS: usize = 1000;
+
+        const MAX_ITERATIONS: usize =
+            1000;
 
         if divisor
             .terms
@@ -2215,9 +2220,12 @@ impl SparsePolynomial {
             return vec![];
         }
 
-        let mut coeffs = vec![
+        let mut coeffs =
+            vec![
                 Expr::Constant(0.0);
-                (deg + 1).try_into().unwrap_or(0)
+                (deg + 1)
+                    .try_into()
+                    .unwrap_or(0)
             ];
 
         for (mono, coeff) in &self.terms

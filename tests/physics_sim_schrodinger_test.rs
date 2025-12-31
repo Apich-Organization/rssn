@@ -6,8 +6,8 @@ use rssn::physics::physics_sim::schrodinger_quantum::*;
 
 #[test]
 
-fn test_schrodinger_simulation_box_smoke(
-) {
+fn test_schrodinger_simulation_box_smoke()
+ {
 
     let nx = 32;
 

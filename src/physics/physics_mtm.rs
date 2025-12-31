@@ -217,7 +217,12 @@ pub(crate) fn v_cycle(
 
         let n = grid.size();
 
-        for (u_i, &corr_i) in grid.u.iter_mut().zip(&correction).take(n) {
+        for (u_i, &corr_i) in grid
+            .u
+            .iter_mut()
+            .zip(&correction)
+            .take(n)
+        {
 
             *u_i += corr_i;
         }
@@ -246,9 +251,11 @@ pub fn solve_poisson_1d_multigrid(
     num_cycles: usize,
 ) -> Result<Vec<f64>, String> {
 
-    let num_levels: usize = ((n as f64 + 1.0).log2() as i64)
-        .try_into()
-        .unwrap_or(0);
+    let num_levels: usize =
+        ((n as f64 + 1.0).log2()
+            as i64)
+            .try_into()
+            .unwrap_or(0);
 
     if (2_usize.pow(num_levels as u32)
         - 1)
@@ -289,8 +296,8 @@ pub fn solve_poisson_1d_multigrid(
 /// This function will return an error if the underlying `solve_poisson_1d_multigrid` function
 /// encounters an error, e.g., if the grid size is invalid.
 
-pub fn simulate_1d_poisson_multigrid_scenario(
-) -> Result<Vec<f64>, String> {
+pub fn simulate_1d_poisson_multigrid_scenario()
+-> Result<Vec<f64>, String> {
 
     const K: usize = 7;
 
@@ -433,7 +440,12 @@ pub(crate) fn calculate_residual_2d(
 
             let i = i_offset + 1;
 
-            for (j, val) in row.iter_mut().enumerate().take(n - 1).skip(1) {
+            for (j, val) in row
+                .iter_mut()
+                .enumerate()
+                .take(n - 1)
+                .skip(1)
+            {
 
                 let a_u = (4.0f64
                     .mul_add(
@@ -677,7 +689,11 @@ pub(crate) fn v_cycle_2d(
         let correction_grid =
             prolongate_2d(&coarse_grid);
 
-        for (u_i, &corr_i) in grid.u.iter_mut().zip(&correction_grid.u) {
+        for (u_i, &corr_i) in grid
+            .u
+            .iter_mut()
+            .zip(&correction_grid.u)
+        {
 
             *u_i += corr_i;
         }
@@ -698,9 +714,11 @@ pub fn solve_poisson_2d_multigrid(
     num_cycles: usize,
 ) -> Result<Vec<f64>, String> {
 
-    let num_levels: usize = ((n as f64 - 1.0).log2() as i64)
-        .try_into()
-        .unwrap_or(0);
+    let num_levels: usize =
+        ((n as f64 - 1.0).log2()
+            as i64)
+            .try_into()
+            .unwrap_or(0);
 
     if (2_usize.pow(num_levels as u32)
         + 1)
@@ -741,8 +759,8 @@ pub fn solve_poisson_2d_multigrid(
 /// This function will return an error if the underlying `solve_poisson_2d_multigrid` function
 /// encounters an error, e.g., if the grid size is invalid.
 
-pub fn simulate_2d_poisson_multigrid_scenario(
-) -> Result<Vec<f64>, String> {
+pub fn simulate_2d_poisson_multigrid_scenario()
+-> Result<Vec<f64>, String> {
 
     const K: usize = 5;
 

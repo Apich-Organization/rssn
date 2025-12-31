@@ -556,8 +556,8 @@ fn test_evaluate_variable_returns_none()
 
 #[test]
 
-fn test_evaluate_symbolic_expression_returns_none(
-) {
+fn test_evaluate_symbolic_expression_returns_none()
+ {
 
     // Symbolic expressions with variables cannot be evaluated
     let expr = Expr::new_add(

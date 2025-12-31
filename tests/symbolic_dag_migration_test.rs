@@ -167,8 +167,8 @@ fn test_to_ast_from_ast() {
 
 #[test]
 
-fn test_dag_conversion_preserves_semantics(
-) {
+fn test_dag_conversion_preserves_semantics()
+ {
 
     // Create an AST expression: (x + 1) * 2
     let ast = Expr::Mul(

@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::Write;
 
 use ndarray::Array2;
-use rand::thread_rng;
 use rand::Rng;
+use rand::thread_rng;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -164,8 +164,8 @@ pub fn run_ising_simulation(
 /// This function will return an error if it fails to reshape the `Array2<f64>` for NPY
 /// output or if it fails to create or write to the output files (CSV or NPY).
 
-pub fn simulate_ising_phase_transition_scenario(
-) -> Result<(), String> {
+pub fn simulate_ising_phase_transition_scenario()
+-> Result<(), String> {
 
     println!(
         "Running Ising model phase \

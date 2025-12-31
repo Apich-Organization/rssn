@@ -35,33 +35,40 @@ pub unsafe extern "C" fn path_continuation_new_json(
     var: *const c_char,
     start_point_json: *const c_char,
     order: usize,
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let func : Expr = match from_json_string(func_json) {
+    unsafe {
+
+        let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
+        let var_str =
+            std::ffi::CStr::from_ptr(
+                var,
+            )
             .to_str()
             .unwrap();
 
-    let start_point : Expr = match from_json_string(start_point_json) {
+        let start_point : Expr = match from_json_string(start_point_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let path_continuation =
-        PathContinuation::new(
-            &func,
-            var_str,
-            &start_point,
-            order,
-        );
+        let path_continuation =
+            PathContinuation::new(
+                &func,
+                var_str,
+                &start_point,
+                order,
+            );
 
-    to_json_string(&path_continuation)
-}}
+        to_json_string(
+            &path_continuation,
+        )
+    }
+}
 
 /// Continues the analytic continuation along a given path.
 
@@ -170,37 +177,42 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_json(
     var: *const c_char,
     center_json: *const c_char,
     order: usize,
-) -> f64 { unsafe {
+) -> f64 {
 
-    let series_expr: Expr =
-        match from_json_string(
-            series_expr_json,
-        ) {
-            | Some(e) => e,
-            | None => return 0.0,
-        };
+    unsafe {
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
+        let series_expr: Expr =
+            match from_json_string(
+                series_expr_json,
+            ) {
+                | Some(e) => e,
+                | None => return 0.0,
+            };
+
+        let var_str =
+            std::ffi::CStr::from_ptr(
+                var,
+            )
             .to_str()
             .unwrap();
 
-    let center: Expr =
-        match from_json_string(
-            center_json,
-        ) {
-            | Some(e) => e,
-            | None => return 0.0,
-        };
+        let center: Expr =
+            match from_json_string(
+                center_json,
+            ) {
+                | Some(e) => e,
+                | None => return 0.0,
+            };
 
-    crate::symbolic::complex_analysis::estimate_radius_of_convergence(
+        crate::symbolic::complex_analysis::estimate_radius_of_convergence(
         &series_expr,
         var_str,
         &center,
         order,
     )
     .unwrap_or(0.0)
-}}
+    }
+}
 
 /// Calculates the distance between two complex numbers.
 
@@ -272,32 +284,39 @@ pub unsafe extern "C" fn classify_singularity_json(
     var: *const c_char,
     singularity_json: *const c_char,
     order: usize,
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let func : Expr = match from_json_string(func_json) {
+    unsafe {
+
+        let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
+        let var_str =
+            std::ffi::CStr::from_ptr(
+                var,
+            )
             .to_str()
             .unwrap();
 
-    let singularity : Expr = match from_json_string(singularity_json) {
+        let singularity : Expr = match from_json_string(singularity_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let singularity_type = crate::symbolic::complex_analysis::classify_singularity(
+        let singularity_type = crate::symbolic::complex_analysis::classify_singularity(
         &func,
         var_str,
         &singularity,
         order,
     );
 
-    to_json_string(&singularity_type)
-}}
+        to_json_string(
+            &singularity_type,
+        )
+    }
+}
 
 /// Computes the Laurent series of a function.
 
@@ -329,32 +348,37 @@ pub unsafe extern "C" fn laurent_series_json(
     var: *const c_char,
     center_json: *const c_char,
     order: usize,
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let func : Expr = match from_json_string(func_json) {
+    unsafe {
+
+        let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
+        let var_str =
+            std::ffi::CStr::from_ptr(
+                var,
+            )
             .to_str()
             .unwrap();
 
-    let center : Expr = match from_json_string(center_json) {
+        let center : Expr = match from_json_string(center_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let series = crate::symbolic::complex_analysis::laurent_series(
+        let series = crate::symbolic::complex_analysis::laurent_series(
         &func,
         var_str,
         &center,
         order,
     );
 
-    to_json_string(&series)
-}}
+        to_json_string(&series)
+    }
+}
 
 /// Calculates the residue of a function at a given singularity.
 
@@ -385,31 +409,36 @@ pub unsafe extern "C" fn calculate_residue_json(
     func_json: *const c_char,
     var: *const c_char,
     singularity_json: *const c_char,
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let func : Expr = match from_json_string(func_json) {
+    unsafe {
+
+        let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
+        let var_str =
+            std::ffi::CStr::from_ptr(
+                var,
+            )
             .to_str()
             .unwrap();
 
-    let singularity : Expr = match from_json_string(singularity_json) {
+        let singularity : Expr = match from_json_string(singularity_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let residue = crate::symbolic::complex_analysis::calculate_residue(
+        let residue = crate::symbolic::complex_analysis::calculate_residue(
         &func,
         var_str,
         &singularity,
     );
 
-    to_json_string(&residue)
-}}
+        to_json_string(&residue)
+    }
+}
 
 /// Calculates a contour integral using the residue theorem.
 
@@ -440,31 +469,36 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_json(
     func_json: *const c_char,
     var: *const c_char,
     singularities_json: *const c_char,
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let func : Expr = match from_json_string(func_json) {
+    unsafe {
+
+        let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
+        let var_str =
+            std::ffi::CStr::from_ptr(
+                var,
+            )
             .to_str()
             .unwrap();
 
-    let singularities : Vec<Expr> = match from_json_string(singularities_json) {
+        let singularities : Vec<Expr> = match from_json_string(singularities_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let result = crate::symbolic::complex_analysis::contour_integral_residue_theorem(
+        let result = crate::symbolic::complex_analysis::contour_integral_residue_theorem(
         &func,
         var_str,
         &singularities,
     );
 
-    to_json_string(&result)
-}}
+        to_json_string(&result)
+    }
+}
 
 /// Creates a new `MobiusTransformation` object from JSON-serialized coefficients.
 
@@ -499,7 +533,7 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -508,7 +542,7 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -517,7 +551,7 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -526,7 +560,7 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -546,8 +580,8 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
 
 #[unsafe(no_mangle)]
 
-pub extern "C" fn mobius_transformation_identity_json(
-) -> *mut c_char {
+pub extern "C" fn mobius_transformation_identity_json()
+-> *mut c_char {
 
     let mobius =
         MobiusTransformation::identity(
@@ -590,7 +624,7 @@ pub unsafe extern "C" fn mobius_transformation_apply_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -702,27 +736,32 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
     var: *const c_char,
 
     z0_json: *const c_char,
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let func : Expr = match from_json_string(func_json) {
+    unsafe {
+
+        let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
+        let var_str =
+            std::ffi::CStr::from_ptr(
+                var,
+            )
             .to_str()
             .unwrap();
 
-    let z0 : Expr = match from_json_string(z0_json) {
+        let z0 : Expr = match from_json_string(z0_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let result = crate::symbolic::complex_analysis::cauchy_integral_formula(&func, var_str, &z0);
+        let result = crate::symbolic::complex_analysis::cauchy_integral_formula(&func, var_str, &z0);
 
-    to_json_string(&result)
-}}
+        to_json_string(&result)
+    }
+}
 
 /// Applies Cauchy's Derivative Formula to compute the nth derivative of a function at a given point.
 
@@ -757,32 +796,37 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
     z0_json: *const c_char,
 
     n: usize,
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let func : Expr = match from_json_string(func_json) {
+    unsafe {
+
+        let func : Expr = match from_json_string(func_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let var_str =
-        std::ffi::CStr::from_ptr(var)
+        let var_str =
+            std::ffi::CStr::from_ptr(
+                var,
+            )
             .to_str()
             .unwrap();
 
-    let z0 : Expr = match from_json_string(z0_json) {
+        let z0 : Expr = match from_json_string(z0_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let result = crate::symbolic::complex_analysis::cauchy_derivative_formula(
+        let result = crate::symbolic::complex_analysis::cauchy_derivative_formula(
         &func,
         var_str,
         &z0,
         n,
     );
 
-    to_json_string(&result)
-}}
+        to_json_string(&result)
+    }
+}
 
 /// Computes the complex exponential of a given complex number.
 
@@ -811,7 +855,7 @@ pub unsafe extern "C" fn complex_exp_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -847,7 +891,7 @@ pub unsafe extern "C" fn complex_log_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -883,7 +927,7 @@ pub unsafe extern "C" fn complex_arg_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -919,7 +963,7 @@ pub unsafe extern "C" fn complex_modulus_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 

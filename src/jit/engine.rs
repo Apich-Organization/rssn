@@ -5,11 +5,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 #[cfg(feature = "jit")]
-use cranelift_codegen::ir::condcodes::FloatCC;
-#[cfg(feature = "jit")]
-use cranelift_codegen::ir::condcodes::IntCC;
-#[cfg(feature = "jit")]
-use cranelift_codegen::ir::types;
+use cranelift_codegen::Context;
 #[cfg(feature = "jit")]
 use cranelift_codegen::ir::AbiParam;
 #[cfg(feature = "jit")]
@@ -25,7 +21,11 @@ use cranelift_codegen::ir::Type;
 #[cfg(feature = "jit")]
 use cranelift_codegen::ir::Value;
 #[cfg(feature = "jit")]
-use cranelift_codegen::Context;
+use cranelift_codegen::ir::condcodes::FloatCC;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::condcodes::IntCC;
+#[cfg(feature = "jit")]
+use cranelift_codegen::ir::types;
 #[cfg(feature = "jit")]
 use cranelift_frontend::FunctionBuilder;
 #[cfg(feature = "jit")]

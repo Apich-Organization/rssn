@@ -175,8 +175,8 @@ fn test_simplify_with_relations() {
 
 #[test]
 
-fn test_simplify_with_relations_complex(
-) {
+fn test_simplify_with_relations_complex()
+ {
 
     // x^3 - x with relation x^2 - 1 -> 0
     let x = Expr::new_variable("x");

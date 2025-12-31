@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_algorithms::bfs;
 use crate::symbolic::graph_algorithms::bipartite_maximum_matching;
@@ -206,6 +206,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
 ) -> BincodeBuffer {
 
     #[derive(serde::Serialize)]
+
     struct BridgesResult {
         bridges: Vec<(usize, usize)>,
         articulation_points: Vec<usize>,

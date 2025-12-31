@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use rssn::symbolic::core::Expr;
+use rssn::symbolic::pde::PDEType;
 use rssn::symbolic::pde::classify_pde_heuristic;
 use rssn::symbolic::pde::solve_heat_equation_1d;
 use rssn::symbolic::pde::solve_helmholtz_equation;
@@ -10,7 +11,6 @@ use rssn::symbolic::pde::solve_pde_by_characteristics;
 use rssn::symbolic::pde::solve_poisson_equation_2d;
 use rssn::symbolic::pde::solve_schrodinger_equation;
 use rssn::symbolic::pde::solve_wave_equation_1d_dalembert;
-use rssn::symbolic::pde::PDEType;
 
 fn var(name: &str) -> Expr {
 
@@ -283,12 +283,15 @@ fn test_pde_classification_wave() {
     assert!(classification.is_linear);
 
     // Note: Currently classified as inhomogeneous due to constant coefficient
-    assert!(classification
-        .suggested_methods
-        .contains(
-            &"Separation of variables"
-                .to_string()
-        ));
+    assert!(
+        classification
+            .suggested_methods
+            .contains(
+                &"Separation of \
+                  variables"
+                    .to_string()
+            )
+    );
 }
 
 #[test]
@@ -397,12 +400,14 @@ fn test_pde_classification_heat() {
 
     assert!(classification.is_linear);
 
-    assert!(classification
-        .suggested_methods
-        .contains(
-            &"Fourier series"
-                .to_string()
-        ));
+    assert!(
+        classification
+            .suggested_methods
+            .contains(
+                &"Fourier series"
+                    .to_string()
+            )
+    );
 }
 
 // Note: Laplace classification test removed due to current heuristic limitations

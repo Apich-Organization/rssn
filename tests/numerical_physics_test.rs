@@ -183,7 +183,10 @@ fn test_projectile_motion_with_drag() {
         max_time: 10.0,
     };
 
-    let trajectory = projectile_motion_with_drag(params);
+    let trajectory =
+        projectile_motion_with_drag(
+            params,
+        );
 
     assert!(!trajectory.is_empty());
 
@@ -320,8 +323,8 @@ fn test_electric_field_point_charge() {
 
 #[test]
 
-fn test_electric_potential_point_charge(
-) {
+fn test_electric_potential_point_charge()
+ {
 
     let v =
         electric_potential_point_charge(
@@ -608,8 +611,8 @@ fn test_relativistic_velocity_addition()
 
 #[test]
 
-fn test_quantum_harmonic_oscillator_energy(
-) {
+fn test_quantum_harmonic_oscillator_energy()
+ {
 
     // Ground state (n=0): E = ħω/2
     let e0 = quantum_harmonic_oscillator_energy(0, 1.0);

@@ -4,6 +4,9 @@
 //! It includes gamma functions, beta functions, error functions, Bessel functions,
 //! orthogonal polynomials, and other commonly used special functions.
 
+use std::f64::consts::FRAC_2_PI;
+use std::f64::consts::FRAC_PI_4;
+
 use statrs::function::beta::beta;
 use statrs::function::beta::ln_beta;
 use statrs::function::erf::erf;
@@ -11,8 +14,6 @@ use statrs::function::erf::erfc;
 use statrs::function::gamma::digamma;
 use statrs::function::gamma::gamma;
 use statrs::function::gamma::ln_gamma;
-use std::f64::consts::FRAC_2_PI;
-use std::f64::consts::FRAC_PI_4;
 
 // ============================================================================
 // Gamma Functions
@@ -225,7 +226,9 @@ pub fn regularized_beta(
     }
 
     // Continued fraction expansion
-    let bt = if x == 0.0 || (x - 1.0).abs() < 1e-15 {
+    let bt = if x == 0.0
+        || (x - 1.0).abs() < 1e-15
+    {
 
         0.0
     } else {
@@ -460,8 +463,7 @@ pub fn bessel_j0(x: f64) -> f64 {
 
         let y = z * z;
 
-        let xx =
-            ax - FRAC_PI_4;
+        let xx = ax - FRAC_PI_4;
 
         let ans1 = 1.0
             + y * (-0.109_862_862_7e-2
@@ -598,8 +600,7 @@ pub fn bessel_y0(x: f64) -> f64 {
 
         let y = z * z;
 
-        let xx =
-            x - FRAC_PI_4;
+        let xx = x - FRAC_PI_4;
 
         let ans1 = 1.0
             + y * (-0.109_862_862_7e-2

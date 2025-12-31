@@ -106,8 +106,8 @@ fn test_poly_gcd_gf() {
 
 #[test]
 
-fn test_square_free_factorization_simple(
-) {
+fn test_square_free_factorization_simple()
+ {
 
     // Test with x^2 over GF(3)
     // x^2 = x * x, so it's not square-free

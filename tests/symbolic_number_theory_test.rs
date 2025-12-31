@@ -223,19 +223,22 @@ fn test_chinese_remainder() {
     let (val, modulus) =
         if let Expr::Dag(node) = res {
 
-            match node.to_expr()
-                    .unwrap()
-            { Expr::Mod(v, m) => {
+            match node
+                .to_expr()
+                .unwrap()
+            {
+                | Expr::Mod(v, m) => {
+                    (v, m)
+                },
+                | _ => {
 
-                (v, m)
-            } _ => {
-
-                panic!(
-                    "Expected Mod \
-                     expression \
-                     inside Dag"
-                );
-            }}
+                    panic!(
+                        "Expected Mod \
+                         expression \
+                         inside Dag"
+                    );
+                },
+            }
         } else if let Expr::Mod(v, m) =
             res
         {

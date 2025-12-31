@@ -392,6 +392,7 @@ impl Debug for Expr {
 
 impl fmt::Display for Expr {
     #[allow(clippy::too_many_lines)]
+
     fn fmt(
         &self,
         f: &mut fmt::Formatter<'_>,

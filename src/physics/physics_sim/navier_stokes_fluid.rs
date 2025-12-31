@@ -242,8 +242,8 @@ pub fn run_lid_driven_cavity(
 
 /// An example scenario for the lid-driven cavity simulation.
 
-pub fn simulate_lid_driven_cavity_scenario(
-) {
+pub fn simulate_lid_driven_cavity_scenario()
+ {
 
     const K: usize = 6;
 

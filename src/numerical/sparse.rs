@@ -445,8 +445,8 @@ mod tests {
 
     #[test]
 
-    pub(crate) fn test_csr_from_triplets(
-    ) {
+    pub(crate) fn test_csr_from_triplets()
+     {
 
         let triplets = vec![
             (0, 0, 1.0),

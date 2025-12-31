@@ -317,6 +317,7 @@ pub fn contract(
     }
 
     let n = a.shape()[axis1];
+
     #[warn(clippy::collection_is_never_read)]
     let mut new_shape = Vec::new();
 

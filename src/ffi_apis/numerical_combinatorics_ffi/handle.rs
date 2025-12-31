@@ -19,24 +19,27 @@ use crate::numerical::combinatorics;
 pub unsafe extern "C" fn rssn_num_comb_factorial(
     n: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error(
+        if result.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_comb_factorial"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        *result =
+            combinatorics::factorial(n);
+
+        0
     }
-
-    *result =
-        combinatorics::factorial(n);
-
-    0
-}}
+}
 
 /// Computes the number of permutations P(n, k).
 #[unsafe(no_mangle)]
@@ -53,22 +56,25 @@ pub unsafe extern "C" fn rssn_num_comb_permutations(
     n: u64,
     k: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_comb_permutations".to_string());
+        if result.is_null() {
 
-        return -1;
+            update_last_error("Null pointer passed to rssn_num_comb_permutations".to_string());
+
+            return -1;
+        }
+
+        *result =
+            combinatorics::permutations(
+                n, k,
+            );
+
+        0
     }
-
-    *result =
-        combinatorics::permutations(
-            n, k,
-        );
-
-    0
-}}
+}
 
 /// Computes the number of combinations C(n, k).
 #[unsafe(no_mangle)]
@@ -85,22 +91,25 @@ pub unsafe extern "C" fn rssn_num_comb_combinations(
     n: u64,
     k: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_comb_combinations".to_string());
+        if result.is_null() {
 
-        return -1;
+            update_last_error("Null pointer passed to rssn_num_comb_combinations".to_string());
+
+            return -1;
+        }
+
+        *result =
+            combinatorics::combinations(
+                n, k,
+            );
+
+        0
     }
-
-    *result =
-        combinatorics::combinations(
-            n, k,
-        );
-
-    0
-}}
+}
 
 /// Solves a linear recurrence relation numerically.
 #[unsafe(no_mangle)]
@@ -120,31 +129,34 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
     initial_len: usize,
     target_n: usize,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if coeffs.is_null()
-        || initial_conditions.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_comb_solve_recurrence".to_string());
+        if coeffs.is_null()
+            || initial_conditions
+                .is_null()
+            || result.is_null()
+        {
 
-        return -1;
-    }
+            update_last_error("Null pointer passed to rssn_num_comb_solve_recurrence".to_string());
 
-    let coeffs_slice =
-        slice::from_raw_parts(
-            coeffs,
-            coeffs_len,
-        );
+            return -1;
+        }
 
-    let initial_slice =
-        slice::from_raw_parts(
-            initial_conditions,
-            initial_len,
-        );
+        let coeffs_slice =
+            slice::from_raw_parts(
+                coeffs,
+                coeffs_len,
+            );
 
-    match combinatorics::solve_recurrence_numerical(
+        let initial_slice =
+            slice::from_raw_parts(
+                initial_conditions,
+                initial_len,
+            );
+
+        match combinatorics::solve_recurrence_numerical(
         coeffs_slice,
         initial_slice,
         target_n,
@@ -162,7 +174,8 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence(
             -1
         },
     }
-}}
+    }
+}
 
 /// Computes the Stirling numbers of the second kind S(n, k).
 #[unsafe(no_mangle)]
@@ -179,22 +192,25 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second(
     n: u64,
     k: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_comb_stirling_second".to_string());
+        if result.is_null() {
 
-        return -1;
-    }
+            update_last_error("Null pointer passed to rssn_num_comb_stirling_second".to_string());
 
-    *result =
+            return -1;
+        }
+
+        *result =
         combinatorics::stirling_second(
             n, k,
         );
 
-    0
-}}
+        0
+    }
+}
 
 /// Computes the Bell number B(n).
 #[unsafe(no_mangle)]
@@ -210,23 +226,27 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second(
 pub unsafe extern "C" fn rssn_num_comb_bell(
     n: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_comb_bell"
-                .to_string(),
-        );
+        if result.is_null() {
 
-        return -1;
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_num_comb_bell"
+                    .to_string(),
+            );
+
+            return -1;
+        }
+
+        *result =
+            combinatorics::bell(n);
+
+        0
     }
-
-    *result = combinatorics::bell(n);
-
-    0
-}}
+}
 
 /// Computes the Catalan number `C_n`.
 #[unsafe(no_mangle)]
@@ -242,23 +262,27 @@ pub unsafe extern "C" fn rssn_num_comb_bell(
 pub unsafe extern "C" fn rssn_num_comb_catalan(
     n: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error(
+        if result.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_comb_catalan"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        *result =
+            combinatorics::catalan(n);
+
+        0
     }
-
-    *result = combinatorics::catalan(n);
-
-    0
-}}
+}
 
 /// Computes the rising factorial.
 #[unsafe(no_mangle)]
@@ -275,22 +299,25 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial(
     x: f64,
     n: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_comb_rising_factorial".to_string());
+        if result.is_null() {
 
-        return -1;
-    }
+            update_last_error("Null pointer passed to rssn_num_comb_rising_factorial".to_string());
 
-    *result =
+            return -1;
+        }
+
+        *result =
         combinatorics::rising_factorial(
             x, n,
         );
 
-    0
-}}
+        0
+    }
+}
 
 /// Computes the falling factorial.
 #[unsafe(no_mangle)]
@@ -307,16 +334,19 @@ pub unsafe extern "C" fn rssn_num_comb_falling_factorial(
     x: f64,
     n: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_comb_falling_factorial".to_string());
+        if result.is_null() {
 
-        return -1;
+            update_last_error("Null pointer passed to rssn_num_comb_falling_factorial".to_string());
+
+            return -1;
+        }
+
+        *result = combinatorics::falling_factorial(x, n);
+
+        0
     }
-
-    *result = combinatorics::falling_factorial(x, n);
-
-    0
-}}
+}

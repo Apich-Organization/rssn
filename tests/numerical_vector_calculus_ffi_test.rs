@@ -11,8 +11,8 @@ use rssn::symbolic::core::Expr;
 
 #[test]
 
-fn test_numerical_vector_calculus_handle_ffi(
-) {
+fn test_numerical_vector_calculus_handle_ffi()
+ {
 
     unsafe {
 
@@ -94,8 +94,8 @@ fn test_numerical_vector_calculus_handle_ffi(
 
 #[test]
 
-fn test_numerical_vector_calculus_json_ffi(
-) {
+fn test_numerical_vector_calculus_json_ffi()
+ {
 
     unsafe {
 
@@ -154,8 +154,8 @@ fn test_numerical_vector_calculus_json_ffi(
 
 #[test]
 
-fn test_numerical_vector_calculus_bincode_ffi(
-) {
+fn test_numerical_vector_calculus_bincode_ffi()
+ {
 
     unsafe {
 

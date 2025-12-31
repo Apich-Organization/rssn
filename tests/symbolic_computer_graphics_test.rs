@@ -382,8 +382,8 @@ fn test_bezier_curve_new() {
 
 #[test]
 
-fn test_bezier_curve_evaluate_endpoints(
-) {
+fn test_bezier_curve_evaluate_endpoints()
+ {
 
     let p0 = Vector::new(
         Expr::Constant(0.0),
@@ -564,8 +564,8 @@ fn test_polygon_mesh_new() {
 
 #[test]
 
-fn test_polygon_mesh_apply_transformation(
-) {
+fn test_polygon_mesh_apply_transformation()
+ {
 
     let v0 = Vector::new(
         Expr::Constant(0.0),

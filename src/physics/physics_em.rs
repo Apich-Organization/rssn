@@ -39,7 +39,11 @@ pub fn solve_forward_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+    let steps: usize = (((t_end
+        - t_start)
+        / dt)
+        .ceil()
+        as i64)
         .try_into()
         .unwrap_or(0);
 
@@ -88,7 +92,11 @@ pub fn solve_midpoint_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+    let steps: usize = (((t_end
+        - t_start)
+        / dt)
+        .ceil()
+        as i64)
         .try_into()
         .unwrap_or(0);
 
@@ -161,7 +169,11 @@ pub fn solve_heun_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+    let steps: usize = (((t_end
+        - t_start)
+        / dt)
+        .ceil()
+        as i64)
         .try_into()
         .unwrap_or(0);
 
@@ -285,7 +297,11 @@ pub fn solve_semi_implicit_euler<
 
     let (t_start, t_end) = t_span;
 
-    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+    let steps: usize = (((t_end
+        - t_start)
+        / dt)
+        .ceil()
+        as i64)
         .try_into()
         .unwrap_or(0);
 
@@ -345,8 +361,8 @@ use crate::physics::physics_rkm::DampedOscillatorSystem;
 
 #[must_use]
 
-pub fn simulate_oscillator_forward_euler_scenario(
-) -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_oscillator_forward_euler_scenario()
+-> Vec<(f64, Vec<f64>)> {
 
     let system =
         DampedOscillatorSystem {
@@ -429,8 +445,8 @@ impl MechanicalSystem
 /// This function will return an error if the underlying `solve_semi_implicit_euler`
 /// function encounters an error, e.g., if the initial state vector dimensions are incorrect.
 
-pub fn simulate_gravity_semi_implicit_euler_scenario(
-) -> Result<Vec<(f64, Vec<f64>)>, String>
+pub fn simulate_gravity_semi_implicit_euler_scenario()
+-> Result<Vec<(f64, Vec<f64>)>, String>
 {
 
     let system = OrbitalSystem {
@@ -464,7 +480,7 @@ pub trait LinearOdeSystem {
     /// Provides the system matrix A.
 
     fn get_matrix(&self)
-        -> Matrix<f64>;
+    -> Matrix<f64>;
 }
 
 /// Solves a linear ODE system y' = Ay using the backward (implicit) Euler method.
@@ -502,7 +518,11 @@ pub fn solve_backward_euler_linear<
 
     let (t_start, t_end) = t_span;
 
-    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+    let steps: usize = (((t_end
+        - t_start)
+        / dt)
+        .ceil()
+        as i64)
         .try_into()
         .unwrap_or(0);
 
@@ -591,8 +611,8 @@ impl LinearOdeSystem
 /// This function will return an error if the underlying `solve_backward_euler_linear`
 /// function encounters an error, e.g., if matrix inversion fails.
 
-pub fn simulate_stiff_decay_scenario(
-) -> Result<Vec<(f64, Vec<f64>)>, String>
+pub fn simulate_stiff_decay_scenario()
+-> Result<Vec<(f64, Vec<f64>)>, String>
 {
 
     let system = StiffDecaySystem;

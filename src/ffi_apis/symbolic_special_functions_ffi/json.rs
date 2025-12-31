@@ -94,18 +94,17 @@ pub unsafe extern "C" fn rssn_json_beta(
     let b: Option<Expr> =
         from_json_string(b_json);
 
-    match (a, b)
-    { (Some(val_a), Some(val_b)) => {
-
-        to_json_string(
+    match (a, b) {
+        | (
+            Some(val_a),
+            Some(val_b),
+        ) => to_json_string(
             &special_functions::beta(
                 val_a, val_b,
             ),
-        )
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        ),
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes the symbolic Digamma function ψ(z) via JSON interface.
@@ -224,7 +223,9 @@ pub unsafe extern "C" fn rssn_json_erfc(
     if let Some(a) = arg {
 
         to_json_string(
-            &special_functions::erfc(&a),
+            &special_functions::erfc(
+                &a,
+            ),
         )
     } else {
 
@@ -286,7 +287,9 @@ pub unsafe extern "C" fn rssn_json_zeta(
     if let Some(a) = arg {
 
         to_json_string(
-            &special_functions::zeta(&a),
+            &special_functions::zeta(
+                &a,
+            ),
         )
     } else {
 

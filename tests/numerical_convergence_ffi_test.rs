@@ -90,9 +90,10 @@ fn test_convergence_json_ffi() {
             )
             .unwrap();
 
-        assert!(v
-            .get("ok")
-            .is_some());
+        assert!(
+            v.get("ok")
+                .is_some()
+        );
 
         // Free
         let _ =

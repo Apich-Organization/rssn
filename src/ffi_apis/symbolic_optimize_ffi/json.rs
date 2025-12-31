@@ -21,29 +21,30 @@ pub extern "C" fn rssn_json_find_extrema(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    match (expr, vars)
-    { (Some(e), Some(v)) => {
+    match (expr, vars) {
+        | (Some(e), Some(v)) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match find_extrema(
-            &e,
-            &vars_refs,
-        ) {
-            | Ok(points) => {
-                to_json_string(&points)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            match find_extrema(
+                &e,
+                &vars_refs,
+            ) {
+                | Ok(points) => {
+                    to_json_string(
+                        &points,
+                    )
+                },
+                | Err(_) => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes Hessian matrix (JSON)
@@ -60,24 +61,24 @@ pub extern "C" fn rssn_json_hessian_matrix(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    match (expr, vars)
-    { (Some(e), Some(v)) => {
+    match (expr, vars) {
+        | (Some(e), Some(v)) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        let hessian = hessian_matrix(
-            &e,
-            &vars_refs,
-        );
+            let hessian =
+                hessian_matrix(
+                    &e,
+                    &vars_refs,
+                );
 
-        to_json_string(&hessian)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&hessian)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Finds constrained extrema (JSON)
@@ -104,14 +105,19 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
         expr,
         constraints,
         vars,
-    ) { (Some(e), Some(c), Some(v)) => {
+    ) {
+        | (
+            Some(e),
+            Some(c),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match find_constrained_extrema(
+            match find_constrained_extrema(
             &e,
             &c,
             &vars_refs,
@@ -125,8 +131,7 @@ pub extern "C" fn rssn_json_find_constrained_extrema(
                 std::ptr::null_mut()
             },
         }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

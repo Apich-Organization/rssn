@@ -32,8 +32,8 @@ use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponentia
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3(
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3()
+-> BincodeBuffer {
 
     let algebra = so3();
 
@@ -68,8 +68,8 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2(
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2()
+-> BincodeBuffer {
 
     let algebra = su2();
 
@@ -426,8 +426,8 @@ pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_bincode_so3_generators(
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_so3_generators()
+-> BincodeBuffer {
 
     let generators = so3_generators();
 
@@ -465,8 +465,8 @@ pub unsafe extern "C" fn rssn_bincode_so3_generators(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_bincode_su2_generators(
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_su2_generators()
+-> BincodeBuffer {
 
     let generators = su2_generators();
 

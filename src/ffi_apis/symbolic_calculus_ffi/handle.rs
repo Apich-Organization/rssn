@@ -16,18 +16,21 @@ use crate::symbolic::core::Expr;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> { unsafe {
+) -> Option<&'a str> {
 
-    if s.is_null() {
+    unsafe {
 
-        None
-    } else {
+        if s.is_null() {
 
-        CStr::from_ptr(s)
-            .to_str()
-            .ok()
+            None
+        } else {
+
+            CStr::from_ptr(s)
+                .to_str()
+                .ok()
+        }
     }
-}}
+}
 
 /// Differentiates an expression: d/d(var) expr.
 ///
@@ -46,16 +49,21 @@ unsafe fn c_str_to_str<'a>(
 pub unsafe extern "C" fn rssn_differentiate(
     expr: *const Expr,
     var: *const c_char,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() || var.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null()
+            || var.is_null()
+        {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let var_str = match c_str_to_str(
+        let expr_ref = &*expr;
+
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -64,13 +72,14 @@ pub unsafe extern "C" fn rssn_differentiate(
         },
     };
 
-    Box::into_raw(Box::new(
-        calculus::differentiate(
-            expr_ref,
-            var_str,
-        ),
-    ))
-}}
+        Box::into_raw(Box::new(
+            calculus::differentiate(
+                expr_ref,
+                var_str,
+            ),
+        ))
+    }
+}
 
 /// Integrates an expression: int(expr) d(var).
 ///
@@ -89,16 +98,21 @@ pub unsafe extern "C" fn rssn_differentiate(
 pub unsafe extern "C" fn rssn_integrate(
     expr: *const Expr,
     var: *const c_char,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() || var.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null()
+            || var.is_null()
+        {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let var_str = match c_str_to_str(
+        let expr_ref = &*expr;
+
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -107,15 +121,16 @@ pub unsafe extern "C" fn rssn_integrate(
         },
     };
 
-    Box::into_raw(Box::new(
-        calculus::integrate(
-            expr_ref,
-            var_str,
-            None,
-            None,
-        ),
-    ))
-}}
+        Box::into_raw(Box::new(
+            calculus::integrate(
+                expr_ref,
+                var_str,
+                None,
+                None,
+            ),
+        ))
+    }
+}
 
 /// Checks if an expression is analytic with respect to a variable.
 ///
@@ -134,26 +149,31 @@ pub unsafe extern "C" fn rssn_integrate(
 pub unsafe extern "C" fn rssn_check_analytic(
     expr: *const Expr,
     var: *const c_char,
-) -> bool { unsafe {
+) -> bool {
 
-    if expr.is_null() || var.is_null() {
+    unsafe {
 
-        return false;
+        if expr.is_null()
+            || var.is_null()
+        {
+
+            return false;
+        }
+
+        let expr_ref = &*expr;
+
+        let var_str =
+            match c_str_to_str(var) {
+                | Some(s) => s,
+                | None => return false,
+            };
+
+        calculus::check_analytic(
+            expr_ref,
+            var_str,
+        )
     }
-
-    let expr_ref = &*expr;
-
-    let var_str =
-        match c_str_to_str(var) {
-            | Some(s) => s,
-            | None => return false,
-        };
-
-    calculus::check_analytic(
-        expr_ref,
-        var_str,
-    )
-}}
+}
 
 /// Computes the limit of an expression: limit(expr, var -> point).
 ///
@@ -173,21 +193,24 @@ pub unsafe extern "C" fn rssn_limit(
     expr: *const Expr,
     var: *const c_char,
     point: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null()
-        || var.is_null()
-        || point.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null()
+            || var.is_null()
+            || point.is_null()
+        {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let point_ref = &*point;
+        let expr_ref = &*expr;
 
-    let var_str = match c_str_to_str(
+        let point_ref = &*point;
+
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -196,14 +219,15 @@ pub unsafe extern "C" fn rssn_limit(
         },
     };
 
-    Box::into_raw(Box::new(
-        calculus::limit(
-            expr_ref,
-            var_str,
-            point_ref,
-        ),
-    ))
-}}
+        Box::into_raw(Box::new(
+            calculus::limit(
+                expr_ref,
+                var_str,
+                point_ref,
+            ),
+        ))
+    }
+}
 
 /// Computes the definite integral of an expression.
 #[unsafe(no_mangle)]
@@ -221,24 +245,27 @@ pub unsafe extern "C" fn rssn_definite_integrate(
     var: *const c_char,
     lower: *const Expr,
     upper: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null()
-        || var.is_null()
-        || lower.is_null()
-        || upper.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null()
+            || var.is_null()
+            || lower.is_null()
+            || upper.is_null()
+        {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let lower_ref = &*lower;
+        let expr_ref = &*expr;
 
-    let upper_ref = &*upper;
+        let lower_ref = &*lower;
 
-    let var_str = match c_str_to_str(
+        let upper_ref = &*upper;
+
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -247,7 +274,7 @@ pub unsafe extern "C" fn rssn_definite_integrate(
         },
     };
 
-    Box::into_raw(Box::new(
+        Box::into_raw(Box::new(
         calculus::definite_integrate(
             expr_ref,
             var_str,
@@ -255,7 +282,8 @@ pub unsafe extern "C" fn rssn_definite_integrate(
             upper_ref,
         ),
     ))
-}}
+    }
+}
 
 /// Evaluates an expression at a given point.
 #[unsafe(no_mangle)]
@@ -272,21 +300,24 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
     expr: *const Expr,
     var: *const c_char,
     value: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null()
-        || var.is_null()
-        || value.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null()
+            || var.is_null()
+            || value.is_null()
+        {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let value_ref = &*value;
+        let expr_ref = &*expr;
 
-    let var_str = match c_str_to_str(
+        let value_ref = &*value;
+
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -295,14 +326,15 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
         },
     };
 
-    Box::into_raw(Box::new(
-        calculus::evaluate_at_point(
-            expr_ref,
-            var_str,
-            value_ref,
-        ),
-    ))
-}}
+        Box::into_raw(Box::new(
+            calculus::evaluate_at_point(
+                expr_ref,
+                var_str,
+                value_ref,
+            ),
+        ))
+    }
+}
 
 /// Finds poles of an expression.
 #[unsafe(no_mangle)]
@@ -318,16 +350,21 @@ pub unsafe extern "C" fn rssn_evaluate_at_point(
 pub unsafe extern "C" fn rssn_find_poles(
     expr: *const Expr,
     var: *const c_char,
-) -> *mut Vec<Expr> { unsafe {
+) -> *mut Vec<Expr> {
 
-    if expr.is_null() || var.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null()
+            || var.is_null()
+        {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let var_str = match c_str_to_str(
+        let expr_ref = &*expr;
+
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -336,13 +373,14 @@ pub unsafe extern "C" fn rssn_find_poles(
         },
     };
 
-    Box::into_raw(Box::new(
-        calculus::find_poles(
-            expr_ref,
-            var_str,
-        ),
-    ))
-}}
+        Box::into_raw(Box::new(
+            calculus::find_poles(
+                expr_ref,
+                var_str,
+            ),
+        ))
+    }
+}
 
 /// Returns the number of poles found for a given expression.
 ///
@@ -369,16 +407,19 @@ pub unsafe extern "C" fn rssn_find_poles(
 
 pub const unsafe extern "C" fn rssn_poles_len(
     poles: *const Vec<Expr>
-) -> usize { unsafe {
+) -> usize {
 
-    if poles.is_null() {
+    unsafe {
 
-        0
-    } else {
+        if poles.is_null() {
 
-        (*poles).len()
+            0
+        } else {
+
+            (*poles).len()
+        }
     }
-}}
+}
 
 /// Returns a cloned pole expression at the given index.
 ///
@@ -409,24 +450,29 @@ pub const unsafe extern "C" fn rssn_poles_len(
 pub unsafe extern "C" fn rssn_poles_get(
     poles: *const Vec<Expr>,
     index: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if poles.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if poles.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let poles_ref = &*poles;
+
+        if index >= poles_ref.len() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            poles_ref[index].clone(),
+        ))
     }
-
-    let poles_ref = &*poles;
-
-    if index >= poles_ref.len() {
-
-        return std::ptr::null_mut();
-    }
-
-    Box::into_raw(Box::new(
-        poles_ref[index].clone(),
-    ))
-}}
+}
 
 /// Frees a vector of pole expressions previously returned by `rssn_find_poles`.
 ///
@@ -455,13 +501,17 @@ pub unsafe extern "C" fn rssn_poles_get(
 
 pub unsafe extern "C" fn rssn_free_poles(
     poles: *mut Vec<Expr>
-) { unsafe {
+) {
 
-    if !poles.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(poles);
+        if !poles.is_null() {
+
+            let _ =
+                Box::from_raw(poles);
+        }
     }
-}}
+}
 
 /// Calculates the residue of a complex function at a given pole.
 #[unsafe(no_mangle)]
@@ -478,21 +528,24 @@ pub unsafe extern "C" fn rssn_calculate_residue(
     expr: *const Expr,
     var: *const c_char,
     pole: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null()
-        || var.is_null()
-        || pole.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null()
+            || var.is_null()
+            || pole.is_null()
+        {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let pole_ref = &*pole;
+        let expr_ref = &*expr;
 
-    let var_str = match c_str_to_str(
+        let pole_ref = &*pole;
+
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -501,14 +554,15 @@ pub unsafe extern "C" fn rssn_calculate_residue(
         },
     };
 
-    Box::into_raw(Box::new(
-        calculus::calculate_residue(
-            expr_ref,
-            var_str,
-            pole_ref,
-        ),
-    ))
-}}
+        Box::into_raw(Box::new(
+            calculus::calculate_residue(
+                expr_ref,
+                var_str,
+                pole_ref,
+            ),
+        ))
+    }
+}
 
 /// Finds the order of a pole.
 #[unsafe(no_mangle)]
@@ -525,32 +579,35 @@ pub unsafe extern "C" fn rssn_find_pole_order(
     expr: *const Expr,
     var: *const c_char,
     pole: *const Expr,
-) -> usize { unsafe {
+) -> usize {
 
-    if expr.is_null()
-        || var.is_null()
-        || pole.is_null()
-    {
+    unsafe {
 
-        return 0;
+        if expr.is_null()
+            || var.is_null()
+            || pole.is_null()
+        {
+
+            return 0;
+        }
+
+        let expr_ref = &*expr;
+
+        let pole_ref = &*pole;
+
+        let var_str =
+            match c_str_to_str(var) {
+                | Some(s) => s,
+                | None => return 0,
+            };
+
+        calculus::find_pole_order(
+            expr_ref,
+            var_str,
+            pole_ref,
+        )
     }
-
-    let expr_ref = &*expr;
-
-    let pole_ref = &*pole;
-
-    let var_str =
-        match c_str_to_str(var) {
-            | Some(s) => s,
-            | None => return 0,
-        };
-
-    calculus::find_pole_order(
-        expr_ref,
-        var_str,
-        pole_ref,
-    )
-}}
+}
 
 /// Substitutes a variable with an expression.
 #[unsafe(no_mangle)]
@@ -567,21 +624,25 @@ pub unsafe extern "C" fn rssn_substitute(
     expr: *const Expr,
     var: *const c_char,
     replacement: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null()
-        || var.is_null()
-        || replacement.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null()
+            || var.is_null()
+            || replacement.is_null()
+        {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let replacement_ref = &*replacement;
+        let expr_ref = &*expr;
 
-    let var_str = match c_str_to_str(
+        let replacement_ref =
+            &*replacement;
+
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -590,14 +651,15 @@ pub unsafe extern "C" fn rssn_substitute(
         },
     };
 
-    Box::into_raw(Box::new(
-        calculus::substitute(
-            expr_ref,
-            var_str,
-            replacement_ref,
-        ),
-    ))
-}}
+        Box::into_raw(Box::new(
+            calculus::substitute(
+                expr_ref,
+                var_str,
+                replacement_ref,
+            ),
+        ))
+    }
+}
 
 /// Gets real and imaginary parts of an expression.
 ///
@@ -616,24 +678,28 @@ pub unsafe extern "C" fn rssn_substitute(
 
 pub unsafe extern "C" fn rssn_get_real_imag_parts(
     expr: *const Expr
-) -> *mut Vec<Expr> { unsafe {
+) -> *mut Vec<Expr> {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null() {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let (re, im) =
+        let expr_ref = &*expr;
+
+        let (re, im) =
         calculus::get_real_imag_parts(
             expr_ref,
         );
 
-    Box::into_raw(Box::new(vec![
-        re, im,
-    ]))
-}}
+        Box::into_raw(Box::new(vec![
+            re, im,
+        ]))
+    }
+}
 
 /// Computes a path integral.
 #[unsafe(no_mangle)]
@@ -650,21 +716,24 @@ pub unsafe extern "C" fn rssn_path_integrate(
     expr: *const Expr,
     var: *const c_char,
     contour: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null()
-        || var.is_null()
-        || contour.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null()
+            || var.is_null()
+            || contour.is_null()
+        {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let contour_ref = &*contour;
+        let expr_ref = &*expr;
 
-    let var_str = match c_str_to_str(
+        let contour_ref = &*contour;
+
+        let var_str = match c_str_to_str(
         var,
     ) {
         | Some(s) => s,
@@ -673,11 +742,12 @@ pub unsafe extern "C" fn rssn_path_integrate(
         },
     };
 
-    Box::into_raw(Box::new(
-        calculus::path_integrate(
-            expr_ref,
-            var_str,
-            contour_ref,
-        ),
-    ))
-}}
+        Box::into_raw(Box::new(
+            calculus::path_integrate(
+                expr_ref,
+                var_str,
+                contour_ref,
+            ),
+        ))
+    }
+}

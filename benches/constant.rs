@@ -1,5 +1,5 @@
-use criterion::criterion_group;
 use criterion::Criterion;
+use criterion::criterion_group;
 use rssn::constant;
 
 fn bench_get_build_date(

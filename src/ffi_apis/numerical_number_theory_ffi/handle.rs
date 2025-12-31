@@ -85,18 +85,21 @@ pub const extern "C" fn rssn_num_nt_phi(
 pub unsafe extern "C" fn rssn_num_nt_factorize(
     n: u64,
     out_factors: *mut u64,
-) -> usize { unsafe {
+) -> usize {
 
-    let factors = nt::factorize(n);
+    unsafe {
 
-    if !out_factors.is_null() {
+        let factors = nt::factorize(n);
 
-        ptr::copy_nonoverlapping(
-            factors.as_ptr(),
-            out_factors,
-            factors.len(),
-        );
+        if !out_factors.is_null() {
+
+            ptr::copy_nonoverlapping(
+                factors.as_ptr(),
+                out_factors,
+                factors.len(),
+            );
+        }
+
+        factors.len()
     }
-
-    factors.len()
-}}
+}

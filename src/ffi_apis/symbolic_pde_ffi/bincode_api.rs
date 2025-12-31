@@ -2,9 +2,9 @@
 
 use std::os::raw::c_char;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::pde;
 
@@ -42,29 +42,29 @@ pub extern "C" fn rssn_bincode_solve_pde(
         pde_expr,
         func_str,
         vars,
-    ) { (
-        Some(pde),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(pde),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        let result = pde::solve_pde(
-            &pde,
-            f,
-            &vars_refs,
-            None,
-        );
+            let result = pde::solve_pde(
+                &pde,
+                f,
+                &vars_refs,
+                None,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Solves a PDE using the method of characteristics (Bincode).
@@ -103,25 +103,25 @@ pub extern "C" fn rssn_bincode_solve_pde_by_characteristics(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match pde::solve_pde_by_characteristics(&eq, f, &vars_refs) {
+            match pde::solve_pde_by_characteristics(&eq, f, &vars_refs) {
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Solves the 1D wave equation (Bincode).
@@ -160,25 +160,25 @@ pub extern "C" fn rssn_bincode_solve_wave_equation_1d(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match pde::solve_wave_equation_1d_dalembert(&eq, f, &vars_refs) {
+            match pde::solve_wave_equation_1d_dalembert(&eq, f, &vars_refs) {
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Solves the 1D heat equation (Bincode).
@@ -217,25 +217,25 @@ pub extern "C" fn rssn_bincode_solve_heat_equation_1d(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match pde::solve_heat_equation_1d(&eq, f, &vars_refs) {
+            match pde::solve_heat_equation_1d(&eq, f, &vars_refs) {
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Solves the 2D Laplace equation (Bincode).
@@ -274,25 +274,25 @@ pub extern "C" fn rssn_bincode_solve_laplace_equation_2d(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match pde::solve_laplace_equation_2d(&eq, f, &vars_refs) {
+            match pde::solve_laplace_equation_2d(&eq, f, &vars_refs) {
             | Some(result) => to_bincode_buffer(&result),
             | None => BincodeBuffer::empty(),
         }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Classifies a PDE (Bincode).
@@ -331,29 +331,29 @@ pub extern "C" fn rssn_bincode_classify_pde(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        let classification =
+            let classification =
             pde::classify_pde_heuristic(
                 &eq,
                 f,
                 &vars_refs,
             );
 
-        to_bincode_buffer(
-            &classification,
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(
+                &classification,
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

@@ -1,7 +1,7 @@
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::Condvar;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -82,8 +82,8 @@ pub struct Computation {
     pub cancel_signal: Arc<AtomicBool>,
 }
 
-fn default_pause(
-) -> Arc<(Mutex<bool>, Condvar)> {
+fn default_pause()
+-> Arc<(Mutex<bool>, Condvar)> {
 
     Arc::new((
         Mutex::new(false),
@@ -91,8 +91,8 @@ fn default_pause(
     ))
 }
 
-fn default_cancel_signal(
-) -> Arc<AtomicBool> {
+fn default_cancel_signal()
+-> Arc<AtomicBool> {
 
     Arc::new(AtomicBool::new(
         false,

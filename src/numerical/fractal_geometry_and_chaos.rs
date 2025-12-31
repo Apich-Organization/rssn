@@ -1495,10 +1495,10 @@ pub fn correlation_dimension(
         let r = log_r_val.exp();
 
         // Count pairs with distance < r
-        let count =
-            distances.partition_point(
-                |&d| d < r,
-            );
+        let count = distances
+            .partition_point(|&d| {
+                d < r
+            });
 
         let c_r = (2.0 * count as f64)
             / ((n * (n - 1)) as f64);
@@ -1609,8 +1609,19 @@ pub fn orbit_density(
             && y < y_range.1
         {
 
-            let xi: usize = (((x - x_range.0) / x_scale) as i64).try_into().unwrap_or(0);
-            let yi: usize = (((y - y_range.0) / y_scale) as i64).try_into().unwrap_or(0);
+            let xi: usize = (((x
+                - x_range.0)
+                / x_scale)
+                as i64)
+                .try_into()
+                .unwrap_or(0);
+
+            let yi: usize = (((y
+                - y_range.0)
+                / y_scale)
+                as i64)
+                .try_into()
+                .unwrap_or(0);
 
             if xi < x_bins
                 && yi < y_bins

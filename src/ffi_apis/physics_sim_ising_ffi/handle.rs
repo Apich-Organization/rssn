@@ -70,14 +70,18 @@ pub extern "C" fn rssn_physics_sim_ising_run(
 
 pub unsafe extern "C" fn rssn_physics_sim_ising_free_result(
     handle: IsingResultHandle
-) { unsafe {
+) {
 
-    if !handle
-        .grid
-        .is_null()
-    {
+    unsafe {
 
-        let _ =
-            Box::from_raw(handle.grid);
+        if !handle
+            .grid
+            .is_null()
+        {
+
+            let _ = Box::from_raw(
+                handle.grid,
+            );
+        }
     }
-}}
+}

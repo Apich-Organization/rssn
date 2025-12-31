@@ -196,33 +196,34 @@ pub extern "C" fn rssn_bincode_poly_add_gf(
             &modulus_buf,
         );
 
-    match (p1, p2, modulus)
-    { (
-        Some(v1),
-        Some(v2),
-        Some(m),
-    ) => {
+    match (p1, p2, modulus) {
+        | (
+            Some(v1),
+            Some(v2),
+            Some(m),
+        ) => {
 
-        let field = FiniteField::new(m);
+            let field =
+                FiniteField::new(m);
 
-        match poly_add_gf(
-            &v1,
-            &v2,
-            &field,
-        ) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            match poly_add_gf(
+                &v1,
+                &v2,
+                &field,
+            ) {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Multiplies two polynomials over a general finite field via Bincode interface.
@@ -245,31 +246,32 @@ pub extern "C" fn rssn_bincode_poly_mul_gf(
             &modulus_buf,
         );
 
-    match (p1, p2, modulus)
-    { (
-        Some(v1),
-        Some(v2),
-        Some(m),
-    ) => {
+    match (p1, p2, modulus) {
+        | (
+            Some(v1),
+            Some(v2),
+            Some(m),
+        ) => {
 
-        let field = FiniteField::new(m);
+            let field =
+                FiniteField::new(m);
 
-        match poly_mul_gf(
-            &v1,
-            &v2,
-            &field,
-        ) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            match poly_mul_gf(
+                &v1,
+                &v2,
+                &field,
+            ) {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

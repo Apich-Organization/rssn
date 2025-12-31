@@ -40,7 +40,7 @@
 //! simplifying `x^2` given the side-relation that `x^2 + y^2 - 1 = 0` (the unit circle).
 //!
 //! ```rust
-//!
+//! 
 //! use rssn::symbolic::cas_foundations::simplify_with_relations;
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::grobner::MonomialOrder;
@@ -367,5 +367,6 @@ use std::sync::Arc;
 pub fn is_exclusive<T>(
     arc: &Arc<T>
 ) -> bool {
+
     Arc::strong_count(arc) == 1
 }

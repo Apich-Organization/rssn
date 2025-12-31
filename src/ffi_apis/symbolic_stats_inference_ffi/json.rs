@@ -39,16 +39,18 @@ pub unsafe extern "C" fn rssn_json_one_sample_t_test(
             target_mean_json,
         );
 
-    match (data, target)
-    { (Some(data), Some(target)) => {
+    match (data, target) {
+        | (
+            Some(data),
+            Some(target),
+        ) => {
 
-        let result = stats_inference::one_sample_t_test_symbolic(&data, &target);
+            let result = stats_inference::one_sample_t_test_symbolic(&data, &target);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Performs a two-sample t-test.
@@ -84,20 +86,19 @@ pub unsafe extern "C" fn rssn_json_two_sample_t_test(
     let diff: Option<Expr> =
         from_json_string(mu_diff_json);
 
-    match (data1, data2, diff)
-    { (
-        Some(d1),
-        Some(d2),
-        Some(diff),
-    ) => {
+    match (data1, data2, diff) {
+        | (
+            Some(d1),
+            Some(d2),
+            Some(diff),
+        ) => {
 
-        let result = stats_inference::two_sample_t_test_symbolic(&d1, &d2, &diff);
+            let result = stats_inference::two_sample_t_test_symbolic(&d1, &d2, &diff);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Performs a z-test.
@@ -137,22 +138,21 @@ pub unsafe extern "C" fn rssn_json_z_test(
             pop_std_dev_json,
         );
 
-    match (data, target, sigma)
-    { (
-        Some(data),
-        Some(target),
-        Some(sigma),
-    ) => {
+    match (data, target, sigma) {
+        | (
+            Some(data),
+            Some(target),
+            Some(sigma),
+        ) => {
 
-        let result = stats_inference::z_test_symbolic(
+            let result = stats_inference::z_test_symbolic(
             &data,
             &target,
             &sigma,
         );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

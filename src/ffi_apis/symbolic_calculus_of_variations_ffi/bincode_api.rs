@@ -2,9 +2,9 @@
 
 use std::os::raw::c_char;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::calculus_of_variations;
 use crate::symbolic::core::Expr;
 
@@ -56,15 +56,19 @@ pub extern "C" fn rssn_bincode_euler_lagrange(
         lagrangian,
         func_str,
         var_str,
-    ) { (Some(l), Some(f), Some(v)) => {
+    ) {
+        | (
+            Some(l),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let result = calculus_of_variations::euler_lagrange(&l, f, v);
+            let result = calculus_of_variations::euler_lagrange(&l, f, v);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Generates and attempts to solve the Euler-Lagrange equation using Bincode.
@@ -115,15 +119,19 @@ pub extern "C" fn rssn_bincode_solve_euler_lagrange(
         lagrangian,
         func_str,
         var_str,
-    ) { (Some(l), Some(f), Some(v)) => {
+    ) {
+        | (
+            Some(l),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let result = calculus_of_variations::solve_euler_lagrange(&l, f, v);
+            let result = calculus_of_variations::solve_euler_lagrange(&l, f, v);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Applies Hamilton's Principle using Bincode.
@@ -174,13 +182,17 @@ pub extern "C" fn rssn_bincode_hamiltons_principle(
         lagrangian,
         func_str,
         var_str,
-    ) { (Some(l), Some(f), Some(v)) => {
+    ) {
+        | (
+            Some(l),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let result = calculus_of_variations::hamiltons_principle(&l, f, v);
+            let result = calculus_of_variations::hamiltons_principle(&l, f, v);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

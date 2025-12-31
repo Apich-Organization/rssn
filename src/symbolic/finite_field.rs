@@ -285,7 +285,7 @@ impl Div for PrimeFieldElement {
                     return Self::new(
                         Zero::zero(),
                         self.field,
-                    )
+                    );
                 },
             };
 

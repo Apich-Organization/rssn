@@ -53,21 +53,21 @@ pub extern "C" fn rssn_json_solve_ode(
         ode_expr,
         func_str,
         var_str,
-    ) { (
-        Some(ode),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(ode),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let result = ode::solve_ode(
-            &ode, f, v, None,
-        );
+            let result = ode::solve_ode(
+                &ode, f, v, None,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Solves a separable ODE using JSON.
@@ -319,27 +319,28 @@ pub extern "C" fn rssn_json_solve_riccati_ode(
         func_str,
         var_str,
         y1,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-        Some(y),
-    ) => {
-
-        match ode::solve_riccati_ode(
-            &eq, f, v, &y,
-        ) {
-            | Some(result) => {
-                to_json_string(&result)
-            },
-            | None => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+            Some(y),
+        ) => {
+            match ode::solve_riccati_ode(
+                &eq, f, v, &y,
+            ) {
+                | Some(result) => {
+                    to_json_string(
+                        &result,
+                    )
+                },
+                | None => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Solves a Cauchy-Euler ODE using JSON.
@@ -450,26 +451,27 @@ pub extern "C" fn rssn_json_solve_exact_ode(
         equation,
         func_str,
         var_str,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
-
-        match ode::solve_exact_ode(
-            &eq, f, v,
-        ) {
-            | Some(result) => {
-                to_json_string(&result)
-            },
-            | None => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
+            match ode::solve_exact_ode(
+                &eq, f, v,
+            ) {
+                | Some(result) => {
+                    to_json_string(
+                        &result,
+                    )
+                },
+                | None => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Solves by reduction of order using JSON.

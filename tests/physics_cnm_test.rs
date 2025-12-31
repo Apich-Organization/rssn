@@ -34,8 +34,8 @@ fn test_solve_heat_1d_cn_conservation()
 
 #[test]
 
-fn test_solve_schrodinger_1d_norm_conservation(
-) {
+fn test_solve_schrodinger_1d_norm_conservation()
+ {
 
     let n = 100;
 

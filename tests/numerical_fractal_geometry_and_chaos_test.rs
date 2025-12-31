@@ -41,8 +41,8 @@ fn test_mandelbrot_escape_time_in_set()
 
 #[test]
 
-fn test_mandelbrot_escape_time_outside_set(
-) {
+fn test_mandelbrot_escape_time_outside_set()
+ {
 
     // Point (2, 0) is outside the set
     let escape = mandelbrot_escape_time(
@@ -54,8 +54,8 @@ fn test_mandelbrot_escape_time_outside_set(
 
 #[test]
 
-fn test_mandelbrot_escape_time_boundary(
-) {
+fn test_mandelbrot_escape_time_boundary()
+ {
 
     // Point at -2 is on the boundary
     let escape = mandelbrot_escape_time(

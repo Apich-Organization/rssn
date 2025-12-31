@@ -17,25 +17,24 @@ pub extern "C" fn rssn_bincode_exterior_derivative(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    match (form, vars)
-    { (Some(f), Some(v)) => {
+    match (form, vars) {
+        | (Some(f), Some(v)) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        let result =
-            exterior_derivative(
-                &f,
-                &vars_refs,
-            );
+            let result =
+                exterior_derivative(
+                    &f,
+                    &vars_refs,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the wedge product of two differential forms (Bincode)
@@ -54,17 +53,16 @@ pub extern "C" fn rssn_bincode_wedge_product(
         DifferentialForm,
     > = from_bincode_buffer(&form2_buf);
 
-    match (form1, form2)
-    { (Some(f1), Some(f2)) => {
+    match (form1, form2) {
+        | (Some(f1), Some(f2)) => {
 
-        let result =
-            wedge_product(&f1, &f2);
+            let result =
+                wedge_product(&f1, &f2);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the boundary of a domain (Bincode)
@@ -115,25 +113,29 @@ pub extern "C" fn rssn_bincode_generalized_stokes_theorem(
         omega,
         manifold,
         vars,
-    ) { (Some(o), Some(m), Some(v)) => {
+    ) {
+        | (
+            Some(o),
+            Some(m),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        let result =
+            let result =
             generalized_stokes_theorem(
                 &o,
                 &m,
                 &vars_refs,
             );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Represents Gauss's theorem (Bincode)
@@ -154,17 +156,17 @@ pub extern "C" fn rssn_bincode_gauss_theorem(
             &volume_buf,
         );
 
-    match (vector_field, volume)
-    { (Some(vf), Some(vol)) => {
+    match (vector_field, volume) {
+        | (Some(vf), Some(vol)) => {
 
-        let result =
-            gauss_theorem(&vf, &vol);
+            let result = gauss_theorem(
+                &vf, &vol,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Represents Stokes' theorem (Bincode)
@@ -188,16 +190,17 @@ pub extern "C" fn rssn_bincode_stokes_theorem(
     match (
         vector_field,
         surface,
-    ) { (Some(vf), Some(surf)) => {
+    ) {
+        | (Some(vf), Some(surf)) => {
 
-        let result =
-            stokes_theorem(&vf, &surf);
+            let result = stokes_theorem(
+                &vf, &surf,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Represents Green's theorem (Bincode)
@@ -220,22 +223,21 @@ pub extern "C" fn rssn_bincode_greens_theorem(
             &domain_buf,
         );
 
-    match (p, q, domain)
-    { (
-        Some(p_expr),
-        Some(q_expr),
-        Some(d),
-    ) => {
+    match (p, q, domain) {
+        | (
+            Some(p_expr),
+            Some(q_expr),
+            Some(d),
+        ) => {
 
-        let result = greens_theorem(
-            &p_expr,
-            &q_expr,
-            &d,
-        );
+            let result = greens_theorem(
+                &p_expr,
+                &q_expr,
+                &d,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

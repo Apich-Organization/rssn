@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rssn_json_permutations(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -59,7 +59,7 @@ pub unsafe extern "C" fn rssn_json_permutations(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -107,7 +107,7 @@ pub unsafe extern "C" fn rssn_json_combinations(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rssn_json_combinations(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 

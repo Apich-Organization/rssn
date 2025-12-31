@@ -2,9 +2,9 @@
 
 use serde::Deserialize;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_em;
 use crate::physics::physics_rkm::DampedOscillatorSystem;
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn rssn_physics_em_solve_bincode(
                      type"
                         .to_string(),
                 ),
-            )
+            );
         },
     };
 

@@ -23,8 +23,8 @@ fn test_kinetic_energy() {
 
 #[test]
 
-fn test_potential_energy_gravity_uniform(
-) {
+fn test_potential_energy_gravity_uniform()
+ {
 
     let m = Expr::new_variable("m");
 
@@ -65,8 +65,8 @@ fn test_spring_potential() {
 
 #[test]
 
-fn test_euler_lagrange_harmonic_oscillator(
-) {
+fn test_euler_lagrange_harmonic_oscillator()
+ {
 
     let m = Expr::new_variable("m");
 
@@ -101,8 +101,10 @@ fn test_euler_lagrange_harmonic_oscillator(
 
     assert!(eq_str.contains("m"));
 
-    assert!(eq_str
-        .contains("d/dt(d/dt(x))"));
+    assert!(
+        eq_str
+            .contains("d/dt(d/dt(x))")
+    );
 
     assert!(eq_str.contains("k"));
 

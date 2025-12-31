@@ -561,8 +561,8 @@ fn test_ray_sphere_intersection_handle()
 
 #[test]
 
-fn test_ray_sphere_intersection_miss_handle(
-) {
+fn test_ray_sphere_intersection_miss_handle()
+ {
 
     let result = rssn::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_ray_sphere_intersection(
         0.0, 10.0, -5.0, // ray origin (misses)

@@ -3,18 +3,18 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
+use crate::symbolic::vector_calculus::ParametricCurve;
+use crate::symbolic::vector_calculus::ParametricSurface;
+use crate::symbolic::vector_calculus::Volume;
 use crate::symbolic::vector_calculus::line_integral_scalar;
 use crate::symbolic::vector_calculus::line_integral_vector;
 use crate::symbolic::vector_calculus::surface_integral;
 use crate::symbolic::vector_calculus::volume_integral;
-use crate::symbolic::vector_calculus::ParametricCurve;
-use crate::symbolic::vector_calculus::ParametricSurface;
-use crate::symbolic::vector_calculus::Volume;
 
 #[derive(Serialize, Deserialize)]
 
@@ -67,7 +67,7 @@ pub extern "C" fn rssn_line_integral_scalar_bincode(
         | Some(i) => i,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -102,7 +102,7 @@ pub extern "C" fn rssn_line_integral_vector_bincode(
         | Some(i) => i,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -137,7 +137,7 @@ pub extern "C" fn rssn_surface_integral_bincode(
         | Some(i) => i,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -172,7 +172,7 @@ pub extern "C" fn rssn_volume_integral_bincode(
         | Some(i) => i,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 

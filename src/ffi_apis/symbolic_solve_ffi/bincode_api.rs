@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_linear_system;
@@ -27,16 +27,15 @@ pub extern "C" fn rssn_bincode_solve(
     let var: Option<String> =
         from_bincode_buffer(&var_buf);
 
-    match (expr, var)
-    { (Some(e), Some(v)) => {
+    match (expr, var) {
+        | (Some(e), Some(v)) => {
 
-        let result = solve(&e, &v);
+            let result = solve(&e, &v);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Solves a system of equations for given variables.
@@ -62,31 +61,31 @@ pub extern "C" fn rssn_bincode_solve_system(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    match (equations, vars)
-    { (Some(eqs), Some(vs)) => {
+    match (equations, vars) {
+        | (Some(eqs), Some(vs)) => {
 
-        let vars_str: Vec<&str> = vs
+            let vars_str: Vec<&str> = vs
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match solve_system(
-            &eqs,
-            &vars_str,
-        ) {
-            | Some(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | None => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            match solve_system(
+                &eqs,
+                &vars_str,
+            ) {
+                | Some(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | None => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Solves a linear system of equations.
@@ -112,23 +111,22 @@ pub extern "C" fn rssn_bincode_solve_linear_system(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    match (system, vars)
-    { (Some(sys), Some(vs)) => {
-
-        match solve_linear_system(
-            &sys, &vs,
-        ) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (system, vars) {
+        | (Some(sys), Some(vs)) => {
+            match solve_linear_system(
+                &sys, &vs,
+            ) {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

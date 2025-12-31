@@ -87,7 +87,7 @@ pub unsafe extern "C" fn rssn_num_ga_add_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -126,7 +126,7 @@ pub unsafe extern "C" fn rssn_num_ga_sub_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -165,7 +165,7 @@ pub unsafe extern "C" fn rssn_num_ga_mul_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -204,7 +204,7 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -247,7 +247,7 @@ pub unsafe extern "C" fn rssn_num_ga_dot_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -290,7 +290,7 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -329,7 +329,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -368,7 +368,7 @@ pub unsafe extern "C" fn rssn_num_ga_inv_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 

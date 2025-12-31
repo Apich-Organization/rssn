@@ -413,8 +413,8 @@ fn test_handle_complex_expression() {
 
 #[test]
 
-fn test_handle_persistence_across_operations(
-) {
+fn test_handle_persistence_across_operations()
+ {
 
     HANDLE_MANAGER.clear();
 

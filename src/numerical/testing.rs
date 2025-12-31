@@ -39,11 +39,19 @@ pub fn solve(
     var: &str,
 ) -> Vec<Expr> {
 
-    let equation = if let Expr::Eq(left, right) = expr {
-        Expr::new_sub(left.clone(), right.clone())
-    } else {
-        expr.clone()
-    };
+    let equation =
+        if let Expr::Eq(left, right) =
+            expr
+        {
+
+            Expr::new_sub(
+                left.clone(),
+                right.clone(),
+            )
+        } else {
+
+            expr.clone()
+        };
 
     let simplified_expr =
         simplify(&equation);
@@ -1055,7 +1063,7 @@ pub fn solve_transcendental_numerical(
                         ),
                         var.to_string(),
                     ),
-                ]
+                ];
             },
         };
 
@@ -1071,7 +1079,7 @@ pub fn solve_transcendental_numerical(
                         ),
                         var.to_string(),
                     ),
-                ]
+                ];
             },
         };
 
@@ -1534,7 +1542,10 @@ pub fn solve_system(
         solve_linear_system_symbolic(
             symbolic_matrix,
             symbolic_rhs,
-        ).map_or_else(Vec::new, |sol| vec![sol])
+        )
+        .map_or_else(Vec::new, |sol| {
+            vec![sol]
+        })
     } else {
 
         solve_nonlinear_system_numerical(

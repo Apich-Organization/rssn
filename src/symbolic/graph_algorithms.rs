@@ -127,10 +127,13 @@ fn try_numeric_value(
             Some(prod)
         },
         | Expr::Dag(node) => {
-
             node.to_expr()
                 .ok()
-                .and_then(|inner| try_numeric_value(&inner))
+                .and_then(|inner| {
+                    try_numeric_value(
+                        &inner,
+                    )
+                })
         },
         // Try to simplify and extract
         | _ => {
@@ -397,6 +400,7 @@ pub(crate) struct TarjanSccState {
 
 impl TarjanSccState {
     fn new() -> Self {
+
         Self {
             time: 0,
             disc: HashMap::new(),
@@ -419,6 +423,7 @@ impl TarjanSccState {
 /// # Returns
 /// A `Vec<Vec<usize>>` where each inner `Vec` represents a strongly connected component.
 #[must_use]
+
 pub fn strongly_connected_components<
     V: Eq
         + std::hash::Hash
@@ -428,11 +433,13 @@ pub fn strongly_connected_components<
     graph: &Graph<V>
 ) -> Vec<Vec<usize>> {
 
-    let mut state = TarjanSccState::new();
+    let mut state =
+        TarjanSccState::new();
 
     for node_id in
         0 .. graph.nodes.len()
     {
+
         tarjan_scc_util(
             graph,
             node_id,
@@ -454,15 +461,21 @@ pub(crate) fn tarjan_scc_util<
     state: &mut TarjanSccState,
 ) {
 
-    state.disc.insert(u, state.time);
+    state
+        .disc
+        .insert(u, state.time);
 
-    state.low.insert(u, state.time);
+    state
+        .low
+        .insert(u, state.time);
 
     state.time += 1;
 
     state.stack.push(u);
 
-    state.on_stack.insert(u);
+    state
+        .on_stack
+        .insert(u);
 
     if let Some(neighbors) =
         graph.adj.get(u)
@@ -470,12 +483,13 @@ pub(crate) fn tarjan_scc_util<
 
         for &(v, _) in neighbors {
 
-            if !state.disc.contains_key(&v) {
+            if !state
+                .disc
+                .contains_key(&v)
+            {
 
                 tarjan_scc_util(
-                    graph,
-                    v,
-                    state,
+                    graph, v, state,
                 );
 
                 if let (
@@ -492,7 +506,8 @@ pub(crate) fn tarjan_scc_util<
                             .min(low_v),
                     );
                 }
-            } else if state.on_stack
+            } else if state
+                .on_stack
                 .contains(&v)
             {
 
@@ -515,7 +530,9 @@ pub(crate) fn tarjan_scc_util<
         }
     }
 
-    if state.low.get(&u) == state.disc.get(&u) {
+    if state.low.get(&u)
+        == state.disc.get(&u)
+    {
 
         let mut component = Vec::new();
 
@@ -523,7 +540,9 @@ pub(crate) fn tarjan_scc_util<
             state.stack.pop()
         {
 
-            state.on_stack.remove(&top);
+            state
+                .on_stack
+                .remove(&top);
 
             component.push(top);
 
@@ -533,7 +552,9 @@ pub(crate) fn tarjan_scc_util<
             }
         }
 
-        state.scc.push(component);
+        state
+            .scc
+            .push(component);
     }
 }
 
@@ -704,6 +725,7 @@ pub(crate) struct BridgesApState {
 
 impl BridgesApState {
     fn new() -> Self {
+
         Self {
             time: 0,
             visited: HashSet::new(),
@@ -728,6 +750,7 @@ impl BridgesApState {
 /// A tuple `(bridges, articulation_points)` where `bridges` is a `Vec<(usize, usize)>`
 /// and `articulation_points` is a `Vec<usize>`.
 #[must_use]
+
 pub fn find_bridges_and_articulation_points<
     V: Eq
         + std::hash::Hash
@@ -740,13 +763,17 @@ pub fn find_bridges_and_articulation_points<
     Vec<usize>,
 ) {
 
-    let mut state = BridgesApState::new();
+    let mut state =
+        BridgesApState::new();
 
     for node_id in
         0 .. graph.nodes.len()
     {
 
-        if !state.visited.contains(&node_id) {
+        if !state
+            .visited
+            .contains(&node_id)
+        {
 
             b_and_ap_util(
                 graph,
@@ -759,7 +786,8 @@ pub fn find_bridges_and_articulation_points<
 
     (
         state.bridges,
-        state.ap
+        state
+            .ap
             .into_iter()
             .collect(),
     )
@@ -777,11 +805,17 @@ pub(crate) fn b_and_ap_util<
     state: &mut BridgesApState,
 ) {
 
-    state.visited.insert(u);
+    state
+        .visited
+        .insert(u);
 
-    state.disc.insert(u, state.time);
+    state
+        .disc
+        .insert(u, state.time);
 
-    state.low.insert(u, state.time);
+    state
+        .low
+        .insert(u, state.time);
 
     state.time += 1;
 
@@ -794,10 +828,14 @@ pub(crate) fn b_and_ap_util<
         for &(v, _) in neighbors {
 
             if Some(v) == parent {
+
                 continue;
             }
 
-            if state.visited.contains(&v) {
+            if state
+                .visited
+                .contains(&v)
+            {
 
                 if let (
                     Some(&low_u),
@@ -809,7 +847,9 @@ pub(crate) fn b_and_ap_util<
 
                     state.low.insert(
                         u,
-                        low_u.min(disc_v),
+                        low_u.min(
+                            disc_v,
+                        ),
                     );
                 }
             } else {
@@ -833,21 +873,36 @@ pub(crate) fn b_and_ap_util<
 
                     state.low.insert(
                         u,
-                        low_u.min(low_v),
+                        low_u
+                            .min(low_v),
                     );
 
-                    if low_v > *state.disc.get(&u).unwrap()
+                    if low_v
+                        > *state
+                            .disc
+                            .get(&u)
+                            .unwrap()
                     {
-                        state.bridges.push((u, v));
+
+                        state
+                            .bridges
+                            .push((
+                                u, v,
+                            ));
                     }
 
                     if parent.is_some()
                         && low_v
-                            >= *state.disc
+                            >= *state
+                                .disc
                                 .get(&u)
-                                .unwrap()
+                                .unwrap(
+                                )
                     {
-                        state.ap.insert(u);
+
+                        state
+                            .ap
+                            .insert(u);
                     }
                 }
             }
@@ -856,6 +911,7 @@ pub(crate) fn b_and_ap_util<
 
     if parent.is_none() && children > 1
     {
+
         state.ap.insert(u);
     }
 }
@@ -1310,6 +1366,7 @@ pub(crate) fn dinic_dfs(
 }
 
 /// Result type for the Bellman-Ford algorithm.
+
 pub type BellmanFordResult = Result<
     (
         HashMap<usize, Expr>,
@@ -1340,6 +1397,7 @@ pub type BellmanFordResult = Result<
 ///
 /// This function will return an error if the graph contains a negative-weight cycle
 /// reachable from the `start_node`.
+
 pub fn bellman_ford<
     V: Eq
         + std::hash::Hash
@@ -1935,10 +1993,12 @@ pub fn topological_sort_kahn<
 
     let mut in_degree = vec![0; n];
 
-    for (i, degree) in in_degree.iter_mut().enumerate() {
+    for (i, degree) in in_degree
+        .iter_mut()
+        .enumerate()
+    {
 
-        *degree =
-            graph.in_degree(i);
+        *degree = graph.in_degree(i);
     }
 
     let mut queue: VecDeque<usize> = (0
@@ -2120,7 +2180,10 @@ pub fn bipartite_minimum_vertex_cover<
     let mut matched_nodes_u =
         HashSet::new();
 
-    for (i, &part) in partition.iter().enumerate() {
+    for (i, &part) in partition
+        .iter()
+        .enumerate()
+    {
 
         if part == 0 {
 
@@ -2192,7 +2255,10 @@ pub fn bipartite_minimum_vertex_cover<
         }
     }
 
-    for (i, &part) in partition.iter().enumerate() {
+    for (i, &part) in partition
+        .iter()
+        .enumerate()
+    {
 
         if part == 1
             && visited.contains(&i)
@@ -2235,7 +2301,10 @@ pub fn hopcroft_karp_bipartite_matching<
 
     let mut u_nodes = Vec::new();
 
-    for (i, &part) in partition.iter().enumerate() {
+    for (i, &part) in partition
+        .iter()
+        .enumerate()
+    {
 
         if part == 0 {
 
@@ -2278,7 +2347,9 @@ pub fn hopcroft_karp_bipartite_matching<
 
     let mut result = Vec::new();
 
-    for (u, &v_opt) in pair_u.iter().enumerate()
+    for (u, &v_opt) in pair_u
+        .iter()
+        .enumerate()
     {
 
         if let Some(v) = v_opt {
@@ -2483,9 +2554,13 @@ pub fn blossom_algorithm<
             }
         }
     }
+
     let mut result = Vec::new();
 
-    for (u, &matched_v) in matching.iter().enumerate() {
+    for (u, &matched_v) in matching
+        .iter()
+        .enumerate()
+    {
 
         if let Some(v) = matched_v {
 
@@ -2699,17 +2774,22 @@ pub(crate) fn contract_blossom(
 
         state.origin[u] = base;
 
-        if let Some(w) = state.matching[u] {
+        if let Some(w) =
+            state.matching[u]
+        {
 
             if state.level[w] == -1 {
 
                 state.level[w] = 0;
 
-                state.queue.push_back(w);
+                state
+                    .queue
+                    .push_back(w);
             }
         }
 
-        if let Some(p) = state.parent[u] {
+        if let Some(p) = state.parent[u]
+        {
 
             u = p;
         } else {
@@ -2969,12 +3049,18 @@ pub fn floyd_warshall<
             n
         ];
 
-    for (i, row) in dist.iter_mut().enumerate() {
+    for (i, row) in dist
+        .iter_mut()
+        .enumerate()
+    {
 
         row[i] = Expr::Constant(0.0);
     }
 
-    for (u, row) in dist.iter_mut().enumerate() {
+    for (u, row) in dist
+        .iter_mut()
+        .enumerate()
+    {
 
         if let Some(neighbors) =
             graph.adj.get(u)
@@ -2984,8 +3070,7 @@ pub fn floyd_warshall<
                 neighbors
             {
 
-                row[v] =
-                    weight.clone();
+                row[v] = weight.clone();
             }
         }
     }

@@ -35,37 +35,40 @@ pub unsafe extern "C" fn rssn_num_matrix_create_nightly(
     rows: usize,
     cols: usize,
     data: *const f64,
-) -> *mut RssnMatrixHandle { unsafe {
+) -> *mut RssnMatrixHandle {
 
-    if data.is_null() {
+    unsafe {
 
-        update_last_error(
+        if data.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_matrix_create"
                 .to_string(),
         );
 
-        return ptr::null_mut();
+            return ptr::null_mut();
+        }
+
+        let len = rows * cols;
+
+        let slice = {
+
+            std::slice::from_raw_parts(
+                data, len,
+            )
+        };
+
+        let matrix = Matrix::new(
+            rows,
+            cols,
+            slice.to_vec(),
+        );
+
+        Box::into_raw(Box::new(matrix))
+            .cast::<RssnMatrixHandle>()
     }
-
-    let len = rows * cols;
-
-    let slice =  {
-
-        std::slice::from_raw_parts(
-            data, len,
-        )
-    };
-
-    let matrix = Matrix::new(
-        rows,
-        cols,
-        slice.to_vec(),
-    );
-
-    Box::into_raw(Box::new(matrix))
-        .cast::<RssnMatrixHandle>()
-}}
+}
 
 /// Frees a previously allocated Matrix.
 #[unsafe(no_mangle)]
@@ -165,39 +168,43 @@ pub unsafe extern "C" fn rssn_num_matrix_get_data_nightly(
     matrix: *const RssnMatrixHandle,
 
     buffer: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if matrix.is_null()
-        || buffer.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if matrix.is_null()
+            || buffer.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_matrix_get_data"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        let m = {
+
+            &*matrix
+                .cast::<Matrix<f64>>()
+        };
+
+        let data = m.data();
+
+        {
+
+            ptr::copy_nonoverlapping(
+                data.as_ptr(),
+                buffer,
+                data.len(),
+            );
+        }
+
+        0
     }
-
-    let m =  {
-
-        &*matrix.cast::<Matrix<f64>>()
-    };
-
-    let data = m.data();
-
-     {
-
-        ptr::copy_nonoverlapping(
-            data.as_ptr(),
-            buffer,
-            data.len(),
-        );
-    }
-
-    0
-}}
+}
 
 /// Adds two matrices.
 
@@ -215,41 +222,46 @@ pub unsafe extern "C" fn rssn_num_matrix_add_nightly(
     m1: *const RssnMatrixHandle,
 
     m2: *const RssnMatrixHandle,
-) -> *mut RssnMatrixHandle { unsafe {
+) -> *mut RssnMatrixHandle {
 
-    if m1.is_null() || m2.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
+        if m1.is_null() || m2.is_null()
+        {
+
+            return ptr::null_mut();
+        }
+
+        let v1 = {
+
+            &*m1.cast::<Matrix<f64>>()
+        };
+
+        let v2 = {
+
+            &*m2.cast::<Matrix<f64>>()
+        };
+
+        if v1.rows() != v2.rows()
+            || v1.cols() != v2.cols()
+        {
+
+            update_last_error(
+                "Dimension mismatch \
+                 in matrix addition"
+                    .to_string(),
+            );
+
+            return ptr::null_mut();
+        }
+
+        let res =
+            v1.clone() + v2.clone();
+
+        Box::into_raw(Box::new(res))
+            .cast::<RssnMatrixHandle>()
     }
-
-    let v1 =  {
-
-        &*m1.cast::<Matrix<f64>>()
-    };
-
-    let v2 =  {
-
-        &*m2.cast::<Matrix<f64>>()
-    };
-
-    if v1.rows() != v2.rows()
-        || v1.cols() != v2.cols()
-    {
-
-        update_last_error(
-            "Dimension mismatch in \
-             matrix addition"
-                .to_string(),
-        );
-
-        return ptr::null_mut();
-    }
-
-    let res = v1.clone() + v2.clone();
-
-    Box::into_raw(Box::new(res))
-        .cast::<RssnMatrixHandle>()
-}}
+}
 
 /// Multiplies two matrices.
 
@@ -267,39 +279,44 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_nightly(
     m1: *const RssnMatrixHandle,
 
     m2: *const RssnMatrixHandle,
-) -> *mut RssnMatrixHandle { unsafe {
+) -> *mut RssnMatrixHandle {
 
-    if m1.is_null() || m2.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
-    }
+        if m1.is_null() || m2.is_null()
+        {
 
-    let v1 =  {
+            return ptr::null_mut();
+        }
 
-        &*m1.cast::<Matrix<f64>>()
-    };
+        let v1 = {
 
-    let v2 =  {
+            &*m1.cast::<Matrix<f64>>()
+        };
 
-        &*m2.cast::<Matrix<f64>>()
-    };
+        let v2 = {
 
-    if v1.cols() != v2.rows() {
+            &*m2.cast::<Matrix<f64>>()
+        };
 
-        update_last_error(
+        if v1.cols() != v2.rows() {
+
+            update_last_error(
             "Dimension mismatch in \
              matrix multiplication"
                 .to_string(),
         );
 
-        return ptr::null_mut();
+            return ptr::null_mut();
+        }
+
+        let res =
+            v1.clone() * v2.clone();
+
+        Box::into_raw(Box::new(res))
+            .cast::<RssnMatrixHandle>()
     }
-
-    let res = v1.clone() * v2.clone();
-
-    Box::into_raw(Box::new(res))
-        .cast::<RssnMatrixHandle>()
-}}
+}
 
 /// Transposes a matrix.
 
@@ -349,38 +366,42 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant_nightly(
     matrix: *const RssnMatrixHandle,
 
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if matrix.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        return -1;
+        if matrix.is_null()
+            || result.is_null()
+        {
+
+            return -1;
+        }
+
+        let m = {
+
+            &*matrix
+                .cast::<Matrix<f64>>()
+        };
+
+        match m.determinant() {
+            | Ok(d) => {
+
+                {
+
+                    *result = d;
+                };
+
+                0
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                -1
+            },
+        }
     }
-
-    let m =  {
-
-        &*matrix.cast::<Matrix<f64>>()
-    };
-
-    match m.determinant() {
-        | Ok(d) => {
-
-             {
-
-                *result = d;
-            };
-
-            0
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            -1
-        },
-    }
-}}
+}
 
 /// Computes the inverse of a matrix.
 
@@ -396,19 +417,22 @@ pub unsafe extern "C" fn rssn_num_matrix_determinant_nightly(
 
 pub unsafe extern "C" fn rssn_num_matrix_inverse_nightly(
     matrix: *const RssnMatrixHandle
-) -> *mut RssnMatrixHandle { unsafe {
+) -> *mut RssnMatrixHandle {
 
-    if matrix.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
-    }
+        if matrix.is_null() {
 
-    let m =  {
+            return ptr::null_mut();
+        }
 
-        &*matrix.cast::<Matrix<f64>>()
-    };
+        let m = {
 
-    match m.inverse() {
+            &*matrix
+                .cast::<Matrix<f64>>()
+        };
+
+        match m.inverse() {
         | Some(inv) => Box::into_raw(
             Box::new(inv),
         )
@@ -424,7 +448,8 @@ pub unsafe extern "C" fn rssn_num_matrix_inverse_nightly(
             ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 /// Creates an identity matrix.
 #[unsafe(no_mangle)]
@@ -520,38 +545,42 @@ pub unsafe extern "C" fn rssn_num_matrix_is_orthogonal_nightly(
 pub unsafe extern "C" fn rssn_num_matrix_rank_nightly(
     matrix: *const RssnMatrixHandle,
     out_rank: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if matrix.is_null()
-        || out_rank.is_null()
-    {
+    unsafe {
 
-        return -1;
+        if matrix.is_null()
+            || out_rank.is_null()
+        {
+
+            return -1;
+        }
+
+        let m = {
+
+            &*matrix
+                .cast::<Matrix<f64>>()
+        };
+
+        match m.rank() {
+            | Ok(r) => {
+
+                {
+
+                    *out_rank = r;
+                };
+
+                0
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                -1
+            },
+        }
     }
-
-    let m =  {
-
-        &*matrix.cast::<Matrix<f64>>()
-    };
-
-    match m.rank() {
-        | Ok(r) => {
-
-             {
-
-                *out_rank = r;
-            };
-
-            0
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            -1
-        },
-    }
-}}
+}
 
 /// Returns the trace.
 #[unsafe(no_mangle)]
@@ -567,38 +596,42 @@ pub unsafe extern "C" fn rssn_num_matrix_rank_nightly(
 pub unsafe extern "C" fn rssn_num_matrix_trace_nightly(
     matrix: *const RssnMatrixHandle,
     out_trace: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if matrix.is_null()
-        || out_trace.is_null()
-    {
+    unsafe {
 
-        return -1;
+        if matrix.is_null()
+            || out_trace.is_null()
+        {
+
+            return -1;
+        }
+
+        let m = {
+
+            &*matrix
+                .cast::<Matrix<f64>>()
+        };
+
+        match m.trace() {
+            | Ok(t) => {
+
+                {
+
+                    *out_trace = t;
+                };
+
+                0
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                -1
+            },
+        }
     }
-
-    let m =  {
-
-        &*matrix.cast::<Matrix<f64>>()
-    };
-
-    match m.trace() {
-        | Ok(t) => {
-
-             {
-
-                *out_trace = t;
-            };
-
-            0
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            -1
-        },
-    }
-}}
+}
 
 /// Returns the Frobenius norm.
 #[unsafe(no_mangle)]
@@ -643,34 +676,37 @@ pub unsafe extern "C" fn rssn_num_matrix_frobenius_norm_nightly(
 pub unsafe extern "C" fn rssn_num_matrix_set_backend_nightly(
     matrix: *mut RssnMatrixHandle,
     backend_id: i32,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if matrix.is_null() {
+    unsafe {
 
-        return -1;
+        if matrix.is_null() {
+
+            return -1;
+        }
+
+        let m = &mut *matrix
+            .cast::<Matrix<f64>>();
+
+        match backend_id {
+            | 0 => {
+
+                m.set_backend(
+                    Backend::Native,
+                );
+            },
+            | 1 => {
+
+                m.set_backend(
+                    Backend::Faer,
+                );
+            },
+            | _ => return -1,
+        }
+
+        0
     }
-
-    let m = &mut *matrix
-        .cast::<Matrix<f64>>();
-
-    match backend_id {
-        | 0 => {
-
-            m.set_backend(
-                Backend::Native,
-            );
-        },
-        | 1 => {
-
-            m.set_backend(
-                Backend::Faer,
-            );
-        },
-        | _ => return -1,
-    }
-
-    0
-}}
+}
 
 /// Computes SVD decomposition: A = U * S * V^T.
 /// Returns 0 on success, -1 on error.
@@ -689,25 +725,27 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd_nightly(
     out_u: *mut *mut RssnMatrixHandle,
     out_s: *mut *mut RssnMatrixHandle,
     out_v: *mut *mut RssnMatrixHandle,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if matrix.is_null()
-        || out_u.is_null()
-        || out_s.is_null()
-        || out_v.is_null()
-    {
+    unsafe {
 
-        return -1;
-    }
+        if matrix.is_null()
+            || out_u.is_null()
+            || out_s.is_null()
+            || out_v.is_null()
+        {
 
-    let m =
-        &*matrix.cast::<Matrix<f64>>();
+            return -1;
+        }
 
-    if let Some(res) = m.decompose(
-        FaerDecompositionType::Svd,
-    ) {
+        let m = &*matrix
+            .cast::<Matrix<f64>>();
 
-        if let FaerDecompositionResult::Svd { u, s, v } = res {
+        if let Some(res) = m.decompose(
+            FaerDecompositionType::Svd,
+        ) {
+
+            if let FaerDecompositionResult::Svd { u, s, v } = res {
             let s_mat = Matrix::new(s.len(), 1, s).with_backend(m.backend);
 
             *out_u = Box::into_raw(Box::new(u)).cast::<RssnMatrixHandle>();
@@ -715,10 +753,11 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd_nightly(
             *out_v = Box::into_raw(Box::new(v)).cast::<RssnMatrixHandle>();
             return 0;
         }
-    }
+        }
 
-    -1
-}}
+        -1
+    }
+}
 
 /// Computes Cholesky decomposition: A = L * L^T.
 #[unsafe(no_mangle)]
@@ -734,19 +773,21 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_svd_nightly(
 pub unsafe extern "C" fn rssn_num_matrix_decompose_cholesky_nightly(
     matrix: *const RssnMatrixHandle,
     out_l: *mut *mut RssnMatrixHandle,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if matrix.is_null()
-        || out_l.is_null()
-    {
+    unsafe {
 
-        return -1;
-    }
+        if matrix.is_null()
+            || out_l.is_null()
+        {
 
-    let m =
-        &*matrix.cast::<Matrix<f64>>();
+            return -1;
+        }
 
-    if let Some(res) = m.decompose(
+        let m = &*matrix
+            .cast::<Matrix<f64>>();
+
+        if let Some(res) = m.decompose(
         FaerDecompositionType::Cholesky,
     ) {
 
@@ -756,8 +797,9 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_cholesky_nightly(
         }
     }
 
-    -1
-}}
+        -1
+    }
+}
 
 /// Computes Symmetric Eigendecomposition: A = V * D * V^T.
 #[unsafe(no_mangle)]
@@ -774,20 +816,22 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_eigen_symmetric_nightly(
     matrix: *const RssnMatrixHandle,
     out_values: *mut *mut RssnMatrixHandle,
     out_vectors: *mut *mut RssnMatrixHandle,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if matrix.is_null()
-        || out_values.is_null()
-        || out_vectors.is_null()
-    {
+    unsafe {
 
-        return -1;
-    }
+        if matrix.is_null()
+            || out_values.is_null()
+            || out_vectors.is_null()
+        {
 
-    let m =
-        &*matrix.cast::<Matrix<f64>>();
+            return -1;
+        }
 
-    if let Some(res) = m.decompose(FaerDecompositionType::EigenSymmetric) {
+        let m = &*matrix
+            .cast::<Matrix<f64>>();
+
+        if let Some(res) = m.decompose(FaerDecompositionType::EigenSymmetric) {
         if let FaerDecompositionResult::EigenSymmetric { values, vectors } = res {
              let val_mat = Matrix::new(values.len(), 1, values).with_backend(m.backend);
              *out_values = Box::into_raw(Box::new(val_mat)).cast::<RssnMatrixHandle>();
@@ -796,5 +840,6 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_eigen_symmetric_nightly(
         }
     }
 
-    -1
-}}
+        -1
+    }
+}

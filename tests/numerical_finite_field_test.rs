@@ -44,9 +44,10 @@ fn test_gf_p_inverse() {
 
     let zero = numerical_PrimeFieldElement::new(0, p);
 
-    assert!(zero
-        .inverse()
-        .is_none());
+    assert!(
+        zero.inverse()
+            .is_none()
+    );
 }
 
 #[test]

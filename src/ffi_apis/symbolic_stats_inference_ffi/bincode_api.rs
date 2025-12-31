@@ -27,16 +27,18 @@ pub extern "C" fn rssn_bincode_one_sample_t_test(
             &target_mean_buf,
         );
 
-    match (data, target)
-    { (Some(data), Some(target)) => {
+    match (data, target) {
+        | (
+            Some(data),
+            Some(target),
+        ) => {
 
-        let result = stats_inference::one_sample_t_test_symbolic(&data, &target);
+            let result = stats_inference::one_sample_t_test_symbolic(&data, &target);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Performs a two-sample t-test.
@@ -66,20 +68,19 @@ pub extern "C" fn rssn_bincode_two_sample_t_test(
             &mu_diff_buf,
         );
 
-    match (data1, data2, diff)
-    { (
-        Some(d1),
-        Some(d2),
-        Some(diff),
-    ) => {
+    match (data1, data2, diff) {
+        | (
+            Some(d1),
+            Some(d2),
+            Some(diff),
+        ) => {
 
-        let result = stats_inference::two_sample_t_test_symbolic(&d1, &d2, &diff);
+            let result = stats_inference::two_sample_t_test_symbolic(&d1, &d2, &diff);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Performs a z-test.
@@ -111,22 +112,21 @@ pub extern "C" fn rssn_bincode_z_test(
             &pop_std_dev_buf,
         );
 
-    match (data, target, sigma)
-    { (
-        Some(data),
-        Some(target),
-        Some(sigma),
-    ) => {
+    match (data, target, sigma) {
+        | (
+            Some(data),
+            Some(target),
+            Some(sigma),
+        ) => {
 
-        let result = stats_inference::z_test_symbolic(
+            let result = stats_inference::z_test_symbolic(
             &data,
             &target,
             &sigma,
         );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

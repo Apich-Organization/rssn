@@ -2,12 +2,12 @@
 
 use assert_approx_eq::assert_approx_eq;
 use proptest::prelude::*;
+use rssn::numerical::integrate::QuadratureMethod;
 use rssn::numerical::integrate::adaptive_quadrature;
 use rssn::numerical::integrate::gauss_legendre_quadrature;
 use rssn::numerical::integrate::romberg_integration;
 use rssn::numerical::integrate::simpson_rule;
 use rssn::numerical::integrate::trapezoidal_rule;
-use rssn::numerical::integrate::QuadratureMethod;
 use rssn::numerical::integrate::{
     self,
 };

@@ -82,30 +82,36 @@ fn test_domain_errors() {
         Expr::new_constant(0.0),
     );
 
-    assert!(numerical_eval_expr(
-        &expr, &vars
-    )
-    .is_err());
+    assert!(
+        numerical_eval_expr(
+            &expr, &vars
+        )
+        .is_err()
+    );
 
     // sqrt(-1)
     let expr = Expr::new_sqrt(
         Expr::new_constant(-1.0),
     );
 
-    assert!(numerical_eval_expr(
-        &expr, &vars
-    )
-    .is_err());
+    assert!(
+        numerical_eval_expr(
+            &expr, &vars
+        )
+        .is_err()
+    );
 
     // ln(0)
     let expr = Expr::new_log(
         Expr::new_constant(0.0),
     );
 
-    assert!(numerical_eval_expr(
-        &expr, &vars
-    )
-    .is_err());
+    assert!(
+        numerical_eval_expr(
+            &expr, &vars
+        )
+        .is_err()
+    );
 }
 
 #[test]

@@ -16,9 +16,11 @@ fn test_parsing_cache() {
         Expr::new_variable("x"),
     ); // Dummy expr for test
 
-    assert!(cache
-        .get(input)
-        .is_none());
+    assert!(
+        cache
+            .get(input)
+            .is_none()
+    );
 
     cache.set(
         input.to_string(),
@@ -34,9 +36,11 @@ fn test_parsing_cache() {
 
     cache.clear();
 
-    assert!(cache
-        .get(input)
-        .is_none());
+    assert!(
+        cache
+            .get(input)
+            .is_none()
+    );
 }
 
 #[test]
@@ -52,9 +56,11 @@ fn test_computation_result_cache() {
 
     let value = "42.0".to_string();
 
-    assert!(cache
-        .get(&expr)
-        .is_none());
+    assert!(
+        cache
+            .get(&expr)
+            .is_none()
+    );
 
     cache.set(
         expr.clone(),
@@ -75,7 +81,9 @@ fn test_computation_result_cache() {
 
     cache.clear();
 
-    assert!(cache
-        .get(&expr)
-        .is_none());
+    assert!(
+        cache
+            .get(&expr)
+            .is_none()
+    );
 }

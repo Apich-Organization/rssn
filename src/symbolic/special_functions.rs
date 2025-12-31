@@ -145,7 +145,9 @@ pub fn gamma(arg: &Expr) -> Expr {
 
             return Expr::Constant(
                 factorial(
-                    ((n - 1.0) as i64).try_into().unwrap_or(0),
+                    ((n - 1.0) as i64)
+                        .try_into()
+                        .unwrap_or(0),
                 ),
             );
         }
@@ -1242,14 +1244,14 @@ pub fn chebyshev_t(
                     &Expr::Constant(
                         n_val - 1.0,
                     ),
-                  &s_x,
+                    &s_x,
                 );
 
                 let t_n2 = chebyshev_t(
                     &Expr::Constant(
                         n_val - 2.0,
                     ),
-                  &s_x,
+                    &s_x,
                 );
 
                 return simplify(&Expr::new_sub(
@@ -1519,8 +1521,14 @@ pub fn legendre_rodrigues_formula(
 
     let n_factorial = Expr::Constant(
         if n_f64 >= 0.0 {
-            factorial((n_f64 as i64).try_into().unwrap_or(0))
+
+            factorial(
+                (n_f64 as i64)
+                    .try_into()
+                    .unwrap_or(0),
+            )
         } else {
+
             f64::NAN
         },
     );

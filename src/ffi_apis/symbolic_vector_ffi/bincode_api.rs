@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::vector::Vector;
 
 /// Computes the magnitude of a vector.
@@ -52,16 +52,16 @@ pub extern "C" fn rssn_bincode_vector_dot(
     let v2: Option<Vector> =
         from_bincode_buffer(&v2_buf);
 
-    match (v1, v2)
-    { (Some(vec1), Some(vec2)) => {
+    match (v1, v2) {
+        | (Some(vec1), Some(vec2)) => {
 
-        let result = vec1.dot(&vec2);
+            let result =
+                vec1.dot(&vec2);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the cross product of two vectors.
@@ -85,16 +85,16 @@ pub extern "C" fn rssn_bincode_vector_cross(
     let v2: Option<Vector> =
         from_bincode_buffer(&v2_buf);
 
-    match (v1, v2)
-    { (Some(vec1), Some(vec2)) => {
+    match (v1, v2) {
+        | (Some(vec1), Some(vec2)) => {
 
-        let result = vec1.cross(&vec2);
+            let result =
+                vec1.cross(&vec2);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Normalizes a vector.

@@ -517,8 +517,8 @@ pub fn lyapunov_exponent(
 /// dz/dt = x * y - beta * z
 #[must_use]
 
-pub fn lorenz_system(
-) -> (Expr, Expr, Expr) {
+pub fn lorenz_system()
+-> (Expr, Expr, Expr) {
 
     let x =
         Expr::Variable("x".to_string());

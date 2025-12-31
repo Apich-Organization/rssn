@@ -33,19 +33,18 @@ pub extern "C" fn rssn_json_differentiate(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
 
-        let result =
-            calculus::differentiate(
-                &e, v,
-            );
+            let result =
+                calculus::differentiate(
+                    &e, v,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Integrates an expression using JSON.
@@ -74,19 +73,18 @@ pub extern "C" fn rssn_json_integrate(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
 
-        let result =
-            calculus::integrate(
-                &e, v, None, None,
-            );
+            let result =
+                calculus::integrate(
+                    &e, v, None, None,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes definite integral using JSON.
@@ -128,20 +126,20 @@ pub extern "C" fn rssn_json_definite_integrate(
         var_str,
         lower,
         upper,
-    ) { (
-        Some(e),
-        Some(v),
-        Some(l),
-        Some(u),
-    ) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(l),
+            Some(u),
+        ) => {
 
-        let result = calculus::definite_integrate(&e, v, &l, &u);
+            let result = calculus::definite_integrate(&e, v, &l, &u);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Checks analytic using JSON.
@@ -170,14 +168,14 @@ pub extern "C" fn rssn_json_check_analytic(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
-
-        calculus::check_analytic(&e, v)
-    } _ => {
-
-        false
-    }}
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
+            calculus::check_analytic(
+                &e, v,
+            )
+        },
+        | _ => false,
+    }
 }
 
 /// Computes limit using JSON.
@@ -210,17 +208,22 @@ pub extern "C" fn rssn_json_limit(
         }
     };
 
-    match (expr, var_str, point)
-    { (Some(e), Some(v), Some(p)) => {
+    match (expr, var_str, point) {
+        | (
+            Some(e),
+            Some(v),
+            Some(p),
+        ) => {
 
-        let result =
-            calculus::limit(&e, v, &p);
+            let result =
+                calculus::limit(
+                    &e, v, &p,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Finds poles using JSON.
@@ -249,17 +252,18 @@ pub extern "C" fn rssn_json_find_poles(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
 
-        let result =
-            calculus::find_poles(&e, v);
+            let result =
+                calculus::find_poles(
+                    &e, v,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Calculates residue using JSON.
@@ -292,19 +296,22 @@ pub extern "C" fn rssn_json_calculate_residue(
         }
     };
 
-    match (expr, var_str, pole)
-    { (Some(e), Some(v), Some(p)) => {
+    match (expr, var_str, pole) {
+        | (
+            Some(e),
+            Some(v),
+            Some(p),
+        ) => {
 
-        let result =
+            let result =
             calculus::calculate_residue(
                 &e, v, &p,
             );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Finds pole order using JSON.
@@ -337,16 +344,18 @@ pub extern "C" fn rssn_json_find_pole_order(
         }
     };
 
-    match (expr, var_str, pole)
-    { (Some(e), Some(v), Some(p)) => {
-
-        calculus::find_pole_order(
-            &e, v, &p,
-        )
-    } _ => {
-
-        0
-    }}
+    match (expr, var_str, pole) {
+        | (
+            Some(e),
+            Some(v),
+            Some(p),
+        ) => {
+            calculus::find_pole_order(
+                &e, v, &p,
+            )
+        },
+        | _ => 0,
+    }
 }
 
 /// Substitutes using JSON.
@@ -385,18 +394,22 @@ pub extern "C" fn rssn_json_substitute(
         expr,
         var_str,
         replacement,
-    ) { (Some(e), Some(v), Some(r)) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(r),
+        ) => {
 
-        let result =
-            calculus::substitute(
-                &e, v, &r,
-            );
+            let result =
+                calculus::substitute(
+                    &e, v, &r,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Gets real and imaginary parts using JSON.
@@ -454,18 +467,22 @@ pub extern "C" fn rssn_json_path_integrate(
         expr,
         var_str,
         contour,
-    ) { (Some(e), Some(v), Some(c)) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(c),
+        ) => {
 
-        let result =
+            let result =
             calculus::path_integrate(
                 &e, v, &c,
             );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Evaluates at point using JSON.
@@ -498,21 +515,20 @@ pub extern "C" fn rssn_json_evaluate_at_point(
         }
     };
 
-    match (expr, var_str, value)
-    { (
-        Some(e),
-        Some(v),
-        Some(val),
-    ) => {
+    match (expr, var_str, value) {
+        | (
+            Some(e),
+            Some(v),
+            Some(val),
+        ) => {
 
-        let result =
+            let result =
             calculus::evaluate_at_point(
                 &e, v, &val,
             );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

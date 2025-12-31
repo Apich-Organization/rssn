@@ -100,7 +100,7 @@ pub fn find_extrema(
         ) {
             | Some(sol) => sol,
             | None => {
-                return Ok(vec![])
+                return Ok(vec![]);
             },
         };
 
@@ -357,9 +357,11 @@ pub fn find_constrained_extrema(
         &all_vars,
     ) {
         | Some(solution) => {
-            Ok(vec![solution
-                .into_iter()
-                .collect()])
+            Ok(vec![
+                solution
+                    .into_iter()
+                    .collect(),
+            ])
         },
         | None => Ok(vec![]),
     }

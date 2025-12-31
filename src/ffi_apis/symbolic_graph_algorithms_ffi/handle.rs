@@ -213,6 +213,7 @@ pub extern "C" fn rssn_graph_bridges_and_articulation_points_api(
 ) -> *mut c_char {
 
     #[derive(serde::Serialize)]
+
     struct BridgesResult {
         bridges: Vec<(usize, usize)>,
         articulation_points: Vec<usize>,

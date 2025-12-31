@@ -34,16 +34,20 @@ fn test_fredholm_neumann_series() {
 
     let upper = Expr::Constant(1.0);
 
-    let eq = FredholmEquation::new(FredholmEquationParams {
-        y_x: Expr::new_variable("y"), /* Placeholder */
-        f_x,
-        lambda,
-        kernel,
-        lower,
-        upper,
-        var_x: "x".to_string(),
-        var_t: "t".to_string(),
-    });
+    let eq = FredholmEquation::new(
+        FredholmEquationParams {
+            y_x: Expr::new_variable(
+                "y",
+            ), // Placeholder
+            f_x,
+            lambda,
+            kernel,
+            lower,
+            upper,
+            var_x: "x".to_string(),
+            var_t: "t".to_string(),
+        },
+    );
 
     // 1st iteration: y_0 = x
     // y_1 = x + 0.1 * int_0^1 x*t * t dt = x + 0.1 * x * [t^3/3]_0^1 = x + 0.1*x/3
@@ -90,16 +94,20 @@ fn test_fredholm_separable_kernel() {
 
     let upper = Expr::Constant(1.0);
 
-    let eq = FredholmEquation::new(FredholmEquationParams {
-        y_x: Expr::new_variable("y"),
-        f_x,
-        lambda,
-        kernel,
-        lower,
-        upper,
-        var_x: "x".to_string(),
-        var_t: "t".to_string(),
-    });
+    let eq = FredholmEquation::new(
+        FredholmEquationParams {
+            y_x: Expr::new_variable(
+                "y",
+            ),
+            f_x,
+            lambda,
+            kernel,
+            lower,
+            upper,
+            var_x: "x".to_string(),
+            var_t: "t".to_string(),
+        },
+    );
 
     let a_funcs = vec![x.clone()];
 
@@ -157,8 +165,8 @@ fn test_fredholm_separable_kernel() {
 
 #[test]
 
-fn test_volterra_successive_approximations(
-) {
+fn test_volterra_successive_approximations()
+ {
 
     // y(x) = 1 + int_0^x y(t) dt
     // Solution should be e^x
@@ -176,15 +184,19 @@ fn test_volterra_successive_approximations(
 
     let lower = Expr::Constant(0.0);
 
-    let eq = VolterraEquation::new(VolterraEquationParams {
-        y_x: Expr::new_variable("y"),
-        f_x,
-        lambda,
-        kernel,
-        lower,
-        var_x: "x".to_string(),
-        var_t: "t".to_string(),
-    });
+    let eq = VolterraEquation::new(
+        VolterraEquationParams {
+            y_x: Expr::new_variable(
+                "y",
+            ),
+            f_x,
+            lambda,
+            kernel,
+            lower,
+            var_x: "x".to_string(),
+            var_t: "t".to_string(),
+        },
+    );
 
     // 3 iterations
     // y_0 = 1

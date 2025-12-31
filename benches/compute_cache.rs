@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use criterion::Criterion;
 use criterion::black_box;
 use criterion::criterion_group;
-use criterion::Criterion;
 use rssn::compute::cache::ComputationResultCache;
 use rssn::compute::cache::ParsingCache;
 use rssn::compute::computation::Value;

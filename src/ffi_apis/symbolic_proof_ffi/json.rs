@@ -38,26 +38,26 @@ pub unsafe extern "C" fn rssn_json_verify_equation_solution(
         equations,
         solution,
         free_vars,
-    ) { (
-        Some(eqs),
-        Some(sol),
-        Some(free),
-    ) => {
+    ) {
+        | (
+            Some(eqs),
+            Some(sol),
+            Some(free),
+        ) => {
 
-        let free_refs: Vec<&str> = free
+            let free_refs: Vec<&str> = free
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        proof::verify_equation_solution(
+            proof::verify_equation_solution(
             &eqs,
             &sol,
             &free_refs,
         )
-    } _ => {
-
-        false
-    }}
+        },
+        | _ => false,
+    }
 }
 
 /// Verifies an indefinite integral using JSON.
@@ -129,14 +129,12 @@ pub unsafe extern "C" fn rssn_json_verify_matrix_inverse(
     let inverse: Option<Expr> =
         from_json_string(inverse_json);
 
-    match (original, inverse)
-    { (Some(orig), Some(inv)) => {
-
-        proof::verify_matrix_inverse(
-            &orig, &inv,
-        )
-    } _ => {
-
-        false
-    }}
+    match (original, inverse) {
+        | (Some(orig), Some(inv)) => {
+            proof::verify_matrix_inverse(
+                &orig, &inv,
+            )
+        },
+        | _ => false,
+    }
 }

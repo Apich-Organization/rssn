@@ -674,21 +674,18 @@ pub unsafe extern "C" fn rssn_json_z_transform(
         expr,
         in_var,
         out_var,
-    ) { (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) => {
-
-        to_json_string(
+    ) {
+        | (
+            Some(e),
+            Some(iv),
+            Some(ov),
+        ) => to_json_string(
             &transforms::z_transform(
                 &e, &iv, &ov,
             ),
-        )
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        ),
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes the inverse Z-transform of an expression.
@@ -776,22 +773,18 @@ pub unsafe extern "C" fn rssn_json_z_time_shift(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    match (f, k, out_var)
-    { (
-        Some(f),
-        Some(k),
-        Some(ov),
-    ) => {
-
-        to_json_string(
+    match (f, k, out_var) {
+        | (
+            Some(f),
+            Some(k),
+            Some(ov),
+        ) => to_json_string(
             &transforms::z_time_shift(
                 &f, &k, &ov,
             ),
-        )
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        ),
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Applies the scaling property of the Z-transform.
@@ -829,22 +822,20 @@ pub unsafe extern "C" fn rssn_json_z_scaling(
     let out_var: Option<String> =
         from_json_string(out_var_json);
 
-    match (f, a, out_var)
-    { (
-        Some(f),
-        Some(a),
-        Some(ov),
-    ) => {
-
-        to_json_string(
-            &transforms::z_scaling(
-                &f, &a, &ov,
-            ),
-        )
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (f, a, out_var) {
+        | (
+            Some(f),
+            Some(a),
+            Some(ov),
+        ) => {
+            to_json_string(
+                &transforms::z_scaling(
+                    &f, &a, &ov,
+                ),
+            )
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Applies the differentiation property of the Z-transform.

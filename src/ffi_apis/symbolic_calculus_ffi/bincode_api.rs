@@ -2,9 +2,9 @@
 
 use std::os::raw::c_char;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::calculus;
 use crate::symbolic::core::Expr;
 
@@ -34,19 +34,18 @@ pub extern "C" fn rssn_bincode_differentiate(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
 
-        let result =
-            calculus::differentiate(
-                &e, v,
-            );
+            let result =
+                calculus::differentiate(
+                    &e, v,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Integrates an expression using Bincode.
@@ -75,19 +74,18 @@ pub extern "C" fn rssn_bincode_integrate(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
 
-        let result =
-            calculus::integrate(
-                &e, v, None, None,
-            );
+            let result =
+                calculus::integrate(
+                    &e, v, None, None,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes definite integral using Bincode.
@@ -129,20 +127,20 @@ pub extern "C" fn rssn_bincode_definite_integrate(
         var_str,
         lower,
         upper,
-    ) { (
-        Some(e),
-        Some(v),
-        Some(l),
-        Some(u),
-    ) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(l),
+            Some(u),
+        ) => {
 
-        let result = calculus::definite_integrate(&e, v, &l, &u);
+            let result = calculus::definite_integrate(&e, v, &l, &u);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Checks analytic using Bincode.
@@ -171,14 +169,14 @@ pub extern "C" fn rssn_bincode_check_analytic(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
-
-        calculus::check_analytic(&e, v)
-    } _ => {
-
-        false
-    }}
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
+            calculus::check_analytic(
+                &e, v,
+            )
+        },
+        | _ => false,
+    }
 }
 
 /// Computes limit using Bincode.
@@ -211,17 +209,22 @@ pub extern "C" fn rssn_bincode_limit(
         }
     };
 
-    match (expr, var_str, point)
-    { (Some(e), Some(v), Some(p)) => {
+    match (expr, var_str, point) {
+        | (
+            Some(e),
+            Some(v),
+            Some(p),
+        ) => {
 
-        let result =
-            calculus::limit(&e, v, &p);
+            let result =
+                calculus::limit(
+                    &e, v, &p,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Finds poles using Bincode.
@@ -250,17 +253,18 @@ pub extern "C" fn rssn_bincode_find_poles(
         }
     };
 
-    match (expr, var_str)
-    { (Some(e), Some(v)) => {
+    match (expr, var_str) {
+        | (Some(e), Some(v)) => {
 
-        let result =
-            calculus::find_poles(&e, v);
+            let result =
+                calculus::find_poles(
+                    &e, v,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Calculates residue using Bincode.
@@ -293,19 +297,22 @@ pub extern "C" fn rssn_bincode_calculate_residue(
         }
     };
 
-    match (expr, var_str, pole)
-    { (Some(e), Some(v), Some(p)) => {
+    match (expr, var_str, pole) {
+        | (
+            Some(e),
+            Some(v),
+            Some(p),
+        ) => {
 
-        let result =
+            let result =
             calculus::calculate_residue(
                 &e, v, &p,
             );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Finds pole order using Bincode.
@@ -338,16 +345,18 @@ pub extern "C" fn rssn_bincode_find_pole_order(
         }
     };
 
-    match (expr, var_str, pole)
-    { (Some(e), Some(v), Some(p)) => {
-
-        calculus::find_pole_order(
-            &e, v, &p,
-        )
-    } _ => {
-
-        0
-    }}
+    match (expr, var_str, pole) {
+        | (
+            Some(e),
+            Some(v),
+            Some(p),
+        ) => {
+            calculus::find_pole_order(
+                &e, v, &p,
+            )
+        },
+        | _ => 0,
+    }
 }
 
 /// Substitutes using Bincode.
@@ -386,18 +395,22 @@ pub extern "C" fn rssn_bincode_substitute(
         expr,
         var_str,
         replacement,
-    ) { (Some(e), Some(v), Some(r)) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(r),
+        ) => {
 
-        let result =
-            calculus::substitute(
-                &e, v, &r,
-            );
+            let result =
+                calculus::substitute(
+                    &e, v, &r,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Gets real and imaginary parts using Bincode.
@@ -457,18 +470,22 @@ pub extern "C" fn rssn_bincode_path_integrate(
         expr,
         var_str,
         contour,
-    ) { (Some(e), Some(v), Some(c)) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(c),
+        ) => {
 
-        let result =
+            let result =
             calculus::path_integrate(
                 &e, v, &c,
             );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Evaluates at point using Bincode.
@@ -501,21 +518,20 @@ pub extern "C" fn rssn_bincode_evaluate_at_point(
         }
     };
 
-    match (expr, var_str, value)
-    { (
-        Some(e),
-        Some(v),
-        Some(val),
-    ) => {
+    match (expr, var_str, value) {
+        | (
+            Some(e),
+            Some(v),
+            Some(val),
+        ) => {
 
-        let result =
+            let result =
             calculus::evaluate_at_point(
                 &e, v, &val,
             );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

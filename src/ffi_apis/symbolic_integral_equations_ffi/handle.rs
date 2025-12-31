@@ -50,18 +50,27 @@ pub extern "C" fn rssn_fredholm_new(
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let params = FredholmEquationParams {
-            y_x: (*y_x).clone(),
-            f_x: (*f_x).clone(),
-            lambda: (*lambda).clone(),
-            kernel: (*kernel).clone(),
-            lower_bound: (*lower_bound).clone(),
-            upper_bound: (*upper_bound).clone(),
-            var_x: var_x_str,
-            var_t: var_t_str,
-        };
+        let params =
+            FredholmEquationParams {
+                y_x: (*y_x).clone(),
+                f_x: (*f_x).clone(),
+                lambda: (*lambda)
+                    .clone(),
+                kernel: (*kernel)
+                    .clone(),
+                lower_bound:
+                    (*lower_bound)
+                        .clone(),
+                upper_bound:
+                    (*upper_bound)
+                        .clone(),
+                var_x: var_x_str,
+                var_t: var_t_str,
+            };
 
-        let eq = FredholmEquation::new(params);
+        let eq = FredholmEquation::new(
+            params,
+        );
 
         Box::into_raw(Box::new(eq))
     }
@@ -170,7 +179,8 @@ pub extern "C" fn rssn_fredholm_solve_separable(
 
         match (*eq)
             .solve_separable_kernel(
-                &a_vec, &b_vec,
+                &a_vec,
+                &b_vec,
             ) {
             | Ok(result) => {
                 Box::into_raw(Box::new(
@@ -222,17 +232,24 @@ pub extern "C" fn rssn_volterra_new(
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let params = VolterraEquationParams {
-            y_x: (*y_x).clone(),
-            f_x: (*f_x).clone(),
-            lambda: (*lambda).clone(),
-            kernel: (*kernel).clone(),
-            lower_bound: (*lower_bound).clone(),
-            var_x: var_x_str,
-            var_t: var_t_str,
-        };
+        let params =
+            VolterraEquationParams {
+                y_x: (*y_x).clone(),
+                f_x: (*f_x).clone(),
+                lambda: (*lambda)
+                    .clone(),
+                kernel: (*kernel)
+                    .clone(),
+                lower_bound:
+                    (*lower_bound)
+                        .clone(),
+                var_x: var_x_str,
+                var_t: var_t_str,
+            };
 
-        let eq = VolterraEquation::new(params);
+        let eq = VolterraEquation::new(
+            params,
+        );
 
         Box::into_raw(Box::new(eq))
     }

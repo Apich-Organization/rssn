@@ -311,8 +311,8 @@ fn test_parametric_curve_serialization()
 
 #[test]
 
-fn test_parametric_surface_serialization(
-) {
+fn test_parametric_surface_serialization()
+ {
 
     // Test that ParametricSurface can be serialized/deserialized
     let u = Expr::new_variable("u");

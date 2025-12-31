@@ -9,8 +9,8 @@ use crate::numerical::physics_fea;
 /// Creates steel material and returns shear modulus.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_num_fea_material_steel_shear_modulus(
-) -> f64 {
+pub extern "C" fn rssn_num_fea_material_steel_shear_modulus()
+-> f64 {
 
     physics_fea::Material::steel()
         .shear_modulus()
@@ -19,8 +19,8 @@ pub extern "C" fn rssn_num_fea_material_steel_shear_modulus(
 /// Creates aluminum material and returns shear modulus.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_num_fea_material_aluminum_shear_modulus(
-) -> f64 {
+pub extern "C" fn rssn_num_fea_material_aluminum_shear_modulus()
+-> f64 {
 
     physics_fea::Material::aluminum()
         .shear_modulus()
@@ -29,8 +29,8 @@ pub extern "C" fn rssn_num_fea_material_aluminum_shear_modulus(
 /// Creates copper material and returns shear modulus.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_num_fea_material_copper_shear_modulus(
-) -> f64 {
+pub extern "C" fn rssn_num_fea_material_copper_shear_modulus()
+-> f64 {
 
     physics_fea::Material::copper()
         .shear_modulus()
@@ -133,29 +133,32 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses(
     out_sigma1: *mut f64,
     out_sigma2: *mut f64,
     out_angle: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if out_sigma1.is_null()
-        || out_sigma2.is_null()
-        || out_angle.is_null()
-    {
+    unsafe {
 
-        return -1;
-    }
+        if out_sigma1.is_null()
+            || out_sigma2.is_null()
+            || out_angle.is_null()
+        {
 
-    let (s1, s2, angle) =
+            return -1;
+        }
+
+        let (s1, s2, angle) =
         physics_fea::principal_stresses(
             &[sx, sy, txy],
         );
 
-    *out_sigma1 = s1;
+        *out_sigma1 = s1;
 
-    *out_sigma2 = s2;
+        *out_sigma2 = s2;
 
-    *out_angle = angle;
+        *out_angle = angle;
 
-    0
-}}
+        0
+    }
+}
 
 /// Computes safety factor based on von Mises criterion.
 #[unsafe(no_mangle)]

@@ -33,7 +33,7 @@ pub extern "C" fn rssn_cas_expand_json(
     let expr = match expr {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -56,7 +56,7 @@ pub extern "C" fn rssn_cas_factorize_json(
     let expr = match expr {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -81,7 +81,7 @@ pub extern "C" fn rssn_cas_normalize_json(
     let expr = match expr {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -107,7 +107,7 @@ pub extern "C" fn rssn_cas_simplify_with_relations_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 

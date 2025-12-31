@@ -219,6 +219,7 @@ pub unsafe extern "C" fn rssn_json_graph_bridges_and_articulation_points(
 ) -> *mut std::os::raw::c_char {
 
     #[derive(serde::Serialize)]
+
     struct BridgesResult {
         bridges: Vec<(usize, usize)>,
         articulation_points: Vec<usize>,

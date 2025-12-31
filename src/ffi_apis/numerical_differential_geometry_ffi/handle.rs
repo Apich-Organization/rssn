@@ -22,20 +22,22 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
     system: CoordinateSystem,
     point: *const f64,
     n_vars: usize,
-) -> *mut Matrix<f64> { unsafe {
+) -> *mut Matrix<f64> {
 
-    if point.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
-    }
+        if point.is_null() {
 
-    let point_slice =
-        std::slice::from_raw_parts(
-            point,
-            n_vars,
-        );
+            return ptr::null_mut();
+        }
 
-    match differential_geometry::metric_tensor_at_point(system, point_slice) {
+        let point_slice =
+            std::slice::from_raw_parts(
+                point,
+                n_vars,
+            );
+
+        match differential_geometry::metric_tensor_at_point(system, point_slice) {
         | Ok(g) => {
 
             let rows = g.len();
@@ -68,7 +70,8 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
             ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 /// Computes the Christoffel symbols at a given point.
 /// Returns a flattened vector of size dim^3.
@@ -86,20 +89,22 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
     system: CoordinateSystem,
     point: *const f64,
     n_vars: usize,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if point.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
-    }
+        if point.is_null() {
 
-    let point_slice =
-        std::slice::from_raw_parts(
-            point,
-            n_vars,
-        );
+            return ptr::null_mut();
+        }
 
-    match differential_geometry::christoffel_symbols(system, point_slice) {
+        let point_slice =
+            std::slice::from_raw_parts(
+                point,
+                n_vars,
+            );
+
+        match differential_geometry::christoffel_symbols(system, point_slice) {
         | Ok(c) => {
 
             let flattened : Vec<f64> = c
@@ -117,7 +122,8 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
             ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 /// Computes the Ricci tensor at a given point.
 #[unsafe(no_mangle)]
@@ -134,20 +140,22 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
     system: CoordinateSystem,
     point: *const f64,
     n_vars: usize,
-) -> *mut Matrix<f64> { unsafe {
+) -> *mut Matrix<f64> {
 
-    if point.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
-    }
+        if point.is_null() {
 
-    let point_slice =
-        std::slice::from_raw_parts(
-            point,
-            n_vars,
-        );
+            return ptr::null_mut();
+        }
 
-    match differential_geometry::ricci_tensor(system, point_slice) {
+        let point_slice =
+            std::slice::from_raw_parts(
+                point,
+                n_vars,
+            );
+
+        match differential_geometry::ricci_tensor(system, point_slice) {
         | Ok(r) => {
 
             let rows = r.len();
@@ -180,7 +188,8 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
             ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 /// Computes the Ricci scalar at a given point.
 #[unsafe(no_mangle)]
@@ -198,22 +207,24 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar(
     point: *const f64,
     n_vars: usize,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if point.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        return -1;
-    }
+        if point.is_null()
+            || result.is_null()
+        {
 
-    let point_slice =
-        std::slice::from_raw_parts(
-            point,
-            n_vars,
-        );
+            return -1;
+        }
 
-    match differential_geometry::ricci_scalar(system, point_slice) {
+        let point_slice =
+            std::slice::from_raw_parts(
+                point,
+                n_vars,
+            );
+
+        match differential_geometry::ricci_scalar(system, point_slice) {
         | Ok(r) => {
 
             *result = r;
@@ -227,4 +238,5 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_scalar(
             -1
         },
     }
-}}
+    }
+}

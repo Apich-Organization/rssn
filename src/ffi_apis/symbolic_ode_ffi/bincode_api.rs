@@ -2,9 +2,9 @@
 
 use std::os::raw::c_char;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode;
 
@@ -54,21 +54,21 @@ pub extern "C" fn rssn_bincode_solve_ode(
         ode_expr,
         func_str,
         var_str,
-    ) { (
-        Some(ode),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(ode),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let result = ode::solve_ode(
-            &ode, f, v, None,
-        );
+            let result = ode::solve_ode(
+                &ode, f, v, None,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Solves a separable ODE using Bincode.
@@ -332,29 +332,29 @@ pub extern "C" fn rssn_bincode_solve_riccati_ode(
         func_str,
         var_str,
         y1,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-        Some(y),
-    ) => {
-
-        match ode::solve_riccati_ode(
-            &eq, f, v, &y,
-        ) {
-            | Some(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | None => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+            Some(y),
+        ) => {
+            match ode::solve_riccati_ode(
+                &eq, f, v, &y,
+            ) {
+                | Some(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | None => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Solves a Cauchy-Euler ODE using Bincode.
@@ -469,28 +469,28 @@ pub extern "C" fn rssn_bincode_solve_exact_ode(
         equation,
         func_str,
         var_str,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
-
-        match ode::solve_exact_ode(
-            &eq, f, v,
-        ) {
-            | Some(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | None => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
+            match ode::solve_exact_ode(
+                &eq, f, v,
+            ) {
+                | Some(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | None => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Solves by reduction of order using Bincode.

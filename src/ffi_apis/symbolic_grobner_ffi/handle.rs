@@ -1,7 +1,7 @@
 use crate::symbolic::core::SparsePolynomial;
+use crate::symbolic::grobner::MonomialOrder;
 use crate::symbolic::grobner::buchberger;
 use crate::symbolic::grobner::poly_division_multivariate;
-use crate::symbolic::grobner::MonomialOrder;
 
 #[unsafe(no_mangle)]
 

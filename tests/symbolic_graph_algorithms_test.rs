@@ -285,8 +285,8 @@ fn test_has_cycle_directed() {
 
 #[test]
 
-fn test_bridges_and_articulation_points(
-) {
+fn test_bridges_and_articulation_points()
+ {
 
     let mut g = Graph::new(false);
 
@@ -619,7 +619,9 @@ fn test_is_bipartite() {
         Expr::Constant(1.0),
     );
 
-    assert!(is_bipartite(&g2).is_none());
+    assert!(
+        is_bipartite(&g2).is_none()
+    );
 }
 
 #[test]

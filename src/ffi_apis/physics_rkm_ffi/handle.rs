@@ -6,8 +6,8 @@ use crate::physics::physics_rkm;
 /// Simulates the Lorenz attractor scenario and returns the results as a Matrix handle.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_physics_rkm_simulate_lorenz(
-) -> *mut Matrix<f64> {
+pub extern "C" fn rssn_physics_rkm_simulate_lorenz()
+-> *mut Matrix<f64> {
 
     let results = physics_rkm::simulate_lorenz_attractor_scenario();
 
@@ -41,8 +41,8 @@ pub extern "C" fn rssn_physics_rkm_simulate_lorenz(
 /// Simulates the damped oscillator scenario and returns the results as a Matrix handle.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_physics_rkm_simulate_damped_oscillator(
-) -> *mut Matrix<f64> {
+pub extern "C" fn rssn_physics_rkm_simulate_damped_oscillator()
+-> *mut Matrix<f64> {
 
     let results = physics_rkm::simulate_damped_oscillator_scenario();
 
@@ -77,8 +77,8 @@ pub extern "C" fn rssn_physics_rkm_simulate_damped_oscillator(
 /// Simulates the Van der Pol oscillator scenario and returns the results as a Matrix handle.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_physics_rkm_simulate_vanderpol(
-) -> *mut Matrix<f64> {
+pub extern "C" fn rssn_physics_rkm_simulate_vanderpol()
+-> *mut Matrix<f64> {
 
     let results = physics_rkm::simulate_vanderpol_scenario();
 
@@ -113,8 +113,8 @@ pub extern "C" fn rssn_physics_rkm_simulate_vanderpol(
 /// Simulates the Lotka-Volterra predator-prey scenario and returns the results as a Matrix handle.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_physics_rkm_simulate_lotka_volterra(
-) -> *mut Matrix<f64> {
+pub extern "C" fn rssn_physics_rkm_simulate_lotka_volterra()
+-> *mut Matrix<f64> {
 
     let results = physics_rkm::simulate_lotka_volterra_scenario();
 

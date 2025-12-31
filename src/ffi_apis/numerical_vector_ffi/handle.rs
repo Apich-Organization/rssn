@@ -19,29 +19,33 @@ use crate::numerical::vector;
 pub unsafe extern "C" fn rssn_num_vec_create(
     data: *const f64,
     len: usize,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if data.is_null() {
+    unsafe {
 
-        update_last_error(
+        if data.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_vec_create"
                 .to_string(),
         );
 
-        return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
+        }
+
+        let v = {
+
+            std::slice::from_raw_parts(
+                data, len,
+            )
+        }
+        .to_vec();
+
+        Box::into_raw(Box::new(v))
     }
-
-    let v =  {
-
-        std::slice::from_raw_parts(
-            data, len,
-        )
-    }
-    .to_vec();
-
-    Box::into_raw(Box::new(v))
-}}
+}
 
 /// Frees a numerical vector allocated by the library.
 #[unsafe(no_mangle)]
@@ -133,36 +137,43 @@ pub const unsafe extern "C" fn rssn_num_vec_data(
 pub unsafe extern "C" fn rssn_num_vec_add(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if v1.is_null() || v2.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if v1.is_null() || v2.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let res = vector::vec_add(
+            {
+
+                &*v1
+            },
+            {
+
+                &*v2
+            },
+        );
+
+        match res {
+            | Ok(v) => {
+                Box::into_raw(Box::new(
+                    v,
+                ))
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                std::ptr::null_mut()
+            },
+        }
     }
-
-    let res = vector::vec_add(
-         {
-
-            &*v1
-        },
-         {
-
-            &*v2
-        },
-    );
-
-    match res {
-        | Ok(v) => {
-            Box::into_raw(Box::new(v))
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            std::ptr::null_mut()
-        },
-    }
-}}
+}
 
 /// Computes the difference of two vectors.
 #[unsafe(no_mangle)]
@@ -178,36 +189,43 @@ pub unsafe extern "C" fn rssn_num_vec_add(
 pub unsafe extern "C" fn rssn_num_vec_sub(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if v1.is_null() || v2.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if v1.is_null() || v2.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let res = vector::vec_sub(
+            {
+
+                &*v1
+            },
+            {
+
+                &*v2
+            },
+        );
+
+        match res {
+            | Ok(v) => {
+                Box::into_raw(Box::new(
+                    v,
+                ))
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                std::ptr::null_mut()
+            },
+        }
     }
-
-    let res = vector::vec_sub(
-         {
-
-            &*v1
-        },
-         {
-
-            &*v2
-        },
-    );
-
-    match res {
-        | Ok(v) => {
-            Box::into_raw(Box::new(v))
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            std::ptr::null_mut()
-        },
-    }
-}}
+}
 
 /// Multiplies a vector by a scalar.
 #[unsafe(no_mangle)]
@@ -256,43 +274,46 @@ pub unsafe extern "C" fn rssn_num_vec_dot_product(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if v1.is_null()
-        || v2.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        return -1;
+        if v1.is_null()
+            || v2.is_null()
+            || result.is_null()
+        {
+
+            return -1;
+        }
+
+        match vector::dot_product(
+            {
+
+                &*v1
+            },
+            {
+
+                &*v2
+            },
+        ) {
+            | Ok(val) => {
+
+                {
+
+                    *result = val;
+                }
+
+                0
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                -1
+            },
+        }
     }
-
-    match vector::dot_product(
-         {
-
-            &*v1
-        },
-         {
-
-            &*v2
-        },
-    ) {
-        | Ok(val) => {
-
-             {
-
-                *result = val;
-            }
-
-            0
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            -1
-        },
-    }
-}}
+}
 
 /// Computes the L2 norm of a vector.
 #[unsafe(no_mangle)]
@@ -367,28 +388,34 @@ pub unsafe extern "C" fn rssn_num_vec_lp_norm(
 
 pub unsafe extern "C" fn rssn_num_vec_normalize(
     v: *const Vec<f64>
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if v.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if v.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        match vector::normalize({
+
+            &*v
+        }) {
+            | Ok(res) => {
+                Box::into_raw(Box::new(
+                    res,
+                ))
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                std::ptr::null_mut()
+            },
+        }
     }
-
-    match vector::normalize( {
-
-        &*v
-    }) {
-        | Ok(res) => {
-            Box::into_raw(Box::new(res))
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            std::ptr::null_mut()
-        },
-    }
-}}
+}
 
 /// Computes the cross product of two 3D vectors.
 #[unsafe(no_mangle)]
@@ -404,34 +431,41 @@ pub unsafe extern "C" fn rssn_num_vec_normalize(
 pub unsafe extern "C" fn rssn_num_vec_cross_product(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if v1.is_null() || v2.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if v1.is_null() || v2.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        match vector::cross_product(
+            {
+
+                &*v1
+            },
+            {
+
+                &*v2
+            },
+        ) {
+            | Ok(res) => {
+                Box::into_raw(Box::new(
+                    res,
+                ))
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                std::ptr::null_mut()
+            },
+        }
     }
-
-    match vector::cross_product(
-         {
-
-            &*v1
-        },
-         {
-
-            &*v2
-        },
-    ) {
-        | Ok(res) => {
-            Box::into_raw(Box::new(res))
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            std::ptr::null_mut()
-        },
-    }
-}}
+}
 
 /// Computes the angle between two vectors.
 #[unsafe(no_mangle)]
@@ -448,43 +482,46 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if v1.is_null()
-        || v2.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        return -1;
+        if v1.is_null()
+            || v2.is_null()
+            || result.is_null()
+        {
+
+            return -1;
+        }
+
+        match vector::angle(
+            {
+
+                &*v1
+            },
+            {
+
+                &*v2
+            },
+        ) {
+            | Ok(val) => {
+
+                {
+
+                    *result = val;
+                }
+
+                0
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                -1
+            },
+        }
     }
-
-    match vector::angle(
-         {
-
-            &*v1
-        },
-         {
-
-            &*v2
-        },
-    ) {
-        | Ok(val) => {
-
-             {
-
-                *result = val;
-            }
-
-            0
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            -1
-        },
-    }
-}}
+}
 
 /// Projects v1 onto v2.
 #[unsafe(no_mangle)]
@@ -500,34 +537,41 @@ pub unsafe extern "C" fn rssn_num_vec_angle(
 pub unsafe extern "C" fn rssn_num_vec_project(
     v1: *const Vec<f64>,
     v2: *const Vec<f64>,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if v1.is_null() || v2.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if v1.is_null() || v2.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        match vector::project(
+            {
+
+                &*v1
+            },
+            {
+
+                &*v2
+            },
+        ) {
+            | Ok(res) => {
+                Box::into_raw(Box::new(
+                    res,
+                ))
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                std::ptr::null_mut()
+            },
+        }
     }
-
-    match vector::project(
-         {
-
-            &*v1
-        },
-         {
-
-            &*v2
-        },
-    ) {
-        | Ok(res) => {
-            Box::into_raw(Box::new(res))
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            std::ptr::null_mut()
-        },
-    }
-}}
+}
 
 /// Reflects v about n.
 #[unsafe(no_mangle)]
@@ -543,33 +587,39 @@ pub unsafe extern "C" fn rssn_num_vec_project(
 pub unsafe extern "C" fn rssn_num_vec_reflect(
     v: *const Vec<f64>,
     n: *const Vec<f64>,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if v.is_null() || n.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if v.is_null() || n.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        match vector::reflect(
+            {
+
+                &*v
+            },
+            {
+
+                &*n
+            },
+        ) {
+            | Ok(res) => {
+                Box::into_raw(Box::new(
+                    res,
+                ))
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                std::ptr::null_mut()
+            },
+        }
     }
-
-    match vector::reflect(
-         {
-
-            &*v
-        },
-         {
-
-            &*n
-        },
-    ) {
-        | Ok(res) => {
-            Box::into_raw(Box::new(res))
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            std::ptr::null_mut()
-        },
-    }
-}}
+}
 
 // Correction for reflect: vector::reflect(&*v, &*n)

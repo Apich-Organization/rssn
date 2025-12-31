@@ -19,18 +19,22 @@ use crate::symbolic::simplify_dag;
 
 pub unsafe extern "C" fn rssn_simplify_dag(
     expr: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if expr.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let expr_ref = &*expr;
+
+        Box::into_raw(Box::new(
+            simplify_dag::simplify(
+                expr_ref,
+            ),
+        ))
     }
-
-    let expr_ref = &*expr;
-
-    Box::into_raw(Box::new(
-        simplify_dag::simplify(
-            expr_ref,
-        ),
-    ))
-}}
+}

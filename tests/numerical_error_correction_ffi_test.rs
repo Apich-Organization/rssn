@@ -30,8 +30,10 @@ fn test_rs_encode_json() {
             )
             .to_string_lossy();
 
-        assert!(result_str
-            .contains("\"ok\":"));
+        assert!(
+            result_str
+                .contains("\"ok\":")
+        );
 
         // Parse the result
         let parsed: serde_json::Value =
@@ -40,7 +42,9 @@ fn test_rs_encode_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]
@@ -145,7 +149,9 @@ fn test_hamming_encode_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]
@@ -231,9 +237,10 @@ fn test_hamming_decode_json() {
             ])
         );
 
-        assert!(decoded["ok"]
-            ["error_pos"]
-            .is_null());
+        assert!(
+            decoded["ok"]["error_pos"]
+                .is_null()
+        );
     }
 }
 
@@ -542,7 +549,9 @@ fn test_interleave_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]

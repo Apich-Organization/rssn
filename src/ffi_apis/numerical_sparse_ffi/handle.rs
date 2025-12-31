@@ -38,66 +38,70 @@ pub unsafe extern "C" fn rssn_num_sparse_create(
     col_indices: *const usize,
     values: *const f64,
     nnz: usize,
-) -> *mut CsMat<f64> { unsafe {
+) -> *mut CsMat<f64> {
 
-    if row_indices.is_null()
-        || col_indices.is_null()
-        || values.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if row_indices.is_null()
+            || col_indices.is_null()
+            || values.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_sparse_create"
                 .to_string(),
         );
 
-        return ptr::null_mut();
+            return ptr::null_mut();
+        }
+
+        let r_idx = {
+
+            std::slice::from_raw_parts(
+                row_indices,
+                nnz,
+            )
+        };
+
+        let c_idx = {
+
+            std::slice::from_raw_parts(
+                col_indices,
+                nnz,
+            )
+        };
+
+        let vals = {
+
+            std::slice::from_raw_parts(
+                values,
+                nnz,
+            )
+        };
+
+        let mut triplets =
+            Vec::with_capacity(nnz);
+
+        for i in 0 .. nnz {
+
+            triplets.push((
+                r_idx[i],
+                c_idx[i],
+                vals[i],
+            ));
+        }
+
+        let mat =
+            sparse::csr_from_triplets(
+                rows,
+                cols,
+                &triplets,
+            );
+
+        Box::into_raw(Box::new(mat))
     }
-
-    let r_idx =  {
-
-        std::slice::from_raw_parts(
-            row_indices,
-            nnz,
-        )
-    };
-
-    let c_idx =  {
-
-        std::slice::from_raw_parts(
-            col_indices,
-            nnz,
-        )
-    };
-
-    let vals =  {
-
-        std::slice::from_raw_parts(
-            values,
-            nnz,
-        )
-    };
-
-    let mut triplets =
-        Vec::with_capacity(nnz);
-
-    for i in 0 .. nnz {
-
-        triplets.push((
-            r_idx[i],
-            c_idx[i],
-            vals[i],
-        ));
-    }
-
-    let mat = sparse::csr_from_triplets(
-        rows,
-        cols,
-        &triplets,
-    );
-
-    Box::into_raw(Box::new(mat))
-}}
+}
 
 /// Frees a sparse matrix object.
 #[unsafe(no_mangle)]
@@ -220,66 +224,72 @@ pub unsafe extern "C" fn rssn_num_sparse_spmv(
     vector: *const f64,
     vec_len: usize,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if matrix.is_null()
-        || vector.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if matrix.is_null()
+            || vector.is_null()
+            || result.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_sparse_spmv"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let m =  {
+        let m = {
 
-        &*matrix
-    };
+            &*matrix
+        };
 
-    let v =  {
+        let v = {
 
-        std::slice::from_raw_parts(
-            vector,
-            vec_len,
-        )
-    };
+            std::slice::from_raw_parts(
+                vector,
+                vec_len,
+            )
+        };
 
-    match sparse::sp_mat_vec_mul(m, v) {
-        | Ok(res) => {
+        match sparse::sp_mat_vec_mul(
+            m, v,
+        ) {
+            | Ok(res) => {
 
-            if res.len() != m.rows() {
+                if res.len() != m.rows()
+                {
 
-                update_last_error(
+                    update_last_error(
                     "Internal error: \
                      result length \
                      mismatch"
                         .to_string(),
                 );
 
-                return -1;
-            }
+                    return -1;
+                }
 
-            ptr::copy_nonoverlapping(
+                ptr::copy_nonoverlapping(
                 res.as_ptr(),
                 result,
                 res.len(),
             );
 
-            0
-        },
-        | Err(e) => {
+                0
+            },
+            | Err(e) => {
 
-            update_last_error(e);
+                update_last_error(e);
 
-            -1
-        },
+                -1
+            },
+        }
     }
-}}
+}
 
 /// Computes the Frobenius norm.
 #[unsafe(no_mangle)]
@@ -323,35 +333,38 @@ pub unsafe extern "C" fn rssn_num_sparse_frobenius_norm(
 pub unsafe extern "C" fn rssn_num_sparse_trace(
     matrix: *const CsMat<f64>,
     out_trace: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if matrix.is_null()
-        || out_trace.is_null()
-    {
+    unsafe {
 
-        return -1;
+        if matrix.is_null()
+            || out_trace.is_null()
+        {
+
+            return -1;
+        }
+
+        let m = {
+
+            &*matrix
+        };
+
+        match sparse::trace(m) {
+            | Ok(t) => {
+
+                {
+
+                    *out_trace = t;
+                };
+
+                0
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                -1
+            },
+        }
     }
-
-    let m =  {
-
-        &*matrix
-    };
-
-    match sparse::trace(m) {
-        | Ok(t) => {
-
-             {
-
-                *out_trace = t;
-            };
-
-            0
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            -1
-        },
-    }
-}}
+}

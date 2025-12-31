@@ -36,18 +36,21 @@ struct JitCompileRequest {
 pub unsafe extern "C" fn rssn_jit_compile_json(
     engine: *mut JitEngine,
     json_ptr: *const c_char,
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    if engine.is_null()
-        || json_ptr.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if engine.is_null()
+            || json_ptr.is_null()
+        {
 
-    let engine = &mut *engine;
+            return std::ptr::null_mut(
+            );
+        }
 
-    let json_str = match CStr::from_ptr(
+        let engine = &mut *engine;
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -58,14 +61,14 @@ pub unsafe extern "C" fn rssn_jit_compile_json(
         },
     };
 
-    let req: JitCompileRequest =
-        match serde_json::from_str(
-            json_str,
-        ) {
-            | Ok(r) => r,
-            | Err(e) => {
+        let req: JitCompileRequest =
+            match serde_json::from_str(
+                json_str,
+            ) {
+                | Ok(r) => r,
+                | Err(e) => {
 
-                let res: FfiResult<
+                    let res: FfiResult<
                     usize,
                     String,
                 > = FfiResult {
@@ -75,24 +78,45 @@ pub unsafe extern "C" fn rssn_jit_compile_json(
                     ),
                 };
 
-                return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
+                    return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
+                },
+            };
+
+        match engine
+            .compile(&req.instructions)
+        {
+            | Ok(ptr) => {
+
+                let res: FfiResult<
+                    usize,
+                    String,
+                > = FfiResult {
+                    ok: Some(
+                        ptr as usize,
+                    ),
+                    err: None,
+                };
+
+                CString::new(
+                serde_json::to_string(
+                    &res,
+                )
+                .unwrap(),
+            )
+            .unwrap()
+            .into_raw()
             },
-        };
+            | Err(e) => {
 
-    match engine
-        .compile(&req.instructions)
-    {
-        | Ok(ptr) => {
+                let res: FfiResult<
+                    usize,
+                    String,
+                > = FfiResult {
+                    ok: None,
+                    err: Some(e),
+                };
 
-            let res: FfiResult<
-                usize,
-                String,
-            > = FfiResult {
-                ok: Some(ptr as usize),
-                err: None,
-            };
-
-            CString::new(
+                CString::new(
                 serde_json::to_string(
                     &res,
                 )
@@ -100,25 +124,7 @@ pub unsafe extern "C" fn rssn_jit_compile_json(
             )
             .unwrap()
             .into_raw()
-        },
-        | Err(e) => {
-
-            let res: FfiResult<
-                usize,
-                String,
-            > = FfiResult {
-                ok: None,
-                err: Some(e),
-            };
-
-            CString::new(
-                serde_json::to_string(
-                    &res,
-                )
-                .unwrap(),
-            )
-            .unwrap()
-            .into_raw()
-        },
+            },
+        }
     }
-}}
+}

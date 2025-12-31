@@ -307,13 +307,17 @@ pub fn refine_root_bisection(
     }
 
     loop {
+
         if (b - a).abs() <= tolerance {
+
             break;
         }
 
         mid = f64::midpoint(a, b);
 
-        if poly.eval(mid).abs() < f64::EPSILON {
+        if poly.eval(mid).abs()
+            < f64::EPSILON
+        {
 
             return mid;
         }

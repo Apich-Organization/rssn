@@ -1,8 +1,8 @@
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-use crate::symbolic::cad::cad;
 use crate::symbolic::cad::Cad;
+use crate::symbolic::cad::cad;
 use crate::symbolic::core::Expr;
 
 /// Computes CAD for a set of polynomials (Handle).

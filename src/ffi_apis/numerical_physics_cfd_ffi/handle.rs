@@ -9,8 +9,8 @@ use crate::numerical::physics_cfd;
 /// Returns kinematic viscosity of air at 20°C.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_num_cfd_air_kinematic_viscosity(
-) -> f64 {
+pub extern "C" fn rssn_num_cfd_air_kinematic_viscosity()
+-> f64 {
 
     physics_cfd::FluidProperties::air()
         .kinematic_viscosity()
@@ -19,8 +19,8 @@ pub extern "C" fn rssn_num_cfd_air_kinematic_viscosity(
 /// Returns kinematic viscosity of water at 20°C.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_num_cfd_water_kinematic_viscosity(
-) -> f64 {
+pub extern "C" fn rssn_num_cfd_water_kinematic_viscosity()
+-> f64 {
 
     physics_cfd::FluidProperties::water(
     )
@@ -30,8 +30,8 @@ pub extern "C" fn rssn_num_cfd_water_kinematic_viscosity(
 /// Returns Prandtl number of air.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_num_cfd_air_prandtl_number(
-) -> f64 {
+pub extern "C" fn rssn_num_cfd_air_prandtl_number()
+-> f64 {
 
     physics_cfd::FluidProperties::air()
         .prandtl_number()
@@ -40,8 +40,8 @@ pub extern "C" fn rssn_num_cfd_air_prandtl_number(
 /// Returns Prandtl number of water.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_num_cfd_water_prandtl_number(
-) -> f64 {
+pub extern "C" fn rssn_num_cfd_water_prandtl_number()
+-> f64 {
 
     physics_cfd::FluidProperties::water(
     )

@@ -3,9 +3,9 @@
 //! This module provides binary serialization-based FFI functions for Fourier, Laplace, and Z-transforms,
 //! offering efficient binary data interchange for high-performance applications.
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::transforms;
 
@@ -609,21 +609,18 @@ pub extern "C" fn rssn_bincode_z_transform(
         expr,
         in_var,
         out_var,
-    ) { (
-        Some(e),
-        Some(iv),
-        Some(ov),
-    ) => {
-
-        to_bincode_buffer(
+    ) {
+        | (
+            Some(e),
+            Some(iv),
+            Some(ov),
+        ) => to_bincode_buffer(
             &transforms::z_transform(
                 &e, &iv, &ov,
             ),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+        ),
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the inverse Z-transform of an expression.
@@ -701,22 +698,18 @@ pub extern "C" fn rssn_bincode_z_time_shift(
             &out_var_buf,
         );
 
-    match (f, k, out_var)
-    { (
-        Some(f),
-        Some(k),
-        Some(ov),
-    ) => {
-
-        to_bincode_buffer(
+    match (f, k, out_var) {
+        | (
+            Some(f),
+            Some(k),
+            Some(ov),
+        ) => to_bincode_buffer(
             &transforms::z_time_shift(
                 &f, &k, &ov,
             ),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+        ),
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Applies the scaling property of the Z-transform.
@@ -748,22 +741,20 @@ pub extern "C" fn rssn_bincode_z_scaling(
             &out_var_buf,
         );
 
-    match (f, a, out_var)
-    { (
-        Some(f),
-        Some(a),
-        Some(ov),
-    ) => {
-
-        to_bincode_buffer(
-            &transforms::z_scaling(
-                &f, &a, &ov,
-            ),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (f, a, out_var) {
+        | (
+            Some(f),
+            Some(a),
+            Some(ov),
+        ) => {
+            to_bincode_buffer(
+                &transforms::z_scaling(
+                    &f, &a, &ov,
+                ),
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Applies the differentiation property of the Z-transform.

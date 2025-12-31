@@ -7,9 +7,23 @@ use crate::numerical::sparse::csr_from_triplets;
 use crate::numerical::sparse::solve_conjugate_gradient;
 
 type FemTriplet = (usize, usize, f64);
-type ElementData1D = (Vec<FemTriplet>, [f64; 2]);
-type ElementData2D = (Vec<FemTriplet>, [f64; 4], [usize; 4]);
-type ElementData3D = (Vec<FemTriplet>, [f64; 8], [usize; 8]);
+
+type ElementData1D = (
+    Vec<FemTriplet>,
+    [f64; 2],
+);
+
+type ElementData2D = (
+    Vec<FemTriplet>,
+    [f64; 4],
+    [usize; 4],
+);
+
+type ElementData3D = (
+    Vec<FemTriplet>,
+    [f64; 8],
+    [usize; 8],
+);
 
 #[allow(dead_code)]
 #[derive(
@@ -72,7 +86,9 @@ where
     let force_fn = &force_fn;
 
     // Parallel element assembly
-    let element_data: Vec<ElementData1D> = (0 .. n_elements)
+    let element_data: Vec<
+        ElementData1D,
+    > = (0 .. n_elements)
         .into_par_iter()
         .map(move |i| {
 
@@ -182,8 +198,8 @@ where
 /// This function will return an error if the underlying `solve_poisson_1d` function
 /// encounters an error.
 
-pub fn simulate_1d_poisson_scenario(
-) -> Result<Vec<f64>, String> {
+pub fn simulate_1d_poisson_scenario()
+-> Result<Vec<f64>, String> {
 
     const N_ELEMENTS: usize = 50;
 
@@ -423,8 +439,8 @@ where
 /// encounters an error.
 #[allow(clippy::unnecessary_cast)]
 
-pub fn simulate_2d_poisson_scenario(
-) -> Result<Vec<f64>, String> {
+pub fn simulate_2d_poisson_scenario()
+-> Result<Vec<f64>, String> {
 
     const N_ELEMENTS: usize = 20;
 
@@ -744,8 +760,8 @@ where
 /// encounters an error.
 #[allow(clippy::unnecessary_cast)]
 
-pub fn simulate_3d_poisson_scenario(
-) -> Result<Vec<f64>, String> {
+pub fn simulate_3d_poisson_scenario()
+-> Result<Vec<f64>, String> {
 
     const N_ELEMENTS: usize = 10;
 

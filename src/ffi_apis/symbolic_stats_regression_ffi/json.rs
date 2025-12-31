@@ -131,25 +131,26 @@ pub unsafe extern "C" fn rssn_json_nonlinear_regression(
         model,
         vars,
         params,
-    ) { (
-        Some(data),
-        Some(model),
-        Some(vars),
-        Some(params),
-    ) => {
+    ) {
+        | (
+            Some(data),
+            Some(model),
+            Some(vars),
+            Some(params),
+        ) => {
 
-        let vars_refs: Vec<&str> = vars
+            let vars_refs: Vec<&str> = vars
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        let params_refs: Vec<&str> =
+            let params_refs: Vec<&str> =
             params
                 .iter()
                 .map(std::string::String::as_str)
                 .collect();
 
-        match stats_regression::nonlinear_regression_symbolic(
+            match stats_regression::nonlinear_regression_symbolic(
             &data,
             &model,
             &vars_refs,
@@ -158,8 +159,7 @@ pub unsafe extern "C" fn rssn_json_nonlinear_regression(
             | Some(solutions) => to_json_string(&solutions), // Vec<(Expr, Expr)>
             | None => std::ptr::null_mut(),
         }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

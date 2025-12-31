@@ -72,8 +72,8 @@ fn test_prime_field_element_addition() {
 
 #[test]
 
-fn test_prime_field_element_subtraction(
-) {
+fn test_prime_field_element_subtraction()
+ {
 
     let field = PrimeField::new(
         BigInt::from(7),
@@ -99,8 +99,8 @@ fn test_prime_field_element_subtraction(
 
 #[test]
 
-fn test_prime_field_element_multiplication(
-) {
+fn test_prime_field_element_multiplication()
+ {
 
     let field = PrimeField::new(
         BigInt::from(7),
@@ -183,8 +183,8 @@ fn test_prime_field_element_inverse() {
 
 #[test]
 
-fn test_finite_field_polynomial_creation(
-) {
+fn test_finite_field_polynomial_creation()
+ {
 
     let field = PrimeField::new(
         BigInt::from(5),
@@ -279,8 +279,8 @@ fn test_finite_field_polynomial_degree()
 
 #[test]
 
-fn test_finite_field_polynomial_addition(
-) {
+fn test_finite_field_polynomial_addition()
+ {
 
     let field = PrimeField::new(
         BigInt::from(5),
@@ -336,8 +336,8 @@ fn test_finite_field_polynomial_addition(
 
 #[test]
 
-fn test_finite_field_polynomial_multiplication(
-) {
+fn test_finite_field_polynomial_multiplication()
+ {
 
     let field = PrimeField::new(
         BigInt::from(5),
@@ -394,8 +394,8 @@ fn test_finite_field_polynomial_multiplication(
 
 #[test]
 
-fn test_finite_field_polynomial_long_division(
-) {
+fn test_finite_field_polynomial_long_division()
+ {
 
     let field = PrimeField::new(
         BigInt::from(5),
@@ -455,8 +455,8 @@ fn test_finite_field_polynomial_long_division(
 
 #[test]
 
-fn test_extension_field_element_creation(
-) {
+fn test_extension_field_element_creation()
+ {
 
     let prime_field = PrimeField::new(
         BigInt::from(5),
@@ -517,8 +517,8 @@ fn test_extension_field_element_creation(
 
 #[test]
 
-fn test_extension_field_element_arithmetic(
-) {
+fn test_extension_field_element_arithmetic()
+ {
 
     let prime_field = PrimeField::new(
         BigInt::from(5),

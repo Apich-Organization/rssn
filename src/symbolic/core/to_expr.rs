@@ -19,6 +19,7 @@ impl DagNode {
     /// Returns an error if the node limit is exceeded or if any child cannot be converted.
 
     #[allow(clippy::too_many_lines)]
+
     pub fn to_expr(
         &self
     ) -> Result<Expr, String> {

@@ -714,8 +714,8 @@ fn test_chebyshev_u_basic() {
 
 #[test]
 
-fn test_differential_equations_construct(
-) {
+fn test_differential_equations_construct()
+ {
 
     // Just ensure they construct without panic
     let y = Expr::new_variable("y");
@@ -887,8 +887,8 @@ fn test_gamma_beta_relationship() {
 
 #[test]
 
-fn test_polynomial_orthogonality_at_boundaries(
-) {
+fn test_polynomial_orthogonality_at_boundaries()
+ {
 
     // All orthogonal polynomials evaluated at typical boundary points
     // P_n(1) = 1 for Legendre

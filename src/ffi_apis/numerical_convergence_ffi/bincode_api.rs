@@ -80,7 +80,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -158,7 +158,7 @@ pub unsafe extern "C" fn rssn_convergence_wynn_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 

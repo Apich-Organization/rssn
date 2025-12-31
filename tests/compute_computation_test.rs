@@ -1,7 +1,7 @@
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::Condvar;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
 
 use rssn::compute::computation::Computation;
 use rssn::compute::computation::ComputationProgress;

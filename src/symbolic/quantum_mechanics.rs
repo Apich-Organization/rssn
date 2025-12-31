@@ -343,8 +343,8 @@ pub fn angular_momentum_z() -> Operator
 /// Returns the Pauli matrices: `σ_x, σ_y, σ_z`.
 #[must_use]
 
-pub fn pauli_matrices(
-) -> (Expr, Expr, Expr) {
+pub fn pauli_matrices()
+-> (Expr, Expr, Expr) {
 
     let zero = Expr::Constant(0.0);
 

@@ -61,29 +61,34 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_free(
 
 pub unsafe extern "C" fn rssn_num_ff_pfe_inverse(
     pfe: *const PrimeFieldElement
-) -> *mut PrimeFieldElement { unsafe {
+) -> *mut PrimeFieldElement {
 
-    if pfe.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
+        if pfe.is_null() {
+
+            return ptr::null_mut();
+        }
+
+        match (*pfe).inverse() {
+            | Some(inv) => {
+                Box::into_raw(Box::new(
+                    inv,
+                ))
+            },
+            | None => {
+
+                update_last_error(
+                    "Element is not \
+                     invertible"
+                        .to_string(),
+                );
+
+                ptr::null_mut()
+            },
+        }
     }
-
-    match (*pfe).inverse() {
-        | Some(inv) => {
-            Box::into_raw(Box::new(inv))
-        },
-        | None => {
-
-            update_last_error(
-                "Element is not \
-                 invertible"
-                    .to_string(),
-            );
-
-            ptr::null_mut()
-        },
-    }
-}}
+}
 
 /// Computes (pfe^exp) mod modulus.
 #[unsafe(no_mangle)]

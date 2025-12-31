@@ -148,7 +148,6 @@ pub(crate) fn parse_ode(
         Expr::Constant(0.0);
 
 
-
     collect_terms(
         &simplify(&equation.clone()),
         func,
@@ -752,7 +751,10 @@ pub(crate) fn reduce_to_first_order_system(
     equations: &[Expr],
     funcs: &[&str],
     var: &str,
-) -> Result<ReducedFirstOrderSystem, String> {
+) -> Result<
+    ReducedFirstOrderSystem,
+    String,
+> {
 
     let mut new_eqs = Vec::new();
 
@@ -1573,7 +1575,8 @@ pub fn solve_bernoulli_ode(
             .get("n")?
             .to_f64()?;
 
-        if (n - 1.0).abs() < f64::EPSILON
+        if (n - 1.0).abs()
+            < f64::EPSILON
             || n.abs() < f64::EPSILON
         {
 

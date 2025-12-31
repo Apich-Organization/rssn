@@ -10,8 +10,8 @@ use rssn::symbolic::core::Expr;
 
 #[test]
 
-fn test_numerical_quadrature_handle_ffi(
-) {
+fn test_numerical_quadrature_handle_ffi()
+ {
 
     unsafe {
 
@@ -149,8 +149,8 @@ fn test_numerical_quadrature_json_ffi()
 
 #[test]
 
-fn test_numerical_quadrature_bincode_ffi(
-) {
+fn test_numerical_quadrature_bincode_ffi()
+ {
 
     unsafe {
 

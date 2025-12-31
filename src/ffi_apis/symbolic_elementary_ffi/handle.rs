@@ -22,21 +22,25 @@ use crate::symbolic::elementary;
 
 pub unsafe extern "C" fn rssn_sin(
     expr: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if expr.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let expr_ref = &*expr;
+
+        Box::into_raw(Box::new(
+            elementary::sin(
+                expr_ref.clone(),
+            ),
+        ))
     }
-
-    let expr_ref = &*expr;
-
-    Box::into_raw(Box::new(
-        elementary::sin(
-            expr_ref.clone(),
-        ),
-    ))
-}}
+}
 
 /// Creates a cosine expression: cos(expr).
 #[unsafe(no_mangle)]
@@ -51,21 +55,25 @@ pub unsafe extern "C" fn rssn_sin(
 
 pub unsafe extern "C" fn rssn_cos(
     expr: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if expr.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let expr_ref = &*expr;
+
+        Box::into_raw(Box::new(
+            elementary::cos(
+                expr_ref.clone(),
+            ),
+        ))
     }
-
-    let expr_ref = &*expr;
-
-    Box::into_raw(Box::new(
-        elementary::cos(
-            expr_ref.clone(),
-        ),
-    ))
-}}
+}
 
 /// Creates a tangent expression: tan(expr).
 #[unsafe(no_mangle)]
@@ -80,21 +88,25 @@ pub unsafe extern "C" fn rssn_cos(
 
 pub unsafe extern "C" fn rssn_tan(
     expr: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if expr.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let expr_ref = &*expr;
+
+        Box::into_raw(Box::new(
+            elementary::tan(
+                expr_ref.clone(),
+            ),
+        ))
     }
-
-    let expr_ref = &*expr;
-
-    Box::into_raw(Box::new(
-        elementary::tan(
-            expr_ref.clone(),
-        ),
-    ))
-}}
+}
 
 /// Creates an exponential expression: e^(expr).
 #[unsafe(no_mangle)]
@@ -109,21 +121,25 @@ pub unsafe extern "C" fn rssn_tan(
 
 pub unsafe extern "C" fn rssn_exp(
     expr: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if expr.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let expr_ref = &*expr;
+
+        Box::into_raw(Box::new(
+            elementary::exp(
+                expr_ref.clone(),
+            ),
+        ))
     }
-
-    let expr_ref = &*expr;
-
-    Box::into_raw(Box::new(
-        elementary::exp(
-            expr_ref.clone(),
-        ),
-    ))
-}}
+}
 
 /// Creates a natural logarithm expression: ln(expr).
 #[unsafe(no_mangle)]
@@ -138,21 +154,25 @@ pub unsafe extern "C" fn rssn_exp(
 
 pub unsafe extern "C" fn rssn_ln(
     expr: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if expr.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let expr_ref = &*expr;
+
+        Box::into_raw(Box::new(
+            elementary::ln(
+                expr_ref.clone(),
+            ),
+        ))
     }
-
-    let expr_ref = &*expr;
-
-    Box::into_raw(Box::new(
-        elementary::ln(
-            expr_ref.clone(),
-        ),
-    ))
-}}
+}
 
 /// Creates a square root expression: sqrt(expr).
 #[unsafe(no_mangle)]
@@ -167,21 +187,25 @@ pub unsafe extern "C" fn rssn_ln(
 
 pub unsafe extern "C" fn rssn_sqrt(
     expr: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if expr.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let expr_ref = &*expr;
+
+        Box::into_raw(Box::new(
+            elementary::sqrt(
+                expr_ref.clone(),
+            ),
+        ))
     }
-
-    let expr_ref = &*expr;
-
-    Box::into_raw(Box::new(
-        elementary::sqrt(
-            expr_ref.clone(),
-        ),
-    ))
-}}
+}
 
 /// Creates a power expression: base^exp.
 #[unsafe(no_mangle)]
@@ -197,24 +221,30 @@ pub unsafe extern "C" fn rssn_sqrt(
 pub unsafe extern "C" fn rssn_pow(
     base: *const Expr,
     exp: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if base.is_null() || exp.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if base.is_null()
+            || exp.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let base_ref = &*base;
+
+        let exp_ref = &*exp;
+
+        Box::into_raw(Box::new(
+            elementary::pow(
+                base_ref.clone(),
+                exp_ref.clone(),
+            ),
+        ))
     }
-
-    let base_ref = &*base;
-
-    let exp_ref = &*exp;
-
-    Box::into_raw(Box::new(
-        elementary::pow(
-            base_ref.clone(),
-            exp_ref.clone(),
-        ),
-    ))
-}}
+}
 
 /// Returns the symbolic representation of Pi.
 #[unsafe(no_mangle)]
@@ -254,21 +284,25 @@ pub extern "C" fn rssn_e() -> *mut Expr
 
 pub unsafe extern "C" fn rssn_expand(
     expr: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if expr.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let expr_ref = &*expr;
+
+        Box::into_raw(Box::new(
+            elementary::expand(
+                expr_ref.clone(),
+            ),
+        ))
     }
-
-    let expr_ref = &*expr;
-
-    Box::into_raw(Box::new(
-        elementary::expand(
-            expr_ref.clone(),
-        ),
-    ))
-}}
+}
 
 /// Computes binomial coefficient C(n, k).
 #[unsafe(no_mangle)]
@@ -299,10 +333,13 @@ pub extern "C" fn rssn_binomial_coefficient(
 
 pub unsafe extern "C" fn rssn_free_expr(
     expr: *mut Expr
-) { unsafe {
+) {
 
-    if !expr.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(expr);
+        if !expr.is_null() {
+
+            let _ = Box::from_raw(expr);
+        }
     }
-}}
+}

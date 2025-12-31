@@ -81,62 +81,65 @@ pub unsafe extern "C" fn rssn_num_ga_get_components(
     b23: *mut f64,
     b31: *mut f64,
     pss: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if mv.is_null() {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_ga_get_components".to_string());
+        if mv.is_null() {
 
-        return -1;
+            update_last_error("Null pointer passed to rssn_num_ga_get_components".to_string());
+
+            return -1;
+        }
+
+        let m = {
+
+            &*mv
+        };
+
+        if !s.is_null() {
+
+            *s = m.s;
+        }
+
+        if !v1.is_null() {
+
+            *v1 = m.v1;
+        }
+
+        if !v2.is_null() {
+
+            *v2 = m.v2;
+        }
+
+        if !v3.is_null() {
+
+            *v3 = m.v3;
+        }
+
+        if !b12.is_null() {
+
+            *b12 = m.b12;
+        }
+
+        if !b23.is_null() {
+
+            *b23 = m.b23;
+        }
+
+        if !b31.is_null() {
+
+            *b31 = m.b31;
+        }
+
+        if !pss.is_null() {
+
+            *pss = m.pss;
+        }
+
+        0
     }
-
-    let m =  {
-
-        &*mv
-    };
-
-    if !s.is_null() {
-
-        *s = m.s;
-    }
-
-    if !v1.is_null() {
-
-        *v1 = m.v1;
-    }
-
-    if !v2.is_null() {
-
-        *v2 = m.v2;
-    }
-
-    if !v3.is_null() {
-
-        *v3 = m.v3;
-    }
-
-    if !b12.is_null() {
-
-        *b12 = m.b12;
-    }
-
-    if !b23.is_null() {
-
-        *b23 = m.b23;
-    }
-
-    if !b31.is_null() {
-
-        *b31 = m.b31;
-    }
-
-    if !pss.is_null() {
-
-        *pss = m.pss;
-    }
-
-    0
-}}
+}
 
 /// Performs multivector addition.
 #[unsafe(no_mangle)]
@@ -381,31 +384,36 @@ pub unsafe extern "C" fn rssn_num_ga_norm(
 
 pub unsafe extern "C" fn rssn_num_ga_inv(
     mv: *const Multivector3D
-) -> *mut Multivector3D { unsafe {
+) -> *mut Multivector3D {
 
-    if mv.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
+        if mv.is_null() {
+
+            return ptr::null_mut();
+        }
+
+        let a = {
+
+            &*mv
+        };
+
+        match a.inv() {
+            | Some(res) => {
+                Box::into_raw(Box::new(
+                    res,
+                ))
+            },
+            | None => {
+
+                update_last_error(
+                    "Multivector is \
+                     not invertible"
+                        .to_string(),
+                );
+
+                ptr::null_mut()
+            },
+        }
     }
-
-    let a =  {
-
-        &*mv
-    };
-
-    match a.inv() {
-        | Some(res) => {
-            Box::into_raw(Box::new(res))
-        },
-        | None => {
-
-            update_last_error(
-                "Multivector is not \
-                 invertible"
-                    .to_string(),
-            );
-
-            ptr::null_mut()
-        },
-    }
-}}
+}

@@ -31,8 +31,8 @@ pub struct BuildInfo {
 /// The caller must free the returned string using `rssn_free_string`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_build_info_json(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_build_info_json()
+-> *mut c_char {
 
     let info = BuildInfo {
         build_date : crate::constant::get_build_date().to_string(),
@@ -54,8 +54,8 @@ pub extern "C" fn rssn_get_build_info_json(
 /// The caller must free the returned string using `rssn_free_string`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_build_date_json(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_build_date_json()
+-> *mut c_char {
 
     let date =
         crate::constant::get_build_date(
@@ -73,8 +73,8 @@ pub extern "C" fn rssn_get_build_date_json(
 /// The caller must free the returned string using `rssn_free_string`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_commit_sha_json(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_commit_sha_json()
+-> *mut c_char {
 
     let sha =
         crate::constant::get_commit_sha(
@@ -103,8 +103,8 @@ macro_rules! gen_ffi_json {
         /// The caller must free the returned string using `rssn_free_string`.
         #[unsafe(no_mangle)]
 
-        pub extern "C" fn $ffi_name(
-        ) -> *mut std::os::raw::c_char {
+        pub extern "C" fn $ffi_name()
+        -> *mut std::os::raw::c_char {
 
             let value =
                 $internal_getter();

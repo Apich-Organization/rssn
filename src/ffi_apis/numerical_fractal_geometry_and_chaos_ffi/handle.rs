@@ -101,33 +101,38 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor(
     dt: f64,
     num_steps: usize,
     out_ptr: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if out_ptr.is_null() {
+    unsafe {
 
-        return -1;
-    }
+        if out_ptr.is_null() {
 
-    let points = fractal_geometry_and_chaos::generate_lorenz_attractor(
+            return -1;
+        }
+
+        let points = fractal_geometry_and_chaos::generate_lorenz_attractor(
         (x0, y0, z0),
         dt,
         num_steps,
     );
 
-    for (i, (x, y, z)) in points
-        .iter()
-        .enumerate()
-    {
+        for (i, (x, y, z)) in points
+            .iter()
+            .enumerate()
+        {
 
-        *out_ptr.add(i * 3) = *x;
+            *out_ptr.add(i * 3) = *x;
 
-        *out_ptr.add(i * 3 + 1) = *y;
+            *out_ptr.add(i * 3 + 1) =
+                *y;
 
-        *out_ptr.add(i * 3 + 2) = *z;
+            *out_ptr.add(i * 3 + 2) =
+                *z;
+        }
+
+        0
     }
-
-    0
-}}
+}
 
 /// Generates Henon map points.
 ///
@@ -150,32 +155,36 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map(
     a: f64,
     b: f64,
     out_ptr: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if out_ptr.is_null() {
+    unsafe {
 
-        return -1;
-    }
+        if out_ptr.is_null() {
 
-    let points = fractal_geometry_and_chaos::generate_henon_map(
+            return -1;
+        }
+
+        let points = fractal_geometry_and_chaos::generate_henon_map(
         (x0, y0),
         num_steps,
         a,
         b,
     );
 
-    for (i, (x, y)) in points
-        .iter()
-        .enumerate()
-    {
+        for (i, (x, y)) in points
+            .iter()
+            .enumerate()
+        {
 
-        *out_ptr.add(i * 2) = *x;
+            *out_ptr.add(i * 2) = *x;
 
-        *out_ptr.add(i * 2 + 1) = *y;
+            *out_ptr.add(i * 2 + 1) =
+                *y;
+        }
+
+        0
     }
-
-    0
-}}
+}
 
 /// Iterates the logistic map.
 ///
@@ -196,25 +205,28 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map(
     r: f64,
     num_steps: usize,
     out_ptr: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if out_ptr.is_null() {
+    unsafe {
 
-        return -1;
+        if out_ptr.is_null() {
+
+            return -1;
+        }
+
+        let orbit = fractal_geometry_and_chaos::logistic_map_iterate(x0, r, num_steps);
+
+        for (i, &x) in orbit
+            .iter()
+            .enumerate()
+        {
+
+            *out_ptr.add(i) = x;
+        }
+
+        0
     }
-
-    let orbit = fractal_geometry_and_chaos::logistic_map_iterate(x0, r, num_steps);
-
-    for (i, &x) in orbit
-        .iter()
-        .enumerate()
-    {
-
-        *out_ptr.add(i) = x;
-    }
-
-    0
-}}
+}
 
 /// Computes box-counting dimension.
 ///
@@ -234,30 +246,36 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim(
     points_ptr: *const f64,
     num_points: usize,
     num_scales: usize,
-) -> f64 { unsafe {
+) -> f64 {
 
-    if points_ptr.is_null()
-        || num_points == 0
-    {
+    unsafe {
 
-        return 0.0;
+        if points_ptr.is_null()
+            || num_points == 0
+        {
+
+            return 0.0;
+        }
+
+        let mut points =
+            Vec::with_capacity(
+                num_points,
+            );
+
+        for i in 0 .. num_points {
+
+            let x =
+                *points_ptr.add(i * 2);
+
+            let y = *points_ptr
+                .add(i * 2 + 1);
+
+            points.push((x, y));
+        }
+
+        fractal_geometry_and_chaos::box_counting_dimension(&points, num_scales)
     }
-
-    let mut points =
-        Vec::with_capacity(num_points);
-
-    for i in 0 .. num_points {
-
-        let x = *points_ptr.add(i * 2);
-
-        let y =
-            *points_ptr.add(i * 2 + 1);
-
-        points.push((x, y));
-    }
-
-    fractal_geometry_and_chaos::box_counting_dimension(&points, num_scales)
-}}
+}
 
 /// Computes correlation dimension.
 ///
@@ -277,27 +295,33 @@ pub unsafe extern "C" fn rssn_num_fractal_correlation_dim(
     points_ptr: *const f64,
     num_points: usize,
     num_radii: usize,
-) -> f64 { unsafe {
+) -> f64 {
 
-    if points_ptr.is_null()
-        || num_points == 0
-    {
+    unsafe {
 
-        return 0.0;
+        if points_ptr.is_null()
+            || num_points == 0
+        {
+
+            return 0.0;
+        }
+
+        let mut points =
+            Vec::with_capacity(
+                num_points,
+            );
+
+        for i in 0 .. num_points {
+
+            let x =
+                *points_ptr.add(i * 2);
+
+            let y = *points_ptr
+                .add(i * 2 + 1);
+
+            points.push((x, y));
+        }
+
+        fractal_geometry_and_chaos::correlation_dimension(&points, num_radii)
     }
-
-    let mut points =
-        Vec::with_capacity(num_points);
-
-    for i in 0 .. num_points {
-
-        let x = *points_ptr.add(i * 2);
-
-        let y =
-            *points_ptr.add(i * 2 + 1);
-
-        points.push((x, y));
-    }
-
-    fractal_geometry_and_chaos::correlation_dimension(&points, num_radii)
-}}
+}

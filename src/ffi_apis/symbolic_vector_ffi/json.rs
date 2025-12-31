@@ -3,10 +3,10 @@ use std::ffi::c_char;
 use crate::ffi_apis::common::from_json_string;
 use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
+use crate::symbolic::vector::Vector;
 use crate::symbolic::vector::curl;
 use crate::symbolic::vector::divergence;
 use crate::symbolic::vector::gradient;
-use crate::symbolic::vector::Vector;
 
 /// Computes the magnitude of a vector.
 
@@ -57,16 +57,16 @@ pub extern "C" fn rssn_json_vector_dot(
     let v2: Option<Vector> =
         from_json_string(v2_json);
 
-    match (v1, v2)
-    { (Some(vec1), Some(vec2)) => {
+    match (v1, v2) {
+        | (Some(vec1), Some(vec2)) => {
 
-        let result = vec1.dot(&vec2);
+            let result =
+                vec1.dot(&vec2);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes the cross product of two vectors.
@@ -90,16 +90,16 @@ pub extern "C" fn rssn_json_vector_cross(
     let v2: Option<Vector> =
         from_json_string(v2_json);
 
-    match (v1, v2)
-    { (Some(vec1), Some(vec2)) => {
+    match (v1, v2) {
+        | (Some(vec1), Some(vec2)) => {
 
-        let result = vec1.cross(&vec2);
+            let result =
+                vec1.cross(&vec2);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Normalizes a vector.
@@ -210,21 +210,23 @@ pub extern "C" fn rssn_json_vector_gradient(
         x_str,
         y_str,
         z_str,
-    ) { (
-        Some(field),
-        Some(x),
-        Some(y),
-        Some(z),
-    ) => {
+    ) {
+        | (
+            Some(field),
+            Some(x),
+            Some(y),
+            Some(z),
+        ) => {
 
-        let result =
-            gradient(&field, (x, y, z));
+            let result = gradient(
+                &field,
+                (x, y, z),
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes the divergence of a vector field.
@@ -294,23 +296,23 @@ pub extern "C" fn rssn_json_vector_divergence(
 
     match (
         v, x_str, y_str, z_str,
-    ) { (
-        Some(vector),
-        Some(x),
-        Some(y),
-        Some(z),
-    ) => {
+    ) {
+        | (
+            Some(vector),
+            Some(x),
+            Some(y),
+            Some(z),
+        ) => {
 
-        let result = divergence(
-            &vector,
-            (x, y, z),
-        );
+            let result = divergence(
+                &vector,
+                (x, y, z),
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes the curl of a 3D vector field.
@@ -380,19 +382,21 @@ pub extern "C" fn rssn_json_vector_curl(
 
     match (
         v, x_str, y_str, z_str,
-    ) { (
-        Some(vector),
-        Some(x),
-        Some(y),
-        Some(z),
-    ) => {
+    ) {
+        | (
+            Some(vector),
+            Some(x),
+            Some(y),
+            Some(z),
+        ) => {
 
-        let result =
-            curl(&vector, (x, y, z));
+            let result = curl(
+                &vector,
+                (x, y, z),
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

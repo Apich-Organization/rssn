@@ -1,8 +1,8 @@
 //! Bincode-based FFI API for symbolic statistics functions.
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::stats;
 
@@ -83,18 +83,16 @@ pub extern "C" fn rssn_bincode_covariance(
     let data2: Option<Vec<Expr>> =
         from_bincode_buffer(&data2_buf);
 
-    match (data1, data2)
-    { (Some(d1), Some(d2)) => {
-
-        to_bincode_buffer(
-            &stats::covariance(
-                &d1, &d2,
-            ),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (data1, data2) {
+        | (Some(d1), Some(d2)) => {
+            to_bincode_buffer(
+                &stats::covariance(
+                    &d1, &d2,
+                ),
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the symbolic Pearson correlation coefficient using Bincode.
@@ -111,16 +109,14 @@ pub extern "C" fn rssn_bincode_correlation(
     let data2: Option<Vec<Expr>> =
         from_bincode_buffer(&data2_buf);
 
-    match (data1, data2)
-    { (Some(d1), Some(d2)) => {
-
-        to_bincode_buffer(
-            &stats::correlation(
-                &d1, &d2,
-            ),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (data1, data2) {
+        | (Some(d1), Some(d2)) => {
+            to_bincode_buffer(
+                &stats::correlation(
+                    &d1, &d2,
+                ),
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

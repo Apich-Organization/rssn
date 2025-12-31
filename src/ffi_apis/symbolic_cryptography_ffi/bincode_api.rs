@@ -5,18 +5,18 @@
 
 use num_bigint::BigInt;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
+use crate::symbolic::cryptography::CurvePoint;
+use crate::symbolic::cryptography::EcdsaSignature;
+use crate::symbolic::cryptography::EllipticCurve;
 use crate::symbolic::cryptography::ecdsa_sign;
 use crate::symbolic::cryptography::ecdsa_verify;
 use crate::symbolic::cryptography::generate_keypair;
 use crate::symbolic::cryptography::generate_shared_secret;
 use crate::symbolic::cryptography::point_compress;
 use crate::symbolic::cryptography::point_decompress;
-use crate::symbolic::cryptography::CurvePoint;
-use crate::symbolic::cryptography::EcdsaSignature;
-use crate::symbolic::cryptography::EllipticCurve;
 use crate::symbolic::finite_field::PrimeField;
 use crate::symbolic::finite_field::PrimeFieldElement;
 
@@ -96,8 +96,8 @@ pub extern "C" fn rssn_bincode_curve_point_affine(
 /// Creates a point at infinity via Bincode interface.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_bincode_curve_point_infinity(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_curve_point_infinity()
+-> BincodeBuffer {
 
     to_bincode_buffer(
         &CurvePoint::Infinity,

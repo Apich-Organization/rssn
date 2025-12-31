@@ -14,23 +14,28 @@ use crate::symbolic::stats_inference::{
 unsafe fn collect_exprs(
     data: *const *const Expr,
     len: usize,
-) -> Vec<Expr> { unsafe {
+) -> Vec<Expr> {
 
-    let mut exprs =
-        Vec::with_capacity(len);
+    unsafe {
 
-    for i in 0 .. len {
+        let mut exprs =
+            Vec::with_capacity(len);
 
-        let ptr = *data.add(i);
+        for i in 0 .. len {
 
-        if !ptr.is_null() {
+            let ptr = *data.add(i);
 
-            exprs.push((*ptr).clone());
+            if !ptr.is_null() {
+
+                exprs.push(
+                    (*ptr).clone(),
+                );
+            }
         }
-    }
 
-    exprs
-}}
+        exprs
+    }
+}
 
 // Convert HypothesisTest to a boxed Expr (representing a struct/map)
 // Since HypothesisTest is a struct, we maybe should return it as a serialized string or abstract handle?
@@ -84,39 +89,45 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
     data: *const *const Expr,
     len: usize,
     target_mean: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if data.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if data.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let sample =
+            collect_exprs(data, len);
+
+        let target =
+            if target_mean.is_null() {
+
+                Expr::Constant(0.0)
+            } else {
+
+                (*target_mean).clone()
+            };
+
+        let result = stats_inference::one_sample_t_test_symbolic(&sample, &target);
+
+        // Return Tuple(statistic, p_value_formula, df)
+        let df = result
+            .degrees_of_freedom
+            .unwrap_or(Expr::Constant(
+                0.0,
+            )); // 0 if None
+        Box::into_raw(Box::new(
+            Expr::Tuple(vec![
+                result.test_statistic,
+                result.p_value_formula,
+                df,
+            ]),
+        ))
     }
-
-    let sample =
-        collect_exprs(data, len);
-
-    let target =
-        if target_mean.is_null() {
-
-            Expr::Constant(0.0)
-        } else {
-
-            (*target_mean).clone()
-        };
-
-    let result = stats_inference::one_sample_t_test_symbolic(&sample, &target);
-
-    // Return Tuple(statistic, p_value_formula, df)
-    let df = result
-        .degrees_of_freedom
-        .unwrap_or(Expr::Constant(0.0)); // 0 if None
-    Box::into_raw(Box::new(
-        Expr::Tuple(vec![
-            result.test_statistic,
-            result.p_value_formula,
-            df,
-        ]),
-    ))
-}}
+}
 
 /// Performs a two-sample t-test.
 
@@ -146,47 +157,54 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
     data2: *const *const Expr,
     len2: usize,
     mu_diff: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if data1.is_null()
-        || data2.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if data1.is_null()
+            || data2.is_null()
+        {
 
-    let sample1 =
-        collect_exprs(data1, len1);
+            return std::ptr::null_mut(
+            );
+        }
 
-    let sample2 =
-        collect_exprs(data2, len2);
+        let sample1 =
+            collect_exprs(data1, len1);
 
-    let diff = if mu_diff.is_null() {
+        let sample2 =
+            collect_exprs(data2, len2);
 
-        Expr::Constant(0.0)
-    } else {
+        let diff = if mu_diff.is_null()
+        {
 
-        (*mu_diff).clone()
-    };
+            Expr::Constant(0.0)
+        } else {
 
-    let result = stats_inference::two_sample_t_test_symbolic(
+            (*mu_diff).clone()
+        };
+
+        let result = stats_inference::two_sample_t_test_symbolic(
         &sample1,
         &sample2,
         &diff,
     );
 
-    let df = result
-        .degrees_of_freedom
-        .unwrap_or(Expr::Constant(0.0));
+        let df = result
+            .degrees_of_freedom
+            .unwrap_or(Expr::Constant(
+                0.0,
+            ));
 
-    Box::into_raw(Box::new(
-        Expr::Tuple(vec![
-            result.test_statistic,
-            result.p_value_formula,
-            df,
-        ]),
-    ))
-}}
+        Box::into_raw(Box::new(
+            Expr::Tuple(vec![
+                result.test_statistic,
+                result.p_value_formula,
+                df,
+            ]),
+        ))
+    }
+}
 
 /// Performs a z-test.
 
@@ -215,41 +233,46 @@ pub unsafe extern "C" fn rssn_z_test(
     len: usize,
     target_mean: *const Expr,
     pop_std_dev: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if data.is_null()
-        || pop_std_dev.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if data.is_null()
+            || pop_std_dev.is_null()
+        {
 
-    let sample =
-        collect_exprs(data, len);
+            return std::ptr::null_mut(
+            );
+        }
 
-    let target =
-        if target_mean.is_null() {
+        let sample =
+            collect_exprs(data, len);
 
-            Expr::Constant(0.0)
-        } else {
+        let target =
+            if target_mean.is_null() {
 
-            (*target_mean).clone()
-        };
+                Expr::Constant(0.0)
+            } else {
 
-    let sigma = (*pop_std_dev).clone();
+                (*target_mean).clone()
+            };
 
-    let result = stats_inference::z_test_symbolic(
+        let sigma =
+            (*pop_std_dev).clone();
+
+        let result = stats_inference::z_test_symbolic(
         &sample,
         &target,
         &sigma,
     );
 
-    // Z-test has no DF, so return Tuple(stat, p_value, null)
-    Box::into_raw(Box::new(
-        Expr::Tuple(vec![
-            result.test_statistic,
-            result.p_value_formula,
-            Expr::NoSolution, /* Placeholder for None */
-        ]),
-    ))
-}}
+        // Z-test has no DF, so return Tuple(stat, p_value, null)
+        Box::into_raw(Box::new(
+            Expr::Tuple(vec![
+                result.test_statistic,
+                result.p_value_formula,
+                Expr::NoSolution, /* Placeholder for None */
+            ]),
+        ))
+    }
+}

@@ -377,8 +377,8 @@ pub fn check_jacobi_identity(
 /// A `Vec<LieAlgebraElement>` containing the three `so(3)` generators.
 #[must_use]
 
-pub fn so3_generators(
-) -> Vec<LieAlgebraElement> {
+pub fn so3_generators()
+-> Vec<LieAlgebraElement> {
 
     let lz = Expr::Matrix(vec![
         vec![
@@ -467,8 +467,8 @@ pub fn so3() -> LieAlgebra {
 /// A `Vec<LieAlgebraElement>` containing the three `su(2)` generators.
 #[must_use]
 
-pub fn su2_generators(
-) -> Vec<LieAlgebraElement> {
+pub fn su2_generators()
+-> Vec<LieAlgebraElement> {
 
     let i =
         Expr::Variable("i".to_string());

@@ -75,13 +75,17 @@ fn test_find_extrema_2d_min() {
     );
 
     // Just check that we got solutions for both variables
-    assert!(point
-        .point
-        .contains_key(&x));
+    assert!(
+        point
+            .point
+            .contains_key(&x)
+    );
 
-    assert!(point
-        .point
-        .contains_key(&y));
+    assert!(
+        point
+            .point
+            .contains_key(&y)
+    );
 }
 
 #[test]
@@ -120,13 +124,17 @@ fn test_find_extrema_2d_saddle() {
     );
 
     // Just check that we got solutions for both variables
-    assert!(point
-        .point
-        .contains_key(&x));
+    assert!(
+        point
+            .point
+            .contains_key(&x)
+    );
 
-    assert!(point
-        .point
-        .contains_key(&y));
+    assert!(
+        point
+            .point
+            .contains_key(&y)
+    );
 }
 
 #[test]

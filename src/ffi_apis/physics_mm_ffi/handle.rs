@@ -6,8 +6,8 @@ use crate::physics::physics_mm;
 /// Simulates the dam break scenario and returns the final particle positions as a Matrix handle (Nx2).
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_physics_mm_simulate_dam_break(
-) -> *mut Matrix<f64> {
+pub extern "C" fn rssn_physics_mm_simulate_dam_break()
+-> *mut Matrix<f64> {
 
     let results = physics_mm::simulate_dam_break_2d_scenario();
 
@@ -75,13 +75,17 @@ pub extern "C" fn rssn_physics_mm_sph_create(
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_free(
     system: *mut physics_mm::SPHSystem
-) { unsafe {
+) {
 
-    if !system.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(system);
+        if !system.is_null() {
+
+            let _ =
+                Box::from_raw(system);
+        }
     }
-}}
+}
 
 /// Adds a particle to the SPH system.
 #[unsafe(no_mangle)]
@@ -101,11 +105,15 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
     vx: f64,
     vy: f64,
     mass: f64,
-) { unsafe {
+) {
 
-    if let Some(sys) = system.as_mut() {
+    unsafe {
 
-        sys.particles.push(
+        if let Some(sys) =
+            system.as_mut()
+        {
+
+            sys.particles.push(
             physics_mm::Particle {
                 pos : physics_mm::Vector2D {
                     x,
@@ -121,8 +129,9 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
                 mass,
             },
         );
+        }
     }
-}}
+}
 
 /// Updates the SPH system by one time step.
 #[unsafe(no_mangle)]
@@ -138,13 +147,18 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_add_particle(
 pub unsafe extern "C" fn rssn_physics_mm_sph_update(
     system: *mut physics_mm::SPHSystem,
     dt: f64,
-) { unsafe {
+) {
 
-    if let Some(sys) = system.as_mut() {
+    unsafe {
 
-        sys.update(dt);
+        if let Some(sys) =
+            system.as_mut()
+        {
+
+            sys.update(dt);
+        }
     }
-}}
+}
 
 /// Returns the number of particles in the SPH system.
 #[unsafe(no_mangle)]
@@ -159,16 +173,21 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update(
 
 pub const unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
     system: *mut physics_mm::SPHSystem
-) -> usize { unsafe {
+) -> usize {
 
-    if let Some(sys) = system.as_ref() {
+    unsafe {
 
-        sys.particles.len()
-    } else {
+        if let Some(sys) =
+            system.as_ref()
+        {
 
-        0
+            sys.particles.len()
+        } else {
+
+            0
+        }
     }
-}}
+}
 
 /// Gets particle positions as a Matrix (Nx2).
 #[unsafe(no_mangle)]
@@ -183,33 +202,39 @@ pub const unsafe extern "C" fn rssn_physics_mm_sph_get_particle_count(
 
 pub unsafe extern "C" fn rssn_physics_mm_sph_get_positions(
     system: *mut physics_mm::SPHSystem
-) -> *mut Matrix<f64> { unsafe {
+) -> *mut Matrix<f64> {
 
-    if let Some(sys) = system.as_ref() {
+    unsafe {
 
-        let rows = sys.particles.len();
+        if let Some(sys) =
+            system.as_ref()
+        {
 
-        let mut flattened =
-            Vec::with_capacity(
-                rows * 2,
-            );
+            let rows =
+                sys.particles.len();
 
-        for p in &sys.particles {
+            let mut flattened =
+                Vec::with_capacity(
+                    rows * 2,
+                );
 
-            flattened.push(p.pos.x);
+            for p in &sys.particles {
 
-            flattened.push(p.pos.y);
+                flattened.push(p.pos.x);
+
+                flattened.push(p.pos.y);
+            }
+
+            Box::into_raw(Box::new(
+                Matrix::new(
+                    rows,
+                    2,
+                    flattened,
+                ),
+            ))
+        } else {
+
+            std::ptr::null_mut()
         }
-
-        Box::into_raw(Box::new(
-            Matrix::new(
-                rows,
-                2,
-                flattened,
-            ),
-        ))
-    } else {
-
-        std::ptr::null_mut()
     }
-}}
+}

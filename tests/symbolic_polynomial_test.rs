@@ -287,20 +287,22 @@ fn test_leading_coefficient() {
         | Expr::Dag(_) => {
 
             // If it's a DAG, convert and check
-            match lc.to_ast()
-            { Ok(Expr::Constant(
-                c,
-            )) => {
+            match lc.to_ast() {
+                | Ok(
+                    Expr::Constant(c),
+                ) => {
 
-                assert!(
-                    (c - 5.0).abs()
-                        < 1e-10
-                );
-            } _ => {
+                    assert!(
+                        (c - 5.0).abs()
+                            < 1e-10
+                    );
+                },
+                | _ => {
 
-                // Just check that we got a result
-                assert!(true);
-            }}
+                    // Just check that we got a result
+                    assert!(true);
+                },
+            }
         },
         | _ => {
 
@@ -312,8 +314,8 @@ fn test_leading_coefficient() {
 
 #[test]
 
-fn test_polynomial_long_division_simple(
-) {
+fn test_polynomial_long_division_simple()
+ {
 
     // (x^2 + 3x + 2) / (x + 1) = x + 2 with remainder 0
     let dividend = Expr::new_add(

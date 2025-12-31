@@ -29,43 +29,45 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
     n_vars: usize,
     res_re: *mut f64,
     res_im: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if expr_ptr.is_null()
-        || res_re.is_null()
-        || res_im.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if expr_ptr.is_null()
+            || res_re.is_null()
+            || res_im.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_complex_eval"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let expr = &*expr_ptr;
+        let expr = &*expr_ptr;
 
-    let mut vars = HashMap::new();
+        let mut vars = HashMap::new();
 
-    for i in 0 .. n_vars {
+        for i in 0 .. n_vars {
 
-        let name = CStr::from_ptr(
-            *var_names.add(i),
-        )
-        .to_string_lossy()
-        .into_owned();
+            let name = CStr::from_ptr(
+                *var_names.add(i),
+            )
+            .to_string_lossy()
+            .into_owned();
 
-        let val = Complex::new(
-            *var_re.add(i),
-            *var_im.add(i),
-        );
+            let val = Complex::new(
+                *var_re.add(i),
+                *var_im.add(i),
+            );
 
-        vars.insert(name, val);
-    }
+            vars.insert(name, val);
+        }
 
-    match complex_analysis::eval_complex_expr(expr, &vars) {
+        match complex_analysis::eval_complex_expr(expr, &vars) {
         | Ok(res) => {
 
             *res_re = res.re;
@@ -81,7 +83,8 @@ pub unsafe extern "C" fn rssn_num_complex_eval(
             -1
         },
     }
-}}
+    }
+}
 
 /// Computes a contour integral of a symbolic expression.
 #[unsafe(no_mangle)]
@@ -102,38 +105,41 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
     path_len: usize,
     res_re: *mut f64,
     res_im: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if expr_ptr.is_null()
-        || var_ptr.is_null()
-        || path_re.is_null()
-        || path_im.is_null()
-        || res_re.is_null()
-        || res_im.is_null()
-    {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_complex_contour_integral".to_string());
+        if expr_ptr.is_null()
+            || var_ptr.is_null()
+            || path_re.is_null()
+            || path_im.is_null()
+            || res_re.is_null()
+            || res_im.is_null()
+        {
 
-        return -1;
-    }
+            update_last_error("Null pointer passed to rssn_num_complex_contour_integral".to_string());
 
-    let expr = &*expr_ptr;
+            return -1;
+        }
 
-    let var = CStr::from_ptr(var_ptr)
-        .to_string_lossy();
+        let expr = &*expr_ptr;
 
-    let path: Vec<Complex<f64>> = (0
-        .. path_len)
-        .map(|i| {
+        let var =
+            CStr::from_ptr(var_ptr)
+                .to_string_lossy();
 
-            Complex::new(
-                *path_re.add(i),
-                *path_im.add(i),
-            )
-        })
-        .collect();
+        let path: Vec<Complex<f64>> =
+            (0 .. path_len)
+                .map(|i| {
 
-    match complex_analysis::contour_integral_expr(expr, &var, &path) {
+                    Complex::new(
+                        *path_re.add(i),
+                        *path_im.add(i),
+                    )
+                })
+                .collect();
+
+        match complex_analysis::contour_integral_expr(expr, &var, &path) {
         | Ok(res) => {
 
             *res_re = res.re;
@@ -149,7 +155,8 @@ pub unsafe extern "C" fn rssn_num_complex_contour_integral(
             -1
         },
     }
-}}
+    }
+}
 
 /// Computes the residue of a symbolic expression.
 #[unsafe(no_mangle)]
@@ -171,31 +178,35 @@ pub unsafe extern "C" fn rssn_num_complex_residue(
     n_points: usize,
     res_re: *mut f64,
     res_im: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if expr_ptr.is_null()
-        || var_ptr.is_null()
-        || res_re.is_null()
-        || res_im.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if expr_ptr.is_null()
+            || var_ptr.is_null()
+            || res_re.is_null()
+            || res_im.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_complex_residue"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let expr = &*expr_ptr;
+        let expr = &*expr_ptr;
 
-    let var = CStr::from_ptr(var_ptr)
-        .to_string_lossy();
+        let var =
+            CStr::from_ptr(var_ptr)
+                .to_string_lossy();
 
-    let z0 = Complex::new(z0_re, z0_im);
+        let z0 =
+            Complex::new(z0_re, z0_im);
 
-    match complex_analysis::residue_expr(
+        match complex_analysis::residue_expr(
         expr,
         &var,
         z0,
@@ -217,4 +228,5 @@ pub unsafe extern "C" fn rssn_num_complex_residue(
             -1
         },
     }
-}}
+    }
+}

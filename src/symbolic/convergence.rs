@@ -191,7 +191,9 @@ pub fn analyze_convergence(
     let a_n = match simplified {
         | Expr::Dag(ref node) => {
             node.to_expr()
-                .unwrap_or_else(|_| simplified.clone())
+                .unwrap_or_else(|_| {
+                    simplified.clone()
+                })
         },
         | _ => simplified,
     };

@@ -308,7 +308,9 @@ fn test_z_test() {
         0.0,
     );
 
-    assert!(result
-        .degrees_of_freedom
-        .is_none());
+    assert!(
+        result
+            .degrees_of_freedom
+            .is_none()
+    );
 }

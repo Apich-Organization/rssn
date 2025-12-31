@@ -55,15 +55,19 @@ pub extern "C" fn rssn_json_euler_lagrange(
         lagrangian,
         func_str,
         var_str,
-    ) { (Some(l), Some(f), Some(v)) => {
+    ) {
+        | (
+            Some(l),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let result = calculus_of_variations::euler_lagrange(&l, f, v);
+            let result = calculus_of_variations::euler_lagrange(&l, f, v);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Generates and attempts to solve the Euler-Lagrange equation using JSON.
@@ -114,15 +118,19 @@ pub extern "C" fn rssn_json_solve_euler_lagrange(
         lagrangian,
         func_str,
         var_str,
-    ) { (Some(l), Some(f), Some(v)) => {
+    ) {
+        | (
+            Some(l),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let result = calculus_of_variations::solve_euler_lagrange(&l, f, v);
+            let result = calculus_of_variations::solve_euler_lagrange(&l, f, v);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Applies Hamilton's Principle using JSON.
@@ -173,13 +181,17 @@ pub extern "C" fn rssn_json_hamiltons_principle(
         lagrangian,
         func_str,
         var_str,
-    ) { (Some(l), Some(f), Some(v)) => {
+    ) {
+        | (
+            Some(l),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let result = calculus_of_variations::hamiltons_principle(&l, f, v);
+            let result = calculus_of_variations::hamiltons_principle(&l, f, v);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

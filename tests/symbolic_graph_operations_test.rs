@@ -44,9 +44,10 @@ fn test_induced_subgraph() {
             .len(),
         3
     ); // A-B, B-C, C-A
-    assert!(sub
-        .get_node_id(&"D")
-        .is_none());
+    assert!(
+        sub.get_node_id(&"D")
+            .is_none()
+    );
 }
 
 #[test]

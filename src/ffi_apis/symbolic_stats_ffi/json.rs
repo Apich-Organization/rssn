@@ -85,17 +85,18 @@ pub extern "C" fn rssn_json_covariance(
     let data2: Option<Vec<Expr>> =
         from_json_string(data2_json);
 
-    match (data1, data2)
-    { (Some(d1), Some(d2)) => {
+    match (data1, data2) {
+        | (Some(d1), Some(d2)) => {
 
-        let result =
-            stats::covariance(&d1, &d2);
+            let result =
+                stats::covariance(
+                    &d1, &d2,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes the symbolic Pearson correlation coefficient using JSON.
@@ -112,16 +113,16 @@ pub extern "C" fn rssn_json_correlation(
     let data2: Option<Vec<Expr>> =
         from_json_string(data2_json);
 
-    match (data1, data2)
-    { (Some(d1), Some(d2)) => {
+    match (data1, data2) {
+        | (Some(d1), Some(d2)) => {
 
-        let result = stats::correlation(
-            &d1, &d2,
-        );
+            let result =
+                stats::correlation(
+                    &d1, &d2,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

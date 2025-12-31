@@ -14,9 +14,11 @@ fn test_engine_new() {
 
     // Engine should be created successfully
     // No computations should be present initially
-    assert!(engine
-        .get_status("nonexistent")
-        .is_none());
+    assert!(
+        engine
+            .get_status("nonexistent")
+            .is_none()
+    );
 }
 
 #[test]
@@ -64,9 +66,11 @@ fn test_submit_direct() {
     assert!(!id.is_empty());
 
     // Check that computation exists
-    assert!(engine
-        .get_status(&id)
-        .is_some());
+    assert!(
+        engine
+            .get_status(&id)
+            .is_some()
+    );
 }
 
 #[test]
@@ -129,9 +133,11 @@ fn test_get_progress() {
                 <= 100.0
     );
 
-    assert!(!progress
-        .description
-        .is_empty());
+    assert!(
+        !progress
+            .description
+            .is_empty()
+    );
 }
 
 #[test]
@@ -148,8 +154,8 @@ fn test_get_progress_nonexistent() {
 
 #[test]
 
-fn test_get_result_eventually_completes(
-) {
+fn test_get_result_eventually_completes()
+ {
 
     let engine = ComputeEngine::new();
 
@@ -170,9 +176,11 @@ fn test_get_result_eventually_completes(
     // This is acceptable for an async system
     if result.is_some() {
 
-        assert!(!result
-            .unwrap()
-            .is_empty());
+        assert!(
+            !result
+                .unwrap()
+                .is_empty()
+        );
     }
 }
 
@@ -218,9 +226,11 @@ fn test_pause_and_resume() {
 
     // Should exist and be in some valid state
     // Due to async nature, we can't guarantee exact state
-    assert!(engine
-        .get_status(&id)
-        .is_some());
+    assert!(
+        engine
+            .get_status(&id)
+            .is_some()
+    );
 }
 
 #[test]
@@ -277,17 +287,23 @@ fn test_multiple_computations() {
     assert_ne!(id1, id3);
 
     // All should have status
-    assert!(engine
-        .get_status(&id1)
-        .is_some());
+    assert!(
+        engine
+            .get_status(&id1)
+            .is_some()
+    );
 
-    assert!(engine
-        .get_status(&id2)
-        .is_some());
+    assert!(
+        engine
+            .get_status(&id2)
+            .is_some()
+    );
 
-    assert!(engine
-        .get_status(&id3)
-        .is_some());
+    assert!(
+        engine
+            .get_status(&id3)
+            .is_some()
+    );
 }
 
 #[test]

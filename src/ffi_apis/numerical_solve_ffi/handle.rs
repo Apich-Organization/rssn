@@ -32,34 +32,38 @@ pub unsafe extern "C" fn rssn_num_solve_linear_system_handle(
     matrix_ptr: *const Matrix<f64>,
     vector_data: *const f64,
     vector_len: usize,
-) -> *mut LinearSolution { unsafe {
+) -> *mut LinearSolution {
 
-    if matrix_ptr.is_null()
-        || vector_data.is_null()
-    {
+    unsafe {
 
-        return ptr::null_mut();
+        if matrix_ptr.is_null()
+            || vector_data.is_null()
+        {
+
+            return ptr::null_mut();
+        }
+
+        let matrix = &*matrix_ptr;
+
+        let vector =
+            slice::from_raw_parts(
+                vector_data,
+                vector_len,
+            );
+
+        match solve::solve_linear_system(
+            matrix,
+            vector,
+        ) {
+            | Ok(solution) => {
+                Box::into_raw(Box::new(
+                    solution,
+                ))
+            },
+            | Err(_) => ptr::null_mut(),
+        }
     }
-
-    let matrix = &*matrix_ptr;
-
-    let vector = slice::from_raw_parts(
-        vector_data,
-        vector_len,
-    );
-
-    match solve::solve_linear_system(
-        matrix,
-        vector,
-    ) {
-        | Ok(solution) => {
-            Box::into_raw(Box::new(
-                solution,
-            ))
-        },
-        | Err(_) => ptr::null_mut(),
-    }
-}}
+}
 
 /// Frees a `LinearSolution` object.
 #[unsafe(no_mangle)]
@@ -74,13 +78,16 @@ pub unsafe extern "C" fn rssn_num_solve_linear_system_handle(
 
 pub unsafe extern "C" fn rssn_num_solve_free_solution(
     ptr: *mut LinearSolution
-) { unsafe {
+) {
 
-    if !ptr.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(ptr);
+        if !ptr.is_null() {
+
+            let _ = Box::from_raw(ptr);
+        }
     }
-}}
+}
 
 /// Checks if the solution is unique.
 #[unsafe(no_mangle)]
@@ -95,18 +102,21 @@ pub unsafe extern "C" fn rssn_num_solve_free_solution(
 
 pub const unsafe extern "C" fn rssn_num_solve_is_unique(
     ptr: *const LinearSolution
-) -> bool { unsafe {
+) -> bool {
 
-    if ptr.is_null() {
+    unsafe {
 
-        return false;
+        if ptr.is_null() {
+
+            return false;
+        }
+
+        matches!(
+            *ptr,
+            LinearSolution::Unique(_)
+        )
     }
-
-    matches!(
-        *ptr,
-        LinearSolution::Unique(_)
-    )
-}}
+}
 
 /// Helper to copy vector data.
 
@@ -121,14 +131,17 @@ pub const unsafe extern "C" fn rssn_num_solve_is_unique(
 const unsafe fn copy_vec_to_buffer(
     vec: &[f64],
     buffer: *mut f64,
-) { unsafe {
+) {
 
-    ptr::copy_nonoverlapping(
-        vec.as_ptr(),
-        buffer,
-        vec.len(),
-    );
-}}
+    unsafe {
+
+        ptr::copy_nonoverlapping(
+            vec.as_ptr(),
+            buffer,
+            vec.len(),
+        );
+    }
+}
 
 /// Gets the data of a unique solution.
 ///
@@ -148,22 +161,29 @@ const unsafe fn copy_vec_to_buffer(
 pub unsafe extern "C" fn rssn_num_solve_get_unique_solution(
     ptr: *const LinearSolution,
     buffer: *mut f64,
-) { unsafe {
+) {
 
-    if ptr.is_null() || buffer.is_null()
-    {
+    unsafe {
 
-        return;
+        if ptr.is_null()
+            || buffer.is_null()
+        {
+
+            return;
+        }
+
+        if let LinearSolution::Unique(
+            ref sol,
+        ) = *ptr
+        {
+
+            copy_vec_to_buffer(
+                sol,
+                buffer,
+            );
+        }
     }
-
-    if let LinearSolution::Unique(
-        ref sol,
-    ) = *ptr
-    {
-
-        copy_vec_to_buffer(sol, buffer);
-    }
-}}
+}
 
 /// Gets the length of the unique solution vector.
 #[unsafe(no_mangle)]
@@ -178,24 +198,27 @@ pub unsafe extern "C" fn rssn_num_solve_get_unique_solution(
 
 pub const unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
     ptr: *const LinearSolution
-) -> usize { unsafe {
+) -> usize {
 
-    if ptr.is_null() {
+    unsafe {
 
-        return 0;
+        if ptr.is_null() {
+
+            return 0;
+        }
+
+        if let LinearSolution::Unique(
+            ref sol,
+        ) = *ptr
+        {
+
+            sol.len()
+        } else {
+
+            0
+        }
     }
-
-    if let LinearSolution::Unique(
-        ref sol,
-    ) = *ptr
-    {
-
-        sol.len()
-    } else {
-
-        0
-    }
-}}
+}
 
 // TODO: Add accessors for Parametric solutions if needed.
 // For now, Unique and checking for NoSolution (via !is_unique and check types) is a good start.
@@ -213,15 +236,18 @@ pub const unsafe extern "C" fn rssn_num_solve_get_unique_solution_len(
 
 pub const unsafe extern "C" fn rssn_num_solve_is_no_solution(
     ptr: *const LinearSolution
-) -> bool { unsafe {
+) -> bool {
 
-    if ptr.is_null() {
+    unsafe {
 
-        return false;
+        if ptr.is_null() {
+
+            return false;
+        }
+
+        matches!(
+            *ptr,
+            LinearSolution::NoSolution
+        )
     }
-
-    matches!(
-        *ptr,
-        LinearSolution::NoSolution
-    )
-}}
+}

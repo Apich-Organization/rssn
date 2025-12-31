@@ -65,25 +65,25 @@ fn test_reciprocal_lattice_vectors() {
 
     // For unit cube, reciprocal vectors should be 2pi * unit vectors
     // 1.0 / 1.0 = 1.0, so it should be exactly 2 * pi
-    assert!(b1
-        .x
-        .to_string()
-        .contains("pi"));
+    assert!(
+        b1.x.to_string()
+            .contains("pi")
+    );
 
-    assert!(b1
-        .x
-        .to_string()
-        .contains("2"));
+    assert!(
+        b1.x.to_string()
+            .contains("2")
+    );
 
-    assert!(b2
-        .y
-        .to_string()
-        .contains("pi"));
+    assert!(
+        b2.y.to_string()
+            .contains("pi")
+    );
 
-    assert!(b3
-        .z
-        .to_string()
-        .contains("pi"));
+    assert!(
+        b3.z.to_string()
+            .contains("pi")
+    );
 }
 
 #[test]
@@ -98,13 +98,17 @@ fn test_debye_frequency() {
     let omega_d =
         debye_frequency(&v_s, &n_dense);
 
-    assert!(omega_d
-        .to_string()
-        .contains("v_s"));
+    assert!(
+        omega_d
+            .to_string()
+            .contains("v_s")
+    );
 
-    assert!(omega_d
-        .to_string()
-        .contains("n"));
+    assert!(
+        omega_d
+            .to_string()
+            .contains("n")
+    );
 }
 
 #[test]
@@ -127,21 +131,29 @@ fn test_plasma_frequency() {
         &m,
     );
 
-    assert!(omega_p
-        .to_string()
-        .contains("n"));
+    assert!(
+        omega_p
+            .to_string()
+            .contains("n")
+    );
 
-    assert!(omega_p
-        .to_string()
-        .contains("e"));
+    assert!(
+        omega_p
+            .to_string()
+            .contains("e")
+    );
 
-    assert!(omega_p
-        .to_string()
-        .contains("m"));
+    assert!(
+        omega_p
+            .to_string()
+            .contains("m")
+    );
 
-    assert!(omega_p
-        .to_string()
-        .contains("epsilon_0"));
+    assert!(
+        omega_p
+            .to_string()
+            .contains("epsilon_0")
+    );
 }
 
 #[test]
@@ -161,17 +173,20 @@ fn test_einstein_heat_capacity() {
         &temp,
     );
 
-    assert!(cv
-        .to_string()
-        .contains("N"));
+    assert!(
+        cv.to_string()
+            .contains("N")
+    );
 
-    assert!(cv
-        .to_string()
-        .contains("Theta_E"));
+    assert!(
+        cv.to_string()
+            .contains("Theta_E")
+    );
 
-    assert!(cv
-        .to_string()
-        .contains("T"));
+    assert!(
+        cv.to_string()
+            .contains("T")
+    );
 }
 
 #[test]
@@ -192,13 +207,17 @@ fn test_london_penetration_depth() {
             &mass, &mu_0, &n_s, &e,
         );
 
-    assert!(lambda
-        .to_string()
-        .contains("n_s"));
+    assert!(
+        lambda
+            .to_string()
+            .contains("n_s")
+    );
 
-    assert!(lambda
-        .to_string()
-        .contains("mu_0"));
+    assert!(
+        lambda
+            .to_string()
+            .contains("mu_0")
+    );
 }
 
 #[test]
@@ -211,13 +230,15 @@ fn test_hall_coefficient() {
 
     let rh = hall_coefficient(&n, &q);
 
-    assert!(rh
-        .to_string()
-        .contains("n"));
+    assert!(
+        rh.to_string()
+            .contains("n")
+    );
 
-    assert!(rh
-        .to_string()
-        .contains("q"));
+    assert!(
+        rh.to_string()
+            .contains("q")
+    );
 }
 
 #[test]
@@ -240,13 +261,15 @@ fn test_bloch_theorem() {
 
     let psi = bloch_theorem(&k, &r, &u);
 
-    assert!(psi
-        .to_string()
-        .contains("exp"));
+    assert!(
+        psi.to_string()
+            .contains("exp")
+    );
 
-    assert!(psi
-        .to_string()
-        .contains("u"));
+    assert!(
+        psi.to_string()
+            .contains("u")
+    );
 }
 
 #[test]
@@ -266,13 +289,17 @@ fn test_energy_band() {
         &e0,
     );
 
-    assert!(energy
-        .to_string()
-        .contains("hbar"));
+    assert!(
+        energy
+            .to_string()
+            .contains("hbar")
+    );
 
-    assert!(energy
-        .to_string()
-        .contains("k"));
+    assert!(
+        energy
+            .to_string()
+            .contains("k")
+    );
 }
 
 #[test]

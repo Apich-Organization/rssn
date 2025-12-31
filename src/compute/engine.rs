@@ -43,11 +43,11 @@
 
 use std::collections::HashMap;
 use std::io::prelude::*;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::Condvar;
 use std::sync::Mutex;
 use std::sync::RwLock;
+use std::sync::atomic::AtomicBool;
 
 /// Development in place.
 use rayon::prelude::*;

@@ -71,11 +71,15 @@ fn test_json_api_build_info() {
             serde_json::from_str(json)
                 .unwrap();
 
-        assert!(info["build_date"]
-            .is_string());
+        assert!(
+            info["build_date"]
+                .is_string()
+        );
 
-        assert!(info["commit_sha"]
-            .is_string());
+        assert!(
+            info["commit_sha"]
+                .is_string()
+        );
 
         assert!(
             info["rustc_version"]
@@ -133,17 +137,23 @@ fn test_bincode_api_build_info() {
         )
         .unwrap();
 
-        assert!(!info
-            .build_date
-            .is_empty());
+        assert!(
+            !info
+                .build_date
+                .is_empty()
+        );
 
-        assert!(!info
-            .commit_sha
-            .is_empty());
+        assert!(
+            !info
+                .commit_sha
+                .is_empty()
+        );
 
-        assert!(!info
-            .rustc_version
-            .is_empty());
+        assert!(
+            !info
+                .rustc_version
+                .is_empty()
+        );
     }
 
     rssn_free_bincode_buffer(buffer);

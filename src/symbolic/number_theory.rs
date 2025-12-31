@@ -108,6 +108,7 @@ pub(crate) fn collect_poly_terms_recursive(
 
             node.to_expr()
                 .unwrap_or_else(|_| {
+
                     simplified.clone()
                 })
         } else {
@@ -665,7 +666,7 @@ pub fn solve_diophantine(
             return Err("Input must \
                         be an equation.\
                         "
-            .to_string())
+            .to_string());
         },
     };
 
@@ -697,10 +698,13 @@ pub fn solve_diophantine(
             {
 
                 node.to_expr()
-                    .unwrap_or_else(|_| {
-                        raw_coeff
-                            .clone()
-                    })
+                    .unwrap_or_else(
+                        |_| {
+
+                            raw_coeff
+                                .clone()
+                        },
+                    )
             } else {
 
                 raw_coeff.clone()
@@ -934,10 +938,13 @@ pub fn solve_pell_from_poly(
             {
 
                 node.to_expr()
-                    .unwrap_or_else(|_| {
-                        raw_coeff
-                            .clone()
-                    })
+                    .unwrap_or_else(
+                        |_| {
+
+                            raw_coeff
+                                .clone()
+                        },
+                    )
             } else {
 
                 raw_coeff.clone()

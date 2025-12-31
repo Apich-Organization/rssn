@@ -325,7 +325,14 @@ impl EllipticCurve {
     ) -> CurvePoint {
 
         match (p1, p2) {
-            | (CurvePoint::Infinity, p) | (p, CurvePoint::Infinity) => p.clone(),
+            | (
+                CurvePoint::Infinity,
+                p,
+            )
+            | (
+                p,
+                CurvePoint::Infinity,
+            ) => p.clone(),
             | (
                 CurvePoint::Affine {
                     x: x1,
@@ -633,7 +640,7 @@ pub fn ecdsa_sign(
             ..
         } => x.value.clone() % order,
         | CurvePoint::Infinity => {
-            return None
+            return None;
         },
     };
 
@@ -777,10 +784,8 @@ fn extended_gcd(
         )
     } else {
 
-        let (g, x, y) = extended_gcd(
-            b,
-            &(a % b),
-        );
+        let (g, x, y) =
+            extended_gcd(b, &(a % b));
 
         (
             g,

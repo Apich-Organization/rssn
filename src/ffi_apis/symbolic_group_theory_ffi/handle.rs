@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::group_theory::character;
 use crate::symbolic::group_theory::Group;
 use crate::symbolic::group_theory::GroupElement;
 use crate::symbolic::group_theory::Representation;
+use crate::symbolic::group_theory::character;
 
 // --- Group ---
 
@@ -51,16 +51,19 @@ pub unsafe extern "C" fn rssn_group_create(
     values_ptr: *const *const Expr,
     table_len: usize,
     identity_ptr: *const Expr,
-) -> *mut Group { unsafe {
+) -> *mut Group {
 
-    let elements_slice =
-        std::slice::from_raw_parts(
-            elements_ptr,
-            elements_len,
-        );
+    unsafe {
 
-    let elements: Vec<GroupElement> =
-        elements_slice
+        let elements_slice =
+            std::slice::from_raw_parts(
+                elements_ptr,
+                elements_len,
+            );
+
+        let elements: Vec<
+            GroupElement,
+        > = elements_slice
             .iter()
             .map(|&p| {
 
@@ -70,57 +73,61 @@ pub unsafe extern "C" fn rssn_group_create(
             })
             .collect();
 
-    let keys_a_slice =
-        std::slice::from_raw_parts(
-            keys_a_ptr,
-            table_len,
+        let keys_a_slice =
+            std::slice::from_raw_parts(
+                keys_a_ptr,
+                table_len,
+            );
+
+        let keys_b_slice =
+            std::slice::from_raw_parts(
+                keys_b_ptr,
+                table_len,
+            );
+
+        let values_slice =
+            std::slice::from_raw_parts(
+                values_ptr,
+                table_len,
+            );
+
+        let mut multiplication_table =
+            HashMap::new();
+
+        for i in 0 .. table_len {
+
+            let a = GroupElement(
+                (*keys_a_slice[i])
+                    .clone(),
+            );
+
+            let b = GroupElement(
+                (*keys_b_slice[i])
+                    .clone(),
+            );
+
+            let val = GroupElement(
+                (*values_slice[i])
+                    .clone(),
+            );
+
+            multiplication_table
+                .insert((a, b), val);
+        }
+
+        let identity = GroupElement(
+            (*identity_ptr).clone(),
         );
 
-    let keys_b_slice =
-        std::slice::from_raw_parts(
-            keys_b_ptr,
-            table_len,
+        let group = Group::new(
+            elements,
+            multiplication_table,
+            identity,
         );
 
-    let values_slice =
-        std::slice::from_raw_parts(
-            values_ptr,
-            table_len,
-        );
-
-    let mut multiplication_table =
-        HashMap::new();
-
-    for i in 0 .. table_len {
-
-        let a = GroupElement(
-            (*keys_a_slice[i]).clone(),
-        );
-
-        let b = GroupElement(
-            (*keys_b_slice[i]).clone(),
-        );
-
-        let val = GroupElement(
-            (*values_slice[i]).clone(),
-        );
-
-        multiplication_table
-            .insert((a, b), val);
+        Box::into_raw(Box::new(group))
     }
-
-    let identity = GroupElement(
-        (*identity_ptr).clone(),
-    );
-
-    let group = Group::new(
-        elements,
-        multiplication_table,
-        identity,
-    );
-
-    Box::into_raw(Box::new(group))
-}}
+}
 
 #[unsafe(no_mangle)]
 
@@ -150,13 +157,16 @@ pub unsafe extern "C" fn rssn_group_create(
 
 pub unsafe extern "C" fn rssn_group_free(
     ptr: *mut Group
-) { unsafe {
+) {
 
-    if !ptr.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(ptr);
+        if !ptr.is_null() {
+
+            let _ = Box::from_raw(ptr);
+        }
     }
-}}
+}
 
 #[unsafe(no_mangle)]
 
@@ -190,21 +200,30 @@ pub unsafe extern "C" fn rssn_group_multiply(
     group: *const Group,
     a: *const Expr,
     b: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let ga = GroupElement((*a).clone());
+    unsafe {
 
-    let gb = GroupElement((*b).clone());
+        let ga =
+            GroupElement((*a).clone());
 
-    match (*group).multiply(&ga, &gb) {
-        | Some(result) => {
-            Box::into_raw(Box::new(
-                result.0,
-            ))
-        },
-        | None => std::ptr::null_mut(),
+        let gb =
+            GroupElement((*b).clone());
+
+        match (*group)
+            .multiply(&ga, &gb)
+        {
+            | Some(result) => {
+                Box::into_raw(Box::new(
+                    result.0,
+                ))
+            },
+            | None => {
+                std::ptr::null_mut()
+            },
+        }
     }
-}}
+}
 
 #[unsafe(no_mangle)]
 
@@ -236,19 +255,25 @@ pub unsafe extern "C" fn rssn_group_multiply(
 pub unsafe extern "C" fn rssn_group_inverse(
     group: *const Group,
     a: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let ga = GroupElement((*a).clone());
+    unsafe {
 
-    match (*group).inverse(&ga) {
-        | Some(result) => {
-            Box::into_raw(Box::new(
-                result.0,
-            ))
-        },
-        | None => std::ptr::null_mut(),
+        let ga =
+            GroupElement((*a).clone());
+
+        match (*group).inverse(&ga) {
+            | Some(result) => {
+                Box::into_raw(Box::new(
+                    result.0,
+                ))
+            },
+            | None => {
+                std::ptr::null_mut()
+            },
+        }
     }
-}}
+}
 
 #[unsafe(no_mangle)]
 
@@ -279,10 +304,13 @@ pub unsafe extern "C" fn rssn_group_inverse(
 
 pub unsafe extern "C" fn rssn_group_is_abelian(
     group: *const Group
-) -> bool { unsafe {
+) -> bool {
 
-    (*group).is_abelian()
-}}
+    unsafe {
+
+        (*group).is_abelian()
+    }
+}
 
 #[unsafe(no_mangle)]
 
@@ -316,14 +344,18 @@ pub unsafe extern "C" fn rssn_group_is_abelian(
 pub unsafe extern "C" fn rssn_group_element_order(
     group: *const Group,
     a: *const Expr,
-) -> usize { unsafe {
+) -> usize {
 
-    let ga = GroupElement((*a).clone());
+    unsafe {
 
-    (*group)
-        .element_order(&ga)
-        .unwrap_or(0)
-}}
+        let ga =
+            GroupElement((*a).clone());
+
+        (*group)
+            .element_order(&ga)
+            .unwrap_or(0)
+    }
+}
 
 #[unsafe(no_mangle)]
 
@@ -359,30 +391,35 @@ pub unsafe extern "C" fn rssn_group_element_order(
 pub unsafe extern "C" fn rssn_group_center(
     group: *const Group,
     out_len: *mut usize,
-) -> *mut *mut Expr { unsafe {
+) -> *mut *mut Expr {
 
-    let center = (*group).center();
+    unsafe {
 
-    *out_len = center.len();
+        let center = (*group).center();
 
-    let mut out_ptrs =
-        Vec::with_capacity(
-            center.len(),
-        );
+        *out_len = center.len();
 
-    for elem in center {
+        let mut out_ptrs =
+            Vec::with_capacity(
+                center.len(),
+            );
 
-        out_ptrs.push(Box::into_raw(
-            Box::new(elem.0),
-        ));
+        for elem in center {
+
+            out_ptrs.push(
+                Box::into_raw(
+                    Box::new(elem.0),
+                ),
+            );
+        }
+
+        let ptr = out_ptrs.as_mut_ptr();
+
+        std::mem::forget(out_ptrs);
+
+        ptr
     }
-
-    let ptr = out_ptrs.as_mut_ptr();
-
-    std::mem::forget(out_ptrs);
-
-    ptr
-}}
+}
 
 // --- Representation ---
 
@@ -426,16 +463,19 @@ pub unsafe extern "C" fn rssn_representation_create(
     keys_ptr: *const *const Expr,
     values_ptr: *const *const Expr,
     map_len: usize,
-) -> *mut Representation { unsafe {
+) -> *mut Representation {
 
-    let elements_slice =
-        std::slice::from_raw_parts(
-            elements_ptr,
-            elements_len,
-        );
+    unsafe {
 
-    let elements: Vec<GroupElement> =
-        elements_slice
+        let elements_slice =
+            std::slice::from_raw_parts(
+                elements_ptr,
+                elements_len,
+            );
+
+        let elements: Vec<
+            GroupElement,
+        > = elements_slice
             .iter()
             .map(|&p| {
 
@@ -445,39 +485,43 @@ pub unsafe extern "C" fn rssn_representation_create(
             })
             .collect();
 
-    let keys_slice =
-        std::slice::from_raw_parts(
-            keys_ptr,
-            map_len,
+        let keys_slice =
+            std::slice::from_raw_parts(
+                keys_ptr,
+                map_len,
+            );
+
+        let values_slice =
+            std::slice::from_raw_parts(
+                values_ptr,
+                map_len,
+            );
+
+        let mut matrices =
+            HashMap::new();
+
+        for i in 0 .. map_len {
+
+            let key = GroupElement(
+                (*keys_slice[i])
+                    .clone(),
+            );
+
+            let val = (*values_slice
+                [i])
+                .clone();
+
+            matrices.insert(key, val);
+        }
+
+        let rep = Representation::new(
+            elements,
+            matrices,
         );
 
-    let values_slice =
-        std::slice::from_raw_parts(
-            values_ptr,
-            map_len,
-        );
-
-    let mut matrices = HashMap::new();
-
-    for i in 0 .. map_len {
-
-        let key = GroupElement(
-            (*keys_slice[i]).clone(),
-        );
-
-        let val =
-            (*values_slice[i]).clone();
-
-        matrices.insert(key, val);
+        Box::into_raw(Box::new(rep))
     }
-
-    let rep = Representation::new(
-        elements,
-        matrices,
-    );
-
-    Box::into_raw(Box::new(rep))
-}}
+}
 
 #[unsafe(no_mangle)]
 
@@ -507,13 +551,16 @@ pub unsafe extern "C" fn rssn_representation_create(
 
 pub unsafe extern "C" fn rssn_representation_free(
     ptr: *mut Representation
-) { unsafe {
+) {
 
-    if !ptr.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(ptr);
+        if !ptr.is_null() {
+
+            let _ = Box::from_raw(ptr);
+        }
     }
-}}
+}
 
 #[unsafe(no_mangle)]
 
@@ -547,10 +594,13 @@ pub unsafe extern "C" fn rssn_representation_free(
 pub unsafe extern "C" fn rssn_representation_is_valid(
     rep: *const Representation,
     group: *const Group,
-) -> bool { unsafe {
+) -> bool {
 
-    (*rep).is_valid(&*group)
-}}
+    unsafe {
+
+        (*rep).is_valid(&*group)
+    }
+}
 
 #[unsafe(no_mangle)]
 
@@ -592,35 +642,47 @@ pub unsafe extern "C" fn rssn_character(
     out_len: *mut usize,
     out_keys: *mut *mut *mut Expr,
     out_values: *mut *mut *mut Expr,
-) { unsafe {
+) {
 
-    let chars = character(&*rep);
+    unsafe {
 
-    *out_len = chars.len();
+        let chars = character(&*rep);
 
-    let mut keys_vec =
-        Vec::with_capacity(chars.len());
+        *out_len = chars.len();
 
-    let mut values_vec =
-        Vec::with_capacity(chars.len());
+        let mut keys_vec =
+            Vec::with_capacity(
+                chars.len(),
+            );
 
-    for (k, v) in chars {
+        let mut values_vec =
+            Vec::with_capacity(
+                chars.len(),
+            );
 
-        keys_vec.push(Box::into_raw(
-            Box::new(k.0),
-        ));
+        for (k, v) in chars {
 
-        values_vec.push(Box::into_raw(
-            Box::new(v),
-        ));
+            keys_vec.push(
+                Box::into_raw(
+                    Box::new(k.0),
+                ),
+            );
+
+            values_vec.push(
+                Box::into_raw(
+                    Box::new(v),
+                ),
+            );
+        }
+
+        *out_keys =
+            keys_vec.as_mut_ptr();
+
+        *out_values =
+            values_vec.as_mut_ptr();
+
+        std::mem::forget(keys_vec);
+
+        std::mem::forget(values_vec);
     }
-
-    *out_keys = keys_vec.as_mut_ptr();
-
-    *out_values =
-        values_vec.as_mut_ptr();
-
-    std::mem::forget(keys_vec);
-
-    std::mem::forget(values_vec);
-}}
+}

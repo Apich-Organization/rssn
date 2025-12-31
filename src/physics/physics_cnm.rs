@@ -269,8 +269,8 @@ pub fn solve_heat_equation_1d_cn(
 
 #[must_use]
 
-pub fn simulate_1d_heat_conduction_cn_scenario(
-) -> Vec<f64> {
+pub fn simulate_1d_heat_conduction_cn_scenario()
+-> Vec<f64> {
 
     const N: usize = 100;
 
@@ -519,8 +519,8 @@ pub fn solve_heat_equation_2d_cn_adi(
 
 #[must_use]
 
-pub fn simulate_2d_heat_conduction_cn_adi_scenario(
-) -> Vec<f64> {
+pub fn simulate_2d_heat_conduction_cn_adi_scenario()
+-> Vec<f64> {
 
     const NX: usize = 50;
 

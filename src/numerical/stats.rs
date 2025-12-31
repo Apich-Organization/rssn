@@ -128,8 +128,10 @@ pub fn percentile(
         Data::new(data);
 
     if p < 0.0 {
+
         return f64::NAN;
     }
+
     #[allow(clippy::cast_sign_loss)]
     data_container
         .percentile(p as usize)

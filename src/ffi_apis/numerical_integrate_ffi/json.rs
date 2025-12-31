@@ -52,14 +52,17 @@ struct QuadratureInput {
 
 pub unsafe extern "C" fn rssn_numerical_quadrature_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    if json_ptr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if json_ptr.is_null() {
 
-    let json_str = match CStr::from_ptr(
+            return std::ptr::null_mut(
+            );
+        }
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -70,53 +73,55 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(
         },
     };
 
-    let input: QuadratureInput =
-        match serde_json::from_str(
-            json_str,
-        ) {
-            | Ok(v) => v,
-            | Err(e) => {
+        let input: QuadratureInput =
+            match serde_json::from_str(
+                json_str,
+            ) {
+                | Ok(v) => v,
+                | Err(e) => {
 
-                let res : FfiResult<f64, String> = FfiResult {
+                    let res : FfiResult<f64, String> = FfiResult {
                 ok : None,
                 err : Some(format!(
                     "JSON deserialization error: {e}"
                 )),
             };
 
-                return CString::new(serde_json::to_string(&res).unwrap())
+                    return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
+                },
+            };
+
+        let result =
+            integrate::quadrature(
+                &input.expr,
+                &input.var,
+                (input.a, input.b),
+                input.n_steps,
+                &input.method,
+            );
+
+        let res = match result {
+            | Ok(val) => {
+                FfiResult {
+                    ok: Some(val),
+                    err: None::<String>,
+                }
+            },
+            | Err(e) => {
+                FfiResult {
+                    ok: None,
+                    err: Some(e),
+                }
             },
         };
 
-    let result = integrate::quadrature(
-        &input.expr,
-        &input.var,
-        (input.a, input.b),
-        input.n_steps,
-        &input.method,
-    );
-
-    let res = match result {
-        | Ok(val) => {
-            FfiResult {
-                ok: Some(val),
-                err: None::<String>,
-            }
-        },
-        | Err(e) => {
-            FfiResult {
-                ok: None,
-                err: Some(e),
-            }
-        },
-    };
-
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}

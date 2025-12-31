@@ -9,8 +9,8 @@ use std::os::raw::c_char;
 /// The caller must free the returned string using `rssn_free_string`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_build_date(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_build_date()
+-> *mut c_char {
 
     let date =
         crate::constant::get_build_date(
@@ -28,8 +28,8 @@ pub extern "C" fn rssn_get_build_date(
 /// The caller must free the returned string using `rssn_free_string`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_commit_sha(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_commit_sha()
+-> *mut c_char {
 
     let sha =
         crate::constant::get_commit_sha(
@@ -47,8 +47,8 @@ pub extern "C" fn rssn_get_commit_sha(
 /// The caller must free the returned string using `rssn_free_string`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_rustc_version(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_rustc_version()
+-> *mut c_char {
 
     let version = crate::constant::get_rustc_version();
 
@@ -64,8 +64,8 @@ pub extern "C" fn rssn_get_rustc_version(
 /// The caller must free the returned string using `rssn_free_string`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_cargo_target_triple(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_cargo_target_triple()
+-> *mut c_char {
 
     let triple = crate::constant::get_cargo_target_triple();
 
@@ -81,8 +81,8 @@ pub extern "C" fn rssn_get_cargo_target_triple(
 /// The caller must free the returned string using `rssn_free_string`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_get_system_info(
-) -> *mut c_char {
+pub extern "C" fn rssn_get_system_info()
+-> *mut c_char {
 
     let info = crate::constant::get_system_info();
 
@@ -266,14 +266,17 @@ gen_ffi_handle!(rssn_get_muon_magnetic_moment, crate::constant::get_muon_magneti
 
 pub unsafe extern "C" fn rssn_free_string_constant(
     ptr: *mut c_char
-) { unsafe {
+) {
 
-    if !ptr.is_null() {
+    unsafe {
 
-        drop(
+        if !ptr.is_null() {
+
+            drop(
             std::ffi::CString::from_raw(
                 ptr,
             ),
         );
+        }
     }
-}}
+}

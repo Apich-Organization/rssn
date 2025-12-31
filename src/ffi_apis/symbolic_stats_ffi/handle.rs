@@ -20,30 +20,36 @@ use crate::symbolic::stats;
 pub unsafe extern "C" fn rssn_mean(
     data: *const *const Expr,
     len: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if data.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if data.is_null() {
 
-    let mut exprs =
-        Vec::with_capacity(len);
-
-    for i in 0 .. len {
-
-        let ptr = *data.add(i);
-
-        if !ptr.is_null() {
-
-            exprs.push((*ptr).clone());
+            return std::ptr::null_mut(
+            );
         }
-    }
 
-    Box::into_raw(Box::new(
-        stats::mean(&exprs),
-    ))
-}}
+        let mut exprs =
+            Vec::with_capacity(len);
+
+        for i in 0 .. len {
+
+            let ptr = *data.add(i);
+
+            if !ptr.is_null() {
+
+                exprs.push(
+                    (*ptr).clone(),
+                );
+            }
+        }
+
+        Box::into_raw(Box::new(
+            stats::mean(&exprs),
+        ))
+    }
+}
 
 /// Computes the symbolic variance of a set of expressions.
 ///
@@ -62,30 +68,36 @@ pub unsafe extern "C" fn rssn_mean(
 pub unsafe extern "C" fn rssn_variance(
     data: *const *const Expr,
     len: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if data.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if data.is_null() {
 
-    let mut exprs =
-        Vec::with_capacity(len);
-
-    for i in 0 .. len {
-
-        let ptr = *data.add(i);
-
-        if !ptr.is_null() {
-
-            exprs.push((*ptr).clone());
+            return std::ptr::null_mut(
+            );
         }
-    }
 
-    Box::into_raw(Box::new(
-        stats::variance(&exprs),
-    ))
-}}
+        let mut exprs =
+            Vec::with_capacity(len);
+
+        for i in 0 .. len {
+
+            let ptr = *data.add(i);
+
+            if !ptr.is_null() {
+
+                exprs.push(
+                    (*ptr).clone(),
+                );
+            }
+        }
+
+        Box::into_raw(Box::new(
+            stats::variance(&exprs),
+        ))
+    }
+}
 
 /// Computes the symbolic standard deviation of a set of expressions.
 ///
@@ -104,30 +116,36 @@ pub unsafe extern "C" fn rssn_variance(
 pub unsafe extern "C" fn rssn_std_dev(
     data: *const *const Expr,
     len: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if data.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if data.is_null() {
 
-    let mut exprs =
-        Vec::with_capacity(len);
-
-    for i in 0 .. len {
-
-        let ptr = *data.add(i);
-
-        if !ptr.is_null() {
-
-            exprs.push((*ptr).clone());
+            return std::ptr::null_mut(
+            );
         }
-    }
 
-    Box::into_raw(Box::new(
-        stats::std_dev(&exprs),
-    ))
-}}
+        let mut exprs =
+            Vec::with_capacity(len);
+
+        for i in 0 .. len {
+
+            let ptr = *data.add(i);
+
+            if !ptr.is_null() {
+
+                exprs.push(
+                    (*ptr).clone(),
+                );
+            }
+        }
+
+        Box::into_raw(Box::new(
+            stats::std_dev(&exprs),
+        ))
+    }
+}
 
 /// Computes the symbolic covariance of two sets of expressions.
 ///
@@ -148,48 +166,56 @@ pub unsafe extern "C" fn rssn_covariance(
     len1: usize,
     data2: *const *const Expr,
     len2: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if data1.is_null()
-        || data2.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if data1.is_null()
+            || data2.is_null()
+        {
 
-    let mut exprs1 =
-        Vec::with_capacity(len1);
-
-    for i in 0 .. len1 {
-
-        let ptr = *data1.add(i);
-
-        if !ptr.is_null() {
-
-            exprs1.push((*ptr).clone());
+            return std::ptr::null_mut(
+            );
         }
-    }
 
-    let mut exprs2 =
-        Vec::with_capacity(len2);
+        let mut exprs1 =
+            Vec::with_capacity(len1);
 
-    for i in 0 .. len2 {
+        for i in 0 .. len1 {
 
-        let ptr = *data2.add(i);
+            let ptr = *data1.add(i);
 
-        if !ptr.is_null() {
+            if !ptr.is_null() {
 
-            exprs2.push((*ptr).clone());
+                exprs1.push(
+                    (*ptr).clone(),
+                );
+            }
         }
-    }
 
-    Box::into_raw(Box::new(
-        stats::covariance(
-            &exprs1,
-            &exprs2,
-        ),
-    ))
-}}
+        let mut exprs2 =
+            Vec::with_capacity(len2);
+
+        for i in 0 .. len2 {
+
+            let ptr = *data2.add(i);
+
+            if !ptr.is_null() {
+
+                exprs2.push(
+                    (*ptr).clone(),
+                );
+            }
+        }
+
+        Box::into_raw(Box::new(
+            stats::covariance(
+                &exprs1,
+                &exprs2,
+            ),
+        ))
+    }
+}
 
 /// Computes the symbolic Pearson correlation coefficient.
 ///
@@ -210,45 +236,53 @@ pub unsafe extern "C" fn rssn_correlation(
     len1: usize,
     data2: *const *const Expr,
     len2: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if data1.is_null()
-        || data2.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if data1.is_null()
+            || data2.is_null()
+        {
 
-    let mut exprs1 =
-        Vec::with_capacity(len1);
-
-    for i in 0 .. len1 {
-
-        let ptr = *data1.add(i);
-
-        if !ptr.is_null() {
-
-            exprs1.push((*ptr).clone());
+            return std::ptr::null_mut(
+            );
         }
-    }
 
-    let mut exprs2 =
-        Vec::with_capacity(len2);
+        let mut exprs1 =
+            Vec::with_capacity(len1);
 
-    for i in 0 .. len2 {
+        for i in 0 .. len1 {
 
-        let ptr = *data2.add(i);
+            let ptr = *data1.add(i);
 
-        if !ptr.is_null() {
+            if !ptr.is_null() {
 
-            exprs2.push((*ptr).clone());
+                exprs1.push(
+                    (*ptr).clone(),
+                );
+            }
         }
-    }
 
-    Box::into_raw(Box::new(
-        stats::correlation(
-            &exprs1,
-            &exprs2,
-        ),
-    ))
-}}
+        let mut exprs2 =
+            Vec::with_capacity(len2);
+
+        for i in 0 .. len2 {
+
+            let ptr = *data2.add(i);
+
+            if !ptr.is_null() {
+
+                exprs2.push(
+                    (*ptr).clone(),
+                );
+            }
+        }
+
+        Box::into_raw(Box::new(
+            stats::correlation(
+                &exprs1,
+                &exprs2,
+            ),
+        ))
+    }
+}

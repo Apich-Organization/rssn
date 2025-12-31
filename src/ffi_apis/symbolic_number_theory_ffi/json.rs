@@ -36,31 +36,30 @@ pub extern "C" fn rssn_json_solve_diophantine(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    match (equation, vars)
-    { (Some(eq), Some(v)) => {
+    match (equation, vars) {
+        | (Some(eq), Some(v)) => {
 
-        let v_str: Vec<&str> = v
+            let v_str: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match solve_diophantine(
-            &eq,
-            &v_str,
-        ) {
-            | Ok(solutions) => {
-                to_json_string(
-                    &solutions,
-                )
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            match solve_diophantine(
+                &eq,
+                &v_str,
+            ) {
+                | Ok(solutions) => {
+                    to_json_string(
+                        &solutions,
+                    )
+                },
+                | Err(_) => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes the extended greatest common divisor (GCD).
@@ -86,22 +85,22 @@ pub extern "C" fn rssn_json_extended_gcd(
     let b: Option<Expr> =
         from_json_string(b_json);
 
-    match (a, b)
-    { (
-        Some(a_expr),
-        Some(b_expr),
-    ) => {
+    match (a, b) {
+        | (
+            Some(a_expr),
+            Some(b_expr),
+        ) => {
 
-        let (g, x, y) = extended_gcd(
-            &a_expr,
-            &b_expr,
-        );
+            let (g, x, y) =
+                extended_gcd(
+                    &a_expr,
+                    &b_expr,
+                );
 
-        to_json_string(&(g, x, y))
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&(g, x, y))
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Checks if a number is prime.

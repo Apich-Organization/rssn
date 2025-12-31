@@ -578,7 +578,7 @@ fn test_zeta() {
         expected,
         1e-4,
     ); // Numerical approximation tolerance
-       // ζ(4) = π⁴/90
+    // ζ(4) = π⁴/90
     let expected4 = std::f64::consts::PI
         .powi(4)
         / 90.0;
@@ -687,8 +687,8 @@ fn test_factorial_gamma_relationship() {
 
 #[test]
 
-fn test_binomial_factorial_relationship(
-) {
+fn test_binomial_factorial_relationship()
+ {
 
     // C(n, k) = n! / (k! * (n-k)!)
     let n = 10u64;

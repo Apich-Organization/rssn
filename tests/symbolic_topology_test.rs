@@ -91,8 +91,8 @@ fn test_symbolic_boundary_matrix() {
 
 #[test]
 
-fn test_apply_symbolic_boundary_operator(
-) {
+fn test_apply_symbolic_boundary_operator()
+ {
 
     // Triangle [0, 1, 2]
     let mut complex =

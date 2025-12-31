@@ -3,8 +3,8 @@ use std::ffi::CString;
 
 #[test]
 
-fn test_em_simulate_oscillator_handle_ffi(
-) {
+fn test_em_simulate_oscillator_handle_ffi()
+ {
 
     unsafe {
 

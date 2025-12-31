@@ -17,40 +17,46 @@ use crate::symbolic::vector::Vector;
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
     len: usize,
-) -> Option<Vec<String>> { unsafe {
+) -> Option<Vec<String>> {
 
-    if arr.is_null() {
+    unsafe {
 
-        return None;
-    }
-
-    let mut vars =
-        Vec::with_capacity(len);
-
-    for i in 0 .. len {
-
-        let ptr = *arr.add(i);
-
-        if ptr.is_null() {
+        if arr.is_null() {
 
             return None;
         }
 
-        let c_str = CStr::from_ptr(ptr);
+        let mut vars =
+            Vec::with_capacity(len);
 
-        match c_str.to_str() {
-            | Ok(s) => {
+        for i in 0 .. len {
 
-                vars.push(
-                    s.to_string(),
-                );
-            },
-            | Err(_) => return None,
+            let ptr = *arr.add(i);
+
+            if ptr.is_null() {
+
+                return None;
+            }
+
+            let c_str =
+                CStr::from_ptr(ptr);
+
+            match c_str.to_str() {
+                | Ok(s) => {
+
+                    vars.push(
+                        s.to_string(),
+                    );
+                },
+                | Err(_) => {
+                    return None;
+                },
+            }
         }
-    }
 
-    Some(vars)
-}}
+        Some(vars)
+    }
+}
 
 /// Computes the exterior derivative of a differential form (Handle)
 #[unsafe(no_mangle)]

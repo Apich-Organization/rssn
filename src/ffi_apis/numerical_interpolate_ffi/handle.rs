@@ -27,41 +27,43 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
     x_coords: *const f64,
     y_coords: *const f64,
     len: usize,
-) -> *mut Polynomial { unsafe {
+) -> *mut Polynomial {
 
-    if x_coords.is_null()
-        || y_coords.is_null()
-    {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_lagrange_interpolation".to_string());
+        if x_coords.is_null()
+            || y_coords.is_null()
+        {
 
-        return ptr::null_mut();
-    }
+            update_last_error("Null pointer passed to rssn_num_lagrange_interpolation".to_string());
 
-    let x_slice =  {
+            return ptr::null_mut();
+        }
 
-        std::slice::from_raw_parts(
-            x_coords,
-            len,
-        )
-    };
+        let x_slice = {
 
-    let y_slice =  {
+            std::slice::from_raw_parts(
+                x_coords,
+                len,
+            )
+        };
 
-        std::slice::from_raw_parts(
-            y_coords,
-            len,
-        )
-    };
+        let y_slice = {
 
-    let points: Vec<(f64, f64)> =
-        x_slice
-            .iter()
-            .zip(y_slice.iter())
-            .map(|(&x, &y)| (x, y))
-            .collect();
+            std::slice::from_raw_parts(
+                y_coords,
+                len,
+            )
+        };
 
-    match interpolate::lagrange_interpolation(&points) {
+        let points: Vec<(f64, f64)> =
+            x_slice
+                .iter()
+                .zip(y_slice.iter())
+                .map(|(&x, &y)| (x, y))
+                .collect();
+
+        match interpolate::lagrange_interpolation(&points) {
         | Ok(poly) => Box::into_raw(Box::new(poly)),
         | Err(e) => {
 
@@ -70,7 +72,8 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation(
             ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 /// Creates a cubic spline interpolator handle.
 #[unsafe(no_mangle)]
@@ -87,41 +90,43 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
     x_coords: *const f64,
     y_coords: *const f64,
     len: usize,
-) -> *mut CubicSplineHandle { unsafe {
+) -> *mut CubicSplineHandle {
 
-    if x_coords.is_null()
-        || y_coords.is_null()
-    {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_cubic_spline_interpolation".to_string());
+        if x_coords.is_null()
+            || y_coords.is_null()
+        {
 
-        return ptr::null_mut();
-    }
+            update_last_error("Null pointer passed to rssn_num_cubic_spline_interpolation".to_string());
 
-    let x_slice =  {
+            return ptr::null_mut();
+        }
 
-        std::slice::from_raw_parts(
-            x_coords,
-            len,
-        )
-    };
+        let x_slice = {
 
-    let y_slice =  {
+            std::slice::from_raw_parts(
+                x_coords,
+                len,
+            )
+        };
 
-        std::slice::from_raw_parts(
-            y_coords,
-            len,
-        )
-    };
+        let y_slice = {
 
-    let points: Vec<(f64, f64)> =
-        x_slice
-            .iter()
-            .zip(y_slice.iter())
-            .map(|(&x, &y)| (x, y))
-            .collect();
+            std::slice::from_raw_parts(
+                y_coords,
+                len,
+            )
+        };
 
-    match interpolate::cubic_spline_interpolation(&points) {
+        let points: Vec<(f64, f64)> =
+            x_slice
+                .iter()
+                .zip(y_slice.iter())
+                .map(|(&x, &y)| (x, y))
+                .collect();
+
+        match interpolate::cubic_spline_interpolation(&points) {
         | Ok(spline) => Box::into_raw(Box::new(spline)),
         | Err(e) => {
 
@@ -130,7 +135,8 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
             ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 /// Evaluates a cubic spline at a given x coordinate.
 #[unsafe(no_mangle)]
@@ -146,22 +152,25 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation(
 pub unsafe extern "C" fn rssn_num_cubic_spline_evaluate(
     handle: *const CubicSplineHandle,
     x: f64,
-) -> f64 { unsafe {
+) -> f64 {
 
-    if handle.is_null() {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_cubic_spline_evaluate".to_string());
+        if handle.is_null() {
 
-        return f64::NAN;
+            update_last_error("Null pointer passed to rssn_num_cubic_spline_evaluate".to_string());
+
+            return f64::NAN;
+        }
+
+        let spline = {
+
+            &*handle
+        };
+
+        spline(x)
     }
-
-    let spline =  {
-
-        &*handle
-    };
-
-    spline(x)
-}}
+}
 
 /// Frees a cubic spline handle.
 #[unsafe(no_mangle)]

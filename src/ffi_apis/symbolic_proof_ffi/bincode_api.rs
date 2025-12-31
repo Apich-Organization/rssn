@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::BincodeBuffer;
+use crate::ffi_apis::common::from_bincode_buffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::proof;
 
@@ -42,26 +42,26 @@ pub unsafe extern "C" fn rssn_bincode_verify_equation_solution(
         equations,
         solution,
         free_vars,
-    ) { (
-        Some(eqs),
-        Some(sol),
-        Some(free),
-    ) => {
+    ) {
+        | (
+            Some(eqs),
+            Some(sol),
+            Some(free),
+        ) => {
 
-        let free_refs: Vec<&str> = free
+            let free_refs: Vec<&str> = free
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        proof::verify_equation_solution(
+            proof::verify_equation_solution(
             &eqs,
             &sol,
             &free_refs,
         )
-    } _ => {
-
-        false
-    }}
+        },
+        | _ => false,
+    }
 }
 
 /// Verifies an indefinite integral using Bincode.

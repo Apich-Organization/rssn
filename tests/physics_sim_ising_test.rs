@@ -5,8 +5,8 @@ use rssn::physics::physics_sim::ising_statistical::*;
 
 #[test]
 
-fn test_ising_simulation_low_temp_smoke(
-) {
+fn test_ising_simulation_low_temp_smoke()
+ {
 
     let params = IsingParameters {
         width: 10,
@@ -38,8 +38,8 @@ fn test_ising_simulation_low_temp_smoke(
 
 #[test]
 
-fn test_ising_simulation_high_temp_smoke(
-) {
+fn test_ising_simulation_high_temp_smoke()
+ {
 
     let params = IsingParameters {
         width: 10,
@@ -57,8 +57,8 @@ fn test_ising_simulation_high_temp_smoke(
 
 #[test]
 
-fn test_ising_phase_transition_scenario_run(
-) {
+fn test_ising_phase_transition_scenario_run()
+ {
 
     // This is a slow scenario, but we can run a reduced version or just smoke test it
     let res = simulate_ising_phase_transition_scenario();

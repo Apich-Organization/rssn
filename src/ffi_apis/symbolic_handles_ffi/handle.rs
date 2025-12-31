@@ -25,18 +25,21 @@ use crate::symbolic::handles::HANDLE_MANAGER;
 
 pub unsafe extern "C" fn rssn_handle_insert(
     expr: *const Expr
-) -> usize { unsafe {
+) -> usize {
 
-    if expr.is_null() {
+    unsafe {
 
-        return 0; // 0 represents null/invalid handle
+        if expr.is_null() {
+
+            return 0; // 0 represents null/invalid handle
+        }
+
+        let expr_ref = &*expr;
+
+        HANDLE_MANAGER
+            .insert(expr_ref.clone())
     }
-
-    let expr_ref = &*expr;
-
-    HANDLE_MANAGER
-        .insert(expr_ref.clone())
-}}
+}
 
 /// Retrieves an expression from the handle manager.
 ///
@@ -104,8 +107,8 @@ pub extern "C" fn rssn_handle_free(
 /// This function is always safe to call.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_handle_count(
-) -> usize {
+pub extern "C" fn rssn_handle_count()
+-> usize {
 
     HANDLE_MANAGER.count()
 }
@@ -131,8 +134,8 @@ pub extern "C" fn rssn_handle_clear() {
 /// The caller must free the returned string.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_handle_get_all(
-) -> *mut c_char {
+pub extern "C" fn rssn_handle_get_all()
+-> *mut c_char {
 
     let handles = HANDLE_MANAGER
         .get_all_handles();

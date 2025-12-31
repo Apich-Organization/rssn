@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::number_theory::chinese_remainder;
 use crate::symbolic::number_theory::extended_gcd;
@@ -37,31 +37,31 @@ pub extern "C" fn rssn_bincode_solve_diophantine(
     let vars: Option<Vec<String>> =
         from_bincode_buffer(&vars_buf);
 
-    match (equation, vars)
-    { (Some(eq), Some(v)) => {
+    match (equation, vars) {
+        | (Some(eq), Some(v)) => {
 
-        let v_str: Vec<&str> = v
+            let v_str: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match solve_diophantine(
-            &eq,
-            &v_str,
-        ) {
-            | Ok(solutions) => {
-                to_bincode_buffer(
-                    &solutions,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            match solve_diophantine(
+                &eq,
+                &v_str,
+            ) {
+                | Ok(solutions) => {
+                    to_bincode_buffer(
+                        &solutions,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the extended greatest common divisor (GCD).
@@ -87,22 +87,24 @@ pub extern "C" fn rssn_bincode_extended_gcd(
     let b: Option<Expr> =
         from_bincode_buffer(&b_buf);
 
-    match (a, b)
-    { (
-        Some(a_expr),
-        Some(b_expr),
-    ) => {
+    match (a, b) {
+        | (
+            Some(a_expr),
+            Some(b_expr),
+        ) => {
 
-        let (g, x, y) = extended_gcd(
-            &a_expr,
-            &b_expr,
-        );
+            let (g, x, y) =
+                extended_gcd(
+                    &a_expr,
+                    &b_expr,
+                );
 
-        to_bincode_buffer(&(g, x, y))
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&(
+                g, x, y,
+            ))
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Checks if a number is prime.

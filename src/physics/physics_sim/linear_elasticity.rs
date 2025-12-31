@@ -1,9 +1,9 @@
 use std::fs::File;
 use std::io::Write;
 
-use ndarray::array;
 use ndarray::Array1;
 use ndarray::Array2;
+use ndarray::array;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -262,8 +262,8 @@ pub fn run_elasticity_simulation(
 /// This function will return an error if the underlying `run_elasticity_simulation`
 /// fails or if it cannot create or write to the output CSV files.
 
-pub fn simulate_cantilever_beam_scenario(
-) -> Result<(), String> {
+pub fn simulate_cantilever_beam_scenario()
+-> Result<(), String> {
 
     println!(
         "Running 2D Cantilever Beam \

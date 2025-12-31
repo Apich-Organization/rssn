@@ -252,8 +252,8 @@ fn test_poly_gcd_gf256() {
 
 #[test]
 
-fn test_finite_field_element_arithmetic(
-) {
+fn test_finite_field_element_arithmetic()
+ {
 
     let field = FiniteField::new(7); // GF(7)
     let a = FieldElement::new(
