@@ -1295,7 +1295,7 @@ pub fn qr_decomposition(
         let mut norm_u_j_sq =
             Expr::BigInt(BigInt::zero());
 
-        for item in u_j.iter() {
+        for item in &u_j {
 
             norm_u_j_sq = simplify(&Expr::new_add(
                 norm_u_j_sq,
@@ -1315,7 +1315,7 @@ pub fn qr_decomposition(
 
         let mut q_j = Vec::new();
 
-        for item in u_j.iter() {
+        for item in &u_j {
 
             q_j.push(simplify(
                 &Expr::new_div(
@@ -1421,7 +1421,8 @@ pub fn rref(
         // Divide row r by mat[r][lead]
         let val = mat[r][lead].clone();
 
-        for item in mat[r].iter_mut() {
+
+        for item in &mut mat[r] {
 
             *item = simplify(
                 &Expr::new_div(
@@ -1433,14 +1434,14 @@ pub fn rref(
 
         // Subtract row r from other rows
         let pivot_row = mat[r].clone();
-        for i in 0 .. rows {
+        for (i, row) in mat.iter_mut().enumerate() {
 
             if i != r {
 
-                let val = mat[i][lead]
+                let val = row[lead]
                     .clone();
 
-                for (mij, mrj) in mat[i].iter_mut().zip(pivot_row.iter()) {
+                for (mij, mrj) in row.iter_mut().zip(&pivot_row) {
 
                     let term = simplify(
                         &Expr::new_mul(
@@ -1503,7 +1504,7 @@ pub fn null_space(
 
     let mut lead = 0;
 
-    for row in rref_mat.iter() {
+    for row in &rref_mat {
 
         if lead >= cols {
 
@@ -1732,7 +1733,7 @@ pub fn eigen_decomposition(
 
     while current_col < n {
 
-        for row in all_eigenvectors_matrix.iter_mut() {
+        for row in &mut all_eigenvectors_matrix {
 
             row[current_col] =
                 Expr::Variable("Not_enough_eigenvectors".to_string());
@@ -2043,13 +2044,13 @@ pub fn gaussian_elimination(
 
             let pivot_row_vec = mat[pivot_row].clone();
 
-            for i_prime in
-                (pivot_row + 1) .. rows
+            for row in
+                mat.iter_mut().skip(pivot_row + 1)
             {
 
                 let factor = simplify(
                     &Expr::new_div(
-                        mat[i_prime][j]
+                        row[j]
                             .clone(),
                         pivot_row_vec
                             [j]
@@ -2057,9 +2058,9 @@ pub fn gaussian_elimination(
                     ),
                 );
 
-                for (mipk, mprk) in mat[i_prime][j..]
+                for (mipk, mprk) in row[j..]
                     .iter_mut()
-                    .zip(pivot_row_vec[j..].iter())
+                    .zip(&pivot_row_vec[j..])
                 {
 
                     let term = simplify(&Expr::new_mul(

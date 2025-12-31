@@ -706,7 +706,7 @@ fn contains_nonlinear_terms(
         },
         | Expr::Dag(node) => {
             node.to_expr()
-                .map_or(false, |inner| contains_nonlinear_terms(&inner, func))
+                .is_ok_and(|inner| contains_nonlinear_terms(&inner, func))
         },
         | _ => false,
     }
@@ -728,7 +728,7 @@ fn contains_function_or_derivative(
             contains_function_or_derivative(a, func) || contains_function_or_derivative(b, func)
         },
         | Expr::Dag(node) => {
-            node.to_expr().map_or(false, |inner| {
+            node.to_expr().is_ok_and(|inner| {
                 contains_function_or_derivative(&inner, func)
             })
         },
@@ -2782,11 +2782,11 @@ pub fn solve_helmholtz_equation(
 
         for term in &terms {
 
-            if let Some(_) =
-                extract_coefficient(
-                    term,
-                    &u_var_var,
-                )
+            if extract_coefficient(
+                term,
+                &u_var_var,
+            )
+            .is_some()
             {
 
                 spatial_deriv_count +=

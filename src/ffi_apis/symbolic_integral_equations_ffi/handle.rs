@@ -170,7 +170,7 @@ pub extern "C" fn rssn_fredholm_solve_separable(
 
         match (*eq)
             .solve_separable_kernel(
-                a_vec, b_vec,
+                &a_vec, &b_vec,
             ) {
             | Ok(result) => {
                 Box::into_raw(Box::new(

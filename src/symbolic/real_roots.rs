@@ -55,7 +55,7 @@ pub fn sturm_sequence(
     let p0 = poly
         .clone()
         .long_division(
-            common_divisor,
+            &common_divisor,
             var,
         )
         .0;
@@ -89,7 +89,7 @@ pub fn sturm_sequence(
         let (_, remainder) = p_prev
             .clone()
             .long_division(
-                p_curr.clone(),
+                &p_curr.clone(),
                 var,
             );
 
@@ -233,7 +233,7 @@ pub fn isolate_real_roots(
     let sq_free = poly
         .clone()
         .long_division(
-            gcd(
+            &gcd(
                 poly.clone(),
                 differentiate_poly(
                     poly, var,

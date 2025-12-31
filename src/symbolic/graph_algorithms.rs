@@ -1058,8 +1058,7 @@ pub fn edmonds_karp_max_flow<
                 neighbors
             {
 
-                residual_capacity[u]
-                    [v] =
+                residual_capacity[u][v] =
                     try_numeric_value(
                         cap,
                     )
@@ -1112,7 +1111,7 @@ pub fn edmonds_karp_max_flow<
 /// Helper BFS to find an augmenting path in the residual graph.
 
 pub(crate) fn bfs_for_augmenting_path(
-    capacity: &Vec<Vec<f64>>,
+    capacity: &[Vec<f64>],
     s: usize,
     t: usize,
 ) -> (
@@ -1211,8 +1210,7 @@ pub fn dinic_max_flow<
                 neighbors
             {
 
-                residual_capacity[u]
-                    [v] =
+                residual_capacity[u][v] =
                     try_numeric_value(
                         cap,
                     )
@@ -1261,10 +1259,10 @@ pub fn dinic_max_flow<
 }
 
 pub(crate) fn dinic_bfs(
-    capacity: &Vec<Vec<f64>>,
+    capacity: &[Vec<f64>],
     s: usize,
     t: usize,
-    level: &mut Vec<i32>,
+    level: &mut [i32],
 ) -> bool {
 
     for l in level.iter_mut() {
@@ -1354,6 +1352,15 @@ pub(crate) fn dinic_dfs(
     0.0
 }
 
+/// Result type for the Bellman-Ford algorithm.
+pub type BellmanFordResult = Result<
+    (
+        HashMap<usize, Expr>,
+        HashMap<usize, Option<usize>>,
+    ),
+    String,
+>;
+
 /// Finds the shortest paths from a single source in a graph with possible negative edge weights.
 ///
 /// Bellman-Ford algorithm is capable of handling graphs where some edge weights are negative,
@@ -1376,7 +1383,6 @@ pub(crate) fn dinic_dfs(
 ///
 /// This function will return an error if the graph contains a negative-weight cycle
 /// reachable from the `start_node`.
-
 pub fn bellman_ford<
     V: Eq
         + std::hash::Hash
@@ -1385,13 +1391,7 @@ pub fn bellman_ford<
 >(
     graph: &Graph<V>,
     start_node: usize,
-) -> Result<
-    (
-        HashMap<usize, Expr>,
-        HashMap<usize, Option<usize>>,
-    ),
-    String,
-> {
+) -> BellmanFordResult {
 
     let n = graph.nodes.len();
 
@@ -1978,9 +1978,9 @@ pub fn topological_sort_kahn<
 
     let mut in_degree = vec![0; n];
 
-    for i in 0 .. n {
+    for (i, degree) in in_degree.iter_mut().enumerate() {
 
-        in_degree[i] =
+        *degree =
             graph.in_degree(i);
     }
 
@@ -2163,9 +2163,9 @@ pub fn bipartite_minimum_vertex_cover<
     let mut matched_nodes_u =
         HashSet::new();
 
-    for i in 0 .. partition.len() {
+    for (i, &part) in partition.iter().enumerate() {
 
-        if partition[i] == 0 {
+        if part == 0 {
 
             u_nodes.insert(i);
         }
@@ -2235,9 +2235,9 @@ pub fn bipartite_minimum_vertex_cover<
         }
     }
 
-    for i in 0 .. partition.len() {
+    for (i, &part) in partition.iter().enumerate() {
 
-        if partition[i] == 1
+        if part == 1
             && visited.contains(&i)
         {
 
@@ -2276,9 +2276,9 @@ pub fn hopcroft_karp_bipartite_matching<
 
     let mut u_nodes = Vec::new();
 
-    for i in 0 .. n {
+    for (i, &part) in partition.iter().enumerate() {
 
-        if partition[i] == 0 {
+        if part == 0 {
 
             u_nodes.push(i);
         }
@@ -2295,8 +2295,8 @@ pub fn hopcroft_karp_bipartite_matching<
     while hopcroft_karp_bfs(
         graph,
         &u_nodes,
-        &mut pair_u,
-        &mut pair_v,
+        &pair_u,
+        &pair_v,
         &mut dist,
     ) {
 
@@ -2521,12 +2521,11 @@ pub fn blossom_algorithm<
             }
         }
     }
-
     let mut result = Vec::new();
 
-    for u in 0 .. n {
+    for (u, &matched_v) in matching.iter().enumerate() {
 
-        if let Some(v) = matching[u] {
+        if let Some(v) = matched_v {
 
             if u < v {
 

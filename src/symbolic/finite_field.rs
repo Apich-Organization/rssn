@@ -427,7 +427,7 @@ impl FiniteFieldPolynomial {
     #[must_use]
 
     pub fn new(
-        coeffs: Vec<PrimeFieldElement>,
+        coeffs: &[PrimeFieldElement],
         field: Arc<PrimeField>,
     ) -> Self {
 
@@ -583,11 +583,11 @@ impl FiniteFieldPolynomial {
 
         Ok((
             Self::new(
-                quotient,
+                &quotient,
                 self.field.clone(),
             ),
             Self::new(
-                remainder,
+                &remainder,
                 self.field,
             ),
         ))
@@ -640,7 +640,7 @@ impl Add for FiniteFieldPolynomial {
         }
 
         Self::new(
-            result_coeffs,
+            &result_coeffs,
             self.field,
         )
     }
@@ -662,10 +662,10 @@ impl Sub for FiniteFieldPolynomial {
             .coeffs
             .into_iter()
             .map(|c| -c)
-            .collect();
+            .collect::<Vec<PrimeFieldElement>>();
 
         let neg_rhs = Self::new(
-            neg_rhs_coeffs,
+            &neg_rhs_coeffs,
             rhs.field,
         );
 
@@ -690,7 +690,7 @@ impl Mul for FiniteFieldPolynomial {
         {
 
             return Self::new(
-                vec![],
+                &[],
                 self.field,
             );
         }
@@ -729,7 +729,7 @@ impl Mul for FiniteFieldPolynomial {
         }
 
         Self::new(
-            result_coeffs,
+            &result_coeffs,
             self.field,
         )
     }
@@ -805,7 +805,7 @@ impl ExtensionFieldElement {
             | Err(_) => {
                 Self {
                     poly : FiniteFieldPolynomial::new(
-                        vec![],
+                        &[],
                         field
                             .prime_field
                             .clone(),
@@ -852,7 +852,7 @@ impl ExtensionFieldElement {
 
         Some(Self::new(
             inv * FiniteFieldPolynomial::new(
-                vec![inv_factor],
+                &[inv_factor],
                 self.poly
                     .field
                     .clone(),
@@ -876,7 +876,7 @@ pub(crate) fn poly_extended_gcd(
 
     let zero_poly =
         FiniteFieldPolynomial::new(
-            vec![],
+            &[],
             a.field.clone(),
         );
 
@@ -888,7 +888,7 @@ pub(crate) fn poly_extended_gcd(
 
         let one_poly =
             FiniteFieldPolynomial::new(
-                vec![
+                &[
                 PrimeFieldElement::new(
                     One::one(),
                     a.field.clone(),
@@ -1005,7 +1005,7 @@ impl Neg for ExtensionFieldElement {
 
         let zero_poly =
             FiniteFieldPolynomial::new(
-                vec![],
+                &[],
                 self.poly
                     .field
                     .clone(),

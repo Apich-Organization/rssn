@@ -3317,7 +3317,7 @@ pub(crate) fn simplify_rational_expression(
 
             let final_num_poly = p_num
                 .long_division(
-                    common_divisor
+                    &common_divisor
                         .clone(),
                     var,
                 )
@@ -3325,7 +3325,7 @@ pub(crate) fn simplify_rational_expression(
 
             let final_den_poly = p_den
                 .long_division(
-                    common_divisor,
+                    &common_divisor,
                     var,
                 )
                 .0;

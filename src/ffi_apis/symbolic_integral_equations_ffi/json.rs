@@ -89,8 +89,8 @@ pub extern "C" fn rssn_fredholm_solve_separable_json(
     match input
         .equation
         .solve_separable_kernel(
-            input.a_funcs,
-            input.b_funcs,
+            &input.a_funcs,
+            &input.b_funcs,
         ) {
         | Ok(result) => {
             to_json_string(&result)

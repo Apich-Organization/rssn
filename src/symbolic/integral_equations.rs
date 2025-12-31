@@ -174,8 +174,8 @@ impl FredholmEquation {
 
     pub fn solve_separable_kernel(
         &self,
-        a_funcs: Vec<Expr>,
-        b_funcs: Vec<Expr>,
+        a_funcs: &[Expr],
+        b_funcs: &[Expr],
     ) -> Result<Expr, String> {
 
         if a_funcs.len()

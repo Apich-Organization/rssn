@@ -55,7 +55,7 @@ pub fn integrate_rational_function(
 
     let (quotient, remainder) = p
         .clone()
-        .long_division(q.clone(), x);
+        .long_division(&q.clone(), x);
 
     let integral_of_quotient =
         poly_integrate(&quotient, x);
@@ -81,7 +81,7 @@ pub fn integrate_rational_function(
 
     let b = q
         .clone()
-        .long_division(d.clone(), x)
+        .long_division(&d.clone(), x)
         .0;
 
     let (a_poly, c_poly) =
@@ -160,7 +160,7 @@ pub(crate) fn build_and_solve_hermite_system(
 
     let t = (b.clone()
         * q_prime.clone())
-    .long_division(d.clone(), x)
+    .long_division(&d.clone(), x)
     .0;
 
     let term1 = b.clone() * c_prime_sym;
@@ -315,7 +315,7 @@ pub fn risch_norman_integrate(
 
             let (p_t, r_t) = a_t
                 .long_division(
-                    d_t.clone(),
+                    &d_t.clone(),
                     x,
                 );
 
@@ -978,7 +978,7 @@ pub fn hermite_integrate_rational(
     /// A `Result` containing an `Expr` representing the integral, or an error string if computation fails.
     let (quotient, remainder) = p
         .clone()
-        .long_division(q.clone(), x);
+        .long_division(&q.clone(), x);
 
     let integral_of_quotient =
         poly_integrate(&quotient, x);
@@ -1004,7 +1004,7 @@ pub fn hermite_integrate_rational(
 
     let b = q
         .clone()
-        .long_division(d.clone(), x)
+        .long_division(&d.clone(), x)
         .0;
 
     let (a_poly, c_poly) =

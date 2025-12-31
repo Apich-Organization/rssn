@@ -1955,7 +1955,7 @@ pub fn gcd(
 
         let (_, remainder) = a
             .long_division(
-                b.clone(),
+                &b.clone(),
                 var,
             );
 
@@ -2090,7 +2090,7 @@ impl SparsePolynomial {
 
     pub fn long_division(
         self,
-        divisor: Self,
+        divisor: &Self,
         var: &str,
     ) -> (Self, Self) {
         const MAX_ITERATIONS: usize = 1000;
