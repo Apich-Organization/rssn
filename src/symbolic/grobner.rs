@@ -1,3 +1,5 @@
+#![allow(clippy::match_same_arms)]
+
 //! # Gröbner Bases
 //!
 //! This module provides functions for computing Gröbner bases of polynomial ideals.

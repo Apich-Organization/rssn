@@ -235,7 +235,7 @@ pub fn verify_definite_integral(
         range,
         1000,
         &QuadratureMethod::Simpson,
-    ).map_or(false, |numerical_val| {
+    ).is_ok_and(|numerical_val| {
         (symbolic_val - numerical_val).abs() < TOLERANCE
     })
 }

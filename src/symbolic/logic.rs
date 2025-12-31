@@ -1,3 +1,5 @@
+#![allow(clippy::match_same_arms)]
+
 //! # Symbolic Logic Module
 //!
 //! This module provides functions for symbolic manipulation of logical expressions.

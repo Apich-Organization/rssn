@@ -1,4 +1,5 @@
 #![allow(deprecated)]
+#![allow(clippy::match_same_arms)]
 
 use std::cmp::Ordering;
 use std::convert::AsRef;
@@ -407,8 +408,8 @@ impl Expr {
             },
             // N-ary operators
             | Self::Matrix(m) => {
-                for row in m.iter() {
-                    for e in row.iter() {
+                for row in m {
+                    for e in row {
                         e.pre_order_walk(f);
                     }
                 }
@@ -423,7 +424,7 @@ impl Expr {
             | Self::Solutions(v)
             | Self::AddList(v)
             | Self::MulList(v) => {
-                for e in v.iter() {
+                for e in v {
                     e.pre_order_walk(f);
                 }
             },
@@ -431,7 +432,7 @@ impl Expr {
                 args,
                 ..
             } => {
-                for e in args.iter() {
+                for e in args {
                     e.pre_order_walk(f);
                 }
             },
@@ -605,7 +606,7 @@ impl Expr {
                 e.pre_order_walk(f);
             },
             | Self::CustomVecOne(v) => {
-                for e in v.iter() {
+                for e in v {
                     e.pre_order_walk(f);
                 }
             },
@@ -840,8 +841,8 @@ impl Expr {
             },
             // N-ary operators
             | Self::Matrix(m) => {
-                for row in m.iter() {
-                    for e in row.iter() {
+                for row in m {
+                    for e in row {
                         e.post_order_walk(f);
                     }
                 }
@@ -856,7 +857,7 @@ impl Expr {
             | Self::Solutions(v)
             | Self::AddList(v)
             | Self::MulList(v) => {
-                for e in v.iter() {
+                for e in v {
                     e.post_order_walk(f);
                 }
             },
@@ -864,7 +865,7 @@ impl Expr {
                 args,
                 ..
             } => {
-                for e in args.iter() {
+                for e in args {
                     e.post_order_walk(f);
                 }
             },

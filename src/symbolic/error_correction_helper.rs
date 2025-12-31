@@ -12,6 +12,7 @@
 #![allow(
     clippy::no_mangle_with_rust_abi
 )]
+#![allow(clippy::match_same_arms)]
 
 use std::ops::Add;
 use std::ops::Div;

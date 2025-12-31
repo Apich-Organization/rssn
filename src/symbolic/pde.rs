@@ -705,13 +705,8 @@ fn contains_nonlinear_terms(
             contains_nonlinear_terms(a, func) || contains_nonlinear_terms(b, func)
         },
         | Expr::Dag(node) => {
-            match node.to_expr() { Ok(inner) => {
-
-                contains_nonlinear_terms(&inner, func)
-            } _ => {
-
-                false
-            }}
+            node.to_expr()
+                .map_or(false, |inner| contains_nonlinear_terms(&inner, func))
         },
         | _ => false,
     }
@@ -733,13 +728,9 @@ fn contains_function_or_derivative(
             contains_function_or_derivative(a, func) || contains_function_or_derivative(b, func)
         },
         | Expr::Dag(node) => {
-            match node.to_expr() { Ok(inner) => {
-
+            node.to_expr().map_or(false, |inner| {
                 contains_function_or_derivative(&inner, func)
-            } _ => {
-
-                false
-            }}
+            })
         },
         | _ => false,
     }
@@ -868,20 +859,20 @@ fn classify_second_order(
 
         for term in &terms {
 
-            if let Some(_) =
-                extract_coefficient(
-                    term, &u_t,
-                )
+            if extract_coefficient(
+                term, &u_t,
+            )
+            .is_some()
             {
 
                 has_first_time_deriv =
                     true;
             }
 
-            if let Some(_) =
-                extract_coefficient(
-                    term, &u_tt,
-                )
+            if extract_coefficient(
+                term, &u_tt,
+            )
+            .is_some()
             {
 
                 has_second_time_deriv =
@@ -897,27 +888,26 @@ fn classify_second_order(
             || has_second_time_deriv,
     );
 
-    for i in spatial_start .. vars.len()
-    {
+    for var in vars.iter().skip(spatial_start) {
 
         let u_var = Expr::Derivative(
             Arc::new(u.clone()),
-            vars[i].to_string(),
+            (*var).to_string(),
         );
 
         let u_var_var =
             Expr::Derivative(
                 Arc::new(u_var),
-                vars[i].to_string(),
+                (*var).to_string(),
             );
 
         for term in &terms {
 
-            if let Some(_) =
-                extract_coefficient(
-                    term,
-                    &u_var_var,
-                )
+            if extract_coefficient(
+                term,
+                &u_var_var,
+            )
+            .is_some()
             {
 
                 spatial_second_deriv_count += 1;
@@ -950,11 +940,11 @@ fn classify_second_order(
 
             for term in &terms {
 
-                if let Some(_) =
-                    extract_coefficient(
-                        term,
-                        &u_var_var,
-                    )
+                if extract_coefficient(
+                    term,
+                    &u_var_var,
+                )
+                .is_some()
                 {
 
                     spatial_second_deriv_count += 1;
@@ -2810,10 +2800,10 @@ pub fn solve_helmholtz_equation(
     // Check for k²u term
     for term in &terms {
 
-        if let Some(_) =
-            extract_coefficient(
-                term, &u,
-            )
+        if extract_coefficient(
+            term, &u,
+        )
+        .is_some()
         {
 
             has_u_term = true;
@@ -2891,11 +2881,11 @@ pub fn solve_schrodinger_equation(
 
     for term in &terms {
 
-        if let Some(_) =
-            extract_coefficient(
-                term,
-                &psi_t,
-            )
+        if extract_coefficient(
+            term,
+            &psi_t,
+        )
+        .is_some()
         {
 
             has_time_deriv = true;
@@ -2903,25 +2893,25 @@ pub fn solve_schrodinger_equation(
     }
 
     // Check for spatial derivatives
-    for i in 1 .. vars.len() {
+    for var in vars.iter().skip(1) {
 
         let psi_x = Expr::Derivative(
             Arc::new(psi.clone()),
-            vars[i].to_string(),
+            (*var).to_string(),
         );
 
         let psi_xx = Expr::Derivative(
             Arc::new(psi_x),
-            vars[i].to_string(),
+            (*var).to_string(),
         );
 
         for term in &terms {
 
-            if let Some(_) =
-                extract_coefficient(
-                    term,
-                    &psi_xx,
-                )
+            if extract_coefficient(
+                term,
+                &psi_xx,
+            )
+            .is_some()
             {
 
                 has_spatial_deriv =
@@ -3003,21 +2993,21 @@ pub fn solve_klein_gordon_equation(
 
     for term in &terms {
 
-        if let Some(_) =
-            extract_coefficient(
-                term,
-                &phi_tt,
-            )
+        if extract_coefficient(
+            term,
+            &phi_tt,
+        )
+        .is_some()
         {
 
             has_second_time_deriv =
                 true;
         }
 
-        if let Some(_) =
-            extract_coefficient(
-                term, &phi,
-            )
+        if extract_coefficient(
+            term, &phi,
+        )
+        .is_some()
         {
 
             has_mass_term = true;
@@ -3025,25 +3015,25 @@ pub fn solve_klein_gordon_equation(
     }
 
     // Check for spatial derivatives
-    for i in 1 .. vars.len() {
+    for var in vars.iter().skip(1) {
 
         let phi_x = Expr::Derivative(
             Arc::new(phi.clone()),
-            vars[i].to_string(),
+            (*var).to_string(),
         );
 
         let phi_xx = Expr::Derivative(
             Arc::new(phi_x),
-            vars[i].to_string(),
+            (*var).to_string(),
         );
 
         for term in &terms {
 
-            if let Some(_) =
-                extract_coefficient(
-                    term,
-                    &phi_xx,
-                )
+            if extract_coefficient(
+                term,
+                &phi_xx,
+            )
+            .is_some()
             {
 
                 has_spatial_deriv =

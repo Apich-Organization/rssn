@@ -2722,9 +2722,9 @@ pub(crate) fn contract_blossom(
     mut u: usize,
     v: usize,
     queue: &mut VecDeque<usize>,
-    level: &mut Vec<i32>,
+    level: &mut [i32],
     origin: &mut [usize],
-    parent: &mut Vec<Option<usize>>,
+    parent: &mut [Option<usize>],
     matching: &[Option<usize>],
 ) {
 
@@ -3004,13 +3004,12 @@ pub fn floyd_warshall<
             n
         ];
 
-    for i in 0 .. n {
+    for (i, row) in dist.iter_mut().enumerate() {
 
-        dist[i][i] =
-            Expr::Constant(0.0);
+        row[i] = Expr::Constant(0.0);
     }
 
-    for u in 0 .. n {
+    for (u, row) in dist.iter_mut().enumerate() {
 
         if let Some(neighbors) =
             graph.adj.get(u)
@@ -3020,7 +3019,7 @@ pub fn floyd_warshall<
                 neighbors
             {
 
-                dist[u][v] =
+                row[v] =
                     weight.clone();
             }
         }

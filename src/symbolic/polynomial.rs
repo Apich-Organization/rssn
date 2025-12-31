@@ -1,3 +1,5 @@
+#![allow(clippy::match_same_arms)]
+
 //! # Symbolic Polynomial Manipulation
 //!
 //! This module provides comprehensive tools for symbolic manipulation of polynomials,
