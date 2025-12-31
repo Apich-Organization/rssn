@@ -742,18 +742,17 @@ pub(crate) fn apply_initial_conditions(
     )
 }
 
+type ReducedFirstOrderSystem = (
+    Vec<Expr>,
+    Vec<String>,
+    HashMap<String, String>,
+);
+
 pub(crate) fn reduce_to_first_order_system(
     equations: &[Expr],
     funcs: &[&str],
     var: &str,
-) -> Result<
-    (
-        Vec<Expr>,
-        Vec<String>,
-        HashMap<String, String>,
-    ),
-    String,
-> {
+) -> Result<ReducedFirstOrderSystem, String> {
 
     let mut new_eqs = Vec::new();
 

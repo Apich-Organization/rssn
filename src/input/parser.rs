@@ -1,3 +1,5 @@
+#![allow(clippy::wildcard_in_or_patterns)]
+
 use std::sync::Arc;
 
 use nom::branch::alt;
@@ -1192,7 +1194,6 @@ pub(crate) fn parse_function_call(
                 ),
             ))
         },
-        #[allow(clippy::wildcard_in_or_patterns)]
         | "predicate" | _ => {
             Ok((
                 input,

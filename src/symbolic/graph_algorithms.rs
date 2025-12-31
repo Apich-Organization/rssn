@@ -386,6 +386,28 @@ pub fn is_connected<
         == 1
 }
 
+pub(crate) struct TarjanSccState {
+    time: usize,
+    disc: HashMap<usize, usize>,
+    low: HashMap<usize, usize>,
+    stack: Vec<usize>,
+    on_stack: HashSet<usize>,
+    scc: Vec<Vec<usize>>,
+}
+
+impl TarjanSccState {
+    fn new() -> Self {
+        Self {
+            time: 0,
+            disc: HashMap::new(),
+            low: HashMap::new(),
+            stack: Vec::new(),
+            on_stack: HashSet::new(),
+            scc: Vec::new(),
+        }
+    }
+}
+
 /// Finds all strongly connected components (SCCs) of a directed graph using Tarjan's algorithm.
 ///
 /// An SCC is a subgraph where every vertex is reachable from every other vertex within that subgraph.
@@ -397,7 +419,6 @@ pub fn is_connected<
 /// # Returns
 /// A `Vec<Vec<usize>>` where each inner `Vec` represents a strongly connected component.
 #[must_use]
-
 pub fn strongly_connected_components<
     V: Eq
         + std::hash::Hash
@@ -407,36 +428,19 @@ pub fn strongly_connected_components<
     graph: &Graph<V>
 ) -> Vec<Vec<usize>> {
 
-    let mut scc = Vec::new();
-
-    let mut stack = Vec::new();
-
-    let mut on_stack = HashSet::new();
-
-    let mut discovery_times =
-        HashMap::new();
-
-    let mut low_link = HashMap::new();
-
-    let mut time = 0;
+    let mut state = TarjanSccState::new();
 
     for node_id in
         0 .. graph.nodes.len()
     {
-
         tarjan_scc_util(
             graph,
             node_id,
-            &mut time,
-            &mut discovery_times,
-            &mut low_link,
-            &mut stack,
-            &mut on_stack,
-            &mut scc,
+            &mut state,
         );
     }
 
-    scc
+    state.scc
 }
 
 pub(crate) fn tarjan_scc_util<
@@ -447,23 +451,18 @@ pub(crate) fn tarjan_scc_util<
 >(
     graph: &Graph<V>,
     u: usize,
-    time: &mut usize,
-    disc: &mut HashMap<usize, usize>,
-    low: &mut HashMap<usize, usize>,
-    stack: &mut Vec<usize>,
-    on_stack: &mut HashSet<usize>,
-    scc: &mut Vec<Vec<usize>>,
+    state: &mut TarjanSccState,
 ) {
 
-    disc.insert(u, *time);
+    state.disc.insert(u, state.time);
 
-    low.insert(u, *time);
+    state.low.insert(u, state.time);
 
-    *time += 1;
+    state.time += 1;
 
-    stack.push(u);
+    state.stack.push(u);
 
-    on_stack.insert(u);
+    state.on_stack.insert(u);
 
     if let Some(neighbors) =
         graph.adj.get(u)
@@ -471,34 +470,29 @@ pub(crate) fn tarjan_scc_util<
 
         for &(v, _) in neighbors {
 
-            if !disc.contains_key(&v) {
+            if !state.disc.contains_key(&v) {
 
                 tarjan_scc_util(
                     graph,
                     v,
-                    time,
-                    disc,
-                    low,
-                    stack,
-                    on_stack,
-                    scc,
+                    state,
                 );
 
                 if let (
                     Some(&low_u),
                     Some(&low_v),
                 ) = (
-                    low.get(&u),
-                    low.get(&v),
+                    state.low.get(&u),
+                    state.low.get(&v),
                 ) {
 
-                    low.insert(
+                    state.low.insert(
                         u,
                         low_u
                             .min(low_v),
                     );
                 }
-            } else if on_stack
+            } else if state.on_stack
                 .contains(&v)
             {
 
@@ -506,11 +500,11 @@ pub(crate) fn tarjan_scc_util<
                     Some(&low_u),
                     Some(&disc_v),
                 ) = (
-                    low.get(&u),
-                    disc.get(&v),
+                    state.low.get(&u),
+                    state.disc.get(&v),
                 ) {
 
-                    low.insert(
+                    state.low.insert(
                         u,
                         low_u.min(
                             disc_v,
@@ -521,15 +515,15 @@ pub(crate) fn tarjan_scc_util<
         }
     }
 
-    if low.get(&u) == disc.get(&u) {
+    if state.low.get(&u) == state.disc.get(&u) {
 
         let mut component = Vec::new();
 
         while let Some(top) =
-            stack.pop()
+            state.stack.pop()
         {
 
-            on_stack.remove(&top);
+            state.on_stack.remove(&top);
 
             component.push(top);
 
@@ -539,7 +533,7 @@ pub(crate) fn tarjan_scc_util<
             }
         }
 
-        scc.push(component);
+        state.scc.push(component);
     }
 }
 
@@ -699,6 +693,28 @@ pub(crate) fn has_cycle_undirected_util<
     false
 }
 
+pub(crate) struct BridgesApState {
+    time: usize,
+    visited: HashSet<usize>,
+    disc: HashMap<usize, usize>,
+    low: HashMap<usize, usize>,
+    bridges: Vec<(usize, usize)>,
+    ap: HashSet<usize>,
+}
+
+impl BridgesApState {
+    fn new() -> Self {
+        Self {
+            time: 0,
+            visited: HashSet::new(),
+            disc: HashMap::new(),
+            low: HashMap::new(),
+            bridges: Vec::new(),
+            ap: HashSet::new(),
+        }
+    }
+}
+
 /// Finds all bridges and articulation points (cut vertices) in a graph using Tarjan's algorithm.
 ///
 /// A bridge is an edge whose removal increases the number of connected components.
@@ -712,7 +728,6 @@ pub(crate) fn has_cycle_undirected_util<
 /// A tuple `(bridges, articulation_points)` where `bridges` is a `Vec<(usize, usize)>`
 /// and `articulation_points` is a `Vec<usize>`.
 #[must_use]
-
 pub fn find_bridges_and_articulation_points<
     V: Eq
         + std::hash::Hash
@@ -725,43 +740,26 @@ pub fn find_bridges_and_articulation_points<
     Vec<usize>,
 ) {
 
-    let mut bridges = Vec::new();
-
-    let mut articulation_points =
-        HashSet::new();
-
-    let mut visited = HashSet::new();
-
-    let mut discovery_times =
-        HashMap::new();
-
-    let mut low_link = HashMap::new();
-
-    let mut time = 0;
+    let mut state = BridgesApState::new();
 
     for node_id in
         0 .. graph.nodes.len()
     {
 
-        if !visited.contains(&node_id) {
+        if !state.visited.contains(&node_id) {
 
             b_and_ap_util(
                 graph,
                 node_id,
                 None,
-                &mut time,
-                &mut visited,
-                &mut discovery_times,
-                &mut low_link,
-                &mut bridges,
-                &mut articulation_points,
+                &mut state,
             );
         }
     }
 
     (
-        bridges,
-        articulation_points
+        state.bridges,
+        state.ap
             .into_iter()
             .collect(),
     )
@@ -776,21 +774,16 @@ pub(crate) fn b_and_ap_util<
     graph: &Graph<V>,
     u: usize,
     parent: Option<usize>,
-    time: &mut usize,
-    visited: &mut HashSet<usize>,
-    disc: &mut HashMap<usize, usize>,
-    low: &mut HashMap<usize, usize>,
-    bridges: &mut Vec<(usize, usize)>,
-    ap: &mut HashSet<usize>,
+    state: &mut BridgesApState,
 ) {
 
-    visited.insert(u);
+    state.visited.insert(u);
 
-    disc.insert(u, *time);
+    state.disc.insert(u, state.time);
 
-    low.insert(u, *time);
+    state.low.insert(u, state.time);
 
-    *time += 1;
+    state.time += 1;
 
     let mut children = 0;
 
@@ -801,25 +794,22 @@ pub(crate) fn b_and_ap_util<
         for &(v, _) in neighbors {
 
             if Some(v) == parent {
-
                 continue;
             }
 
-            if visited.contains(&v) {
+            if state.visited.contains(&v) {
 
                 if let (
                     Some(&low_u),
                     Some(&disc_v),
                 ) = (
-                    low.get(&u),
-                    disc.get(&v),
+                    state.low.get(&u),
+                    state.disc.get(&v),
                 ) {
 
-                    low.insert(
+                    state.low.insert(
                         u,
-                        low_u.min(
-                            disc_v,
-                        ),
+                        low_u.min(disc_v),
                     );
                 }
             } else {
@@ -830,63 +820,34 @@ pub(crate) fn b_and_ap_util<
                     graph,
                     v,
                     Some(u),
-                    time,
-                    visited,
-                    disc,
-                    low,
-                    bridges,
-                    ap,
+                    state,
                 );
 
                 if let (
                     Some(&low_u),
                     Some(&low_v),
                 ) = (
-                    low.get(&u),
-                    low.get(&v),
+                    state.low.get(&u),
+                    state.low.get(&v),
                 ) {
 
-                    low.insert(
+                    state.low.insert(
                         u,
-                        low_u
-                            .min(low_v),
+                        low_u.min(low_v),
                     );
-                }
 
-                if parent.is_some() {
-
-                    if let (
-                        Some(&low_v),
-                        Some(&disc_u),
-                    ) = (
-                        low.get(&v),
-                        disc.get(&u),
-                    ) {
-
-                        if low_v
-                            >= disc_u
-                        {
-
-                            ap.insert(
-                                u,
-                            );
-                        }
+                    if low_v > *state.disc.get(&u).unwrap()
+                    {
+                        state.bridges.push((u, v));
                     }
-                }
 
-                if let (
-                    Some(&low_v),
-                    Some(&disc_u),
-                ) = (
-                    low.get(&v),
-                    disc.get(&u),
-                ) {
-
-                    if low_v > disc_u {
-
-                        bridges.push((
-                            u, v,
-                        ));
+                    if parent.is_some()
+                        && low_v
+                            >= *state.disc
+                                .get(&u)
+                                .unwrap()
+                    {
+                        state.ap.insert(u);
                     }
                 }
             }
@@ -895,10 +856,10 @@ pub(crate) fn b_and_ap_util<
 
     if parent.is_none() && children > 1
     {
-
-        ap.insert(u);
+        state.ap.insert(u);
     }
 }
+
 
 /// A Disjoint Set Union (DSU) data structure for Kruskal's algorithm.
 
@@ -2630,26 +2591,26 @@ pub(crate) fn find_augmenting_path_with_blossoms<
                         v,
                     )?;
 
+                    let mut state = BlossomState {
+                        queue: &mut queue,
+                        level: &mut level,
+                        origin: &mut origin,
+                        parent: &mut parent,
+                        matching,
+                    };
+
                     contract_blossom(
                         base,
                         u,
                         v,
-                        &mut queue,
-                        &mut level,
-                        &mut origin,
-                        &mut parent,
-                        matching,
+                        &mut state,
                     );
 
                     contract_blossom(
                         base,
                         v,
                         u,
-                        &mut queue,
-                        &mut level,
-                        &mut origin,
-                        &mut parent,
-                        matching,
+                        &mut state,
                     );
                 }
             }
@@ -2713,34 +2674,38 @@ pub(crate) fn find_common_ancestor(
     }
 }
 
+pub(crate) struct BlossomState<'a> {
+    queue: &'a mut VecDeque<usize>,
+    level: &'a mut [i32],
+    origin: &'a mut [usize],
+    parent: &'a mut [Option<usize>],
+    matching: &'a [Option<usize>],
+}
+
 pub(crate) fn contract_blossom(
     base: usize,
     mut u: usize,
     v: usize,
-    queue: &mut VecDeque<usize>,
-    level: &mut [i32],
-    origin: &mut [usize],
-    parent: &mut [Option<usize>],
-    matching: &[Option<usize>],
+    state: &mut BlossomState<'_>,
 ) {
 
-    while origin[u] != base {
+    while state.origin[u] != base {
 
-        parent[u] = Some(v);
+        state.parent[u] = Some(v);
 
-        origin[u] = base;
+        state.origin[u] = base;
 
-        if let Some(w) = matching[u] {
+        if let Some(w) = state.matching[u] {
 
-            if level[w] == -1 {
+            if state.level[w] == -1 {
 
-                level[w] = 0;
+                state.level[w] = 0;
 
-                queue.push_back(w);
+                state.queue.push_back(w);
             }
         }
 
-        if let Some(p) = parent[u] {
+        if let Some(p) = state.parent[u] {
 
             u = p;
         } else {
