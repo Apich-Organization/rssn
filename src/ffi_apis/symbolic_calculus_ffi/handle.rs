@@ -663,9 +663,9 @@ pub unsafe extern "C" fn rssn_substitute(
 
 /// Gets real and imaginary parts of an expression.
 ///
-/// Returns a pointer to a tuple (Expr, Expr) - represented as Vec<Expr> of size 2 for simplicity?
+/// Returns a pointer to a tuple (Expr, Expr) - represented as `Vec<Expr>` of size 2 for simplicity?
 /// Or return two out pointers?
-/// I'll return a Vec<Expr> of size 2.
+/// I'll return a `Vec<Expr>` of size 2.
 #[unsafe(no_mangle)]
 
 /// # Safety

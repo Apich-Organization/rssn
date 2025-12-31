@@ -49,6 +49,7 @@ unsafe fn parse_c_str_array(
                     );
                 },
                 | Err(_) => {
+
                     return None;
                 },
             }

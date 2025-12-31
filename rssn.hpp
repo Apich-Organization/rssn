@@ -477,12 +477,12 @@ struct rssn_Representation;
 struct rssn_RewriteRule;
 
 /*
- Opaque handle for a Matrix<f64>.
+ Opaque handle for a `Matrix<f64>`.
  */
 struct rssn_RssnMatrixHandle;
 
 /*
- Opaque handle for a Matrix<f64>.
+ Opaque handle for a `Matrix<f64>`.
  */
 struct rssn_RssnMatrixHandle;
 
@@ -589,7 +589,7 @@ struct rssn_BincodeBuffer {
 };
 
 /*
- Opaque type for Graph<String> to work with cbindgen
+ Opaque type for `Graph<String>` to work with cbindgen
  */
 struct rssn_RssnGraph {
     uint8_t mPrivate[0];
@@ -3975,7 +3975,7 @@ bool rssn_bincode_check_analytic(rssn_BincodeBuffer aExprBuf,
  Checks whether a Lie algebra satisfies the Jacobi identity.
 
  The Jacobi identity is a fundamental property of Lie algebras,
- \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+ \(\[x,\[y,z\]\] + \[y,\[z,x\]\] + \[z,\[x,y\]\] = 0\).
 
  # Arguments
 
@@ -4194,7 +4194,7 @@ rssn_BincodeBuffer rssn_bincode_covariance(rssn_BincodeBuffer aData1Buf,
 
 /*
  Computes CRC-32 checksum via Bincode interface.
- Input: Vec<u8>
+ Input: `Vec<u8>`
  Returns: u32
  */
 rssn_
@@ -4212,7 +4212,7 @@ rssn_BincodeBuffer rssn_bincode_crc32_finalize(rssn_BincodeBuffer aCrcBuf)
 
 /*
  Updates CRC-32 incrementally via Bincode interface.
- Input: (crc: u32, data: Vec<u8>)
+ Input: (crc: u32, data: `Vec<u8>`)
  Returns: u32
  */
 rssn_
@@ -4222,7 +4222,7 @@ rssn_BincodeBuffer rssn_bincode_crc32_update(rssn_BincodeBuffer aCrcBuf,
 
 /*
  Verifies CRC-32 checksum via Bincode interface.
- Input: (data: Vec<u8>, `expected_crc`: u32)
+ Input: (data: `Vec<u8>`, `expected_crc`: u32)
  Returns: bool
  */
 rssn_
@@ -5835,8 +5835,8 @@ rssn_BincodeBuffer rssn_bincode_hamiltons_principle(rssn_BincodeBuffer aLagrangi
 
 /*
  Checks if a Hamming(7,4) codeword is valid via Bincode interface.
- Input: Vec<u8> (7 bytes)
- Returns: bool
+ Input: `Vec<u8>` (7 bytes)
+ Returns: `bool`
  */
 rssn_
 rssn_BincodeBuffer rssn_bincode_hamming_check(rssn_BincodeBuffer aCodewordBuf)
@@ -5852,8 +5852,8 @@ rssn_BincodeBuffer rssn_bincode_hamming_decode(rssn_BincodeBuffer aCodewordBuf)
 
 /*
  Computes Hamming distance between two byte slices via Bincode interface.
- Input: (a: Vec<u8>, b: Vec<u8>)
- Returns: Option<usize>
+ Input: (a: `Vec<u8>`, b: `Vec<u8>`)
+ Returns: `Option<usize>`
  */
 rssn_
 rssn_BincodeBuffer rssn_bincode_hamming_distance(rssn_BincodeBuffer aABuf,
@@ -5869,7 +5869,7 @@ rssn_BincodeBuffer rssn_bincode_hamming_encode(rssn_BincodeBuffer aDataBuf)
 
 /*
  Computes Hamming weight of a byte slice via Bincode interface.
- Input: Vec<u8>
+ Input: `Vec<u8>`
  Returns: usize
  */
 rssn_
@@ -7141,7 +7141,7 @@ rssn_BincodeBuffer rssn_bincode_rotation_axis_angle(rssn_BincodeBuffer aAxisXBuf
 
 /*
  Checks if a Reed-Solomon codeword is valid via Bincode interface.
- Input: (codeword: Vec<u8>, `n_sym`: usize)
+ Input: (codeword: `Vec<u8>`, `n_sym`: usize)
  Returns: bool
  */
 rssn_
@@ -7167,7 +7167,7 @@ rssn_BincodeBuffer rssn_bincode_rs_encode(rssn_BincodeBuffer aDataBuf,
 
 /*
  Estimates error count in a Reed-Solomon codeword via Bincode interface.
- Input: (codeword: Vec<u8>, `n_sym`: usize)
+ Input: (codeword: `Vec<u8>`, `n_sym`: usize)
  Returns: usize
  */
 rssn_
@@ -8602,7 +8602,7 @@ bool rssn_check_analytic(const rssn_Expr *aExpr,
  Checks whether a Lie algebra satisfies the Jacobi identity.
 
  The Jacobi identity is a fundamental property of Lie algebras,
- \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+ \(\[x,\[y,z\]\] + \[y,\[z,x\]\] + \[z,\[x,y\]\] = 0\).
 
  # Arguments
 
@@ -10477,7 +10477,7 @@ char *rssn_expand_json(const char *aJsonExpr)
 ;
 
 /*
- Computes the expectation value <A>.
+ Computes the expectation value `<A>`.
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11028,7 +11028,7 @@ void rssn_free_cad_handle(rssn_Cad *aPtr)
 ;
 
 /*
- Frees a Vec<CriticalPoint> handle
+ Frees a Vec`<CriticalPoint>` handle
  */
 rssn_
 void rssn_free_critical_point_vec_handle(rssn_Vec<rssn_CriticalPoint> *aPtr)
@@ -11059,7 +11059,7 @@ void rssn_free_expr(rssn_Expr *aExpr)
 ;
 
 /*
- Frees a Vec<Expr> handle
+ Frees a `Vec<Expr>` handle
  */
 rssn_
 void rssn_free_expr_vec_handle(rssn_Vec<rssn_Expr> *aPtr)
@@ -11439,9 +11439,9 @@ const char *rssn_get_last_error()
 /*
  Gets real and imaginary parts of an expression.
 
- Returns a pointer to a tuple (Expr, Expr) - represented as Vec<Expr> of size 2 for simplicity?
+ Returns a pointer to a tuple (Expr, Expr) - represented as `Vec<Expr>` of size 2 for simplicity?
  Or return two out pointers?
- I'll return a Vec<Expr> of size 2.
+ I'll return a `Vec<Expr>` of size 2.
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13663,7 +13663,7 @@ bool rssn_json_check_analytic(const char *aExprJson,
  Checks whether a Lie algebra satisfies the Jacobi identity using JSON serialization.
 
  The Jacobi identity is a fundamental property of Lie algebras,
- \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+ \(\[x,\[y,z\]\] + \[y,\[z,x\]\] + \[z,\[x,y\]\] = 0\).
 
  # Arguments
 
@@ -13916,7 +13916,7 @@ char *rssn_json_covariance(const char *aData1Json,
 
 /*
  Computes CRC-32 checksum via JSON interface.
- Input: [bytes]
+ Input: \[bytes\]
  Returns: u32 checksum
  # Safety
 
@@ -13948,7 +13948,7 @@ char *rssn_json_crc32_finalize(const char *aCrcJson)
 
 /*
  Updates CRC-32 incrementally via JSON interface.
- Input: current crc as u32, data as [bytes]
+ Input: current crc as u32, data as \[bytes\]
  Returns: updated crc as u32
  # Safety
 
@@ -13965,7 +13965,7 @@ char *rssn_json_crc32_update(const char *aCrcJson,
 
 /*
  Verifies CRC-32 checksum via JSON interface.
- Input: data as [bytes], `expected_crc` as u32
+ Input: data as \[bytes\], `expected_crc` as u32
  Returns: boolean
  # Safety
 
@@ -15223,7 +15223,7 @@ char *rssn_json_gram_schmidt(const char *aSpaceJson,
 
 /*
  Adds an edge to the graph.
- Input JSON: {"graph": <graph>, "from": "label1", "to": "label2", "weight": <expr>}
+ Input JSON: {"graph": `<graph>`, "from": "label1", "to": "label2", "weight": `<expr>`}
  */
 rssn_
 char *rssn_json_graph_add_edge(const char *aJson)
@@ -15231,7 +15231,7 @@ char *rssn_json_graph_add_edge(const char *aJson)
 
 /*
  Adds a node to the graph.
- Input JSON: {"graph": <graph>, "label": "`node_label`"}
+ Input JSON: {"graph": `<graph>`, "label": "`node_label`"}
  Returns updated graph as JSON.
  */
 rssn_
@@ -15240,7 +15240,7 @@ char *rssn_json_graph_add_node(const char *aJson)
 
 /*
  Gets the adjacency matrix of the graph.
- Input JSON: <graph>
+ Input JSON: `<graph>`
  Returns Expr (matrix) as JSON.
  */
 rssn_
@@ -15249,7 +15249,7 @@ char *rssn_json_graph_adjacency_matrix(const char *aJson)
 
 /*
  Performs BFS traversal.
- Input JSON: {"graph": <graph>, "`start_node"`: <index>}
+ Input JSON: {"graph": `<graph>`, "`start_node"`: `<index>`}
  */
 rssn_
 char *rssn_json_graph_bfs(const char *aJson)
@@ -15521,7 +15521,7 @@ char *rssn_json_graph_laplacian_matrix(const char *aJson)
 
 /*
  Computes maximum flow.
- Input JSON: {"graph": <graph>, "source": <index>, "sink": <index>}
+ Input JSON: {"graph": `<graph>`, "source": `<index>`, "sink": `<index>`}
  */
 rssn_
 char *rssn_json_graph_max_flow(const char *aJson)
@@ -15576,7 +15576,7 @@ char *rssn_json_graph_topological_sort(const char *aJson)
 
 /*
  Computes the union of two graphs.
- Input JSON: {"g1": <graph>, "g2": <graph>}
+ Input JSON: {"g1": `<graph>`, "g2": `<graph>`}
  */
 rssn_
 char *rssn_json_graph_union(const char *aJson)
@@ -15865,7 +15865,7 @@ char *rssn_json_hamming_decode(const char *aCodewordJson)
 
 /*
  Computes Hamming distance between two byte slices via JSON interface.
- Input: {"a": [bytes], "b": [bytes]}
+ Input: {"a": \[bytes\], "b": \[bytes\]}
  Returns: distance as integer, or null on error
  # Safety
 
@@ -15896,7 +15896,7 @@ char *rssn_json_hamming_encode(const char *aDataJson)
 
 /*
  Computes Hamming weight of a byte slice via JSON interface.
- Input: [bytes]
+ Input: \[bytes\]
  Returns: weight as integer
  # Safety
 
@@ -17555,7 +17555,7 @@ char *rssn_json_rs_decode(const char *aCodewordJson,
 
 /*
  Encodes data using Reed-Solomon code via JSON interface.
- Input: {"data": [bytes], "`n_sym"`: number}
+ Input: {"data": \[bytes\], "`n_sym"`: number}
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18343,7 +18343,7 @@ char *rssn_json_transform_gradient(const char *aScalarJson,
 /*
  Transforms a point between coordinate systems using JSON-encoded coordinates.
 
- The point is represented as a JSON-encoded `Vec<Expr>` (e.g., \([x,y,z]\)), and the
+ The point is represented as a JSON-encoded `Vec<Expr>` (e.g., \(\[x,y,z\]\)), and the
  transformation applies the appropriate coordinate mapping.
 
  # Arguments
@@ -18856,7 +18856,7 @@ rssn_Expr *rssn_klein_gordon_equation(const rssn_Expr *aPsi,
 /*
  Applies the Knuth-Bendix completion algorithm to a set of equations.
 
- Returns a pointer to a Vec<RewriteRule> on success, or null on failure.
+ Returns a pointer to a `Vec<RewriteRule>` on success, or null on failure.
 
  # Safety
  The caller must ensure `equations` is a valid array of Expr pointers.
@@ -20136,7 +20136,7 @@ char *rssn_num_bezier_curve_json(const char *aInputPtr)
 
 /*
  Computes the numerical gradient of a function at a point.
- Returns a pointer to a Vec<f64> containing the gradient.
+ Returns a pointer to a `Vec<f64>` containing the gradient.
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20154,7 +20154,7 @@ rssn_Vec<double> *rssn_num_calculus_gradient(const rssn_Expr *aF,
 
 /*
  Computes the numerical Hessian matrix of a scalar function at a point.
- Returns a pointer to a Matrix<f64>.
+ Returns a pointer to a `Matrix<f64>`.
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20172,7 +20172,7 @@ rssn_Matrix<double> *rssn_num_calculus_hessian(const rssn_Expr *aF,
 
 /*
  Computes the numerical Jacobian matrix of a vector-valued function at a point.
- Returns a pointer to a Matrix<f64>.
+ Returns a pointer to a `Matrix<f64>`.
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29400,7 +29400,7 @@ rssn_Matrix<double> *rssn_num_signal_convolve(const double *aA,
 /*
  Computes the discrete convolution of two signals using bincode serialization.
 
- The convolution is defined as (a * v)[n] = Σ a[k]v[n-k], representing the
+ The convolution is defined as (a * v)\[n\] = Σ a\[k\]v\[n-k\], representing the
  combined effect of two systems or filtering operation.
 
  # Arguments
@@ -29433,7 +29433,7 @@ rssn_BincodeBuffer rssn_num_signal_convolve_bincode(rssn_BincodeBuffer aBuffer)
 /*
  Computes the discrete convolution of two signals using JSON serialization.
 
- The convolution is defined as (a * v)[n] = Σ a[k]v[n-k], representing the
+ The convolution is defined as (a * v)\[n\] = Σ a\[k\]v\[n-k\], representing the
  combined effect of two systems or filtering operation.
 
  # Arguments
@@ -29488,7 +29488,7 @@ rssn_Matrix<double> *rssn_num_signal_cross_correlation(const double *aA,
  Computes the cross-correlation of two signals using bincode serialization.
 
  Cross-correlation measures similarity between signals as a function of lag:
- (a ⋆ v)[n] = Σ a[k]v[n+k].
+ (a ⋆ v)\[n\] = Σ a\[k\]v\[n+k\].
 
  # Arguments
 
@@ -29521,7 +29521,7 @@ rssn_BincodeBuffer rssn_num_signal_cross_correlation_bincode(rssn_BincodeBuffer 
  Computes the cross-correlation of two signals using JSON serialization.
 
  Cross-correlation measures similarity between signals as a function of lag:
- (a ⋆ v)[n] = Σ a[k]v[n+k].
+ (a ⋆ v)\[n\] = Σ a\[k\]v\[n+k\].
 
  # Arguments
 
@@ -29555,7 +29555,7 @@ char *rssn_num_signal_cross_correlation_json(const char *aInputJson)
 ;
 
 /*
- Computes the FFT and returns a Matrix<Complex<f64>> as a Matrix<f64> (real, imag interleaved).
+ Computes the FFT and returns a `Matrix<Complex<f64>` as a `Matrix<f64>` (real, imag interleaved).
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33776,7 +33776,7 @@ rssn_BincodeBuffer rssn_numerical_quadrature_bincode(rssn_BincodeBuffer aBuffer)
 
  Input JSON format:
  {
-   "expr": <Expr object>,
+   "expr": `<Expr object>`,
    "var": "x",
    "a": 0.0,
    "b": 1.0,
@@ -33892,7 +33892,7 @@ char *rssn_numerical_sum_series_json(const char *aInputJson)
 
 /*
  Computes the numerical Taylor series coefficients.
- Returns a pointer to a Vec<f64> containing the coefficients.
+ Returns a pointer to a `Vec<f64>` containing the coefficients.
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34109,7 +34109,7 @@ void rssn_parsing_cache_free(rssn_ParsingCache *aCache)
 /*
  Retrieves an expression from the `ParsingCache`.
 
- Returns a pointer to the Expr (Arc<Expr> with incremented refcount), or null if not found.
+ Returns a pointer to the Expr (Arc`<Expr>` with incremented refcount), or null if not found.
  The caller is responsible for freeing the returned Expr (using the appropriate Expr free function).
  */
 rssn_
@@ -37933,7 +37933,7 @@ void rssn_rules_vec_free(rssn_Vec<rssn_RewriteRule> *aRules)
  Returns a new owned `RewriteRule` pointer that must be freed by the caller.
 
  # Safety
- The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
+ The caller must ensure `rules` is a valid `Vec<RewriteRule>` pointer.
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37951,7 +37951,7 @@ rssn_RewriteRule *rssn_rules_vec_get(const rssn_Vec<rssn_RewriteRule> *aRules,
  Gets the length of a rules vector.
 
  # Safety
- The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
+ The caller must ensure `rules` is a valid `Vec<RewriteRule>` pointer.
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.

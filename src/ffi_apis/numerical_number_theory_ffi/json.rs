@@ -47,7 +47,9 @@ pub unsafe extern "C" fn rssn_num_nt_factorize_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -131,7 +133,9 @@ pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

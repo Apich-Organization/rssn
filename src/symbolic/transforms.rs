@@ -334,7 +334,7 @@ pub fn z_time_shift(
 
 /// Applies the scaling property of the Z-Transform.
 ///
-/// Z{a^n x[n]} = X(z/a)
+/// Z{a^n x\[n\]} = X(z/a)
 #[must_use]
 
 pub fn z_scaling(
@@ -357,7 +357,7 @@ pub fn z_scaling(
 
 /// Applies the differentiation property of the Z-Transform.
 ///
-/// Z{n x[n]} = -z dX/dz
+/// Z{n x\[n\]} = -z dX/dz
 #[must_use]
 
 pub fn z_differentiation(

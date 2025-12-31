@@ -66,6 +66,7 @@ pub extern "C" fn rssn_line_integral_scalar_bincode(
     let input = match input {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -101,6 +102,7 @@ pub extern "C" fn rssn_line_integral_vector_bincode(
     let input = match input {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -136,6 +138,7 @@ pub extern "C" fn rssn_surface_integral_bincode(
     let input = match input {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -171,6 +174,7 @@ pub extern "C" fn rssn_volume_integral_bincode(
     let input = match input {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },

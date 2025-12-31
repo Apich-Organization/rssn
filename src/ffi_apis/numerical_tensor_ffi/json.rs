@@ -53,7 +53,9 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -216,7 +218,9 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

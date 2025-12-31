@@ -59,7 +59,9 @@ pub extern "C" fn rssn_line_integral_scalar_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -85,7 +87,9 @@ pub extern "C" fn rssn_line_integral_vector_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -111,7 +115,9 @@ pub extern "C" fn rssn_surface_integral_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -137,7 +143,9 @@ pub extern "C" fn rssn_volume_integral_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

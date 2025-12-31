@@ -34,7 +34,7 @@ impl BincodeBuffer {
         }
     }
 
-    /// Creates a buffer from a Vec<u8>.
+    /// Creates a buffer from a Vec`<u8>`.
 
     #[must_use]
 

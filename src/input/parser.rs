@@ -109,6 +109,7 @@ pub(crate) fn comparison_expr(
         ),
         move || init.clone(),
         |acc, (op, val)| {
+
             match op {
                 | "=" => {
                     Expr::Eq(
@@ -472,6 +473,8 @@ pub(crate) fn parse_boolean_and_infinities(
         parse_negative_infinity,
     ))(input)
 }
+
+#[allow(clippy::too_many_lines)]
 
 pub(crate) fn parse_function_call(
     input: &str
@@ -3637,11 +3640,17 @@ mod tests {
     {
 
         assert_eq!(
-            parse_expr("quantity_with_value(10, \"m\")"),
+            parse_expr(
+                "quantity_with_value(10, \"m\")"
+            ),
             Ok((
                 "",
                 Expr::QuantityWithValue(
-                    Arc::new(Expr::Constant(10.0)),
+                    Arc::new(
+                        Expr::Constant(
+                            10.0
+                        )
+                    ),
                     "m".to_string()
                 )
             ))

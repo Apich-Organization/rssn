@@ -32,6 +32,7 @@ pub extern "C" fn rssn_cas_expand_bincode(
     let expr = match expr {
         | Some(e) => e,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -56,6 +57,7 @@ pub extern "C" fn rssn_cas_factorize_bincode(
     let expr = match expr {
         | Some(e) => e,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -82,6 +84,7 @@ pub extern "C" fn rssn_cas_normalize_bincode(
     let expr = match expr {
         | Some(e) => e,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -109,6 +112,7 @@ pub extern "C" fn rssn_cas_simplify_with_relations_bincode(
     let input_data = match input_data {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },

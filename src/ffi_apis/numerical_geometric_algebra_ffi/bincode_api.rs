@@ -78,6 +78,7 @@ pub unsafe extern "C" fn rssn_num_ga_add_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Multivector3D,
             > {
@@ -117,6 +118,7 @@ pub unsafe extern "C" fn rssn_num_ga_sub_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Multivector3D,
             > {
@@ -156,6 +158,7 @@ pub unsafe extern "C" fn rssn_num_ga_mul_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Multivector3D,
             > {
@@ -195,6 +198,7 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Multivector3D,
             > {
@@ -238,6 +242,7 @@ pub unsafe extern "C" fn rssn_num_ga_dot_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Multivector3D,
             > {
@@ -281,6 +286,7 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Multivector3D,
             > {
@@ -320,6 +326,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 f64,
             > {
@@ -359,6 +366,7 @@ pub unsafe extern "C" fn rssn_num_ga_inv_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Multivector3D,
             > {

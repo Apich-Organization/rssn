@@ -48,7 +48,9 @@ pub unsafe extern "C" fn rssn_num_poly_add_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -125,7 +127,9 @@ pub unsafe extern "C" fn rssn_num_poly_mul_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

@@ -79,7 +79,7 @@ pub unsafe extern "C" fn rssn_num_calculus_partial_derivative(
 }
 
 /// Computes the numerical gradient of a function at a point.
-/// Returns a pointer to a Vec<f64> containing the gradient.
+/// Returns a pointer to a `Vec<f64>` containing the gradient.
 #[unsafe(no_mangle)]
 
 /// # Safety
@@ -174,7 +174,7 @@ pub unsafe extern "C" fn rssn_num_calculus_gradient(
 }
 
 /// Computes the numerical Jacobian matrix of a vector-valued function at a point.
-/// Returns a pointer to a Matrix<f64>.
+/// Returns a pointer to a `Matrix<f64>`.
 #[unsafe(no_mangle)]
 
 /// # Safety
@@ -293,7 +293,7 @@ pub unsafe extern "C" fn rssn_num_calculus_jacobian(
 }
 
 /// Computes the numerical Hessian matrix of a scalar function at a point.
-/// Returns a pointer to a Matrix<f64>.
+/// Returns a pointer to a `Matrix<f64>`.
 #[unsafe(no_mangle)]
 
 /// # Safety

@@ -71,6 +71,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Vec<f64>,
             > {
@@ -110,6 +111,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Vec<f64>,
             > {
@@ -149,6 +151,7 @@ pub unsafe extern "C" fn rssn_convergence_wynn_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Vec<f64>,
             > {

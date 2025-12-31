@@ -812,6 +812,7 @@ pub(crate) fn simplify_with_cache(
 
 /// Applies a set of deterministic simplification rules to an expression.
 #[allow(clippy::unnecessary_to_owned)]
+#[allow(clippy::too_many_lines)]
 
 pub(crate) fn apply_rules(
     expr: Expr
@@ -2786,6 +2787,7 @@ pub fn collect_and_order_terms(
         .position(|(b, _)| is_one(b))
         .map_or_else(
             || {
+
                 Expr::BigInt(
                     BigInt::zero(),
                 )

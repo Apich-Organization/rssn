@@ -288,6 +288,7 @@ pub fn compute_persistence(
         PersistenceDiagram,
     > = (0 ..= max_dim)
         .map(|d| {
+
             PersistenceDiagram {
                 dimension: d,
                 intervals: Vec::new(),

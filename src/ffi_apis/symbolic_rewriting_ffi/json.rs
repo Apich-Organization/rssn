@@ -35,7 +35,9 @@ pub extern "C" fn rssn_apply_rules_to_normal_form_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -64,7 +66,9 @@ pub extern "C" fn rssn_knuth_bendix_json(
     let equations = match equations {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -106,7 +110,9 @@ pub extern "C" fn rssn_rewrite_rule_new_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -134,7 +140,9 @@ pub extern "C" fn rssn_rewrite_rule_to_string_json(
     let rule = match rule {
         | Some(r) => r,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

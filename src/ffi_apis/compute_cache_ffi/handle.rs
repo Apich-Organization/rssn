@@ -61,7 +61,7 @@ pub extern "C" fn rssn_parsing_cache_clear(
 
 /// Retrieves an expression from the `ParsingCache`.
 ///
-/// Returns a pointer to the Expr (Arc<Expr> with incremented refcount), or null if not found.
+/// Returns a pointer to the Expr (Arc`<Expr>` with incremented refcount), or null if not found.
 /// The caller is responsible for freeing the returned Expr (using the appropriate Expr free function).
 #[unsafe(no_mangle)]
 

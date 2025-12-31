@@ -239,7 +239,7 @@ pub unsafe extern "C" fn rssn_commutator(
     }
 }
 
-/// Computes the expectation value <A>.
+/// Computes the expectation value `<A>`.
 #[unsafe(no_mangle)]
 
 /// # Safety

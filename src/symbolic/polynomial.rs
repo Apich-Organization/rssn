@@ -15,7 +15,7 @@
 //! ## Key Features
 //!
 //! ### Basic Operations
-//! - **Addition/Subtraction**: [`add_poly`], [`subtract_poly`](crate::symbolic::grobner::subtract_poly)
+//! - **Addition/Subtraction**: [`add_poly`], [`subtract_poly`]
 //! - **Multiplication**: [`mul_poly`]
 //! - **Differentiation**: [`differentiate_poly`]
 //! - **Division**: [`polynomial_long_division`], [`polynomial_long_division_coeffs`]
@@ -2220,8 +2220,7 @@ impl SparsePolynomial {
             return vec![];
         }
 
-        let mut coeffs =
-            vec![
+        let mut coeffs = vec![
                 Expr::Constant(0.0);
                 (deg + 1)
                     .try_into()

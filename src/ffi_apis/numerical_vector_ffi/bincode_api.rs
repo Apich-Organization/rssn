@@ -282,6 +282,7 @@ pub unsafe extern "C" fn rssn_vec_norm_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 f64,
             > {
@@ -359,6 +360,7 @@ pub unsafe extern "C" fn rssn_vec_normalize_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Vec<f64>,
             > {
@@ -649,6 +651,7 @@ pub unsafe extern "C" fn rssn_vec_lerp_bincode(
     ) {
         | Some(v) => v,
         | None => {
+
             return encode(FfiResult::<
                 Vec<f64>,
             > {

@@ -158,7 +158,7 @@ pub extern "C" fn rssn_isolate_real_roots_handle(
     }
 }
 
-/// Frees a Vec<Expr> handle
+/// Frees a `Vec<Expr>` handle
 #[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_expr_vec_handle(

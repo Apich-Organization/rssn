@@ -61,6 +61,7 @@ pub extern "C" fn rssn_fredholm_solve_neumann_bincode(
     let input = match input {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -97,6 +98,7 @@ pub extern "C" fn rssn_fredholm_solve_separable_bincode(
     let input = match input {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -139,6 +141,7 @@ pub extern "C" fn rssn_volterra_solve_successive_bincode(
     let input = match input {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -173,6 +176,7 @@ pub extern "C" fn rssn_volterra_solve_by_differentiation_bincode(
     let equation = match equation {
         | Some(e) => e,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },
@@ -211,6 +215,7 @@ pub extern "C" fn rssn_solve_airfoil_equation_bincode(
     let input = match input {
         | Some(i) => i,
         | None => {
+
             return BincodeBuffer::empty(
             );
         },

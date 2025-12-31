@@ -99,7 +99,7 @@ pub unsafe extern "C" fn rssn_json_hamming_decode(
 }
 
 /// Encodes data using Reed-Solomon code via JSON interface.
-/// Input: {"data": [bytes], "`n_sym"`: number}
+/// Input: {"data": \[bytes\], "`n_sym"`: number}
 #[unsafe(no_mangle)]
 
 /// # Safety
@@ -186,7 +186,7 @@ pub unsafe extern "C" fn rssn_json_rs_decode(
 // ============================================================================
 
 /// Computes Hamming distance between two byte slices via JSON interface.
-/// Input: {"a": [bytes], "b": [bytes]}
+/// Input: {"a": \[bytes\], "b": \[bytes\]}
 /// Returns: distance as integer, or null on error
 #[unsafe(no_mangle)]
 
@@ -228,7 +228,7 @@ pub unsafe extern "C" fn rssn_json_hamming_distance(
 }
 
 /// Computes Hamming weight of a byte slice via JSON interface.
-/// Input: [bytes]
+/// Input: \[bytes\]
 /// Returns: weight as integer
 #[unsafe(no_mangle)]
 
@@ -371,7 +371,7 @@ pub unsafe extern "C" fn rssn_json_rs_error_count(
 // ============================================================================
 
 /// Computes CRC-32 checksum via JSON interface.
-/// Input: [bytes]
+/// Input: \[bytes\]
 /// Returns: u32 checksum
 #[unsafe(no_mangle)]
 
@@ -402,7 +402,7 @@ pub unsafe extern "C" fn rssn_json_crc32_compute(
 }
 
 /// Verifies CRC-32 checksum via JSON interface.
-/// Input: data as [bytes], `expected_crc` as u32
+/// Input: data as \[bytes\], `expected_crc` as u32
 /// Returns: boolean
 #[unsafe(no_mangle)]
 
@@ -442,7 +442,7 @@ pub unsafe extern "C" fn rssn_json_crc32_verify(
 }
 
 /// Updates CRC-32 incrementally via JSON interface.
-/// Input: current crc as u32, data as [bytes]
+/// Input: current crc as u32, data as \[bytes\]
 /// Returns: updated crc as u32
 #[unsafe(no_mangle)]
 

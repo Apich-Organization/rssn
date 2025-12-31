@@ -8,7 +8,7 @@ use crate::nightly::matrix::FaerDecompositionResult;
 use crate::nightly::matrix::FaerDecompositionType;
 use crate::nightly::matrix::Matrix;
 
-/// Opaque handle for a Matrix<f64>.
+/// Opaque handle for a `Matrix<f64>`.
 
 pub struct RssnMatrixHandle;
 

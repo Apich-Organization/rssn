@@ -64,7 +64,9 @@ pub unsafe extern "C" fn rssn_num_matrix_add_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -191,7 +193,9 @@ pub unsafe extern "C" fn rssn_num_matrix_mul_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -316,7 +320,9 @@ pub unsafe extern "C" fn rssn_num_matrix_det_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -417,7 +423,9 @@ pub unsafe extern "C" fn rssn_num_matrix_set_backend_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -499,7 +507,9 @@ pub unsafe extern "C" fn rssn_num_matrix_decompose_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

@@ -38,7 +38,7 @@ pub extern "C" fn rssn_json_graph_new(
 }
 
 /// Adds a node to the graph.
-/// Input JSON: {"graph": <graph>, "label": "`node_label`"}
+/// Input JSON: {"graph": `<graph>`, "label": "`node_label`"}
 /// Returns updated graph as JSON.
 #[unsafe(no_mangle)]
 
@@ -66,7 +66,7 @@ pub extern "C" fn rssn_json_graph_add_node(
 }
 
 /// Adds an edge to the graph.
-/// Input JSON: {"graph": <graph>, "from": "label1", "to": "label2", "weight": <expr>}
+/// Input JSON: {"graph": `<graph>`, "from": "label1", "to": "label2", "weight": `<expr>`}
 #[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_add_edge(
@@ -99,7 +99,7 @@ pub extern "C" fn rssn_json_graph_add_edge(
 }
 
 /// Gets the adjacency matrix of the graph.
-/// Input JSON: <graph>
+/// Input JSON: `<graph>`
 /// Returns Expr (matrix) as JSON.
 #[unsafe(no_mangle)]
 
@@ -137,7 +137,7 @@ pub extern "C" fn rssn_json_graph_laplacian_matrix(
 }
 
 /// Performs BFS traversal.
-/// Input JSON: {"graph": <graph>, "`start_node"`: <index>}
+/// Input JSON: {"graph": `<graph>`, "`start_node"`: `<index>`}
 #[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_bfs(
@@ -210,7 +210,7 @@ pub extern "C" fn rssn_json_graph_connected_components(
 }
 
 /// Computes maximum flow.
-/// Input JSON: {"graph": <graph>, "source": <index>, "sink": <index>}
+/// Input JSON: {"graph": `<graph>`, "source": `<index>`, "sink": `<index>`}
 #[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_max_flow(

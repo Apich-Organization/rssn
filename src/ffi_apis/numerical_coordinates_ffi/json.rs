@@ -50,7 +50,9 @@ pub unsafe extern "C" fn rssn_num_coord_transform_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -147,7 +149,9 @@ pub unsafe extern "C" fn rssn_num_coord_transform_pure_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

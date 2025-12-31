@@ -49,6 +49,7 @@ unsafe fn parse_c_str_array(
                     );
                 },
                 | Err(_) => {
+
                     return None;
                 },
             }
@@ -310,6 +311,7 @@ pub unsafe extern "C" fn rssn_verify_ode_solution_handle(
             {
                 | Ok(s) => s,
                 | Err(_) => {
+
                     return false;
                 },
             };

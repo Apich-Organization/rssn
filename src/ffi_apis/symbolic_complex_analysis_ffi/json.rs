@@ -533,7 +533,9 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -542,7 +544,9 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -551,7 +555,9 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -560,7 +566,9 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -624,7 +632,9 @@ pub unsafe extern "C" fn mobius_transformation_apply_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -855,7 +865,9 @@ pub unsafe extern "C" fn complex_exp_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -891,7 +903,9 @@ pub unsafe extern "C" fn complex_log_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -927,7 +941,9 @@ pub unsafe extern "C" fn complex_arg_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -963,7 +979,9 @@ pub unsafe extern "C" fn complex_modulus_json(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 

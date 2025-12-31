@@ -49,6 +49,7 @@ pub fn newton_method_complex(
             ) {
                 | Ok(val) => val,
                 | Err(_) => {
+
                     return None;
                 },
             };
@@ -60,6 +61,7 @@ pub fn newton_method_complex(
             ) {
                 | Ok(val) => val,
                 | Err(_) => {
+
                     return None;
                 },
             };

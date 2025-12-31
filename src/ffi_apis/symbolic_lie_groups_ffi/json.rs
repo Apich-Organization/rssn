@@ -119,7 +119,9 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -128,7 +130,9 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -183,7 +187,9 @@ pub unsafe extern "C" fn rssn_json_exponential_map(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -240,7 +246,9 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -249,7 +257,9 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -306,7 +316,9 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -315,7 +327,9 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut();
+
+            return std::ptr::null_mut(
+            );
         },
     };
 
@@ -386,7 +400,7 @@ pub unsafe extern "C" fn rssn_json_commutator_table(
 /// Checks whether a Lie algebra satisfies the Jacobi identity using JSON serialization.
 ///
 /// The Jacobi identity is a fundamental property of Lie algebras,
-/// \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+/// \(\[x,\[y,z\]\] + \[y,\[z,x\]\] + \[z,\[x,y\]\] = 0\).
 ///
 /// # Arguments
 ///

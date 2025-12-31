@@ -479,6 +479,7 @@ pub fn berlekamp_zassenhaus(
         ) {
             | Some((g, h)) => (g, h),
             | None => {
+
                 return Ok(vec![
                     poly.clone(),
                 ]);
