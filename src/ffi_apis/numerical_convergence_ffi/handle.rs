@@ -26,21 +26,25 @@ use crate::numerical::convergence;
 pub unsafe extern "C" fn rssn_convergence_aitken(
     data: *const f64,
     len: usize,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if data.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
+        if data.is_null() {
+
+            return ptr::null_mut();
+        }
+
+        let slice =
+            slice::from_raw_parts(
+                data, len,
+            );
+
+        let res = convergence::aitken_acceleration(slice);
+
+        Box::into_raw(Box::new(res))
     }
-
-    let slice = slice::from_raw_parts(
-        data, len,
-    );
-
-    let res = convergence::aitken_acceleration(slice);
-
-    Box::into_raw(Box::new(res))
-}}
+}
 
 /// Applies Richardson extrapolation to the input sequence.
 ///
@@ -63,21 +67,25 @@ pub unsafe extern "C" fn rssn_convergence_aitken(
 pub unsafe extern "C" fn rssn_convergence_richardson(
     data: *const f64,
     len: usize,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if data.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
+        if data.is_null() {
+
+            return ptr::null_mut();
+        }
+
+        let slice =
+            slice::from_raw_parts(
+                data, len,
+            );
+
+        let res = convergence::richardson_extrapolation(slice);
+
+        Box::into_raw(Box::new(res))
     }
-
-    let slice = slice::from_raw_parts(
-        data, len,
-    );
-
-    let res = convergence::richardson_extrapolation(slice);
-
-    Box::into_raw(Box::new(res))
-}}
+}
 
 /// Applies Wynn's epsilon algorithm to the input sequence.
 ///
@@ -100,23 +108,28 @@ pub unsafe extern "C" fn rssn_convergence_richardson(
 pub unsafe extern "C" fn rssn_convergence_wynn(
     data: *const f64,
     len: usize,
-) -> *mut Vec<f64> { unsafe {
+) -> *mut Vec<f64> {
 
-    if data.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
+        if data.is_null() {
+
+            return ptr::null_mut();
+        }
+
+        let slice =
+            slice::from_raw_parts(
+                data, len,
+            );
+
+        let res =
+            convergence::wynn_epsilon(
+                slice,
+            );
+
+        Box::into_raw(Box::new(res))
     }
-
-    let slice = slice::from_raw_parts(
-        data, len,
-    );
-
-    let res = convergence::wynn_epsilon(
-        slice,
-    );
-
-    Box::into_raw(Box::new(res))
-}}
+}
 
 /// Frees a generic `Vec<f64>` pointer created by convergence functions.
 #[unsafe(no_mangle)]

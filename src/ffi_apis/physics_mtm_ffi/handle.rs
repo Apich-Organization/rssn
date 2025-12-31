@@ -23,20 +23,22 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
     f: *const f64,
     num_cycles: usize,
     out_size: *mut usize,
-) -> *mut f64 { unsafe {
+) -> *mut f64 {
 
-    if f.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
-    }
+        if f.is_null() {
 
-    let f_slice =
-        std::slice::from_raw_parts(
-            f,
-            n_interior,
-        );
+            return ptr::null_mut();
+        }
 
-    match physics_mtm::solve_poisson_1d_multigrid(
+        let f_slice =
+            std::slice::from_raw_parts(
+                f,
+                n_interior,
+            );
+
+        match physics_mtm::solve_poisson_1d_multigrid(
         n_interior,
         f_slice,
         num_cycles,
@@ -60,7 +62,8 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d(
             ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 /// Solves 2D Poisson using Multigrid and returns a flat array of doubles.
 /// The `out_size` will be set to `n * n`.
@@ -79,20 +82,22 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
     f: *const f64,
     num_cycles: usize,
     out_size: *mut usize,
-) -> *mut f64 { unsafe {
+) -> *mut f64 {
 
-    if f.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
-    }
+        if f.is_null() {
 
-    let f_slice =
-        std::slice::from_raw_parts(
-            f,
-            n * n,
-        );
+            return ptr::null_mut();
+        }
 
-    match physics_mtm::solve_poisson_2d_multigrid(
+        let f_slice =
+            std::slice::from_raw_parts(
+                f,
+                n * n,
+            );
+
+        match physics_mtm::solve_poisson_2d_multigrid(
         n,
         f_slice,
         num_cycles,
@@ -116,7 +121,8 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
             ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 /// Frees a float64 array allocated by the MTM FFI.
 #[unsafe(no_mangle)]
@@ -132,10 +138,13 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d(
 pub unsafe extern "C" fn rssn_free_f64_mtm_array(
     ptr: *mut f64,
     size: usize,
-) { unsafe {
+) {
 
-    if !ptr.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, size));
+        if !ptr.is_null() {
+
+            let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, size));
+        }
     }
-}}
+}

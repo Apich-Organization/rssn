@@ -28,16 +28,15 @@ pub extern "C" fn rssn_json_solve(
     let var: Option<String> =
         from_json_string(var_json);
 
-    match (expr, var)
-    { (Some(e), Some(v)) => {
+    match (expr, var) {
+        | (Some(e), Some(v)) => {
 
-        let result = solve(&e, &v);
+            let result = solve(&e, &v);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Solves a system of equations for given variables.
@@ -63,29 +62,30 @@ pub extern "C" fn rssn_json_solve_system(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    match (equations, vars)
-    { (Some(eqs), Some(vs)) => {
+    match (equations, vars) {
+        | (Some(eqs), Some(vs)) => {
 
-        let vars_str: Vec<&str> = vs
+            let vars_str: Vec<&str> = vs
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match solve_system(
-            &eqs,
-            &vars_str,
-        ) {
-            | Some(result) => {
-                to_json_string(&result)
-            },
-            | None => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            match solve_system(
+                &eqs,
+                &vars_str,
+            ) {
+                | Some(result) => {
+                    to_json_string(
+                        &result,
+                    )
+                },
+                | None => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Solves a linear system of equations.
@@ -109,21 +109,21 @@ pub extern "C" fn rssn_json_solve_linear_system(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    match (system, vars)
-    { (Some(sys), Some(vs)) => {
-
-        match solve_linear_system(
-            &sys, &vs,
-        ) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (system, vars) {
+        | (Some(sys), Some(vs)) => {
+            match solve_linear_system(
+                &sys, &vs,
+            ) {
+                | Ok(result) => {
+                    to_json_string(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

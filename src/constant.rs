@@ -40,8 +40,8 @@ pub const SYSTEM_INFO: &str =
 #[must_use]
 #[inline(always)]
 
-pub const fn get_build_date(
-) -> &'static str {
+pub const fn get_build_date()
+-> &'static str {
 
     BUILD_DATE
 }
@@ -61,8 +61,8 @@ pub const fn get_build_date(
 #[must_use]
 #[inline(always)]
 
-pub const fn get_commit_sha(
-) -> &'static str {
+pub const fn get_commit_sha()
+-> &'static str {
 
     COMMIT_SHA
 }
@@ -82,8 +82,8 @@ pub const fn get_commit_sha(
 #[must_use]
 #[inline(always)]
 
-pub const fn get_rustc_version(
-) -> &'static str {
+pub const fn get_rustc_version()
+-> &'static str {
 
     RUSTC_VERSION
 }
@@ -103,8 +103,8 @@ pub const fn get_rustc_version(
 #[must_use]
 #[inline(always)]
 
-pub const fn get_cargo_target_triple(
-) -> &'static str {
+pub const fn get_cargo_target_triple()
+-> &'static str {
 
     CARGO_TARGET_TRIPLE
 }
@@ -124,8 +124,8 @@ pub const fn get_cargo_target_triple(
 #[must_use]
 #[inline(always)]
 
-pub const fn get_system_info(
-) -> &'static str {
+pub const fn get_system_info()
+-> &'static str {
 
     SYSTEM_INFO
 }

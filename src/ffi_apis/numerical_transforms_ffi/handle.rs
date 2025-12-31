@@ -29,34 +29,38 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
     real: *mut f64,
     imag: *mut f64,
     len: usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if real.is_null() || imag.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if real.is_null()
+            || imag.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_fft_inplace"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    if !len.is_power_of_two() {
+        if !len.is_power_of_two() {
 
-        update_last_error(
-            "FFT length must be a \
-             power of two for \
-             in-place operation."
-                .to_string(),
-        );
+            update_last_error(
+                "FFT length must be a \
+                 power of two for \
+                 in-place operation."
+                    .to_string(),
+            );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let mut data: Vec<Complex<f64>> =
-        (0 .. len)
+        let mut data: Vec<
+            Complex<f64>,
+        > = (0 .. len)
             .map(|i| {
 
                 Complex::new(
@@ -66,17 +70,23 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
             })
             .collect();
 
-    transforms::fft_slice(&mut data);
+        transforms::fft_slice(
+            &mut data,
+        );
 
-    for (i, c) in data.iter().enumerate() {
+        for (i, c) in data
+            .iter()
+            .enumerate()
+        {
 
-        *real.add(i) = c.re;
+            *real.add(i) = c.re;
 
-        *imag.add(i) = c.im;
+            *imag.add(i) = c.im;
+        }
+
+        0
     }
-
-    0
-}}
+}
 
 /// Computes the Inverse Fast Fourier Transform (IFFT) in-place.
 #[unsafe(no_mangle)]
@@ -93,34 +103,38 @@ pub unsafe extern "C" fn rssn_num_ifft_inplace(
     real: *mut f64,
     imag: *mut f64,
     len: usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if real.is_null() || imag.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if real.is_null()
+            || imag.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_ifft_inplace"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    if !len.is_power_of_two() {
+        if !len.is_power_of_two() {
 
-        update_last_error(
-            "IFFT length must be a \
-             power of two for \
-             in-place operation."
-                .to_string(),
-        );
+            update_last_error(
+                "IFFT length must be \
+                 a power of two for \
+                 in-place operation."
+                    .to_string(),
+            );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let mut data: Vec<Complex<f64>> =
-        (0 .. len)
+        let mut data: Vec<
+            Complex<f64>,
+        > = (0 .. len)
             .map(|i| {
 
                 Complex::new(
@@ -130,14 +144,20 @@ pub unsafe extern "C" fn rssn_num_ifft_inplace(
             })
             .collect();
 
-    transforms::ifft_slice(&mut data);
+        transforms::ifft_slice(
+            &mut data,
+        );
 
-    for (i, c) in data.iter().enumerate() {
+        for (i, c) in data
+            .iter()
+            .enumerate()
+        {
 
-        *real.add(i) = c.re;
+            *real.add(i) = c.re;
 
-        *imag.add(i) = c.im;
+            *imag.add(i) = c.im;
+        }
+
+        0
     }
-
-    0
-}}
+}

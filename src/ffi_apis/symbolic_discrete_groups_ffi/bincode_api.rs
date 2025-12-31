@@ -1,5 +1,5 @@
-use crate::ffi_apis::common::to_bincode_buffer;
 use crate::ffi_apis::common::BincodeBuffer;
+use crate::ffi_apis::common::to_bincode_buffer;
 use crate::symbolic::discrete_groups::cyclic_group;
 use crate::symbolic::discrete_groups::dihedral_group;
 use crate::symbolic::discrete_groups::klein_four_group;
@@ -102,8 +102,8 @@ pub unsafe extern "C" fn rssn_bincode_symmetric_group_create(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_bincode_klein_four_group_create(
-) -> BincodeBuffer {
+pub unsafe extern "C" fn rssn_bincode_klein_four_group_create()
+-> BincodeBuffer {
 
     let group = klein_four_group();
 

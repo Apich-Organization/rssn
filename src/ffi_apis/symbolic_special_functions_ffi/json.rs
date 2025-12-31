@@ -36,7 +36,7 @@ pub unsafe extern "C" fn rssn_json_gamma(
 
         to_json_string(
             &special_functions::gamma(
-                a,
+                &a,
             ),
         )
     } else {
@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rssn_json_ln_gamma(
 
     if let Some(a) = arg {
 
-        to_json_string(&special_functions::ln_gamma(a))
+        to_json_string(&special_functions::ln_gamma(&a))
     } else {
 
         std::ptr::null_mut()
@@ -94,18 +94,17 @@ pub unsafe extern "C" fn rssn_json_beta(
     let b: Option<Expr> =
         from_json_string(b_json);
 
-    match (a, b)
-    { (Some(val_a), Some(val_b)) => {
-
-        to_json_string(
+    match (a, b) {
+        | (
+            Some(val_a),
+            Some(val_b),
+        ) => to_json_string(
             &special_functions::beta(
                 val_a, val_b,
             ),
-        )
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        ),
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes the symbolic Digamma function ψ(z) via JSON interface.
@@ -130,7 +129,7 @@ pub unsafe extern "C" fn rssn_json_digamma(
 
         to_json_string(
             &special_functions::digamma(
-                a,
+                &a,
             ),
         )
     } else {
@@ -163,7 +162,7 @@ pub unsafe extern "C" fn rssn_json_polygamma(
 
     match (n, z) { (Some(n), Some(z)) => {
 
-        to_json_string(&special_functions::polygamma(n, z))
+        to_json_string(&special_functions::polygamma(&n, &z))
     } _ => {
 
         std::ptr::null_mut()
@@ -195,7 +194,7 @@ pub unsafe extern "C" fn rssn_json_erf(
     if let Some(a) = arg {
 
         to_json_string(
-            &special_functions::erf(a),
+            &special_functions::erf(&a),
         )
     } else {
 
@@ -224,7 +223,9 @@ pub unsafe extern "C" fn rssn_json_erfc(
     if let Some(a) = arg {
 
         to_json_string(
-            &special_functions::erfc(a),
+            &special_functions::erfc(
+                &a,
+            ),
         )
     } else {
 
@@ -286,7 +287,9 @@ pub unsafe extern "C" fn rssn_json_zeta(
     if let Some(a) = arg {
 
         to_json_string(
-            &special_functions::zeta(a),
+            &special_functions::zeta(
+                &a,
+            ),
         )
     } else {
 
@@ -323,7 +326,7 @@ pub unsafe extern "C" fn rssn_json_bessel_j(
     match (order, arg)
     { (Some(o), Some(a)) => {
 
-        to_json_string(&special_functions::bessel_j(o, a))
+        to_json_string(&special_functions::bessel_j(&o, &a))
     } _ => {
 
         std::ptr::null_mut()
@@ -355,7 +358,7 @@ pub unsafe extern "C" fn rssn_json_bessel_y(
     match (order, arg)
     { (Some(o), Some(a)) => {
 
-        to_json_string(&special_functions::bessel_y(o, a))
+        to_json_string(&special_functions::bessel_y(&o, &a))
     } _ => {
 
         std::ptr::null_mut()
@@ -387,7 +390,7 @@ pub unsafe extern "C" fn rssn_json_bessel_i(
     match (order, arg)
     { (Some(o), Some(a)) => {
 
-        to_json_string(&special_functions::bessel_i(o, a))
+        to_json_string(&special_functions::bessel_i(&o, &a))
     } _ => {
 
         std::ptr::null_mut()
@@ -419,7 +422,7 @@ pub unsafe extern "C" fn rssn_json_bessel_k(
     match (order, arg)
     { (Some(o), Some(a)) => {
 
-        to_json_string(&special_functions::bessel_k(o, a))
+        to_json_string(&special_functions::bessel_k(&o, &a))
     } _ => {
 
         std::ptr::null_mut()
@@ -455,7 +458,7 @@ pub unsafe extern "C" fn rssn_json_legendre_p(
     match (degree, arg)
     { (Some(d), Some(a)) => {
 
-        to_json_string(&special_functions::legendre_p(d, a))
+        to_json_string(&special_functions::legendre_p(&d, a))
     } _ => {
 
         std::ptr::null_mut()
@@ -487,7 +490,7 @@ pub unsafe extern "C" fn rssn_json_laguerre_l(
     match (degree, arg)
     { (Some(d), Some(a)) => {
 
-        to_json_string(&special_functions::laguerre_l(d, a))
+        to_json_string(&special_functions::laguerre_l(&d, a))
     } _ => {
 
         std::ptr::null_mut()

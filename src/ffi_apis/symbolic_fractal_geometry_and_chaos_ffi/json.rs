@@ -29,18 +29,22 @@ pub extern "C" fn rssn_json_ifs_create(
         functions,
         probabilities,
         variables,
-    ) { (Some(f), Some(p), Some(v)) => {
+    ) {
+        | (
+            Some(f),
+            Some(p),
+            Some(v),
+        ) => {
 
-        let ifs =
+            let ifs =
             IteratedFunctionSystem::new(
                 f, p, v,
             );
 
-        to_json_string(&ifs)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&ifs)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Calculates similarity dimension (JSON)
@@ -102,17 +106,16 @@ pub extern "C" fn rssn_json_complex_system_iterate(
     let z: Option<Expr> =
         from_json_string(z_json);
 
-    match (system, z)
-    { (Some(sys), Some(z_val)) => {
+    match (system, z) {
+        | (Some(sys), Some(z_val)) => {
 
-        let result =
-            sys.iterate(&z_val);
+            let result =
+                sys.iterate(&z_val);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Finds fixed points (JSON)
@@ -279,8 +282,8 @@ pub extern "C" fn rssn_json_lyapunov_exponent(
 /// Returns Lorenz system equations (JSON)
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_json_lorenz_system(
-) -> *mut std::os::raw::c_char {
+pub extern "C" fn rssn_json_lorenz_system()
+-> *mut std::os::raw::c_char {
 
     let (dx, dy, dz) = lorenz_system();
 

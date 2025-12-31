@@ -554,10 +554,16 @@ pub(crate) fn rs_find_error_locator_poly(
             let mut correction =
                 vec![b];
 
-            correction.extend(vec![
-                0;
-                i64::from(n as i32 - m).try_into().unwrap_or(0)
-            ]);
+            correction.extend(
+                vec![
+                    0;
+                    i64::from(
+                        n as i32 - m
+                    )
+                    .try_into()
+                    .unwrap_or(0)
+                ],
+            );
 
             correction = poly_mul_gf256(
                 &correction,

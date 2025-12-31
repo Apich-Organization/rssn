@@ -368,7 +368,9 @@ fn count_pole_order(
                     exp.to_f64()
                 {
 
-                    return (n as i64).try_into().unwrap_or(0);
+                    return (n as i64)
+                        .try_into()
+                        .unwrap_or(0);
                 }
 
                 return 1;

@@ -87,6 +87,9 @@
 //! assert!((bessel_j1(0.0)).abs() < 1e-6);
 //! ```
 
+use std::f64::consts::FRAC_2_PI;
+use std::f64::consts::FRAC_PI_4;
+
 use statrs::function::beta::beta;
 use statrs::function::beta::ln_beta;
 use statrs::function::erf::erf;
@@ -94,8 +97,6 @@ use statrs::function::erf::erfc;
 use statrs::function::gamma::digamma;
 use statrs::function::gamma::gamma;
 use statrs::function::gamma::ln_gamma;
-use std::f64::consts::FRAC_2_PI;
-use std::f64::consts::FRAC_PI_4;
 
 // ============================================================================
 // Gamma and Related Functions
@@ -379,12 +380,16 @@ pub fn inverse_erf(x: f64) -> f64 {
     // Use rational approximation followed by Newton-Raphson refinement
     if x.abs() >= 1.0 {
 
-        if (x - 1.0).abs() < f64::EPSILON {
+        if (x - 1.0).abs()
+            < f64::EPSILON
+        {
 
             return f64::INFINITY;
         }
 
-        if (x + 1.0).abs() < f64::EPSILON {
+        if (x + 1.0).abs()
+            < f64::EPSILON
+        {
 
             return f64::NEG_INFINITY;
         }
@@ -791,8 +796,7 @@ pub fn bessel_j0(x: f64) -> f64 {
 
         let y = z * z;
 
-        let xx =
-            ax - FRAC_PI_4; // ax - pi/4
+        let xx = ax - FRAC_PI_4; // ax - pi/4
         let ans1 = 1.0
             + y * (-0.001_098_628_627e-2
                 + y * (0.273_451_040_7e-4 + y * (-0.207_337_063_9e-5 + y * 0.209_388_721_1e-6)));
@@ -881,8 +885,7 @@ pub fn bessel_j1(x: f64) -> f64 {
             + y * (-0.200_269_087_3e-3
                 + y * (0.844_919_909_6e-5 + y * (-0.882_289_87e-6 + y * 0.105_787_412e-6)));
 
-        let result = (FRAC_2_PI
-            / ax)
+        let result = (FRAC_2_PI / ax)
             .sqrt()
             * xx.cos().mul_add(
                 ans1,
@@ -963,8 +966,7 @@ pub fn bessel_y0(x: f64) -> f64 {
 
         let y = z * z;
 
-        let xx =
-            x - FRAC_PI_4;
+        let xx = x - FRAC_PI_4;
 
         let ans1 = 1.0
             + y * (-0.001_098_628_627e-2

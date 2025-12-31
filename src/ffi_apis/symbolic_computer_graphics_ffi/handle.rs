@@ -39,20 +39,25 @@ use crate::symbolic::vector::Vector;
 pub unsafe extern "C" fn rssn_translation_2d(
     tx: *const Expr,
     ty: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if tx.is_null() || ty.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if tx.is_null() || ty.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            translation_2d(
+                (*tx).clone(),
+                (*ty).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        translation_2d(
-            (*tx).clone(),
-            (*ty).clone(),
-        ),
-    ))
-}}
+}
 
 /// Generates a 4x4 3D translation matrix.
 #[unsafe(no_mangle)]
@@ -69,24 +74,28 @@ pub unsafe extern "C" fn rssn_translation_3d(
     tx: *const Expr,
     ty: *const Expr,
     tz: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if tx.is_null()
-        || ty.is_null()
-        || tz.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if tx.is_null()
+            || ty.is_null()
+            || tz.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            translation_3d(
+                (*tx).clone(),
+                (*ty).clone(),
+                (*tz).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        translation_3d(
-            (*tx).clone(),
-            (*ty).clone(),
-            (*tz).clone(),
-        ),
-    ))
-}}
+}
 
 /// Generates a 3x3 2D rotation matrix.
 #[unsafe(no_mangle)]
@@ -101,17 +110,23 @@ pub unsafe extern "C" fn rssn_translation_3d(
 
 pub unsafe extern "C" fn rssn_rotation_2d(
     angle: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if angle.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if angle.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            rotation_2d(
+                (*angle).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        rotation_2d((*angle).clone()),
-    ))
-}}
+}
 
 /// Generates a 4x4 3D rotation matrix around the X-axis.
 #[unsafe(no_mangle)]
@@ -126,17 +141,23 @@ pub unsafe extern "C" fn rssn_rotation_2d(
 
 pub unsafe extern "C" fn rssn_rotation_3d_x(
     angle: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if angle.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if angle.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            rotation_3d_x(
+                (*angle).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        rotation_3d_x((*angle).clone()),
-    ))
-}}
+}
 
 /// Generates a 4x4 3D rotation matrix around the Y-axis.
 #[unsafe(no_mangle)]
@@ -151,17 +172,23 @@ pub unsafe extern "C" fn rssn_rotation_3d_x(
 
 pub unsafe extern "C" fn rssn_rotation_3d_y(
     angle: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if angle.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if angle.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            rotation_3d_y(
+                (*angle).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        rotation_3d_y((*angle).clone()),
-    ))
-}}
+}
 
 /// Generates a 4x4 3D rotation matrix around the Z-axis.
 #[unsafe(no_mangle)]
@@ -176,17 +203,23 @@ pub unsafe extern "C" fn rssn_rotation_3d_y(
 
 pub unsafe extern "C" fn rssn_rotation_3d_z(
     angle: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if angle.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if angle.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            rotation_3d_z(
+                (*angle).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        rotation_3d_z((*angle).clone()),
-    ))
-}}
+}
 
 /// Generates a 3x3 2D scaling matrix.
 #[unsafe(no_mangle)]
@@ -202,20 +235,25 @@ pub unsafe extern "C" fn rssn_rotation_3d_z(
 pub unsafe extern "C" fn rssn_scaling_2d(
     sx: *const Expr,
     sy: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if sx.is_null() || sy.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if sx.is_null() || sy.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            scaling_2d(
+                (*sx).clone(),
+                (*sy).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        scaling_2d(
-            (*sx).clone(),
-            (*sy).clone(),
-        ),
-    ))
-}}
+}
 
 /// Generates a 4x4 3D scaling matrix.
 #[unsafe(no_mangle)]
@@ -232,24 +270,28 @@ pub unsafe extern "C" fn rssn_scaling_3d(
     sx: *const Expr,
     sy: *const Expr,
     sz: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if sx.is_null()
-        || sy.is_null()
-        || sz.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if sx.is_null()
+            || sy.is_null()
+            || sz.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            scaling_3d(
+                (*sx).clone(),
+                (*sy).clone(),
+                (*sz).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        scaling_3d(
-            (*sx).clone(),
-            (*sy).clone(),
-            (*sz).clone(),
-        ),
-    ))
-}}
+}
 
 /// Generates a 3x3 2D shear matrix.
 #[unsafe(no_mangle)]
@@ -265,18 +307,26 @@ pub unsafe extern "C" fn rssn_scaling_3d(
 pub unsafe extern "C" fn rssn_shear_2d(
     shx: *const Expr,
     shy: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if shx.is_null() || shy.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if shx.is_null()
+            || shy.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            shear_2d(
+                (*shx).clone(),
+                (*shy).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(shear_2d(
-        (*shx).clone(),
-        (*shy).clone(),
-    )))
-}}
+}
 
 /// Generates a 3x3 2D reflection matrix across a line.
 #[unsafe(no_mangle)]
@@ -291,17 +341,23 @@ pub unsafe extern "C" fn rssn_shear_2d(
 
 pub unsafe extern "C" fn rssn_reflection_2d(
     angle: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if angle.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if angle.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            reflection_2d(
+                (*angle).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        reflection_2d((*angle).clone()),
-    ))
-}}
+}
 
 /// Generates a 4x4 3D reflection matrix across a plane.
 #[unsafe(no_mangle)]
@@ -318,24 +374,28 @@ pub unsafe extern "C" fn rssn_reflection_3d(
     nx: *const Expr,
     ny: *const Expr,
     nz: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if nx.is_null()
-        || ny.is_null()
-        || nz.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if nx.is_null()
+            || ny.is_null()
+            || nz.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            reflection_3d(
+                (*nx).clone(),
+                (*ny).clone(),
+                (*nz).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        reflection_3d(
-            (*nx).clone(),
-            (*ny).clone(),
-            (*nz).clone(),
-        ),
-    ))
-}}
+}
 
 /// Generates a 4x4 3D rotation matrix around an arbitrary axis.
 #[unsafe(no_mangle)]
@@ -351,21 +411,26 @@ pub unsafe extern "C" fn rssn_reflection_3d(
 pub unsafe extern "C" fn rssn_rotation_axis_angle(
     axis: *const Vector,
     angle: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if axis.is_null() || angle.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if axis.is_null()
+            || angle.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            rotation_axis_angle(
+                &*axis,
+                (*angle).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        rotation_axis_angle(
-            &*axis,
-            (*angle).clone(),
-        ),
-    ))
-}}
+}
 
 /// Generates a 4x4 perspective projection matrix.
 #[unsafe(no_mangle)]
@@ -383,26 +448,30 @@ pub unsafe extern "C" fn rssn_perspective_projection(
     aspect: *const Expr,
     near: *const Expr,
     far: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if fovy.is_null()
-        || aspect.is_null()
-        || near.is_null()
-        || far.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if fovy.is_null()
+            || aspect.is_null()
+            || near.is_null()
+            || far.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            perspective_projection(
+                (*fovy).clone(),
+                &*aspect,
+                (*near).clone(),
+                (*far).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        perspective_projection(
-            (*fovy).clone(),
-            &*aspect,
-            (*near).clone(),
-            (*far).clone(),
-        ),
-    ))
-}}
+}
 
 /// Generates a 4x4 orthographic projection matrix.
 #[unsafe(no_mangle)]
@@ -422,30 +491,34 @@ pub unsafe extern "C" fn rssn_orthographic_projection(
     top: *const Expr,
     near: *const Expr,
     far: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if left.is_null()
-        || right.is_null()
-        || bottom.is_null()
-        || top.is_null()
-        || near.is_null()
-        || far.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if left.is_null()
+            || right.is_null()
+            || bottom.is_null()
+            || top.is_null()
+            || near.is_null()
+            || far.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            orthographic_projection(
+                (*left).clone(),
+                (*right).clone(),
+                (*bottom).clone(),
+                (*top).clone(),
+                (*near).clone(),
+                (*far).clone(),
+            ),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        orthographic_projection(
-            (*left).clone(),
-            (*right).clone(),
-            (*bottom).clone(),
-            (*top).clone(),
-            (*near).clone(),
-            (*far).clone(),
-        ),
-    ))
-}}
+}
 
 /// Creates a new Bezier curve from control points.
 #[unsafe(no_mangle)]
@@ -461,29 +534,36 @@ pub unsafe extern "C" fn rssn_orthographic_projection(
 pub unsafe extern "C" fn rssn_bezier_curve_new(
     points: *const Vector,
     count: usize,
-) -> *mut BezierCurve { unsafe {
+) -> *mut BezierCurve {
 
-    if points.is_null() || count == 0 {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if points.is_null()
+            || count == 0
+        {
 
-    let control_points: Vec<Vector> =
-        std::slice::from_raw_parts(
+            return std::ptr::null_mut(
+            );
+        }
+
+        let control_points: Vec<
+            Vector,
+        > = std::slice::from_raw_parts(
             points,
             count,
         )
         .to_vec();
 
-    let degree = count - 1;
+        let degree = count - 1;
 
-    Box::into_raw(Box::new(
-        BezierCurve {
-            control_points,
-            degree,
-        },
-    ))
-}}
+        Box::into_raw(Box::new(
+            BezierCurve {
+                control_points,
+                degree,
+            },
+        ))
+    }
+}
 
 /// Evaluates a Bezier curve at parameter t.
 #[unsafe(no_mangle)]
@@ -499,17 +579,24 @@ pub unsafe extern "C" fn rssn_bezier_curve_new(
 pub unsafe extern "C" fn rssn_bezier_curve_evaluate(
     curve: *const BezierCurve,
     t: *const Expr,
-) -> *mut Vector { unsafe {
+) -> *mut Vector {
 
-    if curve.is_null() || t.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if curve.is_null()
+            || t.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let result =
+            (*curve).evaluate(&*t);
+
+        Box::into_raw(Box::new(result))
     }
-
-    let result = (*curve).evaluate(&*t);
-
-    Box::into_raw(Box::new(result))
-}}
+}
 
 /// Computes the derivative (tangent) of a Bezier curve at parameter t.
 #[unsafe(no_mangle)]
@@ -525,18 +612,24 @@ pub unsafe extern "C" fn rssn_bezier_curve_evaluate(
 pub unsafe extern "C" fn rssn_bezier_curve_derivative(
     curve: *const BezierCurve,
     t: *const Expr,
-) -> *mut Vector { unsafe {
+) -> *mut Vector {
 
-    if curve.is_null() || t.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if curve.is_null()
+            || t.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let result =
+            (*curve).derivative(&*t);
+
+        Box::into_raw(Box::new(result))
     }
-
-    let result =
-        (*curve).derivative(&*t);
-
-    Box::into_raw(Box::new(result))
-}}
+}
 
 /// Splits a Bezier curve at parameter t into two curves.
 /// Returns left curve. Use `rssn_bezier_curve_split_right` for the right curve.
@@ -553,18 +646,24 @@ pub unsafe extern "C" fn rssn_bezier_curve_derivative(
 pub unsafe extern "C" fn rssn_bezier_curve_split_left(
     curve: *const BezierCurve,
     t: *const Expr,
-) -> *mut BezierCurve { unsafe {
+) -> *mut BezierCurve {
 
-    if curve.is_null() || t.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if curve.is_null()
+            || t.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let (left, _right) =
+            (*curve).split(&*t);
+
+        Box::into_raw(Box::new(left))
     }
-
-    let (left, _right) =
-        (*curve).split(&*t);
-
-    Box::into_raw(Box::new(left))
-}}
+}
 
 /// Splits a Bezier curve at parameter t into two curves.
 /// Returns right curve.
@@ -581,18 +680,24 @@ pub unsafe extern "C" fn rssn_bezier_curve_split_left(
 pub unsafe extern "C" fn rssn_bezier_curve_split_right(
     curve: *const BezierCurve,
     t: *const Expr,
-) -> *mut BezierCurve { unsafe {
+) -> *mut BezierCurve {
 
-    if curve.is_null() || t.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if curve.is_null()
+            || t.is_null()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let (_left, right) =
+            (*curve).split(&*t);
+
+        Box::into_raw(Box::new(right))
     }
-
-    let (_left, right) =
-        (*curve).split(&*t);
-
-    Box::into_raw(Box::new(right))
-}}
+}
 
 /// Frees a Bezier curve.
 #[unsafe(no_mangle)]
@@ -607,13 +712,16 @@ pub unsafe extern "C" fn rssn_bezier_curve_split_right(
 
 pub unsafe extern "C" fn rssn_bezier_curve_free(
     curve: *mut BezierCurve
-) { unsafe {
+) {
 
-    if !curve.is_null() {
+    unsafe {
 
-        drop(Box::from_raw(curve));
+        if !curve.is_null() {
+
+            drop(Box::from_raw(curve));
+        }
     }
-}}
+}
 
 /// Creates a new polygon mesh.
 #[unsafe(no_mangle)]
@@ -629,26 +737,33 @@ pub unsafe extern "C" fn rssn_bezier_curve_free(
 pub unsafe extern "C" fn rssn_polygon_mesh_new(
     vertices: *const Vector,
     vertex_count: usize,
-) -> *mut PolygonMesh { unsafe {
+) -> *mut PolygonMesh {
 
-    if vertices.is_null()
-        || vertex_count == 0
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if vertices.is_null()
+            || vertex_count == 0
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let verts: Vec<Vector> =
+            std::slice::from_raw_parts(
+                vertices,
+                vertex_count,
+            )
+            .to_vec();
+
+        Box::into_raw(Box::new(
+            PolygonMesh::new(
+                verts,
+                vec![],
+            ),
+        ))
     }
-
-    let verts: Vec<Vector> =
-        std::slice::from_raw_parts(
-            vertices,
-            vertex_count,
-        )
-        .to_vec();
-
-    Box::into_raw(Box::new(
-        PolygonMesh::new(verts, vec![]),
-    ))
-}}
+}
 
 /// Triangulates a polygon mesh.
 #[unsafe(no_mangle)]
@@ -663,20 +778,24 @@ pub unsafe extern "C" fn rssn_polygon_mesh_new(
 
 pub unsafe extern "C" fn rssn_polygon_mesh_triangulate(
     mesh: *const PolygonMesh
-) -> *mut PolygonMesh { unsafe {
+) -> *mut PolygonMesh {
 
-    if mesh.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if mesh.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let triangulated =
+            (*mesh).triangulate();
+
+        Box::into_raw(Box::new(
+            triangulated,
+        ))
     }
-
-    let triangulated =
-        (*mesh).triangulate();
-
-    Box::into_raw(Box::new(
-        triangulated,
-    ))
-}}
+}
 
 /// Frees a polygon mesh.
 #[unsafe(no_mangle)]
@@ -691,13 +810,16 @@ pub unsafe extern "C" fn rssn_polygon_mesh_triangulate(
 
 pub unsafe extern "C" fn rssn_polygon_mesh_free(
     mesh: *mut PolygonMesh
-) { unsafe {
+) {
 
-    if !mesh.is_null() {
+    unsafe {
 
-        drop(Box::from_raw(mesh));
+        if !mesh.is_null() {
+
+            drop(Box::from_raw(mesh));
+        }
     }
-}}
+}
 
 /// Frees a Vector.
 #[unsafe(no_mangle)]
@@ -712,10 +834,13 @@ pub unsafe extern "C" fn rssn_polygon_mesh_free(
 
 pub unsafe extern "C" fn rssn_vector_free(
     vec: *mut Vector
-) { unsafe {
+) {
 
-    if !vec.is_null() {
+    unsafe {
 
-        drop(Box::from_raw(vec));
+        if !vec.is_null() {
+
+            drop(Box::from_raw(vec));
+        }
     }
-}}
+}

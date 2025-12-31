@@ -199,8 +199,8 @@ pub fn run_schrodinger_simulation(
 /// This function will return an error if the underlying `run_schrodinger_simulation` fails
 /// or if the final state cannot be written to the NPY file.
 
-pub fn simulate_double_slit_scenario(
-) -> Result<(), String> {
+pub fn simulate_double_slit_scenario()
+-> Result<(), String> {
 
     const NX: usize = 256;
 
@@ -270,7 +270,8 @@ pub fn simulate_double_slit_scenario(
         NY as f64 / 2.0,
     );
 
-    let initial_momentum = (5.0_f64, 0.0_f64);
+    let initial_momentum =
+        (5.0_f64, 0.0_f64);
 
     let packet_width_sq = 100.0;
 
@@ -288,7 +289,8 @@ pub fn simulate_double_slit_scenario(
                 dx * dx + dy * dy;
 
             let phase =
-                initial_momentum.0
+                initial_momentum
+                    .0
                     .mul_add(
                         dx,
                         initial_momentum

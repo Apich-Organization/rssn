@@ -103,8 +103,8 @@ pub unsafe extern "C" fn rssn_json_symmetric_group_create(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_json_klein_four_group_create(
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_klein_four_group_create()
+-> *mut c_char {
 
     let group = klein_four_group();
 

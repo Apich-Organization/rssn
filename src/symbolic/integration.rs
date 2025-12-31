@@ -55,7 +55,7 @@ pub fn integrate_rational_function(
 
     let (quotient, remainder) = p
         .clone()
-        .long_division(q.clone(), x);
+        .long_division(&q.clone(), x);
 
     let integral_of_quotient =
         poly_integrate(&quotient, x);
@@ -81,7 +81,7 @@ pub fn integrate_rational_function(
 
     let b = q
         .clone()
-        .long_division(d.clone(), x)
+        .long_division(&d, x)
         .0;
 
     let (a_poly, c_poly) =
@@ -127,9 +127,15 @@ pub(crate) fn build_and_solve_hermite_system(
     String,
 > {
 
-    let deg_d = d.degree(x).try_into().unwrap_or(0);
+    let deg_d = d
+        .degree(x)
+        .try_into()
+        .unwrap_or(0);
 
-    let deg_b = b.degree(x).try_into().unwrap_or(0);
+    let deg_b = b
+        .degree(x)
+        .try_into()
+        .unwrap_or(0);
 
     let a_coeffs: Vec<_> = (0 .. deg_b)
         .map(|i| {
@@ -160,7 +166,7 @@ pub(crate) fn build_and_solve_hermite_system(
 
     let t = (b.clone()
         * q_prime.clone())
-    .long_division(d.clone(), x)
+    .long_division(&d.clone(), x)
     .0;
 
     let term1 = b.clone() * c_prime_sym;
@@ -313,58 +319,51 @@ pub fn risch_norman_integrate(
                 expr, &t, x,
             );
 
-            let (p_t, r_t) = a_t
-                .long_division(
-                    d_t.clone(),
-                    x,
-                );
+        let (p_t, r_t) =
+            a_t.long_division(&d_t, x);
 
-            let poly_integral = match t
-            {
-                | Expr::Exp(_) => {
-                    integrate_poly_exp(
-                        &p_t, &t, x,
-                    )
-                },
-                | Expr::Log(_) => {
-                    integrate_poly_log(
-                        &p_t, &t, x,
-                    )
-                },
-                | _ => Err(
-                    "Unsupported \
+        let poly_integral = match t {
+            | Expr::Exp(_) => {
+                integrate_poly_exp(
+                    &p_t, &t, x,
+                )
+            },
+            | Expr::Log(_) => {
+                integrate_poly_log(
+                    &p_t, &t, x,
+                )
+            },
+            | _ => {
+                Err("Unsupported \
                      transcendental \
                      type"
-                        .to_string(),
-                ),
-            };
+                    .to_string())
+            },
+        };
 
-            let rational_integral =
-                if r_t.terms.is_empty()
-                {
+        let rational_integral = if r_t
+            .terms
+            .is_empty()
+        {
 
-                    Ok(Expr::Constant(
-                        0.0,
-                    ))
-                } else {
+            Ok(Expr::Constant(0.0))
+        } else {
 
-                    hermite_integrate_rational(
-                    &r_t,
-                    &d_t,
-                    &t.to_string(),
-                )
-                };
+            hermite_integrate_rational(
+                &r_t,
+                &d_t,
+                &t.to_string(),
+            )
+        };
 
-            if let (Ok(pi), Ok(ri)) = (
-                poly_integral,
-                rational_integral,
-            ) {
+        if let (Ok(pi), Ok(ri)) = (
+            poly_integral,
+            rational_integral,
+        ) {
 
-                return simplify(
-                    &Expr::new_add(
-                        pi, ri,
-                    ),
-                );
+            return simplify(
+                &Expr::new_add(pi, ri),
+            );
         }
     }
 
@@ -398,8 +397,10 @@ pub(crate) fn integrate_poly_log(
         return Ok(Expr::Constant(0.0));
     }
 
-    let n =
-        p_in_t.degree(t_var).try_into().unwrap_or(0);
+    let n = p_in_t
+        .degree(t_var)
+        .try_into()
+        .unwrap_or(0);
 
     let p_coeffs =
         p_in_t.get_coeffs_as_vec(t_var);
@@ -427,7 +428,8 @@ pub(crate) fn integrate_poly_log(
             Monomial(BTreeMap::from([
                 (
                     t_var.to_string(),
-                    n.try_into().unwrap_or(0),
+                    n.try_into()
+                        .unwrap_or(0),
                 ),
             ])),
             Expr::Constant(1.0),
@@ -525,7 +527,9 @@ pub(crate) fn integrate_poly_log(
         q_n,
         Expr::new_pow(
             t.clone(),
-            Expr::Constant(f64::from(n)),
+            Expr::Constant(f64::from(
+                n,
+            )),
         ),
     );
 
@@ -605,7 +609,10 @@ pub fn integrate_poly_exp(
     let p_coeffs =
         p_in_t.get_coeffs_as_vec(x);
 
-    let n = p_in_t.degree(x).try_into().unwrap_or(0);
+    let n = p_in_t
+        .degree(x)
+        .try_into()
+        .unwrap_or(0);
 
     let mut q_coeffs = vec![
             Expr::Constant(0.0);
@@ -841,9 +848,15 @@ pub(crate) fn sylvester_matrix(
     x: &str,
 ) -> Expr {
 
-    let n = p.degree(x).try_into().unwrap_or(0);
+    let n = p
+        .degree(x)
+        .try_into()
+        .unwrap_or(0);
 
-    let m = q.degree(x).try_into().unwrap_or(0);
+    let m = q
+        .degree(x)
+        .try_into()
+        .unwrap_or(0);
 
     let mut matrix = vec![
         vec![
@@ -978,7 +991,7 @@ pub fn hermite_integrate_rational(
     /// A `Result` containing an `Expr` representing the integral, or an error string if computation fails.
     let (quotient, remainder) = p
         .clone()
-        .long_division(q.clone(), x);
+        .long_division(&q.clone(), x);
 
     let integral_of_quotient =
         poly_integrate(&quotient, x);
@@ -1004,7 +1017,7 @@ pub fn hermite_integrate_rational(
 
     let b = q
         .clone()
-        .long_division(d.clone(), x)
+        .long_division(&d, x)
         .0;
 
     let (a_poly, c_poly) =
@@ -1114,7 +1127,10 @@ pub(crate) fn expr_to_rational_poly(
     expr: &Expr,
     t: &Expr,
     _x: &str,
-) -> (SparsePolynomial, SparsePolynomial) {
+) -> (
+    SparsePolynomial,
+    SparsePolynomial,
+) {
 
     // Substitute t with a variable "t_var" to convert to polynomial
     // First, we need to replace occurrences of t in expr with a variable

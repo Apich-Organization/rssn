@@ -7,13 +7,13 @@ use std::os::raw::c_char;
 use crate::input::parser::parse_expr;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
+use crate::symbolic::vector_calculus::ParametricCurve;
+use crate::symbolic::vector_calculus::ParametricSurface;
+use crate::symbolic::vector_calculus::Volume;
 use crate::symbolic::vector_calculus::line_integral_scalar;
 use crate::symbolic::vector_calculus::line_integral_vector;
 use crate::symbolic::vector_calculus::surface_integral;
 use crate::symbolic::vector_calculus::volume_integral;
-use crate::symbolic::vector_calculus::ParametricCurve;
-use crate::symbolic::vector_calculus::ParametricSurface;
-use crate::symbolic::vector_calculus::Volume;
 
 // Helper function to parse expression from C string
 fn parse_expr_from_cstr(
@@ -33,7 +33,7 @@ fn parse_expr_from_cstr(
             {
                 | Ok(s) => s,
                 | Err(_) => {
-                    return None
+                    return None;
                 },
             };
 

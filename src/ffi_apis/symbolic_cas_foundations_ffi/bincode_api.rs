@@ -3,9 +3,9 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::cas_foundations;
 use crate::symbolic::core::Expr;
 use crate::symbolic::grobner::MonomialOrder;
@@ -33,7 +33,7 @@ pub extern "C" fn rssn_cas_expand_bincode(
         | Some(e) => e,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -57,7 +57,7 @@ pub extern "C" fn rssn_cas_factorize_bincode(
         | Some(e) => e,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -83,7 +83,7 @@ pub extern "C" fn rssn_cas_normalize_bincode(
         | Some(e) => e,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -110,7 +110,7 @@ pub extern "C" fn rssn_cas_simplify_with_relations_bincode(
         | Some(i) => i,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 

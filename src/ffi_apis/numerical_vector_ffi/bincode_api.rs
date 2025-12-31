@@ -291,7 +291,7 @@ pub unsafe extern "C" fn rssn_vec_norm_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -368,7 +368,7 @@ pub unsafe extern "C" fn rssn_vec_normalize_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 
@@ -658,7 +658,7 @@ pub unsafe extern "C" fn rssn_vec_lerp_bincode(
                      error"
                         .to_string(),
                 ),
-            })
+            });
         },
     };
 

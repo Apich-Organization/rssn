@@ -26,29 +26,31 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
     max_iter: usize,
     res_re: *mut f64,
     res_im: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if f_ptr.is_null()
-        || f_prime_ptr.is_null()
-        || res_re.is_null()
-        || res_im.is_null()
-    {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_mv_newton_method_complex".to_string());
+        if f_ptr.is_null()
+            || f_prime_ptr.is_null()
+            || res_re.is_null()
+            || res_im.is_null()
+        {
 
-        return -1;
-    }
+            update_last_error("Null pointer passed to rssn_num_mv_newton_method_complex".to_string());
 
-    let f = &*f_ptr;
+            return -1;
+        }
 
-    let f_prime = &*f_prime_ptr;
+        let f = &*f_ptr;
 
-    let start_point = Complex::new(
-        start_re,
-        start_im,
-    );
+        let f_prime = &*f_prime_ptr;
 
-    match multi_valued::newton_method_complex(
+        let start_point = Complex::new(
+            start_re,
+            start_im,
+        );
+
+        match multi_valued::newton_method_complex(
         f,
         f_prime,
         start_point,
@@ -70,7 +72,8 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex(
             -1
         },
     }
-}}
+    }
+}
 
 /// Computes the k-th branch of the complex logarithm.
 #[unsafe(no_mangle)]
@@ -89,19 +92,22 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k(
     k: i32,
     res_re: *mut f64,
     res_im: *mut f64,
-) { unsafe {
+) {
 
-    let z = Complex::new(re, im);
+    unsafe {
 
-    let res =
-        multi_valued::complex_log_k(
-            z, k,
-        );
+        let z = Complex::new(re, im);
 
-    *res_re = res.re;
+        let res =
+            multi_valued::complex_log_k(
+                z, k,
+            );
 
-    *res_im = res.im;
-}}
+        *res_re = res.re;
+
+        *res_im = res.im;
+    }
+}
 
 /// Computes the k-th branch of the complex square root.
 #[unsafe(no_mangle)]
@@ -120,19 +126,22 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k(
     k: i32,
     res_re: *mut f64,
     res_im: *mut f64,
-) { unsafe {
+) {
 
-    let z = Complex::new(re, im);
+    unsafe {
 
-    let res =
+        let z = Complex::new(re, im);
+
+        let res =
         multi_valued::complex_sqrt_k(
             z, k,
         );
 
-    *res_re = res.re;
+        *res_re = res.re;
 
-    *res_im = res.im;
-}}
+        *res_im = res.im;
+    }
+}
 
 /// Computes the k-th branch of the complex power z^w.
 #[unsafe(no_mangle)]
@@ -153,21 +162,26 @@ pub unsafe extern "C" fn rssn_num_mv_complex_pow_k(
     k: i32,
     res_re: *mut f64,
     res_im: *mut f64,
-) { unsafe {
+) {
 
-    let z = Complex::new(z_re, z_im);
+    unsafe {
 
-    let w = Complex::new(w_re, w_im);
+        let z =
+            Complex::new(z_re, z_im);
 
-    let res =
-        multi_valued::complex_pow_k(
-            z, w, k,
-        );
+        let w =
+            Complex::new(w_re, w_im);
 
-    *res_re = res.re;
+        let res =
+            multi_valued::complex_pow_k(
+                z, w, k,
+            );
 
-    *res_im = res.im;
-}}
+        *res_re = res.re;
+
+        *res_im = res.im;
+    }
+}
 
 /// Computes the k-th branch of the complex n-th root.
 #[unsafe(no_mangle)]
@@ -187,16 +201,19 @@ pub unsafe extern "C" fn rssn_num_mv_complex_nth_root_k(
     k: i32,
     res_re: *mut f64,
     res_im: *mut f64,
-) { unsafe {
+) {
 
-    let z = Complex::new(re, im);
+    unsafe {
 
-    let res = multi_valued::complex_nth_root_k(z, n, k);
+        let z = Complex::new(re, im);
 
-    *res_re = res.re;
+        let res = multi_valued::complex_nth_root_k(z, n, k);
 
-    *res_im = res.im;
-}}
+        *res_re = res.re;
+
+        *res_im = res.im;
+    }
+}
 
 /// Computes the k-th branch of the complex arcsine.
 #[unsafe(no_mangle)]
@@ -215,19 +232,22 @@ pub unsafe extern "C" fn rssn_num_mv_complex_arcsin_k(
     k: i32,
     res_re: *mut f64,
     res_im: *mut f64,
-) { unsafe {
+) {
 
-    let z = Complex::new(re, im);
+    unsafe {
 
-    let res =
+        let z = Complex::new(re, im);
+
+        let res =
         multi_valued::complex_arcsin_k(
             z, k,
         );
 
-    *res_re = res.re;
+        *res_re = res.re;
 
-    *res_im = res.im;
-}}
+        *res_im = res.im;
+    }
+}
 
 /// Computes the k-th branch of the complex arccosine.
 #[unsafe(no_mangle)]
@@ -247,19 +267,22 @@ pub unsafe extern "C" fn rssn_num_mv_complex_arccos_k(
     s: i32,
     res_re: *mut f64,
     res_im: *mut f64,
-) { unsafe {
+) {
 
-    let z = Complex::new(re, im);
+    unsafe {
 
-    let res =
+        let z = Complex::new(re, im);
+
+        let res =
         multi_valued::complex_arccos_k(
             z, k, s,
         );
 
-    *res_re = res.re;
+        *res_re = res.re;
 
-    *res_im = res.im;
-}}
+        *res_im = res.im;
+    }
+}
 
 /// Computes the k-th branch of the complex arctangent.
 #[unsafe(no_mangle)]
@@ -278,16 +301,19 @@ pub unsafe extern "C" fn rssn_num_mv_complex_arctan_k(
     k: i32,
     res_re: *mut f64,
     res_im: *mut f64,
-) { unsafe {
+) {
 
-    let z = Complex::new(re, im);
+    unsafe {
 
-    let res =
+        let z = Complex::new(re, im);
+
+        let res =
         multi_valued::complex_arctan_k(
             z, k,
         );
 
-    *res_re = res.re;
+        *res_re = res.re;
 
-    *res_im = res.im;
-}}
+        *res_im = res.im;
+    }
+}

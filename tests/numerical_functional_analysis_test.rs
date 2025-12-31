@@ -173,8 +173,8 @@ mod proptests {
 
     // Strategy to generate a vector of Y values.
     // We will map these to X values 0.0, 1.0, 2.0, ...
-    fn fun_strategy(
-    ) -> impl Strategy<Value = Vec<f64>>
+    fn fun_strategy()
+    -> impl Strategy<Value = Vec<f64>>
     {
 
         proptest::collection::vec(

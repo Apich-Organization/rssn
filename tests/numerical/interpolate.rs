@@ -8,8 +8,8 @@ use rssn::numerical::interpolate::lagrange_interpolation;
 /// Given points (0,0), (1,1), and (2,4), the interpolating polynomial should be x^2.
 #[test]
 
-fn test_lagrange_interpolation_quadratic(
-) {
+fn test_lagrange_interpolation_quadratic()
+ {
 
     let points = vec![
         (0.0, 0.0),
@@ -104,8 +104,8 @@ fn test_lagrange_interpolation_linear()
 /// The test ensures that the spline passes through the given data points.
 #[test]
 
-fn test_cubic_spline_interpolation_passes_through_points(
-) {
+fn test_cubic_spline_interpolation_passes_through_points()
+ {
 
     let points = vec![
         (0.0, 0.0),
@@ -144,8 +144,8 @@ fn test_cubic_spline_interpolation_passes_through_points(
 /// For a simple linear set of points, the spline should behave linearly.
 #[test]
 
-fn test_cubic_spline_interpolation_intermediate_point(
-) {
+fn test_cubic_spline_interpolation_intermediate_point()
+ {
 
     let points = vec![
         (0.0, 0.0),

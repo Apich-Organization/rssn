@@ -1473,15 +1473,27 @@ pub fn bch_decode(
     // Check parity and find error syndrome
     let mut syndrome = 0usize;
 
-    for (i, &parity_bit) in parity_bits.iter().enumerate() {
+    for (i, &parity_bit) in parity_bits
+        .iter()
+        .enumerate()
+    {
+
         let mut expected_parity = 0u8;
-        for (j, &bit) in data.iter().enumerate() {
+
+        for (j, &bit) in data
+            .iter()
+            .enumerate()
+        {
+
             if ((j + 1) >> i) & 1 == 1 {
+
                 expected_parity ^= bit;
             }
         }
 
-        if expected_parity != parity_bit {
+        if expected_parity != parity_bit
+        {
+
             syndrome |= 1 << i;
         }
     }

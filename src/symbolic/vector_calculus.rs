@@ -9,8 +9,8 @@ use crate::symbolic::calculus::definite_integrate;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
-use crate::symbolic::vector::partial_derivative_vector;
 use crate::symbolic::vector::Vector;
+use crate::symbolic::vector::partial_derivative_vector;
 
 /// Represents a parameterized curve C given by r(t).
 #[derive(

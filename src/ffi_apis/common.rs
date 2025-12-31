@@ -83,19 +83,22 @@ impl BincodeBuffer {
 
     pub const unsafe fn as_slice(
         &self
-    ) -> &[u8] { unsafe {
+    ) -> &[u8] {
 
-        if self.is_null() {
+        unsafe {
 
-            &[]
-        } else {
+            if self.is_null() {
 
-            std::slice::from_raw_parts(
+                &[]
+            } else {
+
+                std::slice::from_raw_parts(
                 self.data,
                 self.len,
             )
+            }
         }
-    }}
+    }
 }
 
 /// Frees a string allocated by an FFI function.
@@ -280,18 +283,21 @@ pub fn from_bincode_buffer<
 
 pub unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> { unsafe {
+) -> Option<&'a str> {
 
-    if s.is_null() {
+    unsafe {
 
-        None
-    } else {
+        if s.is_null() {
 
-        std::ffi::CStr::from_ptr(s)
-            .to_str()
-            .ok()
+            None
+        } else {
+
+            std::ffi::CStr::from_ptr(s)
+                .to_str()
+                .ok()
+        }
     }
-}}
+}
 
 #[cfg(test)]
 

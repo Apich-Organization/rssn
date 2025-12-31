@@ -6,8 +6,8 @@ use rssn::symbolic::core::Expr;
 
 #[test]
 
-fn test_differentiate_x_squared_stack_overflow(
-) {
+fn test_differentiate_x_squared_stack_overflow()
+ {
 
     let x =
         Expr::Variable("x".to_string());

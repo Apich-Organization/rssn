@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::multi_valued::abs;
 use crate::symbolic::multi_valued::arg;
@@ -26,22 +26,21 @@ pub extern "C" fn rssn_bincode_general_log(
     let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
-    match (z, k)
-    { (
-        Some(z_expr),
-        Some(k_expr),
-    ) => {
+    match (z, k) {
+        | (
+            Some(z_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_log(
-            &z_expr,
-            &k_expr,
-        );
+            let result = general_log(
+                &z_expr,
+                &k_expr,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes general multi-valued square root (Bincode)
@@ -58,22 +57,21 @@ pub extern "C" fn rssn_bincode_general_sqrt(
     let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
-    match (z, k)
-    { (
-        Some(z_expr),
-        Some(k_expr),
-    ) => {
+    match (z, k) {
+        | (
+            Some(z_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_sqrt(
-            &z_expr,
-            &k_expr,
-        );
+            let result = general_sqrt(
+                &z_expr,
+                &k_expr,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes general multi-valued power (Bincode)
@@ -94,24 +92,23 @@ pub extern "C" fn rssn_bincode_general_power(
     let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
-    match (z, w, k)
-    { (
-        Some(z_expr),
-        Some(w_expr),
-        Some(k_expr),
-    ) => {
+    match (z, w, k) {
+        | (
+            Some(z_expr),
+            Some(w_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_power(
-            &z_expr,
-            &w_expr,
-            &k_expr,
-        );
+            let result = general_power(
+                &z_expr,
+                &w_expr,
+                &k_expr,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes general multi-valued n-th root (Bincode)
@@ -132,24 +129,24 @@ pub extern "C" fn rssn_bincode_general_nth_root(
     let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
-    match (z, n, k)
-    { (
-        Some(z_expr),
-        Some(n_expr),
-        Some(k_expr),
-    ) => {
+    match (z, n, k) {
+        | (
+            Some(z_expr),
+            Some(n_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_nth_root(
-            &z_expr,
-            &n_expr,
-            &k_expr,
-        );
+            let result =
+                general_nth_root(
+                    &z_expr,
+                    &n_expr,
+                    &k_expr,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes general multi-valued arcsin (Bincode)
@@ -166,22 +163,21 @@ pub extern "C" fn rssn_bincode_general_arcsin(
     let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
-    match (z, k)
-    { (
-        Some(z_expr),
-        Some(k_expr),
-    ) => {
+    match (z, k) {
+        | (
+            Some(z_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_arcsin(
-            &z_expr,
-            &k_expr,
-        );
+            let result = general_arcsin(
+                &z_expr,
+                &k_expr,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes general multi-valued arccos (Bincode)
@@ -202,24 +198,23 @@ pub extern "C" fn rssn_bincode_general_arccos(
     let s: Option<Expr> =
         from_bincode_buffer(&s_buf);
 
-    match (z, k, s)
-    { (
-        Some(z_expr),
-        Some(k_expr),
-        Some(s_expr),
-    ) => {
+    match (z, k, s) {
+        | (
+            Some(z_expr),
+            Some(k_expr),
+            Some(s_expr),
+        ) => {
 
-        let result = general_arccos(
-            &z_expr,
-            &k_expr,
-            &s_expr,
-        );
+            let result = general_arccos(
+                &z_expr,
+                &k_expr,
+                &s_expr,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes general multi-valued arctan (Bincode)
@@ -236,22 +231,21 @@ pub extern "C" fn rssn_bincode_general_arctan(
     let k: Option<Expr> =
         from_bincode_buffer(&k_buf);
 
-    match (z, k)
-    { (
-        Some(z_expr),
-        Some(k_expr),
-    ) => {
+    match (z, k) {
+        | (
+            Some(z_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_arctan(
-            &z_expr,
-            &k_expr,
-        );
+            let result = general_arctan(
+                &z_expr,
+                &k_expr,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes argument (angle) of complex number (Bincode)

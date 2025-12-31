@@ -6,8 +6,8 @@ use rssn::physics::physics_sim::navier_stokes_fluid::*;
 
 #[test]
 
-fn test_simulate_lid_driven_cavity_scenario(
-) {
+fn test_simulate_lid_driven_cavity_scenario()
+ {
 
     simulate_lid_driven_cavity_scenario(
     );

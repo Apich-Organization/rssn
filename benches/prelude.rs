@@ -14,10 +14,10 @@
 // 5. Rust Version:    [e.g., stable-x86_64-pc-windows-msvc]
 // 6. Benchmark Date:  [e.g., 2025-10-01]
 
+use criterion::Criterion;
 use criterion::black_box;
 use criterion::criterion_group;
 use criterion::criterion_main;
-use criterion::Criterion;
 use rssn::prelude;
 
 // use nalgebra::DVector; // Example dependency for numerical benchmarks

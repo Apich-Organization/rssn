@@ -48,8 +48,8 @@ pub extern "C" fn rssn_json_simplex_dimension(
 /// Creates a new `SimplicialComplex` (JSON)
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_json_simplicial_complex_create(
-) -> *mut std::os::raw::c_char {
+pub extern "C" fn rssn_json_simplicial_complex_create()
+-> *mut std::os::raw::c_char {
 
     let complex =
         SimplicialComplex::new();
@@ -144,24 +144,24 @@ pub extern "C" fn rssn_json_symbolic_chain_add_term(
         chain,
         simplex,
         coeff,
-    ) { (
-        Some(mut c),
-        Some(s),
-        Some(coeff),
-    ) => {
+    ) {
+        | (
+            Some(mut c),
+            Some(s),
+            Some(coeff),
+        ) => {
 
-        match c.add_term(s, coeff) {
-            | Ok(()) => {
-                to_json_string(&c)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            match c.add_term(s, coeff) {
+                | Ok(()) => {
+                    to_json_string(&c)
+                },
+                | Err(_) => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Applies the symbolic boundary operator to a `SymbolicChain` (JSON)

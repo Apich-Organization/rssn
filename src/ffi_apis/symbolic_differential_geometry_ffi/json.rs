@@ -17,25 +17,24 @@ pub extern "C" fn rssn_json_exterior_derivative(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    match (form, vars)
-    { (Some(f), Some(v)) => {
+    match (form, vars) {
+        | (Some(f), Some(v)) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        let result =
-            exterior_derivative(
-                &f,
-                &vars_refs,
-            );
+            let result =
+                exterior_derivative(
+                    &f,
+                    &vars_refs,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes the wedge product of two differential forms (JSON)
@@ -54,17 +53,16 @@ pub extern "C" fn rssn_json_wedge_product(
         DifferentialForm,
     > = from_json_string(form2_json);
 
-    match (form1, form2)
-    { (Some(f1), Some(f2)) => {
+    match (form1, form2) {
+        | (Some(f1), Some(f2)) => {
 
-        let result =
-            wedge_product(&f1, &f2);
+            let result =
+                wedge_product(&f1, &f2);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes the boundary of a domain (JSON)
@@ -111,25 +109,29 @@ pub extern "C" fn rssn_json_generalized_stokes_theorem(
         omega,
         manifold,
         vars,
-    ) { (Some(o), Some(m), Some(v)) => {
+    ) {
+        | (
+            Some(o),
+            Some(m),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        let result =
+            let result =
             generalized_stokes_theorem(
                 &o,
                 &m,
                 &vars_refs,
             );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Represents Gauss's theorem (JSON)
@@ -148,17 +150,17 @@ pub extern "C" fn rssn_json_gauss_theorem(
     let volume: Option<Expr> =
         from_json_string(volume_json);
 
-    match (vector_field, volume)
-    { (Some(vf), Some(vol)) => {
+    match (vector_field, volume) {
+        | (Some(vf), Some(vol)) => {
 
-        let result =
-            gauss_theorem(&vf, &vol);
+            let result = gauss_theorem(
+                &vf, &vol,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Represents Stokes' theorem (JSON)
@@ -180,16 +182,17 @@ pub extern "C" fn rssn_json_stokes_theorem(
     match (
         vector_field,
         surface,
-    ) { (Some(vf), Some(surf)) => {
+    ) {
+        | (Some(vf), Some(surf)) => {
 
-        let result =
-            stokes_theorem(&vf, &surf);
+            let result = stokes_theorem(
+                &vf, &surf,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Represents Green's theorem (JSON)
@@ -210,22 +213,21 @@ pub extern "C" fn rssn_json_greens_theorem(
     let domain: Option<Expr> =
         from_json_string(domain_json);
 
-    match (p, q, domain)
-    { (
-        Some(p_expr),
-        Some(q_expr),
-        Some(d),
-    ) => {
+    match (p, q, domain) {
+        | (
+            Some(p_expr),
+            Some(q_expr),
+            Some(d),
+        ) => {
 
-        let result = greens_theorem(
-            &p_expr,
-            &q_expr,
-            &d,
-        );
+            let result = greens_theorem(
+                &p_expr,
+                &q_expr,
+                &d,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

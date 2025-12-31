@@ -24,20 +24,22 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
     d_coeff: f64,
     steps: usize,
     out_size: *mut usize,
-) -> *mut f64 { unsafe {
+) -> *mut f64 {
 
-    if initial_condition.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
-    }
+        if initial_condition.is_null() {
 
-    let initial_slice =
-        std::slice::from_raw_parts(
-            initial_condition,
-            n,
-        );
+            return ptr::null_mut();
+        }
 
-    let res = physics_cnm::solve_heat_equation_1d_cn(
+        let initial_slice =
+            std::slice::from_raw_parts(
+                initial_condition,
+                n,
+            );
+
+        let res = physics_cnm::solve_heat_equation_1d_cn(
         initial_slice,
         dx,
         dt,
@@ -45,17 +47,19 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
         steps,
     );
 
-    *out_size = res.len();
+        *out_size = res.len();
 
-    let mut res_boxed =
-        res.into_boxed_slice();
+        let mut res_boxed =
+            res.into_boxed_slice();
 
-    let ptr = res_boxed.as_mut_ptr();
+        let ptr =
+            res_boxed.as_mut_ptr();
 
-    std::mem::forget(res_boxed);
+        std::mem::forget(res_boxed);
 
-    ptr
-}}
+        ptr
+    }
+}
 
 /// Frees a float64 array allocated by the CNM FFI.
 #[unsafe(no_mangle)]
@@ -71,10 +75,13 @@ pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_1d(
 pub unsafe extern "C" fn rssn_free_f64_cnm_array(
     ptr: *mut f64,
     size: usize,
-) { unsafe {
+) {
 
-    if !ptr.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, size));
+        if !ptr.is_null() {
+
+            let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, size));
+        }
     }
-}}
+}

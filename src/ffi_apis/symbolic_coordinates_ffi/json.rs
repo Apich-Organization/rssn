@@ -2,6 +2,7 @@ use std::ffi::c_char;
 
 use crate::ffi_apis::common::from_json_string;
 use crate::ffi_apis::common::to_json_string;
+use crate::symbolic::coordinates::CoordinateSystem;
 use crate::symbolic::coordinates::get_metric_tensor;
 use crate::symbolic::coordinates::transform_contravariant_vector;
 use crate::symbolic::coordinates::transform_covariant_vector;
@@ -10,7 +11,6 @@ use crate::symbolic::coordinates::transform_divergence;
 use crate::symbolic::coordinates::transform_expression;
 use crate::symbolic::coordinates::transform_gradient;
 use crate::symbolic::coordinates::transform_point;
-use crate::symbolic::coordinates::CoordinateSystem;
 use crate::symbolic::core::Expr;
 
 /// Transforms a point between coordinate systems using JSON-encoded coordinates.
@@ -346,21 +346,21 @@ pub extern "C" fn rssn_json_transform_gradient(
     let vars: Option<Vec<String>> =
         from_json_string(vars_json);
 
-    match (scalar, vars)
-    { (Some(s), Some(v)) => {
-
-        match transform_gradient(
-            &s, &v, from, to,
-        ) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (scalar, vars) {
+        | (Some(s), Some(v)) => {
+            match transform_gradient(
+                &s, &v, from, to,
+            ) {
+                | Ok(result) => {
+                    to_json_string(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

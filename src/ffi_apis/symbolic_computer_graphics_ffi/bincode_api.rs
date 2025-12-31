@@ -33,16 +33,14 @@ pub extern "C" fn rssn_bincode_translation_2d(
     let ty: Option<Expr> =
         from_bincode_buffer(&ty_buf);
 
-    match (tx, ty)
-    { (Some(tx), Some(ty)) => {
-
-        to_bincode_buffer(
-            &translation_2d(tx, ty),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (tx, ty) {
+        | (Some(tx), Some(ty)) => {
+            to_bincode_buffer(
+                &translation_2d(tx, ty),
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Generates a 4x4 3D translation matrix via Bincode interface.
@@ -63,20 +61,20 @@ pub extern "C" fn rssn_bincode_translation_3d(
     let tz: Option<Expr> =
         from_bincode_buffer(&tz_buf);
 
-    match (tx, ty, tz)
-    { (
-        Some(tx),
-        Some(ty),
-        Some(tz),
-    ) => {
-
-        to_bincode_buffer(
-            &translation_3d(tx, ty, tz),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (tx, ty, tz) {
+        | (
+            Some(tx),
+            Some(ty),
+            Some(tz),
+        ) => {
+            to_bincode_buffer(
+                &translation_3d(
+                    tx, ty, tz,
+                ),
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Generates a 3x3 2D rotation matrix via Bincode interface.
@@ -177,16 +175,14 @@ pub extern "C" fn rssn_bincode_scaling_2d(
     let sy: Option<Expr> =
         from_bincode_buffer(&sy_buf);
 
-    match (sx, sy)
-    { (Some(sx), Some(sy)) => {
-
-        to_bincode_buffer(&scaling_2d(
-            sx, sy,
-        ))
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (sx, sy) {
+        | (Some(sx), Some(sy)) => {
+            to_bincode_buffer(
+                &scaling_2d(sx, sy),
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Generates a 4x4 3D scaling matrix via Bincode interface.
@@ -207,20 +203,18 @@ pub extern "C" fn rssn_bincode_scaling_3d(
     let sz: Option<Expr> =
         from_bincode_buffer(&sz_buf);
 
-    match (sx, sy, sz)
-    { (
-        Some(sx),
-        Some(sy),
-        Some(sz),
-    ) => {
-
-        to_bincode_buffer(&scaling_3d(
-            sx, sy, sz,
-        ))
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (sx, sy, sz) {
+        | (
+            Some(sx),
+            Some(sy),
+            Some(sz),
+        ) => {
+            to_bincode_buffer(
+                &scaling_3d(sx, sy, sz),
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Generates a 3x3 2D shear matrix via Bincode interface.
@@ -237,16 +231,14 @@ pub extern "C" fn rssn_bincode_shear_2d(
     let shy: Option<Expr> =
         from_bincode_buffer(&shy_buf);
 
-    match (shx, shy)
-    { (Some(shx), Some(shy)) => {
-
-        to_bincode_buffer(&shear_2d(
-            shx, shy,
-        ))
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (shx, shy) {
+        | (Some(shx), Some(shy)) => {
+            to_bincode_buffer(
+                &shear_2d(shx, shy),
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Generates a 3x3 2D reflection matrix via Bincode interface.
@@ -288,20 +280,20 @@ pub extern "C" fn rssn_bincode_reflection_3d(
     let nz: Option<Expr> =
         from_bincode_buffer(&nz_buf);
 
-    match (nx, ny, nz)
-    { (
-        Some(nx),
-        Some(ny),
-        Some(nz),
-    ) => {
-
-        to_bincode_buffer(
-            &reflection_3d(nx, ny, nz),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (nx, ny, nz) {
+        | (
+            Some(nx),
+            Some(ny),
+            Some(nz),
+        ) => {
+            to_bincode_buffer(
+                &reflection_3d(
+                    nx, ny, nz,
+                ),
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Generates a 4x4 3D rotation around arbitrary axis via Bincode interface.
@@ -332,24 +324,23 @@ pub extern "C" fn rssn_bincode_rotation_axis_angle(
     let angle: Option<Expr> =
         from_bincode_buffer(&angle_buf);
 
-    match (ax, ay, az, angle)
-    { (
-        Some(ax),
-        Some(ay),
-        Some(az),
-        Some(a),
-    ) => {
+    match (ax, ay, az, angle) {
+        | (
+            Some(ax),
+            Some(ay),
+            Some(az),
+            Some(a),
+        ) => {
 
-        let axis =
-            Vector::new(ax, ay, az);
+            let axis =
+                Vector::new(ax, ay, az);
 
-        to_bincode_buffer(
-            &rotation_axis_angle(
-                &axis, a,
-            ),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(
+                &rotation_axis_angle(
+                    &axis, a,
+                ),
+            )
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

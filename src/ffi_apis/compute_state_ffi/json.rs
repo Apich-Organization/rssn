@@ -9,8 +9,8 @@ use crate::ffi_apis::common::to_c_string;
 /// The caller must free the returned string using `rssn_free_string`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_state_new_json(
-) -> *mut c_char {
+pub extern "C" fn rssn_state_new_json()
+-> *mut c_char {
 
     let state = State::new();
 

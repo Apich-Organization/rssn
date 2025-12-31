@@ -35,8 +35,8 @@ use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponentia
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_json_lie_algebra_so3(
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_lie_algebra_so3()
+-> *mut c_char {
 
     let algebra = so3();
 
@@ -72,8 +72,8 @@ pub unsafe extern "C" fn rssn_json_lie_algebra_so3(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_json_lie_algebra_su2(
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_lie_algebra_su2()
+-> *mut c_char {
 
     let algebra = su2();
 
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -128,7 +128,7 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -183,7 +183,7 @@ pub unsafe extern "C" fn rssn_json_exponential_map(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -240,7 +240,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -249,7 +249,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -306,7 +306,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -315,7 +315,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
     ) {
         | Some(e) => e,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -458,8 +458,8 @@ pub unsafe extern "C" fn rssn_json_check_jacobi_identity(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_json_so3_generators(
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_so3_generators()
+-> *mut c_char {
 
     let generators = so3_generators();
 
@@ -483,8 +483,8 @@ pub unsafe extern "C" fn rssn_json_so3_generators(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_json_su2_generators(
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_json_su2_generators()
+-> *mut c_char {
 
     let generators = su2_generators();
 

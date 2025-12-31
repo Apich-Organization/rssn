@@ -46,11 +46,6 @@ pub(crate) fn parse_ode(
     var: &str,
 ) -> ParsedODE {
 
-    let mut coeffs = HashMap::new();
-
-    let mut remaining_expr =
-        Expr::Constant(0.0);
-
     pub(crate) fn collect_terms(
         expr: &Expr,
         func: &str,
@@ -146,6 +141,12 @@ pub(crate) fn parse_ode(
             }
         }
     }
+
+    let mut coeffs = HashMap::new();
+
+    let mut remaining_expr =
+        Expr::Constant(0.0);
+
 
     collect_terms(
         &simplify(&equation.clone()),
@@ -740,16 +741,18 @@ pub(crate) fn apply_initial_conditions(
     )
 }
 
+type ReducedFirstOrderSystem = (
+    Vec<Expr>,
+    Vec<String>,
+    HashMap<String, String>,
+);
+
 pub(crate) fn reduce_to_first_order_system(
     equations: &[Expr],
     funcs: &[&str],
     var: &str,
 ) -> Result<
-    (
-        Vec<Expr>,
-        Vec<String>,
-        HashMap<String, String>,
-    ),
+    ReducedFirstOrderSystem,
     String,
 > {
 
@@ -1572,7 +1575,8 @@ pub fn solve_bernoulli_ode(
             .get("n")?
             .to_f64()?;
 
-        if (n - 1.0).abs() < f64::EPSILON
+        if (n - 1.0).abs()
+            < f64::EPSILON
             || n.abs() < f64::EPSILON
         {
 
@@ -1684,6 +1688,51 @@ pub fn solve_riccati_ode(
     y1: &Expr,
 ) -> Option<Expr> {
 
+    // Collect all additive terms
+    fn collect_add_terms(
+        expr: &Expr,
+        terms: &mut Vec<Expr>,
+    ) {
+
+        match expr {
+            | Expr::Add(a, b) => {
+
+                collect_add_terms(
+                    a, terms,
+                );
+
+                collect_add_terms(
+                    b, terms,
+                );
+            },
+            | Expr::AddList(list) => {
+                for item in list {
+
+                    collect_add_terms(
+                        item, terms,
+                    );
+                }
+            },
+            | Expr::Dag(node) => {
+
+                collect_add_terms(
+                    &node
+                        .to_expr()
+                        .expect(
+                        "Collect add \
+                         terms",
+                    ),
+                    terms,
+                );
+            },
+            | _ => {
+
+                terms
+                    .push(expr.clone());
+            },
+        }
+    }
+
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
 
@@ -1783,49 +1832,7 @@ pub fn solve_riccati_ode(
         );
 
     // Collect all additive terms
-    fn collect_add_terms(
-        expr: &Expr,
-        terms: &mut Vec<Expr>,
-    ) {
 
-        match expr {
-            | Expr::Add(a, b) => {
-
-                collect_add_terms(
-                    a, terms,
-                );
-
-                collect_add_terms(
-                    b, terms,
-                );
-            },
-            | Expr::AddList(list) => {
-                for item in list {
-
-                    collect_add_terms(
-                        item, terms,
-                    );
-                }
-            },
-            | Expr::Dag(node) => {
-
-                collect_add_terms(
-                    &node
-                        .to_expr()
-                        .expect(
-                        "Collect add \
-                         terms",
-                    ),
-                    terms,
-                );
-            },
-            | _ => {
-
-                terms
-                    .push(expr.clone());
-            },
-        }
-    }
 
     let mut terms = Vec::new();
 

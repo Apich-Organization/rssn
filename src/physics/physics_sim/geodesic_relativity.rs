@@ -160,8 +160,8 @@ pub fn run_geodesic_simulation(
 ///
 /// This function will return an error if it fails to create or write to the output CSV files.
 
-pub fn simulate_black_hole_orbits_scenario(
-) -> std::io::Result<()> {
+pub fn simulate_black_hole_orbits_scenario()
+-> std::io::Result<()> {
 
     println!(
         "Running Black Hole orbit \

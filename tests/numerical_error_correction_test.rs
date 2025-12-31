@@ -25,7 +25,7 @@ fn test_reed_solomon_encode_basic() {
     .unwrap();
 
     assert_eq!(codeword.len(), 8); // 4 data + 4 parity
-                                   // First 4 bytes should be the original message
+    // First 4 bytes should be the original message
     assert_eq!(
         &codeword[.. 4],
         &message
@@ -34,8 +34,8 @@ fn test_reed_solomon_encode_basic() {
 
 #[test]
 
-fn test_reed_solomon_encode_empty_message(
-) {
+fn test_reed_solomon_encode_empty_message()
+ {
 
     let message: Vec<u8> = vec![];
 
@@ -373,8 +373,8 @@ fn test_hamming_distance_all_different()
 
 #[test]
 
-fn test_hamming_distance_length_mismatch(
-) {
+fn test_hamming_distance_length_mismatch()
+ {
 
     let a = vec![1, 0, 1];
 
@@ -639,8 +639,8 @@ fn test_interleave_basic() {
 
 #[test]
 
-fn test_interleave_deinterleave_roundtrip(
-) {
+fn test_interleave_deinterleave_roundtrip()
+ {
 
     let data = vec![
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
@@ -727,9 +727,11 @@ fn test_convolutional_encode_all_zeros()
         convolutional_encode(&data);
 
     // All zeros should produce all zeros
-    assert!(encoded
-        .iter()
-        .all(|&x| x == 0));
+    assert!(
+        encoded
+            .iter()
+            .all(|&x| x == 0)
+    );
 }
 
 // ============================================================================
@@ -854,8 +856,8 @@ fn test_minimum_distance_hamming_74() {
 
 #[test]
 
-fn test_minimum_distance_single_codeword(
-) {
+fn test_minimum_distance_single_codeword()
+ {
 
     let codewords =
         vec![vec![1, 1, 1, 1]];

@@ -339,11 +339,8 @@ pub fn gram_schmidt(
 
         for u in &orthogonal_basis {
 
-            let proj = project(
-                space,
-                b,
-                u,
-            );
+            let proj =
+                project(space, b, u);
 
             v = Expr::new_sub(v, proj);
         }

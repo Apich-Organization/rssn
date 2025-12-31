@@ -4,8 +4,8 @@ use rssn::symbolic::graph_isomorphism_and_coloring::*;
 
 #[test]
 
-fn test_isomorphism_heuristic_isomorphic(
-) {
+fn test_isomorphism_heuristic_isomorphic()
+ {
 
     let mut g1 = Graph::new(false);
 
@@ -56,8 +56,8 @@ fn test_isomorphism_heuristic_isomorphic(
 
 #[test]
 
-fn test_isomorphism_heuristic_non_isomorphic(
-) {
+fn test_isomorphism_heuristic_non_isomorphic()
+ {
 
     let mut g1 = Graph::new(false);
 
@@ -244,8 +244,8 @@ fn test_chromatic_number_exact_k4() {
 
 #[test]
 
-fn test_chromatic_number_exact_petersen(
-) {
+fn test_chromatic_number_exact_petersen()
+ {
 
     // Petersen graph has chromatic number 3
     let mut g = Graph::new(false);

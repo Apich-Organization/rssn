@@ -8,8 +8,8 @@ use rssn::symbolic::logic::to_dnf;
 
 #[test]
 
-fn test_simplify_double_negation_boolean(
-) {
+fn test_simplify_double_negation_boolean()
+ {
 
     // Not(Not(True)) -> True
     let expr = Expr::Not(Arc::new(

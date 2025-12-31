@@ -30,20 +30,24 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
     x_end: f64,
     num_steps: usize,
     method: i32,
-) -> *mut Matrix<f64> { unsafe {
+) -> *mut Matrix<f64> {
 
-    if funcs.is_null() || y0.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_ode_solve"
-                .to_string(),
-        );
+        if funcs.is_null()
+            || y0.is_null()
+        {
 
-        return ptr::null_mut();
-    }
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_num_ode_solve"
+                    .to_string(),
+            );
 
-    let method_enum = match method {
+            return ptr::null_mut();
+        }
+
+        let method_enum = match method {
         | 0 => OdeSolverMethod::Euler,
         | 1 => OdeSolverMethod::Heun,
         | 2 => {
@@ -60,74 +64,79 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
         },
     };
 
-    let mut funcs_vec =
-        Vec::with_capacity(n_funcs);
+        let mut funcs_vec =
+            Vec::with_capacity(n_funcs);
 
-    for i in 0 .. n_funcs {
+        for i in 0 .. n_funcs {
 
-        let f_ptr = *funcs.add(i);
+            let f_ptr = *funcs.add(i);
 
-        if f_ptr.is_null() {
+            if f_ptr.is_null() {
 
-            update_last_error(format!(
+                update_last_error(
+                    format!(
                 "Null function \
                  pointer at index {i}"
-            ));
-
-            return ptr::null_mut();
-        }
-
-        funcs_vec
-            .push((*f_ptr).clone());
-    }
-
-    let y0_slice =
-        std::slice::from_raw_parts(
-            y0, n_y0,
-        );
-
-    match ode::solve_ode_system(
-        &funcs_vec,
-        y0_slice,
-        (x_start, x_end),
-        num_steps,
-        method_enum,
-    ) {
-        | Ok(results) => {
-
-            let rows = results.len();
-
-            let cols = if rows > 0 {
-
-                results[0].len()
-            } else {
-
-                0
-            };
-
-            let mut flattened =
-                Vec::with_capacity(
-                    rows * cols,
+            ),
                 );
 
-            for row in results {
-
-                flattened.extend(row);
+                return ptr::null_mut();
             }
 
-            Box::into_raw(Box::new(
-                Matrix::new(
-                    rows,
-                    cols,
-                    flattened,
-                ),
-            ))
-        },
-        | Err(e) => {
+            funcs_vec
+                .push((*f_ptr).clone());
+        }
 
-            update_last_error(e);
+        let y0_slice =
+            std::slice::from_raw_parts(
+                y0, n_y0,
+            );
 
-            ptr::null_mut()
-        },
+        match ode::solve_ode_system(
+            &funcs_vec,
+            y0_slice,
+            (x_start, x_end),
+            num_steps,
+            method_enum,
+        ) {
+            | Ok(results) => {
+
+                let rows =
+                    results.len();
+
+                let cols = if rows > 0 {
+
+                    results[0].len()
+                } else {
+
+                    0
+                };
+
+                let mut flattened =
+                    Vec::with_capacity(
+                        rows * cols,
+                    );
+
+                for row in results {
+
+                    flattened
+                        .extend(row);
+                }
+
+                Box::into_raw(Box::new(
+                    Matrix::new(
+                        rows,
+                        cols,
+                        flattened,
+                    ),
+                ))
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                ptr::null_mut()
+            },
+        }
     }
-}}
+}

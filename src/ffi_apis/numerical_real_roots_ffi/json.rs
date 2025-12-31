@@ -53,9 +53,11 @@ struct FindRootsInput {
 
 pub unsafe extern "C" fn rssn_real_roots_find_roots_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -66,7 +68,7 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_json(
         },
     };
 
-    let input: FindRootsInput =
+        let input: FindRootsInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -83,33 +85,36 @@ pub unsafe extern "C" fn rssn_real_roots_find_roots_json(
             },
         };
 
-    let poly =
-        Polynomial::new(input.coeffs);
+        let poly = Polynomial::new(
+            input.coeffs,
+        );
 
-    let result = real_roots::find_roots(
-        &poly,
-        input.tolerance,
-    );
+        let result =
+            real_roots::find_roots(
+                &poly,
+                input.tolerance,
+            );
 
-    let res = match result {
-        | Ok(roots) => {
-            FfiResult {
-                ok: Some(roots),
-                err: None::<String>,
-            }
-        },
-        | Err(e) => {
-            FfiResult {
-                ok: None,
-                err: Some(e),
-            }
-        },
-    };
+        let res = match result {
+            | Ok(roots) => {
+                FfiResult {
+                    ok: Some(roots),
+                    err: None::<String>,
+                }
+            },
+            | Err(e) => {
+                FfiResult {
+                    ok: None,
+                    err: Some(e),
+                }
+            },
+        };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}

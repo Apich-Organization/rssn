@@ -1,6 +1,6 @@
+use criterion::Criterion;
 use criterion::black_box;
 use criterion::criterion_group;
-use criterion::Criterion;
 use rssn::prelude::numerical::*;
 
 pub fn benchmark_vector_ops(

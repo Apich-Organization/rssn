@@ -19,22 +19,26 @@ use crate::symbolic::simplify;
 
 pub unsafe extern "C" fn rssn_heuristic_simplify(
     expr: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if expr.is_null() {
 
-    let expr_ref = &*expr;
+            return std::ptr::null_mut(
+            );
+        }
 
-    #[allow(deprecated)]
+        let expr_ref = &*expr;
+
+        #[allow(deprecated)]
     Box::into_raw(Box::new(
         simplify::heuristic_simplify(
             expr_ref.clone(),
         ),
     ))
-}}
+    }
+}
 
 /// Simplifies an expression using the legacy simplifier.
 ///
@@ -52,19 +56,23 @@ pub unsafe extern "C" fn rssn_heuristic_simplify(
 
 pub unsafe extern "C" fn rssn_simplify(
     expr: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if expr.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
+        if expr.is_null() {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        let expr_ref = &*expr;
+
+        #[allow(deprecated)]
+        Box::into_raw(Box::new(
+            simplify::simplify(
+                expr_ref.clone(),
+            ),
+        ))
     }
-
-    let expr_ref = &*expr;
-
-    #[allow(deprecated)]
-    Box::into_raw(Box::new(
-        simplify::simplify(
-            expr_ref.clone(),
-        ),
-    ))
-}}
+}

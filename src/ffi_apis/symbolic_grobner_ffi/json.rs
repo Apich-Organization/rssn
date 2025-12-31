@@ -3,9 +3,9 @@ use std::ffi::c_char;
 use crate::ffi_apis::common::from_json_string;
 use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::SparsePolynomial;
+use crate::symbolic::grobner::MonomialOrder;
 use crate::symbolic::grobner::buchberger;
 use crate::symbolic::grobner::poly_division_multivariate;
-use crate::symbolic::grobner::MonomialOrder;
 
 #[unsafe(no_mangle)]
 
@@ -38,21 +38,21 @@ pub extern "C" fn rssn_json_buchberger(
     let order: Option<MonomialOrder> =
         from_json_string(order_json);
 
-    match (basis, order)
-    { (Some(b), Some(o)) => {
-
-        match buchberger(&b, o) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (basis, order) {
+        | (Some(b), Some(o)) => {
+            match buchberger(&b, o) {
+                | Ok(result) => {
+                    to_json_string(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 #[unsafe(no_mangle)]

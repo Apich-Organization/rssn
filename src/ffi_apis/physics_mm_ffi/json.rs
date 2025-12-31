@@ -119,8 +119,8 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
 
-pub unsafe extern "C" fn rssn_physics_mm_simulate_dam_break_json(
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_physics_mm_simulate_dam_break_json()
+-> *mut c_char {
 
     let res = physics_mm::simulate_dam_break_2d_scenario();
 

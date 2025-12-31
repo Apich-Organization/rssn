@@ -1,11 +1,11 @@
 use std::os::raw::c_int;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::topology::create_grid_complex;
-use crate::symbolic::topology::create_torus_complex;
 use crate::symbolic::topology::Simplex;
 use crate::symbolic::topology::SimplicialComplex;
 use crate::symbolic::topology::SymbolicChain;
+use crate::symbolic::topology::create_grid_complex;
+use crate::symbolic::topology::create_torus_complex;
 
 // --- Simplex ---
 
@@ -76,8 +76,8 @@ pub extern "C" fn rssn_simplex_dimension(
 /// Creates a new `SimplicialComplex` (Handle)
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_simplicial_complex_create(
-) -> *mut SimplicialComplex {
+pub extern "C" fn rssn_simplicial_complex_create()
+-> *mut SimplicialComplex {
 
     let complex =
         SimplicialComplex::new();

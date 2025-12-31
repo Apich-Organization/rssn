@@ -177,8 +177,8 @@ pub fn solve_advection_diffusion_1d(
 
 #[must_use]
 
-pub fn simulate_1d_advection_diffusion_scenario(
-) -> Vec<f64> {
+pub fn simulate_1d_advection_diffusion_scenario()
+-> Vec<f64> {
 
     const N: usize = 128;
 
@@ -316,8 +316,8 @@ pub fn solve_advection_diffusion_2d(
 
 #[must_use]
 
-pub fn simulate_2d_advection_diffusion_scenario(
-) -> Vec<f64> {
+pub fn simulate_2d_advection_diffusion_scenario()
+-> Vec<f64> {
 
     const WIDTH: usize = 64;
 
@@ -658,8 +658,8 @@ pub fn solve_advection_diffusion_3d(
 
 #[must_use]
 
-pub fn simulate_3d_advection_diffusion_scenario(
-) -> Vec<f64> {
+pub fn simulate_3d_advection_diffusion_scenario()
+-> Vec<f64> {
 
     const N: usize = 16;
 

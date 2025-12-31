@@ -27,22 +27,21 @@ pub extern "C" fn rssn_json_general_log(
     let k: Option<Expr> =
         from_json_string(k_json);
 
-    match (z, k)
-    { (
-        Some(z_expr),
-        Some(k_expr),
-    ) => {
+    match (z, k) {
+        | (
+            Some(z_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_log(
-            &z_expr,
-            &k_expr,
-        );
+            let result = general_log(
+                &z_expr,
+                &k_expr,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes general multi-valued square root (JSON)
@@ -59,22 +58,21 @@ pub extern "C" fn rssn_json_general_sqrt(
     let k: Option<Expr> =
         from_json_string(k_json);
 
-    match (z, k)
-    { (
-        Some(z_expr),
-        Some(k_expr),
-    ) => {
+    match (z, k) {
+        | (
+            Some(z_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_sqrt(
-            &z_expr,
-            &k_expr,
-        );
+            let result = general_sqrt(
+                &z_expr,
+                &k_expr,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes general multi-valued power (JSON)
@@ -95,24 +93,23 @@ pub extern "C" fn rssn_json_general_power(
     let k: Option<Expr> =
         from_json_string(k_json);
 
-    match (z, w, k)
-    { (
-        Some(z_expr),
-        Some(w_expr),
-        Some(k_expr),
-    ) => {
+    match (z, w, k) {
+        | (
+            Some(z_expr),
+            Some(w_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_power(
-            &z_expr,
-            &w_expr,
-            &k_expr,
-        );
+            let result = general_power(
+                &z_expr,
+                &w_expr,
+                &k_expr,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes general multi-valued n-th root (JSON)
@@ -133,24 +130,24 @@ pub extern "C" fn rssn_json_general_nth_root(
     let k: Option<Expr> =
         from_json_string(k_json);
 
-    match (z, n, k)
-    { (
-        Some(z_expr),
-        Some(n_expr),
-        Some(k_expr),
-    ) => {
+    match (z, n, k) {
+        | (
+            Some(z_expr),
+            Some(n_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_nth_root(
-            &z_expr,
-            &n_expr,
-            &k_expr,
-        );
+            let result =
+                general_nth_root(
+                    &z_expr,
+                    &n_expr,
+                    &k_expr,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes general multi-valued arcsin (JSON)
@@ -167,22 +164,21 @@ pub extern "C" fn rssn_json_general_arcsin(
     let k: Option<Expr> =
         from_json_string(k_json);
 
-    match (z, k)
-    { (
-        Some(z_expr),
-        Some(k_expr),
-    ) => {
+    match (z, k) {
+        | (
+            Some(z_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_arcsin(
-            &z_expr,
-            &k_expr,
-        );
+            let result = general_arcsin(
+                &z_expr,
+                &k_expr,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes general multi-valued arccos (JSON)
@@ -203,24 +199,23 @@ pub extern "C" fn rssn_json_general_arccos(
     let s: Option<Expr> =
         from_json_string(s_json);
 
-    match (z, k, s)
-    { (
-        Some(z_expr),
-        Some(k_expr),
-        Some(s_expr),
-    ) => {
+    match (z, k, s) {
+        | (
+            Some(z_expr),
+            Some(k_expr),
+            Some(s_expr),
+        ) => {
 
-        let result = general_arccos(
-            &z_expr,
-            &k_expr,
-            &s_expr,
-        );
+            let result = general_arccos(
+                &z_expr,
+                &k_expr,
+                &s_expr,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes general multi-valued arctan (JSON)
@@ -237,22 +232,21 @@ pub extern "C" fn rssn_json_general_arctan(
     let k: Option<Expr> =
         from_json_string(k_json);
 
-    match (z, k)
-    { (
-        Some(z_expr),
-        Some(k_expr),
-    ) => {
+    match (z, k) {
+        | (
+            Some(z_expr),
+            Some(k_expr),
+        ) => {
 
-        let result = general_arctan(
-            &z_expr,
-            &k_expr,
-        );
+            let result = general_arctan(
+                &z_expr,
+                &k_expr,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes argument (angle) of complex number (JSON)

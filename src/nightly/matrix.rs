@@ -22,12 +22,12 @@ use faer::linalg::solvers::DenseSolveCore;
 use faer::linalg::solvers::Solve;
 // Faer imports
 use faer::{
-    get_global_parallelism,
-    set_global_parallelism,
     Mat,
     MatMut,
     MatRef,
     Side,
+    get_global_parallelism,
+    set_global_parallelism,
 };
 use num_traits::One;
 use num_traits::ToPrimitive;
@@ -2082,7 +2082,10 @@ impl Matrix<f64> {
     ///
     /// Returns an error if the matrix is not square.
 
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss
+    )]
+
     pub fn jacobi_eigen_decomposition(
         &self,
         max_sweeps: usize,

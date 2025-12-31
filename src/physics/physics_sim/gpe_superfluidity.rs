@@ -233,8 +233,8 @@ pub fn run_gpe_ground_state_finder(
 /// This function will return an error if the GPE ground state finder fails
 /// or if the final density cannot be written to the NPY file.
 
-pub fn simulate_bose_einstein_vortex_scenario(
-) -> Result<(), String> {
+pub fn simulate_bose_einstein_vortex_scenario()
+-> Result<(), String> {
 
     println!(
         "Running GPE simulation to \

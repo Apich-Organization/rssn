@@ -1,5 +1,5 @@
-use crate::symbolic::convergence::analyze_convergence;
 use crate::symbolic::convergence::ConvergenceResult;
+use crate::symbolic::convergence::analyze_convergence;
 use crate::symbolic::core::Expr;
 
 /// Analyzes the convergence of a series using direct pointers.

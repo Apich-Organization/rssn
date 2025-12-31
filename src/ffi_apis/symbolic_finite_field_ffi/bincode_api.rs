@@ -1,8 +1,8 @@
 use num_bigint::BigInt;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::finite_field::FiniteFieldPolynomial;
 use crate::symbolic::finite_field::PrimeField;
 use crate::symbolic::finite_field::PrimeFieldElement;
@@ -211,7 +211,7 @@ pub extern "C" fn rssn_bincode_finite_field_polynomial_new(
 
         let poly =
             FiniteFieldPolynomial::new(
-                c, field,
+                &c, field,
             );
 
         to_bincode_buffer(&poly)

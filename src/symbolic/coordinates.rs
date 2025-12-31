@@ -781,22 +781,22 @@ pub fn transform_covariant_vector(
         );
     }
 
-    match simplify(&final_comps_expr)
-    { Expr::Matrix(rows) => {
-
-        Ok(rows
-            .into_iter()
-            .map(|row| row[0].clone())
-            .collect())
-    } _ => {
-
-        Err(
-            "Transformation resulted \
-             in a non-vector \
-             expression"
-                .to_string(),
-        )
-    }}
+    match simplify(&final_comps_expr) {
+        | Expr::Matrix(rows) => {
+            Ok(rows
+                .into_iter()
+                .map(|row| {
+                    row[0].clone()
+                })
+                .collect())
+        },
+        | _ => {
+            Err("Transformation \
+                 resulted in a \
+                 non-vector expression"
+                .to_string())
+        },
+    }
 }
 
 /// Computes the Jacobian matrix for a set of transformation rules.

@@ -31,18 +31,22 @@ pub extern "C" fn rssn_bincode_ifs_create(
         functions,
         probabilities,
         variables,
-    ) { (Some(f), Some(p), Some(v)) => {
+    ) {
+        | (
+            Some(f),
+            Some(p),
+            Some(v),
+        ) => {
 
-        let ifs =
+            let ifs =
             IteratedFunctionSystem::new(
                 f, p, v,
             );
 
-        to_bincode_buffer(&ifs)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&ifs)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Calculates similarity dimension (Bincode)
@@ -106,17 +110,16 @@ pub extern "C" fn rssn_bincode_complex_system_iterate(
     let z: Option<Expr> =
         from_bincode_buffer(&z_buf);
 
-    match (system, z)
-    { (Some(sys), Some(z_val)) => {
+    match (system, z) {
+        | (Some(sys), Some(z_val)) => {
 
-        let result =
-            sys.iterate(&z_val);
+            let result =
+                sys.iterate(&z_val);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Finds fixed points (Bincode)
@@ -285,8 +288,8 @@ pub extern "C" fn rssn_bincode_lyapunov_exponent(
 /// Returns Lorenz system equations (Bincode)
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_bincode_lorenz_system(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_lorenz_system()
+-> BincodeBuffer {
 
     let (dx, dy, dz) = lorenz_system();
 

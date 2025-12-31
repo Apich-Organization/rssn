@@ -576,7 +576,8 @@ pub fn is_one(expr: &Expr) -> bool {
             )
         },
         | Expr::Constant(val)
-            if (*val - 1.0).abs() < f64::EPSILON =>
+            if (*val - 1.0).abs()
+                < f64::EPSILON =>
         {
             true
         },
@@ -822,7 +823,8 @@ pub(crate) fn apply_rules(
                 (*a).clone(),
                 (*b).clone(),
             ) {
-                | Ok(value) | Err(value) => value,
+                | Ok(value)
+                | Err(value) => value,
             }
         },
         | Expr::Sub(a, b) => {
@@ -1268,7 +1270,9 @@ pub(crate) fn apply_rules(
             if !non_constants.is_empty()
             {
 
-                if (constant_product - 1.0).abs()
+                if (constant_product
+                    - 1.0)
+                    .abs()
                     > f64::EPSILON
                 {
 
@@ -1290,7 +1294,9 @@ pub(crate) fn apply_rules(
                         non_constants,
                     )
                 }
-            } else if (constant_product - 1.0).abs()
+            } else if (constant_product
+                - 1.0)
+                .abs()
                 > f64::EPSILON
             {
 
@@ -1902,8 +1908,8 @@ pub fn get_name(
         .to_string()
 }
 
-pub(crate) fn get_default_rules(
-) -> Vec<RewriteRule> {
+pub(crate) fn get_default_rules()
+-> Vec<RewriteRule> {
 
     vec![
         RewriteRule {
@@ -2130,9 +2136,15 @@ pub(crate) fn get_default_rules(
 /// # Returns
 /// A new `Expr` with patterns substituted.
 
-pub fn substitute_patterns<S: std::hash::BuildHasher>(
+pub fn substitute_patterns<
+    S: std::hash::BuildHasher,
+>(
     template: &Expr,
-    assignments: &HashMap<String, Expr, S>,
+    assignments: &HashMap<
+        String,
+        Expr,
+        S,
+    >,
 ) -> Expr {
 
     match template {
@@ -2773,9 +2785,17 @@ pub fn collect_and_order_terms(
         .iter()
         .position(|(b, _)| is_one(b))
         .map_or_else(
-            || Expr::BigInt(BigInt::zero()),
+            || {
+                Expr::BigInt(
+                    BigInt::zero(),
+                )
+            },
             |pos| {
-                let (_, c) = sorted_terms.remove(pos);
+
+                let (_, c) =
+                    sorted_terms
+                        .remove(pos);
+
                 c
             },
         );
@@ -3317,15 +3337,14 @@ pub(crate) fn simplify_rational_expression(
 
             let final_num_poly = p_num
                 .long_division(
-                    common_divisor
-                        .clone(),
+                    &common_divisor,
                     var,
                 )
                 .0;
 
             let final_den_poly = p_den
                 .long_division(
-                    common_divisor,
+                    &common_divisor,
                     var,
                 )
                 .0;

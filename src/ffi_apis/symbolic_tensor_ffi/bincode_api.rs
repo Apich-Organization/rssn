@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::tensor::Tensor;
 
 /// Performs tensor addition.
@@ -24,26 +24,27 @@ pub extern "C" fn rssn_bincode_tensor_add(
     let t2: Option<Tensor> =
         from_bincode_buffer(&t2_buf);
 
-    match (t1, t2)
-    { (
-        Some(tensor1),
-        Some(tensor2),
-    ) => {
+    match (t1, t2) {
+        | (
+            Some(tensor1),
+            Some(tensor2),
+        ) => {
 
-        match tensor1.add(&tensor2) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            match tensor1.add(&tensor2)
+            {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Performs scalar multiplication on a tensor.
@@ -70,23 +71,23 @@ pub extern "C" fn rssn_bincode_tensor_scalar_mul(
         &scalar_buf,
     );
 
-    match (t, scalar)
-    { (Some(tensor), Some(s)) => {
-
-        match tensor.scalar_mul(&s) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (t, scalar) {
+        | (Some(tensor), Some(s)) => {
+            match tensor.scalar_mul(&s)
+            {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the outer product of two tensors.
@@ -110,26 +111,26 @@ pub extern "C" fn rssn_bincode_tensor_outer_product(
     let t2: Option<Tensor> =
         from_bincode_buffer(&t2_buf);
 
-    match (t1, t2)
-    { (
-        Some(tensor1),
-        Some(tensor2),
-    ) => {
+    match (t1, t2) {
+        | (
+            Some(tensor1),
+            Some(tensor2),
+        ) => {
 
-        match tensor1
-            .outer_product(&tensor2)
-        {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            match tensor1
+                .outer_product(&tensor2)
+            {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

@@ -29,15 +29,16 @@ pub extern "C" fn rssn_json_analyze_convergence(
     let var: Option<String> =
         from_json_string(var_json);
 
-    match (term, var)
-    { (Some(t), Some(v)) => {
+    match (term, var) {
+        | (Some(t), Some(v)) => {
 
-        let result =
-            analyze_convergence(&t, &v);
+            let result =
+                analyze_convergence(
+                    &t, &v,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

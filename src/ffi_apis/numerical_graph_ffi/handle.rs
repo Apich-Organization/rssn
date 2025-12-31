@@ -3,11 +3,11 @@
 use std::slice;
 
 use crate::ffi_apis::ffi_api::update_last_error;
+use crate::numerical::graph::Graph;
 use crate::numerical::graph::bfs;
 use crate::numerical::graph::dijkstra;
 use crate::numerical::graph::floyd_warshall;
 use crate::numerical::graph::page_rank;
-use crate::numerical::graph::Graph;
 
 /// Creates a new graph.
 #[unsafe(no_mangle)]
@@ -42,13 +42,17 @@ pub unsafe extern "C" fn rssn_num_graph_create(
 
 pub unsafe extern "C" fn rssn_num_graph_free(
     graph: *mut Graph
-) { unsafe {
+) {
 
-    if !graph.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(graph);
+        if !graph.is_null() {
+
+            let _ =
+                Box::from_raw(graph);
+        }
     }
-}}
+}
 
 /// Adds a directed edge.
 #[unsafe(no_mangle)]
@@ -66,13 +70,17 @@ pub unsafe extern "C" fn rssn_num_graph_add_edge(
     u: usize,
     v: usize,
     weight: f64,
-) { unsafe {
+) {
 
-    if let Some(g) = graph.as_mut() {
+    unsafe {
 
-        g.add_edge(u, v, weight);
+        if let Some(g) = graph.as_mut()
+        {
+
+            g.add_edge(u, v, weight);
+        }
     }
-}}
+}
 
 /// Computes Dijkstra's algorithm.
 #[unsafe(no_mangle)]
@@ -90,53 +98,56 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra(
     start_node: usize,
     dist: *mut f64,
     prev: *mut isize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if graph.is_null()
-        || dist.is_null()
-        || prev.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if graph.is_null()
+            || dist.is_null()
+            || prev.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_graph_dijkstra"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        let g = &*graph;
+
+        let n = g.num_nodes();
+
+        let (d, p) =
+            dijkstra(g, start_node);
+
+        let dist_slice =
+            slice::from_raw_parts_mut(
+                dist, n,
+            );
+
+        let prev_slice =
+            slice::from_raw_parts_mut(
+                prev, n,
+            );
+
+        dist_slice.copy_from_slice(&d);
+
+        for i in 0 .. n {
+
+            prev_slice[i] = match p[i] {
+                | Some(node) => {
+                    node as isize
+                },
+                | None => -1,
+            };
+        }
+
+        0
     }
-
-    let g = &*graph;
-
-    let n = g.num_nodes();
-
-    let (d, p) =
-        dijkstra(g, start_node);
-
-    let dist_slice =
-        slice::from_raw_parts_mut(
-            dist, n,
-        );
-
-    let prev_slice =
-        slice::from_raw_parts_mut(
-            prev, n,
-        );
-
-    dist_slice.copy_from_slice(&d);
-
-    for i in 0 .. n {
-
-        prev_slice[i] = match p[i] {
-            | Some(node) => {
-                node as isize
-            },
-            | None => -1,
-        };
-    }
-
-    0
-}}
+}
 
 /// Computes BFS.
 #[unsafe(no_mangle)]
@@ -153,35 +164,39 @@ pub unsafe extern "C" fn rssn_num_graph_bfs(
     graph: *mut Graph,
     start_node: usize,
     dist: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if graph.is_null() || dist.is_null()
-    {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_graph_bfs"
-                .to_string(),
-        );
+        if graph.is_null()
+            || dist.is_null()
+        {
 
-        return -1;
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_num_graph_bfs"
+                    .to_string(),
+            );
+
+            return -1;
+        }
+
+        let g = &*graph;
+
+        let n = g.num_nodes();
+
+        let d = bfs(g, start_node);
+
+        let dist_slice =
+            slice::from_raw_parts_mut(
+                dist, n,
+            );
+
+        dist_slice.copy_from_slice(&d);
+
+        0
     }
-
-    let g = &*graph;
-
-    let n = g.num_nodes();
-
-    let d = bfs(g, start_node);
-
-    let dist_slice =
-        slice::from_raw_parts_mut(
-            dist, n,
-        );
-
-    dist_slice.copy_from_slice(&d);
-
-    0
-}}
+}
 
 /// Computes `PageRank`.
 #[unsafe(no_mangle)]
@@ -200,42 +215,46 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank(
     tolerance: f64,
     max_iter: usize,
     scores: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if graph.is_null()
-        || scores.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if graph.is_null()
+            || scores.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_graph_page_rank"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let g = &*graph;
+        let g = &*graph;
 
-    let n = g.num_nodes();
+        let n = g.num_nodes();
 
-    let s = page_rank(
-        g,
-        damping_factor,
-        tolerance,
-        max_iter,
-    );
-
-    let scores_slice =
-        slice::from_raw_parts_mut(
-            scores,
-            n,
+        let s = page_rank(
+            g,
+            damping_factor,
+            tolerance,
+            max_iter,
         );
 
-    scores_slice.copy_from_slice(&s);
+        let scores_slice =
+            slice::from_raw_parts_mut(
+                scores,
+                n,
+            );
 
-    0
-}}
+        scores_slice
+            .copy_from_slice(&s);
+
+        0
+    }
+}
 
 /// Computes Floyd-Warshall.
 #[unsafe(no_mangle)]
@@ -251,33 +270,36 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank(
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall(
     graph: *mut Graph,
     dist_matrix: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if graph.is_null()
-        || dist_matrix.is_null()
-    {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_graph_floyd_warshall".to_string());
+        if graph.is_null()
+            || dist_matrix.is_null()
+        {
 
-        return -1;
+            update_last_error("Null pointer passed to rssn_num_graph_floyd_warshall".to_string());
+
+            return -1;
+        }
+
+        let g = &*graph;
+
+        let n = g.num_nodes();
+
+        let mat = floyd_warshall(g);
+
+        let mat_slice =
+            slice::from_raw_parts_mut(
+                dist_matrix,
+                n * n,
+            );
+
+        mat_slice.copy_from_slice(&mat);
+
+        0
     }
-
-    let g = &*graph;
-
-    let n = g.num_nodes();
-
-    let mat = floyd_warshall(g);
-
-    let mat_slice =
-        slice::from_raw_parts_mut(
-            dist_matrix,
-            n * n,
-        );
-
-    mat_slice.copy_from_slice(&mat);
-
-    0
-}}
+}
 
 /// Computes Connected Components.
 /// Result array `components` must be allocated by caller with size `num_nodes`.
@@ -294,33 +316,37 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall(
 pub unsafe extern "C" fn rssn_num_graph_connected_components(
     graph: *mut Graph,
     components: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if graph.is_null()
-        || components.is_null()
-    {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_num_graph_connected_components".to_string());
+        if graph.is_null()
+            || components.is_null()
+        {
 
-        return -1;
+            update_last_error("Null pointer passed to rssn_num_graph_connected_components".to_string());
+
+            return -1;
+        }
+
+        let g = &*graph;
+
+        let n = g.num_nodes();
+
+        let comp = crate::numerical::graph::connected_components(g);
+
+        let comp_slice =
+            slice::from_raw_parts_mut(
+                components,
+                n,
+            );
+
+        comp_slice
+            .copy_from_slice(&comp);
+
+        0
     }
-
-    let g = &*graph;
-
-    let n = g.num_nodes();
-
-    let comp = crate::numerical::graph::connected_components(g);
-
-    let comp_slice =
-        slice::from_raw_parts_mut(
-            components,
-            n,
-        );
-
-    comp_slice.copy_from_slice(&comp);
-
-    0
-}}
+}
 
 /// Computes Minimum Spanning Tree (MST).
 /// Returns a new Graph handle.
@@ -336,20 +362,24 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components(
 
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree(
     graph: *mut Graph
-) -> *mut Graph { unsafe {
+) -> *mut Graph {
 
-    if graph.is_null() {
+    unsafe {
 
-        update_last_error(
+        if graph.is_null() {
+
+            update_last_error(
             "Null pointer passed to rssn_num_graph_minimum_spanning_tree".to_string(),
         );
 
-        return std::ptr::null_mut();
+            return std::ptr::null_mut(
+            );
+        }
+
+        let g = &*graph;
+
+        let mst = crate::numerical::graph::minimum_spanning_tree(g);
+
+        Box::into_raw(Box::new(mst))
     }
-
-    let g = &*graph;
-
-    let mst = crate::numerical::graph::minimum_spanning_tree(g);
-
-    Box::into_raw(Box::new(mst))
-}}
+}

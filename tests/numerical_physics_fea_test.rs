@@ -225,8 +225,8 @@ fn test_triangle_element_area() {
 
 #[test]
 
-fn test_triangle_element_constitutive_matrix_plane_stress(
-) {
+fn test_triangle_element_constitutive_matrix_plane_stress()
+ {
 
     let elem = TriangleElement2D::new(
         [0, 1, 2],
@@ -275,8 +275,8 @@ fn test_triangle_element_b_matrix() {
 
 #[test]
 
-fn test_triangle_element_stiffness_matrix(
-) {
+fn test_triangle_element_stiffness_matrix()
+ {
 
     let elem = TriangleElement2D::new(
         [0, 1, 2],
@@ -389,8 +389,8 @@ fn test_beam_element_stiffness_matrix()
 
 #[test]
 
-fn test_beam_element_transformation_matrix(
-) {
+fn test_beam_element_transformation_matrix()
+ {
 
     // Horizontal beam (angle = 0)
     let beam = BeamElement2D::new(
@@ -663,8 +663,8 @@ fn test_refine_mesh() {
 
 #[test]
 
-fn test_assemble_global_stiffness_matrix(
-) {
+fn test_assemble_global_stiffness_matrix()
+ {
 
     let elem1 = LinearElement1D {
         length: 1.0,

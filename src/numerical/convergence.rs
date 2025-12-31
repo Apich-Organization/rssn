@@ -308,7 +308,9 @@ pub fn wynn_epsilon(
     let mut eps =
         vec![vec![0.0; n]; n + 1];
 
-    eps[0][..n].copy_from_slice(&sequence[..n]);
+    eps[0][.. n].copy_from_slice(
+        &sequence[.. n],
+    );
 
     for k in 0 .. n - 1 {
 

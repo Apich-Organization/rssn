@@ -45,17 +45,18 @@ pub extern "C" fn rssn_json_multivector_geometric_product(
     let b: Option<Multivector> =
         from_json_string(b_json);
 
-    match (a, b)
-    { (Some(mv_a), Some(mv_b)) => {
+    match (a, b) {
+        | (Some(mv_a), Some(mv_b)) => {
 
-        let result = mv_a
-            .geometric_product(&mv_b);
+            let result = mv_a
+                .geometric_product(
+                    &mv_b,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes outer product (JSON)
@@ -72,17 +73,16 @@ pub extern "C" fn rssn_json_multivector_outer_product(
     let b: Option<Multivector> =
         from_json_string(b_json);
 
-    match (a, b)
-    { (Some(mv_a), Some(mv_b)) => {
+    match (a, b) {
+        | (Some(mv_a), Some(mv_b)) => {
 
-        let result =
-            mv_a.outer_product(&mv_b);
+            let result = mv_a
+                .outer_product(&mv_b);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes inner product (JSON)
@@ -99,17 +99,16 @@ pub extern "C" fn rssn_json_multivector_inner_product(
     let b: Option<Multivector> =
         from_json_string(b_json);
 
-    match (a, b)
-    { (Some(mv_a), Some(mv_b)) => {
+    match (a, b) {
+        | (Some(mv_a), Some(mv_b)) => {
 
-        let result =
-            mv_a.inner_product(&mv_b);
+            let result = mv_a
+                .inner_product(&mv_b);
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes reverse (JSON)

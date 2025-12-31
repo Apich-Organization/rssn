@@ -1,16 +1,16 @@
 //! Bincode-based FFI API for compute state module.
 
 use crate::compute::state::State;
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 
 /// Creates a new State and returns it as a bincode buffer.
 /// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_state_new_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_state_new_bincode()
+-> BincodeBuffer {
 
     let state = State::new();
 

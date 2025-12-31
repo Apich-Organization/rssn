@@ -95,7 +95,9 @@ fn test_lorenz_attractor_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]
@@ -134,7 +136,9 @@ fn test_henon_map_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]
@@ -173,7 +177,9 @@ fn test_logistic_map_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]
@@ -248,7 +254,9 @@ fn test_mandelbrot_set_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]
@@ -287,7 +295,9 @@ fn test_julia_set_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]
@@ -326,7 +336,9 @@ fn test_rossler_attractor_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]
@@ -365,7 +377,9 @@ fn test_tinkerbell_map_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]
@@ -404,7 +418,9 @@ fn test_bifurcation_json() {
             )
             .unwrap();
 
-        assert!(parsed["ok"].is_array());
+        assert!(
+            parsed["ok"].is_array()
+        );
 
         assert_eq!(
             parsed["ok"]

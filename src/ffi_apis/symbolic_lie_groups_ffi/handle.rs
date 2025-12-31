@@ -33,8 +33,8 @@ use crate::symbolic::lie_groups_and_algebras::{LieAlgebra, so3, su2, lie_bracket
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_lie_algebra_so3_create(
-) -> *mut LieAlgebra {
+pub unsafe extern "C" fn rssn_lie_algebra_so3_create()
+-> *mut LieAlgebra {
 
     let algebra = so3();
 
@@ -69,8 +69,8 @@ pub unsafe extern "C" fn rssn_lie_algebra_so3_create(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
-) -> *mut LieAlgebra {
+pub unsafe extern "C" fn rssn_lie_algebra_su2_create()
+-> *mut LieAlgebra {
 
     let algebra = su2();
 
@@ -106,13 +106,16 @@ pub unsafe extern "C" fn rssn_lie_algebra_su2_create(
 
 pub unsafe extern "C" fn rssn_lie_algebra_free(
     ptr: *mut LieAlgebra
-) { unsafe {
+) {
 
-    if !ptr.is_null() {
+    unsafe {
 
-        let _ = Box::from_raw(ptr);
+        if !ptr.is_null() {
+
+            let _ = Box::from_raw(ptr);
+        }
     }
-}}
+}
 
 #[unsafe(no_mangle)]
 
@@ -141,10 +144,13 @@ pub unsafe extern "C" fn rssn_lie_algebra_free(
 
 pub const unsafe extern "C" fn rssn_lie_algebra_get_dimension(
     ptr: *const LieAlgebra
-) -> usize { unsafe {
+) -> usize {
 
-    (*ptr).dimension
-}}
+    unsafe {
+
+        (*ptr).dimension
+    }
+}
 
 #[unsafe(no_mangle)]
 
@@ -180,16 +186,19 @@ pub const unsafe extern "C" fn rssn_lie_algebra_get_dimension(
 
 pub unsafe extern "C" fn rssn_lie_algebra_get_name(
     ptr: *const LieAlgebra
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let name = &(*ptr).name;
+    unsafe {
 
-    std::ffi::CString::new(
-        name.as_str(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        let name = &(*ptr).name;
+
+        std::ffi::CString::new(
+            name.as_str(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}
 
 #[unsafe(no_mangle)]
 
@@ -221,21 +230,26 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_name(
 pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
     ptr: *const LieAlgebra,
     index: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let algebra = &*ptr;
+    unsafe {
 
-    if index >= algebra.basis.len() {
+        let algebra = &*ptr;
 
-        return std::ptr::null_mut();
+        if index >= algebra.basis.len()
+        {
+
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
+            algebra.basis[index]
+                .0
+                .clone(),
+        ))
     }
-
-    Box::into_raw(Box::new(
-        algebra.basis[index]
-            .0
-            .clone(),
-    ))
-}}
+}
 
 // --- Lie Bracket ---
 
@@ -269,19 +283,22 @@ pub unsafe extern "C" fn rssn_lie_algebra_get_basis_element(
 pub unsafe extern "C" fn rssn_lie_bracket(
     x: *const Expr,
     y: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    match lie_bracket(&*x, &*y) {
-        | Ok(result) => {
-            Box::into_raw(Box::new(
-                result,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+    unsafe {
+
+        match lie_bracket(&*x, &*y) {
+            | Ok(result) => {
+                Box::into_raw(Box::new(
+                    result,
+                ))
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
+        }
     }
-}}
+}
 
 // --- Exponential Map ---
 
@@ -317,19 +334,24 @@ pub unsafe extern "C" fn rssn_lie_bracket(
 pub unsafe extern "C" fn rssn_exponential_map(
     x: *const Expr,
     order: usize,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    match exponential_map(&*x, order) {
-        | Ok(result) => {
-            Box::into_raw(Box::new(
-                result,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+    unsafe {
+
+        match exponential_map(
+            &*x, order,
+        ) {
+            | Ok(result) => {
+                Box::into_raw(Box::new(
+                    result,
+                ))
+            },
+            | Err(_) => {
+                std::ptr::null_mut()
+            },
+        }
     }
-}}
+}
 
 // --- Adjoint Representations ---
 
@@ -366,9 +388,11 @@ pub unsafe extern "C" fn rssn_exponential_map(
 pub unsafe extern "C" fn rssn_adjoint_representation_group(
     g: *const Expr,
     x: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    match adjoint_representation_group(
+    unsafe {
+
+        match adjoint_representation_group(
         &*g, &*x,
     ) {
         | Ok(result) => {
@@ -380,7 +404,8 @@ pub unsafe extern "C" fn rssn_adjoint_representation_group(
             std::ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 #[unsafe(no_mangle)]
 
@@ -415,9 +440,11 @@ pub unsafe extern "C" fn rssn_adjoint_representation_group(
 pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
     x: *const Expr,
     y: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    match adjoint_representation_algebra(
+    unsafe {
+
+        match adjoint_representation_algebra(
         &*x, &*y,
     ) {
         | Ok(result) => {
@@ -429,7 +456,8 @@ pub unsafe extern "C" fn rssn_adjoint_representation_algebra(
             std::ptr::null_mut()
         },
     }
-}}
+    }
+}
 
 // --- Commutator Table ---
 
@@ -467,61 +495,68 @@ pub unsafe extern "C" fn rssn_commutator_table(
     algebra: *const LieAlgebra,
     out_rows: *mut usize,
     out_cols: *mut usize,
-) -> *mut *mut Expr { unsafe {
+) -> *mut *mut Expr {
 
-    match commutator_table(&*algebra) {
-        | Ok(table) => {
+    unsafe {
 
-            let rows = table.len();
+        match commutator_table(
+            &*algebra,
+        ) {
+            | Ok(table) => {
 
-            let cols = if rows > 0 {
+                let rows = table.len();
 
-                table[0].len()
-            } else {
+                let cols = if rows > 0 {
 
-                0
-            };
+                    table[0].len()
+                } else {
 
-            *out_rows = rows;
+                    0
+                };
 
-            *out_cols = cols;
+                *out_rows = rows;
 
-            let mut flat_ptrs =
-                Vec::with_capacity(
-                    rows * cols,
-                );
+                *out_cols = cols;
 
-            for row in table {
+                let mut flat_ptrs =
+                    Vec::with_capacity(
+                        rows * cols,
+                    );
 
-                for elem in row {
+                for row in table {
 
-                    flat_ptrs.push(
+                    for elem in row {
+
+                        flat_ptrs.push(
                         Box::into_raw(
                             Box::new(
                                 elem,
                             ),
                         ),
                     );
+                    }
                 }
-            }
 
-            let ptr =
-                flat_ptrs.as_mut_ptr();
+                let ptr = flat_ptrs
+                    .as_mut_ptr();
 
-            std::mem::forget(flat_ptrs);
+                std::mem::forget(
+                    flat_ptrs,
+                );
 
-            ptr
-        },
-        | Err(_) => {
+                ptr
+            },
+            | Err(_) => {
 
-            *out_rows = 0;
+                *out_rows = 0;
 
-            *out_cols = 0;
+                *out_cols = 0;
 
-            std::ptr::null_mut()
-        },
+                std::ptr::null_mut()
+            },
+        }
     }
-}}
+}
 
 // --- Jacobi Identity Check ---
 
@@ -556,15 +591,18 @@ pub unsafe extern "C" fn rssn_commutator_table(
 
 pub unsafe extern "C" fn rssn_check_jacobi_identity(
     algebra: *const LieAlgebra
-) -> bool { unsafe {
+) -> bool {
 
-    match check_jacobi_identity(
-        &*algebra,
-    ) {
-        | Ok(result) => result,
-        | Err(_) => false,
+    unsafe {
+
+        match check_jacobi_identity(
+            &*algebra,
+        ) {
+            | Ok(result) => result,
+            | Err(_) => false,
+        }
     }
-}}
+}
 
 // --- Generators ---
 
@@ -597,29 +635,34 @@ pub unsafe extern "C" fn rssn_check_jacobi_identity(
 
 pub unsafe extern "C" fn rssn_so3_generators(
     out_len: *mut usize
-) -> *mut *mut Expr { unsafe {
+) -> *mut *mut Expr {
 
-    let generators = so3_generators();
+    unsafe {
 
-    *out_len = generators.len();
+        let generators =
+            so3_generators();
 
-    let mut ptrs = Vec::with_capacity(
-        generators.len(),
-    );
+        *out_len = generators.len();
 
-    for r#gen in generators {
+        let mut ptrs =
+            Vec::with_capacity(
+                generators.len(),
+            );
 
-        ptrs.push(Box::into_raw(
-            Box::new(r#gen.0),
-        ));
+        for r#gen in generators {
+
+            ptrs.push(Box::into_raw(
+                Box::new(r#gen.0),
+            ));
+        }
+
+        let ptr = ptrs.as_mut_ptr();
+
+        std::mem::forget(ptrs);
+
+        ptr
     }
-
-    let ptr = ptrs.as_mut_ptr();
-
-    std::mem::forget(ptrs);
-
-    ptr
-}}
+}
 
 #[unsafe(no_mangle)]
 
@@ -650,26 +693,31 @@ pub unsafe extern "C" fn rssn_so3_generators(
 
 pub unsafe extern "C" fn rssn_su2_generators(
     out_len: *mut usize
-) -> *mut *mut Expr { unsafe {
+) -> *mut *mut Expr {
 
-    let generators = su2_generators();
+    unsafe {
 
-    *out_len = generators.len();
+        let generators =
+            su2_generators();
 
-    let mut ptrs = Vec::with_capacity(
-        generators.len(),
-    );
+        *out_len = generators.len();
 
-    for r#gen in generators {
+        let mut ptrs =
+            Vec::with_capacity(
+                generators.len(),
+            );
 
-        ptrs.push(Box::into_raw(
-            Box::new(r#gen.0),
-        ));
+        for r#gen in generators {
+
+            ptrs.push(Box::into_raw(
+                Box::new(r#gen.0),
+            ));
+        }
+
+        let ptr = ptrs.as_mut_ptr();
+
+        std::mem::forget(ptrs);
+
+        ptr
     }
-
-    let ptr = ptrs.as_mut_ptr();
-
-    std::mem::forget(ptrs);
-
-    ptr
-}}
+}

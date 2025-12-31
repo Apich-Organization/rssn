@@ -50,8 +50,8 @@ fn test_evaluate_action_free_particle()
 
 #[test]
 
-fn test_evaluate_action_harmonic_oscillator(
-) {
+fn test_evaluate_action_harmonic_oscillator()
+ {
 
     // L = 0.5 * (y_dot^2 - y^2)
     let t = Expr::new_variable("t");

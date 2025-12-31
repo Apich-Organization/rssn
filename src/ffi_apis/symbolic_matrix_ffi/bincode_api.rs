@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::add_matrices;
 use crate::symbolic::matrix::determinant;
@@ -30,22 +30,21 @@ pub extern "C" fn rssn_bincode_matrix_add(
     let m2: Option<Expr> =
         from_bincode_buffer(&m2_buf);
 
-    match (m1, m2)
-    { (
-        Some(matrix1),
-        Some(matrix2),
-    ) => {
+    match (m1, m2) {
+        | (
+            Some(matrix1),
+            Some(matrix2),
+        ) => {
 
-        let result = add_matrices(
-            &matrix1,
-            &matrix2,
-        );
+            let result = add_matrices(
+                &matrix1,
+                &matrix2,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Performs matrix multiplication.
@@ -69,22 +68,21 @@ pub extern "C" fn rssn_bincode_matrix_mul(
     let m2: Option<Expr> =
         from_bincode_buffer(&m2_buf);
 
-    match (m1, m2)
-    { (
-        Some(matrix1),
-        Some(matrix2),
-    ) => {
+    match (m1, m2) {
+        | (
+            Some(matrix1),
+            Some(matrix2),
+        ) => {
 
-        let result = mul_matrices(
-            &matrix1,
-            &matrix2,
-        );
+            let result = mul_matrices(
+                &matrix1,
+                &matrix2,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Performs matrix transposition.
@@ -199,27 +197,27 @@ pub extern "C" fn rssn_bincode_matrix_solve_linear_system(
     let b: Option<Expr> =
         from_bincode_buffer(&b_buf);
 
-    match (a, b)
-    { (
-        Some(matrix_a),
-        Some(vector_b),
-    ) => {
+    match (a, b) {
+        | (
+            Some(matrix_a),
+            Some(vector_b),
+        ) => {
 
-        match solve_linear_system(
-            &matrix_a,
-            &vector_b,
-        ) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            match solve_linear_system(
+                &matrix_a,
+                &vector_b,
+            ) {
+                | Ok(result) => {
+                    to_bincode_buffer(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

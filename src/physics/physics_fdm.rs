@@ -43,9 +43,8 @@ pub struct FdmGrid<T> {
     pub(crate) dims: Dimensions,
 }
 
-impl<
-        T: Clone + Default + Send + Sync,
-    > FdmGrid<T>
+impl<T: Clone + Default + Send + Sync>
+    FdmGrid<T>
 {
     /// Creates a new grid from existing data and dimensions.
 
@@ -333,7 +332,10 @@ impl<T> IndexMut<(usize, usize, usize)>
 // ============================================================================
 
 /// Configuration for 2D FDM solvers (heat, wave equations).
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
+
 pub struct FdmSolverConfig2D {
     /// Grid width (number of points in x direction).
     pub width: usize,
@@ -350,7 +352,10 @@ pub struct FdmSolverConfig2D {
 }
 
 /// Configuration for 2D Poisson solver.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
+
 pub struct PoissonSolverConfig2D {
     /// Grid width (number of points in x direction).
     pub width: usize,
@@ -382,11 +387,17 @@ pub fn solve_heat_equation_2d<F>(
 where
     F: Fn(usize, usize) -> f64 + Sync,
 {
+
     let width = config.width;
+
     let height = config.height;
+
     let dx = config.dx;
+
     let dy = config.dy;
+
     let dt = config.dt;
+
     let steps = config.steps;
 
     let dims =
@@ -493,11 +504,17 @@ pub fn solve_wave_equation_2d<F>(
 where
     F: Fn(usize, usize) -> f64 + Sync,
 {
+
     let width = config.width;
+
     let height = config.height;
+
     let dx = config.dx;
+
     let dy = config.dy;
+
     let dt = config.dt;
+
     let steps = config.steps;
 
     let dims =
@@ -625,12 +642,19 @@ pub fn solve_poisson_2d(
     config: &PoissonSolverConfig2D,
     source: &FdmGrid<f64>,
 ) -> FdmGrid<f64> {
+
     let width = config.width;
+
     let height = config.height;
+
     let dx = config.dx;
+
     let dy = config.dy;
+
     let omega = config.omega;
+
     let max_iter = config.max_iter;
+
     let tolerance = config.tolerance;
 
     let dims =
@@ -866,8 +890,8 @@ pub fn solve_advection_diffusion_1d(
 
 #[must_use]
 
-pub fn simulate_2d_heat_conduction_scenario(
-) -> FdmGrid<f64> {
+pub fn simulate_2d_heat_conduction_scenario()
+-> FdmGrid<f64> {
 
     const WIDTH: usize = 100;
 
@@ -914,8 +938,8 @@ pub fn simulate_2d_heat_conduction_scenario(
 
 #[must_use]
 
-pub fn simulate_2d_wave_propagation_scenario(
-) -> FdmGrid<f64> {
+pub fn simulate_2d_wave_propagation_scenario()
+-> FdmGrid<f64> {
 
     const WIDTH: usize = 120;
 

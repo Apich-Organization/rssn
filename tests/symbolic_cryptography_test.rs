@@ -75,8 +75,10 @@ fn test_point_is_infinity() {
 
     assert!(!p.is_infinity());
 
-    assert!(CurvePoint::Infinity
-        .is_infinity());
+    assert!(
+        CurvePoint::Infinity
+            .is_infinity()
+    );
 }
 
 #[test]
@@ -99,13 +101,17 @@ fn test_point_x_y() {
         BigInt::from(1)
     );
 
-    assert!(CurvePoint::Infinity
-        .x()
-        .is_none());
+    assert!(
+        CurvePoint::Infinity
+            .x()
+            .is_none()
+    );
 
-    assert!(CurvePoint::Infinity
-        .y()
-        .is_none());
+    assert!(
+        CurvePoint::Infinity
+            .y()
+            .is_none()
+    );
 }
 
 #[test]
@@ -334,10 +340,12 @@ fn test_point_compression() {
     assert!(is_odd); // y = 1 is odd
 
     // Infinity should return None
-    assert!(point_compress(
-        &CurvePoint::Infinity
-    )
-    .is_none());
+    assert!(
+        point_compress(
+            &CurvePoint::Infinity
+        )
+        .is_none()
+    );
 }
 
 #[test]

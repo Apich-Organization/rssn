@@ -188,9 +188,11 @@ fn test_geometric_product_vectors() {
 
     // e1 * e2 = e12 (bivector)
     // Should have a bivector term
-    assert!(!result
-        .terms
-        .is_empty());
+    assert!(
+        !result
+            .terms
+            .is_empty()
+    );
 }
 
 #[test]
@@ -248,9 +250,11 @@ fn test_outer_product() {
     let result = v1.outer_product(&v2);
 
     // e1 ∧ e2 = e12 (bivector)
-    assert!(!result
-        .terms
-        .is_empty());
+    assert!(
+        !result
+            .terms
+            .is_empty()
+    );
 }
 
 #[test]
@@ -280,9 +284,11 @@ fn test_inner_product() {
     let result = v1.inner_product(&v2);
 
     // e1 · e1 = 1 (scalar)
-    assert!(!result
-        .terms
-        .is_empty());
+    assert!(
+        !result
+            .terms
+            .is_empty()
+    );
 }
 
 #[test]
@@ -425,9 +431,11 @@ fn test_dual() {
     let dual = v.dual();
 
     // Dual of a vector in 3D is a bivector
-    assert!(!dual
-        .terms
-        .is_empty());
+    assert!(
+        !dual
+            .terms
+            .is_empty()
+    );
 }
 
 #[test]
@@ -448,9 +456,11 @@ fn test_normalize() {
     let normalized = v.normalize();
 
     // Normalized vector should have unit magnitude
-    assert!(!normalized
-        .terms
-        .is_empty());
+    assert!(
+        !normalized
+            .terms
+            .is_empty()
+    );
 }
 
 #[test]
@@ -471,8 +481,8 @@ fn test_minkowski_signature() {
 
 #[test]
 
-fn test_geometric_product_associativity(
-) {
+fn test_geometric_product_associativity()
+ {
 
     let signature = (3, 0, 0);
 
@@ -509,8 +519,8 @@ fn test_geometric_product_associativity(
 
 #[test]
 
-fn test_outer_product_anticommutativity(
-) {
+fn test_outer_product_anticommutativity()
+ {
 
     let signature = (3, 0, 0);
 
@@ -540,11 +550,15 @@ fn test_outer_product_anticommutativity(
 
     // v1 ∧ v2 = -(v2 ∧ v1) for vectors
     // Both should have terms, but with opposite signs
-    assert!(!result1
-        .terms
-        .is_empty());
+    assert!(
+        !result1
+            .terms
+            .is_empty()
+    );
 
-    assert!(!result2
-        .terms
-        .is_empty());
+    assert!(
+        !result2
+            .terms
+            .is_empty()
+    );
 }

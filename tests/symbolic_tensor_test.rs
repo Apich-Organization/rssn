@@ -135,8 +135,8 @@ fn test_tensor_addition_symbolic() {
 
 #[test]
 
-fn test_tensor_scalar_multiplication_symbolic(
-) {
+fn test_tensor_scalar_multiplication_symbolic()
+ {
 
     // T = [[a, b], [c, d]]
     // k * T = [[k*a, k*b], [k*c, k*d]]
@@ -367,8 +367,8 @@ fn test_metric_tensor_symbolic() {
 
 #[test]
 
-fn test_metric_tensor_raise_lower_index_symbolic(
-) {
+fn test_metric_tensor_raise_lower_index_symbolic()
+ {
 
     // Use identity metric for simplicity
     let one =

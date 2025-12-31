@@ -33,9 +33,11 @@ struct SeqInput {
 
 pub unsafe extern "C" fn rssn_convergence_aitken_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -46,7 +48,7 @@ pub unsafe extern "C" fn rssn_convergence_aitken_json(
         },
     };
 
-    let input: SeqInput =
+        let input: SeqInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -63,18 +65,19 @@ pub unsafe extern "C" fn rssn_convergence_aitken_json(
             },
         };
 
-    let res = FfiResult {
+        let res = FfiResult {
         ok : Some(convergence::aitken_acceleration(&input.sequence)),
         err : None::<String>,
     };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}
 
 /// JSON FFI for Richardson extrapolation.
 #[unsafe(no_mangle)]
@@ -94,9 +97,11 @@ pub unsafe extern "C" fn rssn_convergence_aitken_json(
 
 pub unsafe extern "C" fn rssn_convergence_richardson_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -107,7 +112,7 @@ pub unsafe extern "C" fn rssn_convergence_richardson_json(
         },
     };
 
-    let input: SeqInput =
+        let input: SeqInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -124,18 +129,19 @@ pub unsafe extern "C" fn rssn_convergence_richardson_json(
             },
         };
 
-    let res = FfiResult {
+        let res = FfiResult {
         ok : Some(convergence::richardson_extrapolation(&input.sequence)),
         err : None::<String>,
     };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}
 
 /// JSON FFI for Wynn's epsilon algorithm.
 #[unsafe(no_mangle)]
@@ -155,9 +161,11 @@ pub unsafe extern "C" fn rssn_convergence_richardson_json(
 
 pub unsafe extern "C" fn rssn_convergence_wynn_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -168,7 +176,7 @@ pub unsafe extern "C" fn rssn_convergence_wynn_json(
         },
     };
 
-    let input: SeqInput =
+        let input: SeqInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -185,7 +193,7 @@ pub unsafe extern "C" fn rssn_convergence_wynn_json(
             },
         };
 
-    let res = FfiResult {
+        let res = FfiResult {
         ok: Some(
             convergence::wynn_epsilon(
                 &input.sequence,
@@ -194,10 +202,11 @@ pub unsafe extern "C" fn rssn_convergence_wynn_json(
         err: None::<String>,
     };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}

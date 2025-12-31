@@ -48,30 +48,33 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product(
     out_x: *mut f64,
     out_y: *mut f64,
     out_z: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if out_x.is_null()
-        || out_y.is_null()
-        || out_z.is_null()
-    {
+    unsafe {
 
-        return -1;
+        if out_x.is_null()
+            || out_y.is_null()
+            || out_z.is_null()
+        {
+
+            return -1;
+        }
+
+        let v1 = computer_graphics::Vector3D::new(x1, y1, z1);
+
+        let v2 = computer_graphics::Vector3D::new(x2, y2, z2);
+
+        let result = computer_graphics::cross_product(&v1, &v2);
+
+        *out_x = result.x;
+
+        *out_y = result.y;
+
+        *out_z = result.z;
+
+        0
     }
-
-    let v1 = computer_graphics::Vector3D::new(x1, y1, z1);
-
-    let v2 = computer_graphics::Vector3D::new(x2, y2, z2);
-
-    let result = computer_graphics::cross_product(&v1, &v2);
-
-    *out_x = result.x;
-
-    *out_y = result.y;
-
-    *out_z = result.z;
-
-    0
-}}
+}
 
 /// Normalizes a 3D vector.
 ///
@@ -94,28 +97,31 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize(
     out_x: *mut f64,
     out_y: *mut f64,
     out_z: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if out_x.is_null()
-        || out_y.is_null()
-        || out_z.is_null()
-    {
+    unsafe {
 
-        return -1;
+        if out_x.is_null()
+            || out_y.is_null()
+            || out_z.is_null()
+        {
+
+            return -1;
+        }
+
+        let v = computer_graphics::Vector3D::new(x, y, z);
+
+        let result = v.normalize();
+
+        *out_x = result.x;
+
+        *out_y = result.y;
+
+        *out_z = result.z;
+
+        0
     }
-
-    let v = computer_graphics::Vector3D::new(x, y, z);
-
-    let result = v.normalize();
-
-    *out_x = result.x;
-
-    *out_y = result.y;
-
-    *out_z = result.z;
-
-    0
-}}
+}
 
 /// Computes the magnitude of a 3D vector.
 #[unsafe(no_mangle)]
@@ -155,34 +161,37 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect(
     out_x: *mut f64,
     out_y: *mut f64,
     out_z: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if out_x.is_null()
-        || out_y.is_null()
-        || out_z.is_null()
-    {
+    unsafe {
 
-        return -1;
+        if out_x.is_null()
+            || out_y.is_null()
+            || out_z.is_null()
+        {
+
+            return -1;
+        }
+
+        let incident = computer_graphics::Vector3D::new(ix, iy, iz);
+
+        let normal = computer_graphics::Vector3D::new(nx, ny, nz);
+
+        let result =
+            computer_graphics::reflect(
+                &incident,
+                &normal,
+            );
+
+        *out_x = result.x;
+
+        *out_y = result.y;
+
+        *out_z = result.z;
+
+        0
     }
-
-    let incident = computer_graphics::Vector3D::new(ix, iy, iz);
-
-    let normal = computer_graphics::Vector3D::new(nx, ny, nz);
-
-    let result =
-        computer_graphics::reflect(
-            &incident,
-            &normal,
-        );
-
-    *out_x = result.x;
-
-    *out_y = result.y;
-
-    *out_z = result.z;
-
-    0
-}}
+}
 
 /// Computes the angle between two 3D vectors in radians.
 #[unsafe(no_mangle)]
@@ -252,33 +261,36 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
     out_x: *mut f64,
     out_y: *mut f64,
     out_z: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if out_w.is_null()
-        || out_x.is_null()
-        || out_y.is_null()
-        || out_z.is_null()
-    {
+    unsafe {
 
-        return -1;
+        if out_w.is_null()
+            || out_x.is_null()
+            || out_y.is_null()
+            || out_z.is_null()
+        {
+
+            return -1;
+        }
+
+        let q1 = computer_graphics::Quaternion::new(w1, x1, y1, z1);
+
+        let q2 = computer_graphics::Quaternion::new(w2, x2, y2, z2);
+
+        let result = q1.multiply(&q2);
+
+        *out_w = result.w;
+
+        *out_x = result.x;
+
+        *out_y = result.y;
+
+        *out_z = result.z;
+
+        0
     }
-
-    let q1 = computer_graphics::Quaternion::new(w1, x1, y1, z1);
-
-    let q2 = computer_graphics::Quaternion::new(w2, x2, y2, z2);
-
-    let result = q1.multiply(&q2);
-
-    *out_w = result.w;
-
-    *out_x = result.x;
-
-    *out_y = result.y;
-
-    *out_z = result.z;
-
-    0
-}}
+}
 
 /// Rotation matrix around X axis.
 /// Output: 16 f64 values in row-major order.
@@ -298,23 +310,26 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x(
     angle_rad: f64,
     out_ptr: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if out_ptr.is_null() {
+    unsafe {
 
-        return -1;
+        if out_ptr.is_null() {
+
+            return -1;
+        }
+
+        let matrix = computer_graphics::rotation_matrix_x(angle_rad);
+
+        for i in 0 .. 16 {
+
+            *out_ptr.add(i) =
+                matrix.data()[i];
+        }
+
+        0
     }
-
-    let matrix = computer_graphics::rotation_matrix_x(angle_rad);
-
-    for i in 0 .. 16 {
-
-        *out_ptr.add(i) =
-            matrix.data()[i];
-    }
-
-    0
-}}
+}
 
 /// Ray-sphere intersection.
 /// Returns t value or -1 if no intersection.
@@ -392,46 +407,49 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic(
     out_x: *mut f64,
     out_y: *mut f64,
     out_z: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if out_x.is_null()
-        || out_y.is_null()
-        || out_z.is_null()
-    {
+    unsafe {
 
-        return -1;
-    }
+        if out_x.is_null()
+            || out_y.is_null()
+            || out_z.is_null()
+        {
 
-    let p0 =
+            return -1;
+        }
+
+        let p0 =
         computer_graphics::Point3D::new(
             p0x, p0y, p0z,
         );
 
-    let p1 =
+        let p1 =
         computer_graphics::Point3D::new(
             p1x, p1y, p1z,
         );
 
-    let p2 =
+        let p2 =
         computer_graphics::Point3D::new(
             p2x, p2y, p2z,
         );
 
-    let p3 =
+        let p3 =
         computer_graphics::Point3D::new(
             p3x, p3y, p3z,
         );
 
-    let result =
+        let result =
         computer_graphics::bezier_cubic(
             &p0, &p1, &p2, &p3, t,
         );
 
-    *out_x = result.x;
+        *out_x = result.x;
 
-    *out_y = result.y;
+        *out_y = result.y;
 
-    *out_z = result.z;
+        *out_z = result.z;
 
-    0
-}}
+        0
+    }
+}

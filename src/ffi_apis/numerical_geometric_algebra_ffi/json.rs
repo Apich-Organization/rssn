@@ -40,9 +40,11 @@ struct TwoGaInput {
 
 pub unsafe extern "C" fn rssn_num_ga_add_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -53,7 +55,7 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(
         },
     };
 
-    let input: TwoGaInput =
+        let input: TwoGaInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -70,18 +72,21 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(
             },
         };
 
-    let res = FfiResult {
-        ok: Some(input.mv1 + input.mv2),
-        err: None::<String>,
-    };
+        let res = FfiResult {
+            ok: Some(
+                input.mv1 + input.mv2,
+            ),
+            err: None::<String>,
+        };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}
 
 /// JSON FFI for `ga_sub`.
 #[unsafe(no_mangle)]
@@ -101,9 +106,11 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(
 
 pub unsafe extern "C" fn rssn_num_ga_sub_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -114,7 +121,7 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(
         },
     };
 
-    let input: TwoGaInput =
+        let input: TwoGaInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -131,18 +138,21 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(
             },
         };
 
-    let res = FfiResult {
-        ok: Some(input.mv1 - input.mv2),
-        err: None::<String>,
-    };
+        let res = FfiResult {
+            ok: Some(
+                input.mv1 - input.mv2,
+            ),
+            err: None::<String>,
+        };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}
 
 /// JSON FFI for `ga_mul`.
 #[unsafe(no_mangle)]
@@ -162,9 +172,11 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(
 
 pub unsafe extern "C" fn rssn_num_ga_mul_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -175,7 +187,7 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(
         },
     };
 
-    let input: TwoGaInput =
+        let input: TwoGaInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -192,18 +204,21 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(
             },
         };
 
-    let res = FfiResult {
-        ok: Some(input.mv1 * input.mv2),
-        err: None::<String>,
-    };
+        let res = FfiResult {
+            ok: Some(
+                input.mv1 * input.mv2,
+            ),
+            err: None::<String>,
+        };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}
 
 /// JSON FFI for `ga_wedge`.
 #[unsafe(no_mangle)]
@@ -223,9 +238,11 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(
 
 pub unsafe extern "C" fn rssn_num_ga_wedge_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -236,7 +253,7 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(
         },
     };
 
-    let input: TwoGaInput =
+        let input: TwoGaInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -253,22 +270,23 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(
             },
         };
 
-    let res = FfiResult {
-        ok: Some(
-            input
-                .mv1
-                .wedge(input.mv2),
-        ),
-        err: None::<String>,
-    };
+        let res = FfiResult {
+            ok: Some(
+                input
+                    .mv1
+                    .wedge(input.mv2),
+            ),
+            err: None::<String>,
+        };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}
 
 /// JSON FFI for `ga_dot`.
 #[unsafe(no_mangle)]
@@ -288,9 +306,11 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(
 
 pub unsafe extern "C" fn rssn_num_ga_dot_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -301,7 +321,7 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(
         },
     };
 
-    let input: TwoGaInput =
+        let input: TwoGaInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -318,22 +338,23 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(
             },
         };
 
-    let res = FfiResult {
-        ok: Some(
-            input
-                .mv1
-                .dot(input.mv2),
-        ),
-        err: None::<String>,
-    };
+        let res = FfiResult {
+            ok: Some(
+                input
+                    .mv1
+                    .dot(input.mv2),
+            ),
+            err: None::<String>,
+        };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}
 
 /// JSON FFI for `ga_reverse`.
 #[unsafe(no_mangle)]
@@ -353,9 +374,11 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(
 
 pub unsafe extern "C" fn rssn_num_ga_reverse_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -366,7 +389,7 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(
         },
     };
 
-    let input: GaInput =
+        let input: GaInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -383,18 +406,21 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(
             },
         };
 
-    let res = FfiResult {
-        ok: Some(input.mv.reverse()),
-        err: None::<String>,
-    };
+        let res = FfiResult {
+            ok: Some(
+                input.mv.reverse(),
+            ),
+            err: None::<String>,
+        };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}
 
 /// JSON FFI for `ga_norm`.
 #[unsafe(no_mangle)]
@@ -414,9 +440,11 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(
 
 pub unsafe extern "C" fn rssn_num_ga_norm_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -427,7 +455,7 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(
         },
     };
 
-    let input: GaInput =
+        let input: GaInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -444,18 +472,19 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(
             },
         };
 
-    let res = FfiResult {
-        ok: Some(input.mv.norm()),
-        err: None::<String>,
-    };
+        let res = FfiResult {
+            ok: Some(input.mv.norm()),
+            err: None::<String>,
+        };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}
 
 /// JSON FFI for `ga_inv`.
 #[unsafe(no_mangle)]
@@ -475,9 +504,11 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(
 
 pub unsafe extern "C" fn rssn_num_ga_inv_json(
     json_ptr: *const c_char
-) -> *mut c_char { unsafe {
+) -> *mut c_char {
 
-    let json_str = match CStr::from_ptr(
+    unsafe {
+
+        let json_str = match CStr::from_ptr(
         json_ptr,
     )
     .to_str()
@@ -488,7 +519,7 @@ pub unsafe extern "C" fn rssn_num_ga_inv_json(
         },
     };
 
-    let input: GaInput =
+        let input: GaInput =
         match serde_json::from_str(
             json_str,
         ) {
@@ -505,8 +536,7 @@ pub unsafe extern "C" fn rssn_num_ga_inv_json(
             },
         };
 
-    let res =
-        match input.mv.inv() {
+        let res = match input.mv.inv() {
             | Some(v) => {
                 FfiResult {
                     ok: Some(v),
@@ -523,10 +553,11 @@ pub unsafe extern "C" fn rssn_num_ga_inv_json(
             },
         };
 
-    CString::new(
-        serde_json::to_string(&res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
-}}
+        CString::new(
+            serde_json::to_string(&res)
+                .unwrap(),
+        )
+        .unwrap()
+        .into_raw()
+    }
+}

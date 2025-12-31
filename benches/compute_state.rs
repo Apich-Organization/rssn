@@ -1,5 +1,5 @@
-use criterion::criterion_group;
 use criterion::Criterion;
+use criterion::criterion_group;
 use rssn::compute::state::State;
 
 fn bench_state_new(c: &mut Criterion) {

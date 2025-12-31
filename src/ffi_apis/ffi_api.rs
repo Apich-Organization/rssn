@@ -79,8 +79,8 @@ pub(crate) unsafe fn update_last_error(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_get_last_error(
-) -> *const c_char {
+pub unsafe extern "C" fn rssn_get_last_error()
+-> *const c_char {
 
     LAST_ERROR.with(|prev| {
 
@@ -290,49 +290,62 @@ use crate::symbolic::unit_unification::unify_expression;
 
 pub unsafe extern "C" fn rssn_expr_create(
     json_ptr: *const c_char
-) -> usize { unsafe {
+) -> usize {
 
-    if json_ptr.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_expr_create"
-                .to_string(),
-        );
+        if json_ptr.is_null() {
 
-        return 0;
-    }
-
-    let json_str = match CStr::from_ptr(json_ptr).to_str()
-     {
-        | Ok(s) => s,
-        | Err(e) => {
-
-            update_last_error(format!(
-                "Invalid UTF-8 in \
-                 input string: {e}"
-            ));
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_expr_create"
+                    .to_string(),
+            );
 
             return 0;
-        },
-    };
+        }
 
-    match serde_json::from_str(json_str)
-    {
-        | Ok(expr) => {
-            HANDLE_MANAGER.insert(expr)
-        },
-        | Err(e) => {
+        let json_str =
+            match CStr::from_ptr(
+                json_ptr,
+            )
+            .to_str()
+            {
+                | Ok(s) => s,
+                | Err(e) => {
 
-            update_last_error(format!(
+                    update_last_error(
+                        format!(
+                "Invalid UTF-8 in \
+                 input string: {e}"
+            ),
+                    );
+
+                    return 0;
+                },
+            };
+
+        match serde_json::from_str(
+            json_str,
+        ) {
+            | Ok(expr) => {
+                HANDLE_MANAGER
+                    .insert(expr)
+            },
+            | Err(e) => {
+
+                update_last_error(
+                    format!(
                 "JSON deserialization \
                  error: {e}"
-            ));
+            ),
+                );
 
-            0
-        },
+                0
+            },
+        }
     }
-}}
+}
 
 /// Frees the memory associated with an expression handle.
 #[unsafe(no_mangle)]
@@ -382,29 +395,36 @@ pub unsafe extern "C" fn rssn_expr_free(
 
 pub unsafe extern "C" fn rssn_expr_simplify(
     handle: &usize
-) -> usize { unsafe {
+) -> usize {
 
-    match HANDLE_MANAGER.get(*handle) {
-        | Some(expr) => {
+    unsafe {
 
-            let simplified_expr =
-                simplify(
-                    &(*expr).clone(),
-                );
+        match HANDLE_MANAGER
+            .get(*handle)
+        {
+            | Some(expr) => {
 
-            HANDLE_MANAGER
-                .insert(simplified_expr)
-        },
-        | None => {
+                let simplified_expr =
+                    simplify(
+                        &(*expr)
+                            .clone(),
+                    );
 
-            update_last_error(format!(
+                HANDLE_MANAGER.insert(
+                    simplified_expr,
+                )
+            },
+            | None => {
+
+                update_last_error(format!(
                 "Invalid handle passed to rssn_expr_simplify: {handle}"
             ));
 
-            0
-        },
+                0
+            },
+        }
     }
-}}
+}
 
 #[derive(Serialize, Deserialize)]
 /// A generic FFI-compatible result type, used for returning either a successful value or an error.
@@ -460,30 +480,33 @@ impl<T, E> FfiResult<T, E> {
 
 pub unsafe extern "C" fn expr_simplify(
     handle: *mut Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    // 1. Check the pointer itself (now *mut Expr)
-    if handle.is_null() {
+    unsafe {
 
-        return ptr::null_mut();
+        // 1. Check the pointer itself (now *mut Expr)
+        if handle.is_null() {
+
+            return ptr::null_mut();
+        }
+
+        // 2. Dereference the raw pointer to get the actual Expr value.
+        // The raw pointer is treated as a shared reference (&*handle)
+        // to access the data without consuming it.
+        let expr_ref = &*handle;
+
+        // 3. Clone the *value* of the expression, and take a reference to the clone.
+        // This gives `&Expr` required by `simplify`.
+        let simplified_expr =
+            simplify(&expr_ref.clone());
+
+        // 4. Return the new expression as a raw pointer.
+        Arc::into_raw(Arc::new(
+            simplified_expr,
+        ))
+        .cast_mut()
     }
-
-    // 2. Dereference the raw pointer to get the actual Expr value.
-    // The raw pointer is treated as a shared reference (&*handle)
-    // to access the data without consuming it.
-    let expr_ref = &*handle;
-
-    // 3. Clone the *value* of the expression, and take a reference to the clone.
-    // This gives `&Expr` required by `simplify`.
-    let simplified_expr =
-        simplify(&expr_ref.clone());
-
-    // 4. Return the new expression as a raw pointer.
-    Arc::into_raw(Arc::new(
-        simplified_expr,
-    ))
-    .cast_mut()
-}}
+}
 
 /// Attempts to unify the units within an expression.
 ///
@@ -592,8 +615,8 @@ pub unsafe extern "C" fn expr_unify_expression(
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
 
-pub unsafe extern "C" fn rssn_test_string_passing(
-) -> *mut c_char {
+pub unsafe extern "C" fn rssn_test_string_passing()
+-> *mut c_char {
 
     match CString::new("pong") {
         | Ok(s) => s.into_raw(),
@@ -776,7 +799,7 @@ pub unsafe extern "C" fn interpolate_lagrange(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -881,7 +904,7 @@ pub unsafe extern "C" fn interpolate_bezier_curve(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -1409,7 +1432,7 @@ pub unsafe extern "C" fn vector_scalar_mul(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -1512,36 +1535,39 @@ pub unsafe extern "C" fn rssn_vec_norm(
     data: *const f64,
     len: usize,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if data.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_vec_norm"
-                .to_string(),
-        );
+        if data.is_null()
+            || result.is_null()
+        {
 
-        return -1;
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_vec_norm"
+                    .to_string(),
+            );
+
+            return -1;
+        }
+
+        let vec_slice = {
+
+            std::slice::from_raw_parts(
+                data, len,
+            )
+        };
+
+        {
+
+            *result =
+                vector::norm(vec_slice);
+        };
+
+        0
     }
-
-    let vec_slice =  {
-
-        std::slice::from_raw_parts(
-            data, len,
-        )
-    };
-
-     {
-
-        *result =
-            vector::norm(vec_slice);
-    };
-
-    0
-}}
+}
 
 /// Computes the dot product of two vectors.
 ///
@@ -1580,54 +1606,59 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
     d2: *const f64,
     l2: usize,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if d1.is_null()
-        || d2.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if d1.is_null()
+            || d2.is_null()
+            || result.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_vec_dot_product"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        let v1 = {
+
+            std::slice::from_raw_parts(
+                d1, l1,
+            )
+        };
+
+        let v2 = {
+
+            std::slice::from_raw_parts(
+                d2, l2,
+            )
+        };
+
+        match vector::dot_product(
+            v1, v2,
+        ) {
+            | Ok(val) => {
+
+                {
+
+                    *result = val;
+                };
+
+                0
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                -1
+            },
+        }
     }
-
-    let v1 =  {
-
-        std::slice::from_raw_parts(
-            d1, l1,
-        )
-    };
-
-    let v2 =  {
-
-        std::slice::from_raw_parts(
-            d2, l2,
-        )
-    };
-
-    match vector::dot_product(v1, v2) {
-        | Ok(val) => {
-
-             {
-
-                *result = val;
-            };
-
-            0
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            -1
-        },
-    }
-}}
+}
 
 /// Computes the factorial of a number `n`.
 ///
@@ -1659,27 +1690,30 @@ pub unsafe extern "C" fn rssn_vec_dot_product(
 pub unsafe extern "C" fn rssn_comb_factorial(
     n: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error(
+        if result.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_comb_factorial"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-     {
+        {
 
-        *result =
+            *result =
             combinatorics::factorial(n);
-    };
+        };
 
-    0
-}}
+        0
+    }
+}
 
 /// Computes the number of permutations (nPk).
 ///
@@ -1713,29 +1747,32 @@ pub unsafe extern "C" fn rssn_comb_permutations(
     n: u64,
     k: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error(
+        if result.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_comb_permutations"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-     {
+        {
 
-        *result =
+            *result =
             combinatorics::permutations(
                 n, k,
             );
-    };
+        };
 
-    0
-}}
+        0
+    }
+}
 
 /// Computes the number of combinations (nCk).
 ///
@@ -1769,29 +1806,32 @@ pub unsafe extern "C" fn rssn_comb_combinations(
     n: u64,
     k: u64,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error(
+        if result.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_comb_combinations"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-     {
+        {
 
-        *result =
+            *result =
             combinatorics::combinations(
                 n, k,
             );
-    };
+        };
 
-    0
-}}
+        0
+    }
+}
 
 use crate::numerical::number_theory as nt;
 
@@ -2011,7 +2051,7 @@ pub unsafe extern "C" fn nt_mod_pow(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -2098,7 +2138,7 @@ pub unsafe extern "C" fn nt_mod_inverse(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -2547,7 +2587,7 @@ pub unsafe extern "C" fn transforms_fft(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -2646,7 +2686,7 @@ pub unsafe extern "C" fn transforms_ifft(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -2719,30 +2759,33 @@ use crate::numerical::transforms::ifft_slice;
 pub unsafe extern "C" fn rssn_fft(
     data: *mut Complex<f64>,
     len: usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if data.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_fft"
-                .to_string(),
-        );
+        if data.is_null() {
 
-        return -1;
-    }
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_fft"
+                    .to_string(),
+            );
 
-    let complex_slice =  {
+            return -1;
+        }
 
-        std::slice::from_raw_parts_mut(
+        let complex_slice = {
+
+            std::slice::from_raw_parts_mut(
             data, len,
         )
-    };
+        };
 
-    fft_slice(complex_slice);
+        fft_slice(complex_slice);
 
-    0
-}}
+        0
+    }
+}
 
 /// Computes the Inverse Fast Fourier Transform (IFFT) of a sequence of complex numbers in-place.
 #[unsafe(no_mangle)]
@@ -2764,30 +2807,33 @@ pub unsafe extern "C" fn rssn_fft(
 pub unsafe extern "C" fn rssn_ifft(
     data: *mut Complex<f64>,
     len: usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if data.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_ifft"
-                .to_string(),
-        );
+        if data.is_null() {
 
-        return -1;
-    }
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_ifft"
+                    .to_string(),
+            );
 
-    let complex_slice =  {
+            return -1;
+        }
 
-        std::slice::from_raw_parts_mut(
+        let complex_slice = {
+
+            std::slice::from_raw_parts_mut(
             data, len,
         )
-    };
+        };
 
-    ifft_slice(complex_slice);
+        ifft_slice(complex_slice);
 
-    0
-}}
+        0
+    }
+}
 
 #[derive(Deserialize)]
 
@@ -2952,7 +2998,7 @@ pub unsafe extern "C" fn poly_leading_coefficient(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -3016,7 +3062,7 @@ pub unsafe extern "C" fn poly_long_division(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -3121,7 +3167,7 @@ pub unsafe extern "C" fn poly_to_coeffs_vec(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -3205,7 +3251,7 @@ pub unsafe extern "C" fn poly_from_coeffs_vec(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -3265,57 +3311,65 @@ pub unsafe extern "C" fn rssn_poly_is_polynomial(
     expr_handle: usize,
     var_ptr: *const c_char,
     result: *mut bool,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null()
-        || var_ptr.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if result.is_null()
+            || var_ptr.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_poly_is_polynomial"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let var = match CStr::from_ptr(var_ptr).to_str()
-     {
-        | Ok(s) => s,
-        | Err(e) => {
+        let var = match CStr::from_ptr(
+            var_ptr,
+        )
+        .to_str()
+        {
+            | Ok(s) => s,
+            | Err(e) => {
 
-            update_last_error(format!(
+                update_last_error(
+                    format!(
                 "Invalid UTF-8 in \
                  var_ptr: {e}"
-            ));
+            ),
+                );
 
-            return -1;
-        },
-    };
+                return -1;
+            },
+        };
 
-    match HANDLE_MANAGER
-        .get(expr_handle)
-    {
-        | Some(expr) => {
+        match HANDLE_MANAGER
+            .get(expr_handle)
+        {
+            | Some(expr) => {
 
-             {
+                {
 
-                *result = poly_module::is_polynomial(&expr, var);
-            };
+                    *result = poly_module::is_polynomial(&expr, var);
+                };
 
-            0
-        },
-        | None => {
+                0
+            },
+            | None => {
 
-            update_last_error(format!(
+                update_last_error(format!(
                 "Invalid handle passed to rssn_poly_is_polynomial: {expr_handle}"
             ));
 
-            -1
-        },
+                -1
+            },
+        }
     }
-}}
+}
 
 /// Computes the degree of a polynomial expression with respect to a given variable.
 ///
@@ -3350,57 +3404,65 @@ pub unsafe extern "C" fn rssn_poly_degree(
     expr_handle: usize,
     var_ptr: *const c_char,
     result: *mut i64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null()
-        || var_ptr.is_null()
-    {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_poly_degree"
-                .to_string(),
-        );
+        if result.is_null()
+            || var_ptr.is_null()
+        {
 
-        return -1;
-    }
-
-    let var = match CStr::from_ptr(var_ptr).to_str()
-    {
-        | Ok(s) => s,
-        | Err(e) => {
-
-            update_last_error(format!(
-                "Invalid UTF-8 in \
-                 var_ptr: {e}"
-            ));
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_poly_degree"
+                    .to_string(),
+            );
 
             return -1;
-        },
-    };
+        }
 
-    match HANDLE_MANAGER
-        .get(expr_handle)
-    {
-        | Some(expr) => {
+        let var = match CStr::from_ptr(
+            var_ptr,
+        )
+        .to_str()
+        {
+            | Ok(s) => s,
+            | Err(e) => {
 
-             {
+                update_last_error(
+                    format!(
+                "Invalid UTF-8 in \
+                 var_ptr: {e}"
+            ),
+                );
 
-                *result = poly_module::polynomial_degree(&expr, var);
-            };
+                return -1;
+            },
+        };
 
-            0
-        },
-        | None => {
+        match HANDLE_MANAGER
+            .get(expr_handle)
+        {
+            | Some(expr) => {
 
-            update_last_error(format!(
+                {
+
+                    *result = poly_module::polynomial_degree(&expr, var);
+                };
+
+                0
+            },
+            | None => {
+
+                update_last_error(format!(
                 "Invalid handle passed to rssn_poly_degree: {expr_handle}"
             ));
 
-            -1
-        },
+                -1
+            },
+        }
     }
-}}
+}
 
 /// Performs polynomial long division on two expressions with respect to a given variable.
 ///
@@ -3439,64 +3501,75 @@ pub unsafe extern "C" fn rssn_poly_long_division(
     var_ptr: *const c_char,
     q_handle: *mut usize,
     r_handle: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if q_handle.is_null()
-        || r_handle.is_null()
-        || var_ptr.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if q_handle.is_null()
+            || r_handle.is_null()
+            || var_ptr.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_poly_long_division"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let var = match CStr::from_ptr(var_ptr).to_str() {
-        | Ok(s) => s,
-        | Err(e) => {
+        let var = match CStr::from_ptr(
+            var_ptr,
+        )
+        .to_str()
+        {
+            | Ok(s) => s,
+            | Err(e) => {
 
-            update_last_error(format!(
+                update_last_error(
+                    format!(
                 "Invalid UTF-8 in \
                  var_ptr: {e}"
-            ));
+            ),
+                );
 
-            return -1;
-        },
-    };
+                return -1;
+            },
+        };
 
-    match (
-        HANDLE_MANAGER.get(n_handle),
-        HANDLE_MANAGER.get(d_handle),
-    ) {
-        | (Some(n), Some(d)) => {
+        match (
+            HANDLE_MANAGER
+                .get(n_handle),
+            HANDLE_MANAGER
+                .get(d_handle),
+        ) {
+            | (Some(n), Some(d)) => {
 
-            let (q, r) = poly_module::polynomial_long_division(&n, &d, var);
+                let (q, r) = poly_module::polynomial_long_division(&n, &d, var);
 
-             {
+                {
 
-                *q_handle =
-                    HANDLE_MANAGER
-                        .insert(q);
+                    *q_handle =
+                        HANDLE_MANAGER
+                            .insert(q);
 
-                *r_handle =
-                    HANDLE_MANAGER
-                        .insert(r);
-            }
+                    *r_handle =
+                        HANDLE_MANAGER
+                            .insert(r);
+                }
 
-            0
-        },
-        | _ => {
+                0
+            },
+            | _ => {
 
-            update_last_error("Invalid handle passed to rssn_poly_long_division".to_string());
+                update_last_error("Invalid handle passed to rssn_poly_long_division".to_string());
 
-            -1
-        },
+                -1
+            },
+        }
     }
-}}
+}
 
 #[derive(Deserialize)]
 
@@ -3709,7 +3782,7 @@ pub unsafe extern "C" fn stats_percentile(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -3901,7 +3974,7 @@ pub unsafe extern "C" fn stats_simple_linear_regression(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -3988,37 +4061,41 @@ pub unsafe extern "C" fn rssn_stats_mean(
     data: *const f64,
     len: usize,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if data.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_stats_mean"
-                .to_string(),
-        );
+        if data.is_null()
+            || result.is_null()
+        {
 
-        return -1;
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_stats_mean"
+                    .to_string(),
+            );
+
+            return -1;
+        }
+
+        let data_slice = {
+
+            std::slice::from_raw_parts(
+                data, len,
+            )
+        };
+
+        {
+
+            *result =
+                stats_module::mean(
+                    data_slice,
+                );
+        };
+
+        0
     }
-
-    let data_slice =  {
-
-        std::slice::from_raw_parts(
-            data, len,
-        )
-    };
-
-     {
-
-        *result = stats_module::mean(
-            data_slice,
-        );
-    };
-
-    0
-}}
+}
 
 /// Computes the variance of a slice of f64 values.
 ///
@@ -4053,38 +4130,41 @@ pub unsafe extern "C" fn rssn_stats_variance(
     data: *const f64,
     len: usize,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if data.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if data.is_null()
+            || result.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_stats_variance"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        let data_slice = {
+
+            std::slice::from_raw_parts(
+                data, len,
+            )
+        };
+
+        {
+
+            *result =
+                stats_module::variance(
+                    data_slice,
+                );
+        };
+
+        0
     }
-
-    let data_slice =  {
-
-        std::slice::from_raw_parts(
-            data, len,
-        )
-    };
-
-     {
-
-        *result =
-            stats_module::variance(
-                data_slice,
-            );
-    };
-
-    0
-}}
+}
 
 /// Computes the standard deviation of a slice of f64 values.
 ///
@@ -4119,37 +4199,41 @@ pub unsafe extern "C" fn rssn_stats_std_dev(
     data: *const f64,
     len: usize,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if data.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_stats_std_dev"
-                .to_string(),
-        );
+        if data.is_null()
+            || result.is_null()
+        {
 
-        return -1;
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_stats_std_dev"
+                    .to_string(),
+            );
+
+            return -1;
+        }
+
+        let data_slice = {
+
+            std::slice::from_raw_parts(
+                data, len,
+            )
+        };
+
+        {
+
+            *result =
+                stats_module::std_dev(
+                    data_slice,
+                );
+        };
+
+        0
     }
-
-    let data_slice =  {
-
-        std::slice::from_raw_parts(
-            data, len,
-        )
-    };
-
-     {
-
-        *result = stats_module::std_dev(
-            data_slice,
-        );
-    };
-
-    0
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -4178,50 +4262,53 @@ pub unsafe extern "C" fn rssn_stats_covariance(
     d2: *const f64,
     len: usize,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if d1.is_null()
-        || d2.is_null()
-        || result.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if d1.is_null()
+            || d2.is_null()
+            || result.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_stats_covariance"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let s1 =  {
+        let s1 = {
 
-        std::slice::from_raw_parts(
-            d1, len,
-        )
-    };
+            std::slice::from_raw_parts(
+                d1, len,
+            )
+        };
 
-    let s2 =  {
+        let s2 = {
 
-        std::slice::from_raw_parts(
-            d2, len,
-        )
-    };
+            std::slice::from_raw_parts(
+                d2, len,
+            )
+        };
 
-     {
+        {
 
-        *result =
+            *result =
             stats_module::covariance(
                 s1, s2,
             );
-    };
+        };
 
-    0
-}}
+        0
+    }
+}
 
 use crate::numerical::calculus::gradient;
-use crate::numerical::integrate::quadrature;
 use crate::numerical::integrate::QuadratureMethod;
+use crate::numerical::integrate::quadrature;
 use crate::numerical::interpolate::{
     self as interp_module,
 };
@@ -4295,7 +4382,7 @@ pub unsafe extern "C" fn expr_differentiate(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -4350,7 +4437,7 @@ pub unsafe extern "C" fn expr_substitute(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -4411,7 +4498,7 @@ pub unsafe extern "C" fn expr_integrate(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -4469,7 +4556,7 @@ pub unsafe extern "C" fn expr_definite_integrate(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -4535,7 +4622,7 @@ pub unsafe extern "C" fn expr_limit(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -4607,7 +4694,7 @@ pub unsafe extern "C" fn expr_solve(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -5081,7 +5168,7 @@ pub unsafe extern "C" fn matrix_characteristic_polynomial(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -5517,7 +5604,7 @@ pub unsafe extern "C" fn numerical_gradient(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -5655,7 +5742,7 @@ pub unsafe extern "C" fn numerical_integrate(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -5785,7 +5872,7 @@ pub unsafe extern "C" fn physics_solve_advection_diffusion_1d(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return ptr::null_mut()
+            return ptr::null_mut();
         },
     };
 
@@ -5870,36 +5957,40 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
     points_ptr: *const FfiPoint,
     num_points: usize,
     result_handle: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if points_ptr.is_null()
-        || result_handle.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if points_ptr.is_null()
+            || result_handle.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_interp_lagrange"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let points_slice =  {
+        let points_slice = {
 
-        std::slice::from_raw_parts(
-            points_ptr,
-            num_points,
-        )
-    };
+            std::slice::from_raw_parts(
+                points_ptr,
+                num_points,
+            )
+        };
 
-    let points_vec: Vec<(f64, f64)> =
-        points_slice
+        let points_vec: Vec<(
+            f64,
+            f64,
+        )> = points_slice
             .iter()
             .map(|p| (p.x, p.y))
             .collect();
 
-    match interp_module::lagrange_interpolation(&points_vec) {
+        match interp_module::lagrange_interpolation(&points_vec) {
         | Ok(poly) => {
 
             let expr_coeffs = poly
@@ -5924,7 +6015,8 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
             -1
         },
     }
-}}
+    }
+}
 
 /// Evaluates a point on a Bezier curve defined by control points.
 #[unsafe(no_mangle)]
@@ -5949,64 +6041,69 @@ pub unsafe extern "C" fn rssn_interp_bezier_curve(
     num_points: usize,
     t: f64,
     result_ptr: *mut FfiPoint,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if points_ptr.is_null()
-        || result_ptr.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if points_ptr.is_null()
+            || result_ptr.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_interp_bezier_curve"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let points_slice =  {
+        let points_slice = {
 
-        std::slice::from_raw_parts(
-            points_ptr,
-            num_points,
-        )
-    };
+            std::slice::from_raw_parts(
+                points_ptr,
+                num_points,
+            )
+        };
 
-    let control_points: Vec<Vec<f64>> =
-        points_slice
+        let control_points: Vec<
+            Vec<f64>,
+        > = points_slice
             .iter()
             .map(|p| vec![p.x, p.y])
             .collect();
 
-    let result_vec =
-        interp_module::bezier_curve(
-            &control_points,
-            t,
-        );
+        let result_vec =
+            interp_module::bezier_curve(
+                &control_points,
+                t,
+            );
 
-    if result_vec.len() >= 2 {
+        if result_vec.len() >= 2 {
 
-         {
+            {
 
-            (*result_ptr).x =
-                result_vec[0];
+                (*result_ptr).x =
+                    result_vec[0];
 
-            (*result_ptr).y =
-                result_vec[1];
+                (*result_ptr).y =
+                    result_vec[1];
+            }
+
+            0
+        } else {
+
+            update_last_error(
+                "Bezier curve \
+                 evaluation returned \
+                 an invalid point"
+                    .to_string(),
+            );
+
+            -1
         }
-
-        0
-    } else {
-
-        update_last_error(
-            "Bezier curve evaluation \
-             returned an invalid point"
-                .to_string(),
-        );
-
-        -1
     }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6038,34 +6135,42 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
     n_steps: usize,
     method: u32,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if var.is_null() || result.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if var.is_null()
+            || result.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_numerical_integrate"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let var_str = match CStr::from_ptr(var).to_str() {
-        | Ok(s) => s,
-        | Err(e) => {
+        let var_str =
+            match CStr::from_ptr(var)
+                .to_str()
+            {
+                | Ok(s) => s,
+                | Err(e) => {
 
-            update_last_error(format!(
+                    update_last_error(
+                        format!(
                 "Invalid UTF-8 in \
                  var: {e}"
-            ));
+            ),
+                    );
 
-            return -1;
-        },
-    };
+                    return -1;
+                },
+            };
 
-    let quad_method = match method {
+        let quad_method = match method {
         | 0 => QuadratureMethod::Trapezoidal,
         | 1 => QuadratureMethod::Simpson,
         | _ => {
@@ -6076,44 +6181,47 @@ pub unsafe extern "C" fn rssn_numerical_integrate(
         },
     };
 
-    match HANDLE_MANAGER.get(expr_h) {
-        | Some(expr) => {
-            match quadrature(
-                &expr,
-                var_str,
-                (start, end),
-                n_steps,
-                &quad_method,
-            ) {
-                | Ok(val) => {
+        match HANDLE_MANAGER.get(expr_h)
+        {
+            | Some(expr) => {
+                match quadrature(
+                    &expr,
+                    var_str,
+                    (start, end),
+                    n_steps,
+                    &quad_method,
+                ) {
+                    | Ok(val) => {
 
-                     {
+                        {
 
-                        *result = val;
-                    };
+                            *result =
+                                val;
+                        };
 
-                    0
-                },
-                | Err(e) => {
+                        0
+                    },
+                    | Err(e) => {
 
-                    update_last_error(
+                        update_last_error(
                         e,
                     );
 
-                    -1
-                },
-            }
-        },
-        | None => {
+                        -1
+                    },
+                }
+            },
+            | None => {
 
-            update_last_error(format!(
+                update_last_error(format!(
                 "Invalid handle passed to rssn_numerical_integrate: {expr_h}"
             ));
 
-            -1
-        },
+                -1
+            },
+        }
     }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6132,45 +6240,52 @@ pub unsafe extern "C" fn rssn_matrix_sub(
     h1: usize,
     h2: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result_h.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_matrix_sub"
-                .to_string(),
-        );
+        if result_h.is_null() {
 
-        return -1;
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_matrix_sub"
+                    .to_string(),
+            );
+
+            return -1;
+        }
+
+        match (
+            HANDLE_MANAGER.get(h1),
+            HANDLE_MANAGER.get(h2),
+        ) {
+            | (Some(m1), Some(m2)) => {
+
+                let result =
+                    sub_matrices(
+                        &m1, &m2,
+                    );
+
+                {
+
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
+                                result,
+                            );
+                };
+
+                0
+            },
+            | _ => {
+
+                update_last_error("Invalid handle passed to rssn_matrix_sub".to_string());
+
+                -1
+            },
+        }
     }
-
-    match (
-        HANDLE_MANAGER.get(h1),
-        HANDLE_MANAGER.get(h2),
-    ) {
-        | (Some(m1), Some(m2)) => {
-
-            let result =
-                sub_matrices(&m1, &m2);
-
-             {
-
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(result);
-            };
-
-            0
-        },
-        | _ => {
-
-            update_last_error("Invalid handle passed to rssn_matrix_sub".to_string());
-
-            -1
-        },
-    }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6189,45 +6304,52 @@ pub unsafe extern "C" fn rssn_matrix_mul(
     h1: usize,
     h2: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result_h.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_matrix_mul"
-                .to_string(),
-        );
+        if result_h.is_null() {
 
-        return -1;
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_matrix_mul"
+                    .to_string(),
+            );
+
+            return -1;
+        }
+
+        match (
+            HANDLE_MANAGER.get(h1),
+            HANDLE_MANAGER.get(h2),
+        ) {
+            | (Some(m1), Some(m2)) => {
+
+                let result =
+                    mul_matrices(
+                        &m1, &m2,
+                    );
+
+                {
+
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
+                                result,
+                            );
+                };
+
+                0
+            },
+            | _ => {
+
+                update_last_error("Invalid handle passed to rssn_matrix_mul".to_string());
+
+                -1
+            },
+        }
     }
-
-    match (
-        HANDLE_MANAGER.get(h1),
-        HANDLE_MANAGER.get(h2),
-    ) {
-        | (Some(m1), Some(m2)) => {
-
-            let result =
-                mul_matrices(&m1, &m2);
-
-             {
-
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(result);
-            };
-
-            0
-        },
-        | _ => {
-
-            update_last_error("Invalid handle passed to rssn_matrix_mul".to_string());
-
-            -1
-        },
-    }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6245,42 +6367,49 @@ pub unsafe extern "C" fn rssn_matrix_mul(
 pub unsafe extern "C" fn rssn_matrix_transpose(
     h: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result_h.is_null() {
+    unsafe {
 
-        update_last_error(
+        if result_h.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_matrix_transpose"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        match HANDLE_MANAGER.get(h) {
+            | Some(m) => {
+
+                let result =
+                    transpose_matrix(
+                        &m,
+                    );
+
+                {
+
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
+                                result,
+                            );
+                };
+
+                0
+            },
+            | _ => {
+
+                update_last_error("Invalid handle passed to rssn_matrix_transpose".to_string());
+
+                -1
+            },
+        }
     }
-
-    match HANDLE_MANAGER.get(h) {
-        | Some(m) => {
-
-            let result =
-                transpose_matrix(&m);
-
-             {
-
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(result);
-            };
-
-            0
-        },
-        | _ => {
-
-            update_last_error("Invalid handle passed to rssn_matrix_transpose".to_string());
-
-            -1
-        },
-    }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6298,42 +6427,47 @@ pub unsafe extern "C" fn rssn_matrix_transpose(
 pub unsafe extern "C" fn rssn_matrix_determinant(
     h: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result_h.is_null() {
+    unsafe {
 
-        update_last_error(
+        if result_h.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_matrix_determinant"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        match HANDLE_MANAGER.get(h) {
+            | Some(m) => {
+
+                let result =
+                    determinant(&m);
+
+                {
+
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
+                                result,
+                            );
+                };
+
+                0
+            },
+            | _ => {
+
+                update_last_error("Invalid handle passed to rssn_matrix_determinant".to_string());
+
+                -1
+            },
+        }
     }
-
-    match HANDLE_MANAGER.get(h) {
-        | Some(m) => {
-
-            let result =
-                determinant(&m);
-
-             {
-
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(result);
-            };
-
-            0
-        },
-        | _ => {
-
-            update_last_error("Invalid handle passed to rssn_matrix_determinant".to_string());
-
-            -1
-        },
-    }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6351,42 +6485,47 @@ pub unsafe extern "C" fn rssn_matrix_determinant(
 pub unsafe extern "C" fn rssn_matrix_inverse(
     h: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result_h.is_null() {
+    unsafe {
 
-        update_last_error(
+        if result_h.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_matrix_inverse"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        match HANDLE_MANAGER.get(h) {
+            | Some(m) => {
+
+                let result =
+                    inverse_matrix(&m);
+
+                {
+
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
+                                result,
+                            );
+                };
+
+                0
+            },
+            | _ => {
+
+                update_last_error("Invalid handle passed to rssn_matrix_inverse".to_string());
+
+                -1
+            },
+        }
     }
-
-    match HANDLE_MANAGER.get(h) {
-        | Some(m) => {
-
-            let result =
-                inverse_matrix(&m);
-
-             {
-
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(result);
-            };
-
-            0
-        },
-        | _ => {
-
-            update_last_error("Invalid handle passed to rssn_matrix_inverse".to_string());
-
-            -1
-        },
-    }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6404,29 +6543,33 @@ pub unsafe extern "C" fn rssn_matrix_inverse(
 pub unsafe extern "C" fn rssn_matrix_identity(
     size: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result_h.is_null() {
+    unsafe {
 
-        update_last_error(
+        if result_h.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_matrix_identity"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        let result =
+            identity_matrix(size);
+
+        {
+
+            *result_h = HANDLE_MANAGER
+                .insert(result);
+        };
+
+        0
     }
-
-    let result = identity_matrix(size);
-
-     {
-
-        *result_h = HANDLE_MANAGER
-            .insert(result);
-    };
-
-    0
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6445,51 +6588,58 @@ pub unsafe extern "C" fn rssn_matrix_scalar_mul(
     scalar_h: usize,
     matrix_h: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result_h.is_null() {
+    unsafe {
 
-        update_last_error(
+        if result_h.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_matrix_scalar_mul"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        match (
+            HANDLE_MANAGER
+                .get(scalar_h),
+            HANDLE_MANAGER
+                .get(matrix_h),
+        ) {
+            | (
+                Some(scalar),
+                Some(matrix),
+            ) => {
+
+                let result =
+                    scalar_mul_matrix(
+                        &scalar,
+                        &matrix,
+                    );
+
+                {
+
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
+                                result,
+                            );
+                };
+
+                0
+            },
+            | _ => {
+
+                update_last_error("Invalid handle passed to rssn_matrix_scalar_mul".to_string());
+
+                -1
+            },
+        }
     }
-
-    match (
-        HANDLE_MANAGER.get(scalar_h),
-        HANDLE_MANAGER.get(matrix_h),
-    ) {
-        | (
-            Some(scalar),
-            Some(matrix),
-        ) => {
-
-            let result =
-                scalar_mul_matrix(
-                    &scalar,
-                    &matrix,
-                );
-
-             {
-
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(result);
-            };
-
-            0
-        },
-        | _ => {
-
-            update_last_error("Invalid handle passed to rssn_matrix_scalar_mul".to_string());
-
-            -1
-        },
-    }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6522,54 +6672,58 @@ pub unsafe extern "C" fn rssn_calculus_differentiate(
     expr_h: usize,
     var: *const c_char,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if var.is_null()
-        || result_h.is_null()
-    {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_calculus_differentiate".to_string());
+        if var.is_null()
+            || result_h.is_null()
+        {
 
-        return -1;
-    }
+            update_last_error("Null pointer passed to rssn_calculus_differentiate".to_string());
 
-    let var_str =  {
+            return -1;
+        }
 
-        CStr::from_ptr(var)
-            .to_str()
-            .expect("var is empty")
-    };
+        let var_str = {
 
-    match HANDLE_MANAGER.get(expr_h) {
-        | Some(expr) => {
+            CStr::from_ptr(var)
+                .to_str()
+                .expect("var is empty")
+        };
 
-            let derivative =
-                differentiate(
-                    &expr,
-                    var_str,
-                );
+        match HANDLE_MANAGER.get(expr_h)
+        {
+            | Some(expr) => {
 
-             {
+                let derivative =
+                    differentiate(
+                        &expr,
+                        var_str,
+                    );
 
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(
+                {
+
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
                             derivative,
                         );
-            };
+                };
 
-            0
-        },
-        | None => {
+                0
+            },
+            | None => {
 
-            update_last_error(format!(
+                update_last_error(format!(
                 "Invalid handle passed to rssn_calculus_differentiate: {expr_h}"
             ));
 
-            -1
-        },
+                -1
+            },
+        }
     }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6603,58 +6757,66 @@ pub unsafe extern "C" fn rssn_calculus_substitute(
     var: *const c_char,
     replacement_h: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if var.is_null()
-        || result_h.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if var.is_null()
+            || result_h.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_calculus_substitute"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        let var_str = {
+
+            CStr::from_ptr(var)
+                .to_str()
+                .expect("var is empty")
+        };
+
+        match (
+            HANDLE_MANAGER.get(expr_h),
+            HANDLE_MANAGER
+                .get(replacement_h),
+        ) {
+            | (
+                Some(expr),
+                Some(rep),
+            ) => {
+
+                let result = substitute(
+                    &expr,
+                    var_str,
+                    &rep,
+                );
+
+                {
+
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
+                                result,
+                            );
+                };
+
+                0
+            },
+            | _ => {
+
+                update_last_error("Invalid handle passed to rssn_calculus_substitute".to_string());
+
+                -1
+            },
+        }
     }
-
-    let var_str =  {
-
-        CStr::from_ptr(var)
-            .to_str()
-            .expect("var is empty")
-    };
-
-    match (
-        HANDLE_MANAGER.get(expr_h),
-        HANDLE_MANAGER
-            .get(replacement_h),
-    ) {
-        | (Some(expr), Some(rep)) => {
-
-            let result = substitute(
-                &expr,
-                var_str,
-                &rep,
-            );
-
-             {
-
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(result);
-            };
-
-            0
-        },
-        | _ => {
-
-            update_last_error("Invalid handle passed to rssn_calculus_substitute".to_string());
-
-            -1
-        },
-    }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6687,59 +6849,64 @@ pub unsafe extern "C" fn rssn_calculus_integrate(
     expr_h: usize,
     var: *const c_char,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if var.is_null()
-        || result_h.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if var.is_null()
+            || result_h.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_calculus_integrate"
                 .to_string(),
         );
 
-        return -1;
-    }
+            return -1;
+        }
 
-    let var_str =  {
+        let var_str = {
 
-        CStr::from_ptr(var)
-            .to_str()
-            .expect("var is empty")
-    };
+            CStr::from_ptr(var)
+                .to_str()
+                .expect("var is empty")
+        };
 
-    match HANDLE_MANAGER.get(expr_h) {
-        | Some(expr) => {
+        match HANDLE_MANAGER.get(expr_h)
+        {
+            | Some(expr) => {
 
-            let integral = integrate(
-                &expr,
-                var_str,
-                None,
-                None,
-            );
+                let integral =
+                    integrate(
+                        &expr,
+                        var_str,
+                        None,
+                        None,
+                    );
 
-             {
+                {
 
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
                             integral,
                         );
-            };
+                };
 
-            0
-        },
-        | None => {
+                0
+            },
+            | None => {
 
-            update_last_error(format!(
+                update_last_error(format!(
                 "Invalid handle passed to rssn_calculus_integrate: {expr_h}"
             ));
 
-            -1
-        },
+                -1
+            },
+        }
     }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6774,64 +6941,67 @@ pub unsafe extern "C" fn rssn_calculus_definite_integrate(
     lower_h: usize,
     upper_h: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if var.is_null()
-        || result_h.is_null()
-    {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_calculus_definite_integrate".to_string());
+        if var.is_null()
+            || result_h.is_null()
+        {
 
-        return -1;
-    }
+            update_last_error("Null pointer passed to rssn_calculus_definite_integrate".to_string());
 
-    let var_str =  {
+            return -1;
+        }
 
-        CStr::from_ptr(var)
-            .to_str()
-            .expect("var is empty")
-    };
+        let var_str = {
 
-    match (
-        HANDLE_MANAGER.get(expr_h),
-        HANDLE_MANAGER.get(lower_h),
-        HANDLE_MANAGER.get(upper_h),
-    ) {
-        | (
-            Some(expr),
-            Some(lower),
-            Some(upper),
-        ) => {
+            CStr::from_ptr(var)
+                .to_str()
+                .expect("var is empty")
+        };
 
-            let integral =
-                definite_integrate(
-                    &expr,
-                    var_str,
-                    &lower,
-                    &upper,
-                );
+        match (
+            HANDLE_MANAGER.get(expr_h),
+            HANDLE_MANAGER.get(lower_h),
+            HANDLE_MANAGER.get(upper_h),
+        ) {
+            | (
+                Some(expr),
+                Some(lower),
+                Some(upper),
+            ) => {
 
-             {
+                let integral =
+                    definite_integrate(
+                        &expr,
+                        var_str,
+                        &lower,
+                        &upper,
+                    );
 
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(
+                {
+
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
                             integral,
                         );
-            };
+                };
 
-            0
-        },
-        | _ => {
+                0
+            },
+            | _ => {
 
-            update_last_error(
+                update_last_error(
                 "Invalid handle passed to rssn_calculus_definite_integrate".to_string(),
             );
 
-            -1
-        },
+                -1
+            },
+        }
     }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6865,57 +7035,65 @@ pub unsafe extern "C" fn rssn_calculus_limit(
     var: *const c_char,
     to_h: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if var.is_null()
-        || result_h.is_null()
-    {
+    unsafe {
 
-        update_last_error(
+        if var.is_null()
+            || result_h.is_null()
+        {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_calculus_limit"
                 .to_string(),
         );
 
-        return -1;
+            return -1;
+        }
+
+        let var_str = {
+
+            CStr::from_ptr(var)
+                .to_str()
+                .expect("var is empty")
+        };
+
+        match (
+            HANDLE_MANAGER.get(expr_h),
+            HANDLE_MANAGER.get(to_h),
+        ) {
+            | (
+                Some(expr),
+                Some(to),
+            ) => {
+
+                let result = limit(
+                    &expr,
+                    var_str,
+                    &to,
+                );
+
+                {
+
+                    *result_h =
+                        HANDLE_MANAGER
+                            .insert(
+                                result,
+                            );
+                };
+
+                0
+            },
+            | _ => {
+
+                update_last_error("Invalid handle passed to rssn_calculus_limit".to_string());
+
+                -1
+            },
+        }
     }
-
-    let var_str =  {
-
-        CStr::from_ptr(var)
-            .to_str()
-            .expect("var is empty")
-    };
-
-    match (
-        HANDLE_MANAGER.get(expr_h),
-        HANDLE_MANAGER.get(to_h),
-    ) {
-        | (Some(expr), Some(to)) => {
-
-            let result = limit(
-                &expr,
-                var_str,
-                &to,
-            );
-
-             {
-
-                *result_h =
-                    HANDLE_MANAGER
-                        .insert(result);
-            };
-
-            0
-        },
-        | _ => {
-
-            update_last_error("Invalid handle passed to rssn_calculus_limit".to_string());
-
-            -1
-        },
-    }
-}}
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -6943,77 +7121,87 @@ pub unsafe extern "C" fn rssn_solve(
     expr_h: usize,
     var: *const c_char,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    let handle_error =
-        |err_msg: String| {
+    unsafe {
 
-            update_last_error(err_msg);
+        let handle_error =
+            |err_msg: String| {
 
-            -1
-        };
+                update_last_error(
+                    err_msg,
+                );
 
-    if var.is_null()
-        || result_h.is_null()
-    {
+                -1
+            };
 
-        return handle_error(
-            "Null pointer passed to \
-             rssn_solve"
-                .to_string(),
-        );
-    }
+        if var.is_null()
+            || result_h.is_null()
+        {
 
-    let var_str = match CStr::from_ptr(var).to_str() {
-        | Ok(s) => s,
-        | Err(e) => {
             return handle_error(
-                format!(
+                "Null pointer passed \
+                 to rssn_solve"
+                    .to_string(),
+            );
+        }
+
+        let var_str =
+            match CStr::from_ptr(var)
+                .to_str()
+            {
+                | Ok(s) => s,
+                | Err(e) => {
+                    return handle_error(
+                        format!(
                     "Invalid UTF-8 in \
                      variable name: \
                      {e}"
                 ),
-            )
-        },
-    };
+                    );
+                },
+            };
 
-    let expr = match HANDLE_MANAGER
-        .get(expr_h)
-    {
-        | Some(e) => e,
-        | None => {
-            return handle_error(
-                format!(
+        let expr = match HANDLE_MANAGER
+            .get(expr_h)
+        {
+            | Some(e) => e,
+            | None => {
+                return handle_error(
+                    format!(
                     "Invalid handle: \
                      {expr_h}"
                 ),
-            )
-        },
-    };
-
-    let solutions = crate::numerical::testing::solve(&expr, var_str);
-
-    if solutions.is_empty() {
-
-         {
-
-            *result_h = 0;
-        };
-    } else {
-
-        // Return first solution for now, or could wrap in BinaryList
-         {
-
-            *result_h = HANDLE_MANAGER
-                .insert(
-                    solutions[0]
-                        .clone(),
                 );
+            },
         };
-    }
 
-    0
-}}
+        let solutions = crate::numerical::testing::solve(&expr, var_str);
+
+        if solutions.is_empty() {
+
+            {
+
+                *result_h = 0;
+            };
+        } else {
+
+            // Return first solution for now, or could wrap in BinaryList
+            {
+
+                *result_h =
+                    HANDLE_MANAGER
+                        .insert(
+                            solutions
+                                [0]
+                            .clone(),
+                        );
+            };
+        }
+
+        0
+    }
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -7032,23 +7220,28 @@ pub unsafe extern "C" fn rssn_matrix_add(
     h1: usize,
     h2: usize,
     result_h: *mut usize,
-) -> i32 { unsafe {
+) -> i32 {
 
-    let handle_error =
-        |err_msg: String| {
+    unsafe {
 
-            update_last_error(err_msg);
+        let handle_error =
+            |err_msg: String| {
 
-            -1
-        };
+                update_last_error(
+                    err_msg,
+                );
 
-    if result_h.is_null() {
+                -1
+            };
 
-        return -1;
-    }
+        if result_h.is_null() {
 
-    let m1 =
-        match HANDLE_MANAGER.get(h1) {
+            return -1;
+        }
+
+        let m1 = match HANDLE_MANAGER
+            .get(h1)
+        {
             | Some(e) => e,
             | None => {
                 return handle_error(
@@ -7056,12 +7249,13 @@ pub unsafe extern "C" fn rssn_matrix_add(
                     "Invalid handle \
                      h1: {h1}"
                 ),
-                )
+                );
             },
         };
 
-    let m2 =
-        match HANDLE_MANAGER.get(h2) {
+        let m2 = match HANDLE_MANAGER
+            .get(h2)
+        {
             | Some(e) => e,
             | None => {
                 return handle_error(
@@ -7069,20 +7263,21 @@ pub unsafe extern "C" fn rssn_matrix_add(
                     "Invalid handle \
                      h2: {h2}"
                 ),
-                )
+                );
             },
         };
 
-    let res = crate::symbolic::matrix::add_matrices(&m1, &m2);
+        let res = crate::symbolic::matrix::add_matrices(&m1, &m2);
 
-     {
+        {
 
-        *result_h =
-            HANDLE_MANAGER.insert(res);
-    };
+            *result_h = HANDLE_MANAGER
+                .insert(res);
+        };
 
-    0
-}}
+        0
+    }
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -7114,62 +7309,68 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
     point: *const f64,
     point_len: usize,
     result_vec: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    let handle_error =
-        |err_msg: String| {
+    unsafe {
 
-            update_last_error(err_msg);
+        let handle_error =
+            |err_msg: String| {
 
-            -1
-        };
+                update_last_error(
+                    err_msg,
+                );
 
-    if vars.is_null()
-        || point.is_null()
-        || result_vec.is_null()
-    {
+                -1
+            };
 
-        return handle_error(
+        if vars.is_null()
+            || point.is_null()
+            || result_vec.is_null()
+        {
+
+            return handle_error(
             "Null pointer passed to \
              rssn_numerical_gradient"
                 .to_string(),
         );
-    }
+        }
 
-    let expr = match HANDLE_MANAGER
-        .get(expr_h)
-    {
-        | Some(e) => e,
-        | None => {
-            return handle_error(
-                format!(
+        let expr = match HANDLE_MANAGER
+            .get(expr_h)
+        {
+            | Some(e) => e,
+            | None => {
+                return handle_error(
+                    format!(
                     "Invalid handle: \
                      {expr_h}"
                 ),
-            )
-        },
-    };
-
-    let mut vars_vec =
-        Vec::with_capacity(num_vars);
-
-    for i in 0 .. num_vars {
-
-        let v_ptr =  {
-
-            *vars.add(i)
+                );
+            },
         };
 
-        if v_ptr.is_null() {
-
-            return handle_error(
-                "Null pointer in vars \
-                 array"
-                    .to_string(),
+        let mut vars_vec =
+            Vec::with_capacity(
+                num_vars,
             );
-        }
 
-        let v_str = match CStr::from_ptr(v_ptr).to_str() {
+        for i in 0 .. num_vars {
+
+            let v_ptr = {
+
+                *vars.add(i)
+            };
+
+            if v_ptr.is_null() {
+
+                return handle_error(
+                    "Null pointer in \
+                     vars array"
+                        .to_string(),
+                );
+            }
+
+            let v_str = match CStr::from_ptr(v_ptr).to_str() {
             | Ok(s) => s,
             | Err(e) => {
                 return handle_error(format!(
@@ -7178,18 +7379,18 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
             },
         };
 
-        vars_vec.push(v_str);
-    }
+            vars_vec.push(v_str);
+        }
 
-    let point_slice =  {
+        let point_slice = {
 
-        std::slice::from_raw_parts(
-            point,
-            point_len,
-        )
-    };
+            std::slice::from_raw_parts(
+                point,
+                point_len,
+            )
+        };
 
-    match crate::numerical::vector_calculus::gradient(
+        match crate::numerical::vector_calculus::gradient(
         &expr,
         &vars_vec,
         point_slice,
@@ -7218,7 +7419,8 @@ pub unsafe extern "C" fn rssn_numerical_gradient(
         },
         | Err(e) => handle_error(e),
     }
-}}
+    }
+}
 
 #[unsafe(no_mangle)]
 #[deprecated(
@@ -7251,26 +7453,28 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
     dt: f64,
     steps: usize,
     result_ptr: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if initial_cond.is_null()
-        || result_ptr.is_null()
-    {
+    unsafe {
 
-        update_last_error("Null pointer passed to rssn_physics_advection_diffusion_1d".to_string());
+        if initial_cond.is_null()
+            || result_ptr.is_null()
+        {
 
-        return -1;
-    }
+            update_last_error("Null pointer passed to rssn_physics_advection_diffusion_1d".to_string());
 
-    let init_slice =  {
+            return -1;
+        }
 
-        std::slice::from_raw_parts(
-            initial_cond,
-            len,
-        )
-    };
+        let init_slice = {
 
-    let res = crate::physics::physics_fdm::solve_advection_diffusion_1d(
+            std::slice::from_raw_parts(
+                initial_cond,
+                len,
+            )
+        };
+
+        let res = crate::physics::physics_fdm::solve_advection_diffusion_1d(
         init_slice,
         dx,
         c,
@@ -7279,17 +7483,18 @@ pub unsafe extern "C" fn rssn_physics_advection_diffusion_1d(
         steps,
     );
 
-     {
+        {
 
-        std::ptr::copy_nonoverlapping(
+            std::ptr::copy_nonoverlapping(
             res.as_ptr(),
             result_ptr,
             len,
         );
-    }
+        }
 
-    0
-}}
+        0
+    }
+}
 
 /// Computes the greatest common divisor (GCD) of two numbers.
 ///
@@ -7315,26 +7520,30 @@ pub unsafe extern "C" fn rssn_nt_gcd(
     a: u64,
     b: u64,
     result: *mut u64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed for \
-             'result' to rssn_nt_gcd"
-                .to_string(),
-        );
+        if result.is_null() {
 
-        return -1;
+            update_last_error(
+                "Null pointer passed \
+                 for 'result' to \
+                 rssn_nt_gcd"
+                    .to_string(),
+            );
+
+            return -1;
+        }
+
+        {
+
+            *result = nt::gcd(a, b);
+        }
+
+        0
     }
-
-     {
-
-        *result = nt::gcd(a, b);
-    }
-
-    0
-}}
+}
 
 /// Checks if a number is prime using the Miller-Rabin test.
 ///
@@ -7359,30 +7568,33 @@ pub unsafe extern "C" fn rssn_nt_gcd(
 pub unsafe extern "C" fn rssn_nt_is_prime(
     n: u64,
     result: *mut bool,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed for \
-             'result' to \
-             rssn_nt_is_prime"
-                .to_string(),
-        );
+        if result.is_null() {
 
-        return -1;
-    }
+            update_last_error(
+                "Null pointer passed \
+                 for 'result' to \
+                 rssn_nt_is_prime"
+                    .to_string(),
+            );
 
-     {
+            return -1;
+        }
 
-        *result =
+        {
+
+            *result =
             nt::is_prime_miller_rabin(
                 n,
             );
-    }
+        }
 
-    0
-}}
+        0
+    }
+}
 
 /// Computes modular exponentiation (base^exp % modulus).
 ///
@@ -7409,31 +7621,34 @@ pub unsafe extern "C" fn rssn_nt_mod_pow(
     exp: u64,
     modulus: u64,
     result: *mut u64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed for \
-             'result' to \
-             rssn_nt_mod_pow"
-                .to_string(),
-        );
+        if result.is_null() {
 
-        return -1;
+            update_last_error(
+                "Null pointer passed \
+                 for 'result' to \
+                 rssn_nt_mod_pow"
+                    .to_string(),
+            );
+
+            return -1;
+        }
+
+        {
+
+            *result = nt::mod_pow(
+                u128::from(base),
+                exp,
+                modulus,
+            );
+        }
+
+        0
     }
-
-     {
-
-        *result = nt::mod_pow(
-            u128::from(base),
-            exp,
-            modulus,
-        );
-    }
-
-    0
-}}
+}
 
 /// Computes the modular multiplicative inverse.
 ///
@@ -7459,42 +7674,47 @@ pub unsafe extern "C" fn rssn_nt_mod_inverse(
     a: i64,
     b: i64,
     result: *mut i64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if result.is_null() {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed for \
-             'result' to \
-             rssn_nt_mod_inverse"
-                .to_string(),
-        );
+        if result.is_null() {
 
-        return -1;
-    }
+            update_last_error(
+                "Null pointer passed \
+                 for 'result' to \
+                 rssn_nt_mod_inverse"
+                    .to_string(),
+            );
 
-    match nt::mod_inverse(a, b) {
-        | Some(inverse) => {
+            return -1;
+        }
 
-             {
+        match nt::mod_inverse(a, b) {
+            | Some(inverse) => {
 
-                *result = inverse;
-            };
+                {
 
-            0
-        },
-        | None => {
+                    *result = inverse;
+                };
 
-            update_last_error(format!(
+                0
+            },
+            | None => {
+
+                update_last_error(
+                    format!(
                 "Modular inverse of \
                  {a} modulo {b} does \
                  not exist."
-            ));
+            ),
+                );
 
-            -1
-        },
+                -1
+            },
+        }
     }
-}}
+}
 
 static PLUGIN_MANAGER:
     std::sync::LazyLock<
@@ -7538,42 +7758,55 @@ static PLUGIN_MANAGER:
 
 pub unsafe extern "C" fn rssn_init_plugin_manager(
     plugin_dir_ptr: *const c_char
-) -> i32 { unsafe {
+) -> i32 {
 
-    let handle_error =
-        |err_msg: String| {
+    unsafe {
 
-            update_last_error(err_msg);
+        let handle_error =
+            |err_msg: String| {
 
-            -1
-        };
+                update_last_error(
+                    err_msg,
+                );
 
-    let plugin_dir = match CStr::from_ptr(plugin_dir_ptr).to_str(){
-        | Ok(s) => s,
-        | Err(e) => {
-            return handle_error(
-                format!(
+                -1
+            };
+
+        let plugin_dir =
+            match CStr::from_ptr(
+                plugin_dir_ptr,
+            )
+            .to_str()
+            {
+                | Ok(s) => s,
+                | Err(e) => {
+                    return handle_error(
+                        format!(
                     "Invalid UTF-8 in \
                      plugin_dir: {e}"
                 ),
-            )
-        },
-    };
+                    );
+                },
+            };
 
-    match PluginManager::new(plugin_dir)
-    {
-        | Ok(manager) => {
-            *PLUGIN_MANAGER.lock().expect("Plugin Manager error") = Some(manager);
-            0
-        },
-        | Err(e) => {
-            handle_error(format!(
+        match PluginManager::new(
+            plugin_dir,
+        ) {
+            | Ok(manager) => {
+
+                *PLUGIN_MANAGER.lock().expect("Plugin Manager error") = Some(manager);
+
+                0
+            },
+            | Err(e) => {
+                handle_error(format!(
                 "Failed to initialize \
                  PluginManager: {e}"
             ))
-        },
+            },
+        }
     }
-}}
+}
 
 /// Executes a command on a loaded plugin.
 ///
@@ -7610,54 +7843,92 @@ pub unsafe extern "C" fn rssn_plugin_execute(
     plugin_name_ptr: *const c_char,
     command_ptr: *const c_char,
     args_handle: usize,
-) -> usize { unsafe {
+) -> usize {
 
-    let handle_error =
-        |err_msg: String| {
+    unsafe {
 
-            update_last_error(err_msg);
+        let handle_error =
+            |err_msg: String| {
 
-            0
-        };
+                update_last_error(
+                    err_msg,
+                );
 
-    let plugin_name = match 
-        CStr::from_ptr(plugin_name_ptr).to_str()
-     {
-        | Ok(s) => s,
-        | Err(e) => {
-            return handle_error(format!("Invalid UTF-8 in plugin_name: {e}"));
-        },
-    };
+                0
+            };
 
-    let command = match 
-        CStr::from_ptr(command_ptr).to_str()
-     {
-        | Ok(s) => s,
-        | Err(e) => {
-            return handle_error(format!("Invalid UTF-8 in command: {e}"));
-        },
-    };
+        let plugin_name =
+            match CStr::from_ptr(
+                plugin_name_ptr,
+            )
+            .to_str()
+            {
+                | Ok(s) => s,
+                | Err(e) => {
 
-    let args_expr = match HANDLE_MANAGER.get(args_handle) {
-        | Some(expr) => expr,
-        | None => {
-            return handle_error(format!("Invalid handle for args: {args_handle}"));
-        },
-    };
+                    return handle_error(format!("Invalid UTF-8 in plugin_name: {e}"));
+                },
+            };
 
-    let result = match &*PLUGIN_MANAGER.lock().expect("Plugin Manager Error") {
-        | Some(pm) => pm.execute_plugin(plugin_name, command, &args_expr),
-        | None => {
-            return handle_error(
+        let command =
+            match CStr::from_ptr(
+                command_ptr,
+            )
+            .to_str()
+            {
+                | Ok(s) => s,
+                | Err(e) => {
+
+                    return handle_error(format!("Invalid UTF-8 in command: {e}"));
+                },
+            };
+
+        let args_expr =
+            match HANDLE_MANAGER
+                .get(args_handle)
+            {
+                | Some(expr) => expr,
+                | None => {
+
+                    return handle_error(format!("Invalid handle for args: {args_handle}"));
+                },
+            };
+
+        let result =
+            match &*PLUGIN_MANAGER
+                .lock()
+                .expect(
+                    "Plugin Manager \
+                     Error",
+                ) {
+                | Some(pm) => {
+                    pm.execute_plugin(
+                        plugin_name,
+                        command,
+                        &args_expr,
+                    )
+                },
+                | None => {
+
+                    return handle_error(
                 "Plugin manager not initialized. Call rssn_init_plugin_manager first.".to_string(),
             );
-        },
-    };
+                },
+            };
 
-    match result {
-        | Ok(result_expr) => HANDLE_MANAGER.insert(result_expr),
-        | Err(e) => {
-            handle_error(format!("Plugin execution failed for '{plugin_name}': {e}"))
-        },
+        match result {
+            | Ok(result_expr) => {
+                HANDLE_MANAGER
+                    .insert(result_expr)
+            },
+            | Err(e) => {
+                handle_error(format!(
+                    "Plugin execution \
+                     failed for \
+                     '{plugin_name}': \
+                     {e}"
+                ))
+            },
+        }
     }
-}}
+}

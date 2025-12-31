@@ -6,8 +6,8 @@ use rssn::physics::physics_mtm::*;
 
 #[test]
 
-fn test_solve_poisson_1d_multigrid_basic(
-) {
+fn test_solve_poisson_1d_multigrid_basic()
+ {
 
     let result = simulate_1d_poisson_multigrid_scenario().unwrap();
 
@@ -38,8 +38,8 @@ fn test_solve_poisson_1d_multigrid_basic(
 
 #[test]
 
-fn test_solve_poisson_2d_multigrid_basic(
-) {
+fn test_solve_poisson_2d_multigrid_basic()
+ {
 
     let result = simulate_2d_poisson_multigrid_scenario().unwrap();
 

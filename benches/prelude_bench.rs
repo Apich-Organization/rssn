@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
-use criterion::criterion_group;
 use criterion::Criterion;
+use criterion::criterion_group;
 use rssn::prelude::*;
 
 fn bench_prelude_sin(

@@ -265,9 +265,13 @@ mod tests {
             typst.contains("integral_")
         );
 
-        assert!(typst.contains("x^(2)"));
+        assert!(
+            typst.contains("x^(2)")
+        );
 
-        assert!(typst.contains("dif x"));
+        assert!(
+            typst.contains("dif x")
+        );
     }
 
     #[test]

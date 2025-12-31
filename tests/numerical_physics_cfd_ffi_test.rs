@@ -20,8 +20,8 @@ fn test_air_kinematic_viscosity_handle()
 
 #[test]
 
-fn test_water_kinematic_viscosity_handle(
-) {
+fn test_water_kinematic_viscosity_handle()
+ {
 
     let nu =
         rssn::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_water_kinematic_viscosity();

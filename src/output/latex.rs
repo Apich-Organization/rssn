@@ -370,9 +370,13 @@ mod tests {
             r"\begin{pmatrix}"
         ));
 
-        assert!(latex.contains("1 & a"));
+        assert!(
+            latex.contains("1 & a")
+        );
 
-        assert!(latex.contains("b & 2"));
+        assert!(
+            latex.contains("b & 2")
+        );
     }
 
     #[test]
@@ -410,14 +414,19 @@ mod tests {
 
         println!("{}", latex);
 
-        assert!(latex
-            .contains(r"\int_{0}^{1}"));
+        assert!(
+            latex.contains(
+                r"\int_{0}^{1}"
+            )
+        );
 
         assert!(
             latex.contains(r"x^{2}")
         );
 
-        assert!(latex.contains(r"\,dx"));
+        assert!(
+            latex.contains(r"\,dx")
+        );
     }
 
     use proptest::prelude::*;

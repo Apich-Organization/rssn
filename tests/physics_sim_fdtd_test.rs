@@ -42,8 +42,8 @@ fn test_run_fdtd_simulation_basic() {
 
 #[test]
 
-fn test_simulate_and_save_final_state_smoke(
-) {
+fn test_simulate_and_save_final_state_smoke()
+ {
 
     let res =
         simulate_and_save_final_state(

@@ -5,8 +5,8 @@ use std::ffi::CString;
 
 #[test]
 
-fn test_mm_simulate_dam_break_handle_ffi(
-) {
+fn test_mm_simulate_dam_break_handle_ffi()
+ {
 
     unsafe {
 

@@ -39,12 +39,16 @@ fn test_exterior_derivative_0form() {
     );
 
     // Should have terms for dx (blade 1) and dy (blade 2)
-    assert!(d_form
-        .terms
-        .contains_key(&1)); // dx
-    assert!(d_form
-        .terms
-        .contains_key(&2)); // dy
+    assert!(
+        d_form
+            .terms
+            .contains_key(&1)
+    ); // dx
+    assert!(
+        d_form
+            .terms
+            .contains_key(&2)
+    ); // dy
 }
 
 #[test]
@@ -78,9 +82,11 @@ fn test_wedge_product() {
         wedge_product(&form1, &form2);
 
     // dx ^ dy should give blade 3 (0b11)
-    assert!(wedge
-        .terms
-        .contains_key(&3));
+    assert!(
+        wedge
+            .terms
+            .contains_key(&3)
+    );
 }
 
 #[test]

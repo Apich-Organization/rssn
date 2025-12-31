@@ -324,15 +324,16 @@ pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(
             ),
         );
 
-    let config = PoissonSolverConfig2D {
-        width: input.width,
-        height: input.height,
-        dx: input.dx,
-        dy: input.dy,
-        omega: input.omega,
-        max_iter: input.max_iter,
-        tolerance: input.tolerance,
-    };
+    let config =
+        PoissonSolverConfig2D {
+            width: input.width,
+            height: input.height,
+            dx: input.dx,
+            dy: input.dy,
+            omega: input.omega,
+            max_iter: input.max_iter,
+            tolerance: input.tolerance,
+        };
 
     let result =
         physics_fdm::solve_poisson_2d(

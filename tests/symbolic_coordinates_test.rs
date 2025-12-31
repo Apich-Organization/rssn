@@ -3,8 +3,8 @@ use rssn::symbolic::core::Expr;
 
 #[test]
 
-fn test_transform_point_cylindrical_to_cartesian_symbolic(
-) {
+fn test_transform_point_cylindrical_to_cartesian_symbolic()
+ {
 
     // Point in cylindrical: (r, theta, z)
     let r = Expr::new_variable("r");
@@ -48,8 +48,8 @@ fn test_transform_point_cylindrical_to_cartesian_symbolic(
 
 #[test]
 
-fn test_transform_point_spherical_to_cartesian_symbolic(
-) {
+fn test_transform_point_spherical_to_cartesian_symbolic()
+ {
 
     // Point in spherical: (rho, theta, phi)
     let rho = Expr::new_variable("rho");

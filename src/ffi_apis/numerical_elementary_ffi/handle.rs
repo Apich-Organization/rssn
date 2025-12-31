@@ -35,88 +35,100 @@ pub unsafe extern "C" fn rssn_num_eval_expr(
     vals: *const f64,
     num_vars: usize,
     result: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if expr_ptr.is_null()
-        || result.is_null()
-        || (num_vars > 0
-            && (vars.is_null()
-                || vals.is_null()))
-    {
+    unsafe {
 
-        update_last_error(
-            "Null pointer passed to \
-             rssn_num_eval_expr"
-                .to_string(),
-        );
+        if expr_ptr.is_null()
+            || result.is_null()
+            || (num_vars > 0
+                && (vars.is_null()
+                    || vals.is_null()))
+        {
 
-        return -1;
-    }
-
-    let mut vars_map = HashMap::new();
-
-    for i in 0 .. num_vars {
-
-        let name_ptr =  {
-
-            *vars.add(i)
-        };
-
-        if name_ptr.is_null() {
-
-            update_last_error(format!(
-                "Variable name at \
-                 index {i} is null"
-            ));
+            update_last_error(
+                "Null pointer passed \
+                 to rssn_num_eval_expr"
+                    .to_string(),
+            );
 
             return -1;
         }
 
-        let name = match CStr::from_ptr(name_ptr).to_str()
-         {
-            | Ok(s) => s.to_string(),
-            | Err(e) => {
+        let mut vars_map =
+            HashMap::new();
 
-                update_last_error(format!(
+        for i in 0 .. num_vars {
+
+            let name_ptr = {
+
+                *vars.add(i)
+            };
+
+            if name_ptr.is_null() {
+
+                update_last_error(
+                    format!(
+                "Variable name at \
+                 index {i} is null"
+            ),
+                );
+
+                return -1;
+            }
+
+            let name =
+                match CStr::from_ptr(
+                    name_ptr,
+                )
+                .to_str()
+                {
+                    | Ok(s) => {
+                        s.to_string()
+                    },
+                    | Err(e) => {
+
+                        update_last_error(format!(
                     "Invalid UTF-8 in variable name {i}: {e}"
                 ));
 
-                return -1;
-            },
-        };
+                        return -1;
+                    },
+                };
 
-        let val =  {
+            let val = {
 
-            *vals.add(i)
-        };
-
-        vars_map.insert(name, val);
-    }
-
-    match elementary::eval_expr(
-         {
-
-            &*expr_ptr
-        },
-        &vars_map,
-    ) {
-        | Ok(v) => {
-
-             {
-
-                *result = v;
+                *vals.add(i)
             };
 
-            0
-        },
-        | Err(e) => {
+            vars_map.insert(name, val);
+        }
 
-            update_last_error(e);
+        match elementary::eval_expr(
+            {
 
-            -1
-        },
+                &*expr_ptr
+            },
+            &vars_map,
+        ) {
+            | Ok(v) => {
+
+                {
+
+                    *result = v;
+                };
+
+                0
+            },
+            | Err(e) => {
+
+                update_last_error(e);
+
+                -1
+            },
+        }
     }
-}}
+}
 
 /// Pure numerical functions exposed via FFI.
 /// Computes the sine of a f64 value.

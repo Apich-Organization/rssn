@@ -223,9 +223,7 @@ impl SpikyKernel {
     }
 }
 
-#[derive(
-    Debug, Clone, Serialize,
-)]
+#[derive(Debug, Clone, Serialize)]
 /// The SPH system.
 
 pub struct SPHSystem {
@@ -247,12 +245,18 @@ pub struct SPHSystem {
     pub bounds: Vector2D,
 }
 
-impl<'de> Deserialize<'de> for SPHSystem {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+impl<'de> Deserialize<'de>
+    for SPHSystem
+{
+    fn deserialize<D>(
+        deserializer: D
+    ) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
+
         #[derive(Deserialize)]
+
         struct SPHSystemData {
             particles: Vec<Particle>,
             poly6: Poly6Kernel,
@@ -263,7 +267,12 @@ impl<'de> Deserialize<'de> for SPHSystem {
             rest_density: f64,
             bounds: Vector2D,
         }
-        let data = SPHSystemData::deserialize(deserializer)?;
+
+        let data =
+            SPHSystemData::deserialize(
+                deserializer,
+            )?;
+
         Ok(Self {
             particles: data.particles,
             poly6: data.poly6,
@@ -271,7 +280,8 @@ impl<'de> Deserialize<'de> for SPHSystem {
             gravity: data.gravity,
             viscosity: data.viscosity,
             gas_const: data.gas_const,
-            rest_density: data.rest_density,
+            rest_density: data
+                .rest_density,
             bounds: data.bounds,
         })
     }
@@ -469,8 +479,8 @@ impl SPHSystem {
 
 #[must_use]
 
-pub fn simulate_dam_break_2d_scenario(
-) -> Vec<(f64, f64)> {
+pub fn simulate_dam_break_2d_scenario()
+-> Vec<(f64, f64)> {
 
     let h = 0.1;
 

@@ -127,7 +127,9 @@ fn test_energy_density() {
 
     let u_str = format!("{:?}", u);
 
-    assert!(u_str.contains("epsilon_0"));
+    assert!(
+        u_str.contains("epsilon_0")
+    );
 
     assert!(u_str.contains("mu_0"));
 

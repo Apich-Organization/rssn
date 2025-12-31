@@ -1,11 +1,11 @@
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::Condvar;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
 
+use criterion::Criterion;
 use criterion::black_box;
 use criterion::criterion_group;
-use criterion::Criterion;
 use rssn::compute::computation::Computation;
 use rssn::compute::computation::ComputationProgress;
 use rssn::compute::computation::ComputationStatus;

@@ -15,8 +15,8 @@ use crate::symbolic::core::Expr;
 /// The caller is responsible for freeing the memory using `rssn_parsing_cache_free`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_parsing_cache_new(
-) -> *mut ParsingCache {
+pub extern "C" fn rssn_parsing_cache_new()
+-> *mut ParsingCache {
 
     Box::into_raw(Box::new(
         ParsingCache::new(),
@@ -154,8 +154,8 @@ pub extern "C" fn rssn_parsing_cache_set(
 /// The caller is responsible for freeing the memory using `rssn_computation_result_cache_free`.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_computation_result_cache_new(
-) -> *mut ComputationResultCache {
+pub extern "C" fn rssn_computation_result_cache_new()
+-> *mut ComputationResultCache {
 
     Box::into_raw(Box::new(
         ComputationResultCache::new(),

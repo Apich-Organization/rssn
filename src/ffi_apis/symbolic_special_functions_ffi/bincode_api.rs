@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::special_functions;
 
@@ -25,7 +25,7 @@ pub extern "C" fn rssn_bincode_gamma(
 
         to_bincode_buffer(
             &special_functions::gamma(
-                a,
+                &a,
             ),
         )
     } else {
@@ -53,7 +53,7 @@ pub extern "C" fn rssn_bincode_ln_gamma(
 
     if let Some(a) = arg {
 
-        to_bincode_buffer(&special_functions::ln_gamma(a))
+        to_bincode_buffer(&special_functions::ln_gamma(&a))
     } else {
 
         BincodeBuffer::empty()
@@ -81,18 +81,17 @@ pub extern "C" fn rssn_bincode_beta(
     let b: Option<Expr> =
         from_bincode_buffer(&b_buf);
 
-    match (a, b)
-    { (Some(val_a), Some(val_b)) => {
-
-        to_bincode_buffer(
+    match (a, b) {
+        | (
+            Some(val_a),
+            Some(val_b),
+        ) => to_bincode_buffer(
             &special_functions::beta(
                 val_a, val_b,
             ),
-        )
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+        ),
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the error function erf(z).
@@ -115,7 +114,7 @@ pub extern "C" fn rssn_bincode_erf(
     if let Some(a) = arg {
 
         to_bincode_buffer(
-            &special_functions::erf(a),
+            &special_functions::erf(&a),
         )
     } else {
 
@@ -143,7 +142,9 @@ pub extern "C" fn rssn_bincode_erfc(
     if let Some(a) = arg {
 
         to_bincode_buffer(
-            &special_functions::erfc(a),
+            &special_functions::erfc(
+                &a,
+            ),
         )
     } else {
 
@@ -199,7 +200,9 @@ pub extern "C" fn rssn_bincode_zeta(
     if let Some(a) = arg {
 
         to_bincode_buffer(
-            &special_functions::zeta(a),
+            &special_functions::zeta(
+                &a,
+            ),
         )
     } else {
 
@@ -228,7 +231,7 @@ pub extern "C" fn rssn_bincode_digamma(
 
         to_bincode_buffer(
             &special_functions::digamma(
-                a,
+                &a,
             ),
         )
     } else {
@@ -260,7 +263,7 @@ pub extern "C" fn rssn_bincode_polygamma(
 
     match (n, z) { (Some(n), Some(z)) => {
 
-        to_bincode_buffer(&special_functions::polygamma(n, z))
+        to_bincode_buffer(&special_functions::polygamma(&n, &z))
     } _ => {
 
         BincodeBuffer::empty()
@@ -291,7 +294,7 @@ pub extern "C" fn rssn_bincode_bessel_j(
     match (order, arg)
     { (Some(o), Some(a)) => {
 
-        to_bincode_buffer(&special_functions::bessel_j(o, a))
+        to_bincode_buffer(&special_functions::bessel_j(&o, &a))
     } _ => {
 
         BincodeBuffer::empty()
@@ -322,7 +325,7 @@ pub extern "C" fn rssn_bincode_bessel_y(
     match (order, arg)
     { (Some(o), Some(a)) => {
 
-        to_bincode_buffer(&special_functions::bessel_y(o, a))
+        to_bincode_buffer(&special_functions::bessel_y(&o, &a))
     } _ => {
 
         BincodeBuffer::empty()
@@ -353,7 +356,7 @@ pub extern "C" fn rssn_bincode_bessel_i(
     match (order, arg)
     { (Some(o), Some(a)) => {
 
-        to_bincode_buffer(&special_functions::bessel_i(o, a))
+        to_bincode_buffer(&special_functions::bessel_i(&o, &a))
     } _ => {
 
         BincodeBuffer::empty()
@@ -384,7 +387,7 @@ pub extern "C" fn rssn_bincode_bessel_k(
     match (order, arg)
     { (Some(o), Some(a)) => {
 
-        to_bincode_buffer(&special_functions::bessel_k(o, a))
+        to_bincode_buffer(&special_functions::bessel_k(&o, &a))
     } _ => {
 
         BincodeBuffer::empty()
@@ -417,7 +420,7 @@ pub extern "C" fn rssn_bincode_legendre_p(
     match (degree, arg)
     { (Some(d), Some(a)) => {
 
-        to_bincode_buffer(&special_functions::legendre_p(d, a))
+        to_bincode_buffer(&special_functions::legendre_p(&d, a))
     } _ => {
 
         BincodeBuffer::empty()
@@ -450,7 +453,7 @@ pub extern "C" fn rssn_bincode_laguerre_l(
     match (degree, arg)
     { (Some(d), Some(a)) => {
 
-        to_bincode_buffer(&special_functions::laguerre_l(d, a))
+        to_bincode_buffer(&special_functions::laguerre_l(&d, a))
     } _ => {
 
         BincodeBuffer::empty()

@@ -1,3 +1,5 @@
+#![allow(clippy::match_same_arms)]
+
 //! # Symbolic Polynomial Manipulation
 //!
 //! This module provides comprehensive tools for symbolic manipulation of polynomials,
@@ -837,7 +839,8 @@ pub fn polynomial_long_division(
         }
     }
 
-    const MAX_TOTAL_ITERATIONS: usize = 100;
+    const MAX_TOTAL_ITERATIONS: usize =
+        100;
 
     let mut q =
         Expr::BigInt(BigInt::zero());
@@ -1641,8 +1644,10 @@ pub(crate) fn collect_terms_recursive(
                         )]),
                     };
 
-                    for _ in
-                        0 .. ((e as i64).try_into().unwrap_or(0))
+                    for _ in 0 .. ((e
+                        as i64)
+                        .try_into()
+                        .unwrap_or(0))
                     {
 
                         result = result
@@ -1953,7 +1958,7 @@ pub fn gcd(
 
         let (_, remainder) = a
             .long_division(
-                b.clone(),
+                &b.clone(),
                 var,
             );
 
@@ -2088,10 +2093,12 @@ impl SparsePolynomial {
 
     pub fn long_division(
         self,
-        divisor: Self,
+        divisor: &Self,
         var: &str,
     ) -> (Self, Self) {
-        const MAX_ITERATIONS: usize = 1000;
+
+        const MAX_ITERATIONS: usize =
+            1000;
 
         if divisor
             .terms
@@ -2176,7 +2183,7 @@ impl SparsePolynomial {
                 add_poly(&quotient, &t);
 
             let sub_term =
-                mul_poly(&t, &divisor);
+                mul_poly(&t, divisor);
 
             remainder = subtract_poly(
                 &remainder,
@@ -2213,9 +2220,12 @@ impl SparsePolynomial {
             return vec![];
         }
 
-        let mut coeffs = vec![
+        let mut coeffs =
+            vec![
                 Expr::Constant(0.0);
-                (deg + 1).try_into().unwrap_or(0)
+                (deg + 1)
+                    .try_into()
+                    .unwrap_or(0)
             ];
 
         for (mono, coeff) in &self.terms

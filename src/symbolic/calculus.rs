@@ -1516,18 +1516,20 @@ pub fn substitute_expr(
                 | Expr::Abs(a)
                 | Expr::Neg(a) => {
 
-                    vec![a
-                        .as_ref()
-                        .clone()]
+                    vec![
+                        a.as_ref()
+                            .clone(),
+                    ]
                 },
                 | Expr::Derivative(
                     e,
                     _,
                 ) => {
 
-                    vec![e
-                        .as_ref()
-                        .clone()]
+                    vec![
+                        e.as_ref()
+                            .clone(),
+                    ]
                 },
                 | Expr::Integral {
                     integrand,
@@ -2669,7 +2671,7 @@ pub fn calculate_residue(
                 ),
                 var,
                 pole,
-            )
+            );
         },
         | Expr::Div(num, den) => {
 

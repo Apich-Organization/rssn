@@ -392,13 +392,19 @@ pub(crate) fn lifting_phase(
                 },
             );
 
-            let mut new_sample = cell.sample_point.clone();
-            let mut new_index = cell.index.clone();
+            let mut new_sample = cell
+                .sample_point
+                .clone();
+
+            let mut new_index =
+                cell.index.clone();
 
             if roots_at_sample
                 .is_empty()
             {
+
                 new_sample.push(0.0);
+
                 new_index.push(0);
 
                 next_level_cells.push(
@@ -534,9 +540,15 @@ pub(crate) fn sylvester_matrix(
     var: &str,
 ) -> Expr {
 
-    let n = p.degree(var).try_into().unwrap_or(0);
+    let n = p
+        .degree(var)
+        .try_into()
+        .unwrap_or(0);
 
-    let m = q.degree(var).try_into().unwrap_or(0);
+    let m = q
+        .degree(var)
+        .try_into()
+        .unwrap_or(0);
 
     if n == 0 && m == 0 {
 

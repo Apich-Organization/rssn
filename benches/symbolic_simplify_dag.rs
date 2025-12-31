@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
-use criterion::criterion_group;
 use criterion::Criterion;
+use criterion::criterion_group;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::simplify_dag::simplify;
 

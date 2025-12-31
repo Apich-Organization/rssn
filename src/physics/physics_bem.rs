@@ -7,8 +7,8 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::numerical::matrix::Matrix;
-use crate::numerical::solve::solve_linear_system;
 use crate::numerical::solve::LinearSolution;
+use crate::numerical::solve::solve_linear_system;
 
 #[derive(
     Clone,
@@ -383,9 +383,15 @@ pub fn solve_laplace_bem_2d(
 
     let mut b_vec = vec![0.0; n];
 
-    for (i, b_val) in b_vec.iter_mut().enumerate() {
+    for (i, b_val) in b_vec
+        .iter_mut()
+        .enumerate()
+    {
 
-        for (j, bc) in bcs.iter().enumerate() {
+        for (j, bc) in bcs
+            .iter()
+            .enumerate()
+        {
 
             match bc {
                 // Unknown depends on element j's BC type
@@ -460,8 +466,8 @@ pub fn solve_laplace_bem_2d(
 /// This function will return an error if the underlying `solve_laplace_bem_2d`
 /// function encounters an error.
 
-pub fn simulate_2d_cylinder_scenario(
-) -> Result<(Vec<f64>, Vec<f64>), String>
+pub fn simulate_2d_cylinder_scenario()
+-> Result<(Vec<f64>, Vec<f64>), String>
 {
 
     let n_points = 40;
@@ -559,8 +565,8 @@ pub fn evaluate_potential_2d(
 /// This is currently a placeholder function and will always succeed, but in a full
 /// implementation, it would return an error if the 3D BEM system cannot be solved.
 
-pub fn solve_laplace_bem_3d(
-) -> Result<(), String> {
+pub fn solve_laplace_bem_3d()
+-> Result<(), String> {
 
     println!(
         "3D BEM is a complex topic \

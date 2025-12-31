@@ -29,51 +29,56 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
     n: usize,
     out_u: *mut f64,
     out_q: *mut f64,
-) -> i32 { unsafe {
+) -> i32 {
 
-    if points_x.is_null()
-        || points_y.is_null()
-        || bcs_type.is_null()
-        || bcs_value.is_null()
-        || out_u.is_null()
-        || out_q.is_null()
-    {
+    unsafe {
 
-        return -1;
-    }
+        if points_x.is_null()
+            || points_y.is_null()
+            || bcs_type.is_null()
+            || bcs_value.is_null()
+            || out_u.is_null()
+            || out_q.is_null()
+        {
 
-    let points_x_slice =
-        std::slice::from_raw_parts(
-            points_x,
-            n,
-        );
+            return -1;
+        }
 
-    let points_y_slice =
-        std::slice::from_raw_parts(
-            points_y,
-            n,
-        );
+        let points_x_slice =
+            std::slice::from_raw_parts(
+                points_x,
+                n,
+            );
 
-    let bcs_type_slice =
-        std::slice::from_raw_parts(
-            bcs_type,
-            n,
-        );
+        let points_y_slice =
+            std::slice::from_raw_parts(
+                points_y,
+                n,
+            );
 
-    let bcs_value_slice =
-        std::slice::from_raw_parts(
-            bcs_value,
-            n,
-        );
+        let bcs_type_slice =
+            std::slice::from_raw_parts(
+                bcs_type,
+                n,
+            );
 
-    let points: Vec<(f64, f64)> =
-        points_x_slice
-            .iter()
-            .zip(points_y_slice.iter())
-            .map(|(&x, &y)| (x, y))
-            .collect();
+        let bcs_value_slice =
+            std::slice::from_raw_parts(
+                bcs_value,
+                n,
+            );
 
-    let bcs : Vec<BoundaryCondition<f64>> = bcs_type_slice
+        let points: Vec<(f64, f64)> =
+            points_x_slice
+                .iter()
+                .zip(
+                    points_y_slice
+                        .iter(),
+                )
+                .map(|(&x, &y)| (x, y))
+                .collect();
+
+        let bcs : Vec<BoundaryCondition<f64>> = bcs_type_slice
         .iter()
         .zip(bcs_value_slice.iter())
         .map(|(&t, &v)| {
@@ -87,7 +92,7 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
         })
         .collect();
 
-    match physics_bem::solve_laplace_bem_2d(&points, &bcs) {
+        match physics_bem::solve_laplace_bem_2d(&points, &bcs) {
         | Ok((u, q)) => {
 
             ptr::copy_nonoverlapping(u.as_ptr(), out_u, n);
@@ -98,4 +103,5 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d(
         },
         | Err(_) => -2,
     }
-}}
+    }
+}

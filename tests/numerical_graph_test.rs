@@ -1,10 +1,10 @@
 use std::f64::INFINITY;
 
+use rssn::numerical::graph::Graph;
 use rssn::numerical::graph::bfs;
 use rssn::numerical::graph::dijkstra;
 use rssn::numerical::graph::floyd_warshall;
 use rssn::numerical::graph::page_rank;
-use rssn::numerical::graph::Graph;
 
 #[test]
 

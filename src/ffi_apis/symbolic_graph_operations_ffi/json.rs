@@ -113,7 +113,7 @@ pub extern "C" fn rssn_json_graph_cartesian_product(
         &input.g2,
     );
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result = convert_expr_graph_to_string_graph(&result_expr);
 
     to_json_string(&result)
 }
@@ -142,7 +142,7 @@ pub extern "C" fn rssn_json_graph_tensor_product(
         &input.g2,
     );
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result = convert_expr_graph_to_string_graph(&result_expr);
 
     to_json_string(&result)
 }
@@ -188,7 +188,7 @@ pub extern "C" fn rssn_json_graph_disjoint_union(
         &input.g2,
     );
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result = convert_expr_graph_to_string_graph(&result_expr);
 
     to_json_string(&result)
 }
@@ -215,7 +215,7 @@ pub extern "C" fn rssn_json_graph_join(
     let result_expr =
         join(&input.g1, &input.g2);
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result = convert_expr_graph_to_string_graph(&result_expr);
 
     to_json_string(&result)
 }

@@ -670,18 +670,37 @@ impl TriangleElement2D {
         // Strain = B * u
         let mut strain = [0.0; 3];
 
-        for (i, s) in strain.iter_mut().enumerate() {
-            for (j, disp) in displacements.iter().enumerate() {
-                *s += *b.get(i, j) * disp;
+        for (i, s) in strain
+            .iter_mut()
+            .enumerate()
+        {
+
+            for (j, disp) in
+                displacements
+                    .iter()
+                    .enumerate()
+            {
+
+                *s +=
+                    *b.get(i, j) * disp;
             }
         }
 
         // Stress = D * strain
         let mut stress = vec![0.0; 3];
 
-        for (i, s) in stress.iter_mut().enumerate() {
-            for (j, strn) in strain.iter().enumerate() {
-                *s += *d.get(i, j) * strn;
+        for (i, s) in stress
+            .iter_mut()
+            .enumerate()
+        {
+
+            for (j, strn) in strain
+                .iter()
+                .enumerate()
+            {
+
+                *s +=
+                    *d.get(i, j) * strn;
             }
         }
 
@@ -1215,9 +1234,18 @@ pub fn compute_element_strain(
     let mut strain =
         vec![0.0; b_matrix.rows()];
 
-    for (i, s) in strain.iter_mut().enumerate() {
-        for (j, disp) in displacements.iter().enumerate() {
-            *s += *b_matrix.get(i, j) * disp;
+    for (i, s) in strain
+        .iter_mut()
+        .enumerate()
+    {
+
+        for (j, disp) in displacements
+            .iter()
+            .enumerate()
+        {
+
+            *s += *b_matrix.get(i, j)
+                * disp;
         }
     }
 

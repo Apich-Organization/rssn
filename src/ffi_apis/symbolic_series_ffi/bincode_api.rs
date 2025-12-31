@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::series::analytic_continuation;
 use crate::symbolic::series::analyze_convergence;
@@ -49,22 +49,22 @@ pub extern "C" fn rssn_bincode_taylor_series(
         var,
         center,
         order,
-    ) { (
-        Some(e),
-        Some(v),
-        Some(c),
-        Some(o),
-    ) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(c),
+            Some(o),
+        ) => {
 
-        let result = taylor_series(
-            &e, &v, &c, o,
-        );
+            let result = taylor_series(
+                &e, &v, &c, o,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the Laurent series expansion of an expression.
@@ -105,22 +105,22 @@ pub extern "C" fn rssn_bincode_laurent_series(
         var,
         center,
         order,
-    ) { (
-        Some(e),
-        Some(v),
-        Some(c),
-        Some(o),
-    ) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(c),
+            Some(o),
+        ) => {
 
-        let result = laurent_series(
-            &e, &v, &c, o,
-        );
+            let result = laurent_series(
+                &e, &v, &c, o,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the Fourier series expansion of an expression.
@@ -161,22 +161,22 @@ pub extern "C" fn rssn_bincode_fourier_series(
         var,
         period,
         order,
-    ) { (
-        Some(e),
-        Some(v),
-        Some(p),
-        Some(o),
-    ) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(p),
+            Some(o),
+        ) => {
 
-        let result = fourier_series(
-            &e, &v, &p, o,
-        );
+            let result = fourier_series(
+                &e, &v, &p, o,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the summation of an expression.
@@ -212,21 +212,22 @@ pub extern "C" fn rssn_bincode_summation(
 
     match (
         expr, var, lower, upper,
-    ) { (
-        Some(e),
-        Some(v),
-        Some(l),
-        Some(u),
-    ) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(l),
+            Some(u),
+        ) => {
 
-        let result =
-            summation(&e, &v, &l, &u);
+            let result = summation(
+                &e, &v, &l, &u,
+            );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the product of an expression.
@@ -262,21 +263,21 @@ pub extern "C" fn rssn_bincode_product(
 
     match (
         expr, var, lower, upper,
-    ) { (
-        Some(e),
-        Some(v),
-        Some(l),
-        Some(u),
-    ) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(l),
+            Some(u),
+        ) => {
 
-        let result =
-            product(&e, &v, &l, &u);
+            let result =
+                product(&e, &v, &l, &u);
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Analyzes the convergence of a series.
@@ -302,17 +303,18 @@ pub extern "C" fn rssn_series_bincode_analyze_convergence(
     let var: Option<String> =
         from_bincode_buffer(&var_buf);
 
-    match (series, var)
-    { (Some(s), Some(v)) => {
+    match (series, var) {
+        | (Some(s), Some(v)) => {
 
-        let result =
-            analyze_convergence(&s, &v);
+            let result =
+                analyze_convergence(
+                    &s, &v,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the asymptotic expansion of an expression.
@@ -348,23 +350,23 @@ pub extern "C" fn rssn_bincode_asymptotic_expansion(
 
     match (
         expr, var, point, order,
-    ) { (
-        Some(e),
-        Some(v),
-        Some(p),
-        Some(o),
-    ) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(p),
+            Some(o),
+        ) => {
 
-        let result =
-            asymptotic_expansion(
-                &e, &v, &p, o,
-            );
+            let result =
+                asymptotic_expansion(
+                    &e, &v, &p, o,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Computes the analytic continuation of a series.
@@ -412,22 +414,22 @@ pub extern "C" fn rssn_bincode_analytic_continuation(
         orig_center,
         new_center,
         order,
-    ) { (
-        Some(e),
-        Some(v),
-        Some(oc),
-        Some(nc),
-        Some(o),
-    ) => {
+    ) {
+        | (
+            Some(e),
+            Some(v),
+            Some(oc),
+            Some(nc),
+            Some(o),
+        ) => {
 
-        let result =
-            analytic_continuation(
-                &e, &v, &oc, &nc, o,
-            );
+            let result =
+                analytic_continuation(
+                    &e, &v, &oc, &nc, o,
+                );
 
-        to_bincode_buffer(&result)
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            to_bincode_buffer(&result)
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

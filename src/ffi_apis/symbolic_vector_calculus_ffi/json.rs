@@ -9,13 +9,13 @@ use crate::ffi_apis::common::from_json_string;
 use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
 use crate::symbolic::vector::Vector;
+use crate::symbolic::vector_calculus::ParametricCurve;
+use crate::symbolic::vector_calculus::ParametricSurface;
+use crate::symbolic::vector_calculus::Volume;
 use crate::symbolic::vector_calculus::line_integral_scalar;
 use crate::symbolic::vector_calculus::line_integral_vector;
 use crate::symbolic::vector_calculus::surface_integral;
 use crate::symbolic::vector_calculus::volume_integral;
-use crate::symbolic::vector_calculus::ParametricCurve;
-use crate::symbolic::vector_calculus::ParametricSurface;
-use crate::symbolic::vector_calculus::Volume;
 
 #[derive(Serialize, Deserialize)]
 
@@ -59,7 +59,7 @@ pub extern "C" fn rssn_line_integral_scalar_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -85,7 +85,7 @@ pub extern "C" fn rssn_line_integral_vector_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -111,7 +111,7 @@ pub extern "C" fn rssn_surface_integral_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -137,7 +137,7 @@ pub extern "C" fn rssn_volume_integral_json(
     let input = match input {
         | Some(i) => i,
         | None => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 

@@ -13,8 +13,8 @@ use crate::numerical::physics;
 /// The speed of light c = 2.998 × 10⁸ m/s.
 #[unsafe(no_mangle)]
 
-pub const extern "C" fn rssn_num_physics_speed_of_light(
-) -> f64 {
+pub const extern "C" fn rssn_num_physics_speed_of_light()
+-> f64 {
 
     physics::SPEED_OF_LIGHT
 }
@@ -26,8 +26,8 @@ pub const extern "C" fn rssn_num_physics_speed_of_light(
 /// Planck's constant h = 6.626 × 10⁻³⁴ J·s.
 #[unsafe(no_mangle)]
 
-pub const extern "C" fn rssn_num_physics_planck_constant(
-) -> f64 {
+pub const extern "C" fn rssn_num_physics_planck_constant()
+-> f64 {
 
     physics::PLANCK_CONSTANT
 }
@@ -39,8 +39,8 @@ pub const extern "C" fn rssn_num_physics_planck_constant(
 /// The gravitational constant G = 6.674 × 10⁻¹¹ N·m²/kg².
 #[unsafe(no_mangle)]
 
-pub const extern "C" fn rssn_num_physics_gravitational_constant(
-) -> f64 {
+pub const extern "C" fn rssn_num_physics_gravitational_constant()
+-> f64 {
 
     physics::GRAVITATIONAL_CONSTANT
 }
@@ -52,8 +52,8 @@ pub const extern "C" fn rssn_num_physics_gravitational_constant(
 /// The Boltzmann constant `k_B` = 1.381 × 10⁻²³ J/K.
 #[unsafe(no_mangle)]
 
-pub const extern "C" fn rssn_num_physics_boltzmann_constant(
-) -> f64 {
+pub const extern "C" fn rssn_num_physics_boltzmann_constant()
+-> f64 {
 
     physics::BOLTZMANN_CONSTANT
 }
@@ -65,8 +65,8 @@ pub const extern "C" fn rssn_num_physics_boltzmann_constant(
 /// The elementary charge e = 1.602 × 10⁻¹⁹ Coulombs.
 #[unsafe(no_mangle)]
 
-pub const extern "C" fn rssn_num_physics_elementary_charge(
-) -> f64 {
+pub const extern "C" fn rssn_num_physics_elementary_charge()
+-> f64 {
 
     physics::ELEMENTARY_CHARGE
 }
@@ -78,8 +78,8 @@ pub const extern "C" fn rssn_num_physics_elementary_charge(
 /// The electron rest mass `m_e` = 9.109 × 10⁻³¹ kg.
 #[unsafe(no_mangle)]
 
-pub const extern "C" fn rssn_num_physics_electron_mass(
-) -> f64 {
+pub const extern "C" fn rssn_num_physics_electron_mass()
+-> f64 {
 
     physics::ELECTRON_MASS
 }

@@ -41,29 +41,29 @@ pub extern "C" fn rssn_json_solve_pde(
         pde_expr,
         func_str,
         vars,
-    ) { (
-        Some(pde),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(pde),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        let result = pde::solve_pde(
-            &pde,
-            f,
-            &vars_refs,
-            None,
-        );
+            let result = pde::solve_pde(
+                &pde,
+                f,
+                &vars_refs,
+                None,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Solves a PDE using the method of characteristics (JSON).
@@ -100,25 +100,25 @@ pub extern "C" fn rssn_json_solve_pde_by_characteristics(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match pde::solve_pde_by_characteristics(&eq, f, &vars_refs) {
+            match pde::solve_pde_by_characteristics(&eq, f, &vars_refs) {
             | Some(result) => to_json_string(&result),
             | None => std::ptr::null_mut(),
         }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Solves the 1D wave equation using D'Alembert's formula (JSON).
@@ -155,25 +155,25 @@ pub extern "C" fn rssn_json_solve_wave_equation_1d(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match pde::solve_wave_equation_1d_dalembert(&eq, f, &vars_refs) {
+            match pde::solve_wave_equation_1d_dalembert(&eq, f, &vars_refs) {
             | Some(result) => to_json_string(&result),
             | None => std::ptr::null_mut(),
         }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Solves the 1D heat equation (JSON).
@@ -210,25 +210,25 @@ pub extern "C" fn rssn_json_solve_heat_equation_1d(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match pde::solve_heat_equation_1d(&eq, f, &vars_refs) {
+            match pde::solve_heat_equation_1d(&eq, f, &vars_refs) {
             | Some(result) => to_json_string(&result),
             | None => std::ptr::null_mut(),
         }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Solves the 2D Laplace equation (JSON).
@@ -265,25 +265,25 @@ pub extern "C" fn rssn_json_solve_laplace_equation_2d(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match pde::solve_laplace_equation_2d(&eq, f, &vars_refs) {
+            match pde::solve_laplace_equation_2d(&eq, f, &vars_refs) {
             | Some(result) => to_json_string(&result),
             | None => std::ptr::null_mut(),
         }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Solves the 2D Poisson equation (JSON).
@@ -320,25 +320,25 @@ pub extern "C" fn rssn_json_solve_poisson_equation_2d(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        match pde::solve_poisson_equation_2d(&eq, f, &vars_refs) {
+            match pde::solve_poisson_equation_2d(&eq, f, &vars_refs) {
             | Some(result) => to_json_string(&result),
             | None => std::ptr::null_mut(),
         }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Classifies a PDE and suggests solution methods (JSON).
@@ -375,27 +375,29 @@ pub extern "C" fn rssn_json_classify_pde(
         equation,
         func_str,
         vars,
-    ) { (
-        Some(eq),
-        Some(f),
-        Some(v),
-    ) => {
+    ) {
+        | (
+            Some(eq),
+            Some(f),
+            Some(v),
+        ) => {
 
-        let vars_refs: Vec<&str> = v
+            let vars_refs: Vec<&str> = v
             .iter()
             .map(std::string::String::as_str)
             .collect();
 
-        let classification =
+            let classification =
             pde::classify_pde_heuristic(
                 &eq,
                 f,
                 &vars_refs,
             );
 
-        to_json_string(&classification)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(
+                &classification,
+            )
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

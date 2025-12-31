@@ -9,8 +9,8 @@ use crate::numerical::physics_md;
 /// Returns Boltzmann constant in SI units.
 #[unsafe(no_mangle)]
 
-pub const extern "C" fn rssn_num_md_boltzmann_constant_si(
-) -> f64 {
+pub const extern "C" fn rssn_num_md_boltzmann_constant_si()
+-> f64 {
 
     physics_md::BOLTZMANN_CONSTANT_SI
 }
@@ -18,8 +18,8 @@ pub const extern "C" fn rssn_num_md_boltzmann_constant_si(
 /// Returns Avogadro's number.
 #[unsafe(no_mangle)]
 
-pub const extern "C" fn rssn_num_md_avogadro_number(
-) -> f64 {
+pub const extern "C" fn rssn_num_md_avogadro_number()
+-> f64 {
 
     physics_md::AVOGADRO_NUMBER
 }
@@ -27,8 +27,8 @@ pub const extern "C" fn rssn_num_md_avogadro_number(
 /// Returns temperature unit for argon in reduced units.
 #[unsafe(no_mangle)]
 
-pub const extern "C" fn rssn_num_md_temperature_unit_argon(
-) -> f64 {
+pub const extern "C" fn rssn_num_md_temperature_unit_argon()
+-> f64 {
 
     physics_md::TEMPERATURE_UNIT_ARGON
 }

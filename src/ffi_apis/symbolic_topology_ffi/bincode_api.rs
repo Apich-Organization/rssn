@@ -1,6 +1,6 @@
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::topology::Simplex;
 use crate::symbolic::topology::SimplicialComplex;
@@ -55,8 +55,8 @@ pub extern "C" fn rssn_bincode_simplex_dimension(
 /// Creates a new `SimplicialComplex` (Bincode)
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_bincode_simplicial_complex_create(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_bincode_simplicial_complex_create()
+-> BincodeBuffer {
 
     let complex =
         SimplicialComplex::new();
@@ -159,24 +159,27 @@ pub extern "C" fn rssn_bincode_symbolic_chain_add_term(
         chain,
         simplex,
         coeff,
-    ) { (
-        Some(mut c),
-        Some(s),
-        Some(coeff),
-    ) => {
+    ) {
+        | (
+            Some(mut c),
+            Some(s),
+            Some(coeff),
+        ) => {
 
-        match c.add_term(s, coeff) {
-            | Ok(()) => {
-                to_bincode_buffer(&c)
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+            match c.add_term(s, coeff) {
+                | Ok(()) => {
+                    to_bincode_buffer(
+                        &c,
+                    )
+                },
+                | Err(_) => {
+                    BincodeBuffer::empty(
+                    )
+                },
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }
 
 /// Applies the symbolic boundary operator to a `SymbolicChain` (Bincode)

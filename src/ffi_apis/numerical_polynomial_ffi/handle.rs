@@ -19,33 +19,36 @@ use crate::numerical::polynomial::Polynomial;
 pub unsafe extern "C" fn rssn_num_poly_create(
     coeffs: *const f64,
     len: usize,
-) -> *mut Polynomial { unsafe {
+) -> *mut Polynomial {
 
-    if coeffs.is_null() {
+    unsafe {
 
-        update_last_error(
+        if coeffs.is_null() {
+
+            update_last_error(
             "Null pointer passed to \
              rssn_num_poly_create"
                 .to_string(),
         );
 
-        return ptr::null_mut();
+            return ptr::null_mut();
+        }
+
+        let c = {
+
+            std::slice::from_raw_parts(
+                coeffs,
+                len,
+            )
+        };
+
+        Box::into_raw(Box::new(
+            Polynomial {
+                coeffs: c.to_vec(),
+            },
+        ))
     }
-
-    let c =  {
-
-        std::slice::from_raw_parts(
-            coeffs,
-            len,
-        )
-    };
-
-    Box::into_raw(Box::new(
-        Polynomial {
-            coeffs: c.to_vec(),
-        },
-    ))
-}}
+}
 
 /// Frees a polynomial object.
 #[unsafe(no_mangle)]

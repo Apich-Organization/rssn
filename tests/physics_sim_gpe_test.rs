@@ -5,8 +5,8 @@ use rssn::physics::physics_sim::gpe_superfluidity::*;
 
 #[test]
 
-fn test_simulate_bose_einstein_vortex_scenario(
-) {
+fn test_simulate_bose_einstein_vortex_scenario()
+ {
 
     simulate_bose_einstein_vortex_scenario();
 }

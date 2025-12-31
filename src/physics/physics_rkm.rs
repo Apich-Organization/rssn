@@ -46,7 +46,11 @@ pub fn solve_rk4<
 
     let (t_start, t_end) = t_span;
 
-    let steps: usize = (((t_end - t_start) / dt).ceil() as i64)
+    let steps: usize = (((t_end
+        - t_start)
+        / dt)
+        .ceil()
+        as i64)
         .try_into()
         .unwrap_or(0);
 
@@ -81,6 +85,7 @@ pub fn solve_rk4<
         }
 
         if current_dt <= 0.0 {
+
             break;
         }
 
@@ -318,7 +323,11 @@ impl DormandPrince54 {
             vec![vec![0.0; dim]; 7];
 
         loop {
-            if (t_end - t).abs() <= 1e-15 {
+
+            if (t_end - t).abs()
+                <= 1e-15
+            {
+
                 break;
             }
 
@@ -375,7 +384,11 @@ impl DormandPrince54 {
 
                 let mut y4_i = y[i];
 
-                for (j, kj) in k.iter().enumerate().take(7) {
+                for (j, kj) in k
+                    .iter()
+                    .enumerate()
+                    .take(7)
+                {
 
                     y5_i += dt
                         * kj[i]
@@ -548,7 +561,11 @@ impl CashKarp45 {
             vec![vec![0.0; dim]; 6];
 
         loop {
-            if (t_end - t).abs() <= 1e-15 {
+
+            if (t_end - t).abs()
+                <= 1e-15
+            {
+
                 break;
             }
 
@@ -568,7 +585,11 @@ impl CashKarp45 {
                 let mut y_temp =
                     y.clone();
 
-                for (j, kj) in k.iter().enumerate().take(i) {
+                for (j, kj) in k
+                    .iter()
+                    .enumerate()
+                    .take(i)
+                {
 
                     let a_val = self.a
                         [i - 1][j];
@@ -601,7 +622,11 @@ impl CashKarp45 {
 
                 let mut y4_i = y[i];
 
-                for (j, kj) in k.iter().enumerate().take(6) {
+                for (j, kj) in k
+                    .iter()
+                    .enumerate()
+                    .take(6)
+                {
 
                     y5_i += dt
                         * kj[i]
@@ -741,7 +766,11 @@ impl BogackiShampine23 {
             vec![vec![0.0; dim]; 4];
 
         loop {
-            if (t_end - t).abs() <= 1e-15 {
+
+            if (t_end - t).abs()
+                <= 1e-15
+            {
+
                 break;
             }
 
@@ -761,7 +790,11 @@ impl BogackiShampine23 {
                 let mut y_temp =
                     y.clone();
 
-                for (j, kj) in k.iter().enumerate().take(i) {
+                for (j, kj) in k
+                    .iter()
+                    .enumerate()
+                    .take(i)
+                {
 
                     let a_val = self.a
                         [i - 1][j];
@@ -794,7 +827,11 @@ impl BogackiShampine23 {
 
                 let mut y2_i = y[i];
 
-                for (j, kj) in k.iter().enumerate().take(4) {
+                for (j, kj) in k
+                    .iter()
+                    .enumerate()
+                    .take(4)
+                {
 
                     y3_i += dt
                         * kj[i]
@@ -1061,8 +1098,8 @@ impl OdeSystem for PendulumSystem {
 
 #[must_use]
 
-pub fn simulate_lorenz_attractor_scenario(
-) -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_lorenz_attractor_scenario()
+-> Vec<(f64, Vec<f64>)> {
 
     let system = LorenzSystem {
         sigma: 10.0,
@@ -1093,8 +1130,8 @@ pub fn simulate_lorenz_attractor_scenario(
 
 #[must_use]
 
-pub fn simulate_damped_oscillator_scenario(
-) -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_damped_oscillator_scenario()
+-> Vec<(f64, Vec<f64>)> {
 
     let system =
         DampedOscillatorSystem {
@@ -1120,8 +1157,8 @@ pub fn simulate_damped_oscillator_scenario(
 
 #[must_use]
 
-pub fn simulate_vanderpol_scenario(
-) -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_vanderpol_scenario()
+-> Vec<(f64, Vec<f64>)> {
 
     let system = VanDerPolSystem {
         mu: 1.0,
@@ -1150,8 +1187,8 @@ pub fn simulate_vanderpol_scenario(
 
 #[must_use]
 
-pub fn simulate_lotka_volterra_scenario(
-) -> Vec<(f64, Vec<f64>)> {
+pub fn simulate_lotka_volterra_scenario()
+-> Vec<(f64, Vec<f64>)> {
 
     let system = LotkaVolterraSystem {
         alpha: 1.5,

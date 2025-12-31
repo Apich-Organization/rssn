@@ -1,5 +1,10 @@
+#![allow(
+    clippy::wildcard_in_or_patterns
+)]
+
 use std::sync::Arc;
 
+use nom::IResult;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::alpha1;
@@ -17,7 +22,6 @@ use nom::multi::separated_list1;
 use nom::sequence::delimited;
 use nom::sequence::pair;
 use nom::sequence::preceded;
-use nom::IResult;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 
@@ -105,7 +109,6 @@ pub(crate) fn comparison_expr(
         ),
         move || init.clone(),
         |acc, (op, val)| {
-
             match op {
                 | "=" => {
                     Expr::Eq(
@@ -1192,8 +1195,7 @@ pub(crate) fn parse_function_call(
                 ),
             ))
         },
-
-        | _ => {
+        | "predicate" | _ => {
             Ok((
                 input,
                 Expr::Predicate {

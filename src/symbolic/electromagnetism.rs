@@ -16,10 +16,10 @@ use serde::Serialize;
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::vector::Vector;
 use crate::symbolic::vector::curl;
 use crate::symbolic::vector::divergence;
 use crate::symbolic::vector::gradient;
-use crate::symbolic::vector::Vector;
 
 /// Represents Maxwell's equations in their differential form.
 ///

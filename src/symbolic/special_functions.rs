@@ -135,9 +135,9 @@ use crate::symbolic::simplify_dag::simplify;
 /// ```
 #[must_use]
 
-pub fn gamma(arg: Expr) -> Expr {
+pub fn gamma(arg: &Expr) -> Expr {
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if let Some(n) = s_arg.to_f64() {
 
@@ -145,7 +145,9 @@ pub fn gamma(arg: Expr) -> Expr {
 
             return Expr::Constant(
                 factorial(
-                    ((n - 1.0) as i64).try_into().unwrap_or(0),
+                    ((n - 1.0) as i64)
+                        .try_into()
+                        .unwrap_or(0),
                 ),
             );
         }
@@ -171,7 +173,7 @@ pub fn gamma(arg: Expr) -> Expr {
                 &Expr::new_mul(
                     a.clone(),
                     gamma(
-                        a.as_ref()
+                        &a.as_ref()
                             .clone(),
                     ),
                 ),
@@ -184,7 +186,7 @@ pub fn gamma(arg: Expr) -> Expr {
                 &Expr::new_mul(
                     b.clone(),
                     gamma(
-                        b.as_ref()
+                        &b.as_ref()
                             .clone(),
                     ),
                 ),
@@ -207,7 +209,7 @@ pub fn gamma(arg: Expr) -> Expr {
 /// An `Expr` representing `ln(Γ(z))`.
 #[must_use]
 
-pub fn ln_gamma(arg: Expr) -> Expr {
+pub fn ln_gamma(arg: &Expr) -> Expr {
 
     let g = gamma(arg);
 
@@ -261,12 +263,12 @@ pub fn beta(
     b: Expr,
 ) -> Expr {
 
-    let gamma_a = gamma(a.clone());
+    let gamma_a = gamma(&a);
 
-    let gamma_b = gamma(b.clone());
+    let gamma_b = gamma(&b);
 
     let gamma_a_plus_b = gamma(
-        simplify(&Expr::new_add(a, b)),
+        &simplify(&Expr::new_add(a, b)),
     );
 
     simplify(&Expr::new_div(
@@ -288,9 +290,9 @@ pub fn beta(
 /// An `Expr` representing `ψ(z)`.
 #[must_use]
 
-pub fn digamma(arg: Expr) -> Expr {
+pub fn digamma(arg: &Expr) -> Expr {
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if let Some(n) = s_arg.to_f64() {
 
@@ -309,7 +311,7 @@ pub fn digamma(arg: Expr) -> Expr {
             return simplify(
                 &Expr::new_add(
                     digamma(
-                        a.as_ref()
+                        &a.as_ref()
                             .clone(),
                     ),
                     Expr::new_div(
@@ -327,7 +329,7 @@ pub fn digamma(arg: Expr) -> Expr {
             return simplify(
                 &Expr::new_add(
                     digamma(
-                        b.as_ref()
+                        &b.as_ref()
                             .clone(),
                     ),
                     Expr::new_div(
@@ -360,20 +362,20 @@ pub fn digamma(arg: Expr) -> Expr {
 #[must_use]
 
 pub fn polygamma(
-    n: Expr,
-    z: Expr,
+    n: &Expr,
+    z: &Expr,
 ) -> Expr {
 
-    let s_n = simplify(&n);
+    let s_n = simplify(n);
 
-    let s_z = simplify(&z);
+    let s_z = simplify(z);
 
     // ψ⁽⁰⁾(z) = ψ(z)
     if let Some(order) = s_n.to_f64() {
 
         if order.abs() < 1e-9 {
 
-            return digamma(s_z);
+            return digamma(&s_z);
         }
     }
 
@@ -417,9 +419,9 @@ pub fn polygamma(
 /// ```
 #[must_use]
 
-pub fn erf(arg: Expr) -> Expr {
+pub fn erf(arg: &Expr) -> Expr {
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
 
@@ -429,7 +431,7 @@ pub fn erf(arg: Expr) -> Expr {
     if let Expr::Neg(inner) = s_arg {
 
         return Expr::new_neg(erf(
-            (*inner).clone(),
+            &(*inner).clone(),
         ));
     }
 
@@ -447,7 +449,7 @@ pub fn erf(arg: Expr) -> Expr {
 /// An `Expr` representing `erfc(z)`.
 #[must_use]
 
-pub fn erfc(arg: Expr) -> Expr {
+pub fn erfc(arg: &Expr) -> Expr {
 
     simplify(&Expr::new_sub(
         Expr::Constant(1.0),
@@ -475,7 +477,7 @@ pub fn erfi(arg: Expr) -> Expr {
 
     simplify(&Expr::new_mul(
         Expr::new_neg(i.clone()),
-        erf(Expr::new_mul(
+        erf(&Expr::new_mul(
             i, arg,
         )),
     ))
@@ -513,9 +515,9 @@ pub fn erfi(arg: Expr) -> Expr {
 /// ```
 #[must_use]
 
-pub fn zeta(arg: Expr) -> Expr {
+pub fn zeta(arg: &Expr) -> Expr {
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if let Some(n) = s_arg.to_f64() {
 
@@ -608,13 +610,13 @@ pub fn zeta(arg: Expr) -> Expr {
 #[must_use]
 
 pub fn bessel_j(
-    order: Expr,
-    arg: Expr,
+    order: &Expr,
+    arg: &Expr,
 ) -> Expr {
 
-    let s_order = simplify(&order);
+    let s_order = simplify(order);
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
 
@@ -662,12 +664,12 @@ pub fn bessel_j(
                     &Expr::new_mul(
                         factor,
                         bessel_j(
-                            inner_order
+                            &inner_order
                                 .as_ref(
                                 )
                                 .clone(
                                 ),
-                            s_arg,
+                            &s_arg,
                         ),
                     ),
                 );
@@ -692,13 +694,13 @@ pub fn bessel_j(
 #[must_use]
 
 pub fn bessel_y(
-    order: Expr,
-    arg: Expr,
+    order: &Expr,
+    arg: &Expr,
 ) -> Expr {
 
-    let s_order = simplify(&order);
+    let s_order = simplify(order);
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
 
@@ -722,13 +724,13 @@ pub fn bessel_y(
 #[must_use]
 
 pub fn bessel_i(
-    order: Expr,
-    arg: Expr,
+    order: &Expr,
+    arg: &Expr,
 ) -> Expr {
 
-    let s_order = simplify(&order);
+    let s_order = simplify(order);
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
 
@@ -773,13 +775,13 @@ pub fn bessel_i(
 #[must_use]
 
 pub fn bessel_k(
-    order: Expr,
-    arg: Expr,
+    order: &Expr,
+    arg: &Expr,
 ) -> Expr {
 
-    let s_order = simplify(&order);
+    let s_order = simplify(order);
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
 
@@ -831,11 +833,11 @@ pub fn bessel_k(
 #[must_use]
 
 pub fn legendre_p(
-    degree: Expr,
+    degree: &Expr,
     arg: Expr,
 ) -> Expr {
 
-    let s_degree = simplify(&degree);
+    let s_degree = simplify(degree);
 
     if let Some(n) = s_degree.to_f64() {
 
@@ -860,7 +862,7 @@ pub fn legendre_p(
             if n_int <= 10 {
 
                 let p_n = legendre_p(
-                    Expr::Constant(
+                    &Expr::Constant(
                         n - 1.0,
                     ),
                     arg.clone(),
@@ -868,7 +870,7 @@ pub fn legendre_p(
 
                 let p_n_minus_1 =
                     legendre_p(
-                        Expr::Constant(
+                        &Expr::Constant(
                             n - 2.0,
                         ),
                         arg.clone(),
@@ -920,11 +922,11 @@ pub fn legendre_p(
 #[must_use]
 
 pub fn laguerre_l(
-    degree: Expr,
+    degree: &Expr,
     arg: Expr,
 ) -> Expr {
 
-    let s_degree = simplify(&degree);
+    let s_degree = simplify(degree);
 
     if let Some(n) = s_degree.to_f64() {
 
@@ -956,7 +958,7 @@ pub fn laguerre_l(
             if n_int <= 10 {
 
                 let l_n = laguerre_l(
-                    Expr::Constant(
+                    &Expr::Constant(
                         n - 1.0,
                     ),
                     arg.clone(),
@@ -964,7 +966,7 @@ pub fn laguerre_l(
 
                 let l_n_minus_1 =
                     laguerre_l(
-                        Expr::Constant(
+                        &Expr::Constant(
                             n - 2.0,
                         ),
                         arg.clone(),
@@ -1039,7 +1041,7 @@ pub fn generalized_laguerre(
         if a.abs() < 1e-9 {
 
             return laguerre_l(
-                s_n, s_x,
+                &s_n, s_x,
             );
         }
     }
@@ -1242,14 +1244,14 @@ pub fn chebyshev_t(
                     &Expr::Constant(
                         n_val - 1.0,
                     ),
-                  &s_x,
+                    &s_x,
                 );
 
                 let t_n2 = chebyshev_t(
                     &Expr::Constant(
                         n_val - 2.0,
                     ),
-                  &s_x,
+                    &s_x,
                 );
 
                 return simplify(&Expr::new_sub(
@@ -1519,15 +1521,21 @@ pub fn legendre_rodrigues_formula(
 
     let n_factorial = Expr::Constant(
         if n_f64 >= 0.0 {
-            factorial((n_f64 as i64).try_into().unwrap_or(0))
+
+            factorial(
+                (n_f64 as i64)
+                    .try_into()
+                    .unwrap_or(0),
+            )
         } else {
+
             f64::NAN
         },
     );
 
     Expr::Eq(
         Arc::new(legendre_p(
-            n.clone(),
+            &n.clone(),
             x.clone(),
         )),
         Arc::new(Expr::new_mul(

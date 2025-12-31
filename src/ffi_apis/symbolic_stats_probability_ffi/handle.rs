@@ -23,16 +23,19 @@ use crate::symbolic::stats_probability::Uniform;
 
 unsafe fn ptr_to_expr(
     ptr: *const Expr
-) -> Option<Expr> { unsafe {
+) -> Option<Expr> {
 
-    if ptr.is_null() {
+    unsafe {
 
-        None
-    } else {
+        if ptr.is_null() {
 
-        Some((*ptr).clone())
+            None
+        } else {
+
+            Some((*ptr).clone())
+        }
     }
-}}
+}
 
 // --- Generic Helper to wrap a Distribution in Expr ---
 fn wrap_dist<
@@ -71,19 +74,27 @@ fn wrap_dist<
 pub unsafe extern "C" fn rssn_dist_normal(
     mean: *const Expr,
     std_dev: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let mean = ptr_to_expr(mean)
-        .unwrap_or(Expr::Constant(0.0));
+    unsafe {
 
-    let std_dev = ptr_to_expr(std_dev)
-        .unwrap_or(Expr::Constant(1.0));
+        let mean = ptr_to_expr(mean)
+            .unwrap_or(Expr::Constant(
+                0.0,
+            ));
 
-    wrap_dist(Normal {
-        mean,
-        std_dev,
-    })
-}}
+        let std_dev =
+            ptr_to_expr(std_dev)
+                .unwrap_or(
+                    Expr::Constant(1.0),
+                );
+
+        wrap_dist(Normal {
+            mean,
+            std_dev,
+        })
+    }
+}
 
 /// Creates a uniform distribution.
 
@@ -106,19 +117,26 @@ pub unsafe extern "C" fn rssn_dist_normal(
 pub unsafe extern "C" fn rssn_dist_uniform(
     min: *const Expr,
     max: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let min = ptr_to_expr(min)
-        .unwrap_or(Expr::Constant(0.0));
+    unsafe {
 
-    let max = ptr_to_expr(max)
-        .unwrap_or(Expr::Constant(1.0));
+        let min = ptr_to_expr(min)
+            .unwrap_or(Expr::Constant(
+                0.0,
+            ));
 
-    wrap_dist(Uniform {
-        min,
-        max,
-    })
-}}
+        let max = ptr_to_expr(max)
+            .unwrap_or(Expr::Constant(
+                1.0,
+            ));
+
+        wrap_dist(Uniform {
+            min,
+            max,
+        })
+    }
+}
 
 /// Creates a binomial distribution.
 
@@ -141,19 +159,26 @@ pub unsafe extern "C" fn rssn_dist_uniform(
 pub unsafe extern "C" fn rssn_dist_binomial(
     n: *const Expr,
     p: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let n = ptr_to_expr(n)
-        .unwrap_or(Expr::Constant(1.0));
+    unsafe {
 
-    let p = ptr_to_expr(p)
-        .unwrap_or(Expr::Constant(0.5));
+        let n = ptr_to_expr(n)
+            .unwrap_or(Expr::Constant(
+                1.0,
+            ));
 
-    wrap_dist(Binomial {
-        n,
-        p,
-    })
-}}
+        let p = ptr_to_expr(p)
+            .unwrap_or(Expr::Constant(
+                0.5,
+            ));
+
+        wrap_dist(Binomial {
+            n,
+            p,
+        })
+    }
+}
 
 /// Creates a Poisson distribution.
 
@@ -175,15 +200,20 @@ pub unsafe extern "C" fn rssn_dist_binomial(
 
 pub unsafe extern "C" fn rssn_dist_poisson(
     rate: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let rate = ptr_to_expr(rate)
-        .unwrap_or(Expr::Constant(1.0));
+    unsafe {
 
-    wrap_dist(Poisson {
-        rate,
-    })
-}}
+        let rate = ptr_to_expr(rate)
+            .unwrap_or(Expr::Constant(
+                1.0,
+            ));
+
+        wrap_dist(Poisson {
+            rate,
+        })
+    }
+}
 
 /// Creates a Bernoulli distribution.
 
@@ -205,15 +235,20 @@ pub unsafe extern "C" fn rssn_dist_poisson(
 
 pub unsafe extern "C" fn rssn_dist_bernoulli(
     p: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let p = ptr_to_expr(p)
-        .unwrap_or(Expr::Constant(0.5));
+    unsafe {
 
-    wrap_dist(Bernoulli {
-        p,
-    })
-}}
+        let p = ptr_to_expr(p)
+            .unwrap_or(Expr::Constant(
+                0.5,
+            ));
+
+        wrap_dist(Bernoulli {
+            p,
+        })
+    }
+}
 
 /// Creates an exponential distribution.
 
@@ -235,15 +270,20 @@ pub unsafe extern "C" fn rssn_dist_bernoulli(
 
 pub unsafe extern "C" fn rssn_dist_exponential(
     rate: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let rate = ptr_to_expr(rate)
-        .unwrap_or(Expr::Constant(1.0));
+    unsafe {
 
-    wrap_dist(Exponential {
-        rate,
-    })
-}}
+        let rate = ptr_to_expr(rate)
+            .unwrap_or(Expr::Constant(
+                1.0,
+            ));
+
+        wrap_dist(Exponential {
+            rate,
+        })
+    }
+}
 
 /// Creates a gamma distribution.
 
@@ -266,19 +306,26 @@ pub unsafe extern "C" fn rssn_dist_exponential(
 pub unsafe extern "C" fn rssn_dist_gamma(
     shape: *const Expr,
     rate: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let shape = ptr_to_expr(shape)
-        .unwrap_or(Expr::Constant(1.0));
+    unsafe {
 
-    let rate = ptr_to_expr(rate)
-        .unwrap_or(Expr::Constant(1.0));
+        let shape = ptr_to_expr(shape)
+            .unwrap_or(Expr::Constant(
+                1.0,
+            ));
 
-    wrap_dist(Gamma {
-        shape,
-        rate,
-    })
-}}
+        let rate = ptr_to_expr(rate)
+            .unwrap_or(Expr::Constant(
+                1.0,
+            ));
+
+        wrap_dist(Gamma {
+            shape,
+            rate,
+        })
+    }
+}
 
 /// Creates a beta distribution.
 
@@ -301,19 +348,26 @@ pub unsafe extern "C" fn rssn_dist_gamma(
 pub unsafe extern "C" fn rssn_dist_beta(
     alpha: *const Expr,
     beta: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let alpha = ptr_to_expr(alpha)
-        .unwrap_or(Expr::Constant(1.0));
+    unsafe {
 
-    let beta = ptr_to_expr(beta)
-        .unwrap_or(Expr::Constant(1.0));
+        let alpha = ptr_to_expr(alpha)
+            .unwrap_or(Expr::Constant(
+                1.0,
+            ));
 
-    wrap_dist(Beta {
-        alpha,
-        beta,
-    })
-}}
+        let beta = ptr_to_expr(beta)
+            .unwrap_or(Expr::Constant(
+                1.0,
+            ));
+
+        wrap_dist(Beta {
+            alpha,
+            beta,
+        })
+    }
+}
 
 /// Creates a Student's t-distribution.
 
@@ -335,15 +389,20 @@ pub unsafe extern "C" fn rssn_dist_beta(
 
 pub unsafe extern "C" fn rssn_dist_student_t(
     nu: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let nu = ptr_to_expr(nu)
-        .unwrap_or(Expr::Constant(1.0));
+    unsafe {
 
-    wrap_dist(StudentT {
-        nu,
-    })
-}}
+        let nu = ptr_to_expr(nu)
+            .unwrap_or(Expr::Constant(
+                1.0,
+            ));
+
+        wrap_dist(StudentT {
+            nu,
+        })
+    }
+}
 
 // --- Methods on Distributions ---
 
@@ -368,25 +427,32 @@ pub unsafe extern "C" fn rssn_dist_student_t(
 pub unsafe extern "C" fn rssn_dist_pdf(
     dist: *const Expr,
     x: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let dist_expr = ptr_to_expr(dist);
+    unsafe {
 
-    let x_expr = ptr_to_expr(x)
-        .unwrap_or(Expr::Constant(0.0));
+        let dist_expr =
+            ptr_to_expr(dist);
 
-    if let Some(Expr::Distribution(d)) =
-        dist_expr
-    {
+        let x_expr = ptr_to_expr(x)
+            .unwrap_or(Expr::Constant(
+                0.0,
+            ));
 
-        Box::into_raw(Box::new(
-            d.pdf(&x_expr),
-        ))
-    } else {
+        if let Some(
+            Expr::Distribution(d),
+        ) = dist_expr
+        {
 
-        std::ptr::null_mut()
+            Box::into_raw(Box::new(
+                d.pdf(&x_expr),
+            ))
+        } else {
+
+            std::ptr::null_mut()
+        }
     }
-}}
+}
 
 /// Computes the cumulative distribution function (CDF) of a distribution.
 
@@ -409,25 +475,32 @@ pub unsafe extern "C" fn rssn_dist_pdf(
 pub unsafe extern "C" fn rssn_dist_cdf(
     dist: *const Expr,
     x: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let dist_expr = ptr_to_expr(dist);
+    unsafe {
 
-    let x_expr = ptr_to_expr(x)
-        .unwrap_or(Expr::Constant(0.0));
+        let dist_expr =
+            ptr_to_expr(dist);
 
-    if let Some(Expr::Distribution(d)) =
-        dist_expr
-    {
+        let x_expr = ptr_to_expr(x)
+            .unwrap_or(Expr::Constant(
+                0.0,
+            ));
 
-        Box::into_raw(Box::new(
-            d.cdf(&x_expr),
-        ))
-    } else {
+        if let Some(
+            Expr::Distribution(d),
+        ) = dist_expr
+        {
 
-        std::ptr::null_mut()
+            Box::into_raw(Box::new(
+                d.cdf(&x_expr),
+            ))
+        } else {
+
+            std::ptr::null_mut()
+        }
     }
-}}
+}
 
 /// Computes the expectation (mean) of a distribution.
 
@@ -449,22 +522,27 @@ pub unsafe extern "C" fn rssn_dist_cdf(
 
 pub unsafe extern "C" fn rssn_dist_expectation(
     dist: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let dist_expr = ptr_to_expr(dist);
+    unsafe {
 
-    if let Some(Expr::Distribution(d)) =
-        dist_expr
-    {
+        let dist_expr =
+            ptr_to_expr(dist);
 
-        Box::into_raw(Box::new(
-            d.expectation(),
-        ))
-    } else {
+        if let Some(
+            Expr::Distribution(d),
+        ) = dist_expr
+        {
 
-        std::ptr::null_mut()
+            Box::into_raw(Box::new(
+                d.expectation(),
+            ))
+        } else {
+
+            std::ptr::null_mut()
+        }
     }
-}}
+}
 
 /// Computes the variance of a distribution.
 
@@ -486,22 +564,27 @@ pub unsafe extern "C" fn rssn_dist_expectation(
 
 pub unsafe extern "C" fn rssn_dist_variance(
     dist: *const Expr
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let dist_expr = ptr_to_expr(dist);
+    unsafe {
 
-    if let Some(Expr::Distribution(d)) =
-        dist_expr
-    {
+        let dist_expr =
+            ptr_to_expr(dist);
 
-        Box::into_raw(Box::new(
-            d.variance(),
-        ))
-    } else {
+        if let Some(
+            Expr::Distribution(d),
+        ) = dist_expr
+        {
 
-        std::ptr::null_mut()
+            Box::into_raw(Box::new(
+                d.variance(),
+            ))
+        } else {
+
+            std::ptr::null_mut()
+        }
     }
-}}
+}
 
 /// Computes the moment generating function (MGF) of a distribution.
 
@@ -524,22 +607,29 @@ pub unsafe extern "C" fn rssn_dist_variance(
 pub unsafe extern "C" fn rssn_dist_mgf(
     dist: *const Expr,
     t: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let dist_expr = ptr_to_expr(dist);
+    unsafe {
 
-    let t_expr = ptr_to_expr(t)
-        .unwrap_or(Expr::Constant(0.0));
+        let dist_expr =
+            ptr_to_expr(dist);
 
-    if let Some(Expr::Distribution(d)) =
-        dist_expr
-    {
+        let t_expr = ptr_to_expr(t)
+            .unwrap_or(Expr::Constant(
+                0.0,
+            ));
 
-        Box::into_raw(Box::new(
-            d.mgf(&t_expr),
-        ))
-    } else {
+        if let Some(
+            Expr::Distribution(d),
+        ) = dist_expr
+        {
 
-        std::ptr::null_mut()
+            Box::into_raw(Box::new(
+                d.mgf(&t_expr),
+            ))
+        } else {
+
+            std::ptr::null_mut()
+        }
     }
-}}
+}

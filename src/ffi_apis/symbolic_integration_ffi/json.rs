@@ -20,19 +20,18 @@ pub extern "C" fn rssn_json_risch_norman_integrate(
     let x: Option<String> =
         from_json_string(x_json);
 
-    match (expr, x)
-    { (Some(e), Some(var)) => {
+    match (expr, x) {
+        | (Some(e), Some(var)) => {
 
-        let result =
-            risch_norman_integrate(
-                &e, &var,
-            );
+            let result =
+                risch_norman_integrate(
+                    &e, &var,
+                );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Integrates a rational function (JSON)

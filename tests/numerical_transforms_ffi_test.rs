@@ -11,8 +11,8 @@ use rssn::ffi_apis::numerical_transforms_ffi::json;
 
 #[test]
 
-fn test_numerical_transforms_handle_ffi(
-) {
+fn test_numerical_transforms_handle_ffi()
+ {
 
     unsafe {
 
@@ -138,8 +138,8 @@ fn test_numerical_transforms_json_ffi()
 
 #[test]
 
-fn test_numerical_transforms_bincode_ffi(
-) {
+fn test_numerical_transforms_bincode_ffi()
+ {
 
     unsafe {
 

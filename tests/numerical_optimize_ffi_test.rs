@@ -93,9 +93,11 @@ fn test_json_sphere() {
         serde_json::from_str(res_str)
             .unwrap();
 
-    assert!(response["success"]
-        .as_bool()
-        .unwrap());
+    assert!(
+        response["success"]
+            .as_bool()
+            .unwrap()
+    );
 
     assert!(
         response["best_cost"]

@@ -7,7 +7,7 @@ use crate::symbolic::graph::Graph;
 use crate::symbolic::graph_operations::{induced_subgraph, union, intersection, cartesian_product, tensor_product, complement, disjoint_union, join};
 
 pub(crate) fn convert_expr_graph_to_string_graph(
-    g: Graph<Expr>
+    g: &Graph<Expr>
 ) -> Graph<String> {
 
     let mut new_graph =
@@ -193,7 +193,7 @@ pub extern "C" fn rssn_graph_cartesian_product(
     let result_expr =
         cartesian_product(g1, g2);
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result = convert_expr_graph_to_string_graph(&result_expr);
 
     Box::into_raw(Box::new(result))
         .cast::<RssnGraph>()
@@ -226,7 +226,7 @@ pub extern "C" fn rssn_graph_tensor_product(
     let result_expr =
         tensor_product(g1, g2);
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result = convert_expr_graph_to_string_graph(&result_expr);
 
     Box::into_raw(Box::new(result))
         .cast::<RssnGraph>()
@@ -282,7 +282,7 @@ pub extern "C" fn rssn_graph_disjoint_union(
     let result_expr =
         disjoint_union(g1, g2);
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result = convert_expr_graph_to_string_graph(&result_expr);
 
     Box::into_raw(Box::new(result))
         .cast::<RssnGraph>()
@@ -314,7 +314,7 @@ pub extern "C" fn rssn_graph_join(
 
     let result_expr = join(g1, g2);
 
-    let result = convert_expr_graph_to_string_graph(result_expr);
+    let result = convert_expr_graph_to_string_graph(&result_expr);
 
     Box::into_raw(Box::new(result))
         .cast::<RssnGraph>()

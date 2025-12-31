@@ -17,18 +17,21 @@ use crate::symbolic::vector::Vector;
 
 unsafe fn c_str_to_str<'a>(
     s: *const c_char
-) -> Option<&'a str> { unsafe {
+) -> Option<&'a str> {
 
-    if s.is_null() {
+    unsafe {
 
-        None
-    } else {
+        if s.is_null() {
 
-        CStr::from_ptr(s)
-            .to_str()
-            .ok()
+            None
+        } else {
+
+            CStr::from_ptr(s)
+                .to_str()
+                .ok()
+        }
     }
-}}
+}
 
 /// Calculates the Lorentz force.
 #[unsafe(no_mangle)]
@@ -46,18 +49,21 @@ pub unsafe extern "C" fn rssn_lorentz_force(
     e_field: *const Vector,
     velocity: *const Vector,
     b_field: *const Vector,
-) -> *mut Vector { unsafe {
+) -> *mut Vector {
 
-    if charge.is_null()
-        || e_field.is_null()
-        || velocity.is_null()
-        || b_field.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if charge.is_null()
+            || e_field.is_null()
+            || velocity.is_null()
+            || b_field.is_null()
+        {
 
-    Box::into_raw(Box::new(
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
         electromagnetism::lorentz_force(
             &*charge,
             &*e_field,
@@ -65,7 +71,8 @@ pub unsafe extern "C" fn rssn_lorentz_force(
             &*b_field,
         ),
     ))
-}}
+    }
+}
 
 /// Calculates the Poynting vector.
 #[unsafe(no_mangle)]
@@ -81,19 +88,23 @@ pub unsafe extern "C" fn rssn_lorentz_force(
 pub unsafe extern "C" fn rssn_poynting_vector(
     e_field: *const Vector,
     b_field: *const Vector,
-) -> *mut Vector { unsafe {
+) -> *mut Vector {
 
-    if e_field.is_null()
-        || b_field.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if e_field.is_null()
+            || b_field.is_null()
+        {
 
-    Box::into_raw(Box::new(
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
         electromagnetism::poynting_vector(&*e_field, &*b_field),
     ))
-}}
+    }
+}
 
 /// Calculates energy density.
 #[unsafe(no_mangle)]
@@ -109,19 +120,23 @@ pub unsafe extern "C" fn rssn_poynting_vector(
 pub unsafe extern "C" fn rssn_electromagnetic_energy_density(
     e_field: *const Vector,
     b_field: *const Vector,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    if e_field.is_null()
-        || b_field.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if e_field.is_null()
+            || b_field.is_null()
+        {
 
-    Box::into_raw(Box::new(
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
         electromagnetism::energy_density(&*e_field, &*b_field),
     ))
-}}
+    }
+}
 
 /// Computes magnetic field from vector potential.
 #[unsafe(no_mangle)]
@@ -139,42 +154,46 @@ pub unsafe extern "C" fn rssn_magnetic_field_from_vector_potential(
     x: *const c_char,
     y: *const c_char,
     z: *const c_char,
-) -> *mut Vector { unsafe {
+) -> *mut Vector {
 
-    if a.is_null()
-        || x.is_null()
-        || y.is_null()
-        || z.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if a.is_null()
+            || x.is_null()
+            || y.is_null()
+            || z.is_null()
+        {
 
-    let xs = match c_str_to_str(x) {
+            return std::ptr::null_mut(
+            );
+        }
+
+        let xs = match c_str_to_str(x) {
         | Some(s) => s,
         | None => {
             return std::ptr::null_mut()
         },
     };
 
-    let ys = match c_str_to_str(y) {
+        let ys = match c_str_to_str(y) {
         | Some(s) => s,
         | None => {
             return std::ptr::null_mut()
         },
     };
 
-    let zs = match c_str_to_str(z) {
+        let zs = match c_str_to_str(z) {
         | Some(s) => s,
         | None => {
             return std::ptr::null_mut()
         },
     };
 
-    Box::into_raw(Box::new(
+        Box::into_raw(Box::new(
         electromagnetism::magnetic_field_from_vector_potential(&*a, (xs, ys, zs)),
     ))
-}}
+    }
+}
 
 /// Computes electric field from scalar and vector potentials.
 #[unsafe(no_mangle)]
@@ -194,48 +213,51 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
     y: *const c_char,
     z: *const c_char,
     t: *const c_char,
-) -> *mut Vector { unsafe {
+) -> *mut Vector {
 
-    if v.is_null()
-        || a.is_null()
-        || x.is_null()
-        || y.is_null()
-        || z.is_null()
-        || t.is_null()
-    {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if v.is_null()
+            || a.is_null()
+            || x.is_null()
+            || y.is_null()
+            || z.is_null()
+            || t.is_null()
+        {
 
-    let xs = match c_str_to_str(x) {
+            return std::ptr::null_mut(
+            );
+        }
+
+        let xs = match c_str_to_str(x) {
         | Some(s) => s,
         | None => {
             return std::ptr::null_mut()
         },
     };
 
-    let ys = match c_str_to_str(y) {
+        let ys = match c_str_to_str(y) {
         | Some(s) => s,
         | None => {
             return std::ptr::null_mut()
         },
     };
 
-    let zs = match c_str_to_str(z) {
+        let zs = match c_str_to_str(z) {
         | Some(s) => s,
         | None => {
             return std::ptr::null_mut()
         },
     };
 
-    let ts = match c_str_to_str(t) {
+        let ts = match c_str_to_str(t) {
         | Some(s) => s,
         | None => {
             return std::ptr::null_mut()
         },
     };
 
-    Box::into_raw(Box::new(
+        Box::into_raw(Box::new(
         electromagnetism::electric_field_from_potentials(
             &*v,
             &*a,
@@ -243,7 +265,8 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
             ts,
         ),
     ))
-}}
+    }
+}
 
 /// Calculates Coulomb's Law field.
 #[unsafe(no_mangle)]
@@ -259,17 +282,23 @@ pub unsafe extern "C" fn rssn_electric_field_from_potentials(
 pub unsafe extern "C" fn rssn_coulombs_law(
     charge: *const Expr,
     r: *const Vector,
-) -> *mut Vector { unsafe {
+) -> *mut Vector {
 
-    if charge.is_null() || r.is_null() {
+    unsafe {
 
-        return std::ptr::null_mut();
-    }
+        if charge.is_null()
+            || r.is_null()
+        {
 
-    Box::into_raw(Box::new(
+            return std::ptr::null_mut(
+            );
+        }
+
+        Box::into_raw(Box::new(
         electromagnetism::coulombs_law(
             &*charge,
             &*r,
         ),
     ))
-}}
+    }
+}

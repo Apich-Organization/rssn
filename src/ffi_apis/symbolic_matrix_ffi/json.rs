@@ -31,22 +31,21 @@ pub extern "C" fn rssn_json_matrix_add(
     let m2: Option<Expr> =
         from_json_string(m2_json);
 
-    match (m1, m2)
-    { (
-        Some(matrix1),
-        Some(matrix2),
-    ) => {
+    match (m1, m2) {
+        | (
+            Some(matrix1),
+            Some(matrix2),
+        ) => {
 
-        let result = add_matrices(
-            &matrix1,
-            &matrix2,
-        );
+            let result = add_matrices(
+                &matrix1,
+                &matrix2,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Performs matrix multiplication.
@@ -70,22 +69,21 @@ pub extern "C" fn rssn_json_matrix_mul(
     let m2: Option<Expr> =
         from_json_string(m2_json);
 
-    match (m1, m2)
-    { (
-        Some(matrix1),
-        Some(matrix2),
-    ) => {
+    match (m1, m2) {
+        | (
+            Some(matrix1),
+            Some(matrix2),
+        ) => {
 
-        let result = mul_matrices(
-            &matrix1,
-            &matrix2,
-        );
+            let result = mul_matrices(
+                &matrix1,
+                &matrix2,
+            );
 
-        to_json_string(&result)
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(&result)
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Performs matrix transposition.
@@ -194,25 +192,26 @@ pub extern "C" fn rssn_json_matrix_solve_linear_system(
     let b: Option<Expr> =
         from_json_string(b_json);
 
-    match (a, b)
-    { (
-        Some(matrix_a),
-        Some(vector_b),
-    ) => {
+    match (a, b) {
+        | (
+            Some(matrix_a),
+            Some(vector_b),
+        ) => {
 
-        match solve_linear_system(
-            &matrix_a,
-            &vector_b,
-        ) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            match solve_linear_system(
+                &matrix_a,
+                &vector_b,
+            ) {
+                | Ok(result) => {
+                    to_json_string(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

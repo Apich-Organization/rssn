@@ -43,16 +43,14 @@ pub unsafe extern "C" fn rssn_json_translation_2d(
     let ty: Option<Expr> =
         from_json_string(ty_json);
 
-    match (tx, ty)
-    { (Some(tx), Some(ty)) => {
-
-        to_json_string(&translation_2d(
-            tx, ty,
-        ))
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (tx, ty) {
+        | (Some(tx), Some(ty)) => {
+            to_json_string(
+                &translation_2d(tx, ty),
+            )
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Generates a 4x4 3D translation matrix via JSON interface.
@@ -81,20 +79,20 @@ pub unsafe extern "C" fn rssn_json_translation_3d(
     let tz: Option<Expr> =
         from_json_string(tz_json);
 
-    match (tx, ty, tz)
-    { (
-        Some(tx),
-        Some(ty),
-        Some(tz),
-    ) => {
-
-        to_json_string(&translation_3d(
-            tx, ty, tz,
-        ))
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (tx, ty, tz) {
+        | (
+            Some(tx),
+            Some(ty),
+            Some(tz),
+        ) => {
+            to_json_string(
+                &translation_3d(
+                    tx, ty, tz,
+                ),
+            )
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Generates a 3x3 2D rotation matrix via JSON interface.
@@ -233,16 +231,14 @@ pub unsafe extern "C" fn rssn_json_scaling_2d(
     let sy: Option<Expr> =
         from_json_string(sy_json);
 
-    match (sx, sy)
-    { (Some(sx), Some(sy)) => {
-
-        to_json_string(&scaling_2d(
-            sx, sy,
-        ))
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (sx, sy) {
+        | (Some(sx), Some(sy)) => {
+            to_json_string(&scaling_2d(
+                sx, sy,
+            ))
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Generates a 4x4 3D scaling matrix via JSON interface.
@@ -271,20 +267,18 @@ pub unsafe extern "C" fn rssn_json_scaling_3d(
     let sz: Option<Expr> =
         from_json_string(sz_json);
 
-    match (sx, sy, sz)
-    { (
-        Some(sx),
-        Some(sy),
-        Some(sz),
-    ) => {
-
-        to_json_string(&scaling_3d(
-            sx, sy, sz,
-        ))
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (sx, sy, sz) {
+        | (
+            Some(sx),
+            Some(sy),
+            Some(sz),
+        ) => {
+            to_json_string(&scaling_3d(
+                sx, sy, sz,
+            ))
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Generates a 3x3 2D shear matrix via JSON interface.
@@ -309,16 +303,14 @@ pub unsafe extern "C" fn rssn_json_shear_2d(
     let shy: Option<Expr> =
         from_json_string(shy_json);
 
-    match (shx, shy)
-    { (Some(shx), Some(shy)) => {
-
-        to_json_string(&shear_2d(
-            shx, shy,
-        ))
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (shx, shy) {
+        | (Some(shx), Some(shy)) => {
+            to_json_string(&shear_2d(
+                shx, shy,
+            ))
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Generates a 3x3 2D reflection matrix via JSON interface.
@@ -376,20 +368,20 @@ pub unsafe extern "C" fn rssn_json_reflection_3d(
     let nz: Option<Expr> =
         from_json_string(nz_json);
 
-    match (nx, ny, nz)
-    { (
-        Some(nx),
-        Some(ny),
-        Some(nz),
-    ) => {
-
-        to_json_string(&reflection_3d(
-            nx, ny, nz,
-        ))
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (nx, ny, nz) {
+        | (
+            Some(nx),
+            Some(ny),
+            Some(nz),
+        ) => {
+            to_json_string(
+                &reflection_3d(
+                    nx, ny, nz,
+                ),
+            )
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Generates a 4x4 3D rotation around arbitrary axis via JSON interface.
@@ -422,24 +414,23 @@ pub unsafe extern "C" fn rssn_json_rotation_axis_angle(
     let angle: Option<Expr> =
         from_json_string(angle_json);
 
-    match (ax, ay, az, angle)
-    { (
-        Some(ax),
-        Some(ay),
-        Some(az),
-        Some(a),
-    ) => {
+    match (ax, ay, az, angle) {
+        | (
+            Some(ax),
+            Some(ay),
+            Some(az),
+            Some(a),
+        ) => {
 
-        let axis =
-            Vector::new(ax, ay, az);
+            let axis =
+                Vector::new(ax, ay, az);
 
-        to_json_string(
-            &rotation_axis_angle(
-                &axis, a,
-            ),
-        )
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            to_json_string(
+                &rotation_axis_angle(
+                    &axis, a,
+                ),
+            )
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

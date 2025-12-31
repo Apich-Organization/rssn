@@ -250,31 +250,33 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf(
     let modulus: Option<i64> =
         from_json_string(modulus_json);
 
-    match (p1, p2, modulus)
-    { (
-        Some(v1),
-        Some(v2),
-        Some(m),
-    ) => {
+    match (p1, p2, modulus) {
+        | (
+            Some(v1),
+            Some(v2),
+            Some(m),
+        ) => {
 
-        let field = FiniteField::new(m);
+            let field =
+                FiniteField::new(m);
 
-        match poly_add_gf(
-            &v1,
-            &v2,
-            &field,
-        ) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            match poly_add_gf(
+                &v1,
+                &v2,
+                &field,
+            ) {
+                | Ok(result) => {
+                    to_json_string(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Multiplies two polynomials over a general finite field via JSON interface.
@@ -303,29 +305,31 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf(
     let modulus: Option<i64> =
         from_json_string(modulus_json);
 
-    match (p1, p2, modulus)
-    { (
-        Some(v1),
-        Some(v2),
-        Some(m),
-    ) => {
+    match (p1, p2, modulus) {
+        | (
+            Some(v1),
+            Some(v2),
+            Some(m),
+        ) => {
 
-        let field = FiniteField::new(m);
+            let field =
+                FiniteField::new(m);
 
-        match poly_mul_gf(
-            &v1,
-            &v2,
-            &field,
-        ) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+            match poly_mul_gf(
+                &v1,
+                &v2,
+                &field,
+            ) {
+                | Ok(result) => {
+                    to_json_string(
+                        &result,
+                    )
+                },
+                | Err(_) => {
+                    std::ptr::null_mut()
+                },
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

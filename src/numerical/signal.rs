@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
 
-use rustfft::num_complex::Complex;
 use rustfft::FftPlanner;
+use rustfft::num_complex::Complex;
 
 /// Computes the one-dimensional discrete Fourier Transform.
 ///

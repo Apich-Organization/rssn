@@ -17,7 +17,9 @@ fn test_lorentz_factor() {
         gamma_str
     );
 
-    assert!(gamma_str.contains("v^(2)"));
+    assert!(
+        gamma_str.contains("v^(2)")
+    );
 
     assert!(gamma_str.contains("c"));
 }

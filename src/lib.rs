@@ -289,6 +289,8 @@
     clippy::todo,
     // This is usually a sign of dead code --- but for development purposes, we will just warn it.
     clippy::used_underscore_binding,
+    // We think using self is less readable for this library.
+    clippy::use_self,
     clippy::unnecessary_safety_comment
 )]
 // -------------------------------------------------------------------------

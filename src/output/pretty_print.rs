@@ -689,7 +689,9 @@ pub(crate) fn build_symbol(
 
     if height <= 1 {
 
-        return vec![symbol.to_string()];
+        return vec![
+            symbol.to_string(),
+        ];
     }
 
     let mut lines =

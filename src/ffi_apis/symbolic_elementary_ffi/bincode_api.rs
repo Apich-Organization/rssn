@@ -1,8 +1,8 @@
 //! Bincode-based FFI API for symbolic elementary functions.
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary;
 
@@ -144,8 +144,8 @@ pub extern "C" fn rssn_pow_bincode(
 /// Returns Pi as bincode.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_pi_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_pi_bincode()
+-> BincodeBuffer {
 
     to_bincode_buffer(&elementary::pi())
 }
@@ -153,8 +153,8 @@ pub extern "C" fn rssn_pi_bincode(
 /// Returns Euler's number (e) as bincode.
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_e_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_e_bincode()
+-> BincodeBuffer {
 
     to_bincode_buffer(&elementary::e())
 }

@@ -7,12 +7,12 @@
 
 use std::collections::HashMap;
 
-use rand::thread_rng;
 use rand::Rng;
+use rand::thread_rng;
 
 use crate::numerical::elementary::eval_expr;
-use crate::numerical::integrate::quadrature;
 use crate::numerical::integrate::QuadratureMethod;
+use crate::numerical::integrate::quadrature;
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
@@ -51,7 +51,9 @@ const NUM_SAMPLES: usize = 100;
 /// `true` if the solution is numerically verified, `false` otherwise.
 #[must_use]
 
-pub fn verify_equation_solution<S: std::hash::BuildHasher>(
+pub fn verify_equation_solution<
+    S: std::hash::BuildHasher,
+>(
     equations: &[Expr],
     solution: &HashMap<String, Expr, S>,
     free_vars: &[&str],
@@ -235,8 +237,12 @@ pub fn verify_definite_integral(
         range,
         1000,
         &QuadratureMethod::Simpson,
-    ).map_or(false, |numerical_val| {
-        (symbolic_val - numerical_val).abs() < TOLERANCE
+    )
+    .is_ok_and(|numerical_val| {
+
+        (symbolic_val - numerical_val)
+            .abs()
+            < TOLERANCE
     })
 }
 
@@ -361,17 +367,44 @@ pub fn verify_matrix_inverse(
 
         let _n = prod_mat.len();
 
-        for (i, row) in prod_mat.iter().enumerate() {
-            for (j, item) in row.iter().enumerate() {
-                let expected = if i == j { 1.0 } else { 0.0 };
+        for (i, row) in prod_mat
+            .iter()
+            .enumerate()
+        {
 
-                match eval_expr(item, &HashMap::new()) {
-                    Ok(val) => {
-                        if (val - expected).abs() > TOLERANCE {
+            for (j, item) in row
+                .iter()
+                .enumerate()
+            {
+
+                let expected = if i == j
+                {
+
+                    1.0
+                } else {
+
+                    0.0
+                };
+
+                match eval_expr(
+                    item,
+                    &HashMap::new(),
+                ) {
+                    | Ok(val) => {
+
+                        if (val
+                            - expected)
+                            .abs()
+                            > TOLERANCE
+                        {
+
                             return false;
                         }
-                    }
-                    Err(_) => return false,
+                    },
+                    | Err(_) => {
+
+                        return false;
+                    },
                 }
             }
         }

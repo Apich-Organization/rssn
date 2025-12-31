@@ -63,17 +63,22 @@ fn test_pauli_matrices() {
 
     let (sx, sy, sz) = pauli_matrices();
 
-    assert!(sx
-        .to_string()
-        .contains("[[0, 1]; [1, 0]]"));
+    assert!(
+        sx.to_string()
+            .contains(
+                "[[0, 1]; [1, 0]]"
+            )
+    );
 
-    assert!(sy
-        .to_string()
-        .contains("i"));
+    assert!(
+        sy.to_string()
+            .contains("i")
+    );
 
-    assert!(sz
-        .to_string()
-        .contains("1"));
+    assert!(
+        sz.to_string()
+            .contains("1")
+    );
 }
 
 #[test]
@@ -93,13 +98,17 @@ fn test_expectation_value() {
     let exp_x =
         expectation_value(&x, &psi);
 
-    assert!(exp_x
-        .to_string()
-        .contains("x"));
+    assert!(
+        exp_x
+            .to_string()
+            .contains("x")
+    );
 
-    assert!(exp_x
-        .to_string()
-        .contains("psi"));
+    assert!(
+        exp_x
+            .to_string()
+            .contains("psi")
+    );
 }
 
 #[test]
@@ -111,18 +120,18 @@ fn test_hamiltonian_free_particle() {
     let h =
         hamiltonian_free_particle(&m);
 
-    assert!(h
-        .op
-        .to_string()
-        .contains("hbar"));
+    assert!(
+        h.op.to_string()
+            .contains("hbar")
+    );
 
-    assert!(h
-        .op
-        .to_string()
-        .contains("m"));
+    assert!(
+        h.op.to_string()
+            .contains("m")
+    );
 
-    assert!(h
-        .op
-        .to_string()
-        .contains("d2_dx2"));
+    assert!(
+        h.op.to_string()
+            .contains("d2_dx2")
+    );
 }

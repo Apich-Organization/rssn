@@ -110,8 +110,8 @@ fn test_coord_jacobian() {
 
 #[test]
 
-fn test_coord_transform_symbolic_assisted(
-) {
+fn test_coord_transform_symbolic_assisted()
+ {
 
     // Test the non-pure version that uses symbolic rules.
     let p = vec![1.0, 0.0, 0.0];

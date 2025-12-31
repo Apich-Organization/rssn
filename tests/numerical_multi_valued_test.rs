@@ -6,8 +6,8 @@ use rssn::symbolic::core::Expr;
 
 #[test]
 
-fn test_newton_method_complex_simple_roots(
-) {
+fn test_newton_method_complex_simple_roots()
+ {
 
     let z =
         Expr::Variable("z".to_string());

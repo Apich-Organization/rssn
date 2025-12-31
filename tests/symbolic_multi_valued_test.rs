@@ -146,8 +146,8 @@ fn test_general_nth_root() {
 
 #[test]
 
-fn test_general_nth_root_multiple_branches(
-) {
+fn test_general_nth_root_multiple_branches()
+ {
 
     let z = Expr::Constant(1.0);
 

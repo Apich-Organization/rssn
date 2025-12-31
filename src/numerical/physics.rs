@@ -36,8 +36,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use rand::thread_rng;
 use rand::Rng;
+use rand::thread_rng;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -347,14 +347,15 @@ pub fn simulate_ising_model(
 
         for j in 0 .. size {
 
-            lattice[i][j] =
-                if rng.r#gen::<bool>() {
+            lattice[i][j] = if rng
+                .r#gen::<bool>()
+            {
 
-                    1
-                } else {
+                1
+            } else {
 
-                    -1
-                };
+                -1
+            };
         }
     }
 
@@ -1226,7 +1227,14 @@ pub fn solve_wave_equation_1d(
 // ============================================================================
 
 /// Parameters for projectile motion simulation.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+)]
+
 pub struct ProjectileParams {
     /// Initial velocity (m/s)
     pub v0: f64,
@@ -1257,8 +1265,9 @@ pub struct ProjectileParams {
 /// # Returns
 /// Vector of (time, x, y, vx, vy) tuples
 #[must_use]
+
 pub fn projectile_motion_with_drag(
-    params: ProjectileParams,
+    params: ProjectileParams
 ) -> Vec<(
     f64,
     f64,
@@ -1266,6 +1275,7 @@ pub fn projectile_motion_with_drag(
     f64,
     f64,
 )> {
+
     let ProjectileParams {
         v0,
         angle,

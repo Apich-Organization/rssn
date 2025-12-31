@@ -1,3 +1,5 @@
+#![allow(clippy::match_same_arms)]
+
 //! # Term Rewriting Systems
 //!
 //! This module provides tools for working with term rewriting systems (TRS).

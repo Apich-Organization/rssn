@@ -37,15 +37,18 @@ use crate::symbolic::core::Expr;
 pub unsafe extern "C" fn rssn_permutations(
     n: *const Expr,
     k: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let result = permutations(
-        (*n).clone(),
-        (*k).clone(),
-    );
+    unsafe {
 
-    Box::into_raw(Box::new(result))
-}}
+        let result = permutations(
+            (*n).clone(),
+            (*k).clone(),
+        );
+
+        Box::into_raw(Box::new(result))
+    }
+}
 
 
 /// Computes the number of combinations symbolically as an `Expr`.
@@ -79,15 +82,18 @@ pub unsafe extern "C" fn rssn_permutations(
 pub unsafe extern "C" fn rssn_combinations(
     n: *const Expr,
     k: *const Expr,
-) -> *mut Expr { unsafe {
+) -> *mut Expr {
 
-    let result = combinations(
-        &(*n),
-        (*k).clone(),
-    );
+    unsafe {
 
-    Box::into_raw(Box::new(result))
-}}
+        let result = combinations(
+            &(*n),
+            (*k).clone(),
+        );
+
+        Box::into_raw(Box::new(result))
+    }
+}
 
 
 /// Computes the \(n\)-th Catalan number symbolically and returns it as an `Expr` pointer.

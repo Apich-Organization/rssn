@@ -581,8 +581,10 @@ pub fn expand(expr: Expr) -> Expr {
                     && n > 1.0
                 {
 
-                    let n_us =
-                        (n as i64).try_into().unwrap_or(0);
+                    let n_us = (n
+                        as i64)
+                        .try_into()
+                        .unwrap_or(0);
 
                     let mut result =
                         exp_base
@@ -970,18 +972,28 @@ pub(crate) fn build_product_from_vecs(
             > ERROR_MARGIN
             || other_factors.is_empty();
 
-    let mut tree: Option<Expr> = if has_numeric_term {
-        Some(Expr::Constant(numeric_product))
-    } else {
-        None
-    };
+    let mut tree: Option<Expr> =
+        if has_numeric_term {
+
+            Some(Expr::Constant(
+                numeric_product,
+            ))
+        } else {
+
+            None
+        };
 
     for factor in other_factors {
-        tree = Some(if let Some(t) = tree {
-            Expr::new_mul(t, factor)
-        } else {
-            factor
-        });
+
+        tree = Some(
+            if let Some(t) = tree {
+
+                Expr::new_mul(t, factor)
+            } else {
+
+                factor
+            },
+        );
     }
 
     tree.unwrap_or(Expr::Constant(1.0))
@@ -1092,7 +1104,7 @@ pub fn simplify_with_relations(
         ) {
             | Ok(basis) => basis,
             | Err(_) => {
-                return expr.clone()
+                return expr.clone();
             }, /* Return original on failure */
         };
 

@@ -51,7 +51,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -128,7 +128,7 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_mul_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 
@@ -212,7 +212,7 @@ pub unsafe extern "C" fn rssn_num_ff_gf256_mul_json(
     } {
         | Ok(s) => s,
         | Err(_) => {
-            return std::ptr::null_mut()
+            return std::ptr::null_mut();
         },
     };
 

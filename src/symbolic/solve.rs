@@ -72,8 +72,8 @@ use num_traits::ToPrimitive;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::core::SparsePolynomial;
-use crate::symbolic::grobner::buchberger;
 use crate::symbolic::grobner::MonomialOrder;
+use crate::symbolic::grobner::buchberger;
 use crate::symbolic::matrix::create_empty_matrix;
 use crate::symbolic::matrix::get_matrix_dims;
 use crate::symbolic::matrix::null_space;
@@ -507,24 +507,36 @@ pub fn solve_linear_system_mat(
 
     let mut lead = 0;
 
-    for row in rref_mat.iter().take(a_rows) {
+    for row in rref_mat
+        .iter()
+        .take(a_rows)
+    {
+
         if lead >= a_cols {
+
             break;
         }
 
         let mut i = lead;
 
-        while i < a_cols && is_zero(&row[i]) {
+        while i < a_cols
+            && is_zero(&row[i])
+        {
+
             i += 1;
         }
 
         if i < a_cols {
+
             pivot_cols.push(i);
+
             lead = i + 1;
         }
     }
 
-    if (0..a_cols).all(|c| pivot_cols.contains(&c)) {
+    if (0 .. a_cols).all(|c| {
+        pivot_cols.contains(&c)
+    }) {
 
         let mut solution =
             create_empty_matrix(
@@ -725,7 +737,7 @@ pub fn solve_linear_system_gauss(
                          not a valid \
                          equation"
                     ),
-                    )
+                    );
                 },
             };
 
@@ -815,7 +827,12 @@ pub fn solve_linear_system_gauss(
                 return Err("Matrix is singular or underdetermined".to_string());
             }
 
-            for item in matrix_a[i].iter_mut().take(n).skip(i) {
+            for item in matrix_a[i]
+                .iter_mut()
+                .take(n)
+                .skip(i)
+            {
+
                 *item = simplify(
                     &Expr::new_div(
                         item.clone(),
@@ -839,15 +856,32 @@ pub fn solve_linear_system_gauss(
                         matrix_a[k][i]
                             .clone();
 
-                    let (row_i, row_k) = if i < k {
-                        let (start, end) = matrix_a.split_at_mut(k);
-                        (&start[i], &mut end[0])
-                    } else {
-                        let (start, end) = matrix_a.split_at_mut(i);
-                        (&end[0], &mut start[k])
-                    };
+                    let (row_i, row_k) =
+                        if i < k {
 
-                    for (item_k, item_i) in row_k.iter_mut().zip(row_i.iter()).take(n).skip(i) {
+                            let (start, end) = matrix_a.split_at_mut(k);
+
+                            (&start[i], &mut end[0])
+                        } else {
+
+                            let (start, end) = matrix_a.split_at_mut(i);
+
+                            (&end[0], &mut start[k])
+                        };
+
+                    for (
+                        item_k,
+                        item_i,
+                    ) in row_k
+                        .iter_mut()
+                        .zip(
+                            row_i
+                                .iter(),
+                        )
+                        .take(n)
+                        .skip(i)
+                    {
+
                         let term = simplify(&Expr::new_mul(
                             factor.clone(),
                             item_i.clone(),

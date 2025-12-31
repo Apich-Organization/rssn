@@ -206,7 +206,7 @@ pub extern "C" fn rssn_json_finite_field_polynomial_new(
 
         let poly =
             FiniteFieldPolynomial::new(
-                c, field,
+                &c, field,
             );
 
         to_json_string(&poly)

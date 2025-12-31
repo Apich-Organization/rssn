@@ -244,8 +244,8 @@ where
 
 #[must_use]
 
-pub fn simulate_1d_advection_scenario(
-) -> Vec<f64> {
+pub fn simulate_1d_advection_scenario()
+-> Vec<f64> {
 
     const NUM_CELLS: usize = 200;
 
@@ -262,9 +262,11 @@ pub fn simulate_1d_advection_scenario(
 
     let total_time = 0.5;
 
-    let steps: usize = ((total_time / dt).ceil() as i64)
-        .try_into()
-        .unwrap_or(0);
+    let steps: usize =
+        ((total_time / dt).ceil()
+            as i64)
+            .try_into()
+            .unwrap_or(0);
 
     let mut mesh = Mesh::new(
         NUM_CELLS,
@@ -663,8 +665,8 @@ where
 
 #[must_use]
 
-pub fn simulate_2d_advection_scenario(
-) -> Vec<f64> {
+pub fn simulate_2d_advection_scenario()
+-> Vec<f64> {
 
     const WIDTH: usize = 100;
 
@@ -690,9 +692,11 @@ pub fn simulate_2d_advection_scenario(
 
     let total_time = 0.6;
 
-    let steps: usize = ((total_time / dt).ceil() as i64)
-        .try_into()
-        .unwrap_or(0);
+    let steps: usize =
+        ((total_time / dt).ceil()
+            as i64)
+            .try_into()
+            .unwrap_or(0);
 
     let mut mesh = Mesh2D::new(
         WIDTH,
@@ -970,8 +974,8 @@ where
 
 #[must_use]
 
-pub fn simulate_3d_advection_scenario(
-) -> Vec<f64> {
+pub fn simulate_3d_advection_scenario()
+-> Vec<f64> {
 
     const WIDTH: usize = 30;
 
@@ -1007,9 +1011,11 @@ pub fn simulate_3d_advection_scenario(
 
     let total_time = 0.7;
 
-    let steps: usize = ((total_time / dt).ceil() as i64)
-        .try_into()
-        .unwrap_or(0);
+    let steps: usize =
+        ((total_time / dt).ceil()
+            as i64)
+            .try_into()
+            .unwrap_or(0);
 
     let mut mesh = Mesh3D::new(
         WIDTH,

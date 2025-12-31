@@ -284,10 +284,14 @@ pub fn compute_persistence(
     max_dim: usize,
 ) -> Vec<PersistenceDiagram> {
 
-    let mut diagrams: Vec<PersistenceDiagram> = (0..=max_dim)
-        .map(|d| PersistenceDiagram {
-            dimension: d,
-            intervals: Vec::new(),
+    let mut diagrams: Vec<
+        PersistenceDiagram,
+    > = (0 ..= max_dim)
+        .map(|d| {
+            PersistenceDiagram {
+                dimension: d,
+                intervals: Vec::new(),
+            }
         })
         .collect();
 

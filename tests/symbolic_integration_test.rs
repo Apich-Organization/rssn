@@ -92,8 +92,8 @@ fn test_integrate_rational_log_part() {
 
 #[test]
 
-fn test_integrate_rational_hermite_part(
-) {
+fn test_integrate_rational_hermite_part()
+ {
 
     // Integrate 1/x^2 dx = -1/x
     let x =

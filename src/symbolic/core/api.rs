@@ -11,8 +11,8 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use ordered_float::OrderedFloat;
 
-use super::dag_mgr::DagOp;
 use super::dag_mgr::DAG_MANAGER;
+use super::dag_mgr::DagOp;
 use super::expr::Expr;
 use super::expr::SparsePolynomial;
 
@@ -670,8 +670,8 @@ impl Expr {
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
 
-    pub fn new_negative_infinity(
-    ) -> Self {
+    pub fn new_negative_infinity()
+    -> Self {
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
@@ -1321,8 +1321,18 @@ pub struct DynamicOpProperties {
 ///
 /// This registry maps operation names to their properties. It's thread-safe
 /// and can be accessed from multiple threads simultaneously.
-pub static DYNAMIC_OP_REGISTRY: LazyLock<RwLock<HashMap<String, DynamicOpProperties>>> =
-    LazyLock::new(|| RwLock::new(HashMap::new()));
+
+pub static DYNAMIC_OP_REGISTRY:
+    LazyLock<
+        RwLock<
+            HashMap<
+                String,
+                DynamicOpProperties,
+            >,
+        >,
+    > = LazyLock::new(|| {
+    RwLock::new(HashMap::new())
+});
 
 
 /// Registers a dynamic operation with the global registry.

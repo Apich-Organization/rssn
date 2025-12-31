@@ -19,7 +19,13 @@ use crate::symbolic::solve::solve_linear_system;
 ///
 /// The equation has the form: `y(x) = f(x) + lambda * integral_a_b(K(x, t) * y(t) dt)`,
 /// where `y(x)` is the unknown function to be solved for.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+
 pub struct FredholmEquation {
     /// The unknown function `y(x)`.
     pub y_x: Expr,
@@ -40,7 +46,13 @@ pub struct FredholmEquation {
 }
 
 /// Parameters for creating a `FredholmEquation`.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+
 pub struct FredholmEquationParams {
     /// The unknown function `y(x)`.
     pub y_x: Expr,
@@ -77,14 +89,19 @@ impl FredholmEquation {
     /// A new `FredholmEquation` instance.
     #[must_use]
 
-    pub fn new(params: FredholmEquationParams) -> Self {
+    pub fn new(
+        params: FredholmEquationParams
+    ) -> Self {
+
         Self {
             y_x: params.y_x,
             f_x: params.f_x,
             lambda: params.lambda,
             kernel: params.kernel,
-            lower_bound: params.lower_bound,
-            upper_bound: params.upper_bound,
+            lower_bound: params
+                .lower_bound,
+            upper_bound: params
+                .upper_bound,
             var_x: params.var_x,
             var_t: params.var_t,
         }
@@ -174,8 +191,8 @@ impl FredholmEquation {
 
     pub fn solve_separable_kernel(
         &self,
-        a_funcs: Vec<Expr>,
-        b_funcs: Vec<Expr>,
+        a_funcs: &[Expr],
+        b_funcs: &[Expr],
     ) -> Result<Expr, String> {
 
         if a_funcs.len()
@@ -373,7 +390,13 @@ impl FredholmEquation {
 ///
 /// The equation has the form: `y(x) = f(x) + lambda * integral_a_x(K(x, t) * y(t) dt)`.
 /// It is similar to the Fredholm equation, but the upper limit of integration is the variable `x`.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+
 pub struct VolterraEquation {
     /// The unknown function `y(x)`.
     pub y_x: Expr,
@@ -392,7 +415,13 @@ pub struct VolterraEquation {
 }
 
 /// Parameters for creating a `VolterraEquation`.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+
 pub struct VolterraEquationParams {
     /// The unknown function `y(x)`.
     pub y_x: Expr,
@@ -426,13 +455,17 @@ impl VolterraEquation {
     /// A new `VolterraEquation` instance.
     #[must_use]
 
-    pub fn new(params: VolterraEquationParams) -> Self {
+    pub fn new(
+        params: VolterraEquationParams
+    ) -> Self {
+
         Self {
             y_x: params.y_x,
             f_x: params.f_x,
             lambda: params.lambda,
             kernel: params.kernel,
-            lower_bound: params.lower_bound,
+            lower_bound: params
+                .lower_bound,
             var_x: params.var_x,
             var_t: params.var_t,
         }

@@ -3,9 +3,9 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::symbolic::core::Expr;
 use crate::symbolic::handles::HANDLE_MANAGER;
 
@@ -54,7 +54,7 @@ pub extern "C" fn rssn_handle_insert_bincode(
         | Some(e) => e,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -82,7 +82,7 @@ pub extern "C" fn rssn_handle_get_bincode(
         | Some(r) => r,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -113,7 +113,7 @@ pub extern "C" fn rssn_handle_exists_bincode(
         | Some(r) => r,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -141,7 +141,7 @@ pub extern "C" fn rssn_handle_free_bincode(
         | Some(r) => r,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
@@ -159,8 +159,8 @@ pub extern "C" fn rssn_handle_free_bincode(
 /// Returns all active handles (Bincode).
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_handle_get_all_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_handle_get_all_bincode()
+-> BincodeBuffer {
 
     let handles = HANDLE_MANAGER
         .get_all_handles();
@@ -176,8 +176,8 @@ pub extern "C" fn rssn_handle_get_all_bincode(
 /// Clears all handles (Bincode).
 #[unsafe(no_mangle)]
 
-pub extern "C" fn rssn_handle_clear_bincode(
-) -> BincodeBuffer {
+pub extern "C" fn rssn_handle_clear_bincode()
+-> BincodeBuffer {
 
     HANDLE_MANAGER.clear();
 
@@ -200,7 +200,7 @@ pub extern "C" fn rssn_handle_clone_bincode(
         | Some(r) => r,
         | None => {
             return BincodeBuffer::empty(
-            )
+            );
         },
     };
 
