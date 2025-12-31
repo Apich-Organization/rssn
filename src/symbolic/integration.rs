@@ -81,7 +81,7 @@ pub fn integrate_rational_function(
 
     let b = q
         .clone()
-        .long_division(&d.clone(), x)
+        .long_division(&d, x)
         .0;
 
     let (a_poly, c_poly) =
@@ -315,7 +315,7 @@ pub fn risch_norman_integrate(
 
             let (p_t, r_t) = a_t
                 .long_division(
-                    &d_t.clone(),
+                    &d_t,
                     x,
                 );
 
@@ -1004,7 +1004,7 @@ pub fn hermite_integrate_rational(
 
     let b = q
         .clone()
-        .long_division(&d.clone(), x)
+        .long_division(&d, x)
         .0;
 
     let (a_poly, c_poly) =

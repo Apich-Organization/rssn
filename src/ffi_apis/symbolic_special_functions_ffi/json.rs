@@ -65,7 +65,7 @@ pub unsafe extern "C" fn rssn_json_ln_gamma(
 
     if let Some(a) = arg {
 
-        to_json_string(&special_functions::ln_gamma(a))
+        to_json_string(&special_functions::ln_gamma(&a))
     } else {
 
         std::ptr::null_mut()
@@ -224,7 +224,7 @@ pub unsafe extern "C" fn rssn_json_erfc(
     if let Some(a) = arg {
 
         to_json_string(
-            &special_functions::erfc(a),
+            &special_functions::erfc(&a),
         )
     } else {
 

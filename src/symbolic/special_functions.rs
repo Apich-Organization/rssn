@@ -137,7 +137,7 @@ use crate::symbolic::simplify_dag::simplify;
 
 pub fn gamma(arg: &Expr) -> Expr {
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if let Some(n) = s_arg.to_f64() {
 
@@ -207,9 +207,9 @@ pub fn gamma(arg: &Expr) -> Expr {
 /// An `Expr` representing `ln(Γ(z))`.
 #[must_use]
 
-pub fn ln_gamma(arg: Expr) -> Expr {
+pub fn ln_gamma(arg: &Expr) -> Expr {
 
-    let g = gamma(&arg);
+    let g = gamma(arg);
 
     // If gamma simplified to a constant, compute the log
     if let Expr::Constant(v) = &g {
@@ -290,7 +290,7 @@ pub fn beta(
 
 pub fn digamma(arg: &Expr) -> Expr {
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if let Some(n) = s_arg.to_f64() {
 
@@ -364,9 +364,9 @@ pub fn polygamma(
     z: &Expr,
 ) -> Expr {
 
-    let s_n = simplify(&n);
+    let s_n = simplify(n);
 
-    let s_z = simplify(&z);
+    let s_z = simplify(z);
 
     // ψ⁽⁰⁾(z) = ψ(z)
     if let Some(order) = s_n.to_f64() {
@@ -419,7 +419,7 @@ pub fn polygamma(
 
 pub fn erf(arg: &Expr) -> Expr {
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
 
@@ -447,11 +447,11 @@ pub fn erf(arg: &Expr) -> Expr {
 /// An `Expr` representing `erfc(z)`.
 #[must_use]
 
-pub fn erfc(arg: Expr) -> Expr {
+pub fn erfc(arg: &Expr) -> Expr {
 
     simplify(&Expr::new_sub(
         Expr::Constant(1.0),
-        erf(&arg),
+        erf(arg),
     ))
 }
 
@@ -515,7 +515,7 @@ pub fn erfi(arg: Expr) -> Expr {
 
 pub fn zeta(arg: &Expr) -> Expr {
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if let Some(n) = s_arg.to_f64() {
 
@@ -612,9 +612,9 @@ pub fn bessel_j(
     arg: &Expr,
 ) -> Expr {
 
-    let s_order = simplify(&order);
+    let s_order = simplify(order);
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
 
@@ -696,9 +696,9 @@ pub fn bessel_y(
     arg: &Expr,
 ) -> Expr {
 
-    let s_order = simplify(&order);
+    let s_order = simplify(order);
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
 
@@ -726,9 +726,9 @@ pub fn bessel_i(
     arg: &Expr,
 ) -> Expr {
 
-    let s_order = simplify(&order);
+    let s_order = simplify(order);
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
 
@@ -777,9 +777,9 @@ pub fn bessel_k(
     arg: &Expr,
 ) -> Expr {
 
-    let s_order = simplify(&order);
+    let s_order = simplify(order);
 
-    let s_arg = simplify(&arg);
+    let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
 
@@ -835,7 +835,7 @@ pub fn legendre_p(
     arg: Expr,
 ) -> Expr {
 
-    let s_degree = simplify(&degree);
+    let s_degree = simplify(degree);
 
     if let Some(n) = s_degree.to_f64() {
 
@@ -924,7 +924,7 @@ pub fn laguerre_l(
     arg: Expr,
 ) -> Expr {
 
-    let s_degree = simplify(&degree);
+    let s_degree = simplify(degree);
 
     if let Some(n) = s_degree.to_f64() {
 

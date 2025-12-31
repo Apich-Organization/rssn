@@ -3317,8 +3317,7 @@ pub(crate) fn simplify_rational_expression(
 
             let final_num_poly = p_num
                 .long_division(
-                    &common_divisor
-                        .clone(),
+                    &common_divisor,
                     var,
                 )
                 .0;

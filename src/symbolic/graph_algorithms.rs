@@ -128,16 +128,9 @@ fn try_numeric_value(
         },
         | Expr::Dag(node) => {
 
-            match node.to_expr()
-            { Ok(inner) => {
-
-                try_numeric_value(
-                    &inner,
-                )
-            } _ => {
-
-                None
-            }}
+            node.to_expr()
+                .ok()
+                .and_then(|inner| try_numeric_value(&inner))
         },
         // Try to simplify and extract
         | _ => {
@@ -307,10 +300,7 @@ where
 
             for &(v, _) in neighbors {
 
-                if !visited.contains(&v)
-                {
-
-                    visited.insert(v);
+                if visited.insert(v) {
 
                     queue.push_back(v);
                 }
@@ -1046,7 +1036,10 @@ pub fn edmonds_karp_max_flow<
     let mut residual_capacity =
         vec![vec![0.0; n]; n];
 
-    for u in 0 .. n {
+    for (u, row) in residual_capacity
+        .iter_mut()
+        .enumerate()
+    {
 
         if let Some(neighbors) =
             capacity_graph
@@ -1058,7 +1051,7 @@ pub fn edmonds_karp_max_flow<
                 neighbors
             {
 
-                residual_capacity[u][v] =
+                row[v] =
                     try_numeric_value(
                         cap,
                     )
@@ -1198,7 +1191,10 @@ pub fn dinic_max_flow<
     let mut residual_capacity =
         vec![vec![0.0; n]; n];
 
-    for u in 0 .. n {
+    for (u, row) in residual_capacity
+        .iter_mut()
+        .enumerate()
+    {
 
         if let Some(neighbors) =
             capacity_graph
@@ -1210,7 +1206,7 @@ pub fn dinic_max_flow<
                 neighbors
             {
 
-                residual_capacity[u][v] =
+                row[v] =
                     try_numeric_value(
                         cap,
                     )
@@ -2319,9 +2315,10 @@ pub fn hopcroft_karp_bipartite_matching<
 
     let mut result = Vec::new();
 
-    for u in 0 .. n {
+    for (u, &v_opt) in pair_u.iter().enumerate()
+    {
 
-        if let Some(v) = pair_u[u] {
+        if let Some(v) = v_opt {
 
             result.push((u, v));
         }

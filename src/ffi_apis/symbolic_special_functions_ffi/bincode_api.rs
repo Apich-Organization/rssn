@@ -53,7 +53,7 @@ pub extern "C" fn rssn_bincode_ln_gamma(
 
     if let Some(a) = arg {
 
-        to_bincode_buffer(&special_functions::ln_gamma(a))
+        to_bincode_buffer(&special_functions::ln_gamma(&a))
     } else {
 
         BincodeBuffer::empty()
@@ -143,7 +143,7 @@ pub extern "C" fn rssn_bincode_erfc(
     if let Some(a) = arg {
 
         to_bincode_buffer(
-            &special_functions::erfc(a),
+            &special_functions::erfc(&a),
         )
     } else {
 

@@ -2178,7 +2178,7 @@ impl SparsePolynomial {
                 add_poly(&quotient, &t);
 
             let sub_term =
-                mul_poly(&t, &divisor);
+                mul_poly(&t, divisor);
 
             remainder = subtract_poly(
                 &remainder,

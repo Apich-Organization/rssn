@@ -59,7 +59,7 @@ pub unsafe extern "C" fn rssn_ln_gamma(
 
     Box::into_raw(Box::new(
         special_functions::ln_gamma(
-            (*arg).clone(),
+            &(*arg),
         ),
     ))
 }}
@@ -202,7 +202,7 @@ pub unsafe extern "C" fn rssn_erfc(
 
     Box::into_raw(Box::new(
         special_functions::erfc(
-            (*arg).clone(),
+            &(*arg),
         ),
     ))
 }}
