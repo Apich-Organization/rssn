@@ -514,16 +514,16 @@ pub(crate) fn apply_rules_cot(
                         DagOp::Div,
                         vec![cos_x, sin_x],
                     ) {
-                        | Ok(result) => return Some(result),
-                        | Err(_) => return Some(node.clone()), /* Return original if division fails */
+                        | Ok(result) =>  Some(result),
+                        | Err(_) =>  Some(node.clone()), /* Return original if division fails */
                     }
                 },
-                | Err(_) => return Some(node.clone()), // Return original if sin(x) fails
+                | Err(_) =>  Some(node.clone()), // Return original if sin(x) fails
             }
         },
         | Err(_) => {
 
-            return Some(node.clone());
+             Some(node.clone())
         }, /* Return original if cos(x) fails */
     }
 }
@@ -563,16 +563,16 @@ pub(crate) fn apply_rules_csc(
                         DagOp::Div,
                         vec![one, sin_x],
                     ) {
-                        | Ok(result) => return Some(result),
-                        | Err(_) => return Some(node.clone()), /* Return original if division fails */
+                        | Ok(result) =>  Some(result),
+                        | Err(_) =>  Some(node.clone()), /* Return original if division fails */
                     }
                 },
-                | Err(_) => return Some(node.clone()), // Return original if sin(x) fails
+                | Err(_) =>  Some(node.clone()), // Return original if sin(x) fails
             }
         },
         | Err(_) => {
 
-            return Some(node.clone());
+             Some(node.clone())
         }, /* Return original if constant creation fails */
     }
 }
@@ -612,16 +612,16 @@ pub(crate) fn apply_rules_sec(
                         DagOp::Div,
                         vec![one, cos_x],
                     ) {
-                        | Ok(result) => return Some(result),
-                        | Err(_) => return Some(node.clone()), /* Return original if division fails */
+                        | Ok(result) =>  Some(result),
+                        | Err(_) =>  Some(node.clone()), /* Return original if division fails */
                     }
                 },
-                | Err(_) => return Some(node.clone()), // Return original if cos(x) fails
+                | Err(_) =>  Some(node.clone()), // Return original if cos(x) fails
             }
         },
         | Err(_) => {
 
-            return Some(node.clone());
+             Some(node.clone())
         }, /* Return original if constant creation fails */
     }
 }
@@ -675,16 +675,16 @@ pub(crate) fn apply_rules_tan(
                         DagOp::Div,
                         vec![sin_x, cos_x],
                     ) {
-                        | Ok(result) => return Some(result),
-                        | Err(_) => return Some(node.clone()), /* Return original if division fails */
+                        | Ok(result) =>  Some(result),
+                        | Err(_) =>  Some(node.clone()), /* Return original if division fails */
                     }
                 },
-                | Err(_) => return Some(node.clone()), // Return original if cos(x) fails
+                | Err(_) =>  Some(node.clone()), // Return original if cos(x) fails
             }
         },
         | Err(_) => {
 
-            return Some(node.clone());
+             Some(node.clone())
         }, /* Return original if sin(x) fails */
     }
 }
@@ -1151,16 +1151,16 @@ pub(crate) fn apply_rules_logbase(
                         DagOp::Div,
                         vec![log_a, log_b],
                     ) {
-                        | Ok(result) => return Some(result),
-                        | Err(_) => return Some(node.clone()), /* Return original if division fails */
+                        | Ok(result) =>  Some(result),
+                        | Err(_) =>  Some(node.clone()), /* Return original if division fails */
                     }
                 },
-                | Err(_) => return Some(node.clone()), // Return original if log(base) fails
+                | Err(_) =>  Some(node.clone()), // Return original if log(base) fails
             }
         },
         | Err(_) => {
 
-            return Some(node.clone());
+             Some(node.clone())
         }, /* Return original if log(arg) fails */
     }
 }
@@ -1566,16 +1566,16 @@ pub(crate) fn apply_rules_div(
                             rhs_pow_neg_one,
                         ],
                     ) {
-                        | Ok(result) => return Some(result),
-                        | Err(_) => return Some(node.clone()), /* Return original if multiplication fails */
+                        | Ok(result) =>  Some(result),
+                        | Err(_) =>  Some(node.clone()), /* Return original if multiplication fails */
                     }
                 },
-                | Err(_) => return Some(node.clone()), // Return original if power operation fails
+                | Err(_) =>  Some(node.clone()), // Return original if power operation fails
             }
         },
         | Err(_) => {
 
-            return Some(node.clone());
+             Some(node.clone())
         }, /* Return original if neg_one creation fails */
     }
 }

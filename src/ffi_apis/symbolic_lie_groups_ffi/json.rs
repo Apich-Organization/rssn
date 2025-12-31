@@ -400,7 +400,7 @@ pub unsafe extern "C" fn rssn_json_commutator_table(
 /// Checks whether a Lie algebra satisfies the Jacobi identity using JSON serialization.
 ///
 /// The Jacobi identity is a fundamental property of Lie algebras,
-/// \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+/// \(\[x,\[y,z\]\] + \[y,\[z,x\]\] + \[z,\[x,y\]\] = 0\).
 ///
 /// # Arguments
 ///

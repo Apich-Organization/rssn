@@ -675,7 +675,7 @@ pub(crate) fn differentiate_results(
     processed_expr: &Expr,
 ) -> Expr {
 
-    let result = match processed_expr {
+    match processed_expr {
         | Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) | Expr::Pi | Expr::E => {
             Expr::BigInt(BigInt::zero())
         },
@@ -1057,9 +1057,7 @@ pub(crate) fn differentiate_results(
                 var.to_string(),
             )
         },
-    };
-
-    result
+    }
 }
 
 /// Performs symbolic integration of an expression with respect to a variable.
@@ -3377,6 +3375,7 @@ pub fn improper_integral(
     ))
 }
 
+#[allow(clippy::too_many_lines)]
 pub(crate) fn integrate_by_rules(
     expr: &Expr,
     var: &str,

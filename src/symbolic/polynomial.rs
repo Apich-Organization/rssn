@@ -15,7 +15,7 @@
 //! ## Key Features
 //!
 //! ### Basic Operations
-//! - **Addition/Subtraction**: [`add_poly`], [`subtract_poly`](crate::symbolic::grobner::subtract_poly)
+//! - **Addition/Subtraction**: [`add_poly`], [`subtract_poly`]
 //! - **Multiplication**: [`mul_poly`]
 //! - **Differentiation**: [`differentiate_poly`]
 //! - **Division**: [`polynomial_long_division`], [`polynomial_long_division_coeffs`]

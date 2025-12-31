@@ -13,7 +13,7 @@ use crate::symbolic::graph_algorithms::has_cycle;
 use crate::symbolic::graph_algorithms::is_bipartite;
 use crate::symbolic::graph_algorithms::kruskal_mst;
 
-/// Opaque type for Graph<String> to work with cbindgen
+/// Opaque type for `Graph<String>` to work with cbindgen
 #[repr(C)]
 
 pub struct RssnGraph {

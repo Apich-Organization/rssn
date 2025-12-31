@@ -37,7 +37,7 @@ pub extern "C" fn rssn_json_graph_induced_subgraph(
 }
 
 /// Computes the union of two graphs.
-/// Input JSON: {"g1": <graph>, "g2": <graph>}
+/// Input JSON: {"g1": `<graph>`, "g2": `<graph>`}
 #[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_json_graph_union(

@@ -206,7 +206,7 @@ pub extern "C" fn rssn_find_constrained_extrema_handle(
     }
 }
 
-/// Frees a Vec<CriticalPoint> handle
+/// Frees a Vec`<CriticalPoint>` handle
 #[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_free_critical_point_vec_handle(

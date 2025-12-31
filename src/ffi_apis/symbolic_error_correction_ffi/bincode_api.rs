@@ -154,8 +154,8 @@ pub extern "C" fn rssn_bincode_rs_decode(
 // ============================================================================
 
 /// Computes Hamming distance between two byte slices via Bincode interface.
-/// Input: (a: Vec<u8>, b: Vec<u8>)
-/// Returns: Option<usize>
+/// Input: (a: `Vec<u8>`, b: `Vec<u8>`)
+/// Returns: `Option<usize>`
 #[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hamming_distance(
@@ -183,7 +183,7 @@ pub extern "C" fn rssn_bincode_hamming_distance(
 }
 
 /// Computes Hamming weight of a byte slice via Bincode interface.
-/// Input: Vec<u8>
+/// Input: `Vec<u8>`
 /// Returns: usize
 #[unsafe(no_mangle)]
 
@@ -206,8 +206,8 @@ pub extern "C" fn rssn_bincode_hamming_weight(
 }
 
 /// Checks if a Hamming(7,4) codeword is valid via Bincode interface.
-/// Input: Vec<u8> (7 bytes)
-/// Returns: bool
+/// Input: `Vec<u8>` (7 bytes)
+/// Returns: `bool`
 #[unsafe(no_mangle)]
 
 pub extern "C" fn rssn_bincode_hamming_check(
@@ -235,7 +235,7 @@ pub extern "C" fn rssn_bincode_hamming_check(
 // ============================================================================
 
 /// Checks if a Reed-Solomon codeword is valid via Bincode interface.
-/// Input: (codeword: Vec<u8>, `n_sym`: usize)
+/// Input: (codeword: `Vec<u8>`, `n_sym`: usize)
 /// Returns: bool
 #[unsafe(no_mangle)]
 
@@ -266,7 +266,7 @@ pub extern "C" fn rssn_bincode_rs_check(
 }
 
 /// Estimates error count in a Reed-Solomon codeword via Bincode interface.
-/// Input: (codeword: Vec<u8>, `n_sym`: usize)
+/// Input: (codeword: `Vec<u8>`, `n_sym`: usize)
 /// Returns: usize
 #[unsafe(no_mangle)]
 
@@ -302,7 +302,7 @@ pub extern "C" fn rssn_bincode_rs_error_count(
 // ============================================================================
 
 /// Computes CRC-32 checksum via Bincode interface.
-/// Input: Vec<u8>
+/// Input: `Vec<u8>`
 /// Returns: u32
 #[unsafe(no_mangle)]
 
@@ -325,7 +325,7 @@ pub extern "C" fn rssn_bincode_crc32_compute(
 }
 
 /// Verifies CRC-32 checksum via Bincode interface.
-/// Input: (data: Vec<u8>, `expected_crc`: u32)
+/// Input: (data: `Vec<u8>`, `expected_crc`: u32)
 /// Returns: bool
 #[unsafe(no_mangle)]
 
@@ -357,7 +357,7 @@ pub extern "C" fn rssn_bincode_crc32_verify(
 }
 
 /// Updates CRC-32 incrementally via Bincode interface.
-/// Input: (crc: u32, data: Vec<u8>)
+/// Input: (crc: u32, data: `Vec<u8>`)
 /// Returns: u32
 #[unsafe(no_mangle)]
 

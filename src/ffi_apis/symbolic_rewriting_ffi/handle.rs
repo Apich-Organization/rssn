@@ -214,7 +214,7 @@ pub unsafe extern "C" fn rssn_apply_rules_to_normal_form(
 
 /// Applies the Knuth-Bendix completion algorithm to a set of equations.
 ///
-/// Returns a pointer to a Vec<RewriteRule> on success, or null on failure.
+/// Returns a pointer to a `Vec<RewriteRule>` on success, or null on failure.
 ///
 /// # Safety
 /// The caller must ensure `equations` is a valid array of Expr pointers.
@@ -290,7 +290,7 @@ pub unsafe extern "C" fn rssn_knuth_bendix(
 /// Gets the length of a rules vector.
 ///
 /// # Safety
-/// The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
+/// The caller must ensure `rules` is a valid `Vec<RewriteRule>` pointer.
 #[unsafe(no_mangle)]
 
 /// # Safety
@@ -322,7 +322,7 @@ pub const unsafe extern "C" fn rssn_rules_vec_len(
 /// Returns a new owned `RewriteRule` pointer that must be freed by the caller.
 ///
 /// # Safety
-/// The caller must ensure `rules` is a valid Vec<RewriteRule> pointer.
+/// The caller must ensure `rules` is a valid `Vec<RewriteRule>` pointer.
 #[unsafe(no_mangle)]
 
 /// # Safety

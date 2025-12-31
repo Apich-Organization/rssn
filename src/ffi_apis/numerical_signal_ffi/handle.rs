@@ -8,7 +8,7 @@ use crate::ffi_apis::ffi_api::update_last_error;
 use crate::numerical::matrix::Matrix;
 use crate::numerical::signal;
 
-/// Computes the FFT and returns a Matrix<Complex<f64>> as a Matrix<f64> (real, imag interleaved).
+/// Computes the FFT and returns a `Matrix<Complex<f64>` as a `Matrix<f64>` (real, imag interleaved).
 #[unsafe(no_mangle)]
 
 /// # Safety

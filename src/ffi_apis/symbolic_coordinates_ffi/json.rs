@@ -15,7 +15,7 @@ use crate::symbolic::core::Expr;
 
 /// Transforms a point between coordinate systems using JSON-encoded coordinates.
 ///
-/// The point is represented as a JSON-encoded `Vec<Expr>` (e.g., \([x,y,z]\)), and the
+/// The point is represented as a JSON-encoded `Vec<Expr>` (e.g., \(\[x,y,z\]\)), and the
 /// transformation applies the appropriate coordinate mapping.
 ///
 /// # Arguments

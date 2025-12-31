@@ -995,7 +995,7 @@ macro_rules! impl_ffi_1_vec_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[unsafe(no_mangle)]
-        /// Implements a FFI function that takes a JSON string representing a vector (Vec<f64>),
+        /// Implements a FFI function that takes a JSON string representing a vector (`Vec<f64>`),
         /// calls a wrapped function that operates on it, and returns the f64 result as a JSON string.
         /// # Safety
         ///
@@ -1061,7 +1061,7 @@ macro_rules! impl_ffi_2_vec_in_f64_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[unsafe(no_mangle)]
-        /// Implements a FFI function that takes a JSON string representing two vectors (Vec<f64>),
+        /// Implements a FFI function that takes a JSON string representing two vectors (`Vec<f64>`),
         /// calls a wrapped function that operates on them, and returns the f64 result as a JSON string.
         /// # Safety
         ///
@@ -1139,8 +1139,8 @@ macro_rules! impl_ffi_2_vec_in_vec_out {
     ($fn_name:ident, $wrapped_fn:ident, $note:expr_2021) => {
         #[deprecated(since = "0.1.6", note = $note)]
         #[unsafe(no_mangle)]
-        /// Implements a FFI function that takes a JSON string representing two vectors (Vec<f64>),
-        /// calls a wrapped function that operates on them, and returns the Vec<f64> result as a JSON string.
+        /// Implements a FFI function that takes a JSON string representing two vectors (`Vec<f64>`),
+        /// calls a wrapped function that operates on them, and returns the `Vec<f64>` result as a JSON string.
         /// # Safety
         ///
         /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.

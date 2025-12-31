@@ -565,7 +565,7 @@ pub unsafe extern "C" fn rssn_commutator_table(
 /// Checks whether a Lie algebra satisfies the Jacobi identity.
 ///
 /// The Jacobi identity is a fundamental property of Lie algebras,
-/// \([x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0\).
+/// \(\[x,\[y,z\]\] + \[y,\[z,x\]\] + \[z,\[x,y\]\] = 0\).
 ///
 /// # Arguments
 ///

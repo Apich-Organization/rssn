@@ -28,7 +28,7 @@ struct QuadratureInput {
 ///
 /// Input JSON format:
 /// {
-///   "expr": <Expr object>,
+///   "expr": `<Expr object>`,
 ///   "var": "x",
 ///   "a": 0.0,
 ///   "b": 1.0,

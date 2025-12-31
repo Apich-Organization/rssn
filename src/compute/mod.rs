@@ -139,11 +139,11 @@
 //! # Examples
 //!
 //! See individual module documentation for more examples:
-//! - [`engine`] - Computation engine
-//! - [`computation`] - Computation task representation
-//! - [`cache`] - Caching infrastructure
-//! - [`state`] - State management
-//! - [`computable`] - Computable trait
+//! - [`crate::compute::engine`] - Computation engine
+//! - [`crate::compute::computation`] - Computation task representation
+//! - [`crate::compute::cache`] - Caching infrastructure
+//! - [`crate::compute::state`] - State management
+//! - [`crate::compute::computable`] - Computable trait
 
 /// Caching for parsing and computation results.
 pub mod cache;

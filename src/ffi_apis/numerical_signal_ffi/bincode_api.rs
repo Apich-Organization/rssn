@@ -80,7 +80,7 @@ pub unsafe extern "C" fn rssn_num_signal_fft_bincode(
 
 /// Computes the discrete convolution of two signals using bincode serialization.
 ///
-/// The convolution is defined as (a * v)[n] = Σ a[k]v[n-k], representing the
+/// The convolution is defined as (a * v)\[n\] = Σ a\[k\]v\[n-k\], representing the
 /// combined effect of two systems or filtering operation.
 ///
 /// # Arguments
@@ -140,7 +140,7 @@ pub unsafe extern "C" fn rssn_num_signal_convolve_bincode(
 /// Computes the cross-correlation of two signals using bincode serialization.
 ///
 /// Cross-correlation measures similarity between signals as a function of lag:
-/// (a ⋆ v)[n] = Σ a[k]v[n+k].
+/// (a ⋆ v)\[n\] = Σ a\[k\]v\[n+k\].
 ///
 /// # Arguments
 ///

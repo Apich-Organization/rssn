@@ -9,7 +9,7 @@ use crate::numerical::series;
 use crate::symbolic::core::Expr;
 
 /// Computes the numerical Taylor series coefficients.
-/// Returns a pointer to a Vec<f64> containing the coefficients.
+/// Returns a pointer to a `Vec<f64>` containing the coefficients.
 #[unsafe(no_mangle)]
 
 /// # Safety
