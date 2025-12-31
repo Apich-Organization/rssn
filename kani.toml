@@ -1,0 +1,11 @@
+[kani]
+src = "src"
+module = "rssn"
+jobs = 16
+
+[lib]
+crate-name = "rssn"
+target-harness = true
+
+[exclude]
+crates = ["pulp"]

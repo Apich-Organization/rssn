@@ -347,6 +347,8 @@ pub mod physics;
 pub mod plugins;
 pub mod prelude;
 pub mod symbolic;
+#[cfg(kani)]
+pub mod verification;
 
 use std::sync::Arc;
 

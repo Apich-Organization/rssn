@@ -22,6 +22,8 @@ scc
 *.d
 *.rlib
 /vendor
+/build_artifacts_x86
+/build_artifacts
 /src/vendor
 
 **/*.exe
