@@ -32,7 +32,7 @@ pub unsafe extern "C" fn rssn_gamma(
 
     Box::into_raw(Box::new(
         special_functions::gamma(
-            (*arg).clone(),
+            &(*arg).clone(),
         ),
     ))
 }}
@@ -115,7 +115,7 @@ pub unsafe extern "C" fn rssn_digamma(
 
     Box::into_raw(Box::new(
         special_functions::digamma(
-            (*arg).clone(),
+            &(*arg).clone(),
         ),
     ))
 }}
@@ -143,8 +143,8 @@ pub unsafe extern "C" fn rssn_polygamma(
 
     Box::into_raw(Box::new(
         special_functions::polygamma(
-            (*n).clone(),
-            (*z).clone(),
+            &(*n).clone(),
+            &(*z).clone(),
         ),
     ))
 }}
@@ -175,7 +175,7 @@ pub unsafe extern "C" fn rssn_erf(
 
     Box::into_raw(Box::new(
         special_functions::erf(
-            (*arg).clone(),
+            &(*arg).clone(),
         ),
     ))
 }}
@@ -260,7 +260,7 @@ pub unsafe extern "C" fn rssn_zeta(
 
     Box::into_raw(Box::new(
         special_functions::zeta(
-            (*arg).clone(),
+            &(*arg).clone(),
         ),
     ))
 }}
@@ -293,8 +293,8 @@ pub unsafe extern "C" fn rssn_bessel_j(
 
     Box::into_raw(Box::new(
         special_functions::bessel_j(
-            (*order).clone(),
-            (*arg).clone(),
+            &(*order).clone(),
+            &(*arg).clone(),
         ),
     ))
 }}
@@ -323,8 +323,8 @@ pub unsafe extern "C" fn rssn_bessel_y(
 
     Box::into_raw(Box::new(
         special_functions::bessel_y(
-            (*order).clone(),
-            (*arg).clone(),
+            &(*order).clone(),
+            &(*arg).clone(),
         ),
     ))
 }}
@@ -353,8 +353,8 @@ pub unsafe extern "C" fn rssn_bessel_i(
 
     Box::into_raw(Box::new(
         special_functions::bessel_i(
-            (*order).clone(),
-            (*arg).clone(),
+            &(*order).clone(),
+            &(*arg).clone(),
         ),
     ))
 }}
@@ -383,8 +383,8 @@ pub unsafe extern "C" fn rssn_bessel_k(
 
     Box::into_raw(Box::new(
         special_functions::bessel_k(
-            (*order).clone(),
-            (*arg).clone(),
+            &(*order).clone(),
+            &(*arg).clone(),
         ),
     ))
 }}
@@ -417,7 +417,7 @@ pub unsafe extern "C" fn rssn_legendre_p(
 
     Box::into_raw(Box::new(
         special_functions::legendre_p(
-            (*degree).clone(),
+            &(*degree).clone(),
             (*arg).clone(),
         ),
     ))
@@ -447,7 +447,7 @@ pub unsafe extern "C" fn rssn_laguerre_l(
 
     Box::into_raw(Box::new(
         special_functions::laguerre_l(
-            (*degree).clone(),
+            &(*degree).clone(),
             (*arg).clone(),
         ),
     ))
