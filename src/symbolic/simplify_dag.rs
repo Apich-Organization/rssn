@@ -61,7 +61,7 @@ use super::core::Expr;
 ///
 /// # Examples
 /// ```
-///
+/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::simplify_dag::simplify;
 ///
@@ -83,6 +83,7 @@ use super::core::Expr;
 #[must_use]
 
 pub fn simplify(expr: &Expr) -> Expr {
+
     const MAX_ITERATIONS: usize = 1000; // Prevent infinite loops
 
     // Get the initial root node of the DAG from the input expression.
@@ -92,6 +93,7 @@ pub fn simplify(expr: &Expr) -> Expr {
         {
             | Ok(node) => node,
             | Err(_) => {
+
                 return expr.clone();
             }, /* If creation fails, return the original expression. */
         };
@@ -102,12 +104,14 @@ pub fn simplify(expr: &Expr) -> Expr {
     let mut iterations = 0;
 
     loop {
+
         let (simplified_root, changed) =
             bottom_up_simplify_pass(
                 root_node.clone(),
             );
 
         if !changed {
+
             // If no changes were made in the last pass, the expression is fully simplified.
             break Expr::Dag(
                 simplified_root,
@@ -121,6 +125,7 @@ pub fn simplify(expr: &Expr) -> Expr {
 
         if iterations >= MAX_ITERATIONS
         {
+
             // If we've reached the maximum iterations, return the current simplified expression
             // to prevent infinite loops
             break Expr::Dag(root_node);
@@ -145,6 +150,7 @@ pub fn simplify(expr: &Expr) -> Expr {
 pub(crate) fn bottom_up_simplify_pass(
     root: Arc<DagNode>
 ) -> (Arc<DagNode>, bool) {
+
     const MAX_NODES_PER_PASS: usize =
         10000;
 
@@ -174,9 +180,11 @@ pub(crate) fn bottom_up_simplify_pass(
     while let Some(node) =
         work_stack.pop()
     {
+
         // If the node is already simplified in this pass, skip it.
         if memo.contains_key(&node.hash)
         {
+
             continue;
         }
 
@@ -185,6 +193,7 @@ pub(crate) fn bottom_up_simplify_pass(
         if processed_nodes
             >= MAX_NODES_PER_PASS
         {
+
             // If we've processed too many nodes, return early to prevent infinite processing
             break;
         }
@@ -193,23 +202,26 @@ pub(crate) fn bottom_up_simplify_pass(
             .children
             .iter()
             .all(|child| {
+
                 memo.contains_key(
                     &child.hash,
                 )
             });
 
         if children_simplified {
+
             // --- All children are simplified, so we can now process this node ---
 
             // 1. Rebuild the node with its (already simplified) children.
             let new_children: Vec<
                 Arc<DagNode>,
-            > = node
-                .children
-                .iter()
-                .map(|child| {
-                    // Use try_get to safely handle cases where child is not in memo
-                    match memo.get(
+            > =
+                node.children
+                    .iter()
+                    .map(|child| {
+
+                        // Use try_get to safely handle cases where child is not in memo
+                        match memo.get(
                         &child.hash,
                     ) {
                         | Some(
@@ -223,8 +235,8 @@ pub(crate) fn bottom_up_simplify_pass(
                                 .clone()
                         },
                     }
-                })
-                .collect();
+                    })
+                    .collect();
 
             let rebuilt_node = match DAG_MANAGER.get_or_create_normalized(
                 node.op.clone(),
@@ -248,6 +260,7 @@ pub(crate) fn bottom_up_simplify_pass(
             if simplified_node.hash
                 != node.hash
             {
+
                 changed_in_pass = true;
             }
 
@@ -257,6 +270,7 @@ pub(crate) fn bottom_up_simplify_pass(
                 simplified_node,
             );
         } else {
+
             // --- Not all children are simplified yet ---
 
             // 1. Push the current node back onto the stack to be processed later.
@@ -268,11 +282,13 @@ pub(crate) fn bottom_up_simplify_pass(
                 .insert(node.hash, true)
                 .is_none()
             {
+
                 for child in node
                     .children
                     .iter()
                     .rev()
                 {
+
                     work_stack.push(
                         child.clone(),
                     );
@@ -303,63 +319,79 @@ pub(crate) fn bottom_up_simplify_pass(
 pub(crate) fn apply_rules(
     node: &Arc<DagNode>
 ) -> Arc<DagNode> {
+
     // --- Constant Folding ---
     if let Some(folded) =
         fold_constants(node)
     {
+
         return folded;
     }
 
     match &node.op {
         // --- Arithmetic Rules ---
         | DagOp::Add => {
+
             if let Some(value) =
                 apply_rules_add(node)
             {
+
                 return value;
             }
         },
         | DagOp::Sub => {
+
             if let Some(value) =
                 apply_rules_sub(node)
             {
+
                 return value;
             }
         },
         | DagOp::Mul => {
+
             if let Some(value) =
                 apply_rules_mul(node)
             {
+
                 return value;
             }
         },
         | DagOp::Div => {
+
             if let Some(value) =
                 apply_rules_div(node)
             {
+
                 return value;
             }
         },
         | DagOp::Neg => {
+
             if let Some(value) =
                 apply_rules_neg(node)
             {
+
                 return value;
             }
         },
 
         // --- Power & Log/Exp Rules ---
         | DagOp::Power => {
+
             if let Some(value) =
                 apply_rules_power(node)
             {
+
                 return value;
             }
         },
         | DagOp::Log => {
+
             if let Some(value) =
                 apply_rules_log(node)
             {
+
                 return value;
             }
         },
@@ -369,57 +401,72 @@ pub(crate) fn apply_rules(
                     node,
                 )
             {
+
                 return value;
             }
         },
         | DagOp::Exp => {
+
             if let Some(value) =
                 apply_rules_exp(node)
             {
+
                 return value;
             }
         },
 
         // --- Trigonometric Rules ---
         | DagOp::Sin => {
+
             if let Some(value) =
                 apply_rules_sin(node)
             {
+
                 return value;
             }
         },
         | DagOp::Cos => {
+
             if let Some(value) =
                 apply_rules_cos(node)
             {
+
                 return value;
             }
         },
         | DagOp::Tan => {
+
             if let Some(value) =
                 apply_rules_tan(node)
             {
+
                 return value;
             }
         },
         | DagOp::Sec => {
+
             if let Some(value) =
                 apply_rules_sec(node)
             {
+
                 return value;
             }
         },
         | DagOp::Csc => {
+
             if let Some(value) =
                 apply_rules_csc(node)
             {
+
                 return value;
             }
         },
         | DagOp::Cot => {
+
             if let Some(value) =
                 apply_rules_cot(node)
             {
+
                 return value;
             }
         },
@@ -437,10 +484,12 @@ pub(crate) fn apply_rules(
 pub(crate) fn apply_rules_cot(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node
         .children
         .is_empty()
     {
+
         return Some(node.clone()); // Not enough children for cot operation
     }
 
@@ -454,6 +503,7 @@ pub(crate) fn apply_rules_cot(
             vec![arg.clone()],
         ) {
         | Ok(cos_x) => {
+
             match DAG_MANAGER.get_or_create_normalized(
                 DagOp::Sin,
                 vec![arg.clone()],
@@ -472,6 +522,7 @@ pub(crate) fn apply_rules_cot(
             }
         },
         | Err(_) => {
+
             return Some(node.clone());
         }, /* Return original if cos(x) fails */
     }
@@ -484,10 +535,12 @@ pub(crate) fn apply_rules_cot(
 pub(crate) fn apply_rules_csc(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node
         .children
         .is_empty()
     {
+
         return Some(node.clone()); // Not enough children for csc operation
     }
 
@@ -499,6 +552,7 @@ pub(crate) fn apply_rules_csc(
         &Expr::Constant(1.0),
     ) {
         | Ok(one) => {
+
             match DAG_MANAGER.get_or_create_normalized(
                 DagOp::Sin,
                 vec![arg.clone()],
@@ -517,6 +571,7 @@ pub(crate) fn apply_rules_csc(
             }
         },
         | Err(_) => {
+
             return Some(node.clone());
         }, /* Return original if constant creation fails */
     }
@@ -529,10 +584,12 @@ pub(crate) fn apply_rules_csc(
 pub(crate) fn apply_rules_sec(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node
         .children
         .is_empty()
     {
+
         return Some(node.clone()); // Not enough children for sec operation
     }
 
@@ -544,6 +601,7 @@ pub(crate) fn apply_rules_sec(
         &Expr::Constant(1.0),
     ) {
         | Ok(one) => {
+
             match DAG_MANAGER.get_or_create_normalized(
                 DagOp::Cos,
                 vec![arg.clone()],
@@ -562,6 +620,7 @@ pub(crate) fn apply_rules_sec(
             }
         },
         | Err(_) => {
+
             return Some(node.clone());
         }, /* Return original if constant creation fails */
     }
@@ -574,16 +633,19 @@ pub(crate) fn apply_rules_sec(
 pub(crate) fn apply_rules_tan(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node
         .children
         .is_empty()
     {
+
         return Some(node.clone()); // Not enough children for tan operation
     }
 
     let arg = &node.children[0];
 
     if is_zero_node(arg) {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(0.0),
@@ -602,6 +664,7 @@ pub(crate) fn apply_rules_tan(
             vec![arg.clone()],
         ) {
         | Ok(sin_x) => {
+
             match DAG_MANAGER.get_or_create_normalized(
                 DagOp::Cos,
                 vec![arg.clone()],
@@ -620,6 +683,7 @@ pub(crate) fn apply_rules_tan(
             }
         },
         | Err(_) => {
+
             return Some(node.clone());
         }, /* Return original if sin(x) fails */
     }
@@ -632,10 +696,12 @@ pub(crate) fn apply_rules_tan(
 pub(crate) fn apply_rules_cos(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node
         .children
         .is_empty()
     {
+
         return Some(node.clone()); // Not enough children for cos operation
     }
 
@@ -644,6 +710,7 @@ pub(crate) fn apply_rules_cos(
     // cos(0) -> 1
 
     if is_zero_node(arg) {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(1.0),
@@ -656,6 +723,7 @@ pub(crate) fn apply_rules_cos(
     // cos(pi) -> -1
 
     if is_pi_node(arg) {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(-1.0),
@@ -668,10 +736,12 @@ pub(crate) fn apply_rules_cos(
     // cos(-x) -> cos(x)
 
     if matches!(&arg.op, DagOp::Neg) {
+
         if arg
             .children
             .is_empty()
         {
+
             return Some(node.clone()); // Malformed negation, return original
         }
 
@@ -690,13 +760,16 @@ pub(crate) fn apply_rules_cos(
 
     // Sum/Difference and Induction formulas for cos
     if matches!(&arg.op, DagOp::Add) {
+
         if arg.children.len() >= 2 {
+
             let a = &arg.children[0];
 
             let b = &arg.children[1];
 
             // cos(x + pi) -> -cos(x)
             if is_pi_node(b) {
+
                 match DAG_MANAGER.get_or_create_normalized(
                     DagOp::Cos,
                     vec![a.clone()],
@@ -798,10 +871,12 @@ pub(crate) fn apply_rules_cos(
 pub(crate) fn apply_rules_sin(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node
         .children
         .is_empty()
     {
+
         return Some(node.clone()); // Not enough children for sin operation
     }
 
@@ -810,6 +885,7 @@ pub(crate) fn apply_rules_sin(
     // sin(0) -> 0
 
     if is_zero_node(arg) {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(0.0),
@@ -822,6 +898,7 @@ pub(crate) fn apply_rules_sin(
     // sin(pi) -> 0
 
     if is_pi_node(arg) {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(0.0),
@@ -834,10 +911,12 @@ pub(crate) fn apply_rules_sin(
     // sin(-x) -> -sin(x)
 
     if matches!(&arg.op, DagOp::Neg) {
+
         if arg
             .children
             .is_empty()
         {
+
             return Some(node.clone()); // Malformed negation, return original
         }
 
@@ -850,6 +929,7 @@ pub(crate) fn apply_rules_sin(
                 ],
             ) {
             | Ok(new_sin) => {
+
                 match DAG_MANAGER.get_or_create_normalized(
                     DagOp::Neg,
                     vec![new_sin],
@@ -859,6 +939,7 @@ pub(crate) fn apply_rules_sin(
                 }
             },
             | Err(_) => {
+
                 return Some(
                     node.clone(),
                 );
@@ -868,13 +949,16 @@ pub(crate) fn apply_rules_sin(
 
     // Sum/Difference and Induction formulas for sin
     if matches!(&arg.op, DagOp::Add) {
+
         if arg.children.len() >= 2 {
+
             let a = &arg.children[0];
 
             let b = &arg.children[1];
 
             // sin(x + pi) -> -sin(x)
             if is_pi_node(b) {
+
                 match DAG_MANAGER.get_or_create_normalized(
                     DagOp::Sin,
                     vec![a.clone()],
@@ -976,10 +1060,12 @@ pub(crate) fn apply_rules_sin(
 pub(crate) fn apply_rules_exp(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node
         .children
         .is_empty()
     {
+
         return Some(node.clone()); // Not enough children for exp operation
     }
 
@@ -988,6 +1074,7 @@ pub(crate) fn apply_rules_exp(
     // exp(0) -> 1
 
     if is_zero_node(arg) {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(1.0),
@@ -999,10 +1086,12 @@ pub(crate) fn apply_rules_exp(
 
     // exp(log(x)) -> x
     if matches!(&arg.op, DagOp::Log) {
+
         if arg
             .children
             .is_empty()
         {
+
             return Some(node.clone()); // Malformed log, return original
         }
 
@@ -1021,7 +1110,9 @@ pub(crate) fn apply_rules_exp(
 pub(crate) fn apply_rules_logbase(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node.children.len() < 2 {
+
         return Some(node.clone()); // Not enough children for logbase operation
     }
 
@@ -1032,6 +1123,7 @@ pub(crate) fn apply_rules_logbase(
     // log_b(b) -> 1
 
     if base.hash == arg.hash {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(1.0),
@@ -1048,6 +1140,7 @@ pub(crate) fn apply_rules_logbase(
             vec![arg.clone()],
         ) {
         | Ok(log_a) => {
+
             match DAG_MANAGER.get_or_create_normalized(
                 DagOp::Log,
                 vec![base.clone()],
@@ -1066,6 +1159,7 @@ pub(crate) fn apply_rules_logbase(
             }
         },
         | Err(_) => {
+
             return Some(node.clone());
         }, /* Return original if log(arg) fails */
     }
@@ -1078,10 +1172,12 @@ pub(crate) fn apply_rules_logbase(
 pub(crate) fn apply_rules_log(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node
         .children
         .is_empty()
     {
+
         return Some(node.clone()); // Not enough children for log operation
     }
 
@@ -1090,6 +1186,7 @@ pub(crate) fn apply_rules_log(
     // log(1) -> 0
 
     if is_one_node(arg) {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(0.0),
@@ -1102,6 +1199,7 @@ pub(crate) fn apply_rules_log(
     // log(e) -> 1
 
     if matches!(&arg.op, DagOp::E) {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(1.0),
@@ -1114,10 +1212,12 @@ pub(crate) fn apply_rules_log(
     // log(exp(x)) -> x
 
     if matches!(&arg.op, DagOp::Exp) {
+
         if arg
             .children
             .is_empty()
         {
+
             return Some(node.clone()); // Malformed exp, return original
         }
 
@@ -1129,7 +1229,9 @@ pub(crate) fn apply_rules_log(
     // log(a*b) -> log(a) + log(b)
 
     if matches!(&arg.op, DagOp::Mul) {
+
         if arg.children.len() >= 2 {
+
             let a = &arg.children[0];
 
             let b = &arg.children[1];
@@ -1169,7 +1271,9 @@ pub(crate) fn apply_rules_log(
         &arg.op,
         DagOp::Power
     ) {
+
         if arg.children.len() >= 2 {
+
             let b =
                 arg.children[1].clone();
 
@@ -1207,7 +1311,9 @@ pub(crate) fn apply_rules_log(
 pub(crate) fn apply_rules_power(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node.children.len() < 2 {
+
         return Some(node.clone()); // Not enough children for power operation
     }
 
@@ -1218,12 +1324,14 @@ pub(crate) fn apply_rules_power(
     // x ^ 1 -> x
 
     if is_one_node(exp) {
+
         return Some(base.clone());
     }
 
     // x ^ 0 -> 1
 
     if is_zero_node(exp) {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(1.0),
@@ -1236,6 +1344,7 @@ pub(crate) fn apply_rules_power(
     // 1 ^ x -> 1
 
     if is_one_node(base) {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(1.0),
@@ -1248,6 +1357,7 @@ pub(crate) fn apply_rules_power(
     // 0 ^ -x -> Infinity
 
     if is_zero_node(base) {
+
         match &exp.op {
             | DagOp::Constant(c) if c.0 < 0.0 => {
 
@@ -1280,6 +1390,7 @@ pub(crate) fn apply_rules_power(
         && (is_const_node(exp, 2.0)
             || matches!(&exp.op, DagOp::BigInt(b) if *b == BigInt::from(2)))
     {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(-1.0),
@@ -1300,6 +1411,7 @@ pub(crate) fn apply_rules_power(
             .children
             .is_empty()
     {
+
         return Some(
             base.children[0].clone(),
         );
@@ -1311,6 +1423,7 @@ pub(crate) fn apply_rules_power(
         DagOp::Power
     ) && base.children.len() >= 2
     {
+
         match DAG_MANAGER
             .get_or_create_normalized(
                 DagOp::Mul,
@@ -1321,6 +1434,7 @@ pub(crate) fn apply_rules_power(
                 ],
             ) {
             | Ok(new_exp) => {
+
                 match DAG_MANAGER.get_or_create_normalized(
                     DagOp::Power,
                     vec![
@@ -1346,10 +1460,12 @@ pub(crate) fn apply_rules_power(
 pub(crate) fn apply_rules_neg(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node
         .children
         .is_empty()
     {
+
         return Some(node.clone()); // Not enough children for neg operation
     }
 
@@ -1360,10 +1476,12 @@ pub(crate) fn apply_rules_neg(
         &inner.op,
         DagOp::Neg
     ) {
+
         if inner
             .children
             .is_empty()
         {
+
             return Some(node.clone()); // Malformed negation, return original
         }
 
@@ -1382,7 +1500,9 @@ pub(crate) fn apply_rules_neg(
 pub(crate) fn apply_rules_div(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node.children.len() < 2 {
+
         return Some(node.clone()); // Not enough children for div operation
     }
 
@@ -1393,12 +1513,14 @@ pub(crate) fn apply_rules_div(
     // x / 1 -> x
 
     if is_one_node(rhs) {
+
         return Some(lhs.clone());
     }
 
     // x / x -> 1 (if x != 0)
 
     if lhs.hash == rhs.hash {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(1.0),
@@ -1411,7 +1533,9 @@ pub(crate) fn apply_rules_div(
     // 0 / x -> 0 (if x != 0)
 
     if is_zero_node(lhs) {
+
         if is_zero_node(rhs) {
+
             return Some(node.clone());
         }
 
@@ -1428,6 +1552,7 @@ pub(crate) fn apply_rules_div(
         &Expr::BigInt(BigInt::from(-1)),
     ) {
         | Ok(neg_one) => {
+
             match DAG_MANAGER.get_or_create_normalized(
                 DagOp::Power,
                 vec![rhs.clone(), neg_one],
@@ -1449,6 +1574,7 @@ pub(crate) fn apply_rules_div(
             }
         },
         | Err(_) => {
+
             return Some(node.clone());
         }, /* Return original if neg_one creation fails */
     }
@@ -1461,7 +1587,9 @@ pub(crate) fn apply_rules_div(
 pub(crate) fn apply_rules_mul(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node.children.len() < 2 {
+
         return Some(node.clone()); // Not enough children for mul operation
     }
 
@@ -1472,10 +1600,12 @@ pub(crate) fn apply_rules_mul(
     // x * 1 -> x
 
     if is_one_node(rhs) {
+
         return Some(lhs.clone());
     }
 
     if is_one_node(lhs) {
+
         return Some(rhs.clone());
     }
 
@@ -1484,6 +1614,7 @@ pub(crate) fn apply_rules_mul(
     if is_zero_node(rhs)
         || is_zero_node(lhs)
     {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(0.0),
@@ -1496,6 +1627,7 @@ pub(crate) fn apply_rules_mul(
     // x * -1 -> -x
 
     if is_neg_one_node(rhs) {
+
         return Some(match DAG_MANAGER
             .get_or_create_normalized(
                 DagOp::Neg,
@@ -1507,6 +1639,7 @@ pub(crate) fn apply_rules_mul(
     }
 
     if is_neg_one_node(lhs) {
+
         return Some(match DAG_MANAGER
             .get_or_create_normalized(
                 DagOp::Neg,
@@ -1520,10 +1653,12 @@ pub(crate) fn apply_rules_mul(
     // x * x -> x^2
 
     if lhs.hash == rhs.hash {
+
         match DAG_MANAGER.get_or_create(
             &Expr::Constant(2.0),
         ) {
             | Ok(two) => {
+
                 match DAG_MANAGER.get_or_create_normalized(
                     DagOp::Power,
                     vec![lhs.clone(), two],
@@ -1541,6 +1676,7 @@ pub(crate) fn apply_rules_mul(
     if matches!(&rhs.op, DagOp::Add)
         && rhs.children.len() >= 2
     {
+
         let a = lhs;
 
         let b = &rhs.children[0];
@@ -1556,6 +1692,7 @@ pub(crate) fn apply_rules_mul(
                 ],
             ) {
             | Ok(ab) => {
+
                 match DAG_MANAGER.get_or_create_normalized(
                     DagOp::Mul,
                     vec![a.clone(), c.clone()],
@@ -1580,6 +1717,7 @@ pub(crate) fn apply_rules_mul(
     if matches!(&lhs.op, DagOp::Add)
         && lhs.children.len() >= 2
     {
+
         let a = &lhs.children[0];
 
         let b = &lhs.children[1];
@@ -1595,6 +1733,7 @@ pub(crate) fn apply_rules_mul(
                 ],
             ) {
             | Ok(ac) => {
+
                 match DAG_MANAGER.get_or_create_normalized(
                     DagOp::Mul,
                     vec![b.clone(), c.clone()],
@@ -1626,7 +1765,9 @@ pub(crate) fn apply_rules_mul(
 pub(crate) fn apply_rules_sub(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node.children.len() < 2 {
+
         return Some(node.clone()); // Not enough children for sub operation
     }
 
@@ -1637,6 +1778,7 @@ pub(crate) fn apply_rules_sub(
     // x - 0 -> x
 
     if is_zero_node(rhs) {
+
         return Some(lhs.clone());
     }
 
@@ -1647,6 +1789,7 @@ pub(crate) fn apply_rules_sub(
             .children
             .is_empty()
     {
+
         let b = &rhs.children[0];
 
         return Some(match DAG_MANAGER
@@ -1665,6 +1808,7 @@ pub(crate) fn apply_rules_sub(
     // x - x -> 0
 
     if lhs.hash == rhs.hash {
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(0.0),
@@ -1679,6 +1823,7 @@ pub(crate) fn apply_rules_sub(
     if matches!(&lhs.op, DagOp::Mul)
         && matches!(&rhs.op, DagOp::Mul)
     {
+
         let mut terms_lhs = Vec::new();
 
         flatten_terms(
@@ -1710,11 +1855,13 @@ pub(crate) fn apply_rules_sub(
             < 2
             || terms_lhs.len() < 2
         {
+
             (
                 one_node_a,
                 terms_lhs[0].clone(),
             )
         } else {
+
             (
                 terms_lhs[0].clone(),
                 terms_lhs[1].clone(),
@@ -1738,11 +1885,13 @@ pub(crate) fn apply_rules_sub(
             < 2
             || terms_rhs.len() < 2
         {
+
             (
                 one_node_c,
                 terms_rhs[0].clone(),
             )
         } else {
+
             (
                 terms_rhs[0].clone(),
                 terms_rhs[1].clone(),
@@ -1750,6 +1899,7 @@ pub(crate) fn apply_rules_sub(
         };
 
         if b.hash == d.hash {
+
             return Some(match DAG_MANAGER.get_or_create_normalized(
                 DagOp::Sub,
                 vec![a, c],
@@ -1770,7 +1920,9 @@ pub(crate) fn apply_rules_sub(
 pub(crate) fn apply_rules_add(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     if node.children.len() < 2 {
+
         return Some(node.clone()); // Not enough children for add operation
     }
 
@@ -1781,20 +1933,24 @@ pub(crate) fn apply_rules_add(
     // x + 0 -> x
 
     if is_zero_node(rhs) {
+
         return Some(lhs.clone());
     }
 
     if is_zero_node(lhs) {
+
         return Some(rhs.clone());
     }
 
     // x + x -> 2*x
 
     if lhs.hash == rhs.hash {
+
         match DAG_MANAGER.get_or_create(
             &Expr::Constant(2.0),
         ) {
             | Ok(two) => {
+
                 match DAG_MANAGER.get_or_create_normalized(
                     DagOp::Mul,
                     vec![two, lhs.clone()],
@@ -1818,6 +1974,7 @@ pub(crate) fn apply_rules_add(
     ) && lhs.children.len() >= 2
         && rhs.children.len() >= 2
     {
+
         let a = &lhs.children[0];
 
         let x1 = &lhs.children[1];
@@ -1827,6 +1984,7 @@ pub(crate) fn apply_rules_add(
         let x2 = &rhs.children[1];
 
         if x1.hash == x2.hash {
+
             // a*x + b*x
             match DAG_MANAGER.get_or_create_normalized(
                 DagOp::Add,
@@ -1847,6 +2005,7 @@ pub(crate) fn apply_rules_add(
         }
 
         if a.hash == b.hash {
+
             // x*a + y*a -> (x+y)*a
             match DAG_MANAGER.get_or_create_normalized(
                 DagOp::Add,
@@ -1889,6 +2048,7 @@ pub(crate) fn apply_rules_add(
             2.0,
         )
     {
+
         // Both are squared
         if matches!(
             (
@@ -1912,6 +2072,7 @@ pub(crate) fn apply_rules_add(
                     .children[0]
                     .hash
         {
+
             // sin(arg) and cos(arg) with same arg
             return Some(
                 match DAG_MANAGER
@@ -1950,6 +2111,7 @@ pub(crate) fn apply_rules_add(
                     .children[0]
                     .hash
         {
+
             // cos(arg) and sin(arg) with same arg
             return Some(
                 match DAG_MANAGER
@@ -1976,6 +2138,7 @@ pub(crate) fn apply_rules_add(
 pub(crate) fn fold_constants(
     node: &Arc<DagNode>
 ) -> Option<Arc<DagNode>> {
+
     let children_values: Option<
         Vec<Expr>,
     > = node
@@ -1987,6 +2150,7 @@ pub(crate) fn fold_constants(
     if let Some(values) =
         children_values
     {
+
         let result = match (
             &node.op,
             values.as_slice(),
@@ -2015,6 +2179,7 @@ pub(crate) fn fold_constants(
         };
 
         if let Some(value) = result {
+
             return match DAG_MANAGER
                 .get_or_create(&value)
             {
@@ -2036,18 +2201,23 @@ pub(crate) fn fold_constants(
 pub(crate) fn get_numeric_value(
     node: &Arc<DagNode>
 ) -> Option<Expr> {
+
     match &node.op {
         | DagOp::Constant(c) => {
             Some(Expr::Constant(
                 c.into_inner(),
             ))
         },
-        | DagOp::BigInt(i) => Some(
-            Expr::BigInt(i.clone()),
-        ),
-        | DagOp::Rational(r) => Some(
-            Expr::Rational(r.clone()),
-        ),
+        | DagOp::BigInt(i) => {
+            Some(Expr::BigInt(
+                i.clone(),
+            ))
+        },
+        | DagOp::Rational(r) => {
+            Some(Expr::Rational(
+                r.clone(),
+            ))
+        },
         | _ => None,
     }
 }
@@ -2058,19 +2228,23 @@ pub(crate) fn add_em(
     a: &Expr,
     b: &Expr,
 ) -> Expr {
+
     match (a, b) {
         | (
             Expr::Constant(va),
             Expr::Constant(vb),
         ) => {
+
             let result = va + vb;
 
             if result.is_infinite()
                 || result.is_nan()
             {
+
                 // Handle overflow/invalid results gracefully
                 Expr::Constant(*va) // Return a as a fallback
             } else {
+
                 Expr::Constant(result)
             }
         },
@@ -2084,6 +2258,7 @@ pub(crate) fn add_em(
         ) => Expr::Rational(ra + rb),
         // Promote to Rational or Constant - with error handling
         | _ => {
+
             match (
                 a.to_f64(),
                 b.to_f64(),
@@ -2092,6 +2267,7 @@ pub(crate) fn add_em(
                     Some(va),
                     Some(vb),
                 ) => {
+
                     let result =
                         va + vb;
 
@@ -2100,10 +2276,12 @@ pub(crate) fn add_em(
                         || result
                             .is_nan()
                     {
+
                         Expr::new_add(
                             a, b,
                         ) // Return original expression if result is invalid
                     } else {
+
                         Expr::Constant(
                             result,
                         )
@@ -2123,19 +2301,23 @@ pub(crate) fn sub_em(
     a: &Expr,
     b: &Expr,
 ) -> Expr {
+
     match (a, b) {
         | (
             Expr::Constant(va),
             Expr::Constant(vb),
         ) => {
+
             let result = va - vb;
 
             if result.is_infinite()
                 || result.is_nan()
             {
+
                 // Handle overflow/invalid results gracefully
                 Expr::Constant(*va) // Return a as a fallback
             } else {
+
                 Expr::Constant(result)
             }
         },
@@ -2148,6 +2330,7 @@ pub(crate) fn sub_em(
             Expr::Rational(rb),
         ) => Expr::Rational(ra - rb),
         | _ => {
+
             match (
                 a.to_f64(),
                 b.to_f64(),
@@ -2156,6 +2339,7 @@ pub(crate) fn sub_em(
                     Some(va),
                     Some(vb),
                 ) => {
+
                     let result =
                         va - vb;
 
@@ -2164,10 +2348,12 @@ pub(crate) fn sub_em(
                         || result
                             .is_nan()
                     {
+
                         Expr::new_sub(
                             a, b,
                         ) // Return original expression if result is invalid
                     } else {
+
                         Expr::Constant(
                             result,
                         )
@@ -2187,16 +2373,19 @@ pub(crate) fn mul_em(
     a: &Expr,
     b: &Expr,
 ) -> Expr {
+
     match (a, b) {
         | (
             Expr::Constant(va),
             Expr::Constant(vb),
         ) => {
+
             let result = va * vb;
 
             if result.is_infinite()
                 || result.is_nan()
             {
+
                 // Handle overflow/invalid results gracefully
                 if (va.is_infinite()
                     && is_zero_expr(b))
@@ -2206,11 +2395,14 @@ pub(crate) fn mul_em(
                             a,
                         ))
                 {
+
                     Expr::Constant(0.0) // 0 * inf = 0 (though mathematically indeterminate, for calculation purposes)
                 } else {
+
                     Expr::Constant(*va) // Return a as a fallback
                 }
             } else {
+
                 Expr::Constant(result)
             }
         },
@@ -2223,6 +2415,7 @@ pub(crate) fn mul_em(
             Expr::Rational(rb),
         ) => Expr::Rational(ra * rb),
         | _ => {
+
             match (
                 a.to_f64(),
                 b.to_f64(),
@@ -2231,6 +2424,7 @@ pub(crate) fn mul_em(
                     Some(va),
                     Some(vb),
                 ) => {
+
                     let result =
                         va * vb;
 
@@ -2239,10 +2433,12 @@ pub(crate) fn mul_em(
                         || result
                             .is_nan()
                     {
+
                         Expr::new_mul(
                             a, b,
                         ) // Return original expression if result is invalid
                     } else {
+
                         Expr::Constant(
                             result,
                         )
@@ -2262,9 +2458,12 @@ pub(crate) fn div_em(
     a: &Expr,
     b: &Expr,
 ) -> Option<Expr> {
+
     if is_zero_expr(b) {
+
         // Division by zero - return appropriate representation
         if is_zero_expr(a) {
+
             // 0/0 is indeterminate
             return None;
         }
@@ -2278,13 +2477,17 @@ pub(crate) fn div_em(
             Expr::Constant(va),
             Expr::Constant(vb),
         ) => {
+
             let result = va / vb;
 
             if result.is_infinite() {
+
                 Some(Expr::Infinity) // Use proper infinity representation
             } else if result.is_nan() {
+
                 None // Undefined result like 0/0
             } else {
+
                 Some(Expr::Constant(
                     result,
                 ))
@@ -2294,19 +2497,24 @@ pub(crate) fn div_em(
         | (
             Expr::BigInt(ia),
             Expr::BigInt(ib),
-        ) => Some(Expr::Rational(
-            BigRational::new(
-                ia.clone(),
-                ib.clone(),
-            ),
-        )),
+        ) => {
+            Some(Expr::Rational(
+                BigRational::new(
+                    ia.clone(),
+                    ib.clone(),
+                ),
+            ))
+        },
         | (
             Expr::Rational(ra),
             Expr::Rational(rb),
-        ) => Some(Expr::Rational(
-            ra / rb,
-        )),
+        ) => {
+            Some(Expr::Rational(
+                ra / rb,
+            ))
+        },
         | _ => {
+
             match (
                 a.to_f64(),
                 b.to_f64(),
@@ -2315,27 +2523,33 @@ pub(crate) fn div_em(
                     Some(va),
                     Some(vb),
                 ) => {
+
                     let result =
                         va / vb;
 
                     if result
                         .is_infinite()
                     {
+
                         Some(Expr::Infinity)
                     // Use proper infinity representation
                     } else if result
                         .is_nan()
                     {
+
                         None // Undefined result like 0/0
                     } else {
+
                         Some(Expr::Constant(
                             result,
                         ))
                     }
                 },
-                | _ => Some(
-                    Expr::new_div(a, b),
-                ), /* Return original expression if conversion fails */
+                | _ => {
+                    Some(Expr::new_div(
+                        a, b,
+                    ))
+                }, /* Return original expression if conversion fails */
             }
         },
     }
@@ -2344,6 +2558,7 @@ pub(crate) fn div_em(
 #[inline]
 
 pub(crate) fn neg_em(a: &Expr) -> Expr {
+
     match a {
         | Expr::Constant(v) => {
             Expr::Constant(-v)
@@ -2365,6 +2580,7 @@ pub(crate) fn neg_em(a: &Expr) -> Expr {
 pub(crate) fn is_numeric_node(
     node: &Arc<DagNode>
 ) -> bool {
+
     matches!(
         &node.op,
         DagOp::Constant(_)
@@ -2378,6 +2594,7 @@ pub(crate) fn is_numeric_node(
 pub(crate) fn is_zero_expr(
     expr: &Expr
 ) -> bool {
+
     match expr {
         | Expr::Constant(c)
             if *c == 0.0 =>
@@ -2403,6 +2620,7 @@ pub(crate) fn is_zero_expr(
 pub(crate) fn is_one_expr(
     expr: &Expr
 ) -> bool {
+
     match expr {
         | Expr::Constant(c)
             if (*c - 1.0).abs()
@@ -2428,11 +2646,13 @@ pub(crate) fn is_one_expr(
 
 pub(crate) fn zero_node() -> Arc<DagNode>
 {
+
     match DAG_MANAGER.get_or_create(
         &Expr::BigInt(BigInt::zero()),
     ) {
         | Ok(node) => node,
         | Err(_) => {
+
             // Fallback: create a constant 0 node if BigInt creation fails
             DAG_MANAGER
                 .get_or_create(&Expr::Constant(0.0))
@@ -2446,11 +2666,13 @@ pub(crate) fn zero_node() -> Arc<DagNode>
 
 pub(crate) fn one_node() -> Arc<DagNode>
 {
+
     match DAG_MANAGER.get_or_create(
         &Expr::BigInt(BigInt::one()),
     ) {
         | Ok(node) => node,
         | Err(_) => {
+
             // Fallback: create a constant 1 node if BigInt creation fails
             DAG_MANAGER
                 .get_or_create(&Expr::Constant(1.0))
@@ -2466,6 +2688,7 @@ pub(crate) fn is_const_node(
     node: &Arc<DagNode>,
     val: f64,
 ) -> bool {
+
     matches!(&node.op, DagOp::Constant(c) if (c.into_inner() - val).abs() < f64::EPSILON)
 }
 
@@ -2475,6 +2698,7 @@ pub(crate) fn is_const_node(
 pub(crate) fn is_zero_node(
     node: &Arc<DagNode>
 ) -> bool {
+
     // Replaced matches! with a full match expression
     match &node.op {
         | DagOp::Constant(c)
@@ -2502,6 +2726,7 @@ pub(crate) fn is_zero_node(
 pub(crate) fn is_one_node(
     node: &Arc<DagNode>
 ) -> bool {
+
     // Replaced matches! with a full match expression
     match &node.op {
         | DagOp::Constant(c)
@@ -2529,6 +2754,7 @@ pub(crate) fn is_one_node(
 pub(crate) fn is_neg_one_node(
     node: &Arc<DagNode>
 ) -> bool {
+
     matches!(&node.op, DagOp::Constant(c) if (c.into_inner() + 1.0).abs() < f64::EPSILON)
 }
 
@@ -2538,6 +2764,7 @@ pub(crate) fn is_neg_one_node(
 pub(crate) fn is_pi_node(
     node: &Arc<DagNode>
 ) -> bool {
+
     matches!(&node.op, DagOp::Pi)
 }
 
@@ -2548,7 +2775,9 @@ pub(crate) fn flatten_mul_terms(
     node: &Arc<DagNode>,
     terms: &mut Vec<Arc<DagNode>>,
 ) {
+
     if matches!(&node.op, DagOp::Mul) {
+
         flatten_mul_terms(
             &node.children[0],
             terms,
@@ -2559,6 +2788,7 @@ pub(crate) fn flatten_mul_terms(
             terms,
         );
     } else {
+
         terms.push(node.clone());
     }
 }
@@ -2568,6 +2798,7 @@ pub(crate) fn flatten_mul_terms(
 pub(crate) fn simplify_mul(
     node: &Arc<DagNode>
 ) -> Arc<DagNode> {
+
     // 1. Flatten the nested multiplications
     let mut factors = Vec::new();
 
@@ -2585,9 +2816,11 @@ pub(crate) fn simplify_mul(
         Expr::BigInt(BigInt::one());
 
     for factor in factors {
+
         if let Some(val) =
             get_numeric_value(&factor)
         {
+
             constant =
                 mul_em(&constant, &val);
 
@@ -2599,11 +2832,13 @@ pub(crate) fn simplify_mul(
                 &factor.op,
                 DagOp::Power
             ) {
+
                 if factor
                     .children
                     .len()
                     < 2
                 {
+
                     // Safety check: Power node should have 2 children
                     continue; // Skip malformed nodes
                 }
@@ -2618,6 +2853,7 @@ pub(crate) fn simplify_mul(
                     )),
             )
             } else {
+
                 // Factor is a variable or other expression, treat as factor^1
                 (
                     factor.clone(),
@@ -2643,19 +2879,24 @@ pub(crate) fn simplify_mul(
     let mut new_factors = Vec::new();
 
     for (base, exponent) in exponents {
+
         if is_zero_expr(&exponent) {
+
             continue; // Skip terms with a zero exponent (x^0 = 1)
         }
 
         if is_one_expr(&exponent) {
+
             new_factors
                 .push(base.clone()); // x^1 -> x
         } else {
+
             match DAG_MANAGER
                 .get_or_create(
                     &exponent,
                 ) {
                 | Ok(exp_node) => {
+
                     match DAG_MANAGER.get_or_create_normalized(
                         DagOp::Power,
                         vec![
@@ -2672,6 +2913,7 @@ pub(crate) fn simplify_mul(
                     }
                 },
                 | Err(_) => {
+
                     // If creating the exponent fails, just add the base without exponent
                     new_factors.push(
                         base.clone(),
@@ -2682,15 +2924,18 @@ pub(crate) fn simplify_mul(
     }
 
     if is_zero_expr(&constant) {
+
         return zero_node(); // Multiplication by zero
     }
 
     if !is_one_expr(&constant) {
+
         if let Ok(constant_node) =
             DAG_MANAGER.get_or_create(
                 &constant,
             )
         {
+
             new_factors.insert(
                 0,
                 constant_node,
@@ -2699,6 +2944,7 @@ pub(crate) fn simplify_mul(
     }
 
     if new_factors.is_empty() {
+
         return one_node();
     }
 
@@ -2712,6 +2958,7 @@ pub(crate) fn simplify_mul(
         .iter()
         .skip(1)
     {
+
         result = match DAG_MANAGER
             .get_or_create_normalized(
                 DagOp::Mul,
@@ -2722,6 +2969,7 @@ pub(crate) fn simplify_mul(
             ) {
             | Ok(node) => node,
             | Err(_) => {
+
                 // If creating the multiplication fails, return the left operand
                 break;
             },
@@ -2739,8 +2987,10 @@ pub(crate) fn flatten_terms(
     node: &Arc<DagNode>,
     terms: &mut Vec<Arc<DagNode>>,
 ) {
+
     match &node.op {
         | DagOp::Add => {
+
             flatten_terms(
                 &node.children[0],
                 terms,
@@ -2752,9 +3002,11 @@ pub(crate) fn flatten_terms(
             );
         },
         | DagOp::Sub => {
+
             // a - b becomes a + (-b)
             if node.children.len() >= 2
             {
+
                 flatten_terms(
                     &node.children[0],
                     terms,
@@ -2773,11 +3025,13 @@ pub(crate) fn flatten_terms(
                     },
                 }
             } else {
+
                 terms
                     .push(node.clone());
             }
         },
         | _ => {
+
             terms.push(node.clone());
         },
     }
@@ -2788,6 +3042,7 @@ pub(crate) fn flatten_terms(
 pub(crate) fn simplify_add(
     node: &Arc<DagNode>
 ) -> Arc<DagNode> {
+
     // 1. Flatten the nested additions
     let mut terms = Vec::new();
 
@@ -2802,9 +3057,11 @@ pub(crate) fn simplify_add(
         Expr::BigInt(BigInt::zero());
 
     for term in terms {
+
         if let Some(val) =
             get_numeric_value(&term)
         {
+
             constant =
                 add_em(&constant, &val);
 
@@ -2816,8 +3073,10 @@ pub(crate) fn simplify_add(
             &term.op,
             DagOp::Mul
         ) {
+
             simplify_mul(&term)
         } else {
+
             term.clone()
         };
 
@@ -2826,11 +3085,13 @@ pub(crate) fn simplify_add(
                 &simplified_term.op,
                 DagOp::Neg
             ) {
+
                 // Neg(x) is treated as -1 * x
                 if simplified_term
                     .children
                     .is_empty()
                 {
+
                     (
                         Expr::BigInt(
                             BigInt::one(
@@ -2840,6 +3101,7 @@ pub(crate) fn simplify_add(
                             .clone(),
                     )
                 } else {
+
                     let child = &simplified_term.children[0];
 
                     // Check if child is Mul(c, x)
@@ -2851,6 +3113,7 @@ pub(crate) fn simplify_add(
                         .len()
                         >= 2
                     {
+
                         let c = &child
                             .children
                             [0];
@@ -2873,6 +3136,7 @@ pub(crate) fn simplify_add(
                         )
                     }
                     } else {
+
                         (
                         Expr::Constant(-1.0),
                         child.clone(),
@@ -2883,11 +3147,13 @@ pub(crate) fn simplify_add(
                 &simplified_term.op,
                 DagOp::Mul
             ) {
+
                 if simplified_term
                     .children
                     .len()
                     < 2
                 {
+
                     (
                         Expr::BigInt(
                             BigInt::one(
@@ -2897,6 +3163,7 @@ pub(crate) fn simplify_add(
                             .clone(),
                     )
                 } else {
+
                     let c = &simplified_term.children[0];
 
                     let b = &simplified_term.children[1];
@@ -2922,6 +3189,7 @@ pub(crate) fn simplify_add(
                 }
                 }
             } else {
+
                 (
                     Expr::BigInt(
                         BigInt::one(),
@@ -2945,18 +3213,23 @@ pub(crate) fn simplify_add(
     let mut new_terms = Vec::new();
 
     for (base, coeff) in coeffs {
+
         if is_zero_expr(&coeff) {
+
             continue; // Skip terms with a zero coefficient
         }
 
         if is_one_expr(&coeff) {
+
             new_terms
                 .push(base.clone()); // 1*x -> x
         } else {
+
             match DAG_MANAGER
                 .get_or_create(&coeff)
             {
                 | Ok(coeff_node) => {
+
                     match DAG_MANAGER.get_or_create_normalized(
                         DagOp::Mul,
                         vec![
@@ -2973,6 +3246,7 @@ pub(crate) fn simplify_add(
                     }
                 },
                 | Err(_) => {
+
                     // If creating the coefficient fails, just add the base
                     new_terms.push(
                         base.clone(),
@@ -2983,17 +3257,20 @@ pub(crate) fn simplify_add(
     }
 
     if !is_zero_expr(&constant) {
+
         if let Ok(constant_node) =
             DAG_MANAGER.get_or_create(
                 &constant,
             )
         {
+
             new_terms
                 .push(constant_node);
         }
     }
 
     if new_terms.is_empty() {
+
         return zero_node();
     }
 
@@ -3007,6 +3284,7 @@ pub(crate) fn simplify_add(
         .iter()
         .skip(1)
     {
+
         result = match DAG_MANAGER
             .get_or_create_normalized(
                 DagOp::Add,
@@ -3017,6 +3295,7 @@ pub(crate) fn simplify_add(
             ) {
             | Ok(node) => node,
             | Err(_) => {
+
                 // If creating the addition fails, return the left operand
                 break;
             },
@@ -3206,6 +3485,7 @@ pub fn pattern_match(
     expr: &Expr,
     pattern: &Expr,
 ) -> Option<HashMap<String, Expr>> {
+
     let mut assignments =
         HashMap::new();
 
@@ -3214,8 +3494,10 @@ pub fn pattern_match(
         pattern,
         &mut assignments,
     ) {
+
         Some(assignments)
     } else {
+
         None
     }
 }
@@ -3231,23 +3513,31 @@ pub(crate) fn pattern_match_recursive(
         Expr,
     >,
 ) -> bool {
+
     // Unwrap DAG nodes for structural matching
     let expr_unwrapped = match expr {
-        | Expr::Dag(node) => node
-            .to_expr()
-            .unwrap_or_else(|_| {
-                expr.clone()
-            }),
+        | Expr::Dag(node) => {
+            node.to_expr()
+                .unwrap_or_else(|_| {
+
+                    expr.clone()
+                })
+        },
         | _ => expr.clone(),
     };
 
     let pattern_unwrapped =
         match pattern {
-            | Expr::Dag(node) => node
-                .to_expr()
-                .unwrap_or_else(|_| {
-                    pattern.clone()
-                }),
+            | Expr::Dag(node) => {
+                node.to_expr()
+                    .unwrap_or_else(
+                        |_| {
+
+                            pattern
+                                .clone()
+                        },
+                    )
+            },
             | _ => pattern.clone(),
         };
 
@@ -3256,9 +3546,11 @@ pub(crate) fn pattern_match_recursive(
         &pattern_unwrapped,
     ) {
         | (_, Expr::Pattern(name)) => {
+
             if let Some(existing) =
                 assignments.get(name)
             {
+
                 return existing
                     == expr;
             }
@@ -3278,6 +3570,7 @@ pub(crate) fn pattern_match_recursive(
             Expr::Mul(e1, e2),
             Expr::Mul(p1, p2),
         ) => {
+
             let original_assignments =
                 assignments.clone();
 
@@ -3354,19 +3647,23 @@ pub(crate) fn pattern_match_recursive(
         | (
             Expr::Sqrt(e),
             Expr::Sqrt(p),
-        ) => pattern_match_recursive(
-            e,
-            p,
-            assignments,
-        ),
+        ) => {
+            pattern_match_recursive(
+                e,
+                p,
+                assignments,
+            )
+        },
 
         | (
             Expr::NaryList(s1, v1),
             Expr::NaryList(s2, v2),
         ) => {
+
             if s1 != s2
                 || v1.len() != v2.len()
             {
+
                 return false;
             }
 
@@ -3377,6 +3674,7 @@ pub(crate) fn pattern_match_recursive(
                 .iter()
                 .zip(v2.iter())
             {
+
                 if !pattern_match_recursive(e, p, assignments) {
 
                     *assignments = original_assignments;
@@ -3450,13 +3748,19 @@ pub fn substitute_patterns<
         S,
     >,
 ) -> Expr {
+
     let template_unwrapped =
         match template {
-            | Expr::Dag(node) => node
-                .to_expr()
-                .unwrap_or_else(|_| {
-                    template.clone()
-                }),
+            | Expr::Dag(node) => {
+                node.to_expr()
+                    .unwrap_or_else(
+                        |_| {
+
+                            template
+                                .clone()
+                        },
+                    )
+            },
             | _ => template.clone(),
         };
 
