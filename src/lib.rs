@@ -40,7 +40,7 @@
 //! simplifying `x^2` given the side-relation that `x^2 + y^2 - 1 = 0` (the unit circle).
 //!
 //! ```rust
-//! 
+//!
 //! use rssn::symbolic::cas_foundations::simplify_with_relations;
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::grobner::MonomialOrder;
@@ -337,16 +337,22 @@ pub mod jit;
 #[cfg(feature = "nightly")]
 /// Features requiring nightly Rust.
 pub mod nightly;
+/// Numerical computation and optimization.
 pub mod numerical;
 #[cfg(feature = "output")]
+/// Output formatting and handling.
 pub mod output;
 #[cfg(feature = "physics")]
+/// Physics-related functionality.
 pub mod physics;
 #[cfg(feature = "plugins")]
 /// Plugin system for extending functionality.
 pub mod plugins;
+/// Prelude for common imports.
 pub mod prelude;
+/// The symbolic computation engine.
 pub mod symbolic;
+/// Unfortunatily, faer is not compatible with kani so we have to wait.
 #[cfg(kani)]
 pub mod verification;
 
@@ -369,6 +375,5 @@ use std::sync::Arc;
 pub fn is_exclusive<T>(
     arc: &Arc<T>
 ) -> bool {
-
     Arc::strong_count(arc) == 1
 }

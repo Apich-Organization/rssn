@@ -182,3 +182,7 @@ all-features = true
 
 [lints.clippy]
 empty-line-after-doc-comments = "allow"
+
+[lints.rust]
+# Allowed here because of kani.
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(has_foo)'] }
