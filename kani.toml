@@ -8,4 +8,8 @@ crate-name = "rssn"
 target-harness = true
 
 [exclude]
-crates = ["pulp"]
+crates = [
+    "pulp",
+    "private_gemm_x86",
+    "faer"
+]
