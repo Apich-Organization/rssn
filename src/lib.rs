@@ -353,7 +353,7 @@ pub mod plugins;
 pub mod prelude;
 /// The symbolic computation engine.
 pub mod symbolic;
-/// Unfortunatily, faer is not compatible with kani so we have to wait.
+/// Unfortunatily, faer and many math libraries are not compatible with kani so we have to wait.
 #[cfg(kani)]
 pub mod verification;
 

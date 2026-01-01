@@ -30,6 +30,10 @@ exclude = [
     "examples/fortran/*.pdb",
     "examples/fortran/*.d",
     "examples/fortran/*.exp",
+    "*.sh",
+    "*.bat",
+    "/scripts/*",
+    "/docs/*"
 ]
 
 [lib]
