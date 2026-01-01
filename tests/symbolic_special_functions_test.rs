@@ -632,7 +632,7 @@ fn test_chebyshev_t_basic() {
     // T_0(x) = 1
     let t0 = chebyshev_t(
         &Expr::Constant(0.0),
-        x.clone(),
+        &x,
     );
 
     assert_approx_eq(&t0, 1.0);
@@ -640,7 +640,7 @@ fn test_chebyshev_t_basic() {
     // T_1(x) = x
     let t1 = chebyshev_t(
         &Expr::Constant(1.0),
-        x.clone(),
+        &x,
     );
 
     assert_eq!(t1, x);
@@ -902,7 +902,7 @@ fn test_polynomial_orthogonality_at_boundaries()
 
         let pn = legendre_p(
             &Expr::Constant(n as f64),
-            &Expr::Constant(1.0),
+            Expr::Constant(1.0),
         );
 
         if let Some(val) =
