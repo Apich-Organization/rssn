@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration: Adjust these variables as needed
-CRATE_NAME="your-crate-name" # Replace with the actual name of your crate
+CRATE_NAME="rssn" # Replace with the actual name of your crate
 CARGO_COMMAND="cargo build --features"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
