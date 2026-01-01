@@ -744,6 +744,7 @@ fn berlekamp_massey(
             let scaled_b: Vec<u8> = b
                 .iter()
                 .map(|&c| {
+
                     gf256_mul(c, delta)
                 })
                 .collect();
@@ -764,6 +765,7 @@ fn berlekamp_massey(
                 b = t
                     .iter()
                     .map(|&c| {
+
                         gf256_mul(
                             c,
                             inv_delta,

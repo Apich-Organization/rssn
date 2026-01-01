@@ -894,6 +894,81 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new `Derivative` expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the polynomial cannot be created in the DAG.
+    #[must_use]
+
+    pub fn new_derivative<A>(
+        function: A,
+        variable: String,
+    ) -> Self
+    where
+        A: AsRef<Self>,
+    {
+
+        let dag_function = DAG_MANAGER
+            .get_or_create(
+                function.as_ref(),
+            )
+            .expect("Value is valid");
+
+        let node = DAG_MANAGER
+            .get_or_create_normalized(
+                DagOp::Derivative(
+                    variable,
+                ),
+                vec![dag_function],
+            )
+            .expect("Value is valid");
+
+        Self::Dag(node)
+    }
+
+    /// Creates a new `DerivativeN` expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the polynomial cannot be created in the DAG.
+    #[must_use]
+
+    pub fn new_derivativen<A, B>(
+        function: A,
+        variable: String,
+        grades: B,
+    ) -> Self
+    where
+        A: AsRef<Self>,
+        B: AsRef<Self>,
+    {
+
+        let dag_function = DAG_MANAGER
+            .get_or_create(
+                function.as_ref(),
+            )
+            .expect("Value is valid");
+
+        let dag_grades = DAG_MANAGER
+            .get_or_create(
+                grades.as_ref(),
+            )
+            .expect("Value is valid");
+
+        let node = DAG_MANAGER
+            .get_or_create_normalized(
+                DagOp::DerivativeN(
+                    variable,
+                ),
+                vec![
+                    dag_function,
+                    dag_grades,
+                ],
+            )
+            .expect("Value is valid");
+
+        Self::Dag(node)
+    }
+
     /// Creates a new `SparsePolynomial` expression, managed by the DAG.
     ///
     /// # Panics

@@ -133,6 +133,8 @@ pub fn lagrange_interpolation(
 ///
 /// // Check that interpolated value is reasonable (between the y values)
 /// let val = spline(0.5);
+///
+/// assert!((spline(0.5) - 0.6875).abs() < 1e-9);
 /// assert!(val > 0.0 && val < 1.0);
 /// ```
 
@@ -147,58 +149,51 @@ pub fn cubic_spline_interpolation(
 
     if n < 2 {
 
-        return Err(
-            "At least two points are \
-             required for spline \
-             interpolation."
-                .to_string(),
-        );
+        return Err("At least two \
+                    points are \
+                    required."
+            .to_string());
     }
 
     let mut h = vec![0.0; n - 1];
 
-    for i in 0 .. (n - 1) {
+    for i in 0 .. n - 1 {
 
         h[i] = points[i + 1].0
             - points[i].0;
     }
 
-    let mut alpha = vec![0.0; n - 1];
+    // 1. Calculate Alpha (size n)
+    let mut alpha = vec![0.0; n];
 
-    for i in 1 .. (n - 1) {
+    for i in 1 .. n - 1 {
 
         alpha[i] = (3.0 / h[i])
-            .mul_add(
-                points[i + 1].1
-                    - points[i].1,
-                -((3.0 / h[i - 1])
-                    * (points[i].1
-                        - points
-                            [i - 1]
-                            .1)),
-            );
+            * (points[i + 1].1
+                - points[i].1)
+            - (3.0 / h[i - 1])
+                * (points[i].1
+                    - points[i - 1].1);
     }
 
+    // 2. Solve Tridiagonal System
     let mut l = vec![1.0; n];
 
     let mut mu = vec![0.0; n];
 
     let mut z = vec![0.0; n];
 
-    for i in 1 .. (n - 1) {
+    for i in 1 .. n - 1 {
 
-        l[i] = 2.0f64.mul_add(
-            points[i + 1].0
-                - points[i - 1].0,
-            -(h[i - 1] * mu[i - 1]),
-        );
+        // The diagonal element is 2*(h[i-1] + h[i])
+        l[i] = 2.0 * (h[i - 1] + h[i])
+            - h[i - 1] * mu[i - 1];
 
         mu[i] = h[i] / l[i];
 
-        z[i] = h[i - 1].mul_add(
-            -z[i - 1],
-            alpha[i],
-        ) / l[i];
+        z[i] = (alpha[i]
+            - h[i - 1] * z[i - 1])
+            / l[i];
     }
 
     let mut c = vec![0.0; n];
@@ -207,68 +202,52 @@ pub fn cubic_spline_interpolation(
 
     let mut d = vec![0.0; n - 1];
 
-    for j in (0 .. (n - 1)).rev() {
+    // 3. Back-substitution
+    for j in (0 .. n - 1).rev() {
 
-        c[j] = mu[j]
-            .mul_add(-c[j + 1], z[j]);
+        c[j] = z[j] - mu[j] * c[j + 1];
 
         b[j] = (points[j + 1].1
             - points[j].1)
             / h[j]
             - h[j]
-                * 2.0f64.mul_add(
-                    c[j],
-                    c[j + 1],
-                )
+                * (c[j + 1]
+                    + 2.0 * c[j])
                 / 3.0;
 
         d[j] = (c[j + 1] - c[j])
             / (3.0 * h[j]);
     }
 
-    let points_owned: Vec<_> =
-        points.to_vec();
+    let points_owned = points.to_vec();
 
     let spline = move |x: f64| -> f64 {
 
-        let i = match points_owned.binary_search_by(|(px, _)| {
+        // 4. Find the correct interval
+        let mut i = 0;
 
-            px.partial_cmp(&x)
-                .unwrap_or_else(|| {
-                    if px.is_nan() && !x.is_nan() {
+        for j in
+            0 .. points_owned.len() - 1
+        {
 
-                        std::cmp::Ordering::Greater
-                    } else if !px.is_nan() && x.is_nan() {
+            if x >= points_owned[j].0
+                && x <= points_owned
+                    [j + 1]
+                    .0
+            {
 
-                        std::cmp::Ordering::Less
-                    } else {
+                i = j;
 
-                        std::cmp::Ordering::Equal
-                    }
-                })
-        }) {
-            | Ok(idx) => idx,
-            | Err(idx) => (idx - 1).max(0),
-        };
-
-        if i >= n - 1 {
-
-            return points_owned[n - 1]
-                .1;
+                break;
+            }
         }
 
         let dx = x - points_owned[i].0;
 
-        d[i].mul_add(
-            dx.powi(3),
-            c[i].mul_add(
-                dx.powi(2),
-                b[i].mul_add(
-                    dx,
-                    points_owned[i].1,
-                ),
-            ),
-        )
+        points_owned[i].1
+            + b[i] * dx
+            + c[i] * dx * dx
+            + d[i] * dx * dx * dx
     };
 
     Ok(Arc::new(spline))
