@@ -37,6 +37,7 @@ scc
 *.txt
 *.csv
 *.npy
+/tmp
 
 /node_modules
 
