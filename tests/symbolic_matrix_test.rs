@@ -2,6 +2,18 @@ use num_traits::ToPrimitive;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::matrix::*;
 use rssn::symbolic::simplify_dag::simplify;
+use rssn::symbolic::numeric::evaluate_numerical;
+
+fn assert_expr_approx_eq(actual: &Expr, expected: f64, tolerance: f64) {
+    let val = evaluate_numerical(actual).expect(&format!("Expected numerical value, got {:?}", actual));
+    assert!(
+        (val - expected).abs() < tolerance,
+        "Comparison failed: left: {}, right: {} (tolerance: {})",
+        val,
+        expected,
+        tolerance
+    );
+}
 
 #[test]
 
@@ -202,28 +214,13 @@ fn test_inverse_matrix() {
     // inv = 1/10 * [6 -7] = [0.6 -0.7]
     //              [-2 4]   [-0.2 0.4]
     let inv = inverse_matrix(&m);
-
+    println!("{}", inv);
     if let Expr::Matrix(rows) = inv {
 
-        assert_eq!(
-            rows[0][0],
-            Expr::new_constant(0.6)
-        );
-
-        assert_eq!(
-            rows[0][1],
-            Expr::new_constant(-0.7)
-        );
-
-        assert_eq!(
-            rows[1][0],
-            Expr::new_constant(-0.2)
-        );
-
-        assert_eq!(
-            rows[1][1],
-            Expr::new_constant(0.4)
-        );
+        assert_expr_approx_eq(&rows[0][0], 0.6, 1e-10);
+        assert_expr_approx_eq(&rows[0][1], -0.7, 1e-10);
+        assert_expr_approx_eq(&rows[1][0], -0.2, 1e-10);
+        assert_expr_approx_eq(&rows[1][1], 0.4, 1e-10);
     } else {
 
         panic!("Expected matrix");
@@ -263,77 +260,8 @@ fn test_solve_linear_system() {
     if let Expr::Matrix(rows) = sol {
 
         // x = 4.4, y = -1.8
-        let x_expr = &rows[0][0];
-
-        let y_expr = &rows[1][0];
-
-        let x = x_expr
-            .to_ast()
-            .unwrap_or(x_expr.clone());
-
-        let y = y_expr
-            .to_ast()
-            .unwrap_or(y_expr.clone());
-
-        println!("x = {:?}", x);
-
-        println!("y = {:?}", y);
-
-        // Check x approx 4.4
-        if let Expr::Constant(val) = x {
-
-            assert!(
-                (val - 4.4).abs()
-                    < 1e-10
-            );
-        } else if let Expr::Rational(
-            r,
-        ) = x
-        {
-
-            let val =
-                r.to_f64().unwrap();
-
-            assert!(
-                (val - 4.4).abs()
-                    < 1e-10
-            );
-        } else {
-
-            panic!(
-                "Expected constant \
-                 for x, got {:?}",
-                x
-            );
-        }
-
-        // Check y approx -1.8
-        if let Expr::Constant(val) = y {
-
-            assert!(
-                (val - (-1.8)).abs()
-                    < 1e-10
-            );
-        } else if let Expr::Rational(
-            r,
-        ) = y
-        {
-
-            let val =
-                r.to_f64().unwrap();
-
-            assert!(
-                (val - (-1.8)).abs()
-                    < 1e-10
-            );
-        } else {
-
-            panic!(
-                "Expected constant \
-                 for y, got {:?}",
-                y
-            );
-        }
+        assert_expr_approx_eq(&rows[0][0], 4.4, 1e-10);
+        assert_expr_approx_eq(&rows[1][0], -1.8, 1e-10);
     } else {
 
         panic!(

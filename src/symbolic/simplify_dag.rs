@@ -2150,9 +2150,16 @@ pub(crate) fn fold_constants(
             | (DagOp::Sqrt, [a]) => {
                 match a.to_f64() {
                     | Some(val) if val >= 0.0 => {
-                        Some(Expr::Constant(
-                            val.sqrt(),
-                        ))
+                        let root = val.sqrt();
+                        // Only fold if the square root is an integer (perfect square)
+                        // to preserve symbolic exactness for non-perfect squares.
+                        if (root.round() - root).abs() < 1e-12 {
+                            Some(Expr::Constant(
+                                root.round(),
+                            ))
+                        } else {
+                            None
+                        }
                     },
                     | _ => None,
                 }
