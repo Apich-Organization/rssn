@@ -229,61 +229,61 @@ pub mod ffi_apis {
 
     // crate::ffi_apis::compute_cache_ffi::bincode_api exports:
     pub use crate::ffi_apis::compute_cache_ffi::bincode_api::rssn_computation_result_cache_get_bincode;
-pub use crate::ffi_apis::compute_cache_ffi::bincode_api::rssn_computation_result_cache_set_bincode;
-pub use crate::ffi_apis::compute_cache_ffi::bincode_api::rssn_parsing_cache_get_bincode;
-pub use crate::ffi_apis::compute_cache_ffi::bincode_api::rssn_parsing_cache_set_bincode;
+    pub use crate::ffi_apis::compute_cache_ffi::bincode_api::rssn_computation_result_cache_set_bincode;
+    pub use crate::ffi_apis::compute_cache_ffi::bincode_api::rssn_parsing_cache_get_bincode;
+    pub use crate::ffi_apis::compute_cache_ffi::bincode_api::rssn_parsing_cache_set_bincode;
 
     // crate::ffi_apis::compute_cache_ffi::handle exports:
     pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_computation_result_cache_clear;
-pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_computation_result_cache_free;
-pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_computation_result_cache_get;
-pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_computation_result_cache_new;
-pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_computation_result_cache_set;
-pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_parsing_cache_clear;
-pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_parsing_cache_free;
-pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_parsing_cache_get;
-pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_parsing_cache_new;
-pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_parsing_cache_set;
+    pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_computation_result_cache_free;
+    pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_computation_result_cache_get;
+    pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_computation_result_cache_new;
+    pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_computation_result_cache_set;
+    pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_parsing_cache_clear;
+    pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_parsing_cache_free;
+    pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_parsing_cache_get;
+    pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_parsing_cache_new;
+    pub use crate::ffi_apis::compute_cache_ffi::handle::rssn_parsing_cache_set;
 
     // crate::ffi_apis::compute_cache_ffi::json exports:
     pub use crate::ffi_apis::compute_cache_ffi::json::rssn_computation_result_cache_get_json;
-pub use crate::ffi_apis::compute_cache_ffi::json::rssn_computation_result_cache_set_json;
-pub use crate::ffi_apis::compute_cache_ffi::json::rssn_parsing_cache_get_json;
-pub use crate::ffi_apis::compute_cache_ffi::json::rssn_parsing_cache_set_json;
+    pub use crate::ffi_apis::compute_cache_ffi::json::rssn_computation_result_cache_set_json;
+    pub use crate::ffi_apis::compute_cache_ffi::json::rssn_parsing_cache_get_json;
+    pub use crate::ffi_apis::compute_cache_ffi::json::rssn_parsing_cache_set_json;
 
     // crate::ffi_apis::compute_state_ffi::bincode_api exports:
     pub use crate::ffi_apis::compute_state_ffi::bincode_api::rssn_state_get_intermediate_value_bincode;
-pub use crate::ffi_apis::compute_state_ffi::bincode_api::rssn_state_new_bincode;
-pub use crate::ffi_apis::compute_state_ffi::bincode_api::rssn_state_set_intermediate_value_bincode;
+    pub use crate::ffi_apis::compute_state_ffi::bincode_api::rssn_state_new_bincode;
+    pub use crate::ffi_apis::compute_state_ffi::bincode_api::rssn_state_set_intermediate_value_bincode;
 
     // crate::ffi_apis::compute_state_ffi::handle exports:
     pub use crate::ffi_apis::compute_state_ffi::handle::rssn_state_free;
-pub use crate::ffi_apis::compute_state_ffi::handle::rssn_state_get_intermediate_value;
-pub use crate::ffi_apis::compute_state_ffi::handle::rssn_state_new;
-pub use crate::ffi_apis::compute_state_ffi::handle::rssn_state_set_intermediate_value;
+    pub use crate::ffi_apis::compute_state_ffi::handle::rssn_state_get_intermediate_value;
+    pub use crate::ffi_apis::compute_state_ffi::handle::rssn_state_new;
+    pub use crate::ffi_apis::compute_state_ffi::handle::rssn_state_set_intermediate_value;
 
     // crate::ffi_apis::compute_state_ffi::json exports:
     pub use crate::ffi_apis::compute_state_ffi::json::rssn_state_get_intermediate_value_json;
-pub use crate::ffi_apis::compute_state_ffi::json::rssn_state_new_json;
-pub use crate::ffi_apis::compute_state_ffi::json::rssn_state_set_intermediate_value_json;
+    pub use crate::ffi_apis::compute_state_ffi::json::rssn_state_new_json;
+    pub use crate::ffi_apis::compute_state_ffi::json::rssn_state_set_intermediate_value_json;
 
     // crate::ffi_apis::constant_ffi::bincode_api exports:
     pub use crate::ffi_apis::constant_ffi::bincode_api::rssn_get_build_date_bincode;
-pub use crate::ffi_apis::constant_ffi::bincode_api::rssn_get_build_info_bincode;
-pub use crate::ffi_apis::constant_ffi::bincode_api::rssn_get_commit_sha_bincode;
+    pub use crate::ffi_apis::constant_ffi::bincode_api::rssn_get_build_info_bincode;
+    pub use crate::ffi_apis::constant_ffi::bincode_api::rssn_get_commit_sha_bincode;
 
     // crate::ffi_apis::constant_ffi::handle exports:
     pub use crate::ffi_apis::constant_ffi::handle::rssn_get_build_date;
-pub use crate::ffi_apis::constant_ffi::handle::rssn_get_cargo_target_triple;
-pub use crate::ffi_apis::constant_ffi::handle::rssn_get_commit_sha;
-pub use crate::ffi_apis::constant_ffi::handle::rssn_get_rustc_version;
-pub use crate::ffi_apis::constant_ffi::handle::rssn_get_system_info;
+    pub use crate::ffi_apis::constant_ffi::handle::rssn_get_cargo_target_triple;
+    pub use crate::ffi_apis::constant_ffi::handle::rssn_get_commit_sha;
+    pub use crate::ffi_apis::constant_ffi::handle::rssn_get_rustc_version;
+    pub use crate::ffi_apis::constant_ffi::handle::rssn_get_system_info;
 
     // crate::ffi_apis::constant_ffi::json exports:
     pub use crate::ffi_apis::constant_ffi::json::BuildInfo;
-pub use crate::ffi_apis::constant_ffi::json::rssn_get_build_date_json;
-pub use crate::ffi_apis::constant_ffi::json::rssn_get_build_info_json;
-pub use crate::ffi_apis::constant_ffi::json::rssn_get_commit_sha_json;
+    pub use crate::ffi_apis::constant_ffi::json::rssn_get_build_date_json;
+    pub use crate::ffi_apis::constant_ffi::json::rssn_get_build_info_json;
+    pub use crate::ffi_apis::constant_ffi::json::rssn_get_commit_sha_json;
 
     // crate::ffi_apis::ffi_api exports:
     pub use crate::ffi_apis::ffi_api::combinatorics_combinations;
@@ -417,40 +417,40 @@ pub use crate::ffi_apis::constant_ffi::json::rssn_get_commit_sha_json;
 
     // crate::ffi_apis::numerical_calculus_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_calculus_ffi::bincode_api::rssn_numerical_gradient_bincode;
-pub use crate::ffi_apis::numerical_calculus_ffi::bincode_api::rssn_numerical_hessian_bincode;
-pub use crate::ffi_apis::numerical_calculus_ffi::bincode_api::rssn_numerical_jacobian_bincode;
+    pub use crate::ffi_apis::numerical_calculus_ffi::bincode_api::rssn_numerical_hessian_bincode;
+    pub use crate::ffi_apis::numerical_calculus_ffi::bincode_api::rssn_numerical_jacobian_bincode;
 
     // crate::ffi_apis::numerical_calculus_ffi::handle exports:
     pub use crate::ffi_apis::numerical_calculus_ffi::handle::rssn_num_calculus_gradient;
-pub use crate::ffi_apis::numerical_calculus_ffi::handle::rssn_num_calculus_hessian;
-pub use crate::ffi_apis::numerical_calculus_ffi::handle::rssn_num_calculus_jacobian;
-pub use crate::ffi_apis::numerical_calculus_ffi::handle::rssn_num_calculus_partial_derivative;
+    pub use crate::ffi_apis::numerical_calculus_ffi::handle::rssn_num_calculus_hessian;
+    pub use crate::ffi_apis::numerical_calculus_ffi::handle::rssn_num_calculus_jacobian;
+    pub use crate::ffi_apis::numerical_calculus_ffi::handle::rssn_num_calculus_partial_derivative;
 
     // crate::ffi_apis::numerical_calculus_ffi::json exports:
     pub use crate::ffi_apis::numerical_calculus_ffi::json::rssn_numerical_gradient_json;
-pub use crate::ffi_apis::numerical_calculus_ffi::json::rssn_numerical_hessian_json;
-pub use crate::ffi_apis::numerical_calculus_ffi::json::rssn_numerical_jacobian_json;
-
+    pub use crate::ffi_apis::numerical_calculus_ffi::json::rssn_numerical_hessian_json;
+    pub use crate::ffi_apis::numerical_calculus_ffi::json::rssn_numerical_jacobian_json;
+    
     // crate::ffi_apis::numerical_calculus_of_variations_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_calculus_of_variations_ffi::bincode_api::rssn_num_cov_evaluate_action_bincode;
 
     // crate::ffi_apis::numerical_calculus_of_variations_ffi::handle exports:
     pub use crate::ffi_apis::numerical_calculus_of_variations_ffi::handle::rssn_num_cov_euler_lagrange;
-pub use crate::ffi_apis::numerical_calculus_of_variations_ffi::handle::rssn_num_cov_evaluate_action;
+    pub use crate::ffi_apis::numerical_calculus_of_variations_ffi::handle::rssn_num_cov_evaluate_action;
 
     // crate::ffi_apis::numerical_calculus_of_variations_ffi::json exports:
     pub use crate::ffi_apis::numerical_calculus_of_variations_ffi::json::rssn_num_cov_evaluate_action_json;
 
     // crate::ffi_apis::numerical_combinatorics_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_bell_bincode;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_catalan_bincode;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_combinations_bincode;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_factorial_bincode;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_falling_factorial_bincode;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_permutations_bincode;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_rising_factorial_bincode;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_solve_recurrence_bincode;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_stirling_second_bincode;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_catalan_bincode;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_combinations_bincode;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_factorial_bincode;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_falling_factorial_bincode;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_permutations_bincode;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_rising_factorial_bincode;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_solve_recurrence_bincode;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::bincode_api::rssn_num_comb_stirling_second_bincode;
 
     // crate::ffi_apis::numerical_combinatorics_ffi::handle exports:
     pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_bell;
@@ -3986,6 +3986,9 @@ pub use crate::constant::COMMIT_SHA as constant_COMMIT_SHA;
 pub use crate::constant::RUSTC_VERSION as constant_RUSTC_VERSION;
 pub use crate::constant::SYSTEM_INFO as constant_SYSTEM_INFO;
 
+#[cfg(feature = "compute")]
+/// Prelude for the compute module
+pub mod compute {
 pub use crate::compute::cache::ComputationResultCache;
 pub use crate::compute::cache::ParsingCache;
 pub use crate::compute::computable::Computable;
@@ -3995,6 +3998,8 @@ pub use crate::compute::computation::ComputationStatus;
 pub use crate::compute::computation::Value;
 pub use crate::compute::engine::ComputeEngine;
 pub use crate::compute::state::State;
+}
+    
 pub use crate::constant::get_build_date;
 pub use crate::constant::get_cargo_target_triple;
 pub use crate::constant::get_commit_sha;
