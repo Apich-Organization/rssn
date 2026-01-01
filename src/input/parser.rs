@@ -1297,7 +1297,7 @@ pub(crate) fn parse_pde(
         input,
         Expr::Pde {
             equation: Arc::new(
-                equation,
+                parse_expr(&equation.to_string()).expect("Parse Equation Failed").1,
             ),
             func: func_name.to_string(),
             vars: vars_list
