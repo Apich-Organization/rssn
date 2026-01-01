@@ -753,8 +753,9 @@ pub fn bessel_j0(x: f64) -> f64 {
     let ax = x.abs();
 
     if ax < 8.0 {
+
         let y = x * x;
-        
+
         // Numerator coefficients
         let ans1 = y.mul_add(
             y.mul_add(
@@ -781,6 +782,7 @@ pub fn bessel_j0(x: f64) -> f64 {
 
         return ans1 / ans2;
     } else {
+
         // Asymptotic form
         let z = 8.0 / ax;
 

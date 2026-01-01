@@ -1,14 +1,28 @@
 use num_traits::ToPrimitive;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::matrix::*;
-use rssn::symbolic::simplify_dag::simplify;
 use rssn::symbolic::numeric::evaluate_numerical;
+use rssn::symbolic::simplify_dag::simplify;
 
-fn assert_expr_approx_eq(actual: &Expr, expected: f64, tolerance: f64) {
-    let val = evaluate_numerical(actual).expect(&format!("Expected numerical value, got {:?}", actual));
+fn assert_expr_approx_eq(
+    actual: &Expr,
+    expected: f64,
+    tolerance: f64,
+) {
+
+    let val =
+        evaluate_numerical(actual)
+            .expect(&format!(
+                "Expected numerical \
+                 value, got {:?}",
+                actual
+            ));
+
     assert!(
-        (val - expected).abs() < tolerance,
-        "Comparison failed: left: {}, right: {} (tolerance: {})",
+        (val - expected).abs()
+            < tolerance,
+        "Comparison failed: left: {}, \
+         right: {} (tolerance: {})",
         val,
         expected,
         tolerance
@@ -214,13 +228,34 @@ fn test_inverse_matrix() {
     // inv = 1/10 * [6 -7] = [0.6 -0.7]
     //              [-2 4]   [-0.2 0.4]
     let inv = inverse_matrix(&m);
+
     println!("{}", inv);
+
     if let Expr::Matrix(rows) = inv {
 
-        assert_expr_approx_eq(&rows[0][0], 0.6, 1e-10);
-        assert_expr_approx_eq(&rows[0][1], -0.7, 1e-10);
-        assert_expr_approx_eq(&rows[1][0], -0.2, 1e-10);
-        assert_expr_approx_eq(&rows[1][1], 0.4, 1e-10);
+        assert_expr_approx_eq(
+            &rows[0][0],
+            0.6,
+            1e-10,
+        );
+
+        assert_expr_approx_eq(
+            &rows[0][1],
+            -0.7,
+            1e-10,
+        );
+
+        assert_expr_approx_eq(
+            &rows[1][0],
+            -0.2,
+            1e-10,
+        );
+
+        assert_expr_approx_eq(
+            &rows[1][1],
+            0.4,
+            1e-10,
+        );
     } else {
 
         panic!("Expected matrix");
@@ -260,8 +295,17 @@ fn test_solve_linear_system() {
     if let Expr::Matrix(rows) = sol {
 
         // x = 4.4, y = -1.8
-        assert_expr_approx_eq(&rows[0][0], 4.4, 1e-10);
-        assert_expr_approx_eq(&rows[1][0], -1.8, 1e-10);
+        assert_expr_approx_eq(
+            &rows[0][0],
+            4.4,
+            1e-10,
+        );
+
+        assert_expr_approx_eq(
+            &rows[1][0],
+            -1.8,
+            1e-10,
+        );
     } else {
 
         panic!(

@@ -110,6 +110,7 @@ pub trait Field:
     }
 
     /// Returns a magnitude heuristic for pivot selection.
+
     fn magnitude(&self) -> f64;
 }
 
@@ -134,6 +135,7 @@ impl Field for f64 {
     }
 
     fn magnitude(&self) -> f64 {
+
         self.abs()
     }
 
@@ -359,9 +361,12 @@ impl Field for PrimeFieldElement {
     }
 
     fn magnitude(&self) -> f64 {
+
         if self.is_zero() {
+
             0.0
         } else {
+
             1.0
         }
     }
@@ -744,20 +749,29 @@ impl<T: Field> Matrix<T> {
             }
 
             let mut max_val = 0.0;
+
             let mut i = pivot_row;
+
             let mut best_row = i;
 
             // Partial pivoting: find the row with the largest magnitude in this column
             for row in i .. self.rows {
-                let val = self.get(row, j).magnitude();
+
+                let val = self
+                    .get(row, j)
+                    .magnitude();
+
                 if val > max_val {
+
                     max_val = val;
+
                     best_row = row;
                 }
             }
 
             // Use an epsilon for numerical stability
             if max_val > 1e-12 {
+
                 i = best_row;
 
                 for k in 0 .. self.cols

@@ -1,15 +1,20 @@
+use std::sync::LazyLock;
+use std::sync::Mutex;
+
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::handles::HANDLE_MANAGER;
-use std::sync::Mutex;
-use std::sync::LazyLock;
 
-static TEST_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+static TEST_MUTEX: LazyLock<Mutex<()>> =
+    LazyLock::new(|| Mutex::new(()));
 
 #[test]
 
 fn test_handle_insert_and_get() {
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     let expr = Expr::new_variable("x");
@@ -44,7 +49,10 @@ fn test_handle_insert_and_get() {
 
 fn test_handle_exists() {
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     let expr = Expr::new_constant(42.0);
@@ -68,7 +76,10 @@ fn test_handle_exists() {
 
 fn test_handle_free() {
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     let expr = Expr::new_variable("y");
@@ -110,7 +121,10 @@ fn test_handle_free() {
 
 fn test_handle_count() {
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     let initial_count =
@@ -159,7 +173,10 @@ fn test_handle_count() {
 
 fn test_handle_clear() {
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     let h1 = HANDLE_MANAGER.insert(
@@ -197,7 +214,10 @@ fn test_handle_clear() {
 
 fn test_handle_clone_expr() {
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     let expr = Expr::new_add(
@@ -233,7 +253,10 @@ fn test_handle_clone_expr() {
 
 fn test_handle_get_all_handles() {
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     let h1 = HANDLE_MANAGER.insert(
@@ -264,7 +287,10 @@ fn test_handle_get_all_handles() {
 
 fn test_handle_unique_ids() {
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     let h1 = HANDLE_MANAGER.insert(
@@ -290,7 +316,10 @@ fn test_handle_thread_safety() {
     use std::sync::Arc;
     use std::thread;
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     let handles = Arc::new(
@@ -377,7 +406,10 @@ fn test_handle_thread_safety() {
 
 fn test_handle_complex_expression() {
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     // Create a complex expression: (x^2 + y) * sin(z)
@@ -430,7 +462,10 @@ fn test_handle_complex_expression() {
 fn test_handle_persistence_across_operations()
  {
 
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX
+        .lock()
+        .unwrap();
+
     HANDLE_MANAGER.clear();
 
     let expr1 = Expr::new_variable("a");

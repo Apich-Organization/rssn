@@ -2137,27 +2137,57 @@ pub(crate) fn fold_constants(
             &node.op,
             values.as_slice(),
         ) {
-            | (DagOp::Add, [a, b]) => Some(add_em(a, b)),
-            | (DagOp::Sub, [a, b]) => Some(sub_em(a, b)),
-            | (DagOp::Mul, [a, b]) => Some(mul_em(a, b)),
-            | (DagOp::Div, [a, b]) => div_em(a, b),
-            | (DagOp::Power, [Expr::Constant(a), Expr::Constant(b)]) => {
+            | (DagOp::Add, [a, b]) => {
+                Some(add_em(a, b))
+            },
+            | (DagOp::Sub, [a, b]) => {
+                Some(sub_em(a, b))
+            },
+            | (DagOp::Mul, [a, b]) => {
+                Some(mul_em(a, b))
+            },
+            | (DagOp::Div, [a, b]) => {
+                div_em(a, b)
+            },
+            | (
+                DagOp::Power,
+                [
+                    Expr::Constant(a),
+                    Expr::Constant(b),
+                ],
+            ) => {
                 Some(Expr::Constant(
                     a.powf(*b),
                 ))
             },
-            | (DagOp::Neg, [a]) => Some(neg_em(a)),
+            | (DagOp::Neg, [a]) => {
+                Some(neg_em(a))
+            },
             | (DagOp::Sqrt, [a]) => {
+
                 match a.to_f64() {
-                    | Some(val) if val >= 0.0 => {
-                        let root = val.sqrt();
+                    | Some(val)
+                        if val
+                            >= 0.0 =>
+                    {
+
+                        let root =
+                            val.sqrt();
+
                         // Only fold if the square root is an integer (perfect square)
                         // to preserve symbolic exactness for non-perfect squares.
-                        if (root.round() - root).abs() < 1e-12 {
+                        if (root
+                            .round()
+                            - root)
+                            .abs()
+                            < 1e-12
+                        {
+
                             Some(Expr::Constant(
                                 root.round(),
                             ))
                         } else {
+
                             None
                         }
                     },
