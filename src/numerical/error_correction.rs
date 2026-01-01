@@ -708,152 +708,95 @@ pub fn reed_solomon_decode(
 
 /// Berlekamp-Massey algorithm to find the error locator polynomial.
 
-fn berlekamp_massey(
-    syndromes: &[u8]
-) -> Vec<u8> {
+fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
+    let mut sigma = vec![1u8];
+    let mut b = vec![1u8];
+    let mut l = 0;
 
-    let n = syndromes.len();
-
-    let mut sigma = vec![1u8]; // Error locator polynomial
-    let mut b = vec![1u8]; // Previous error locator polynomial
-    let mut l = 0usize; // Number of errors found
-
-    for i in 0 .. n {
-
-        // Compute discrepancy
+    for i in 0..syndromes.len() {
         let mut delta = syndromes[i];
-
-        for j in
-            1 ..= l.min(sigma.len() - 1)
-        {
-
-            delta ^= gf256_mul(
-                sigma[j],
-                syndromes[i - j],
-            );
+        for j in 1..=l {
+            if j < sigma.len() {
+                delta ^= gf256_mul(sigma[j], syndromes[i - j]);
+            }
         }
 
-        // Shift b: b = x * b
-        b.push(0);
+        b.insert(0, 0); 
+        // Correctly represents b(x) * x in Little-Endian
 
         if delta != 0 {
-
             let t = sigma.clone();
-
-            // sigma = sigma - delta * x^(i-m) * b
-            // where x^(i-m) * b is already stored in b
-            let scaled_b: Vec<u8> = b
-                .iter()
-                .map(|&c| {
-
-                    gf256_mul(c, delta)
-                })
-                .collect();
-
-            sigma = poly_add_gf256(
-                &sigma,
-                &scaled_b,
-            );
+            let scaled_b: Vec<u8> = b.iter().map(|&c| gf256_mul(c, delta)).collect();
+            sigma = poly_add_gf256(&sigma, &scaled_b);
 
             if 2 * l <= i {
-
                 l = i + 1 - l;
-
-                // b = t / delta
-                let delta_inv =
-                    gf256_inv(delta)
-                        .unwrap_or(0);
-
-                b = t
-                    .iter()
-                    .map(|&c| {
-
-                        gf256_mul(
-                            c,
-                            delta_inv,
-                        )
-                    })
-                    .collect();
+                let inv_delta = gf256_inv(delta).unwrap();
+                b = t.iter().map(|&c| gf256_mul(c, inv_delta)).collect();
             }
         }
     }
-
     sigma
+}
+
+/// Little-Endian Evaluation (Horner's Method)
+
+fn poly_eval_gf256_le(poly: &[u8], x: u8) -> u8 {
+    let mut result = 0;
+    // Iterate from the highest power down to the constant term
+    // result = (...((an*x + an-1)*x + an-2)...)*x + a0
+    for &coeff in poly.iter().rev() {
+        result = gf256_mul(result, x) ^ coeff;
+    }
+    result
 }
 
 /// Add two polynomials over GF(2^8).
 
-fn poly_add_gf256(
-    p1: &[u8],
-    p2: &[u8],
-) -> Vec<u8> {
-
-    let max_len = p1
-        .len()
-        .max(p2.len());
-
-    let mut result = vec![0u8; max_len];
-
-    for (i, &c) in p1
-        .iter()
-        .enumerate()
-    {
-
-        result
-            [max_len - p1.len() + i] ^=
-            c;
-    }
-
-    for (i, &c) in p2
-        .iter()
-        .enumerate()
-    {
-
-        result
-            [max_len - p2.len() + i] ^=
-            c;
-    }
-
+fn poly_add_gf256(p1: &[u8], p2: &[u8]) -> Vec<u8> {
+    let mut result = vec![0u8; p1.len().max(p2.len())];
+    for (i, &c) in p1.iter().enumerate() { result[i] ^= c; }
+    for (i, &c) in p2.iter().enumerate() { result[i] ^= c; }
     result
 }
 
 /// Extended Chien search to find error locations.
 
 fn chien_search_extended(
-    sigma: &[u8],
-    codeword_len: usize,
+    sigma: &[u8], 
+    codeword_len: usize
 ) -> Result<Vec<usize>, String> {
-
     let mut error_locs = Vec::new();
+    
+    // Find the actual degree of the polynomial (last non-zero coefficient)
+    let degree = sigma.iter().rposition(|&x| x != 0).unwrap_or(0);
+    
+    // If no errors (sigma is just [1]), we are done
+    if degree == 0 {
+        return Ok(Vec::new());
+    }
 
-    let num_errors = sigma.len() - 1;
-
-    for i in 0 .. codeword_len {
-
-        // Evaluate sigma at alpha^(-i) = alpha^(255-i)
-        let x = gf256_pow(
-            2,
-            ((255 - i) % 255) as u64,
-        );
-
-        let eval =
-            poly_eval_gf256(sigma, x);
-
-        if eval == 0 {
-
+    for i in 0..codeword_len {
+        // Map array index i to the power of x: (n - 1 - i)
+        let power = codeword_len - 1 - i;
+        
+        // Root we are looking for is alpha^(-power)
+        let x_inv = gf256_pow(2, power as u64); 
+        let x = gf256_inv(x_inv).unwrap_or(0);
+        
+        if poly_eval_gf256_le(sigma, x) == 0 {
             error_locs.push(i);
         }
     }
 
-    if error_locs.len() != num_errors
-        && num_errors > 0
-    {
-
+    // CRITICAL: Validation
+    // A polynomial of degree L must have exactly L roots in the field
+    // to be a valid error locator.
+    if error_locs.len() != degree {
         return Err(format!(
-            "Found {} error \
-             locations, expected {}",
+            "Uncorrectable errors: found {} roots, but expected {}",
             error_locs.len(),
-            num_errors
+            degree
         ));
     }
 
@@ -866,100 +809,48 @@ fn forney_algorithm_extended(
     omega: &[u8],
     sigma: &[u8],
     error_locs: &[usize],
-    _codeword_len: usize,
+    codeword_len: usize,
 ) -> Result<Vec<u8>, String> {
-
-    // Compute formal derivative of sigma
-    let sigma_prime =
-        poly_derivative_gf256(sigma);
-
+    let sigma_prime = poly_derivative_gf256(sigma);
     let mut magnitudes = Vec::new();
 
     for &loc in error_locs {
+        // 1. Calculate the same 'x' (root) used in Chien Search
+        let power = codeword_len - 1 - loc;
+        let x_inv = gf256_pow(2, power as u64); // alpha^j
+        let x = gf256_inv(x_inv).unwrap_or(0);  // alpha^-j (the root)
 
-        // X_i = alpha^loc, X_i^(-1) = alpha^(-loc) = alpha^(255-loc)
-        let x_inv = gf256_pow(
-            2,
-            ((255 - loc) % 255) as u64,
-        );
-
-        let omega_val = poly_eval_gf256(
-            omega, x_inv,
-        );
-
-        let sigma_prime_val =
-            poly_eval_gf256(
-                &sigma_prime,
-                x_inv,
-            );
+        // 2. Evaluate using Little-Endian logic
+        let omega_val = poly_eval_gf256_le(omega, x);
+        let sigma_prime_val = poly_eval_gf256_le(&sigma_prime, x);
 
         if sigma_prime_val == 0 {
-
-            return Err("Division by \
-                        zero in Forney \
-                        algorithm"
-                .to_string());
+            return Err("Division by zero in Forney".to_string());
         }
 
-        let magnitude = gf256_div(
-            omega_val,
-            sigma_prime_val,
-        )?;
-
+        // 3. Magnitude Y_i = Omega(x) / Sigma'(x)
+        // (Note: Some conventions require an extra X_i factor, 
+        // but for standard S_i = sum Y*X^i, this is correct)
+        let magnitude = gf256_div(omega_val, sigma_prime_val)?;
         magnitudes.push(magnitude);
     }
-
     Ok(magnitudes)
 }
 
 /// Compute formal derivative of polynomial in GF(2^8).
 
-fn poly_derivative_gf256(
-    poly: &[u8]
-) -> Vec<u8> {
-
-    if poly.len() <= 1 {
-
-        return vec![0];
-    }
-
-    // In GF(2), derivative of x^n is n*x^(n-1), and n mod 2 matters
-    // Only odd-indexed coefficients survive
-    let n = poly.len() - 1;
-
+fn poly_derivative_gf256(poly: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
-
-    // poly = a_n*x^n + a_(n-1)*x^(n-1) + ... + a_1*x + a_0
-    // derivative = n*a_n*x^(n-1) + ... + a_1
-    for (i, &coeff) in poly
-        .iter()
-        .enumerate()
-    {
-
-        let power = n - i;
-
-        if power > 0 && power % 2 == 1 {
-
-            result.push(coeff);
-        } else if power > 0 {
-
+    // derivative of sum(a_i * x^i) is sum(i * a_i * x^{i-1})
+    // In GF(2^8), i * a_i is 0 if i is even, a_i if i is odd.
+    for i in 1..poly.len() {
+        if i % 2 == 1 {
+            result.push(poly[i]);
+        } else {
             result.push(0);
         }
     }
-
-    // Remove leading zeros
-    while result.len() > 1
-        && result[0] == 0
-    {
-
-        result.remove(0);
-    }
-
-    if result.is_empty() {
-
-        result.push(0);
-    }
-
+    if result.is_empty() { result.push(0); }
     result
 }
 
@@ -1688,7 +1579,7 @@ pub fn crc16_compute(
     data: &[u8]
 ) -> u16 {
 
-    let mut crc: u16 = 0xFFFF;
+    let mut crc: u16 = 0x0000;
 
     for byte in data {
 

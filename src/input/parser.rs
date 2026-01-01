@@ -2318,25 +2318,30 @@ mod tests {
 
     fn test_parse_bigint() {
 
+        fn print_type_of<T>(_: &T) {
+            println!("{}", std::any::type_name::<T>());
+        }
         let expected = Expr::Neg(
             Arc::new(Expr::BigInt(
                 BigInt::from(456),
             )),
         );
-
+        let aa = parse_expr("123");
+        print_type_of(&aa);
+        print_type_of(&aa.unwrap().1);
+        let bb = Expr::BigInt(BigInt::from(123));
+        print_type_of(&bb);
+        print_type_of(&Expr::BigInt(BigInt::from(123)));
         assert_eq!(
-            parse_expr("123"),
-            Ok((
-                "",
-                Expr::BigInt(
-                    BigInt::from(123)
-                )
-            ))
+            parse_expr("123").expect("Parse Expr failed.").1,
+            Expr::BigInt(
+                BigInt::from(123)
+            )
         );
 
         assert_eq!(
-            parse_expr("-456"),
-            Ok(("", expected))
+            parse_expr("-456").expect("Parse Expr failed.").1,
+            expected
         );
     }
 

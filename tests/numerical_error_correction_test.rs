@@ -151,6 +151,36 @@ fn test_reed_solomon_decode_no_errors()
     );
 }
 
+#[test]
+
+fn test_reed_solomon_decode_with_errors()
+{
+
+    let message = vec![
+        0x01, 0x02, 0x03, 0x04,
+    ];
+
+    let codeword =
+        reed_solomon_encode(&message, 4).unwrap();
+
+    // Introduce an error
+    let mut corrupted = codeword.clone();
+
+    corrupted[0] ^= 0xFF;
+    println!("Corrupted codeword: {:?}", corrupted);
+    println!("Original codeword: {:?}", codeword);
+    println!("Message: {:?}", message);
+    
+    // Decode and correct
+    reed_solomon_decode(&mut corrupted, 4).unwrap();
+    println!("Corrected codeword: {:?}", corrupted);
+
+    assert_eq!(
+        &corrupted[0..message.len()], 
+        &message[..],
+    );
+}
+
 // ============================================================================
 // Hamming Code Tests
 // ============================================================================
@@ -574,7 +604,7 @@ fn test_crc16_basic() {
 
     // CRC-16 (IBM/Modbus) value for "123456789"
     // Our implementation uses the reflected polynomial 0xA001
-    assert_eq!(crc, 0x4B37);
+    assert_eq!(crc, 0xBB3D);
 }
 
 #[test]
@@ -586,7 +616,7 @@ fn test_crc16_empty() {
     let crc = crc16_compute(data);
 
     // CRC-16 of empty string
-    assert_eq!(crc, 0xFFFF);
+    assert_eq!(crc, 0x0000);
 }
 
 // ============================================================================

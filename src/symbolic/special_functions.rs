@@ -53,7 +53,7 @@
 //! use rssn::symbolic::special_functions::gamma;
 //!
 //! // Γ(5) = 4! = 24
-//! let g = gamma(Expr::Constant(5.0));
+//! let g = gamma(&Expr::Constant(5.0));
 //!
 //! assert_eq!(
 //!     g,
@@ -61,7 +61,7 @@
 //! );
 //!
 //! // Γ(0.5) = √π
-//! let g_half = gamma(Expr::Constant(0.5));
+//! let g_half = gamma(&Expr::Constant(0.5));
 //! // Returns Expr::Sqrt(Expr::Pi)
 //! ```
 //!
@@ -74,7 +74,7 @@
 //!
 //! // P₀(x) = 1
 //! let p0 = legendre_p(
-//!     Expr::Constant(0.0),
+//!     &Expr::Constant(0.0),
 //!     Expr::Variable("x".to_string()),
 //! );
 //!
@@ -85,7 +85,7 @@
 //!
 //! // H₀(x) = 1, H₁(x) = 2x
 //! let h0 = hermite_h(
-//!     Expr::Constant(0.0),
+//!     &Expr::Constant(0.0),
 //!     Expr::Variable("x".to_string()),
 //! );
 //!
@@ -126,7 +126,7 @@ use crate::symbolic::simplify_dag::simplify;
 /// use rssn::symbolic::special_functions::gamma;
 ///
 /// // Γ(5) = 4! = 24
-/// let g = gamma(Expr::Constant(5.0));
+/// let g = gamma(&Expr::Constant(5.0));
 ///
 /// assert_eq!(
 ///     g,
@@ -410,7 +410,7 @@ pub fn polygamma(
 /// use rssn::symbolic::special_functions::erf;
 ///
 /// // erf(0) = 0
-/// let e = erf(Expr::Constant(0.0));
+/// let e = erf(&Expr::Constant(0.0));
 ///
 /// assert_eq!(
 ///     e,
@@ -506,7 +506,7 @@ pub fn erfi(arg: Expr) -> Expr {
 /// use rssn::symbolic::special_functions::zeta;
 ///
 /// // ζ(0) = -1/2
-/// let z0 = zeta(Expr::Constant(0.0));
+/// let z0 = zeta(&Expr::Constant(0.0));
 ///
 /// assert_eq!(
 ///     z0,
@@ -598,8 +598,8 @@ pub fn zeta(arg: &Expr) -> Expr {
 ///
 /// // J_0(0) = 1
 /// let j0 = bessel_j(
-///     Expr::Constant(0.0),
-///     Expr::Constant(0.0),
+///     &Expr::Constant(0.0),
+///     &Expr::Constant(0.0),
 /// );
 ///
 /// assert_eq!(
@@ -821,7 +821,7 @@ pub fn bessel_k(
 ///
 /// // P_0(x) = 1
 /// let p0 = legendre_p(
-///     Expr::Constant(0.0),
+///     &Expr::Constant(0.0),
 ///     Expr::Variable("x".to_string()),
 /// );
 ///
@@ -1084,7 +1084,7 @@ pub fn generalized_laguerre(
 ///
 /// // H_0(x) = 1
 /// let h0 = hermite_h(
-///     Expr::Constant(0.0),
+///     &Expr::Constant(0.0),
 ///     Expr::Variable("x".to_string()),
 /// );
 ///
@@ -1197,8 +1197,8 @@ pub fn hermite_h(
 ///
 /// // T_0(x) = 1, T_1(x) = x
 /// let t0 = chebyshev_t(
-///     Expr::Constant(0.0),
-///     Expr::Variable("x".to_string()),
+///     &Expr::Constant(0.0),
+///     &Expr::Variable("x".to_string()),
 /// );
 ///
 /// assert_eq!(
