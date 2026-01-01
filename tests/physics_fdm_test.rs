@@ -42,6 +42,7 @@ fn test_heat_equation_2d_stability() {
         dt: 0.1,
         steps: 100,
     };
+
     let grid = solve_heat_equation_2d(
         &config,
         0.01,
@@ -78,6 +79,7 @@ fn test_wave_equation_2d_basic() {
         dt: 0.1,
         steps: 50,
     };
+
     let grid = solve_wave_equation_2d(
         &config,
         1.0,
@@ -99,6 +101,7 @@ fn test_wave_equation_2d_basic() {
 }
 
 #[test]
+
 fn test_poisson_solver() {
 
     let width = 20;
@@ -111,16 +114,21 @@ fn test_poisson_solver() {
 
     source[(10, 10)] = 10.0; // Positive source => Concave up => Minimum at source
 
-    let config = PoissonSolverConfig2D {
-        width,
-        height,
-        dx: 1.0,
-        dy: 1.0,
-        omega: 1.5,
-        max_iter: 1000,
-        tolerance: 1e-6,
-    };
-    let u = solve_poisson_2d(&config, &source);
+    let config =
+        PoissonSolverConfig2D {
+            width,
+            height,
+            dx: 1.0,
+            dy: 1.0,
+            omega: 1.5,
+            max_iter: 1000,
+            tolerance: 1e-6,
+        };
+
+    let u = solve_poisson_2d(
+        &config,
+        &source,
+    );
 
     // Potential should be minimum (most negative) at the negative source
     let min_val = u

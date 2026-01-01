@@ -217,6 +217,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::symbolic_vector_ffi::*;
 
     // crate::ffi_apis::common exports:
+    pub use crate::ffi_apis::common::BincodeBuffer;
     pub use crate::ffi_apis::common::c_str_to_str;
     pub use crate::ffi_apis::common::from_bincode_buffer;
     pub use crate::ffi_apis::common::from_json_string;
@@ -225,7 +226,6 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::common::to_bincode_buffer;
     pub use crate::ffi_apis::common::to_c_string;
     pub use crate::ffi_apis::common::to_json_string;
-    pub use crate::ffi_apis::common::BincodeBuffer;
 
     // crate::ffi_apis::compute_cache_ffi::bincode_api exports:
     pub use crate::ffi_apis::compute_cache_ffi::bincode_api::rssn_computation_result_cache_get_bincode;
@@ -286,6 +286,8 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::constant_ffi::json::rssn_get_commit_sha_json;
 
     // crate::ffi_apis::ffi_api exports:
+    pub use crate::ffi_apis::ffi_api::FfiPoint;
+    pub use crate::ffi_apis::ffi_api::FfiResult;
     pub use crate::ffi_apis::ffi_api::combinatorics_combinations;
     pub use crate::ffi_apis::ffi_api::combinatorics_factorial;
     pub use crate::ffi_apis::ffi_api::combinatorics_permutations;
@@ -412,8 +414,6 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::vector_norm;
     pub use crate::ffi_apis::ffi_api::vector_scalar_mul;
     pub use crate::ffi_apis::ffi_api::vector_sub;
-    pub use crate::ffi_apis::ffi_api::FfiPoint;
-    pub use crate::ffi_apis::ffi_api::FfiResult;
 
     // crate::ffi_apis::numerical_calculus_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_calculus_ffi::bincode_api::rssn_numerical_gradient_bincode;
@@ -430,7 +430,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_calculus_ffi::json::rssn_numerical_gradient_json;
     pub use crate::ffi_apis::numerical_calculus_ffi::json::rssn_numerical_hessian_json;
     pub use crate::ffi_apis::numerical_calculus_ffi::json::rssn_numerical_jacobian_json;
-    
+
     // crate::ffi_apis::numerical_calculus_of_variations_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_calculus_of_variations_ffi::bincode_api::rssn_num_cov_evaluate_action_bincode;
 
@@ -454,108 +454,108 @@ pub mod ffi_apis {
 
     // crate::ffi_apis::numerical_combinatorics_ffi::handle exports:
     pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_bell;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_catalan;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_combinations;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_factorial;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_falling_factorial;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_permutations;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_rising_factorial;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_solve_recurrence;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_stirling_second;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_catalan;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_combinations;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_factorial;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_falling_factorial;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_permutations;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_rising_factorial;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_solve_recurrence;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::handle::rssn_num_comb_stirling_second;
 
     // crate::ffi_apis::numerical_combinatorics_ffi::json exports:
     pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_bell_json;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_catalan_json;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_combinations_json;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_factorial_json;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_falling_factorial_json;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_permutations_json;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_rising_factorial_json;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_solve_recurrence_json;
-pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_stirling_second_json;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_catalan_json;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_combinations_json;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_factorial_json;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_falling_factorial_json;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_permutations_json;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_rising_factorial_json;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_solve_recurrence_json;
+    pub use crate::ffi_apis::numerical_combinatorics_ffi::json::rssn_num_comb_stirling_second_json;
 
     // crate::ffi_apis::numerical_complex_analysis_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_complex_analysis_ffi::bincode_api::rssn_num_complex_contour_integral_bincode;
-pub use crate::ffi_apis::numerical_complex_analysis_ffi::bincode_api::rssn_num_complex_eval_bincode;
+    pub use crate::ffi_apis::numerical_complex_analysis_ffi::bincode_api::rssn_num_complex_eval_bincode;
 
     // crate::ffi_apis::numerical_complex_analysis_ffi::handle exports:
     pub use crate::ffi_apis::numerical_complex_analysis_ffi::handle::rssn_num_complex_contour_integral;
-pub use crate::ffi_apis::numerical_complex_analysis_ffi::handle::rssn_num_complex_eval;
-pub use crate::ffi_apis::numerical_complex_analysis_ffi::handle::rssn_num_complex_residue;
+    pub use crate::ffi_apis::numerical_complex_analysis_ffi::handle::rssn_num_complex_eval;
+    pub use crate::ffi_apis::numerical_complex_analysis_ffi::handle::rssn_num_complex_residue;
 
     // crate::ffi_apis::numerical_complex_analysis_ffi::json exports:
     pub use crate::ffi_apis::numerical_complex_analysis_ffi::json::rssn_num_complex_contour_integral_json;
-pub use crate::ffi_apis::numerical_complex_analysis_ffi::json::rssn_num_complex_eval_json;
+    pub use crate::ffi_apis::numerical_complex_analysis_ffi::json::rssn_num_complex_eval_json;
 
     // crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_cross_product_bincode;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_dot_product_bincode;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_normalize_bincode;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_quaternion_multiply_bincode;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_rotation_matrix_x_bincode;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_translation_matrix_bincode;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_dot_product_bincode;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_normalize_bincode;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_quaternion_multiply_bincode;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_rotation_matrix_x_bincode;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::bincode_api::rssn_num_graphics_translation_matrix_bincode;
 
     // crate::ffi_apis::numerical_computer_graphics_ffi::handle exports:
     pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_angle_between;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_bezier_cubic;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_cross_product;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_degrees_to_radians;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_dot_product;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_magnitude;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_normalize;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_quaternion_multiply;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_radians_to_degrees;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_ray_sphere_intersection;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_reflect;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_rotation_matrix_x;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_bezier_cubic;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_cross_product;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_degrees_to_radians;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_dot_product;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_magnitude;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_normalize;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_quaternion_multiply;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_radians_to_degrees;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_ray_sphere_intersection;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_reflect;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::handle::rssn_num_graphics_rotation_matrix_x;
 
     // crate::ffi_apis::numerical_computer_graphics_ffi::json exports:
     pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_angle_between_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_bezier_cubic_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_cross_product_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_dot_product_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_look_at_matrix_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_magnitude_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_normalize_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_perspective_matrix_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_quaternion_multiply_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_quaternion_slerp_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_ray_sphere_intersection_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_reflect_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_rotation_matrix_axis_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_rotation_matrix_x_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_rotation_matrix_y_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_rotation_matrix_z_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_scaling_matrix_json;
-pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_translation_matrix_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_bezier_cubic_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_cross_product_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_dot_product_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_look_at_matrix_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_magnitude_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_normalize_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_perspective_matrix_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_quaternion_multiply_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_quaternion_slerp_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_ray_sphere_intersection_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_reflect_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_rotation_matrix_axis_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_rotation_matrix_x_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_rotation_matrix_y_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_rotation_matrix_z_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_scaling_matrix_json;
+    pub use crate::ffi_apis::numerical_computer_graphics_ffi::json::rssn_num_graphics_translation_matrix_json;
 
     // crate::ffi_apis::numerical_convergence_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_convergence_ffi::bincode_api::rssn_convergence_aitken_bincode;
-pub use crate::ffi_apis::numerical_convergence_ffi::bincode_api::rssn_convergence_richardson_bincode;
-pub use crate::ffi_apis::numerical_convergence_ffi::bincode_api::rssn_convergence_wynn_bincode;
+    pub use crate::ffi_apis::numerical_convergence_ffi::bincode_api::rssn_convergence_richardson_bincode;
+    pub use crate::ffi_apis::numerical_convergence_ffi::bincode_api::rssn_convergence_wynn_bincode;
 
     // crate::ffi_apis::numerical_convergence_ffi::handle exports:
     pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_aitken;
-pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_free_vec;
-pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_get_vec_data;
-pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_get_vec_len;
-pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_richardson;
-pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_wynn;
+    pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_free_vec;
+    pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_get_vec_data;
+    pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_get_vec_len;
+    pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_richardson;
+    pub use crate::ffi_apis::numerical_convergence_ffi::handle::rssn_convergence_wynn;
 
     // crate::ffi_apis::numerical_convergence_ffi::json exports:
     pub use crate::ffi_apis::numerical_convergence_ffi::json::rssn_convergence_aitken_json;
-pub use crate::ffi_apis::numerical_convergence_ffi::json::rssn_convergence_richardson_json;
-pub use crate::ffi_apis::numerical_convergence_ffi::json::rssn_convergence_wynn_json;
+    pub use crate::ffi_apis::numerical_convergence_ffi::json::rssn_convergence_richardson_json;
+    pub use crate::ffi_apis::numerical_convergence_ffi::json::rssn_convergence_wynn_json;
 
     // crate::ffi_apis::numerical_coordinates_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_coordinates_ffi::bincode_api::rssn_num_coord_transform_bincode;
-pub use crate::ffi_apis::numerical_coordinates_ffi::bincode_api::rssn_num_coord_transform_pure_bincode;
+    pub use crate::ffi_apis::numerical_coordinates_ffi::bincode_api::rssn_num_coord_transform_pure_bincode;
 
     // crate::ffi_apis::numerical_coordinates_ffi::handle exports:
     pub use crate::ffi_apis::numerical_coordinates_ffi::handle::rssn_num_coord_free;
-pub use crate::ffi_apis::numerical_coordinates_ffi::handle::rssn_num_coord_jacobian;
-pub use crate::ffi_apis::numerical_coordinates_ffi::handle::rssn_num_coord_transform_point;
-pub use crate::ffi_apis::numerical_coordinates_ffi::handle::rssn_num_coord_transform_point_pure;
+    pub use crate::ffi_apis::numerical_coordinates_ffi::handle::rssn_num_coord_jacobian;
+    pub use crate::ffi_apis::numerical_coordinates_ffi::handle::rssn_num_coord_transform_point;
+    pub use crate::ffi_apis::numerical_coordinates_ffi::handle::rssn_num_coord_transform_point_pure;
 
     // crate::ffi_apis::numerical_coordinates_ffi::json exports:
     pub use crate::ffi_apis::numerical_coordinates_ffi::json::rssn_num_coord_transform_json;
@@ -3930,10 +3930,11 @@ pub use crate::plugins::stable_abi::StablePlugin_trait::VTable_Ref;
 pub use std::collections::BTreeMap;
 pub use std::collections::HashMap;
 pub use std::collections::HashSet;
-pub use std::io::prelude as std_io_prelude;
 pub use std::io::Read as IoRead;
 pub use std::io::Write as IoWrite;
+pub use std::io::prelude as std_io_prelude;
 pub use std::prelude as std_prelude;
+pub use std::sync::LazyLock;
 
 pub use argmin::core::CostFunction as _;
 pub use argmin::core::Gradient as core_Gradient;
@@ -3944,18 +3945,17 @@ pub use argmin::core::Solver as core_Solver;
 pub use bigdecimal::BigDecimal;
 pub use dashmap::DashMap;
 pub use itertools::Itertools as itertools_Itertools;
-pub use std::sync::LazyLock;
 pub use nalgebra::DMatrix;
 pub use nalgebra::DVector;
 pub use nalgebra::Matrix3;
 pub use nalgebra::Vector3;
-pub use ndarray::prelude as ndarray_prelude;
-pub use ndarray::s;
 pub use ndarray::Array1;
 pub use ndarray::Array2;
 pub use ndarray::ArrayView;
 pub use ndarray::Axis;
 pub use ndarray::IntoDimension;
+pub use ndarray::prelude as ndarray_prelude;
+pub use ndarray::s;
 pub use num_complex::Complex;
 pub use num_rational::Ratio;
 pub use num_traits::Num;
@@ -3965,8 +3965,8 @@ pub use num_traits::Zero;
 pub use once_cell::sync::Lazy;
 pub use once_cell::sync::OnceCell;
 pub use ordered_float::OrderedFloat;
-pub use rand::prelude as rand_prelude;
 pub use rand::Rng as rand_Rng;
+pub use rand::prelude as rand_prelude;
 pub use rayon::prelude::*;
 pub use serde::Deserialize as serde_Deserialize;
 pub use serde::Serialize as serde_Serialize;
@@ -3988,8 +3988,10 @@ pub use crate::constant::SYSTEM_INFO as constant_SYSTEM_INFO;
 
 #[cfg(feature = "compute")]
 /// Prelude for the compute module
+
 pub mod compute {
-pub use crate::compute::cache::ComputationResultCache;
+
+    pub use crate::compute::cache::ComputationResultCache;
 pub use crate::compute::cache::ParsingCache;
 pub use crate::compute::computable::Computable;
 pub use crate::compute::computation::Computation;
@@ -3999,7 +4001,7 @@ pub use crate::compute::computation::Value;
 pub use crate::compute::engine::ComputeEngine;
 pub use crate::compute::state::State;
 }
-    
+
 pub use crate::constant::get_build_date;
 pub use crate::constant::get_cargo_target_triple;
 pub use crate::constant::get_commit_sha;
@@ -4008,9 +4010,9 @@ pub use crate::constant::get_system_info;
 pub use crate::input::parser::parse_expr;
 
 // crate::symbolic::cad exports:
-pub use crate::symbolic::cad::cad as cad_cad;
 pub use crate::symbolic::cad::Cad as cad_Cad;
 pub use crate::symbolic::cad::CadCell as cad_CadCell;
+pub use crate::symbolic::cad::cad as cad_cad;
 
 // crate::symbolic::calculus exports:
 pub use crate::symbolic::calculus::calculate_residue as calculus_calculate_residue;
@@ -4118,10 +4120,13 @@ pub use crate::symbolic::computer_graphics::translation_2d as computer_graphics_
 pub use crate::symbolic::computer_graphics::translation_3d as computer_graphics_translation_3d;
 
 // crate::symbolic::convergence exports:
-pub use crate::symbolic::convergence::analyze_convergence as convergence_analyze_convergence;
 pub use crate::symbolic::convergence::ConvergenceResult as convergence_ConvergenceResult;
+pub use crate::symbolic::convergence::analyze_convergence as convergence_analyze_convergence;
 
 // crate::symbolic::coordinates exports:
+pub use crate::symbolic::coordinates::CoordinateSystem as coordinates_CoordinateSystem;
+pub use crate::symbolic::coordinates::TensorType as coordinates_TensorType;
+pub use crate::symbolic::coordinates::TransformationRules as coordinates_TransformationRules;
 pub use crate::symbolic::coordinates::get_metric_tensor as coordinates_get_metric_tensor;
 pub use crate::symbolic::coordinates::get_to_cartesian_rules as coordinates_get_to_cartesian_rules;
 pub use crate::symbolic::coordinates::get_transform_rules as coordinates_get_transform_rules;
@@ -4134,28 +4139,25 @@ pub use crate::symbolic::coordinates::transform_expression as coordinates_transf
 pub use crate::symbolic::coordinates::transform_gradient as coordinates_transform_gradient;
 pub use crate::symbolic::coordinates::transform_point as coordinates_transform_point;
 pub use crate::symbolic::coordinates::transform_tensor2 as coordinates_transform_tensor2;
-pub use crate::symbolic::coordinates::CoordinateSystem as coordinates_CoordinateSystem;
-pub use crate::symbolic::coordinates::TensorType as coordinates_TensorType;
-pub use crate::symbolic::coordinates::TransformationRules as coordinates_TransformationRules;
 
 // crate::symbolic::core exports:
-pub use crate::symbolic::core::get_dynamic_op_properties as core_get_dynamic_op_properties;
-pub use crate::symbolic::core::register_dynamic_op as core_register_dynamic_op;
-pub use crate::symbolic::core::DynamicOpProperties as core_DynamicOpProperties;
 pub use crate::symbolic::core::DAG_MANAGER;
 pub use crate::symbolic::core::DYNAMIC_OP_REGISTRY;
+pub use crate::symbolic::core::DynamicOpProperties as core_DynamicOpProperties;
+pub use crate::symbolic::core::get_dynamic_op_properties as core_get_dynamic_op_properties;
+pub use crate::symbolic::core::register_dynamic_op as core_register_dynamic_op;
 
 // crate::symbolic::cryptography exports:
+pub use crate::symbolic::cryptography::CurvePoint as cryptography_CurvePoint;
+pub use crate::symbolic::cryptography::EcdhKeyPair as cryptography_EcdhKeyPair;
+pub use crate::symbolic::cryptography::EcdsaSignature as cryptography_EcdsaSignature;
+pub use crate::symbolic::cryptography::EllipticCurve as cryptography_EllipticCurve;
 pub use crate::symbolic::cryptography::ecdsa_sign as cryptography_ecdsa_sign;
 pub use crate::symbolic::cryptography::ecdsa_verify as cryptography_ecdsa_verify;
 pub use crate::symbolic::cryptography::generate_keypair as cryptography_generate_keypair;
 pub use crate::symbolic::cryptography::generate_shared_secret as cryptography_generate_shared_secret;
 pub use crate::symbolic::cryptography::point_compress as cryptography_point_compress;
 pub use crate::symbolic::cryptography::point_decompress as cryptography_point_decompress;
-pub use crate::symbolic::cryptography::CurvePoint as cryptography_CurvePoint;
-pub use crate::symbolic::cryptography::EcdhKeyPair as cryptography_EcdhKeyPair;
-pub use crate::symbolic::cryptography::EcdsaSignature as cryptography_EcdsaSignature;
-pub use crate::symbolic::cryptography::EllipticCurve as cryptography_EllipticCurve;
 
 // crate::symbolic::differential_geometry exports:
 pub use crate::symbolic::differential_geometry::DifferentialForm as differential_geometry_DifferentialForm;
@@ -4328,20 +4330,20 @@ pub use crate::symbolic::graph_operations::tensor_product as graph_operations_te
 pub use crate::symbolic::graph_operations::union as graph_operations_union;
 
 // crate::symbolic::grobner exports:
+pub use crate::symbolic::grobner::MonomialOrder as grobner_MonomialOrder;
 pub use crate::symbolic::grobner::buchberger as grobner_buchberger;
 pub use crate::symbolic::grobner::poly_division_multivariate as grobner_poly_division_multivariate;
 pub use crate::symbolic::grobner::subtract_poly as grobner_subtract_poly;
-pub use crate::symbolic::grobner::MonomialOrder as grobner_MonomialOrder;
 
 // crate::symbolic::group_theory exports:
-pub use crate::symbolic::group_theory::character as group_theory_character;
 pub use crate::symbolic::group_theory::Group as group_theory_Group;
 pub use crate::symbolic::group_theory::GroupElement as group_theory_GroupElement;
 pub use crate::symbolic::group_theory::Representation as group_theory_Representation;
+pub use crate::symbolic::group_theory::character as group_theory_character;
 
 // crate::symbolic::handles exports:
-pub use crate::symbolic::handles::HandleManager as handles_HandleManager;
 pub use crate::symbolic::handles::HANDLE_MANAGER as handles_HANDLE_MANAGER;
+pub use crate::symbolic::handles::HandleManager as handles_HandleManager;
 
 // crate::symbolic::integral_equations exports:
 pub use crate::symbolic::integral_equations::FredholmEquation as integral_equations_FredholmEquation;
@@ -4373,11 +4375,11 @@ pub use crate::symbolic::lie_groups_and_algebras::su2 as lie_groups_and_algebras
 pub use crate::symbolic::lie_groups_and_algebras::su2_generators as lie_groups_and_algebras_su2_generators;
 
 // crate::symbolic::logic exports:
+pub use crate::symbolic::logic::Literal as logic_Literal;
 pub use crate::symbolic::logic::is_satisfiable as logic_is_satisfiable;
 pub use crate::symbolic::logic::simplify_logic as logic_simplify_logic;
 pub use crate::symbolic::logic::to_cnf as logic_to_cnf;
 pub use crate::symbolic::logic::to_dnf as logic_to_dnf;
-pub use crate::symbolic::logic::Literal as logic_Literal;
 
 // crate::symbolic::matrix exports:
 pub use crate::symbolic::matrix::add_matrices as matrix_add_matrices;
@@ -4434,6 +4436,7 @@ pub use crate::symbolic::number_theory::sqrt_continued_fraction as number_theory
 pub use crate::symbolic::numeric::evaluate_numerical as numeric_evaluate_numerical;
 
 // crate::symbolic::ode exports:
+pub use crate::symbolic::ode::ParsedODE as ode_ParsedODE;
 pub use crate::symbolic::ode::solve_bernoulli_ode as ode_solve_bernoulli_ode;
 pub use crate::symbolic::ode::solve_by_reduction_of_order as ode_solve_by_reduction_of_order;
 pub use crate::symbolic::ode::solve_cauchy_euler_ode as ode_solve_cauchy_euler_ode;
@@ -4445,16 +4448,18 @@ pub use crate::symbolic::ode::solve_ode_by_series as ode_solve_ode_by_series;
 pub use crate::symbolic::ode::solve_ode_system as ode_solve_ode_system;
 pub use crate::symbolic::ode::solve_riccati_ode as ode_solve_riccati_ode;
 pub use crate::symbolic::ode::solve_separable_ode as ode_solve_separable_ode;
-pub use crate::symbolic::ode::ParsedODE as ode_ParsedODE;
 
 // crate::symbolic::optimize exports:
+pub use crate::symbolic::optimize::CriticalPoint as optimize_CriticalPoint;
+pub use crate::symbolic::optimize::ExtremumType as optimize_ExtremumType;
 pub use crate::symbolic::optimize::find_constrained_extrema as optimize_find_constrained_extrema;
 pub use crate::symbolic::optimize::find_extrema as optimize_find_extrema;
 pub use crate::symbolic::optimize::hessian_matrix as optimize_hessian_matrix;
-pub use crate::symbolic::optimize::CriticalPoint as optimize_CriticalPoint;
-pub use crate::symbolic::optimize::ExtremumType as optimize_ExtremumType;
 
 // crate::symbolic::pde exports:
+pub use crate::symbolic::pde::BoundaryConditions as pde_BoundaryConditions;
+pub use crate::symbolic::pde::PDEClassification as pde_PDEClassification;
+pub use crate::symbolic::pde::PDEType as pde_PDEType;
 pub use crate::symbolic::pde::classify_pde_heuristic as pde_classify_pde_heuristic;
 pub use crate::symbolic::pde::solve_burgers_equation as pde_solve_burgers_equation;
 pub use crate::symbolic::pde::solve_heat_equation_1d as pde_solve_heat_equation_1d;
@@ -4474,9 +4479,6 @@ pub use crate::symbolic::pde::solve_second_order_pde as pde_solve_second_order_p
 pub use crate::symbolic::pde::solve_wave_equation_1d_dalembert as pde_solve_wave_equation_1d_dalembert;
 pub use crate::symbolic::pde::solve_wave_equation_3d as pde_solve_wave_equation_3d;
 pub use crate::symbolic::pde::solve_with_fourier_transform as pde_solve_with_fourier_transform;
-pub use crate::symbolic::pde::BoundaryConditions as pde_BoundaryConditions;
-pub use crate::symbolic::pde::PDEClassification as pde_PDEClassification;
-pub use crate::symbolic::pde::PDEType as pde_PDEType;
 
 // crate::symbolic::poly_factorization exports:
 pub use crate::symbolic::poly_factorization::berlekamp_factorization as poly_factorization_berlekamp_factorization;
@@ -4575,9 +4577,9 @@ pub use crate::symbolic::relativity::schwarzschild_radius as relativity_schwarzs
 pub use crate::symbolic::relativity::velocity_addition as relativity_velocity_addition;
 
 // crate::symbolic::rewriting exports:
+pub use crate::symbolic::rewriting::RewriteRule as rewriting_RewriteRule;
 pub use crate::symbolic::rewriting::apply_rules_to_normal_form as rewriting_apply_rules_to_normal_form;
 pub use crate::symbolic::rewriting::knuth_bendix as rewriting_knuth_bendix;
-pub use crate::symbolic::rewriting::RewriteRule as rewriting_RewriteRule;
 
 // crate::symbolic::series exports:
 pub use crate::symbolic::series::analytic_continuation as series_analytic_continuation;
@@ -4591,6 +4593,7 @@ pub use crate::symbolic::series::summation as series_summation;
 pub use crate::symbolic::series::taylor_series as series_taylor_series;
 
 // crate::symbolic::simplify exports:
+pub use crate::symbolic::simplify::RewriteRule as simplify_RewriteRule;
 pub use crate::symbolic::simplify::as_f64 as simplify_as_f64;
 pub use crate::symbolic::simplify::collect_and_order_terms as simplify_collect_and_order_terms;
 pub use crate::symbolic::simplify::get_name as simplify_get_name;
@@ -4598,7 +4601,6 @@ pub use crate::symbolic::simplify::heuristic_simplify as simplify_heuristic_simp
 pub use crate::symbolic::simplify::is_numeric as simplify_is_numeric;
 pub use crate::symbolic::simplify::is_one as simplify_is_one;
 pub use crate::symbolic::simplify::is_zero as simplify_is_zero;
-pub use crate::symbolic::simplify::RewriteRule as simplify_RewriteRule;
 
 // crate::symbolic::solid_state_physics exports:
 pub use crate::symbolic::solid_state_physics::CrystalLattice as solid_state_physics_CrystalLattice;
@@ -4719,12 +4721,12 @@ pub use crate::symbolic::stats_regression::polynomial_regression_symbolic as sta
 pub use crate::symbolic::stats_regression::simple_linear_regression_symbolic as stats_regression_simple_linear_regression_symbolic;
 
 // crate::symbolic::tensor exports:
+pub use crate::symbolic::tensor::MetricTensor as tensor_MetricTensor;
+pub use crate::symbolic::tensor::Tensor as tensor_Tensor;
 pub use crate::symbolic::tensor::christoffel_symbols_first_kind as tensor_christoffel_symbols_first_kind;
 pub use crate::symbolic::tensor::christoffel_symbols_second_kind as tensor_christoffel_symbols_second_kind;
 pub use crate::symbolic::tensor::covariant_derivative_vector as tensor_covariant_derivative_vector;
 pub use crate::symbolic::tensor::riemann_curvature_tensor as tensor_riemann_curvature_tensor;
-pub use crate::symbolic::tensor::MetricTensor as tensor_MetricTensor;
-pub use crate::symbolic::tensor::Tensor as tensor_Tensor;
 
 // crate::symbolic::thermodynamics exports:
 pub use crate::symbolic::thermodynamics::boltzmann_distribution as thermodynamics_boltzmann_distribution;
@@ -4742,9 +4744,6 @@ pub use crate::symbolic::thermodynamics::verify_maxwell_relation_helmholtz as th
 pub use crate::symbolic::thermodynamics::work_isothermal_expansion as thermodynamics_work_isothermal_expansion;
 
 // crate::symbolic::topology exports:
-pub use crate::symbolic::topology::create_grid_complex as topology_create_grid_complex;
-pub use crate::symbolic::topology::create_torus_complex as topology_create_torus_complex;
-pub use crate::symbolic::topology::vietoris_rips_filtration as topology_vietoris_rips_filtration;
 pub use crate::symbolic::topology::Chain as topology_Chain;
 pub use crate::symbolic::topology::ChainComplex as topology_ChainComplex;
 pub use crate::symbolic::topology::Cochain as topology_Cochain;
@@ -4753,6 +4752,9 @@ pub use crate::symbolic::topology::Simplex as topology_Simplex;
 pub use crate::symbolic::topology::SimplicialComplex as topology_SimplicialComplex;
 pub use crate::symbolic::topology::SymbolicChain as topology_SymbolicChain;
 pub use crate::symbolic::topology::SymbolicCochain as topology_SymbolicCochain;
+pub use crate::symbolic::topology::create_grid_complex as topology_create_grid_complex;
+pub use crate::symbolic::topology::create_torus_complex as topology_create_torus_complex;
+pub use crate::symbolic::topology::vietoris_rips_filtration as topology_vietoris_rips_filtration;
 
 // crate::symbolic::transforms exports:
 pub use crate::symbolic::transforms::convolution_fourier as transforms_convolution_fourier;
@@ -4783,12 +4785,12 @@ pub use crate::symbolic::unit_unification::UnitQuantity as unit_unification_Unit
 pub use crate::symbolic::unit_unification::unify_expression as unit_unification_unify_expression;
 
 // crate::symbolic::vector exports:
+pub use crate::symbolic::vector::Vector as vector_Vector;
 pub use crate::symbolic::vector::curl as vector_curl;
 pub use crate::symbolic::vector::directional_derivative as vector_directional_derivative;
 pub use crate::symbolic::vector::divergence as vector_divergence;
 pub use crate::symbolic::vector::gradient as vector_gradient;
 pub use crate::symbolic::vector::partial_derivative_vector as vector_partial_derivative_vector;
-pub use crate::symbolic::vector::Vector as vector_Vector;
 
 // crate::symbolic::vector_calculus exports:
 pub use crate::symbolic::vector_calculus::ParametricCurve as vector_calculus_ParametricCurve;
@@ -5621,22 +5623,22 @@ pub use crate::numerical::functional_analysis::project as numerical_functional_a
 pub use crate::numerical::geometric_algebra::Multivector3D as geometric_algebra_Multivector3D;
 
 // crate::numerical::graph exports:
+pub use crate::numerical::graph::Graph as numerical_graph_Graph;
 pub use crate::numerical::graph::bfs as graph_bfs;
 pub use crate::numerical::graph::connected_components as graph_connected_components;
 pub use crate::numerical::graph::dijkstra as graph_dijkstra;
 pub use crate::numerical::graph::floyd_warshall as graph_floyd_warshall;
 pub use crate::numerical::graph::minimum_spanning_tree as graph_minimum_spanning_tree;
 pub use crate::numerical::graph::page_rank as graph_page_rank;
-pub use crate::numerical::graph::Graph as numerical_graph_Graph;
 
 // crate::numerical::integrate exports:
+pub use crate::numerical::integrate::QuadratureMethod as integrate_QuadratureMethod;
 pub use crate::numerical::integrate::adaptive_quadrature as integrate_adaptive_quadrature;
 pub use crate::numerical::integrate::gauss_legendre_quadrature as integrate_gauss_legendre_quadrature;
 pub use crate::numerical::integrate::quadrature as integrate_quadrature;
 pub use crate::numerical::integrate::romberg_integration as integrate_romberg_integration;
 pub use crate::numerical::integrate::simpson_rule as integrate_simpson_rule;
 pub use crate::numerical::integrate::trapezoidal_rule as integrate_trapezoidal_rule;
-pub use crate::numerical::integrate::QuadratureMethod as integrate_QuadratureMethod;
 
 // crate::numerical::interpolate exports:
 pub use crate::numerical::interpolate::b_spline as interpolate_b_spline;
@@ -5669,11 +5671,11 @@ pub use crate::numerical::number_theory::phi as number_theory_phi;
 pub use crate::numerical::number_theory::primes_sieve as number_theory_primes_sieve;
 
 // crate::numerical::ode exports:
+pub use crate::numerical::ode::OdeSolverMethod as ode_OdeSolverMethod;
 pub use crate::numerical::ode::solve_ode_euler as ode_solve_ode_euler;
 pub use crate::numerical::ode::solve_ode_heun as ode_solve_ode_heun;
 pub use crate::numerical::ode::solve_ode_system as numerical_ode_solve_ode_system;
 pub use crate::numerical::ode::solve_ode_system_rk4 as ode_solve_ode_system_rk4;
-pub use crate::numerical::ode::OdeSolverMethod as ode_OdeSolverMethod;
 
 // crate::numerical::optimize exports:
 
@@ -5681,6 +5683,26 @@ pub use crate::numerical::ode::OdeSolverMethod as ode_OdeSolverMethod;
 pub use crate::numerical::pde::pde_solver as pde_pde_solver;
 
 // crate::numerical::physics exports:
+pub use crate::numerical::physics::ATOMIC_MASS_UNIT as physics_ATOMIC_MASS_UNIT;
+pub use crate::numerical::physics::AVOGADRO_NUMBER as physics_AVOGADRO_NUMBER;
+pub use crate::numerical::physics::BOHR_RADIUS as physics_BOHR_RADIUS;
+pub use crate::numerical::physics::BOLTZMANN_CONSTANT as physics_BOLTZMANN_CONSTANT;
+pub use crate::numerical::physics::COULOMB_CONSTANT as physics_COULOMB_CONSTANT;
+pub use crate::numerical::physics::ELECTRON_MASS as physics_ELECTRON_MASS;
+pub use crate::numerical::physics::ELEMENTARY_CHARGE as physics_ELEMENTARY_CHARGE;
+pub use crate::numerical::physics::FINE_STRUCTURE_CONSTANT as physics_FINE_STRUCTURE_CONSTANT;
+pub use crate::numerical::physics::GAS_CONSTANT as physics_GAS_CONSTANT;
+pub use crate::numerical::physics::GRAVITATIONAL_CONSTANT as physics_GRAVITATIONAL_CONSTANT;
+pub use crate::numerical::physics::HBAR as physics_HBAR;
+pub use crate::numerical::physics::NEUTRON_MASS as physics_NEUTRON_MASS;
+pub use crate::numerical::physics::PLANCK_CONSTANT as physics_PLANCK_CONSTANT;
+pub use crate::numerical::physics::PROTON_MASS as physics_PROTON_MASS;
+pub use crate::numerical::physics::Particle3D as physics_Particle3D;
+pub use crate::numerical::physics::SPEED_OF_LIGHT as physics_SPEED_OF_LIGHT;
+pub use crate::numerical::physics::STANDARD_GRAVITY as physics_STANDARD_GRAVITY;
+pub use crate::numerical::physics::STEFAN_BOLTZMANN as physics_STEFAN_BOLTZMANN;
+pub use crate::numerical::physics::VACUUM_PERMEABILITY as physics_VACUUM_PERMEABILITY;
+pub use crate::numerical::physics::VACUUM_PERMITTIVITY as physics_VACUUM_PERMITTIVITY;
 pub use crate::numerical::physics::blackbody_power as physics_blackbody_power;
 pub use crate::numerical::physics::compton_wavelength as physics_compton_wavelength;
 pub use crate::numerical::physics::coulomb_force as physics_coulomb_force;
@@ -5723,28 +5745,9 @@ pub use crate::numerical::physics::solve_wave_equation_1d as physics_solve_wave_
 pub use crate::numerical::physics::time_dilation as physics_time_dilation;
 pub use crate::numerical::physics::total_kinetic_energy as physics_total_kinetic_energy;
 pub use crate::numerical::physics::wien_displacement_wavelength as physics_wien_displacement_wavelength;
-pub use crate::numerical::physics::Particle3D as physics_Particle3D;
-pub use crate::numerical::physics::ATOMIC_MASS_UNIT as physics_ATOMIC_MASS_UNIT;
-pub use crate::numerical::physics::AVOGADRO_NUMBER as physics_AVOGADRO_NUMBER;
-pub use crate::numerical::physics::BOHR_RADIUS as physics_BOHR_RADIUS;
-pub use crate::numerical::physics::BOLTZMANN_CONSTANT as physics_BOLTZMANN_CONSTANT;
-pub use crate::numerical::physics::COULOMB_CONSTANT as physics_COULOMB_CONSTANT;
-pub use crate::numerical::physics::ELECTRON_MASS as physics_ELECTRON_MASS;
-pub use crate::numerical::physics::ELEMENTARY_CHARGE as physics_ELEMENTARY_CHARGE;
-pub use crate::numerical::physics::FINE_STRUCTURE_CONSTANT as physics_FINE_STRUCTURE_CONSTANT;
-pub use crate::numerical::physics::GAS_CONSTANT as physics_GAS_CONSTANT;
-pub use crate::numerical::physics::GRAVITATIONAL_CONSTANT as physics_GRAVITATIONAL_CONSTANT;
-pub use crate::numerical::physics::HBAR as physics_HBAR;
-pub use crate::numerical::physics::NEUTRON_MASS as physics_NEUTRON_MASS;
-pub use crate::numerical::physics::PLANCK_CONSTANT as physics_PLANCK_CONSTANT;
-pub use crate::numerical::physics::PROTON_MASS as physics_PROTON_MASS;
-pub use crate::numerical::physics::SPEED_OF_LIGHT as physics_SPEED_OF_LIGHT;
-pub use crate::numerical::physics::STANDARD_GRAVITY as physics_STANDARD_GRAVITY;
-pub use crate::numerical::physics::STEFAN_BOLTZMANN as physics_STEFAN_BOLTZMANN;
-pub use crate::numerical::physics::VACUUM_PERMEABILITY as physics_VACUUM_PERMEABILITY;
-pub use crate::numerical::physics::VACUUM_PERMITTIVITY as physics_VACUUM_PERMITTIVITY;
 
 // crate::numerical::physics_cfd exports:
+pub use crate::numerical::physics_cfd::FluidProperties as physics_cfd_FluidProperties;
 pub use crate::numerical::physics_cfd::apply_dirichlet_bc as physics_cfd_apply_dirichlet_bc;
 pub use crate::numerical::physics_cfd::apply_neumann_bc as physics_cfd_apply_neumann_bc;
 pub use crate::numerical::physics_cfd::cfl_number as physics_cfd_cfl_number;
@@ -5770,9 +5773,16 @@ pub use crate::numerical::physics_cfd::solve_poisson_2d_gauss_seidel as physics_
 pub use crate::numerical::physics_cfd::solve_poisson_2d_jacobi as physics_cfd_solve_poisson_2d_jacobi;
 pub use crate::numerical::physics_cfd::solve_poisson_2d_sor as physics_cfd_solve_poisson_2d_sor;
 pub use crate::numerical::physics_cfd::velocity_from_stream_function as physics_cfd_velocity_from_stream_function;
-pub use crate::numerical::physics_cfd::FluidProperties as physics_cfd_FluidProperties;
 
 // crate::numerical::physics_fea exports:
+pub use crate::numerical::physics_fea::BeamElement2D as physics_fea_BeamElement2D;
+pub use crate::numerical::physics_fea::LinearElement1D as physics_fea_LinearElement1D;
+pub use crate::numerical::physics_fea::Material as physics_fea_Material;
+pub use crate::numerical::physics_fea::Node2D as physics_fea_Node2D;
+pub use crate::numerical::physics_fea::Node3D as physics_fea_Node3D;
+pub use crate::numerical::physics_fea::ThermalElement1D as physics_fea_ThermalElement1D;
+pub use crate::numerical::physics_fea::ThermalTriangle2D as physics_fea_ThermalTriangle2D;
+pub use crate::numerical::physics_fea::TriangleElement2D as physics_fea_TriangleElement2D;
 pub use crate::numerical::physics_fea::apply_boundary_conditions_penalty as physics_fea_apply_boundary_conditions_penalty;
 pub use crate::numerical::physics_fea::assemble_2d_stiffness_matrix as physics_fea_assemble_2d_stiffness_matrix;
 pub use crate::numerical::physics_fea::assemble_global_stiffness_matrix as physics_fea_assemble_global_stiffness_matrix;
@@ -5783,16 +5793,14 @@ pub use crate::numerical::physics_fea::principal_stresses as physics_fea_princip
 pub use crate::numerical::physics_fea::refine_mesh as physics_fea_refine_mesh;
 pub use crate::numerical::physics_fea::safety_factor_von_mises as physics_fea_safety_factor_von_mises;
 pub use crate::numerical::physics_fea::solve_static_structural as physics_fea_solve_static_structural;
-pub use crate::numerical::physics_fea::BeamElement2D as physics_fea_BeamElement2D;
-pub use crate::numerical::physics_fea::LinearElement1D as physics_fea_LinearElement1D;
-pub use crate::numerical::physics_fea::Material as physics_fea_Material;
-pub use crate::numerical::physics_fea::Node2D as physics_fea_Node2D;
-pub use crate::numerical::physics_fea::Node3D as physics_fea_Node3D;
-pub use crate::numerical::physics_fea::ThermalElement1D as physics_fea_ThermalElement1D;
-pub use crate::numerical::physics_fea::ThermalTriangle2D as physics_fea_ThermalTriangle2D;
-pub use crate::numerical::physics_fea::TriangleElement2D as physics_fea_TriangleElement2D;
 
 // crate::numerical::physics_md exports:
+pub use crate::numerical::physics_md::AVOGADRO_NUMBER as physics_md_AVOGADRO_NUMBER;
+pub use crate::numerical::physics_md::BOLTZMANN_CONSTANT_SI as physics_md_BOLTZMANN_CONSTANT_SI;
+pub use crate::numerical::physics_md::ENERGY_UNIT_ARGON as physics_md_ENERGY_UNIT_ARGON;
+pub use crate::numerical::physics_md::LENGTH_UNIT_ARGON as physics_md_LENGTH_UNIT_ARGON;
+pub use crate::numerical::physics_md::Particle as physics_md_Particle;
+pub use crate::numerical::physics_md::TEMPERATURE_UNIT_ARGON as physics_md_TEMPERATURE_UNIT_ARGON;
 pub use crate::numerical::physics_md::apply_pbc as physics_md_apply_pbc;
 pub use crate::numerical::physics_md::berendsen_thermostat as physics_md_berendsen_thermostat;
 pub use crate::numerical::physics_md::center_of_mass as physics_md_center_of_mass;
@@ -5814,12 +5822,6 @@ pub use crate::numerical::physics_md::temperature as physics_md_temperature;
 pub use crate::numerical::physics_md::total_kinetic_energy as physics_md_total_kinetic_energy;
 pub use crate::numerical::physics_md::total_momentum as physics_md_total_momentum;
 pub use crate::numerical::physics_md::velocity_rescale as physics_md_velocity_rescale;
-pub use crate::numerical::physics_md::Particle as physics_md_Particle;
-pub use crate::numerical::physics_md::AVOGADRO_NUMBER as physics_md_AVOGADRO_NUMBER;
-pub use crate::numerical::physics_md::BOLTZMANN_CONSTANT_SI as physics_md_BOLTZMANN_CONSTANT_SI;
-pub use crate::numerical::physics_md::ENERGY_UNIT_ARGON as physics_md_ENERGY_UNIT_ARGON;
-pub use crate::numerical::physics_md::LENGTH_UNIT_ARGON as physics_md_LENGTH_UNIT_ARGON;
-pub use crate::numerical::physics_md::TEMPERATURE_UNIT_ARGON as physics_md_TEMPERATURE_UNIT_ARGON;
 
 // crate::numerical::polynomial exports:
 pub use crate::numerical::polynomial::Polynomial as polynomial_Polynomial;
@@ -5843,11 +5845,13 @@ pub use crate::numerical::signal::hamming_window as signal_hamming_window;
 pub use crate::numerical::signal::hann_window as signal_hann_window;
 
 // crate::numerical::solve exports:
+pub use crate::numerical::solve::LinearSolution as solve_LinearSolution;
 pub use crate::numerical::solve::solve_linear_system as numerical_solve_solve_linear_system;
 pub use crate::numerical::solve::solve_nonlinear_system as solve_solve_nonlinear_system;
-pub use crate::numerical::solve::LinearSolution as solve_LinearSolution;
 
 // crate::numerical::sparse exports:
+pub use crate::numerical::sparse::Array as sparse_Array;
+pub use crate::numerical::sparse::SparseMatrixData as sparse_SparseMatrixData;
 pub use crate::numerical::sparse::csr_from_triplets as sparse_csr_from_triplets;
 pub use crate::numerical::sparse::frobenius_norm as sparse_frobenius_norm;
 pub use crate::numerical::sparse::is_diagonal as sparse_is_diagonal;
@@ -5861,8 +5865,6 @@ pub use crate::numerical::sparse::to_csr as sparse_to_csr;
 pub use crate::numerical::sparse::to_dense as sparse_to_dense;
 pub use crate::numerical::sparse::trace as sparse_trace;
 pub use crate::numerical::sparse::transpose as sparse_transpose;
-pub use crate::numerical::sparse::Array as sparse_Array;
-pub use crate::numerical::sparse::SparseMatrixData as sparse_SparseMatrixData;
 
 // crate::numerical::special exports:
 pub use crate::numerical::special::bessel_i0 as numerical_special_bessel_i0;
@@ -5900,6 +5902,12 @@ pub use crate::numerical::special::softplus as special_softplus;
 pub use crate::numerical::special::upper_incomplete_gamma as special_upper_incomplete_gamma;
 
 // crate::numerical::stats exports:
+pub use crate::numerical::stats::BinomialDist as stats_BinomialDist;
+pub use crate::numerical::stats::ExponentialDist as stats_ExponentialDist;
+pub use crate::numerical::stats::GammaDist as stats_GammaDist;
+pub use crate::numerical::stats::NormalDist as stats_NormalDist;
+pub use crate::numerical::stats::PoissonDist as stats_PoissonDist;
+pub use crate::numerical::stats::UniformDist as stats_UniformDist;
 pub use crate::numerical::stats::chi_squared_test as stats_chi_squared_test;
 pub use crate::numerical::stats::coefficient_of_variation as stats_coefficient_of_variation;
 pub use crate::numerical::stats::correlation as numerical_stats_correlation;
@@ -5925,21 +5933,15 @@ pub use crate::numerical::stats::two_sample_t_test as stats_two_sample_t_test;
 pub use crate::numerical::stats::variance as numerical_stats_variance;
 pub use crate::numerical::stats::welch_t_test as stats_welch_t_test;
 pub use crate::numerical::stats::z_scores as stats_z_scores;
-pub use crate::numerical::stats::BinomialDist as stats_BinomialDist;
-pub use crate::numerical::stats::ExponentialDist as stats_ExponentialDist;
-pub use crate::numerical::stats::GammaDist as stats_GammaDist;
-pub use crate::numerical::stats::NormalDist as stats_NormalDist;
-pub use crate::numerical::stats::PoissonDist as stats_PoissonDist;
-pub use crate::numerical::stats::UniformDist as stats_UniformDist;
 
 // crate::numerical::tensor exports:
+pub use crate::numerical::tensor::TensorData as tensor_TensorData;
 pub use crate::numerical::tensor::contract as tensor_contract;
 pub use crate::numerical::tensor::inner_product as tensor_inner_product;
 pub use crate::numerical::tensor::norm as tensor_norm;
 pub use crate::numerical::tensor::outer_product as tensor_outer_product;
 pub use crate::numerical::tensor::tensor_vec_mul as tensor_tensor_vec_mul;
 pub use crate::numerical::tensor::tensordot as tensor_tensordot;
-pub use crate::numerical::tensor::TensorData as tensor_TensorData;
 
 // crate::numerical::testing exports:
 pub use crate::numerical::testing::extract_polynomial_coeffs as testing_extract_polynomial_coeffs;
@@ -5952,14 +5954,14 @@ pub use crate::numerical::testing::solve_system as testing_solve_system;
 pub use crate::numerical::testing::solve_transcendental_numerical as testing_solve_transcendental_numerical;
 
 // crate::numerical::topology exports:
+pub use crate::numerical::topology::PersistenceDiagram as topology_PersistenceDiagram;
+pub use crate::numerical::topology::PersistenceInterval as topology_PersistenceInterval;
+pub use crate::numerical::topology::Simplex as numerical_topology_Simplex;
 pub use crate::numerical::topology::betti_numbers_at_radius as topology_betti_numbers_at_radius;
 pub use crate::numerical::topology::compute_persistence as topology_compute_persistence;
 pub use crate::numerical::topology::euclidean_distance as topology_euclidean_distance;
 pub use crate::numerical::topology::find_connected_components as topology_find_connected_components;
 pub use crate::numerical::topology::vietoris_rips_complex as topology_vietoris_rips_complex;
-pub use crate::numerical::topology::PersistenceDiagram as topology_PersistenceDiagram;
-pub use crate::numerical::topology::PersistenceInterval as topology_PersistenceInterval;
-pub use crate::numerical::topology::Simplex as numerical_topology_Simplex;
 
 // crate::numerical::transforms exports:
 pub use crate::numerical::transforms::fft as numerical_transforms_fft;

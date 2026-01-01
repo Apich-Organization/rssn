@@ -127,22 +127,26 @@ fn assert_expr_eq(
 fn test_gamma_integers() {
 
     // Γ(1) = 1
-    let g1 = gamma(&Expr::Constant(1.0));
+    let g1 =
+        gamma(&Expr::Constant(1.0));
 
     assert_approx_eq(&g1, 1.0);
 
     // Γ(2) = 1
-    let g2 = gamma(&Expr::Constant(2.0));
+    let g2 =
+        gamma(&Expr::Constant(2.0));
 
     assert_approx_eq(&g2, 1.0);
 
     // Γ(5) = 4! = 24
-    let g5 = gamma(&Expr::Constant(5.0));
+    let g5 =
+        gamma(&Expr::Constant(5.0));
 
     assert_approx_eq(&g5, 24.0);
 
     // Γ(6) = 5! = 120
-    let g6 = gamma(&Expr::Constant(6.0));
+    let g6 =
+        gamma(&Expr::Constant(6.0));
 
     assert_approx_eq(&g6, 120.0);
 }
@@ -351,8 +355,9 @@ fn test_zeta_special_values() {
     assert_eq!(z1, Expr::Infinity);
 
     // ζ(-2) = 0 (trivial zero)
-    let z_neg2 =
-        zeta(&Expr::Constant(-2.0));
+    let z_neg2 = zeta(&Expr::Constant(
+        -2.0,
+    ));
 
     assert_approx_eq(&z_neg2, 0.0);
 }
