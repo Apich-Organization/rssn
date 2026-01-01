@@ -46,7 +46,7 @@ fn test_differentiate_basic() {
         diff_x_sq
     );
 
-    //assert!(false);
+    // assert!(false);
 
     assert!(matches!(
         diff_x_sq,
@@ -96,7 +96,7 @@ fn test_differentiate_trig() {
             | Expr::Dag(_)
     ));
 
-    //assert!(false);
+    // assert!(false);
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn test_differentiate_exp_log() {
         Expr::Div(_, _) | Expr::Dag(_)
     ));
 
-    //assert!(false);
+    // assert!(false);
 }
 
 #[test]
@@ -178,7 +178,7 @@ fn test_integrate_basic() {
         Expr::Mul(_, _) | Expr::Dag(_)
     ));
 
-    //assert!(false);
+    // assert!(false);
 }
 
 #[test]
@@ -212,10 +212,14 @@ fn test_definite_integrate() {
             0.5
         );
     } else {
+
         // It might return a DAG that evaluates to 0.5, but simplify should handle constants
         // Let's just assert it's some result
-        println!("def_int: {}", def_int);
-        //assert!(false);
+        println!(
+            "def_int: {}",
+            def_int
+        );
+        // assert!(false);
     }
 }
 
