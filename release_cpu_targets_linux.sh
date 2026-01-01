@@ -13,9 +13,9 @@ declare -A CPU_TARGETS=(
     ["x86v4"]="x86-64-v4"
     ["zen3"]="znver3"
     ["zen4"]="znver4"
+    ["zen5"]="znver5"
     ["skylake"]="skylake"
     ["cascadelake"]="cascadelake"
-    ["icelake"]="icelake"
     ["sapphirerapids"]="sapphirerapids"
     ["alderlake"]="alderlake"
     ["raptorlake"]="raptorlake"
@@ -43,19 +43,19 @@ echo "Artifacts will be collected in: $OUTPUT_DIR"
 for TOOLCHAIN in "${TOOLCHAINS[@]}"; do
     # Ensure the base target is available for the current toolchain (usually automatic)
     # rustup target add "$TARGET_TRIPLET" --toolchain "$TOOLCHAIN"
-    
+
     for BUILD_NAME_SUFFIX in "${!CPU_TARGETS[@]}"; do
-        
+
         # Get the actual RUSTFLAGS value from the associative array
         RUST_TARGET_CPU_VALUE="${CPU_TARGETS[$BUILD_NAME_SUFFIX]}"
-        
+
         # Set the full RUSTFLAGS command
         RUSTFLAGS_VALUE="-C target-cpu=${RUST_TARGET_CPU_VALUE}"
 
         echo "--- Building $TOOLCHAIN / $BUILD_NAME_SUFFIX (Flag: $RUSTFLAGS_VALUE) ---"
-        
+
         # --- A. The Build Command ---
-        
+
         # Run cargo build with the specific toolchain, target, and flags
         RUSTFLAGS="$RUSTFLAGS_VALUE" \
         cargo +$TOOLCHAIN build \
@@ -67,15 +67,15 @@ for TOOLCHAIN in "${TOOLCHAINS[@]}"; do
             }
 
         # --- B. Collect and Rename Artifacts ---
-        
+
         # The base path where Cargo places the build artifacts
         BUILD_PATH="target/$TARGET_TRIPLET/release"
-        
+
         # Function to copy and rename an artifact
         copy_artifact() {
             local ext="$1"
             local default_name="lib${CRATE_NAME}.${ext}"
-            
+
             if [[ -f "$BUILD_PATH/$default_name" ]]; then
                 # New filename format: lib<CRATE>.<TOOLCHAIN>.<FEATURE_SUFFIX>.<EXT>
                 NEW_NAME="lib${CRATE_NAME}.${TOOLCHAIN}.${BUILD_NAME_SUFFIX}.${ext}"
