@@ -9,11 +9,20 @@ TOOLCHAINS=("nightly" "beta" "stable")
 # Note: 'x86v4' is a generic feature set for high-end micro-architectures (Zen 3/4, Ice Lake and newer)
 #       The other flags target specific hardware vendors/generations.
 declare -A CPU_TARGETS=(
-    ["skylake"]="skylake"
     ["x86v3"]="x86-64-v3"
     ["x86v4"]="x86-64-v4"
     ["zen3"]="znver3"
     ["zen4"]="znver4"
+    ["skylake"]="skylake"
+    ["cascadelake"]="cascadelake"
+    ["icelake"]="icelake"
+    ["sapphirerapids"]="sapphirerapids"
+    ["alderlake"]="alderlake"
+    ["raptorlake"]="raptorlake"
+    ["meteorlake"]="meteorlake"
+    ["skylake-avx512"]="skylake-avx512"
+    ["icelake-client"]="icelake-client"
+    ["cooperlake"]="cooperlake"
     # Note: 'skylake' is a common micro-architecture base for x86-64-v3 optimization.
 )
 
