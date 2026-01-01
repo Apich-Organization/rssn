@@ -154,29 +154,53 @@ fn test_reed_solomon_decode_no_errors()
 #[test]
 
 fn test_reed_solomon_decode_with_errors()
-{
+ {
 
     let message = vec![
         0x01, 0x02, 0x03, 0x04,
     ];
 
-    let codeword =
-        reed_solomon_encode(&message, 4).unwrap();
+    let codeword = reed_solomon_encode(
+        &message,
+        4,
+    )
+    .unwrap();
 
     // Introduce an error
-    let mut corrupted = codeword.clone();
+    let mut corrupted =
+        codeword.clone();
 
     corrupted[0] ^= 0xFF;
-    println!("Corrupted codeword: {:?}", corrupted);
-    println!("Original codeword: {:?}", codeword);
-    println!("Message: {:?}", message);
-    
+
+    println!(
+        "Corrupted codeword: {:?}",
+        corrupted
+    );
+
+    println!(
+        "Original codeword: {:?}",
+        codeword
+    );
+
+    println!(
+        "Message: {:?}",
+        message
+    );
+
     // Decode and correct
-    reed_solomon_decode(&mut corrupted, 4).unwrap();
-    println!("Corrected codeword: {:?}", corrupted);
+    reed_solomon_decode(
+        &mut corrupted,
+        4,
+    )
+    .unwrap();
+
+    println!(
+        "Corrected codeword: {:?}",
+        corrupted
+    );
 
     assert_eq!(
-        &corrupted[0..message.len()], 
+        &corrupted[0 .. message.len()],
         &message[..],
     );
 }
