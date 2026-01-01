@@ -317,6 +317,7 @@
     clippy::must_use_candidate
 )]
 
+#[cfg(feature = "compute")]
 /// Computation engine and task management.
 pub mod compute;
 /// System and physical constants.
