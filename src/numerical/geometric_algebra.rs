@@ -538,14 +538,11 @@ impl std::ops::Mul for Multivector3D {
                         rhs.v1,
                         (-self.b23).mul_add(
                             rhs.v2,
-                            self.b31.mul_add(
-                                rhs.v1,
-                                self.v2.mul_add(
-                                    rhs.b23,
-                                    self.v1.mul_add(
-                                        -rhs.b31,
-                                        self.s.mul_add(rhs.v3, self.v3 * rhs.s),
-                                    ),
+                            self.v2.mul_add(
+                                rhs.b23,
+                                self.v1.mul_add(
+                                    -rhs.b31,
+                                    self.s.mul_add(rhs.v3, self.v3 * rhs.s),
                                 ),
                             ),
                         ),
