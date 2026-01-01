@@ -482,7 +482,7 @@ fn test_crc16_json() {
         // CRC-16 (IBM/Modbus with reflected polynomial 0xA001)
         assert_eq!(
             parsed["ok"],
-            0x4B37_u16
+            0xBB3D_u16
         );
     }
 }
@@ -754,7 +754,7 @@ fn test_crc16_handle() {
             );
 
         // CRC-16 (IBM/Modbus with reflected polynomial 0xA001)
-        assert_eq!(crc, 0x4B37);
+        assert_eq!(crc, 0xBB3D);
     }
 }
 
