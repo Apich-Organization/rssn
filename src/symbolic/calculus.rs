@@ -738,7 +738,7 @@ pub(crate) fn differentiate_results(
 
                 let n_minus_1 = Expr::new_sub(
                     n.clone(),
-                    Expr::Constant(1.0),
+                    Expr::BigInt(BigInt::one()),
                 ); // or simplified subtraction
                 let term = Expr::new_mul(
                     Expr::new_mul(
