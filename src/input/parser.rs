@@ -488,7 +488,7 @@ pub(crate) fn parse_function_call(
     // println!("Parsed function name: {}", func_name);
     let (input, args) = delimited(
         char('('),
-        separated_list1(
+        nom::multi::separated_list0(
             delimited(
                 multispace0,
                 char(','),
@@ -1062,6 +1062,24 @@ pub(crate) fn parse_function_call(
                 ),
             ))
         },
+        | "volume_integral" => {
+            Ok((
+                input,
+                Expr::VolumeIntegral {
+                    scalar_field : Arc::new(args[0].clone()),
+                    volume : Arc::new(args[1].clone()),
+                },
+            ))
+        },
+        | "surface_integral" => {
+            Ok((
+                input,
+                Expr::SurfaceIntegral {
+                    vector_field : Arc::new(args[0].clone()),
+                    surface : Arc::new(args[1].clone()),
+                },
+            ))
+        },
         | "parametric_solution" => {
             Ok((
                 input,
@@ -1297,15 +1315,7 @@ pub(crate) fn parse_pde(
         input,
         Expr::Pde {
             equation: Arc::new(
-                parse_expr(
-                    &equation
-                        .to_string(),
-                )
-                .expect(
-                    "Parse Equation \
-                     Failed",
-                )
-                .1,
+                equation,
             ),
             func: func_name.to_string(),
             vars: vars_list
@@ -2092,8 +2102,10 @@ pub(crate) fn parse_variable(
         identifier_name,
         |s: &str| {
 
-            // If the identifier contains a quote, treat it as a Predicate (e.g., y'', y')
-            if s.contains('\'') {
+            // If the identifier contains a quote or underscore, treat it as a Predicate (e.g., y', u_xx)
+            if s.contains('\'')
+                || s.contains('_')
+            {
 
                 Expr::Predicate {
                     name: s.to_string(),

@@ -1413,9 +1413,55 @@ fn test_parse_derivative_n() {
         );
 }
 
+fn print_type_of_dir<T>(_: &T) {
+
+    println!(
+        "{}",
+        std::any::type_name::<T>()
+    );
+}
+
 #[test]
 
 fn test_parse_volume_integral() {
+
+    fn print_type_of<T>(_: &T) {
+
+        println!(
+            "{}",
+            std::any::type_name::<T>()
+        );
+    }
+
+    let aa = Expr::VolumeIntegral {
+        scalar_field: Arc::new(
+            Expr::Predicate {
+                name: "f".to_string(),
+                args: vec![
+                    Expr::Variable(
+                        "x".to_string(),
+                    ),
+                    Expr::Variable(
+                        "y".to_string(),
+                    ),
+                    Expr::Variable(
+                        "z".to_string(),
+                    ),
+                ],
+            },
+        ),
+        volume: Arc::new(
+            Expr::Variable(
+                "V".to_string(),
+            ),
+        ),
+    };
+
+    print_type_of(&parse_expr(
+        "volume_integral(f(x,y,z), V)",
+    ));
+
+    print_type_of(&aa);
 
     assert_eq!(
             parse_expr("volume_integral(f(x,y,z), V)"),
@@ -1942,10 +1988,63 @@ fn test_parse_volterra() {
 
 fn test_parse_pde() {
 
+    let result = Expr::Pde {
+        equation: Arc::new(Expr::Eq(
+            Arc::new(Expr::Add(
+                Arc::new(
+                    Expr::Predicate {
+                        name: "u_xx"
+                            .to_string(
+                            ),
+                        args: vec![],
+                    },
+                ),
+                Arc::new(
+                    Expr::Predicate {
+                        name: "u_yy"
+                            .to_string(
+                            ),
+                        args: vec![],
+                    },
+                ),
+            )),
+            Arc::new(Expr::Constant(
+                0.0,
+            )),
+        )),
+        func: "u".to_string(),
+        vars: vec![
+            "x".to_string(),
+            "y".to_string(),
+        ],
+    };
+
+    println!(
+        "{:?}",
+        print_type_of(&result)
+    );
+
+    println!(
+        "{:?}",
+        print_type_of(&parse_expr(
+            "pde(u_xx() + u_yy() = 0, \
+             u, [x, y])"
+        ))
+    );
+
+    print_type_of_dir(&result);
+
+    print_type_of_dir(
+        &parse_expr(
+            "pde(u_xx + u_yy = 0, u, \
+             [x, y])",
+        )
+        .unwrap()
+        .1,
+    );
+
     assert_eq!(
-            parse_expr("pde(u_xx + u_yy = 0, u, [x, y])"),
-            Ok((
-                "",
+            parse_expr("pde(u_xx + u_yy = 0, u, [x, y])").unwrap().1,
                 Expr::Pde {
                     equation : Arc::new(Expr::Eq(
                         Arc::new(Expr::Add(
@@ -1966,7 +2065,6 @@ fn test_parse_pde() {
                         "y".to_string()
                     ],
                 }
-            ))
         );
 }
 
@@ -2447,11 +2545,11 @@ fn test_parse_exists() {
 fn test_parse_predicate() {
 
     assert_eq!(
-        parse_expr("is_prime(x)"),
+        parse_expr("is_even(x)"),
         Ok((
             "",
             Expr::Predicate {
-                name: "is_prime"
+                name: "is_even"
                     .to_string(),
                 args: vec![
                     Expr::Variable(
