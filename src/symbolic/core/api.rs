@@ -2098,12 +2098,15 @@ impl fmt::Display for Number {
 
         match self {
             | Number::BigInteger(i) => {
+
                 write!(f, "{i}")
             },
             | Number::Rational(r) => {
+
                 write!(f, "{r}")
             },
             | Number::Float(fl) => {
+
                 write!(f, "{}", fl.0)
             },
         }

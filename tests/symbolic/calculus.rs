@@ -147,7 +147,10 @@ fn test_differentiate_x_cubed() {
     let expected_dag =
         expected.to_dag();
 
-    match &derivative_dag.clone().unwrap() {
+    match &derivative_dag
+        .clone()
+        .unwrap()
+    {
         | Expr::BigInt(i) => {
 
             println!(
@@ -181,41 +184,47 @@ fn test_differentiate_x_cubed() {
         },
     }
 
-    match &expected_dag.clone().unwrap() {
+    match &expected_dag
+        .clone()
+        .unwrap()
+    {
         | Expr::BigInt(i) => {
 
             println!(
-                "DEBUG: expected_dag is \
-                 BigInt({})",
+                "DEBUG: expected_dag \
+                 is BigInt({})",
                 i
             )
         },
         | Expr::Constant(c) => {
 
             println!(
-                "DEBUG: expected_dag is \
-                 Constant({})",
+                "DEBUG: expected_dag \
+                 is Constant({})",
                 c
             )
         },
         | Expr::Dag(_) => {
 
             println!(
-                "DEBUG: expected_dag is \
-                 Dag"
+                "DEBUG: expected_dag \
+                 is Dag"
             )
         },
         | _ => {
 
             println!(
-                "DEBUG: expected_dag is \
-                 {:?}",
+                "DEBUG: expected_dag \
+                 is {:?}",
                 expected_dag
             )
         },
     }
 
-    assert_eq!(derivative.to_dag(), expected.to_dag());
+    assert_eq!(
+        derivative.to_dag(),
+        expected.to_dag()
+    );
 }
 
 #[test]

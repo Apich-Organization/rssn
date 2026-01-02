@@ -4855,6 +4855,7 @@ pub fn limit_internal(
 ) -> Expr {
 
     if depth > 7 {
+
         return Expr::Limit(
             Arc::new(expr.clone()),
             var.to_string(),
@@ -4862,11 +4863,24 @@ pub fn limit_internal(
         );
     }
 
-    let simplified = simplify(&expr.clone());
+    let simplified =
+        simplify(&expr.clone());
+
     let mut working_expr = &simplified;
+
     let mut _unwrapped;
-    if let Expr::Dag(node) = working_expr {
-        _unwrapped = node.to_expr().expect("Dag to Expr in limit_internal");
+
+    if let Expr::Dag(node) =
+        working_expr
+    {
+
+        _unwrapped = node
+            .to_expr()
+            .expect(
+                "Dag to Expr in \
+                 limit_internal",
+            );
+
         working_expr = &_unwrapped;
     }
 
@@ -4906,22 +4920,34 @@ pub fn limit_internal(
         | _ => {},
     }
 
-    if !contains_var(working_expr, var) {
+    if !contains_var(working_expr, var)
+    {
 
         return working_expr.clone();
     }
 
-    println!("DEBUG: limit_internal processing: {:?}", working_expr);
-    println!("DEBUG: working_expr variant: {}", match working_expr {
-        Expr::Div(_, _) => "Div",
-        Expr::Mul(_, _) => "Mul",
-        Expr::Add(_, _) => "Add",
-        Expr::Power(_, _) => "Power",
-        Expr::Sin(_) => "Sin",
-        Expr::Variable(_) => "Variable",
-        Expr::Dag(_) => "Dag",
-        _ => "Other",
-    });
+    println!(
+        "DEBUG: limit_internal \
+         processing: {:?}",
+        working_expr
+    );
+
+    println!(
+        "DEBUG: working_expr variant: \
+         {}",
+        match working_expr {
+            | Expr::Div(_, _) => "Div",
+            | Expr::Mul(_, _) => "Mul",
+            | Expr::Add(_, _) => "Add",
+            | Expr::Power(_, _) =>
+                "Power",
+            | Expr::Sin(_) => "Sin",
+            | Expr::Variable(_) =>
+                "Variable",
+            | Expr::Dag(_) => "Dag",
+            | _ => "Other",
+        }
+    );
 
     // --- Check for Indeterminate Forms ---
     match working_expr {
@@ -4950,9 +4976,11 @@ pub fn limit_internal(
             let is_den_zero =
                 is_zero(&den_limit);
 
-            let is_num_inf = is_infinite(&num_limit);
+            let is_num_inf =
+                is_infinite(&num_limit);
 
-            let is_den_inf = is_infinite(&den_limit);
+            let is_den_inf =
+                is_infinite(&den_limit);
 
             if (is_num_zero
                 && is_den_zero)
@@ -5012,12 +5040,22 @@ pub fn limit_internal(
 
                 let den = Expr::new_pow(
                     b.clone(),
-                    Expr::BigInt(BigInt::from(-1)),
+                    Expr::BigInt(
+                        BigInt::from(
+                            -1,
+                        ),
+                    ),
                 );
 
-                let d_num = differentiate(&num, var);
+                let d_num =
+                    differentiate(
+                        &num, var,
+                    );
 
-                let d_den = differentiate(&den, var);
+                let d_den =
+                    differentiate(
+                        &den, var,
+                    );
 
                 if is_zero(&d_den) {
 
@@ -5025,7 +5063,9 @@ pub fn limit_internal(
                 }
 
                 return limit_internal(
-                    &Expr::new_div(d_num, d_den),
+                    &Expr::new_div(
+                        d_num, d_den,
+                    ),
                     var,
                     to,
                     depth + 1,
@@ -5039,12 +5079,22 @@ pub fn limit_internal(
 
                 let den = Expr::new_pow(
                     a.clone(),
-                    Expr::BigInt(BigInt::from(-1)),
+                    Expr::BigInt(
+                        BigInt::from(
+                            -1,
+                        ),
+                    ),
                 );
 
-                let d_num = differentiate(&num, var);
+                let d_num =
+                    differentiate(
+                        &num, var,
+                    );
 
-                let d_den = differentiate(&den, var);
+                let d_den =
+                    differentiate(
+                        &den, var,
+                    );
 
                 if is_zero(&d_den) {
 
@@ -5052,7 +5102,9 @@ pub fn limit_internal(
                 }
 
                 return limit_internal(
-                    &Expr::new_div(d_num, d_den),
+                    &Expr::new_div(
+                        d_num, d_den,
+                    ),
                     var,
                     to,
                     depth + 1,
@@ -5083,9 +5135,13 @@ pub fn limit_internal(
             let is_base_zero =
                 is_zero(&base_limit);
 
-            let is_base_inf = is_infinite(&base_limit);
+            let is_base_inf =
+                is_infinite(
+                    &base_limit,
+                );
 
-            let is_exp_inf = is_infinite(&exp_limit);
+            let is_exp_inf =
+                is_infinite(&exp_limit);
 
             let is_exp_zero =
                 is_zero(&exp_limit);
@@ -5129,7 +5185,9 @@ pub fn limit_internal(
 
     let val_at_point =
         simplify(&evaluate_at_point(
-            working_expr, var, to,
+            working_expr,
+            var,
+            to,
         ));
 
     if !matches!(

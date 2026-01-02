@@ -560,19 +560,27 @@ pub fn is_zero(expr: &Expr) -> bool {
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
 
-pub fn is_infinite(expr: &Expr) -> bool {
+pub fn is_infinite(
+    expr: &Expr
+) -> bool {
+
     match expr {
         | Expr::Dag(node) => {
             is_infinite(
                 &node
                     .to_expr()
                     .expect(
-                        "Dag is Infinite",
-                    ),
+                    "Dag is Infinite",
+                ),
             )
         },
-        | Expr::Infinity | Expr::NegativeInfinity => true,
-        | Expr::Constant(val) => val.is_infinite(),
+        | Expr::Infinity
+        | Expr::NegativeInfinity => {
+            true
+        },
+        | Expr::Constant(val) => {
+            val.is_infinite()
+        },
         | _ => false,
     }
 }
@@ -1004,7 +1012,10 @@ pub(crate) fn apply_rules(
         | Expr::Sin(arg) => {
 
             if is_zero(&arg) {
-                return Expr::BigInt(BigInt::zero());
+
+                return Expr::BigInt(
+                    BigInt::zero(),
+                );
             }
 
             if *arg == Expr::Pi {
@@ -1035,7 +1046,10 @@ pub(crate) fn apply_rules(
         | Expr::Cos(arg) => {
 
             if is_zero(&arg) {
-                return Expr::BigInt(BigInt::one());
+
+                return Expr::BigInt(
+                    BigInt::one(),
+                );
             }
 
             if *arg == Expr::Pi {
@@ -1065,7 +1079,10 @@ pub(crate) fn apply_rules(
         | Expr::Tan(arg) => {
 
             if is_zero(&arg) {
-                return Expr::BigInt(BigInt::zero());
+
+                return Expr::BigInt(
+                    BigInt::zero(),
+                );
             }
 
             if *arg == Expr::Pi {
@@ -1561,11 +1578,17 @@ pub(crate) fn simplify_power(
     }
 
     if is_zero(b) {
+
         if let Some(ve) = as_f64(e) {
+
             if ve < 0.0 {
-                return Some(Expr::Infinity);
+
+                return Some(
+                    Expr::Infinity,
+                );
             }
         }
+
         return Some(Expr::BigInt(
             BigInt::zero(),
         ));
@@ -1630,9 +1653,12 @@ pub(crate) fn simplify_div(
     }
 
     if is_zero(a) {
+
         if is_zero(b) {
+
             return None;
         }
+
         return Some(Expr::BigInt(
             BigInt::zero(),
         ));
@@ -1670,18 +1696,24 @@ pub(crate) fn simplify_mul(
     }
 
     if is_zero(a) {
+
         if is_infinite(b) {
+
             return None;
         }
+
         return Some(Expr::BigInt(
             BigInt::zero(),
         ));
     }
 
     if is_zero(b) {
+
         if is_infinite(a) {
+
             return None;
         }
+
         return Some(Expr::BigInt(
             BigInt::zero(),
         ));

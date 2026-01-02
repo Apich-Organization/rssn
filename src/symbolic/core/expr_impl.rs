@@ -40,9 +40,11 @@ impl PartialEq for Expr {
         }
 
         let op1 = self.op();
+
         let op2 = other.op();
 
         if op1 != op2 {
+
             // Allow numeric cross-comparison even if the operations differ,
             // as long as both sides represent equivalent numerical values.
             // We use a safe version that avoids recursive DAG conversion to prevent stack overflow (panic).
@@ -2475,25 +2477,45 @@ impl Expr {
 /// Helper function to extract a numeric float value from an Expr reasonably efficiently.
 /// Handles Dag nodes without full conversion to Expr (no recursion) and adds safety
 /// checks for extremely large BigInt values to prevent potential panics during conversion.
-fn get_numeric_value_efficient(e: &Expr) -> Option<f64> {
+
+fn get_numeric_value_efficient(
+    e: &Expr
+) -> Option<f64> {
+
     match e {
-        Expr::Constant(f) => Some(*f),
-        Expr::BigInt(b) => {
+        | Expr::Constant(f) => Some(*f),
+        | Expr::BigInt(b) => {
+
             // Safety check for extremely large integers beyond f64 range.
             // A BigInt with > 1024 bits is definitely infinity in f64 (~1.8e308).
             if b.bits() > 1024 {
-                return Some(if b.sign() == Sign::Minus {
-                    f64::NEG_INFINITY
-                } else {
-                    f64::INFINITY
-                });
+
+                return Some(
+                    if b.sign()
+                        == Sign::Minus
+                    {
+
+                        f64::NEG_INFINITY
+                    } else {
+
+                        f64::INFINITY
+                    },
+                );
             }
+
             b.to_f64()
-        }
-        Expr::Rational(r) => r.to_f64(),
-        Expr::Pi => Some(std::f64::consts::PI),
-        Expr::E => Some(std::f64::consts::E),
-        Expr::Dag(node) => {
+        },
+        | Expr::Rational(r) => {
+            r.to_f64()
+        },
+        | Expr::Pi => {
+            Some(std::f64::consts::PI)
+        },
+        | Expr::E => {
+            Some(std::f64::consts::E)
+        },
+        | Expr::Dag(node) => {
+
             // Directly inspect the DagOp without recursive to_expr() call.
             match &node.op {
                 DagOp::Constant(f) => Some(f.into_inner()),
@@ -2512,7 +2534,7 @@ fn get_numeric_value_efficient(e: &Expr) -> Option<f64> {
                 DagOp::E => Some(std::f64::consts::E),
                 _ => None,
             }
-        }
-        _ => None,
+        },
+        | _ => None,
     }
 }
