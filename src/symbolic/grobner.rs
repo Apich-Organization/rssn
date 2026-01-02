@@ -147,6 +147,7 @@ pub(crate) fn compare_lex(
 
         match e1.cmp(e2) {
             | Ordering::Equal => {
+
                 continue;
             },
             | other => return other,
@@ -677,6 +678,7 @@ pub fn reduced_basis(
     let mut sorted_basis = basis;
 
     sorted_basis.retain(|p| {
+
         !p.terms.is_empty()
     });
 
