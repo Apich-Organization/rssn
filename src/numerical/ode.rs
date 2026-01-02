@@ -61,6 +61,17 @@ pub enum OdeSolverMethod {
 /// ```
 /// # Errors
 /// Returns an error if the selected solver method fails or if expression evaluation fails.
+/// # Flamge Graph
+///
+/// ![Lorentz Attractor](../doc/ode_lorenz_attractor_1_fg.svg)
+///
+///
+/// ![Lorentz Attractor](../doc/ode_lorenz_attractor_2_fg.svg)
+///
+///
+/// ![Lorentz Attractor](../doc/ode_lorenz_attractor_3_fg.svg)
+///
+
 
 pub fn solve_ode_system(
     funcs: &[Expr],
