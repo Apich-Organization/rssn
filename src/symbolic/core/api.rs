@@ -9,15 +9,18 @@ use std::hash::Hasher;
 use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
+use std::ops::Neg;
+use std::ops::Rem;
 use std::ops::Sub;
 use std::sync::LazyLock;
 use std::sync::RwLock;
 
 use num_bigint::BigInt;
-use num_bigint::ToBigInt;
+use num_bigint::ToBigInt as _;
 use num_rational::BigRational;
 use num_rational::Ratio;
 use num_traits::One;
+use num_traits::ToPrimitive;
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
 
@@ -25,6 +28,7 @@ use super::dag_mgr::DAG_MANAGER;
 use super::dag_mgr::DagOp;
 use super::expr::Expr;
 use super::expr::SparsePolynomial;
+
 
 impl AsRef<Self> for Expr {
     fn as_ref(&self) -> &Self {
@@ -1654,12 +1658,6 @@ impl Expr {
 }
 
 // --- Operator Overloading ---
-use std::ops::Add;
-use std::ops::Div;
-use std::ops::Mul;
-use std::ops::Neg;
-use std::ops::Sub;
-
 // Macro for implementing binary operators for Expr and &Expr
 macro_rules! impl_binary_op {
     (
@@ -1832,6 +1830,22 @@ pub trait ToConstant {
     fn constant(&self) -> Expr;
 }
 
+/// Trait to easily convert primitive types to symbolic BigInt expressions.
+
+pub trait ToBigInt {
+    /// Converts the value to a symbolic BigInt expression.
+
+    fn bigint(&self) -> Expr;
+}
+
+/// Trait to easily convert primitive types to symbolic Rational expressions.
+
+pub trait ToRational {
+    /// Converts the value to a symbolic Rational expression.
+
+    fn rational(&self) -> Expr;
+}
+
 impl ToConstant for f64 {
     fn constant(&self) -> Expr {
 
@@ -1864,20 +1878,24 @@ impl ToConstant for i64 {
     }
 }
 
+
 /// A unified numeric type capable of holding various primitive and arbitrary-precision numbers.
+/// This type is used internally for constant folding and numeric evaluation within the symbolic engine.
 #[derive(Debug, Clone)]
 
 pub enum Number {
     /// An arbitrary-precision integer.
     BigInteger(BigInt),
     /// An arbitrary-precision rational number (fraction).
-    Rational(Ratio<BigInt>),
-    /// A standard 64-bit floating-point number, wrapped for ordering and equality.
+    Rational(BigRational),
+    /// A standard 64-bit floating-point number.
     Float(OrderedFloat<f64>),
 }
 
 impl Number {
-    // A simple method to check the variant type.
+    /// Checks if the number is an integer (BigInteger variant).
+    #[must_use]
+
     pub fn is_integer(&self) -> bool {
 
         matches!(
@@ -1885,6 +1903,9 @@ impl Number {
             Number::BigInteger(_)
         )
     }
+
+    /// Checks if the number is a floating-point number.
+    #[must_use]
 
     pub fn is_float(&self) -> bool {
 
@@ -1894,8 +1915,44 @@ impl Number {
         )
     }
 
+    /// Checks if the number is zero.
+    #[must_use]
+
+    pub fn is_zero(&self) -> bool {
+
+        match self {
+            | Number::BigInteger(i) => {
+                i.is_zero()
+            },
+            | Number::Rational(r) => {
+                r.is_zero()
+            },
+            | Number::Float(f) => {
+                f.0 == 0.0
+            },
+        }
+    }
+
+    /// Checks if the number is one.
+    #[must_use]
+
+    pub fn is_one(&self) -> bool {
+
+        match self {
+            | Number::BigInteger(i) => {
+                i.is_one()
+            },
+            | Number::Rational(r) => {
+                r.is_one()
+            },
+            | Number::Float(f) => {
+                f.0 == 1.0
+            },
+        }
+    }
+
     /// Attempts to convert the number to a standard f64.
-    /// This is useful for interoperability or general float operations.
+    #[must_use]
 
     pub fn as_f64(
         &self
@@ -1906,18 +1963,47 @@ impl Number {
                 i.to_f64()
             },
             | Number::Rational(r) => {
-
-                // Note: The num_rational crate provides a direct ToPrimitive impl for Ratio
                 r.to_f64()
             },
             | Number::Float(f) => {
-                Some(**f)
+                Some(f.0)
             },
+        }
+    }
+
+    /// Converts the number to its most compact exact form.
+    /// E.g., a Rational with denominator 1 becomes a BigInteger.
+    #[must_use]
+
+    pub fn simplify(self) -> Self {
+
+        match self {
+            | Number::Rational(r)
+                if r.is_integer() =>
+            {
+                Number::BigInteger(
+                    r.to_integer(),
+                )
+            },
+            | _ => self,
+        }
+    }
+
+    /// Helper to promote an owned Number to a BigRational if it's exact.
+
+    fn into_rational(
+        self
+    ) -> Option<BigRational> {
+
+        match self {
+            Number::BigInteger(i) => Some(BigRational::from_integer(i)),
+            Number::Rational(r) => Some(r),
+            Number::Float(_) => None,
         }
     }
 }
 
-// --- Manual PartialEq Implementation (Value-Based Equality) ---
+// --- Equality and Comparison ---
 
 impl PartialEq for Number {
     fn eq(
@@ -1926,7 +2012,6 @@ impl PartialEq for Number {
     ) -> bool {
 
         match (self, other) {
-            // Case 1: Same Variants (Use inner type's PartialEq)
             | (
                 Number::BigInteger(a),
                 Number::BigInteger(b),
@@ -1939,12 +2024,6 @@ impl PartialEq for Number {
                 Number::Float(a),
                 Number::Float(b),
             ) => a == b,
-
-            // Case 2: Mixed Variants (Convert to a common type for comparison)
-            // Strategy: Try to stick to exact types (BigInt/Ratio) if possible,
-            // otherwise fall back to f64 for float comparison.
-
-            // BigInteger vs Rational
             | (
                 Number::BigInteger(a),
                 Number::Rational(b),
@@ -1953,17 +2032,12 @@ impl PartialEq for Number {
                 Number::Rational(b),
                 Number::BigInteger(a),
             ) => {
-
-                // An integer 'a' is equal to a rational 'b' if b's denominator is 1
-                // and b's numerator equals a.
-                // We use Ratio::from_integer for comparison.
-                b == &Ratio::from_integer(a.clone())
+                b.is_integer()
+                    && b.numer() == a
             },
-
-            // Any variant vs Float: Fall back to f64 comparison
             | _ => {
 
-                // If either conversion fails (e.g., number is too large for f64), they are not equal.
+                // Any mix involving Float falls back to f64 comparison
                 match (
                     self.as_f64(),
                     other.as_f64(),
@@ -1971,14 +2045,12 @@ impl PartialEq for Number {
                     | (
                         Some(a),
                         Some(b),
-                    ) => {
-
-                        // Use OrderedFloat's comparison for NaN safety and standard float comparison
-                        OrderedFloat(a) == OrderedFloat(b)
-                    },
-                    // If one or both conversions fail (e.g., extremely large BigInt),
-                    // they are conservatively treated as not equal, as their precise values
-                    // cannot be represented by f64.
+                    ) => OrderedFloat(
+                        a,
+                    )
+                        == OrderedFloat(
+                            b,
+                        ),
                     | _ => false,
                 }
             },
@@ -1986,12 +2058,8 @@ impl PartialEq for Number {
     }
 }
 
-// If PartialEq is implemented, and the equality relation is transitive (which ours is),
-// we can implement Eq (required for hashing/maps).
 impl Eq for Number {
 }
-
-// --- Manual PartialOrd Implementation (Value-Based Ordering) ---
 
 impl PartialOrd for Number {
     fn partial_cmp(
@@ -2001,63 +2069,26 @@ impl PartialOrd for Number {
     {
 
         match (self, other) {
-            // Case 1: Same Variants (Use inner type's PartialOrd/Ord)
-            | (
-                Number::BigInteger(a),
-                Number::BigInteger(b),
-            ) => a.partial_cmp(b),
-            | (
-                Number::Rational(a),
-                Number::Rational(b),
-            ) => a.partial_cmp(b),
-            | (
-                Number::Float(a),
-                Number::Float(b),
-            ) => a.partial_cmp(b),
-
-            // Case 2: Mixed Exact Variants (Rational is the highest exact type)
-            | (
-                Number::BigInteger(a),
-                Number::Rational(b),
-            ) => {
-
-                // Compare 'a' as a Ratio (a/1) to 'b'
-                Ratio::from_integer(
-                    a.clone(),
-                )
-                .partial_cmp(b)
-            },
-            | (
-                Number::Rational(a),
-                Number::BigInteger(b),
-            ) => {
-
-                // Compare 'a' to 'b' as a Ratio (b/1)
-                a.partial_cmp(&Ratio::from_integer(b.clone()))
-            },
-
-            // Case 3: Any variant vs Float (Fall back to f64 comparison)
-            | _ => {
-
-                match (
-                    self.as_f64(),
-                    other.as_f64(),
-                ) {
-                    | (
-                        Some(a),
-                        Some(b),
-                    ) => {
-
-                        // Use OrderedFloat for ordering comparison (handles NaN)
-                        OrderedFloat(a).partial_cmp(&OrderedFloat(b))
-                    },
-                    // If conversion fails, we can't reliably compare.
-                    | _ => None,
+            (Number::BigInteger(a), Number::BigInteger(b)) => a.partial_cmp(b),
+            (Number::Rational(a), Number::Rational(b)) => a.partial_cmp(b),
+            (Number::Float(a), Number::Float(b)) => a.partial_cmp(b),
+            (Number::BigInteger(a), Number::Rational(b)) => {
+                BigRational::from_integer(a.clone()).partial_cmp(b)
+            }
+            (Number::Rational(a), Number::BigInteger(b)) => {
+                a.partial_cmp(&BigRational::from_integer(b.clone()))
+            }
+            _ => {
+                match (self.as_f64(), other.as_f64()) {
+                    (Some(a), Some(b)) => OrderedFloat(a).partial_cmp(&OrderedFloat(b)),
+                    _ => None,
                 }
-            },
+            }
         }
     }
 }
+
+// --- Display ---
 
 impl fmt::Display for Number {
     fn fmt(
@@ -2067,22 +2098,37 @@ impl fmt::Display for Number {
 
         match self {
             | Number::BigInteger(i) => {
-
-                write!(f, "{}", i)
+                write!(f, "{i}")
             },
             | Number::Rational(r) => {
-
-                write!(f, "{}", r)
+                write!(f, "{r}")
             },
             | Number::Float(fl) => {
-
-                write!(f, "{}", **fl)
-            }, /* Dereference OrderedFloat */
+                write!(f, "{}", fl.0)
+            },
         }
     }
 }
 
-// From BigInt
+// --- Conversions ---
+
+macro_rules! impl_from_int {
+    ($($t:ty),*) => {
+        $(
+            impl From<$t> for Number {
+                fn from(i: $t) -> Self {
+                    Number::BigInteger(BigInt::from(i))
+                }
+            }
+        )*
+    };
+}
+
+impl_from_int!(
+    i8, i16, i32, i64, i128, isize, u8,
+    u16, u32, u64, u128, usize
+);
+
 impl From<BigInt> for Number {
     fn from(i: BigInt) -> Self {
 
@@ -2090,35 +2136,26 @@ impl From<BigInt> for Number {
     }
 }
 
-// From Ratio<BigInt>
-impl From<Ratio<BigInt>> for Number {
-    fn from(r: Ratio<BigInt>) -> Self {
+impl From<BigRational> for Number {
+    fn from(r: BigRational) -> Self {
 
-        Number::Rational(r)
+        Number::Rational(r).simplify()
     }
 }
 
-// From f64 (using OrderedFloat)
+impl From<f32> for Number {
+    fn from(f: f32) -> Self {
+
+        Number::Float(OrderedFloat(
+            f64::from(f),
+        ))
+    }
+}
+
 impl From<f64> for Number {
     fn from(f: f64) -> Self {
 
         Number::Float(OrderedFloat(f))
-    }
-}
-
-// Optional: Implement for primitives like i64, which is common.
-impl From<i64> for Number {
-    fn from(i: i64) -> Self {
-
-        Number::BigInteger(i.into()) // `into()` converts i64 to BigInt
-    }
-}
-
-// Optional: Implement for u64
-impl From<u64> for Number {
-    fn from(i: u64) -> Self {
-
-        Number::BigInteger(i.into())
     }
 }
 
@@ -2128,18 +2165,22 @@ impl ToConstant for Number {
         match self {
             | Number::BigInteger(n) => {
                 Expr::new_constant(
-                    n.to_f64().unwrap(),
+                    n.to_f64()
+                        .unwrap_or(
+                            f64::NAN,
+                        ),
                 )
             },
             | Number::Rational(n) => {
                 Expr::new_constant(
-                    n.to_f64().unwrap(),
+                    n.to_f64()
+                        .unwrap_or(
+                            f64::NAN,
+                        ),
                 )
             },
             | Number::Float(n) => {
-                Expr::new_constant(
-                    n.into_inner(),
-                )
+                Expr::new_constant(n.0)
             },
         }
     }
@@ -2150,16 +2191,21 @@ impl ToBigInt for Number {
 
         match self {
             | Number::BigInteger(n) => {
-                Expr::new_bigint(*n)
+                Expr::new_bigint(
+                    n.clone(),
+                )
             },
             | Number::Rational(n) => {
                 Expr::new_bigint(
-                    n.to_bigint(),
+                    n.to_integer(),
                 )
             },
             | Number::Float(n) => {
                 Expr::new_bigint(
-                    n.to_bigint(),
+                    n.to_bigint()
+                        .unwrap_or_else(
+                        BigInt::zero,
+                    ),
                 )
             },
         }
@@ -2170,58 +2216,24 @@ impl ToRational for Number {
     fn rational(&self) -> Expr {
 
         match self {
-            | Number::BigInteger(n) => {
-                Expr::new_rational(
-                    n.to_rational(),
-                )
-            },
-            | Number::Rational(n) => {
-                Expr::new_rational(*n)
-            },
-            | Number::Float(n) => {
-                Expr::new_rational(
-                    n.to_rational(),
-                )
-            },
+            Number::BigInteger(n) => Expr::new_rational(BigRational::from_integer(n.clone())),
+            Number::Rational(n) => Expr::new_rational(n.clone()),
+            Number::Float(n) => Expr::new_rational(BigRational::from_float(n.0).unwrap_or_else(BigRational::zero)),
         }
     }
 }
 
-impl Number {
-    // Helper to convert any exact number (BigInt, Rational) into a Ratio.
-    // Floats are converted using their internal f64 approximation, so use with caution.
-    fn into_rational(
-        self
-    ) -> Ratio<BigInt> {
-
-        match self {
-            Number::BigInteger(i) => Ratio::from_integer(i),
-            Number::Rational(r) => r,
-            // Converting f64 to Ratio is complex and can lose precision.
-            // For general arithmetic, this is often the required path before giving up.
-            Number::Float(f) => Ratio::from_float(**f)
-                .unwrap_or_else(|| {
-                    // Fallback for tricky floats (like NaN/Inf, though OrderedFloat should handle this)
-                    // If Ratio::from_float fails, just return 0/1 to avoid a panic,
-                    // but real-world code might panic or return a Result here.
-                    Ratio::new(BigInt::zero(), BigInt::one())
-                }),
-        }
-    }
-}
-
-// --- Implementation of Addition (+) ---
+// --- Arithmetic ---
 
 impl Add for Number {
     type Output = Number;
 
     fn add(
         self,
-        other: Number,
-    ) -> Self::Output {
+        other: Self,
+    ) -> Self {
 
         match (self, other) {
-            // Case 1: BigInteger + BigInteger
             | (
                 Number::BigInteger(a),
                 Number::BigInteger(b),
@@ -2230,137 +2242,83 @@ impl Add for Number {
                     a + b,
                 )
             },
-
-            // Case 2: Rational + Rational
-            | (
-                Number::Rational(a),
-                Number::Rational(b),
-            ) => {
-                Number::Rational(a + b)
-            },
-
-            // Case 3: Float + Float
-            | (
-                Number::Float(a),
-                Number::Float(b),
-            ) => Number::Float(a + b),
-
-            // --- Exact/Exact Promotions (Result is Rational) ---
-
-            // Case 4 & 5: BigInteger <> Rational
-            | (
-                Number::BigInteger(a),
-                Number::Rational(b),
-            ) => {
-
-                // Promote 'a' to a rational (a/1) and add.
-                Number::Rational(
-                    Ratio::from_integer(
-                        a,
-                    ) + b,
-                )
-            },
-            | (
-                Number::Rational(a),
-                Number::BigInteger(b),
-            ) => {
-
-                // Same as above, commutative
-                Number::Rational(a + Ratio::from_integer(b))
-            },
-
-            // --- Float Promotions (Result is Float) ---
-
-            // Case 6 & 7: Float <> BigInteger
-            | (
-                Number::Float(a),
-                Number::BigInteger(b),
-            ) => {
-
-                // Convert BigInteger to f64 and add to Float 'a'
-                // We use a temporary conversion to f64 for simplicity.
-                let b_f64 = b
-                    .to_f64()
-                    .unwrap_or(
-                        f64::NAN,
-                    );
-
+            | (Number::Float(a), b)
+            | (b, Number::Float(a)) => {
                 Number::Float(
                     a + OrderedFloat(
-                        b_f64,
+                        b.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
                     ),
                 )
             },
-            | (
-                Number::BigInteger(a),
-                Number::Float(b),
-            ) => {
+            | (a, b) => {
 
-                let a_f64 = a
-                    .to_f64()
-                    .unwrap_or(
-                        f64::NAN,
-                    );
+                let ra = a
+                    .into_rational()
+                    .unwrap();
 
-                Number::Float(
-                    OrderedFloat(a_f64)
-                        + b,
-                )
-            },
+                let rb = b
+                    .into_rational()
+                    .unwrap();
 
-            // Case 8 & 9: Float <> Rational
-            | (
-                Number::Float(a),
-                Number::Rational(b),
-            ) => {
-
-                // Convert Rational to f64 and add to Float 'a'
-                let b_f64 = b
-                    .to_f64()
-                    .unwrap_or(
-                        f64::NAN,
-                    );
-
-                Number::Float(
-                    a + OrderedFloat(
-                        b_f64,
-                    ),
-                )
-            },
-            | (
-                Number::Rational(a),
-                Number::Float(b),
-            ) => {
-
-                let a_f64 = a
-                    .to_f64()
-                    .unwrap_or(
-                        f64::NAN,
-                    );
-
-                Number::Float(
-                    OrderedFloat(a_f64)
-                        + b,
-                )
+                Number::from(ra + rb)
             },
         }
     }
 }
-
-// --- Implementation of Subtraction (-), Multiplication (*), and Division (/) ---
-// (These follow the *exact* same promotion logic as Add)
 
 impl Sub for Number {
     type Output = Number;
 
     fn sub(
         self,
-        other: Number,
-    ) -> Self::Output {
+        other: Self,
+    ) -> Self {
 
-        // ... (Implement subtraction logic here, replacing '+' with '-')
-        // Example: Number::BigInteger(a) - Number::BigInteger(b) => Number::BigInteger(a - b)
-        todo!()
+        match (self, other) {
+            | (
+                Number::BigInteger(a),
+                Number::BigInteger(b),
+            ) => {
+                Number::BigInteger(
+                    a - b,
+                )
+            },
+            | (Number::Float(a), b) => {
+                Number::Float(
+                    a - OrderedFloat(
+                        b.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ),
+                )
+            },
+            | (a, Number::Float(b)) => {
+                Number::Float(
+                    OrderedFloat(
+                        a.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ) - b,
+                )
+            },
+            | (a, b) => {
+
+                let ra = a
+                    .into_rational()
+                    .unwrap();
+
+                let rb = b
+                    .into_rational()
+                    .unwrap();
+
+                Number::from(ra - rb)
+            },
+        }
     }
 }
 
@@ -2369,11 +2327,42 @@ impl Mul for Number {
 
     fn mul(
         self,
-        other: Number,
-    ) -> Self::Output {
+        other: Self,
+    ) -> Self {
 
-        // ... (Implement multiplication logic here, replacing '+' with '*')
-        todo!()
+        match (self, other) {
+            | (
+                Number::BigInteger(a),
+                Number::BigInteger(b),
+            ) => {
+                Number::BigInteger(
+                    a * b,
+                )
+            },
+            | (Number::Float(a), b)
+            | (b, Number::Float(a)) => {
+                Number::Float(
+                    a * OrderedFloat(
+                        b.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ),
+                )
+            },
+            | (a, b) => {
+
+                let ra = a
+                    .into_rational()
+                    .unwrap();
+
+                let rb = b
+                    .into_rational()
+                    .unwrap();
+
+                Number::from(ra * rb)
+            },
+        }
     }
 }
 
@@ -2382,25 +2371,116 @@ impl Div for Number {
 
     fn div(
         self,
-        other: Number,
-    ) -> Self::Output {
+        other: Self,
+    ) -> Self {
 
-        // Division is slightly trickier for BigInt/BigInt, as the result should be Rational!
-        // BigInt / BigInt should become Rational(a / b) unless you want integer division.
-        // The standard is to promote to Rational:
+        if other.is_zero() {
+
+            return Number::Float(
+                OrderedFloat(f64::NAN),
+            );
+        }
+
+        match (self, other) {
+            | (Number::Float(a), b) => {
+                Number::Float(
+                    a / OrderedFloat(
+                        b.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ),
+                )
+            },
+            | (a, Number::Float(b)) => {
+                Number::Float(
+                    OrderedFloat(
+                        a.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ) / b,
+                )
+            },
+            | (a, b) => {
+
+                let ra = a
+                    .into_rational()
+                    .unwrap();
+
+                let rb = b
+                    .into_rational()
+                    .unwrap();
+
+                Number::from(ra / rb)
+            },
+        }
+    }
+}
+
+impl Rem for Number {
+    type Output = Number;
+
+    fn rem(
+        self,
+        other: Self,
+    ) -> Self {
+
+        if other.is_zero() {
+
+            return Number::Float(
+                OrderedFloat(f64::NAN),
+            );
+        }
+
         match (self, other) {
             | (
                 Number::BigInteger(a),
                 Number::BigInteger(b),
             ) => {
-
-                // Integer division always promotes to Rational for a precise result
-                Number::Rational(
-                    Ratio::new(a, b),
+                Number::BigInteger(
+                    a % b,
                 )
             },
-            // For all other cases, follow the same 9-way match pattern, replacing '+' with '/'
-            | _ => todo!(),
+            | (a, b) => {
+
+                let val_a = a
+                    .as_f64()
+                    .unwrap_or(
+                        f64::NAN,
+                    );
+
+                let val_b = b
+                    .as_f64()
+                    .unwrap_or(
+                        f64::NAN,
+                    );
+
+                Number::Float(
+                    OrderedFloat(
+                        val_a % val_b,
+                    ),
+                )
+            },
+        }
+    }
+}
+
+impl Neg for Number {
+    type Output = Number;
+
+    fn neg(self) -> Self {
+
+        match self {
+            | Number::BigInteger(i) => {
+                Number::BigInteger(-i)
+            },
+            | Number::Rational(r) => {
+                Number::Rational(-r)
+            },
+            | Number::Float(f) => {
+                Number::Float(-f)
+            },
         }
     }
 }
