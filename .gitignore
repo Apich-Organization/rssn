@@ -273,3 +273,5 @@ scan.sh
 perf.data
 src/prelude.rs.bak
 src/prelude.rs.bak.1
+formatted_demo01.md
+demo01.md
