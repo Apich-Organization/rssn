@@ -30,7 +30,7 @@ use crate::symbolic::simplify_dag::simplify;
 /// This is used internally by algorithms that need to compare weights.
 /// Returns None if the expression cannot be evaluated to a number.
 
-fn try_numeric_value(
+pub(crate) fn try_numeric_value(
     expr: &Expr
 ) -> Option<f64> {
 

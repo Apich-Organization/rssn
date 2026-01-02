@@ -646,7 +646,7 @@ const fn type_to_clif(
 
 #[cfg(feature = "jit")]
 
-fn cast_to_storage(
+pub(crate) fn cast_to_storage(
     builder: &mut FunctionBuilder<'_>,
     val: Value,
     ty: Type,

@@ -1090,7 +1090,7 @@ pub(crate) fn solve_first_order_system_sequentially(
 /// internal inconsistency in the expression representation. This should ideally
 /// not happen in a well-formed expression DAG.
 
-fn separate_factors(
+pub(crate) fn separate_factors(
     expr: &Expr,
     func: &str,
     var: &str,

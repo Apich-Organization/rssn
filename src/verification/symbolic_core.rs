@@ -15,7 +15,7 @@ use crate::symbolic::core::ToConstant;
 
 #[kani::proof]
 
-fn proof_new_constant_is_dag() {
+pub(crate) fn proof_new_constant_is_dag() {
 
     let c: f64 = kani::any();
 

@@ -750,7 +750,7 @@ pub fn ecdsa_verify(
 
 /// Computes modular inverse using extended Euclidean algorithm.
 
-fn mod_inverse(
+pub(crate) fn mod_inverse(
     a: &BigInt,
     m: &BigInt,
 ) -> Option<BigInt> {

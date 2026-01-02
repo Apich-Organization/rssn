@@ -2478,7 +2478,7 @@ impl Expr {
 /// Handles Dag nodes without full conversion to Expr (no recursion) and adds safety
 /// checks for extremely large BigInt values to prevent potential panics during conversion.
 
-fn get_numeric_value_efficient(
+pub(crate) fn get_numeric_value_efficient(
     e: &Expr
 ) -> Option<f64> {
 

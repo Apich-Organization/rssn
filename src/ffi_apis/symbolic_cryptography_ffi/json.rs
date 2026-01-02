@@ -23,7 +23,7 @@ use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// Helper to parse `BigInt` from string or JSON string.
 
-fn parse_bigint(
+pub(crate) fn parse_bigint(
     s: Option<String>
 ) -> Option<BigInt> {
 

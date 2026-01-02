@@ -820,7 +820,7 @@ pub fn factorize(expr: Expr) -> Expr {
     }
 }
 
-fn factorize_terms(
+pub(crate) fn factorize_terms(
     terms: Vec<Expr>
 ) -> Expr {
 

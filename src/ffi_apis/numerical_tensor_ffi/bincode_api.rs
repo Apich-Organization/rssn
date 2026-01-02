@@ -19,7 +19,7 @@ struct TensordotRequest {
     axes_b: Vec<usize>,
 }
 
-fn decode<
+pub(crate) fn decode<
     T: for<'de> Deserialize<'de>,
 >(
     data: *const u8,

@@ -165,7 +165,7 @@ pub unsafe extern "C" fn rssn_physics_em_solve_json(
     )
 }
 
-fn solve_with_method<S : crate::physics::physics_rkm::OdeSystem>(
+pub(crate) fn solve_with_method<S : crate::physics::physics_rkm::OdeSystem>(
     sys : &S,
     y0 : &[f64],
     t_span : (f64, f64),

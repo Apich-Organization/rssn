@@ -30,7 +30,7 @@ struct MatrixDecompositionRequest {
     kind: crate::nightly::matrix::FaerDecompositionType,
 }
 
-fn decode<
+pub(crate) fn decode<
     T: for<'de> Deserialize<'de>,
 >(
     data: *const u8,

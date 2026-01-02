@@ -1524,7 +1524,7 @@ pub fn correlation_dimension(
 
 /// Helper function for linear regression slope estimation.
 
-fn linear_regression_slope(
+pub(crate) fn linear_regression_slope(
     x: &[f64],
     y: &[f64],
 ) -> f64 {

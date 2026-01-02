@@ -379,7 +379,7 @@ impl PolyGF256 {
 /// The generator polynomial is the product of (x - α^i) for i = 0 to n_parity-1,
 /// where α is the primitive element (2) of GF(2^8).
 
-fn rs_generator_poly(
+pub(crate) fn rs_generator_poly(
     n_parity: usize
 ) -> Result<Vec<u8>, String> {
 

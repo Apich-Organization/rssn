@@ -17,7 +17,7 @@ struct SpMvRequest {
     vector: Vec<f64>,
 }
 
-fn decode<
+pub(crate) fn decode<
     T: for<'de> Deserialize<'de>,
 >(
     data: *const u8,

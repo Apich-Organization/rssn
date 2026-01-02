@@ -1978,7 +1978,7 @@ impl<T: Field> Matrix<T> {
 
 /// Recursive helper for Strassen's algorithm.
 
-fn strassen_recursive<T: Field>(
+pub(crate) fn strassen_recursive<T: Field>(
     a: &Matrix<T>,
     b: &Matrix<T>,
 ) -> Matrix<T> {
