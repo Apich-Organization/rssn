@@ -58,6 +58,49 @@ fn test_free_particle() {
     assert_ne!(eq_str, "0");
 }
 
+// Result should be simplified to: m * d^2x/dt^2
+#[test]
+
+fn test_free_particle_2() {
+
+    let m = Expr::new_variable("m");
+
+    let x = Expr::new_variable("x");
+
+    let t = Expr::new_variable("t");
+
+    let x_prime = Expr::new_derivative(
+        x.clone(),
+        "t".to_string(),
+    );
+
+    // L = 1/2 * m * (x')^2
+    let lagrangian = Expr::new_mul(
+        Expr::new_mul(
+            Expr::Constant(0.5),
+            m,
+        ),
+        Expr::new_pow(
+            &x_prime,
+            Expr::Constant(2.0),
+        ),
+    );
+
+    println!(
+        "Lagrangian: {:?}",
+        lagrangian
+    );
+
+    println!("EQ: {:?}", x_prime);
+
+    let eq = euler_lagrange(
+        &lagrangian,
+        "x",
+        "t",
+    );
+}
+
+
 #[test]
 
 fn test_harmonic_oscillator() {

@@ -754,33 +754,25 @@ pub fn bessel_j0(x: f64) -> f64 {
 
     if ax < 8.0 {
 
-        // Polynomial approximation
         let y = x * x;
 
+        // Numerator coefficients
         let ans1 = y.mul_add(
             y.mul_add(
                 y.mul_add(
-                    y.mul_add(
-                        y.mul_add(
-                            -184_905_245_600.0,
-                            77_392_330_170.0,
-                        ),
-                        -11_214_424.18,
-                    ),
+                    y.mul_add(y.mul_add(-184.905_245_6, 77_392.330_17), -11_214_424.18),
                     651_619_640.7,
                 ),
                 -13_362_590_354.0,
             ),
-            57_568_490_411.0,
+            57_568_490_574.0,
         );
 
+        // Denominator coefficients
         let ans2 = y.mul_add(
             y.mul_add(
                 y.mul_add(
-                    y.mul_add(
-                        y.mul_add(1.0, 267.853_271_2),
-                        59_272.648_53,
-                    ),
+                    y.mul_add(y.mul_add(1.0, 267.853_271_2), 59_272.648_53),
                     9_494_680.718,
                 ),
                 1_029_532_985.0,
@@ -798,7 +790,7 @@ pub fn bessel_j0(x: f64) -> f64 {
 
         let xx = ax - FRAC_PI_4; // ax - pi/4
         let ans1 = 1.0
-            + y * (-0.001_098_628_627e-2
+            + y * (-0.109_862_862_7e-2
                 + y * (0.273_451_040_7e-4 + y * (-0.207_337_063_9e-5 + y * 0.209_388_721_1e-6)));
 
         let ans2 = -0.015_624_999_95

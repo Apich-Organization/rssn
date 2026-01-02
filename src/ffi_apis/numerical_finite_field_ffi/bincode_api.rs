@@ -15,7 +15,7 @@ struct PfeBinaryOpRequest {
     b: PrimeFieldElement,
 }
 
-fn decode<
+pub(crate) fn decode<
     T: for<'de> Deserialize<'de>,
 >(
     data: *const u8,

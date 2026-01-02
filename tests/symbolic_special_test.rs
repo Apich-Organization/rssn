@@ -439,6 +439,11 @@ fn test_bessel_j0() {
         1.0,
     );
 
+    println!(
+        "bessel_j0(2.405) = {}",
+        bessel_j0(2.405)
+    );
+
     // J_0 has a zero near 2.405
     assert!(
         bessel_j0(2.405).abs() < 0.01
@@ -465,6 +470,11 @@ fn test_bessel_y0() {
 
     // Y_0 is negative for small positive x
     assert!(bessel_y0(0.1) < 0.0);
+
+    println!(
+        "bessel_y0(0.1) = {}",
+        bessel_y0(0.1)
+    );
 
     // Y_0 has a zero near 0.894
     assert!(
@@ -735,10 +745,19 @@ fn test_bessel_recurrence() {
 
     let j0 = bessel_j0(x);
 
+    println!("j0 = {}", j0);
+
     let j1 = bessel_j1(x);
+
+    println!("j1 = {}", j1);
 
     let j2_from_recurrence =
         (2.0 / x) * j1 - j0;
+
+    println!(
+        "j2_from_recurrence = {}",
+        j2_from_recurrence
+    );
 
     // J_2(2) ≈ 0.3528
     assert!(

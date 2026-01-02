@@ -2,13 +2,26 @@
 
 use std::collections::HashMap;
 use std::convert::AsRef;
+use std::convert::TryFrom;
+use std::fmt;
 use std::fmt::Debug;
 use std::hash::Hasher;
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Neg;
+use std::ops::Rem;
+use std::ops::Sub;
 use std::sync::LazyLock;
 use std::sync::RwLock;
 
 use num_bigint::BigInt;
+use num_bigint::ToBigInt as _;
 use num_rational::BigRational;
+use num_rational::Ratio;
+use num_traits::One;
+use num_traits::ToPrimitive;
+use num_traits::Zero;
 use ordered_float::OrderedFloat;
 
 use super::dag_mgr::DAG_MANAGER;
@@ -29,6 +42,8 @@ macro_rules! unary_constructor {
         /// Creates a new
         #[doc = stringify!($op)]
         /// expression, managed by the DAG.
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<A>(a : A) -> Expr
         where
@@ -56,6 +71,8 @@ macro_rules! binary_constructor {
         /// Creates a new
         #[doc = stringify!($op)]
         /// expression, managed by the DAG.
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<A, B>(
             a : A,
@@ -91,6 +108,8 @@ macro_rules! n_ary_constructor {
         /// Creates a new
         #[doc = stringify!($op)]
         /// expression, managed by the DAG.
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<I, T>(elements : I) -> Expr
         where
@@ -136,6 +155,8 @@ macro_rules! unary_constructor_deprecated {
             since = "0.1.18",
             note = "Please use the 'UnaryList' variant instead."
         )]
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<A>(a : A) -> Expr
         where
@@ -174,6 +195,8 @@ macro_rules! binary_constructor_deprecated {
             since = "0.1.18",
             note = "Please use the 'BinaryList' variant instead."
         )]
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<A, B>(
             a : A,
@@ -219,6 +242,8 @@ macro_rules! n_ary_constructor_deprecated {
             since = "0.1.18",
             note = "Please use the 'NaryList' variant instead."
         )]
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<I, T>(elements : I) -> Expr
         where
@@ -531,6 +556,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_constant(
         c: f64
@@ -553,6 +580,8 @@ impl Expr {
     /// # Panics
     /// Panics if the variable cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_variable(
         name: &str
@@ -575,6 +604,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_bigint(
         i: BigInt
@@ -595,6 +626,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_rational(
         r: BigRational
@@ -615,6 +648,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_pi() -> Self {
 
@@ -633,6 +668,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_e() -> Self {
 
@@ -651,6 +688,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_infinity() -> Self {
 
@@ -669,6 +708,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_negative_infinity()
     -> Self {
@@ -688,6 +729,8 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the matrix rows have inconsistent length or if elements cannot be created in the DAG.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_matrix<I, J, T>(
         elements: I
@@ -755,6 +798,8 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the predicate or its arguments cannot be created in the DAG.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_predicate<I, T>(
         name: &str,
@@ -792,6 +837,8 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the expression cannot be created in the DAG.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_forall<A>(
         var: &str,
@@ -823,6 +870,8 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the expression cannot be created in the DAG.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_exists<A>(
         var: &str,
@@ -854,6 +903,9 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the interval boundaries cannot be created in the DAG.
+
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_interval<A, B>(
         lower: A,
@@ -894,11 +946,92 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new `Derivative` expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the polynomial cannot be created in the DAG.
+    #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
+
+    pub fn new_derivative<A>(
+        function: A,
+        variable: String,
+    ) -> Self
+    where
+        A: AsRef<Self>,
+    {
+
+        let dag_function = DAG_MANAGER
+            .get_or_create(
+                function.as_ref(),
+            )
+            .expect("Value is valid");
+
+        let node = DAG_MANAGER
+            .get_or_create_normalized(
+                DagOp::Derivative(
+                    variable,
+                ),
+                vec![dag_function],
+            )
+            .expect("Value is valid");
+
+        Self::Dag(node)
+    }
+
+    /// Creates a new `DerivativeN` expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the polynomial cannot be created in the DAG.
+    #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
+
+    pub fn new_derivativen<A, B>(
+        function: A,
+        variable: String,
+        grades: B,
+    ) -> Self
+    where
+        A: AsRef<Self>,
+        B: AsRef<Self>,
+    {
+
+        let dag_function = DAG_MANAGER
+            .get_or_create(
+                function.as_ref(),
+            )
+            .expect("Value is valid");
+
+        let dag_grades = DAG_MANAGER
+            .get_or_create(
+                grades.as_ref(),
+            )
+            .expect("Value is valid");
+
+        let node = DAG_MANAGER
+            .get_or_create_normalized(
+                DagOp::DerivativeN(
+                    variable,
+                ),
+                vec![
+                    dag_function,
+                    dag_grades,
+                ],
+            )
+            .expect("Value is valid");
+
+        Self::Dag(node)
+    }
+
     /// Creates a new `SparsePolynomial` expression, managed by the DAG.
     ///
     /// # Panics
     /// Panics if the polynomial cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_sparse_polynomial(
         p: SparsePolynomial
@@ -928,6 +1061,8 @@ impl Expr {
                 instead."
     )]
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_custom_zero() -> Self {
 
@@ -952,6 +1087,8 @@ impl Expr {
                 instead."
     )]
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_custom_string(
         s: &str
@@ -979,6 +1116,8 @@ impl Expr {
                 'NaryList' variant \
                 instead."
     )]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_custom_arc_three<
         A,
@@ -1030,6 +1169,8 @@ impl Expr {
                 'NaryList' variant \
                 instead."
     )]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_custom_arc_four<
         A,
@@ -1089,6 +1230,8 @@ impl Expr {
                 'NaryList' variant \
                 instead."
     )]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_custom_arc_five<
         A,
@@ -1167,8 +1310,9 @@ impl Expr {
     ///
     /// assert!(!ast_expr.is_dag());
     /// ```
-    #[inline]
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub const fn is_dag(&self) -> bool {
 
@@ -1210,6 +1354,8 @@ impl Expr {
     ///
     /// assert!(dag.is_dag());
     /// ```
+
+    #[inline]
 
     pub fn to_dag(
         &self
@@ -1254,6 +1400,8 @@ impl Expr {
     /// assert!(expr.is_dag());
     /// ```
 
+    #[inline]
+
     pub fn to_dag_form(&mut self) {
 
         if let Ok(dag) = self.to_dag() {
@@ -1273,6 +1421,7 @@ impl Expr {
     ///
     /// # Errors
     /// Returns an error if conversion from DAG to AST fails.
+    #[inline]
 
     pub fn to_ast(
         &self
@@ -1335,7 +1484,6 @@ pub static DYNAMIC_OP_REGISTRY:
     RwLock::new(HashMap::new())
 });
 
-
 /// Registers a dynamic operation with the global registry.
 ///
 /// # Panics
@@ -1366,6 +1514,9 @@ pub static DYNAMIC_OP_REGISTRY:
 ///     },
 /// );
 /// ```
+
+#[allow(clippy::inline_always)]
+#[inline(always)]
 
 pub fn register_dynamic_op(
     name: &str,
@@ -1426,6 +1577,8 @@ pub fn register_dynamic_op(
 /// );
 /// ```
 #[must_use]
+#[allow(clippy::inline_always)]
+#[inline(always)]
 
 pub fn get_dynamic_op_properties(
     name: &str
@@ -1570,12 +1723,6 @@ impl Expr {
 }
 
 // --- Operator Overloading ---
-use std::ops::Add;
-use std::ops::Div;
-use std::ops::Mul;
-use std::ops::Neg;
-use std::ops::Sub;
-
 // Macro for implementing binary operators for Expr and &Expr
 macro_rules! impl_binary_op {
     (
@@ -1727,7 +1874,6 @@ impl Neg for Expr {
     }
 }
 
-
 impl Neg for &Expr {
     type Output = Expr;
 
@@ -1747,6 +1893,22 @@ pub trait ToConstant {
     /// Converts the value to a symbolic Constant expression.
 
     fn constant(&self) -> Expr;
+}
+
+/// Trait to easily convert primitive types to symbolic BigInt expressions.
+
+pub trait ToBigInt {
+    /// Converts the value to a symbolic BigInt expression.
+
+    fn bigint(&self) -> Expr;
+}
+
+/// Trait to easily convert primitive types to symbolic Rational expressions.
+
+pub trait ToRational {
+    /// Converts the value to a symbolic Rational expression.
+
+    fn rational(&self) -> Expr;
 }
 
 impl ToConstant for f64 {
@@ -1778,5 +1940,607 @@ impl ToConstant for i64 {
     fn constant(&self) -> Expr {
 
         Expr::new_constant(*self as f64)
+    }
+}
+
+/// A unified numeric type capable of holding various primitive and arbitrary-precision numbers.
+/// This type is used internally for constant folding and numeric evaluation within the symbolic engine.
+#[derive(Debug, Clone)]
+
+pub enum Number {
+    /// An arbitrary-precision integer.
+    BigInteger(BigInt),
+    /// An arbitrary-precision rational number (fraction).
+    Rational(BigRational),
+    /// A standard 64-bit floating-point number.
+    Float(OrderedFloat<f64>),
+}
+
+impl Number {
+    /// Checks if the number is an integer (BigInteger variant).
+    #[must_use]
+
+    pub const fn is_integer(
+        &self
+    ) -> bool {
+
+        matches!(
+            self,
+            Self::BigInteger(_)
+        )
+    }
+
+    /// Checks if the number is a floating-point number.
+    #[must_use]
+
+    pub const fn is_float(
+        &self
+    ) -> bool {
+
+        matches!(self, Self::Float(_))
+    }
+
+    /// Checks if the number is zero.
+    #[must_use]
+
+    pub fn is_zero(&self) -> bool {
+
+        match self {
+            | Self::BigInteger(i) => {
+                i.is_zero()
+            },
+            | Self::Rational(r) => {
+                r.is_zero()
+            },
+            | Self::Float(f) => {
+                f.0.abs() < f64::EPSILON
+            },
+        }
+    }
+
+    /// Checks if the number is one.
+    #[must_use]
+
+    pub fn is_one(&self) -> bool {
+
+        match self {
+            | Self::BigInteger(i) => {
+                i.is_one()
+            },
+            | Self::Rational(r) => {
+                r.is_one()
+            },
+            | Self::Float(f) => {
+                (f.0 - 1.0).abs()
+                    < f64::EPSILON
+            },
+        }
+    }
+
+    /// Attempts to convert the number to a standard f64.
+    #[must_use]
+
+    pub fn as_f64(
+        &self
+    ) -> Option<f64> {
+
+        match self {
+            | Self::BigInteger(i) => {
+                i.to_f64()
+            },
+            | Self::Rational(r) => {
+                r.to_f64()
+            },
+            | Self::Float(f) => {
+                Some(f.0)
+            },
+        }
+    }
+
+    /// Converts the number to its most compact exact form.
+    /// E.g., a Rational with denominator 1 becomes a BigInteger.
+    #[must_use]
+
+    pub fn simplify(self) -> Self {
+
+        match self {
+            | Self::Rational(r)
+                if r.is_integer() =>
+            {
+                Self::BigInteger(
+                    r.to_integer(),
+                )
+            },
+            | _ => self,
+        }
+    }
+
+    /// Helper to promote an owned Number to a BigRational if it's exact.
+
+    fn into_rational(
+        self
+    ) -> Option<BigRational> {
+
+        match self {
+            Self::BigInteger(i) => Some(BigRational::from_integer(i)),
+            Self::Rational(r) => Some(r),
+            Self::Float(_) => None,
+        }
+    }
+}
+
+// --- Equality and Comparison ---
+
+impl PartialEq for Number {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
+
+        match (self, other) {
+            | (
+                Self::BigInteger(a),
+                Self::BigInteger(b),
+            ) => a == b,
+            | (
+                Self::Rational(a),
+                Self::Rational(b),
+            ) => a == b,
+            | (
+                Self::Float(a),
+                Self::Float(b),
+            ) => {
+                (a.0 - b.0).abs()
+                    < f64::EPSILON
+            },
+            | (
+                Self::BigInteger(a),
+                Self::Rational(b),
+            )
+            | (
+                Self::Rational(b),
+                Self::BigInteger(a),
+            ) => {
+                b.is_integer()
+                    && b.numer() == a
+            },
+            | _ => {
+
+                // Any mix involving Float falls back to f64 comparison
+                match (
+                    self.as_f64(),
+                    other.as_f64(),
+                ) {
+                    | (
+                        Some(a),
+                        Some(b),
+                    ) => (a - b).abs()
+                        < f64::EPSILON,
+                    | _ => false,
+                }
+            },
+        }
+    }
+}
+
+impl Eq for Number {
+}
+
+impl PartialOrd for Number {
+    fn partial_cmp(
+        &self,
+        other: &Self,
+    ) -> Option<std::cmp::Ordering>
+    {
+
+        match (self, other) {
+            (Self::BigInteger(a), Self::BigInteger(b)) => a.partial_cmp(b),
+            (Self::Rational(a), Self::Rational(b)) => a.partial_cmp(b),
+            (Self::Float(a), Self::Float(b)) => a.partial_cmp(b),
+            (Self::BigInteger(a), Self::Rational(b)) => {
+                BigRational::from_integer(a.clone()).partial_cmp(b)
+            }
+            (Self::Rational(a), Self::BigInteger(b)) => {
+                a.partial_cmp(&BigRational::from_integer(b.clone()))
+            }
+            _ => {
+                match (self.as_f64(), other.as_f64()) {
+                    (Some(a), Some(b)) => OrderedFloat(a).partial_cmp(&OrderedFloat(b)),
+                    _ => None,
+                }
+            }
+        }
+    }
+}
+
+// --- Display ---
+
+impl fmt::Display for Number {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+
+        match self {
+            | Self::BigInteger(i) => {
+
+                write!(f, "{i}")
+            },
+            | Self::Rational(r) => {
+
+                write!(f, "{r}")
+            },
+            | Self::Float(fl) => {
+
+                write!(f, "{}", fl.0)
+            },
+        }
+    }
+}
+
+// --- Conversions ---
+
+macro_rules! impl_from_int {
+    ($($t:ty),*) => {
+        $(
+            impl From<$t> for Number {
+                fn from(i: $t) -> Self {
+                    Number::BigInteger(BigInt::from(i))
+                }
+            }
+        )*
+    };
+}
+
+impl_from_int!(
+    i8, i16, i32, i64, i128, isize, u8,
+    u16, u32, u64, u128, usize
+);
+
+impl From<BigInt> for Number {
+    fn from(i: BigInt) -> Self {
+
+        Self::BigInteger(i)
+    }
+}
+
+impl From<BigRational> for Number {
+    fn from(r: BigRational) -> Self {
+
+        Self::Rational(r).simplify()
+    }
+}
+
+impl From<f32> for Number {
+    fn from(f: f32) -> Self {
+
+        Self::Float(OrderedFloat(
+            f64::from(f),
+        ))
+    }
+}
+
+impl From<f64> for Number {
+    fn from(f: f64) -> Self {
+
+        Self::Float(OrderedFloat(f))
+    }
+}
+
+impl ToConstant for Number {
+    fn constant(&self) -> Expr {
+
+        match self {
+            | Self::BigInteger(n) => {
+                Expr::new_constant(
+                    n.to_f64()
+                        .unwrap_or(
+                            f64::NAN,
+                        ),
+                )
+            },
+            | Self::Rational(n) => {
+                Expr::new_constant(
+                    n.to_f64()
+                        .unwrap_or(
+                            f64::NAN,
+                        ),
+                )
+            },
+            | Self::Float(n) => {
+                Expr::new_constant(n.0)
+            },
+        }
+    }
+}
+
+impl ToBigInt for Number {
+    fn bigint(&self) -> Expr {
+
+        match self {
+            | Self::BigInteger(n) => {
+                Expr::new_bigint(
+                    n.clone(),
+                )
+            },
+            | Self::Rational(n) => {
+                Expr::new_bigint(
+                    n.to_integer(),
+                )
+            },
+            | Self::Float(n) => {
+                Expr::new_bigint(
+                    n.to_bigint()
+                        .unwrap_or_else(
+                        BigInt::zero,
+                    ),
+                )
+            },
+        }
+    }
+}
+
+impl ToRational for Number {
+    fn rational(&self) -> Expr {
+
+        match self {
+            Self::BigInteger(n) => Expr::new_rational(BigRational::from_integer(n.clone())),
+            Self::Rational(n) => Expr::new_rational(n.clone()),
+            Self::Float(n) => Expr::new_rational(BigRational::from_float(n.0).unwrap_or_else(BigRational::zero)),
+        }
+    }
+}
+
+// --- Arithmetic ---
+
+impl Add for Number {
+    type Output = Self;
+
+    fn add(
+        self,
+        other: Self,
+    ) -> Self {
+
+        match (self, other) {
+            | (
+                Self::BigInteger(a),
+                Self::BigInteger(b),
+            ) => {
+                Self::BigInteger(a + b)
+            },
+            | (Self::Float(a), b)
+            | (b, Self::Float(a)) => {
+                Self::Float(
+                    a + OrderedFloat(
+                        b.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ),
+                )
+            },
+            | (a, b) => {
+
+                let ra = a
+                    .into_rational()
+                    .unwrap();
+
+                let rb = b
+                    .into_rational()
+                    .unwrap();
+
+                Self::from(ra + rb)
+            },
+        }
+    }
+}
+
+impl Sub for Number {
+    type Output = Self;
+
+    fn sub(
+        self,
+        other: Self,
+    ) -> Self {
+
+        match (self, other) {
+            | (
+                Self::BigInteger(a),
+                Self::BigInteger(b),
+            ) => {
+                Self::BigInteger(a - b)
+            },
+            | (Self::Float(a), b) => {
+                Self::Float(
+                    a - OrderedFloat(
+                        b.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ),
+                )
+            },
+            | (a, Self::Float(b)) => {
+                Self::Float(
+                    OrderedFloat(
+                        a.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ) - b,
+                )
+            },
+            | (a, b) => {
+
+                let ra = a
+                    .into_rational()
+                    .unwrap();
+
+                let rb = b
+                    .into_rational()
+                    .unwrap();
+
+                Self::from(ra - rb)
+            },
+        }
+    }
+}
+
+impl Mul for Number {
+    type Output = Self;
+
+    fn mul(
+        self,
+        other: Self,
+    ) -> Self {
+
+        match (self, other) {
+            | (
+                Self::BigInteger(a),
+                Self::BigInteger(b),
+            ) => {
+                Self::BigInteger(a * b)
+            },
+            | (Self::Float(a), b)
+            | (b, Self::Float(a)) => {
+                Self::Float(
+                    a * OrderedFloat(
+                        b.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ),
+                )
+            },
+            | (a, b) => {
+
+                let ra = a
+                    .into_rational()
+                    .unwrap();
+
+                let rb = b
+                    .into_rational()
+                    .unwrap();
+
+                Self::from(ra * rb)
+            },
+        }
+    }
+}
+
+impl Div for Number {
+    type Output = Self;
+
+    fn div(
+        self,
+        other: Self,
+    ) -> Self {
+
+        if other.is_zero() {
+
+            return Self::Float(
+                OrderedFloat(f64::NAN),
+            );
+        }
+
+        match (self, other) {
+            | (Self::Float(a), b) => {
+                Self::Float(
+                    a / OrderedFloat(
+                        b.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ),
+                )
+            },
+            | (a, Self::Float(b)) => {
+                Self::Float(
+                    OrderedFloat(
+                        a.as_f64()
+                            .unwrap_or(
+                            f64::NAN,
+                        ),
+                    ) / b,
+                )
+            },
+            | (a, b) => {
+
+                let ra = a
+                    .into_rational()
+                    .unwrap();
+
+                let rb = b
+                    .into_rational()
+                    .unwrap();
+
+                Self::from(ra / rb)
+            },
+        }
+    }
+}
+
+impl Rem for Number {
+    type Output = Self;
+
+    fn rem(
+        self,
+        other: Self,
+    ) -> Self {
+
+        if other.is_zero() {
+
+            return Self::Float(
+                OrderedFloat(f64::NAN),
+            );
+        }
+
+        match (self, other) {
+            | (
+                Self::BigInteger(a),
+                Self::BigInteger(b),
+            ) => {
+                Self::BigInteger(a % b)
+            },
+            | (a, b) => {
+
+                let val_a = a
+                    .as_f64()
+                    .unwrap_or(
+                        f64::NAN,
+                    );
+
+                let val_b = b
+                    .as_f64()
+                    .unwrap_or(
+                        f64::NAN,
+                    );
+
+                Self::Float(
+                    OrderedFloat(
+                        val_a % val_b,
+                    ),
+                )
+            },
+        }
+    }
+}
+
+impl Neg for Number {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+
+        match self {
+            | Self::BigInteger(i) => {
+                Self::BigInteger(-i)
+            },
+            | Self::Rational(r) => {
+                Self::Rational(-r)
+            },
+            | Self::Float(f) => {
+                Self::Float(-f)
+            },
+        }
     }
 }

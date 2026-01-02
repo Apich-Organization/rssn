@@ -19,7 +19,7 @@ struct FfiResult<T> {
     err: Option<String>,
 }
 
-fn decode<
+pub(crate) fn decode<
     T: for<'de> Deserialize<'de>,
 >(
     buffer: BincodeBuffer

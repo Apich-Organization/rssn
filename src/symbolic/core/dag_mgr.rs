@@ -36,7 +36,7 @@ pub struct DagNode {
     /// The operation performed at this node.
     pub op: DagOp,
     /// The children expressions of this node.
-    pub children: Vec<Arc<DagNode>>,
+    pub children: Vec<Arc<Self>>,
     /// Precomputed 64-bit hash of the operation and children.
     #[serde(skip)]
     pub hash: u64,

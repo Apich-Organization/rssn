@@ -1495,10 +1495,10 @@ pub fn correlation_dimension(
         let r = log_r_val.exp();
 
         // Count pairs with distance < r
-        let count =
-            distances.partition_point(
-                |&d| d < r,
-            );
+        let count = distances
+            .partition_point(|&d| {
+                d < r
+            });
 
         let c_r = (2.0 * count as f64)
             / ((n * (n - 1)) as f64);
@@ -1524,7 +1524,7 @@ pub fn correlation_dimension(
 
 /// Helper function for linear regression slope estimation.
 
-fn linear_regression_slope(
+pub(crate) fn linear_regression_slope(
     x: &[f64],
     y: &[f64],
 ) -> f64 {

@@ -51,7 +51,7 @@ use crate::symbolic::simplify_dag::simplify;
 ///
 /// let t = Expr::new_variable("t");
 ///
-/// let x_prime = Expr::new_derivative(x.clone(), "t");
+/// let x_prime = Expr::new_derivative(x.clone(), "t".to_string());
 ///
 /// // L = 1/2 * m * (x')^2
 /// let lagrangian = Expr::new_mul(
@@ -60,7 +60,7 @@ use crate::symbolic::simplify_dag::simplify;
 ///         m,
 ///     ),
 ///     Expr::new_pow(
-///         x_prime,
+///         &x_prime,
 ///         Expr::Constant(2.0),
 ///     ),
 /// );

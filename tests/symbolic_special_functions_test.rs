@@ -127,22 +127,26 @@ fn assert_expr_eq(
 fn test_gamma_integers() {
 
     // Γ(1) = 1
-    let g1 = gamma(Expr::Constant(1.0));
+    let g1 =
+        gamma(&Expr::Constant(1.0));
 
     assert_approx_eq(&g1, 1.0);
 
     // Γ(2) = 1
-    let g2 = gamma(Expr::Constant(2.0));
+    let g2 =
+        gamma(&Expr::Constant(2.0));
 
     assert_approx_eq(&g2, 1.0);
 
     // Γ(5) = 4! = 24
-    let g5 = gamma(Expr::Constant(5.0));
+    let g5 =
+        gamma(&Expr::Constant(5.0));
 
     assert_approx_eq(&g5, 24.0);
 
     // Γ(6) = 5! = 120
-    let g6 = gamma(Expr::Constant(6.0));
+    let g6 =
+        gamma(&Expr::Constant(6.0));
 
     assert_approx_eq(&g6, 120.0);
 }
@@ -153,7 +157,7 @@ fn test_gamma_half_integer() {
 
     // Γ(0.5) = √π
     let g_half =
-        gamma(Expr::Constant(0.5));
+        gamma(&Expr::Constant(0.5));
 
     // Check it simplifies to Sqrt(Pi)
     match &g_half {
@@ -179,7 +183,7 @@ fn test_ln_gamma() {
 
     // ln(Γ(5)) = ln(24)
     let lg =
-        ln_gamma(Expr::Constant(5.0));
+        ln_gamma(&Expr::Constant(5.0));
 
     assert_approx_eq(
         &lg,
@@ -250,7 +254,7 @@ fn test_digamma_special_values() {
 
     // ψ(1) = -γ (Euler-Mascheroni constant)
     let d1 =
-        digamma(Expr::Constant(1.0));
+        digamma(&Expr::Constant(1.0));
 
     match &d1 {
         | Expr::Variable(s)
@@ -275,12 +279,12 @@ fn test_polygamma() {
 
     // ψ⁽⁰⁾(z) = ψ(z)
     let pg0 = polygamma(
-        Expr::Constant(0.0),
-        Expr::Constant(2.0),
+        &Expr::Constant(0.0),
+        &Expr::Constant(2.0),
     );
 
     let d2 =
-        digamma(Expr::Constant(2.0));
+        digamma(&Expr::Constant(2.0));
     // Both should represent digamma(2)
 }
 
@@ -293,7 +297,7 @@ fn test_polygamma() {
 fn test_erf_zero() {
 
     // erf(0) = 0
-    let e = erf(Expr::Constant(0.0));
+    let e = erf(&Expr::Constant(0.0));
 
     assert_approx_eq(&e, 0.0);
 }
@@ -305,7 +309,7 @@ fn test_erf_odd_symmetry() {
     // erf(-x) should simplify to -erf(x)
     let x = Expr::new_variable("x");
 
-    let e_neg = erf(Expr::new_neg(
+    let e_neg = erf(&Expr::new_neg(
         x.clone(),
     ));
 
@@ -327,7 +331,7 @@ fn test_erf_odd_symmetry() {
 fn test_erfc() {
 
     // erfc(0) = 1 - erf(0) = 1
-    let ec = erfc(Expr::Constant(0.0));
+    let ec = erfc(&Expr::Constant(0.0));
 
     assert_approx_eq(&ec, 1.0);
 }
@@ -341,18 +345,19 @@ fn test_erfc() {
 fn test_zeta_special_values() {
 
     // ζ(0) = -1/2
-    let z0 = zeta(Expr::Constant(0.0));
+    let z0 = zeta(&Expr::Constant(0.0));
 
     assert_approx_eq(&z0, -0.5);
 
     // ζ(1) = ∞
-    let z1 = zeta(Expr::Constant(1.0));
+    let z1 = zeta(&Expr::Constant(1.0));
 
     assert_eq!(z1, Expr::Infinity);
 
     // ζ(-2) = 0 (trivial zero)
-    let z_neg2 =
-        zeta(Expr::Constant(-2.0));
+    let z_neg2 = zeta(&Expr::Constant(
+        -2.0,
+    ));
 
     assert_approx_eq(&z_neg2, 0.0);
 }
@@ -367,23 +372,23 @@ fn test_bessel_j_at_zero() {
 
     // J_0(0) = 1
     let j0 = bessel_j(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        &Expr::Constant(0.0),
+        &Expr::Constant(0.0),
     );
 
     assert_approx_eq(&j0, 1.0);
 
     // J_n(0) = 0 for n > 0
     let j1 = bessel_j(
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
+        &Expr::Constant(1.0),
+        &Expr::Constant(0.0),
     );
 
     assert_approx_eq(&j1, 0.0);
 
     let j5 = bessel_j(
-        Expr::Constant(5.0),
-        Expr::Constant(0.0),
+        &Expr::Constant(5.0),
+        &Expr::Constant(0.0),
     );
 
     assert_approx_eq(&j5, 0.0);
@@ -395,8 +400,8 @@ fn test_bessel_y_at_zero() {
 
     // Y_n(0) = -∞
     let y0 = bessel_y(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        &Expr::Constant(0.0),
+        &Expr::Constant(0.0),
     );
 
     assert_eq!(
@@ -411,16 +416,16 @@ fn test_bessel_i_at_zero() {
 
     // I_0(0) = 1
     let i0 = bessel_i(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        &Expr::Constant(0.0),
+        &Expr::Constant(0.0),
     );
 
     assert_approx_eq(&i0, 1.0);
 
     // I_n(0) = 0 for n > 0
     let i1 = bessel_i(
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
+        &Expr::Constant(1.0),
+        &Expr::Constant(0.0),
     );
 
     assert_approx_eq(&i1, 0.0);
@@ -432,8 +437,8 @@ fn test_bessel_k_at_zero() {
 
     // K_n(0) = ∞
     let k0 = bessel_k(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        &Expr::Constant(0.0),
+        &Expr::Constant(0.0),
     );
 
     assert_eq!(k0, Expr::Infinity);
@@ -452,7 +457,7 @@ fn test_legendre_p_basic() {
 
     // P_0(x) = 1
     let p0 = legendre_p(
-        Expr::Constant(0.0),
+        &Expr::Constant(0.0),
         x.clone(),
     );
 
@@ -460,7 +465,7 @@ fn test_legendre_p_basic() {
 
     // P_1(x) = x
     let p1 = legendre_p(
-        Expr::Constant(1.0),
+        &Expr::Constant(1.0),
         x.clone(),
     );
 
@@ -474,7 +479,7 @@ fn test_legendre_p_recurrence() {
     // P_2(x) = (3x² - 1)/2
     // At x=0: P_2(0) = -1/2
     let p2_at_0 = legendre_p(
-        Expr::Constant(2.0),
+        &Expr::Constant(2.0),
         Expr::Constant(0.0),
     );
 
@@ -482,7 +487,7 @@ fn test_legendre_p_recurrence() {
 
     // At x=1: P_n(1) = 1 for all n
     let p2_at_1 = legendre_p(
-        Expr::Constant(2.0),
+        &Expr::Constant(2.0),
         Expr::Constant(1.0),
     );
 
@@ -502,7 +507,7 @@ fn test_laguerre_l_basic() {
 
     // L_0(x) = 1
     let l0 = laguerre_l(
-        Expr::Constant(0.0),
+        &Expr::Constant(0.0),
         x.clone(),
     );
 
@@ -510,7 +515,7 @@ fn test_laguerre_l_basic() {
 
     // L_1(x) = 1 - x, at x=0: L_1(0) = 1
     let l1_at_0 = laguerre_l(
-        Expr::Constant(1.0),
+        &Expr::Constant(1.0),
         Expr::Constant(0.0),
     );
 
@@ -518,7 +523,7 @@ fn test_laguerre_l_basic() {
 
     // L_1(1) = 0
     let l1_at_1 = laguerre_l(
-        Expr::Constant(1.0),
+        &Expr::Constant(1.0),
         Expr::Constant(1.0),
     );
 
@@ -546,7 +551,7 @@ fn test_generalized_laguerre() {
     );
 
     let l1 = laguerre_l(
-        Expr::Constant(1.0),
+        &Expr::Constant(1.0),
         Expr::Constant(0.0),
     );
 
@@ -896,7 +901,7 @@ fn test_polynomial_orthogonality_at_boundaries()
     for n in 0 ..= 5 {
 
         let pn = legendre_p(
-            Expr::Constant(n as f64),
+            &Expr::Constant(n as f64),
             Expr::Constant(1.0),
         );
 

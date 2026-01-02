@@ -82,7 +82,7 @@ pub struct Computation {
     pub cancel_signal: Arc<AtomicBool>,
 }
 
-fn default_pause()
+pub(crate) fn default_pause()
 -> Arc<(Mutex<bool>, Condvar)> {
 
     Arc::new((

@@ -186,7 +186,7 @@ pub fn find_extrema(
     }
 }
 
-fn evaluate_constant_expr(
+pub(crate) fn evaluate_constant_expr(
     expr: &Expr
 ) -> Option<f64> {
 

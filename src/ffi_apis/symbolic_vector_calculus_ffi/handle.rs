@@ -16,7 +16,7 @@ use crate::symbolic::vector_calculus::surface_integral;
 use crate::symbolic::vector_calculus::volume_integral;
 
 // Helper function to parse expression from C string
-fn parse_expr_from_cstr(
+pub(crate) fn parse_expr_from_cstr(
     ptr: *const c_char
 ) -> Option<Expr> {
 

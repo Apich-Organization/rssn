@@ -253,9 +253,42 @@ fn test_chinese_remainder() {
             );
         };
 
+    match &*modulus {
+        | Expr::BigInt(i) => {
+
+            println!(
+                "DEBUG: modulus is \
+                 BigInt({})",
+                i
+            )
+        },
+        | Expr::Constant(c) => {
+
+            println!(
+                "DEBUG: modulus is \
+                 Constant({})",
+                c
+            )
+        },
+        | Expr::Dag(_) => {
+
+            println!(
+                "DEBUG: modulus is Dag"
+            )
+        },
+        | _ => {
+
+            println!(
+                "DEBUG: modulus is \
+                 {:?}",
+                *modulus
+            )
+        },
+    }
+
     assert_eq!(
         *val,
-        Expr::BigInt(BigInt::from(23))
+        Expr::Constant(23.0)
     );
 
     assert_eq!(

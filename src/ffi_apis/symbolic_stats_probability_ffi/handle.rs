@@ -38,7 +38,7 @@ unsafe fn ptr_to_expr(
 }
 
 // --- Generic Helper to wrap a Distribution in Expr ---
-fn wrap_dist<
+pub(crate) fn wrap_dist<
     D: Distribution + 'static,
 >(
     dist: D

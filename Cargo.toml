@@ -30,6 +30,10 @@ exclude = [
     "examples/fortran/*.pdb",
     "examples/fortran/*.d",
     "examples/fortran/*.exp",
+    "*.sh",
+    "*.bat",
+    "/scripts/*",
+    "/docs/*"
 ]
 
 [lib]
@@ -141,6 +145,7 @@ vergen-gitcl = { version = "1.0.8", features = [
 
 [features]
 default = []
+compute = []
 output = ["dep:plotters", "dep:ndarray-npy"]
 physics = []
 plugins = ["dep:libloading", "dep:abi_stable"]
@@ -162,7 +167,7 @@ full = [
     "output",
     "physics",
     "plugins",
-    "ffi_api",
+    "compute",
     "ffi_blinding",
     "jit",
     "experimental",
@@ -182,3 +187,7 @@ all-features = true
 
 [lints.clippy]
 empty-line-after-doc-comments = "allow"
+
+[lints.rust]
+# Allowed here because of kani.
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(has_foo)'] }

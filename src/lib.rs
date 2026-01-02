@@ -265,14 +265,14 @@
     clippy::pedantic,
     clippy::nursery,
     clippy::single_call_fn,
+    missing_docs,
+    unsafe_code,
 )]
 // -------------------------------------------------------------------------
 // LEVEL 2: STYLE WARNINGS (Warn)
 // -------------------------------------------------------------------------
 #![warn(
     warnings,
-    missing_docs,
-    unsafe_code,
     // To avoid performance issues in hot paths
     clippy::expect_used,
     // To avoid simd optimization issues
@@ -289,8 +289,6 @@
     clippy::todo,
     // This is usually a sign of dead code --- but for development purposes, we will just warn it.
     clippy::used_underscore_binding,
-    // We think using self is less readable for this library.
-    clippy::use_self,
     clippy::unnecessary_safety_comment
 )]
 // -------------------------------------------------------------------------
@@ -317,6 +315,7 @@
     clippy::must_use_candidate
 )]
 
+#[cfg(feature = "compute")]
 /// Computation engine and task management.
 pub mod compute;
 /// System and physical constants.
@@ -337,18 +336,33 @@ pub mod jit;
 #[cfg(feature = "nightly")]
 /// Features requiring nightly Rust.
 pub mod nightly;
+/// Numerical computation and optimization.
 pub mod numerical;
 #[cfg(feature = "output")]
+/// Output formatting and handling.
 pub mod output;
 #[cfg(feature = "physics")]
+/// Physics-related functionality.
 pub mod physics;
 #[cfg(feature = "plugins")]
 /// Plugin system for extending functionality.
 pub mod plugins;
+/// Prelude for common imports.
 pub mod prelude;
+/// The symbolic computation engine.
 pub mod symbolic;
+/// Unfortunatily, faer and many math libraries are not compatible with kani so we have to wait.
+#[cfg(kani)]
+pub mod verification;
 
+// --- Useful Public Re-exports ---
 use std::sync::Arc;
+
+pub use crate::numerical::matrix::*;
+pub use crate::symbolic::calculus::*;
+pub use crate::symbolic::core::*;
+pub use crate::symbolic::matrix::*;
+pub use crate::symbolic::simplify_dag::*;
 
 /// Checks if an `Arc` has exclusive ownership (strong count is 1).
 ///

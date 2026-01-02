@@ -108,6 +108,10 @@ pub trait Field:
 
         None
     }
+
+    /// Returns a magnitude heuristic for pivot selection.
+
+    fn magnitude(&self) -> f64;
 }
 
 impl Field for f64 {
@@ -128,6 +132,11 @@ impl Field for f64 {
             Err("Cannot invert 0.0"
                 .to_string())
         }
+    }
+
+    fn magnitude(&self) -> f64 {
+
+        self.abs()
     }
 
     fn faer_mul(
@@ -349,6 +358,17 @@ impl Field for PrimeFieldElement {
                  non-invertible element"
                     .to_string()
             })
+    }
+
+    fn magnitude(&self) -> f64 {
+
+        if self.is_zero() {
+
+            0.0
+        } else {
+
+            1.0
+        }
     }
 }
 
@@ -728,18 +748,31 @@ impl<T: Field> Matrix<T> {
                 break;
             }
 
+            let mut max_val = 0.0;
+
             let mut i = pivot_row;
 
-            while i < self.rows
-                && !self
-                    .get(i, j)
-                    .is_invertible()
-            {
+            let mut best_row = i;
 
-                i += 1;
+            // Partial pivoting: find the row with the largest magnitude in this column
+            for row in i .. self.rows {
+
+                let val = self
+                    .get(row, j)
+                    .magnitude();
+
+                if val > max_val {
+
+                    max_val = val;
+
+                    best_row = row;
+                }
             }
 
-            if i < self.rows {
+            // Use an epsilon for numerical stability
+            if max_val > 1e-12 {
+
+                i = best_row;
 
                 for k in 0 .. self.cols
                 {
@@ -1967,7 +2000,9 @@ impl<T: Field> Matrix<T> {
 
 /// Recursive helper for Strassen's algorithm.
 
-fn strassen_recursive<T: Field>(
+pub(crate) fn strassen_recursive<
+    T: Field,
+>(
     a: &Matrix<T>,
     b: &Matrix<T>,
 ) -> Matrix<T> {

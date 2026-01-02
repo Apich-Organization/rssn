@@ -349,7 +349,7 @@ pub fn classify_singularity(
 
 /// Helper function to count the order of a pole.
 
-fn count_pole_order(
+pub(crate) fn count_pole_order(
     expr: &Expr,
     factor: &Expr,
 ) -> usize {

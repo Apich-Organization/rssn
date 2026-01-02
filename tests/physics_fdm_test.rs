@@ -34,14 +34,18 @@ fn test_grid_indexing_2d() {
 fn test_heat_equation_2d_stability() {
 
     // Small simulation to check stability and convergence
+    let config = FdmSolverConfig2D {
+        width: 20,
+        height: 20,
+        dx: 1.0,
+        dy: 1.0,
+        dt: 0.1,
+        steps: 100,
+    };
+
     let grid = solve_heat_equation_2d(
-        20,
-        20,
+        &config,
         0.01,
-        1.0,
-        1.0,
-        0.1,
-        100,
         |x, y| {
             if x == 10 && y == 10 {
 
@@ -67,14 +71,18 @@ fn test_heat_equation_2d_stability() {
 
 fn test_wave_equation_2d_basic() {
 
+    let config = FdmSolverConfig2D {
+        width: 30,
+        height: 30,
+        dx: 1.0,
+        dy: 1.0,
+        dt: 0.1,
+        steps: 50,
+    };
+
     let grid = solve_wave_equation_2d(
-        30,
-        30,
+        &config,
         1.0,
-        1.0,
-        1.0,
-        0.1,
-        50,
         |x, y| {
             if x == 15 && y == 15 {
 
@@ -106,15 +114,20 @@ fn test_poisson_solver() {
 
     source[(10, 10)] = 10.0; // Positive source => Concave up => Minimum at source
 
+    let config =
+        PoissonSolverConfig2D {
+            width,
+            height,
+            dx: 1.0,
+            dy: 1.0,
+            omega: 1.5,
+            max_iter: 1000,
+            tolerance: 1e-6,
+        };
+
     let u = solve_poisson_2d(
-        width,
-        height,
+        &config,
         &source,
-        1.0,
-        1.0,
-        1.5,
-        1000,
-        1e-6,
     );
 
     // Potential should be minimum (most negative) at the negative source
@@ -185,7 +198,15 @@ proptest! {
         // Condition for stability: dt <= dx^2 / (4 * alpha)
         // With DX=1, dt <= 1 / (4 * alpha)
         // If alpha = 0.05, dt <= 5.0. Our range 0.01..0.1 is safe.
-        let grid = solve_heat_equation_2d(10, 10, alpha, 1.0, 1.0, dt, steps, |_, _| 1.0);
+        let config = FdmSolverConfig2D {
+            width: 10,
+            height: 10,
+            dx: 1.0,
+            dy: 1.0,
+            dt,
+            steps,
+        };
+        let grid = solve_heat_equation_2d(&config, alpha, |_, _| 1.0);
         for &val in grid.as_slice() {
             prop_assert!(val.is_finite());
             prop_assert!(val <= 1.0 + 1e-10); // Heat shouldn't increase beyond initial

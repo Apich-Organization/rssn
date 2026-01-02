@@ -13,7 +13,7 @@ use crate::symbolic::stats_probability::StudentT;
 use crate::symbolic::stats_probability::Uniform; // Technically unused here but consistent with other files
 
 // Helper to safely convert BincodeBuffer to Expr
-fn parse_expr(
+pub(crate) fn parse_expr(
     buf: BincodeBuffer
 ) -> Option<Expr> {
 

@@ -36,7 +36,7 @@ fn create_poly(
         .collect();
 
     FiniteFieldPolynomial::new(
-        elements,
+        &elements,
         field,
     )
 }

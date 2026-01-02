@@ -54,7 +54,7 @@ unsafe fn parse_bigint(
 
 /// Helper to convert `BigInt` to C string (decimal).
 
-fn bigint_to_string(
+pub(crate) fn bigint_to_string(
     b: &BigInt
 ) -> *mut c_char {
 

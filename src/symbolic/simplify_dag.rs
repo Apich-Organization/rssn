@@ -1317,6 +1317,13 @@ pub(crate) fn apply_rules_power(
 
     if is_zero_node(exp) {
 
+        if is_zero_node(base)
+            || is_infinite_node(base)
+        {
+
+            return Some(node.clone());
+        }
+
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(1.0),
@@ -1329,6 +1336,11 @@ pub(crate) fn apply_rules_power(
     // 1 ^ x -> 1
 
     if is_one_node(base) {
+
+        if is_infinite_node(exp) {
+
+            return Some(node.clone());
+        }
 
         return Some(match DAG_MANAGER
             .get_or_create(
@@ -1519,7 +1531,9 @@ pub(crate) fn apply_rules_div(
 
     if is_zero_node(lhs) {
 
-        if is_zero_node(rhs) {
+        if is_zero_node(rhs)
+            || is_infinite_node(rhs)
+        {
 
             return Some(node.clone());
         }
@@ -1593,16 +1607,35 @@ pub(crate) fn apply_rules_mul(
 
     // x * 0 -> 0
 
-    if is_zero_node(rhs)
-        || is_zero_node(lhs)
-    {
+    if is_zero_node(rhs) {
+
+        if is_infinite_node(lhs) {
+
+            return Some(node.clone());
+        }
 
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(0.0),
             ) {
             | Ok(node) => node,
-            | Err(_) => node.clone(), /* Return original if creation fails */
+            | Err(_) => node.clone(),
+        });
+    }
+
+    if is_zero_node(lhs) {
+
+        if is_infinite_node(rhs) {
+
+            return Some(node.clone());
+        }
+
+        return Some(match DAG_MANAGER
+            .get_or_create(
+                &Expr::Constant(0.0),
+            ) {
+            | Ok(node) => node,
+            | Err(_) => node.clone(),
         });
     }
 
@@ -2137,22 +2170,59 @@ pub(crate) fn fold_constants(
             &node.op,
             values.as_slice(),
         ) {
-            | (DagOp::Add, [a, b]) => Some(add_em(a, b)),
-            | (DagOp::Sub, [a, b]) => Some(sub_em(a, b)),
-            | (DagOp::Mul, [a, b]) => Some(mul_em(a, b)),
-            | (DagOp::Div, [a, b]) => div_em(a, b),
-            | (DagOp::Power, [Expr::Constant(a), Expr::Constant(b)]) => {
+            | (DagOp::Add, [a, b]) => {
+                Some(add_em(a, b))
+            },
+            | (DagOp::Sub, [a, b]) => {
+                Some(sub_em(a, b))
+            },
+            | (DagOp::Mul, [a, b]) => {
+                Some(mul_em(a, b))
+            },
+            | (DagOp::Div, [a, b]) => {
+                div_em(a, b)
+            },
+            | (
+                DagOp::Power,
+                [
+                    Expr::Constant(a),
+                    Expr::Constant(b),
+                ],
+            ) => {
                 Some(Expr::Constant(
                     a.powf(*b),
                 ))
             },
-            | (DagOp::Neg, [a]) => Some(neg_em(a)),
+            | (DagOp::Neg, [a]) => {
+                Some(neg_em(a))
+            },
             | (DagOp::Sqrt, [a]) => {
+
                 match a.to_f64() {
-                    | Some(val) if val >= 0.0 => {
-                        Some(Expr::Constant(
-                            val.sqrt(),
-                        ))
+                    | Some(val)
+                        if val
+                            >= 0.0 =>
+                    {
+
+                        let root =
+                            val.sqrt();
+
+                        // Only fold if the square root is an integer (perfect square)
+                        // to preserve symbolic exactness for non-perfect squares.
+                        if (root
+                            .round()
+                            - root)
+                            .abs()
+                            < 1e-12
+                        {
+
+                            Some(Expr::Constant(
+                                root.round(),
+                            ))
+                        } else {
+
+                            None
+                        }
                     },
                     | _ => None,
                 }
@@ -2699,6 +2769,22 @@ pub(crate) fn is_zero_node(
             true
         },
         | _ => false, /* Default case returns false */
+    }
+}
+
+pub(crate) fn is_infinite_node(
+    node: &Arc<DagNode>
+) -> bool {
+
+    match &node.op {
+        | DagOp::Infinity
+        | DagOp::NegativeInfinity => {
+            true
+        },
+        | DagOp::Constant(c) => {
+            c.0.is_infinite()
+        },
+        | _ => false,
     }
 }
 

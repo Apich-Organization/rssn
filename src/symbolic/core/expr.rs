@@ -152,17 +152,17 @@ pub enum Expr {
 
     // --- Arithmetic Operations ---
     /// Addition of two expressions.
-    Add(Arc<Expr>, Arc<Expr>),
+    Add(Arc<Self>, Arc<Self>),
     /// Subtraction of two expressions.
-    Sub(Arc<Expr>, Arc<Expr>),
+    Sub(Arc<Self>, Arc<Self>),
     /// Multiplication of two expressions.
-    Mul(Arc<Expr>, Arc<Expr>),
+    Mul(Arc<Self>, Arc<Self>),
     /// Division of two expressions.
-    Div(Arc<Expr>, Arc<Expr>),
+    Div(Arc<Self>, Arc<Self>),
     /// Exponentiation (`base` raised to the power of `exponent`).
-    Power(Arc<Expr>, Arc<Expr>),
+    Power(Arc<Self>, Arc<Self>),
     /// Negation of an expression.
-    Neg(Arc<Expr>),
+    Neg(Arc<Self>),
 
     // --- N-ary Arithmetic Operations ---
     // These variants support N-ary operations, which are more efficient for
@@ -188,7 +188,7 @@ pub enum Expr {
     ///     Expr::Variable("d".to_string()),
     /// ]);
     /// ```
-    AddList(Vec<Expr>),
+    AddList(Vec<Self>),
     /// N-ary Multiplication (Product of a list of expressions).
     ///
     /// This variant represents the product of multiple expressions in a single operation,
@@ -209,216 +209,216 @@ pub enum Expr {
     ///     Expr::Variable("d".to_string()),
     /// ]);
     /// ```
-    MulList(Vec<Expr>),
+    MulList(Vec<Self>),
 
     // --- Basic Mathematical Functions ---
     /// The sine function.
-    Sin(Arc<Expr>),
+    Sin(Arc<Self>),
     /// The cosine function.
-    Cos(Arc<Expr>),
+    Cos(Arc<Self>),
     /// The tangent function.
-    Tan(Arc<Expr>),
+    Tan(Arc<Self>),
     /// The natural exponential function, `e^x`.
-    Exp(Arc<Expr>),
+    Exp(Arc<Self>),
     /// The natural logarithm, `ln(x)`.
-    Log(Arc<Expr>),
+    Log(Arc<Self>),
     /// The absolute value function, `|x|`.
-    Abs(Arc<Expr>),
+    Abs(Arc<Self>),
     /// The square root function.
-    Sqrt(Arc<Expr>),
+    Sqrt(Arc<Self>),
 
     // --- Equations and Relations ---
     /// Represents an equation (`left = right`).
-    Eq(Arc<Expr>, Arc<Expr>),
+    Eq(Arc<Self>, Arc<Self>),
     /// Less than (`<`).
-    Lt(Arc<Expr>, Arc<Expr>),
+    Lt(Arc<Self>, Arc<Self>),
     /// Greater than (`>`).
-    Gt(Arc<Expr>, Arc<Expr>),
+    Gt(Arc<Self>, Arc<Self>),
     /// Less than or equal to (`<=`).
-    Le(Arc<Expr>, Arc<Expr>),
+    Le(Arc<Self>, Arc<Self>),
     /// Greater than or equal to (`>=`).
-    Ge(Arc<Expr>, Arc<Expr>),
+    Ge(Arc<Self>, Arc<Self>),
 
     // --- Linear Algebra ---
     /// A matrix, represented as a vector of row vectors.
-    Matrix(Vec<Vec<Expr>>),
+    Matrix(Vec<Vec<Self>>),
     /// A vector (or column matrix).
-    Vector(Vec<Expr>),
+    Vector(Vec<Self>),
     /// A complex number with real and imaginary parts.
-    Complex(Arc<Expr>, Arc<Expr>),
+    Complex(Arc<Self>, Arc<Self>),
     /// Matrix transpose.
-    Transpose(Arc<Expr>),
+    Transpose(Arc<Self>),
     /// Matrix-matrix multiplication.
-    MatrixMul(Arc<Expr>, Arc<Expr>),
+    MatrixMul(Arc<Self>, Arc<Self>),
     /// Matrix-vector multiplication.
-    MatrixVecMul(Arc<Expr>, Arc<Expr>),
+    MatrixVecMul(Arc<Self>, Arc<Self>),
     /// Matrix inverse.
-    Inverse(Arc<Expr>),
+    Inverse(Arc<Self>),
 
     // --- Calculus ---
     /// The derivative of an expression with respect to a variable.
-    Derivative(Arc<Expr>, String),
+    Derivative(Arc<Self>, String),
     /// The N-th derivative of an expression.
     DerivativeN(
-        Arc<Expr>,
+        Arc<Self>,
         String,
-        Arc<Expr>,
+        Arc<Self>,
     ),
     /// A definite integral of `integrand` with respect to `var` from `lower_bound` to `upper_bound`.
     Integral {
         /// The expression to be integrated.
-        integrand: Arc<Expr>,
+        integrand: Arc<Self>,
         /// The variable of integration.
-        var: Arc<Expr>,
+        var: Arc<Self>,
         /// The lower limit of integration.
-        lower_bound: Arc<Expr>,
+        lower_bound: Arc<Self>,
         /// The upper limit of integration.
-        upper_bound: Arc<Expr>,
+        upper_bound: Arc<Self>,
     },
     /// A volume integral of a scalar field over a specified volume.
     VolumeIntegral {
         /// The scalar field to be integrated over the volume.
-        scalar_field: Arc<Expr>,
+        scalar_field: Arc<Self>,
         /// The volume domain.
-        volume: Arc<Expr>,
+        volume: Arc<Self>,
     },
     /// A surface integral of a vector field over a specified surface.
     SurfaceIntegral {
         /// The vector field to be integrated over the surface.
-        vector_field: Arc<Expr>,
+        vector_field: Arc<Self>,
         /// The surface domain.
-        surface: Arc<Expr>,
+        surface: Arc<Self>,
     },
     /// A limit of an expression as a variable approaches a point.
     Limit(
-        Arc<Expr>,
+        Arc<Self>,
         String,
-        Arc<Expr>,
+        Arc<Self>,
     ),
 
     // --- Series and Summations ---
     /// A summation of `body` with `var` from `from` to `to`.
     Sum {
         /// The expression to be summed.
-        body: Arc<Expr>,
+        body: Arc<Self>,
         /// The summation variable.
-        var: Arc<Expr>,
+        var: Arc<Self>,
         /// The starting value of the summation variable.
-        from: Arc<Expr>,
+        from: Arc<Self>,
         /// The ending value of the summation variable.
-        to: Arc<Expr>,
+        to: Arc<Self>,
     },
     /// A finite or infinite series expansion.
     Series(
-        Arc<Expr>,
+        Arc<Self>,
         String,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
     ),
     /// A summation over a range (similar to `Sum`).
     Summation(
-        Arc<Expr>,
+        Arc<Self>,
         String,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
     ),
     /// A product of terms over a range.
     Product(
-        Arc<Expr>,
+        Arc<Self>,
         String,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
     ),
     /// Represents a convergence analysis for a series.
     ConvergenceAnalysis(
-        Arc<Expr>,
+        Arc<Self>,
         String,
     ),
     /// An asymptotic expansion of a function.
     AsymptoticExpansion(
-        Arc<Expr>,
+        Arc<Self>,
         String,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
     ),
 
     // --- Trigonometric & Hyperbolic Functions (Extended) ---
     /// Secant function.
-    Sec(Arc<Expr>),
+    Sec(Arc<Self>),
     /// Cosecant function.
-    Csc(Arc<Expr>),
+    Csc(Arc<Self>),
     /// Cotangent function.
-    Cot(Arc<Expr>),
+    Cot(Arc<Self>),
     /// Arcsine (inverse sine).
-    ArcSin(Arc<Expr>),
+    ArcSin(Arc<Self>),
     /// Arccosine (inverse cosine).
-    ArcCos(Arc<Expr>),
+    ArcCos(Arc<Self>),
     /// Arctangent (inverse tangent).
-    ArcTan(Arc<Expr>),
+    ArcTan(Arc<Self>),
     /// Arcsecant (inverse secant).
-    ArcSec(Arc<Expr>),
+    ArcSec(Arc<Self>),
     /// Arccosecant (inverse cosecant).
-    ArcCsc(Arc<Expr>),
+    ArcCsc(Arc<Self>),
     /// Arccotangent (inverse cotangent).
-    ArcCot(Arc<Expr>),
+    ArcCot(Arc<Self>),
     /// Hyperbolic sine.
-    Sinh(Arc<Expr>),
+    Sinh(Arc<Self>),
     /// Hyperbolic cosine.
-    Cosh(Arc<Expr>),
+    Cosh(Arc<Self>),
     /// Hyperbolic tangent.
-    Tanh(Arc<Expr>),
+    Tanh(Arc<Self>),
     /// Hyperbolic secant.
-    Sech(Arc<Expr>),
+    Sech(Arc<Self>),
     /// Hyperbolic cosecant.
-    Csch(Arc<Expr>),
+    Csch(Arc<Self>),
     /// Hyperbolic cotangent.
-    Coth(Arc<Expr>),
+    Coth(Arc<Self>),
     /// Inverse hyperbolic sine.
-    ArcSinh(Arc<Expr>),
+    ArcSinh(Arc<Self>),
     /// Inverse hyperbolic cosine.
-    ArcCosh(Arc<Expr>),
+    ArcCosh(Arc<Self>),
     /// Inverse hyperbolic tangent.
-    ArcTanh(Arc<Expr>),
+    ArcTanh(Arc<Self>),
     /// Inverse hyperbolic secant.
-    ArcSech(Arc<Expr>),
+    ArcSech(Arc<Self>),
     /// Inverse hyperbolic cosecant.
-    ArcCsch(Arc<Expr>),
+    ArcCsch(Arc<Self>),
     /// Inverse hyperbolic cotangent.
-    ArcCoth(Arc<Expr>),
+    ArcCoth(Arc<Self>),
     /// Logarithm with a specified base.
-    LogBase(Arc<Expr>, Arc<Expr>),
+    LogBase(Arc<Self>, Arc<Self>),
     /// Two-argument arctangent.
-    Atan2(Arc<Expr>, Arc<Expr>),
+    Atan2(Arc<Self>, Arc<Self>),
 
     // --- Combinatorics ---
     /// Binomial coefficient, "n choose k".
-    Binomial(Arc<Expr>, Arc<Expr>),
+    Binomial(Arc<Self>, Arc<Self>),
     /// Factorial, `n!`.
-    Factorial(Arc<Expr>),
+    Factorial(Arc<Self>),
     /// Permutations, `P(n, k)`.
-    Permutation(Arc<Expr>, Arc<Expr>),
+    Permutation(Arc<Self>, Arc<Self>),
     /// Combinations, `C(n, k)`.
-    Combination(Arc<Expr>, Arc<Expr>),
+    Combination(Arc<Self>, Arc<Self>),
     /// Falling factorial.
     FallingFactorial(
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
     ),
     /// Rising factorial.
     RisingFactorial(
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
     ),
 
     // --- Geometry & Vector Calculus ---
     /// A path for path integrals (e.g., line, circle).
     Path(
         PathType,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
     ),
     /// Represents the boundary of a domain.
-    Boundary(Arc<Expr>),
+    Boundary(Arc<Self>),
     /// Represents a named domain (e.g., for integrals).
     Domain(String),
 
@@ -434,107 +434,107 @@ pub enum Expr {
 
     // --- Special Functions ---
     /// The Gamma function.
-    Gamma(Arc<Expr>),
+    Gamma(Arc<Self>),
     /// The Beta function.
-    Beta(Arc<Expr>, Arc<Expr>),
+    Beta(Arc<Self>, Arc<Self>),
     /// The error function.
-    Erf(Arc<Expr>),
+    Erf(Arc<Self>),
     /// The complementary error function.
-    Erfc(Arc<Expr>),
+    Erfc(Arc<Self>),
     /// The imaginary error function.
-    Erfi(Arc<Expr>),
+    Erfi(Arc<Self>),
     /// The Riemann Zeta function.
-    Zeta(Arc<Expr>),
+    Zeta(Arc<Self>),
     /// Bessel function of the first kind.
-    BesselJ(Arc<Expr>, Arc<Expr>),
+    BesselJ(Arc<Self>, Arc<Self>),
     /// Bessel function of the second kind.
-    BesselY(Arc<Expr>, Arc<Expr>),
+    BesselY(Arc<Self>, Arc<Self>),
     /// Legendre polynomial.
-    LegendreP(Arc<Expr>, Arc<Expr>),
+    LegendreP(Arc<Self>, Arc<Self>),
     /// Laguerre polynomial.
-    LaguerreL(Arc<Expr>, Arc<Expr>),
+    LaguerreL(Arc<Self>, Arc<Self>),
     /// Hermite polynomial.
-    HermiteH(Arc<Expr>, Arc<Expr>),
+    HermiteH(Arc<Self>, Arc<Self>),
     /// The digamma function (psi function).
-    Digamma(Arc<Expr>),
+    Digamma(Arc<Self>),
     /// The Kronecker delta function.
     KroneckerDelta(
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
     ),
 
     // --- Logic & Sets ---
     /// Logical AND of a vector of expressions.
-    And(Vec<Expr>),
+    And(Vec<Self>),
     /// Logical OR of a vector of expressions.
-    Or(Vec<Expr>),
+    Or(Vec<Self>),
     /// Logical NOT.
-    Not(Arc<Expr>),
+    Not(Arc<Self>),
     /// Logical XOR (exclusive OR).
-    Xor(Arc<Expr>, Arc<Expr>),
+    Xor(Arc<Self>, Arc<Self>),
     /// Logical implication (`A => B`).
-    Implies(Arc<Expr>, Arc<Expr>),
+    Implies(Arc<Self>, Arc<Self>),
     /// Logical equivalence (`A <=> B`).
-    Equivalent(Arc<Expr>, Arc<Expr>),
+    Equivalent(Arc<Self>, Arc<Self>),
     /// A predicate with a name and arguments.
     Predicate {
         /// The name of the predicate.
         name: String,
         /// The arguments to the predicate.
-        args: Vec<Expr>,
+        args: Vec<Self>,
     },
     /// Universal quantifier ("for all").
-    ForAll(String, Arc<Expr>),
+    ForAll(String, Arc<Self>),
     /// Existential quantifier ("there exists").
-    Exists(String, Arc<Expr>),
+    Exists(String, Arc<Self>),
     /// A union of sets or intervals.
-    Union(Vec<Expr>),
+    Union(Vec<Self>),
     /// An interval with a lower and upper bound, and flags for inclusion.
     Interval(
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
         bool,
         bool,
     ),
 
     // --- Polynomials & Number Theory ---
     /// A dense polynomial represented by its coefficients.
-    Polynomial(Vec<Expr>),
+    Polynomial(Vec<Self>),
     /// A sparse polynomial.
     SparsePolynomial(SparsePolynomial),
     /// The floor function.
-    Floor(Arc<Expr>),
+    Floor(Arc<Self>),
     /// A predicate to check if a number is prime.
-    IsPrime(Arc<Expr>),
+    IsPrime(Arc<Self>),
     /// Greatest Common Divisor (GCD).
-    Gcd(Arc<Expr>, Arc<Expr>),
+    Gcd(Arc<Self>, Arc<Self>),
     /// Modulo operation.
-    Mod(Arc<Expr>, Arc<Expr>),
+    Mod(Arc<Self>, Arc<Self>),
 
     // --- Solving & Substitution ---
     /// Represents the action of solving an equation for a variable.
-    Solve(Arc<Expr>, String),
+    Solve(Arc<Self>, String),
     /// Represents the substitution of a variable in an expression with another expression.
     Substitute(
-        Arc<Expr>,
+        Arc<Self>,
         String,
-        Arc<Expr>,
+        Arc<Self>,
     ),
     /// Represents a system of equations to be solved.
-    System(Vec<Expr>),
+    System(Vec<Self>),
     /// Represents the set of solutions to an equation or system.
-    Solutions(Vec<Expr>),
+    Solutions(Vec<Self>),
     /// A parametric solution, e.g., for a system of ODEs.
     ParametricSolution {
         /// The x-component of the parametric solution.
-        x: Arc<Expr>,
+        x: Arc<Self>,
         /// The y-component of the parametric solution.
-        y: Arc<Expr>,
+        y: Arc<Self>,
     },
     /// Represents the `i`-th root of a polynomial.
     RootOf {
         /// The polynomial to find the root of.
-        poly: Arc<Expr>,
+        poly: Arc<Self>,
         /// The index of the root (for polynomials with multiple roots).
         index: u32,
     },
@@ -547,7 +547,7 @@ pub enum Expr {
     /// An ordinary differential equation (ODE).
     Ode {
         /// The differential equation.
-        equation: Arc<Expr>,
+        equation: Arc<Self>,
         /// The unknown function name.
         func: String,
         /// The independent variable name.
@@ -556,38 +556,38 @@ pub enum Expr {
     /// A partial differential equation (PDE).
     Pde {
         /// The partial differential equation.
-        equation: Arc<Expr>,
+        equation: Arc<Self>,
         /// The unknown function name.
         func: String,
         /// The independent variable names.
         vars: Vec<String>,
     },
     /// The general solution to a differential equation.
-    GeneralSolution(Arc<Expr>),
+    GeneralSolution(Arc<Self>),
     /// A particular solution to a differential equation.
-    ParticularSolution(Arc<Expr>),
+    ParticularSolution(Arc<Self>),
 
     // --- Integral Equations ---
     /// A Fredholm integral equation.
     Fredholm(
-        Arc<Expr>,
-        Arc<Expr>,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
+        Arc<Self>,
+        Arc<Self>,
     ),
     /// A Volterra integral equation.
     Volterra(
-        Arc<Expr>,
-        Arc<Expr>,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
+        Arc<Self>,
+        Arc<Self>,
     ),
 
     // --- Miscellaneous ---
     /// Application of a function to an argument.
-    Apply(Arc<Expr>, Arc<Expr>),
+    Apply(Arc<Self>, Arc<Self>),
     /// A tuple of expressions.
-    Tuple(Vec<Expr>),
+    Tuple(Vec<Self>),
     /// A node in a Directed Acyclic Graph (DAG) for expression sharing.
     ///
     /// This is now the preferred representation for all expressions.
@@ -600,12 +600,12 @@ pub enum Expr {
     )]
     Distribution(Arc<dyn Distribution>),
     /// Maximum of two expressions.
-    Max(Arc<Expr>, Arc<Expr>),
+    Max(Arc<Self>, Arc<Self>),
     /// A unified quantity with its value and unit string.
     Quantity(Arc<UnitQuantity>),
     /// A temporary representation of a value with a unit string, before unification.
     QuantityWithValue(
-        Arc<Expr>,
+        Arc<Self>,
         String,
     ),
 
@@ -634,7 +634,7 @@ pub enum Expr {
                 instead."
     )]
     /// Deprecated: One-arc-argument custom operation.
-    CustomArcOne(Arc<Expr>),
+    CustomArcOne(Arc<Self>),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -642,7 +642,7 @@ pub enum Expr {
                 instead."
     )]
     /// Deprecated: Two-arc-argument custom operation.
-    CustomArcTwo(Arc<Expr>, Arc<Expr>),
+    CustomArcTwo(Arc<Self>, Arc<Self>),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -651,9 +651,9 @@ pub enum Expr {
     )]
     /// Deprecated: Three-arc-argument custom operation.
     CustomArcThree(
-        Arc<Expr>,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
+        Arc<Self>,
     ),
     #[deprecated(
         since = "0.1.18",
@@ -663,10 +663,10 @@ pub enum Expr {
     )]
     /// Deprecated: Four-arc-argument custom operation.
     CustomArcFour(
-        Arc<Expr>,
-        Arc<Expr>,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
+        Arc<Self>,
+        Arc<Self>,
     ),
     #[deprecated(
         since = "0.1.18",
@@ -676,11 +676,11 @@ pub enum Expr {
     )]
     /// Deprecated: Five-arc-argument custom operation.
     CustomArcFive(
-        Arc<Expr>,
-        Arc<Expr>,
-        Arc<Expr>,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
+        Arc<Self>,
+        Arc<Self>,
+        Arc<Self>,
     ),
 
     #[deprecated(
@@ -690,7 +690,7 @@ pub enum Expr {
                 instead."
     )]
     /// Deprecated: One-vector-argument custom operation.
-    CustomVecOne(Vec<Expr>),
+    CustomVecOne(Vec<Self>),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -698,7 +698,7 @@ pub enum Expr {
                 instead."
     )]
     /// Deprecated: Two-vector-argument custom operation.
-    CustomVecTwo(Vec<Expr>, Vec<Expr>),
+    CustomVecTwo(Vec<Self>, Vec<Self>),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -707,9 +707,9 @@ pub enum Expr {
     )]
     /// Deprecated: Three-vector-argument custom operation.
     CustomVecThree(
-        Vec<Expr>,
-        Vec<Expr>,
-        Vec<Expr>,
+        Vec<Self>,
+        Vec<Self>,
+        Vec<Self>,
     ),
     #[deprecated(
         since = "0.1.18",
@@ -719,10 +719,10 @@ pub enum Expr {
     )]
     /// Deprecated: Four-vector-argument custom operation.
     CustomVecFour(
-        Vec<Expr>,
-        Vec<Expr>,
-        Vec<Expr>,
-        Vec<Expr>,
+        Vec<Self>,
+        Vec<Self>,
+        Vec<Self>,
+        Vec<Self>,
     ),
     #[deprecated(
         since = "0.1.18",
@@ -732,11 +732,11 @@ pub enum Expr {
     )]
     /// Deprecated: Five-vector-argument custom operation.
     CustomVecFive(
-        Vec<Expr>,
-        Vec<Expr>,
-        Vec<Expr>,
-        Vec<Expr>,
-        Vec<Expr>,
+        Vec<Self>,
+        Vec<Self>,
+        Vec<Self>,
+        Vec<Self>,
+        Vec<Self>,
     ),
 
     // --- Dynamic/Generic Operations ---
@@ -775,7 +775,7 @@ pub enum Expr {
     ///     )),
     /// );
     /// ```
-    UnaryList(String, Arc<Expr>),
+    UnaryList(String, Arc<Self>),
     /// Generic binary operation identified by a name.
     ///
     /// This variant allows for extensible binary operations without modifying the `Expr` enum.
@@ -815,8 +815,8 @@ pub enum Expr {
     /// ```
     BinaryList(
         String,
-        Arc<Expr>,
-        Arc<Expr>,
+        Arc<Self>,
+        Arc<Self>,
     ),
     /// Generic n-ary operation identified by a name.
     ///
@@ -853,5 +853,5 @@ pub enum Expr {
     ///     ],
     /// );
     /// ```
-    NaryList(String, Vec<Expr>),
+    NaryList(String, Vec<Self>),
 }

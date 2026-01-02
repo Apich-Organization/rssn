@@ -4,10 +4,8 @@
 debug/
 target/
 Cargo.lock
-*.py
 *.tmp
 **/*.tmp
-**/*.py
 *.py
 *.js
 **/*.js
@@ -22,6 +20,8 @@ scc
 *.d
 *.rlib
 /vendor
+/build_artifacts_x86
+/build_artifacts
 /src/vendor
 
 **/*.exe
@@ -37,6 +37,7 @@ scc
 *.txt
 *.csv
 *.npy
+/tmp
 
 /node_modules
 

@@ -42,8 +42,8 @@ fn test_fredholm_neumann_series() {
             f_x,
             lambda,
             kernel,
-            lower,
-            upper,
+            lower_bound: lower,
+            upper_bound: upper,
             var_x: "x".to_string(),
             var_t: "t".to_string(),
         },
@@ -102,8 +102,8 @@ fn test_fredholm_separable_kernel() {
             f_x,
             lambda,
             kernel,
-            lower,
-            upper,
+            lower_bound: lower,
+            upper_bound: upper,
             var_x: "x".to_string(),
             var_t: "t".to_string(),
         },
@@ -115,8 +115,8 @@ fn test_fredholm_separable_kernel() {
 
     let solution = eq
         .solve_separable_kernel(
-            a_funcs,
-            b_funcs,
+            &a_funcs,
+            &b_funcs,
         )
         .unwrap();
 
@@ -192,7 +192,7 @@ fn test_volterra_successive_approximations()
             f_x,
             lambda,
             kernel,
-            lower,
+            lower_bound: lower,
             var_x: "x".to_string(),
             var_t: "t".to_string(),
         },

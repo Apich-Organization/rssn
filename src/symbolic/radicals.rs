@@ -214,7 +214,7 @@ pub fn denest_sqrt(
     expr.clone()
 }
 
-fn apply_denesting(
+pub(crate) fn apply_denesting(
     a: Expr,
     b: Expr,
     c: Expr,

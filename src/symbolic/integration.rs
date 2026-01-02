@@ -1160,7 +1160,7 @@ pub(crate) fn expr_to_rational_poly(
 
 /// Helper to substitute an expression with a variable name
 
-fn substitute_expr_for_var(
+pub(crate) fn substitute_expr_for_var(
     expr: &Expr,
     target: &Expr,
     var_name: &str,

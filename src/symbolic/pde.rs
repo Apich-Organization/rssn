@@ -668,7 +668,7 @@ pub fn classify_pde_heuristic(
 
 /// Check if a PDE is linear (no products of u with itself or its derivatives)
 
-fn check_linearity(
+pub(crate) fn check_linearity(
     equation: &Expr,
     func: &str,
 ) -> bool {

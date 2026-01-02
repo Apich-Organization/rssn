@@ -601,7 +601,7 @@ pub fn riemann_tensor(
     Ok(riemann)
 }
 
-fn invert_mat_num(
+pub(crate) fn invert_mat_num(
     mat: &[Vec<f64>]
 ) -> Result<Vec<Vec<f64>>, String> {
 

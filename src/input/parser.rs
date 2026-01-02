@@ -30,7 +30,9 @@ use crate::symbolic::core::PathType;
 
 /// Checks if a character is a valid identifier character.
 
-fn is_identifier_char(c: char) -> bool {
+pub(crate) fn is_identifier_char(
+    c: char
+) -> bool {
 
     c.is_alphanumeric()
         || c == '_'
@@ -488,7 +490,7 @@ pub(crate) fn parse_function_call(
     // println!("Parsed function name: {}", func_name);
     let (input, args) = delimited(
         char('('),
-        separated_list1(
+        nom::multi::separated_list0(
             delimited(
                 multispace0,
                 char(','),
@@ -1060,6 +1062,24 @@ pub(crate) fn parse_function_call(
                     Arc::new(args[0].clone()),
                     Arc::new(args[1].clone()),
                 ),
+            ))
+        },
+        | "volume_integral" => {
+            Ok((
+                input,
+                Expr::VolumeIntegral {
+                    scalar_field : Arc::new(args[0].clone()),
+                    volume : Arc::new(args[1].clone()),
+                },
+            ))
+        },
+        | "surface_integral" => {
+            Ok((
+                input,
+                Expr::SurfaceIntegral {
+                    vector_field : Arc::new(args[0].clone()),
+                    surface : Arc::new(args[1].clone()),
+                },
             ))
         },
         | "parametric_solution" => {
@@ -2084,8 +2104,10 @@ pub(crate) fn parse_variable(
         identifier_name,
         |s: &str| {
 
-            // If the identifier contains a quote, treat it as a Predicate (e.g., y'', y')
-            if s.contains('\'') {
+            // If the identifier contains a quote or underscore, treat it as a Predicate (e.g., y', u_xx)
+            if s.contains('\'')
+                || s.contains('_')
+            {
 
                 Expr::Predicate {
                     name: s.to_string(),
@@ -2318,25 +2340,57 @@ mod tests {
 
     fn test_parse_bigint() {
 
+        fn print_type_of<T>(_: &T) {
+
+            println!(
+                "{}",
+                std::any::type_name::<T>(
+                )
+            );
+        }
+
         let expected = Expr::Neg(
             Arc::new(Expr::BigInt(
                 BigInt::from(456),
             )),
         );
 
+        let aa = parse_expr("123");
+
+        print_type_of(&aa);
+
+        print_type_of(&aa.unwrap().1);
+
+        let bb = Expr::BigInt(
+            BigInt::from(123),
+        );
+
+        print_type_of(&bb);
+
+        print_type_of(&Expr::BigInt(
+            BigInt::from(123),
+        ));
+
         assert_eq!(
-            parse_expr("123"),
-            Ok((
-                "",
-                Expr::BigInt(
-                    BigInt::from(123)
+            parse_expr("123")
+                .expect(
+                    "Parse Expr \
+                     failed."
                 )
+                .1,
+            Expr::BigInt(BigInt::from(
+                123
             ))
         );
 
         assert_eq!(
-            parse_expr("-456"),
-            Ok(("", expected))
+            parse_expr("-456")
+                .expect(
+                    "Parse Expr \
+                     failed."
+                )
+                .1,
+            expected
         );
     }
 

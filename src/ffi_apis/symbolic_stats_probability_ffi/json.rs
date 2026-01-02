@@ -14,7 +14,7 @@ use crate::symbolic::stats_probability::StudentT;
 use crate::symbolic::stats_probability::Uniform; // Need CStr
 
 // Helper to safely convert JSON string to Expr
-fn parse_expr(
+pub(crate) fn parse_expr(
     json: *const c_char
 ) -> Option<Expr> {
 

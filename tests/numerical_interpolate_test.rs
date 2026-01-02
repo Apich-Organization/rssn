@@ -23,6 +23,36 @@ fn test_lagrange_basic() {
     );
 }
 
+// test cubic spline interpolation
+#[test]
+
+fn test_cubic_spline_reasonable() {
+
+    let points = vec![
+        (0.0, 0.0),
+        (1.0, 1.0),
+        (2.0, 0.0),
+    ];
+
+    let spline =
+        cubic_spline_interpolation(
+            &points,
+        )
+        .unwrap();
+
+    // Check that interpolated value is reasonable (between the y values)
+    let val = spline(0.5);
+
+    println!("val: {}", val);
+
+    assert!(
+        (spline(0.5) - 0.6875).abs()
+            < 1e-9
+    );
+
+    assert!(val > 0.0 && val < 1.0);
+}
+
 #[test]
 
 fn test_cubic_spline_basic() {
