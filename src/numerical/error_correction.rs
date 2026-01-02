@@ -961,10 +961,17 @@ fn poly_derivative_gf256(
 
     // derivative of sum(a_i * x^i) is sum(i * a_i * x^{i-1})
     // In GF(2^8), i * a_i is 0 if i is even, a_i if i is odd.
-    for (i, &coeff) in poly.iter().enumerate().skip(1) {
+    for (i, &coeff) in poly
+        .iter()
+        .enumerate()
+        .skip(1)
+    {
+
         if i % 2 == 1 {
+
             result.push(coeff);
         } else {
+
             result.push(0);
         }
     }

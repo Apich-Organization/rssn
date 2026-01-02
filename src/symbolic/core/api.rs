@@ -29,7 +29,6 @@ use super::dag_mgr::DagOp;
 use super::expr::Expr;
 use super::expr::SparsePolynomial;
 
-
 impl AsRef<Self> for Expr {
     fn as_ref(&self) -> &Self {
 
@@ -43,6 +42,8 @@ macro_rules! unary_constructor {
         /// Creates a new
         #[doc = stringify!($op)]
         /// expression, managed by the DAG.
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<A>(a : A) -> Expr
         where
@@ -70,6 +71,8 @@ macro_rules! binary_constructor {
         /// Creates a new
         #[doc = stringify!($op)]
         /// expression, managed by the DAG.
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<A, B>(
             a : A,
@@ -105,6 +108,8 @@ macro_rules! n_ary_constructor {
         /// Creates a new
         #[doc = stringify!($op)]
         /// expression, managed by the DAG.
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<I, T>(elements : I) -> Expr
         where
@@ -150,6 +155,8 @@ macro_rules! unary_constructor_deprecated {
             since = "0.1.18",
             note = "Please use the 'UnaryList' variant instead."
         )]
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<A>(a : A) -> Expr
         where
@@ -188,6 +195,8 @@ macro_rules! binary_constructor_deprecated {
             since = "0.1.18",
             note = "Please use the 'BinaryList' variant instead."
         )]
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<A, B>(
             a : A,
@@ -233,6 +242,8 @@ macro_rules! n_ary_constructor_deprecated {
             since = "0.1.18",
             note = "Please use the 'NaryList' variant instead."
         )]
+        #[allow(clippy::inline_always)]
+        #[inline(always)]
 
         pub fn $name<I, T>(elements : I) -> Expr
         where
@@ -545,6 +556,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_constant(
         c: f64
@@ -567,6 +580,8 @@ impl Expr {
     /// # Panics
     /// Panics if the variable cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_variable(
         name: &str
@@ -589,6 +604,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_bigint(
         i: BigInt
@@ -609,6 +626,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_rational(
         r: BigRational
@@ -629,6 +648,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_pi() -> Self {
 
@@ -647,6 +668,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_e() -> Self {
 
@@ -665,6 +688,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_infinity() -> Self {
 
@@ -683,6 +708,8 @@ impl Expr {
     /// # Panics
     /// Panics if the value cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_negative_infinity()
     -> Self {
@@ -702,6 +729,8 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the matrix rows have inconsistent length or if elements cannot be created in the DAG.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_matrix<I, J, T>(
         elements: I
@@ -769,6 +798,8 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the predicate or its arguments cannot be created in the DAG.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_predicate<I, T>(
         name: &str,
@@ -806,6 +837,8 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the expression cannot be created in the DAG.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_forall<A>(
         var: &str,
@@ -837,6 +870,8 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the expression cannot be created in the DAG.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_exists<A>(
         var: &str,
@@ -868,6 +903,9 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the interval boundaries cannot be created in the DAG.
+
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_interval<A, B>(
         lower: A,
@@ -913,6 +951,8 @@ impl Expr {
     /// # Panics
     /// Panics if the polynomial cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_derivative<A>(
         function: A,
@@ -945,6 +985,8 @@ impl Expr {
     /// # Panics
     /// Panics if the polynomial cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_derivativen<A, B>(
         function: A,
@@ -988,6 +1030,8 @@ impl Expr {
     /// # Panics
     /// Panics if the polynomial cannot be created in the DAG.
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_sparse_polynomial(
         p: SparsePolynomial
@@ -1017,6 +1061,8 @@ impl Expr {
                 instead."
     )]
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_custom_zero() -> Self {
 
@@ -1041,6 +1087,8 @@ impl Expr {
                 instead."
     )]
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_custom_string(
         s: &str
@@ -1068,6 +1116,8 @@ impl Expr {
                 'NaryList' variant \
                 instead."
     )]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_custom_arc_three<
         A,
@@ -1119,6 +1169,8 @@ impl Expr {
                 'NaryList' variant \
                 instead."
     )]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_custom_arc_four<
         A,
@@ -1178,6 +1230,8 @@ impl Expr {
                 'NaryList' variant \
                 instead."
     )]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub fn new_custom_arc_five<
         A,
@@ -1256,8 +1310,9 @@ impl Expr {
     ///
     /// assert!(!ast_expr.is_dag());
     /// ```
-    #[inline]
     #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
 
     pub const fn is_dag(&self) -> bool {
 
@@ -1299,6 +1354,8 @@ impl Expr {
     ///
     /// assert!(dag.is_dag());
     /// ```
+
+    #[inline]
 
     pub fn to_dag(
         &self
@@ -1343,6 +1400,8 @@ impl Expr {
     /// assert!(expr.is_dag());
     /// ```
 
+    #[inline]
+
     pub fn to_dag_form(&mut self) {
 
         if let Ok(dag) = self.to_dag() {
@@ -1362,6 +1421,7 @@ impl Expr {
     ///
     /// # Errors
     /// Returns an error if conversion from DAG to AST fails.
+    #[inline]
 
     pub fn to_ast(
         &self
@@ -1455,6 +1515,9 @@ pub static DYNAMIC_OP_REGISTRY:
 /// );
 /// ```
 
+#[allow(clippy::inline_always)]
+#[inline(always)]
+
 pub fn register_dynamic_op(
     name: &str,
     props: DynamicOpProperties,
@@ -1514,6 +1577,8 @@ pub fn register_dynamic_op(
 /// );
 /// ```
 #[must_use]
+#[allow(clippy::inline_always)]
+#[inline(always)]
 
 pub fn get_dynamic_op_properties(
     name: &str
@@ -1878,7 +1943,6 @@ impl ToConstant for i64 {
     }
 }
 
-
 /// A unified numeric type capable of holding various primitive and arbitrary-precision numbers.
 /// This type is used internally for constant folding and numeric evaluation within the symbolic engine.
 #[derive(Debug, Clone)]
@@ -1896,7 +1960,9 @@ impl Number {
     /// Checks if the number is an integer (BigInteger variant).
     #[must_use]
 
-    pub const fn is_integer(&self) -> bool {
+    pub const fn is_integer(
+        &self
+    ) -> bool {
 
         matches!(
             self,
@@ -1907,12 +1973,11 @@ impl Number {
     /// Checks if the number is a floating-point number.
     #[must_use]
 
-    pub const fn is_float(&self) -> bool {
+    pub const fn is_float(
+        &self
+    ) -> bool {
 
-        matches!(
-            self,
-            Self::Float(_)
-        )
+        matches!(self, Self::Float(_))
     }
 
     /// Checks if the number is zero.
@@ -1946,7 +2011,8 @@ impl Number {
                 r.is_one()
             },
             | Self::Float(f) => {
-                (f.0 - 1.0).abs() < f64::EPSILON
+                (f.0 - 1.0).abs()
+                    < f64::EPSILON
             },
         }
     }
@@ -2023,7 +2089,10 @@ impl PartialEq for Number {
             | (
                 Self::Float(a),
                 Self::Float(b),
-            ) => (a.0 - b.0).abs() < f64::EPSILON,
+            ) => {
+                (a.0 - b.0).abs()
+                    < f64::EPSILON
+            },
             | (
                 Self::BigInteger(a),
                 Self::Rational(b),
@@ -2045,7 +2114,8 @@ impl PartialEq for Number {
                     | (
                         Some(a),
                         Some(b),
-                    ) => (a - b).abs() < f64::EPSILON,
+                    ) => (a - b).abs()
+                        < f64::EPSILON,
                     | _ => false,
                 }
             },
@@ -2236,9 +2306,7 @@ impl Add for Number {
                 Self::BigInteger(a),
                 Self::BigInteger(b),
             ) => {
-                Self::BigInteger(
-                    a + b,
-                )
+                Self::BigInteger(a + b)
             },
             | (Self::Float(a), b)
             | (b, Self::Float(a)) => {
@@ -2280,9 +2348,7 @@ impl Sub for Number {
                 Self::BigInteger(a),
                 Self::BigInteger(b),
             ) => {
-                Self::BigInteger(
-                    a - b,
-                )
+                Self::BigInteger(a - b)
             },
             | (Self::Float(a), b) => {
                 Self::Float(
@@ -2333,9 +2399,7 @@ impl Mul for Number {
                 Self::BigInteger(a),
                 Self::BigInteger(b),
             ) => {
-                Self::BigInteger(
-                    a * b,
-                )
+                Self::BigInteger(a * b)
             },
             | (Self::Float(a), b)
             | (b, Self::Float(a)) => {
@@ -2436,9 +2500,7 @@ impl Rem for Number {
                 Self::BigInteger(a),
                 Self::BigInteger(b),
             ) => {
-                Self::BigInteger(
-                    a % b,
-                )
+                Self::BigInteger(a % b)
             },
             | (a, b) => {
 

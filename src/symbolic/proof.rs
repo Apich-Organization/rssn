@@ -140,7 +140,9 @@ pub fn verify_equation_solution<
     true
 }
 
-pub(crate) fn unwrap_dag(expr: Expr) -> Expr {
+pub(crate) fn unwrap_dag(
+    expr: Expr
+) -> Expr {
 
     match expr {
         | Expr::Dag(node) => {

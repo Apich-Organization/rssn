@@ -291,7 +291,9 @@ pub fn expand(expr: Expr) -> Expr {
     ))
 }
 
-pub(crate) fn expand_internal(expr: Expr) -> Expr {
+pub(crate) fn expand_internal(
+    expr: Expr
+) -> Expr {
 
     match expr {
         | Expr::Dag(node) => {

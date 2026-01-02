@@ -4931,7 +4931,10 @@ pub fn limit_internal(
         return working_expr.clone();
     }
 
-    println!("DEBUG: limit_internal processing: {working_expr:?}");
+    println!(
+        "DEBUG: limit_internal \
+         processing: {working_expr:?}"
+    );
 
     println!(
         "DEBUG: working_expr variant: \

@@ -30,7 +30,9 @@ use crate::symbolic::core::PathType;
 
 /// Checks if a character is a valid identifier character.
 
-pub(crate) fn is_identifier_char(c: char) -> bool {
+pub(crate) fn is_identifier_char(
+    c: char
+) -> bool {
 
     c.is_alphanumeric()
         || c == '_'

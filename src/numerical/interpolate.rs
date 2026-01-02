@@ -170,8 +170,13 @@ pub fn cubic_spline_interpolation(
 
         alpha[i] = (3.0f64 / h[i])
             .mul_add(
-                points[i + 1].1 - points[i].1,
-                -(3.0f64 / h[i - 1]) * (points[i].1 - points[i - 1].1),
+                points[i + 1].1
+                    - points[i].1,
+                -(3.0f64 / h[i - 1])
+                    * (points[i].1
+                        - points
+                            [i - 1]
+                            .1),
             );
     }
 
@@ -185,11 +190,17 @@ pub fn cubic_spline_interpolation(
     for i in 1 .. n - 1 {
 
         // The diagonal element is 2*(h[i-1] + h[i])
-        l[i] = 2.0f64.mul_add(h[i - 1] + h[i], -(h[i - 1] * mu[i - 1]));
+        l[i] = 2.0f64.mul_add(
+            h[i - 1] + h[i],
+            -(h[i - 1] * mu[i - 1]),
+        );
 
         mu[i] = h[i] / l[i];
 
-        z[i] = h[i - 1].mul_add(-z[i - 1], alpha[i]) / l[i];
+        z[i] = h[i - 1].mul_add(
+            -z[i - 1],
+            alpha[i],
+        ) / l[i];
     }
 
     let mut c = vec![0.0; n];
@@ -201,10 +212,18 @@ pub fn cubic_spline_interpolation(
     // 3. Back-substitution
     for j in (0 .. n - 1).rev() {
 
-        c[j] = (mu[j] as f64).mul_add(-c[j + 1], z[j]);
+        c[j] = (mu[j] as f64)
+            .mul_add(-c[j + 1], z[j]);
 
-        b[j] = (points[j + 1].1 - points[j].1) / h[j]
-            - h[j] * 2.0f64.mul_add(c[j], c[j + 1]) / 3.0;
+        b[j] = (points[j + 1].1
+            - points[j].1)
+            / h[j]
+            - h[j]
+                * 2.0f64.mul_add(
+                    c[j],
+                    c[j + 1],
+                )
+                / 3.0;
 
         d[j] = (c[j + 1] - c[j])
             / (3.0 * h[j]);
@@ -236,7 +255,10 @@ pub fn cubic_spline_interpolation(
         let dx = x - points_owned[i].0;
 
         dx.mul_add(
-            dx.mul_add(dx.mul_add(d[i], c[i]), b[i]),
+            dx.mul_add(
+                dx.mul_add(d[i], c[i]),
+                b[i],
+            ),
             points_owned[i].1,
         )
     };

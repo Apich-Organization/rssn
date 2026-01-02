@@ -40,7 +40,7 @@
 //! simplifying `x^2` given the side-relation that `x^2 + y^2 - 1 = 0` (the unit circle).
 //!
 //! ```rust
-//!
+//! 
 //! use rssn::symbolic::cas_foundations::simplify_with_relations;
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::grobner::MonomialOrder;
@@ -355,7 +355,14 @@ pub mod symbolic;
 #[cfg(kani)]
 pub mod verification;
 
+// --- Useful Public Re-exports ---
 use std::sync::Arc;
+
+pub use crate::numerical::matrix::*;
+pub use crate::symbolic::calculus::*;
+pub use crate::symbolic::core::*;
+pub use crate::symbolic::matrix::*;
+pub use crate::symbolic::simplify_dag::*;
 
 /// Checks if an `Arc` has exclusive ownership (strong count is 1).
 ///
@@ -374,5 +381,6 @@ use std::sync::Arc;
 pub fn is_exclusive<T>(
     arc: &Arc<T>
 ) -> bool {
+
     Arc::strong_count(arc) == 1
 }
