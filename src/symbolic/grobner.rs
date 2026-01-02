@@ -212,9 +212,9 @@
 //! **Demo Four**
 //!
 //! ```rust
-//! //! Grobner Basis Computation Example
-//! //!
-//! //! This example demonstrates how to compute the Grobner basis for a system of
+//! // Grobner Basis Computation Example
+//! //
+//! // This example demonstrates how to compute the Grobner basis for a system of
 //! // polynomial equations using Buchberger's algorithm.
 //! //
 //! // We will compute the Grobner basis for the intersection of two circles:
