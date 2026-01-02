@@ -168,7 +168,6 @@ full = [
     "physics",
     "plugins",
     "compute",
-    "ffi_api",
     "ffi_blinding",
     "jit",
     "experimental",

@@ -22,22 +22,18 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           override: true
-          
+
       - name: Install System Dependencies for fontconfig & bench testing
-        run:
-          sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev linux-tools-common linux-tools-generic linux-tools-`uname -r`
+        run: sudo apt-get update && sudo apt-get install -y fontconfig libfontconfig1-dev linux-tools-common linux-tools-generic linux-tools-`uname -r`
 
       - name: Install Cargo flamegraph
-        run:
-          cargo install flamegraph
+        run: cargo install flamegraph
 
       - name: Build with full features
         run: cargo clippy --features full --verbose
-        continue-on-error: true
 
       - name: Test with full features
         run: cargo test --features full --verbose
-        continue-on-error: true
 
       - name: Flamegraph with full features
         run: cargo flamegraph --examples matrix_demo.rs
@@ -49,4 +45,3 @@ jobs:
 
       - name: Check docing
         run: cargo doc --all
-        continue-on-error: true

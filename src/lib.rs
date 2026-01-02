@@ -40,7 +40,7 @@
 //! simplifying `x^2` given the side-relation that `x^2 + y^2 - 1 = 0` (the unit circle).
 //!
 //! ```rust
-//! 
+//!
 //! use rssn::symbolic::cas_foundations::simplify_with_relations;
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::grobner::MonomialOrder;
@@ -265,14 +265,14 @@
     clippy::pedantic,
     clippy::nursery,
     clippy::single_call_fn,
+    missing_docs,
+    unsafe_code,
 )]
 // -------------------------------------------------------------------------
 // LEVEL 2: STYLE WARNINGS (Warn)
 // -------------------------------------------------------------------------
 #![warn(
     warnings,
-    missing_docs,
-    unsafe_code,
     // To avoid performance issues in hot paths
     clippy::expect_used,
     // To avoid simd optimization issues
@@ -289,8 +289,6 @@
     clippy::todo,
     // This is usually a sign of dead code --- but for development purposes, we will just warn it.
     clippy::used_underscore_binding,
-    // We think using self is less readable for this library.
-    clippy::use_self,
     clippy::unnecessary_safety_comment
 )]
 // -------------------------------------------------------------------------
@@ -376,6 +374,5 @@ use std::sync::Arc;
 pub fn is_exclusive<T>(
     arc: &Arc<T>
 ) -> bool {
-
     Arc::strong_count(arc) == 1
 }

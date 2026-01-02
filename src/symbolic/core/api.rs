@@ -1900,7 +1900,7 @@ impl Number {
 
         matches!(
             self,
-            Number::BigInteger(_)
+            Self::BigInteger(_)
         )
     }
 
@@ -1911,7 +1911,7 @@ impl Number {
 
         matches!(
             self,
-            Number::Float(_)
+            Self::Float(_)
         )
     }
 
@@ -1921,13 +1921,13 @@ impl Number {
     pub fn is_zero(&self) -> bool {
 
         match self {
-            | Number::BigInteger(i) => {
+            | Self::BigInteger(i) => {
                 i.is_zero()
             },
-            | Number::Rational(r) => {
+            | Self::Rational(r) => {
                 r.is_zero()
             },
-            | Number::Float(f) => {
+            | Self::Float(f) => {
                 f.0.abs() < f64::EPSILON
             },
         }
@@ -1939,13 +1939,13 @@ impl Number {
     pub fn is_one(&self) -> bool {
 
         match self {
-            | Number::BigInteger(i) => {
+            | Self::BigInteger(i) => {
                 i.is_one()
             },
-            | Number::Rational(r) => {
+            | Self::Rational(r) => {
                 r.is_one()
             },
-            | Number::Float(f) => {
+            | Self::Float(f) => {
                 (f.0 - 1.0).abs() < f64::EPSILON
             },
         }
@@ -1959,13 +1959,13 @@ impl Number {
     ) -> Option<f64> {
 
         match self {
-            | Number::BigInteger(i) => {
+            | Self::BigInteger(i) => {
                 i.to_f64()
             },
-            | Number::Rational(r) => {
+            | Self::Rational(r) => {
                 r.to_f64()
             },
-            | Number::Float(f) => {
+            | Self::Float(f) => {
                 Some(f.0)
             },
         }
@@ -1978,10 +1978,10 @@ impl Number {
     pub fn simplify(self) -> Self {
 
         match self {
-            | Number::Rational(r)
+            | Self::Rational(r)
                 if r.is_integer() =>
             {
-                Number::BigInteger(
+                Self::BigInteger(
                     r.to_integer(),
                 )
             },
@@ -1996,9 +1996,9 @@ impl Number {
     ) -> Option<BigRational> {
 
         match self {
-            Number::BigInteger(i) => Some(BigRational::from_integer(i)),
-            Number::Rational(r) => Some(r),
-            Number::Float(_) => None,
+            Self::BigInteger(i) => Some(BigRational::from_integer(i)),
+            Self::Rational(r) => Some(r),
+            Self::Float(_) => None,
         }
     }
 }
@@ -2013,24 +2013,24 @@ impl PartialEq for Number {
 
         match (self, other) {
             | (
-                Number::BigInteger(a),
-                Number::BigInteger(b),
+                Self::BigInteger(a),
+                Self::BigInteger(b),
             ) => a == b,
             | (
-                Number::Rational(a),
-                Number::Rational(b),
+                Self::Rational(a),
+                Self::Rational(b),
             ) => a == b,
             | (
-                Number::Float(a),
-                Number::Float(b),
+                Self::Float(a),
+                Self::Float(b),
             ) => (a.0 - b.0).abs() < f64::EPSILON,
             | (
-                Number::BigInteger(a),
-                Number::Rational(b),
+                Self::BigInteger(a),
+                Self::Rational(b),
             )
             | (
-                Number::Rational(b),
-                Number::BigInteger(a),
+                Self::Rational(b),
+                Self::BigInteger(a),
             ) => {
                 b.is_integer()
                     && b.numer() == a
@@ -2064,13 +2064,13 @@ impl PartialOrd for Number {
     {
 
         match (self, other) {
-            (Number::BigInteger(a), Number::BigInteger(b)) => a.partial_cmp(b),
-            (Number::Rational(a), Number::Rational(b)) => a.partial_cmp(b),
-            (Number::Float(a), Number::Float(b)) => a.partial_cmp(b),
-            (Number::BigInteger(a), Number::Rational(b)) => {
+            (Self::BigInteger(a), Self::BigInteger(b)) => a.partial_cmp(b),
+            (Self::Rational(a), Self::Rational(b)) => a.partial_cmp(b),
+            (Self::Float(a), Self::Float(b)) => a.partial_cmp(b),
+            (Self::BigInteger(a), Self::Rational(b)) => {
                 BigRational::from_integer(a.clone()).partial_cmp(b)
             }
-            (Number::Rational(a), Number::BigInteger(b)) => {
+            (Self::Rational(a), Self::BigInteger(b)) => {
                 a.partial_cmp(&BigRational::from_integer(b.clone()))
             }
             _ => {
@@ -2092,15 +2092,15 @@ impl fmt::Display for Number {
     ) -> fmt::Result {
 
         match self {
-            | Number::BigInteger(i) => {
+            | Self::BigInteger(i) => {
 
                 write!(f, "{i}")
             },
-            | Number::Rational(r) => {
+            | Self::Rational(r) => {
 
                 write!(f, "{r}")
             },
-            | Number::Float(fl) => {
+            | Self::Float(fl) => {
 
                 write!(f, "{}", fl.0)
             },
@@ -2130,21 +2130,21 @@ impl_from_int!(
 impl From<BigInt> for Number {
     fn from(i: BigInt) -> Self {
 
-        Number::BigInteger(i)
+        Self::BigInteger(i)
     }
 }
 
 impl From<BigRational> for Number {
     fn from(r: BigRational) -> Self {
 
-        Number::Rational(r).simplify()
+        Self::Rational(r).simplify()
     }
 }
 
 impl From<f32> for Number {
     fn from(f: f32) -> Self {
 
-        Number::Float(OrderedFloat(
+        Self::Float(OrderedFloat(
             f64::from(f),
         ))
     }
@@ -2153,7 +2153,7 @@ impl From<f32> for Number {
 impl From<f64> for Number {
     fn from(f: f64) -> Self {
 
-        Number::Float(OrderedFloat(f))
+        Self::Float(OrderedFloat(f))
     }
 }
 
@@ -2161,7 +2161,7 @@ impl ToConstant for Number {
     fn constant(&self) -> Expr {
 
         match self {
-            | Number::BigInteger(n) => {
+            | Self::BigInteger(n) => {
                 Expr::new_constant(
                     n.to_f64()
                         .unwrap_or(
@@ -2169,7 +2169,7 @@ impl ToConstant for Number {
                         ),
                 )
             },
-            | Number::Rational(n) => {
+            | Self::Rational(n) => {
                 Expr::new_constant(
                     n.to_f64()
                         .unwrap_or(
@@ -2177,7 +2177,7 @@ impl ToConstant for Number {
                         ),
                 )
             },
-            | Number::Float(n) => {
+            | Self::Float(n) => {
                 Expr::new_constant(n.0)
             },
         }
@@ -2188,17 +2188,17 @@ impl ToBigInt for Number {
     fn bigint(&self) -> Expr {
 
         match self {
-            | Number::BigInteger(n) => {
+            | Self::BigInteger(n) => {
                 Expr::new_bigint(
                     n.clone(),
                 )
             },
-            | Number::Rational(n) => {
+            | Self::Rational(n) => {
                 Expr::new_bigint(
                     n.to_integer(),
                 )
             },
-            | Number::Float(n) => {
+            | Self::Float(n) => {
                 Expr::new_bigint(
                     n.to_bigint()
                         .unwrap_or_else(
@@ -2214,9 +2214,9 @@ impl ToRational for Number {
     fn rational(&self) -> Expr {
 
         match self {
-            Number::BigInteger(n) => Expr::new_rational(BigRational::from_integer(n.clone())),
-            Number::Rational(n) => Expr::new_rational(n.clone()),
-            Number::Float(n) => Expr::new_rational(BigRational::from_float(n.0).unwrap_or_else(BigRational::zero)),
+            Self::BigInteger(n) => Expr::new_rational(BigRational::from_integer(n.clone())),
+            Self::Rational(n) => Expr::new_rational(n.clone()),
+            Self::Float(n) => Expr::new_rational(BigRational::from_float(n.0).unwrap_or_else(BigRational::zero)),
         }
     }
 }
@@ -2224,7 +2224,7 @@ impl ToRational for Number {
 // --- Arithmetic ---
 
 impl Add for Number {
-    type Output = Number;
+    type Output = Self;
 
     fn add(
         self,
@@ -2233,16 +2233,16 @@ impl Add for Number {
 
         match (self, other) {
             | (
-                Number::BigInteger(a),
-                Number::BigInteger(b),
+                Self::BigInteger(a),
+                Self::BigInteger(b),
             ) => {
-                Number::BigInteger(
+                Self::BigInteger(
                     a + b,
                 )
             },
-            | (Number::Float(a), b)
-            | (b, Number::Float(a)) => {
-                Number::Float(
+            | (Self::Float(a), b)
+            | (b, Self::Float(a)) => {
+                Self::Float(
                     a + OrderedFloat(
                         b.as_f64()
                             .unwrap_or(
@@ -2261,14 +2261,14 @@ impl Add for Number {
                     .into_rational()
                     .unwrap();
 
-                Number::from(ra + rb)
+                Self::from(ra + rb)
             },
         }
     }
 }
 
 impl Sub for Number {
-    type Output = Number;
+    type Output = Self;
 
     fn sub(
         self,
@@ -2277,15 +2277,15 @@ impl Sub for Number {
 
         match (self, other) {
             | (
-                Number::BigInteger(a),
-                Number::BigInteger(b),
+                Self::BigInteger(a),
+                Self::BigInteger(b),
             ) => {
-                Number::BigInteger(
+                Self::BigInteger(
                     a - b,
                 )
             },
-            | (Number::Float(a), b) => {
-                Number::Float(
+            | (Self::Float(a), b) => {
+                Self::Float(
                     a - OrderedFloat(
                         b.as_f64()
                             .unwrap_or(
@@ -2294,8 +2294,8 @@ impl Sub for Number {
                     ),
                 )
             },
-            | (a, Number::Float(b)) => {
-                Number::Float(
+            | (a, Self::Float(b)) => {
+                Self::Float(
                     OrderedFloat(
                         a.as_f64()
                             .unwrap_or(
@@ -2314,14 +2314,14 @@ impl Sub for Number {
                     .into_rational()
                     .unwrap();
 
-                Number::from(ra - rb)
+                Self::from(ra - rb)
             },
         }
     }
 }
 
 impl Mul for Number {
-    type Output = Number;
+    type Output = Self;
 
     fn mul(
         self,
@@ -2330,16 +2330,16 @@ impl Mul for Number {
 
         match (self, other) {
             | (
-                Number::BigInteger(a),
-                Number::BigInteger(b),
+                Self::BigInteger(a),
+                Self::BigInteger(b),
             ) => {
-                Number::BigInteger(
+                Self::BigInteger(
                     a * b,
                 )
             },
-            | (Number::Float(a), b)
-            | (b, Number::Float(a)) => {
-                Number::Float(
+            | (Self::Float(a), b)
+            | (b, Self::Float(a)) => {
+                Self::Float(
                     a * OrderedFloat(
                         b.as_f64()
                             .unwrap_or(
@@ -2358,14 +2358,14 @@ impl Mul for Number {
                     .into_rational()
                     .unwrap();
 
-                Number::from(ra * rb)
+                Self::from(ra * rb)
             },
         }
     }
 }
 
 impl Div for Number {
-    type Output = Number;
+    type Output = Self;
 
     fn div(
         self,
@@ -2374,14 +2374,14 @@ impl Div for Number {
 
         if other.is_zero() {
 
-            return Number::Float(
+            return Self::Float(
                 OrderedFloat(f64::NAN),
             );
         }
 
         match (self, other) {
-            | (Number::Float(a), b) => {
-                Number::Float(
+            | (Self::Float(a), b) => {
+                Self::Float(
                     a / OrderedFloat(
                         b.as_f64()
                             .unwrap_or(
@@ -2390,8 +2390,8 @@ impl Div for Number {
                     ),
                 )
             },
-            | (a, Number::Float(b)) => {
-                Number::Float(
+            | (a, Self::Float(b)) => {
+                Self::Float(
                     OrderedFloat(
                         a.as_f64()
                             .unwrap_or(
@@ -2410,14 +2410,14 @@ impl Div for Number {
                     .into_rational()
                     .unwrap();
 
-                Number::from(ra / rb)
+                Self::from(ra / rb)
             },
         }
     }
 }
 
 impl Rem for Number {
-    type Output = Number;
+    type Output = Self;
 
     fn rem(
         self,
@@ -2426,17 +2426,17 @@ impl Rem for Number {
 
         if other.is_zero() {
 
-            return Number::Float(
+            return Self::Float(
                 OrderedFloat(f64::NAN),
             );
         }
 
         match (self, other) {
             | (
-                Number::BigInteger(a),
-                Number::BigInteger(b),
+                Self::BigInteger(a),
+                Self::BigInteger(b),
             ) => {
-                Number::BigInteger(
+                Self::BigInteger(
                     a % b,
                 )
             },
@@ -2454,7 +2454,7 @@ impl Rem for Number {
                         f64::NAN,
                     );
 
-                Number::Float(
+                Self::Float(
                     OrderedFloat(
                         val_a % val_b,
                     ),
@@ -2465,19 +2465,19 @@ impl Rem for Number {
 }
 
 impl Neg for Number {
-    type Output = Number;
+    type Output = Self;
 
     fn neg(self) -> Self {
 
         match self {
-            | Number::BigInteger(i) => {
-                Number::BigInteger(-i)
+            | Self::BigInteger(i) => {
+                Self::BigInteger(-i)
             },
-            | Number::Rational(r) => {
-                Number::Rational(-r)
+            | Self::Rational(r) => {
+                Self::Rational(-r)
             },
-            | Number::Float(f) => {
-                Number::Float(-f)
+            | Self::Float(f) => {
+                Self::Float(-f)
             },
         }
     }
