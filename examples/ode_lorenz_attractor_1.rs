@@ -13,7 +13,7 @@ fn main() {
     // Lorenz attractor parameters
     let sigma = 10.0;
     let rho = 28.0;
-    let beta = 4.0 / 3.0;
+    let beta = 8.0 / 3.0;
 
     // Define the Lorenz system of ODEs as strings.
     // The solver expects variables y0, y1, y2, ... for the state vector
@@ -43,9 +43,9 @@ fn main() {
     // Initial conditions [x(0), y(0), z(0)]
     let y0 = &[0.0, 1.0, 1.05];
     // Time range
-    let x_range = (0.0, 50000.0);
+    let x_range = (0.0, 50.0);
     // Number of steps
-    let num_steps = 5000000;
+    let num_steps = 5000;
 
     println!("\nInitial Conditions: [x, y, z] = {:?}", y0);
     println!("Time Range: {:?}", x_range);
