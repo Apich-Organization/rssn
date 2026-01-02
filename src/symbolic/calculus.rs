@@ -4845,6 +4845,11 @@ pub fn limit(
 /// 3.  If substitution results in an indeterminate form, it applies transformations or L'Hopital's Rule.
 /// 4.  Falls back to specialized logic for rational functions at infinity.
 /// 5.  If all else fails, returns an unevaluated `Limit` expression.
+///
+/// # Panics
+///
+/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
+/// internal inconsistency in the expression representation.
 #[must_use]
 
 pub fn limit_internal(
@@ -4926,11 +4931,7 @@ pub fn limit_internal(
         return working_expr.clone();
     }
 
-    println!(
-        "DEBUG: limit_internal \
-         processing: {:?}",
-        working_expr
-    );
+    println!("DEBUG: limit_internal processing: {working_expr:?}");
 
     println!(
         "DEBUG: working_expr variant: \

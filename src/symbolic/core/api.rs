@@ -1896,7 +1896,7 @@ impl Number {
     /// Checks if the number is an integer (BigInteger variant).
     #[must_use]
 
-    pub fn is_integer(&self) -> bool {
+    pub const fn is_integer(&self) -> bool {
 
         matches!(
             self,
@@ -1907,7 +1907,7 @@ impl Number {
     /// Checks if the number is a floating-point number.
     #[must_use]
 
-    pub fn is_float(&self) -> bool {
+    pub const fn is_float(&self) -> bool {
 
         matches!(
             self,
@@ -1928,7 +1928,7 @@ impl Number {
                 r.is_zero()
             },
             | Number::Float(f) => {
-                f.0 == 0.0
+                f.0.abs() < f64::EPSILON
             },
         }
     }
@@ -1946,7 +1946,7 @@ impl Number {
                 r.is_one()
             },
             | Number::Float(f) => {
-                f.0 == 1.0
+                (f.0 - 1.0).abs() < f64::EPSILON
             },
         }
     }
@@ -2023,7 +2023,7 @@ impl PartialEq for Number {
             | (
                 Number::Float(a),
                 Number::Float(b),
-            ) => a == b,
+            ) => (a.0 - b.0).abs() < f64::EPSILON,
             | (
                 Number::BigInteger(a),
                 Number::Rational(b),
@@ -2045,12 +2045,7 @@ impl PartialEq for Number {
                     | (
                         Some(a),
                         Some(b),
-                    ) => OrderedFloat(
-                        a,
-                    )
-                        == OrderedFloat(
-                            b,
-                        ),
+                    ) => (a - b).abs() < f64::EPSILON,
                     | _ => false,
                 }
             },

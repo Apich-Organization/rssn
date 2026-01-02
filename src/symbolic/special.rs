@@ -780,7 +780,7 @@ pub fn bessel_j0(x: f64) -> f64 {
             57_568_490_411.0,
         );
 
-        return ans1 / ans2;
+        ans1 / ans2
     } else {
 
         // Asymptotic form
