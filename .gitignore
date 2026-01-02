@@ -6,7 +6,6 @@ target/
 Cargo.lock
 *.tmp
 **/*.tmp
-*.py
 *.js
 **/*.js
 *.json
@@ -275,3 +274,5 @@ src/prelude.rs.bak
 src/prelude.rs.bak.1
 formatted_demo01.md
 demo01.md
+test_cal.py
+adddocexample.py
