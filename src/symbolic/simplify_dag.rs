@@ -1316,7 +1316,9 @@ pub(crate) fn apply_rules_power(
     // x ^ 0 -> 1
 
     if is_zero_node(exp) {
-
+        if is_zero_node(base) || is_infinite_node(base) {
+            return Some(node.clone());
+        }
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(1.0),
@@ -1329,7 +1331,9 @@ pub(crate) fn apply_rules_power(
     // 1 ^ x -> 1
 
     if is_one_node(base) {
-
+        if is_infinite_node(exp) {
+            return Some(node.clone());
+        }
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(1.0),
@@ -1519,7 +1523,7 @@ pub(crate) fn apply_rules_div(
 
     if is_zero_node(lhs) {
 
-        if is_zero_node(rhs) {
+        if is_zero_node(rhs) || is_infinite_node(rhs) {
 
             return Some(node.clone());
         }
@@ -1593,16 +1597,29 @@ pub(crate) fn apply_rules_mul(
 
     // x * 0 -> 0
 
-    if is_zero_node(rhs)
-        || is_zero_node(lhs)
-    {
-
+    if is_zero_node(rhs) {
+        if is_infinite_node(lhs) {
+            return Some(node.clone());
+        }
         return Some(match DAG_MANAGER
             .get_or_create(
                 &Expr::Constant(0.0),
             ) {
             | Ok(node) => node,
-            | Err(_) => node.clone(), /* Return original if creation fails */
+            | Err(_) => node.clone(),
+        });
+    }
+
+    if is_zero_node(lhs) {
+        if is_infinite_node(rhs) {
+            return Some(node.clone());
+        }
+        return Some(match DAG_MANAGER
+            .get_or_create(
+                &Expr::Constant(0.0),
+            ) {
+            | Ok(node) => node,
+            | Err(_) => node.clone(),
         });
     }
 
@@ -2736,6 +2753,17 @@ pub(crate) fn is_zero_node(
             true
         },
         | _ => false, /* Default case returns false */
+    }
+}
+
+pub(crate) fn is_infinite_node(
+    node: &Arc<DagNode>
+) -> bool {
+    match &node.op {
+        | DagOp::Infinity
+        | DagOp::NegativeInfinity => true,
+        | DagOp::Constant(c) => c.0.is_infinite(),
+        | _ => false,
     }
 }
 

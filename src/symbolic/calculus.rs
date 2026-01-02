@@ -19,6 +19,8 @@ use crate::symbolic::core::PathType;
 use crate::symbolic::polynomial::is_polynomial;
 use crate::symbolic::polynomial::leading_coefficient;
 use crate::symbolic::polynomial::polynomial_degree;
+use crate::symbolic::simplify::is_infinite;
+use crate::symbolic::simplify::is_one;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 use crate::symbolic::solve::solve;
@@ -4853,7 +4855,6 @@ pub fn limit_internal(
 ) -> Expr {
 
     if depth > 7 {
-
         return Expr::Limit(
             Arc::new(expr.clone()),
             var.to_string(),
@@ -4861,11 +4862,17 @@ pub fn limit_internal(
         );
     }
 
-    let expr = &simplify(&expr.clone());
+    let simplified = simplify(&expr.clone());
+    let mut working_expr = &simplified;
+    let mut _unwrapped;
+    if let Expr::Dag(node) = working_expr {
+        _unwrapped = node.to_expr().expect("Dag to Expr in limit_internal");
+        working_expr = &_unwrapped;
+    }
 
     match to {
         | Expr::Infinity => {
-            match expr {
+            match working_expr {
                 | Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
 
                     return Expr::Infinity;
@@ -4883,7 +4890,7 @@ pub fn limit_internal(
             }
         },
         | Expr::NegativeInfinity => {
-            match expr {
+            match working_expr {
                 | Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
 
                     return Expr::BigInt(BigInt::zero());
@@ -4899,29 +4906,25 @@ pub fn limit_internal(
         | _ => {},
     }
 
-    if !contains_var(expr, var) {
+    if !contains_var(working_expr, var) {
 
-        return expr.clone();
+        return working_expr.clone();
     }
 
-    let val_at_point =
-        simplify(&evaluate_at_point(
-            expr, var, to,
-        ));
+    println!("DEBUG: limit_internal processing: {:?}", working_expr);
+    println!("DEBUG: working_expr variant: {}", match working_expr {
+        Expr::Div(_, _) => "Div",
+        Expr::Mul(_, _) => "Mul",
+        Expr::Add(_, _) => "Add",
+        Expr::Power(_, _) => "Power",
+        Expr::Sin(_) => "Sin",
+        Expr::Variable(_) => "Variable",
+        Expr::Dag(_) => "Dag",
+        _ => "Other",
+    });
 
-    if !matches!(
-        val_at_point,
-        Expr::Infinity
-            | Expr::NegativeInfinity
-    ) && !contains_var(
-        &val_at_point,
-        var,
-    ) {
-
-        return val_at_point;
-    }
-
-    match expr {
+    // --- Check for Indeterminate Forms ---
+    match working_expr {
         | Expr::Div(num, den) => {
 
             let num_limit =
@@ -4940,21 +4943,16 @@ pub fn limit_internal(
                     depth + 1,
                 );
 
+
             let is_num_zero =
                 is_zero(&num_limit);
 
             let is_den_zero =
                 is_zero(&den_limit);
 
-            let is_num_inf = matches!(
-                num_limit,
-                Expr::Infinity | Expr::NegativeInfinity
-            );
+            let is_num_inf = is_infinite(&num_limit);
 
-            let is_den_inf = matches!(
-                den_limit,
-                Expr::Infinity | Expr::NegativeInfinity
-            );
+            let is_den_inf = is_infinite(&den_limit);
 
             if (is_num_zero
                 && is_den_zero)
@@ -5005,15 +5003,8 @@ pub fn limit_internal(
                     depth + 1,
                 );
 
-            println!(
-                "Mul: a_limit={a_limit}, b_limit={b_limit}"
-            );
-
             if is_zero(&a_limit)
-                && matches!(
-                    b_limit,
-                    Expr::Infinity | Expr::NegativeInfinity
-                )
+                && is_infinite(&b_limit)
             {
 
                 // 0 * Inf -> L'Hopital on a / (1/b)
@@ -5040,10 +5031,7 @@ pub fn limit_internal(
                     depth + 1,
                 );
             } else if is_zero(&b_limit)
-                && matches!(
-                    a_limit,
-                    Expr::Infinity | Expr::NegativeInfinity
-                )
+                && is_infinite(&a_limit)
             {
 
                 // Inf * 0 -> L'Hopital on b / (1/a)
@@ -5090,29 +5078,14 @@ pub fn limit_internal(
                 );
 
             let is_base_one =
-                is_zero(&simplify(
-                    &Expr::new_sub(
-                        base_limit
-                            .clone(),
-                        Expr::BigInt(
-                            BigInt::one(
-                            ),
-                        ),
-                    ),
-                ));
+                is_one(&base_limit);
 
             let is_base_zero =
                 is_zero(&base_limit);
 
-            let is_base_inf = matches!(
-                base_limit,
-                Expr::Infinity | Expr::NegativeInfinity
-            );
+            let is_base_inf = is_infinite(&base_limit);
 
-            let is_exp_inf = matches!(
-                exp_limit,
-                Expr::Infinity | Expr::NegativeInfinity
-            );
+            let is_exp_inf = is_infinite(&exp_limit);
 
             let is_exp_zero =
                 is_zero(&exp_limit);
@@ -5154,12 +5127,29 @@ pub fn limit_internal(
         | _ => {},
     }
 
+    let val_at_point =
+        simplify(&evaluate_at_point(
+            working_expr, var, to,
+        ));
+
+    if !matches!(
+        val_at_point,
+        Expr::Infinity
+            | Expr::NegativeInfinity
+    ) && !contains_var(
+        &val_at_point,
+        var,
+    ) {
+
+        return val_at_point;
+    }
+
     if let Expr::Infinity
     | Expr::NegativeInfinity = to
     {
 
         if let Expr::Div(num, den) =
-            expr
+            working_expr
         {
 
             if is_polynomial(num, var)

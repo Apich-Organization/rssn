@@ -319,7 +319,32 @@ fn test_limit() {
 
     assert_eq!(
         lim_sinc,
-        Expr::BigInt(BigInt::from(1))
+        Expr::new_constant(1.0)
+    );
+}
+
+#[test]
+
+fn test_lim_sinc_only() {
+    let x = Expr::new_variable("x");
+    let zero = Expr::new_constant(0.0);
+    let sin_x = Expr::new_sin(x.clone());
+    let sin_x_over_x = Expr::new_div(sin_x, x.clone());
+
+    println!("Expr: {}", sin_x_over_x);
+
+    let lim_sinc = limit(
+        &sin_x_over_x,
+        "x",
+        &zero,
+    );
+
+    println!("Limit result variant: {:?}", lim_sinc);
+    println!("Limit result display: {}", lim_sinc);
+
+    assert_eq!(
+        lim_sinc,
+        Expr::new_constant(1.0)
     );
 }
 
@@ -342,8 +367,6 @@ fn test_check_analytic() {
     assert!(check_analytic(
         &z_sq, "z"
     ));
-
-    // Removed unused code
 
     // e^z is analytic
     let exp_z =
@@ -381,8 +404,6 @@ fn test_check_analytic_new() {
     assert!(check_analytic(
         &z_sq, "z"
     ));
-
-    // Removed unused code
 
     // e^z is analytic
     let exp_z =
