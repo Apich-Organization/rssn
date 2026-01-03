@@ -422,6 +422,7 @@ pub fn plot_series_2d(
             .map_err(|e| e.to_string())?
             .label(label)
             .legend(move |(x, y)| {
+
                 PathElement::new(
                     vec![
                         (x, y),

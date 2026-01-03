@@ -369,6 +369,7 @@ fn main() {
         // Scale up values for visibility in 3D plot
         let disp_viz = disp_magnitude
             .mapv(|v| {
+
                 v * 10.0 / max_disp
             });
 
@@ -400,6 +401,7 @@ fn main() {
         displacements
             .iter()
             .fold(0.0f64, |a, &b| {
+
                 a.max(b.abs())
             })
     );

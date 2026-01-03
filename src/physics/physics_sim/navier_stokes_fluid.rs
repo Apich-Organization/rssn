@@ -37,6 +37,296 @@ pub type NavierStokesOutput = Result<
     String,
 >;
 
+/// Solves the 2D Navier-Stokes equations for channel flow with an obstacle.
+/// Uses the projection method (Chorin 1968).
+///
+/// # Arguments
+/// * `nx` - Grid width.
+/// * `ny` - Grid height.
+/// * `re` - Reynolds number.
+/// * `dt` - Time step.
+/// * `n_iter` - Number of iterations.
+/// * `obstacle_mask` - A boolean mask where true indicates an obstacle (u=0).
+///
+/// # Returns
+/// Tuple of (u, v, p) arrays.
+
+pub fn run_channel_flow(
+    nx: usize,
+    _ny: usize,
+    re: f64,
+    dt: f64,
+    n_iter: usize,
+    obstacle_mask: &Array2<bool>,
+) -> NavierStokesOutput {
+
+    let n = nx;
+
+    let h = 1.0 / (n as f64 - 1.0);
+
+    let nu = 1.0 / re;
+
+    let mut u =
+        Array2::<f64>::zeros((n, n));
+
+    let mut v =
+        Array2::<f64>::zeros((n, n));
+
+    let mut p =
+        Array2::<f64>::zeros((n, n));
+
+    // Helper for indexing
+    let idx =
+        |i: usize, j: usize| j * n + i;
+
+    // Multigrid size
+    let mg_size = n;
+
+    for _iter in 0 .. n_iter {
+
+        let u_old = u.clone();
+
+        let v_old = v.clone();
+
+        // 1. Advection-Diffusion (Explicit) -> Intermediate Velocity (u*, v*)
+        // u_star = u_old + dt * ( - (u grad) u + nu laplacian u )
+        let mut u_star = u.clone();
+
+        let mut v_star = v.clone();
+
+        u_star
+            .as_slice_mut()
+            .expect("Contiguous array")
+            .par_iter_mut()
+            .zip(v_star.as_slice_mut().expect("Contiguous array").par_iter_mut())
+            .enumerate()
+            .for_each(|(id, (u_val, v_val))| {
+                let i = id % n;
+                let j = id / n;
+
+                // Skip boundaries and obstacles for now
+                if i == 0 || i == n - 1 || j == 0 || j == n - 1 || obstacle_mask[[j, i]] {
+                    return;
+                }
+
+                // Upwind Advection
+                let u_curr = u_old[[j, i]];
+                let v_curr = v_old[[j, i]];
+
+                let du_dx = if u_curr > 0.0 {
+                    u_curr - u_old[[j, i - 1]]
+                } else {
+                    u_old[[j, i + 1]] - u_curr
+                } / h;
+
+                let du_dy = if v_curr > 0.0 {
+                    u_curr - u_old[[j - 1, i]]
+                } else {
+                    u_old[[j + 1, i]] - u_curr
+                } / h;
+
+                let dv_dx = if u_curr > 0.0 {
+                    v_curr - v_old[[j, i - 1]]
+                } else {
+                    v_old[[j, i + 1]] - v_curr
+                } / h;
+
+                let dv_dy = if v_curr > 0.0 {
+                    v_curr - v_old[[j - 1, i]]
+                } else {
+                    v_old[[j + 1, i]] - v_curr
+                } / h;
+
+                // Diffusion (Central Difference)
+                let lap_u = (u_old[[j, i + 1]] - 2.0 * u_curr + u_old[[j, i - 1]]
+                    + u_old[[j + 1, i]] - 2.0 * u_curr + u_old[[j - 1, i]]) / (h * h);
+
+                let lap_v = (v_old[[j, i + 1]] - 2.0 * v_curr + v_old[[j, i - 1]]
+                    + v_old[[j + 1, i]] - 2.0 * v_curr + v_old[[j - 1, i]]) / (h * h);
+
+                *u_val = u_curr + dt * (-(u_curr * du_dx + v_curr * du_dy) + nu * lap_u);
+                *v_val = v_curr + dt * (-(u_curr * dv_dx + v_curr * dv_dy) + nu * lap_v);
+            });
+
+        // Apply BCs to u_star, v_star
+        // Inflow (Left)
+        for j in 0 .. n {
+
+            u_star[[j, 0]] = 1.0;
+
+            v_star[[j, 0]] = 0.0;
+        }
+
+        // Outflow (Right) - Zero Gradient
+        for j in 0 .. n {
+
+            u_star[[j, n - 1]] =
+                u_star[[j, n - 2]];
+
+            v_star[[j, n - 1]] =
+                v_star[[j, n - 2]];
+        }
+
+        // Walls (Top/Bottom) - We do Slip for channel here
+        for i in 0 .. n {
+
+            u_star[[0, i]] =
+                u_star[[1, i]]; // Slip
+            v_star[[0, i]] = 0.0;
+
+            u_star[[n - 1, i]] =
+                u_star[[n - 2, i]]; // Slip
+            v_star[[n - 1, i]] = 0.0;
+        }
+
+        // Obstacle - No Slip
+        for j in 0 .. n {
+
+            for i in 0 .. n {
+
+                if obstacle_mask[[j, i]]
+                {
+
+                    u_star[[j, i]] =
+                        0.0;
+
+                    v_star[[j, i]] =
+                        0.0;
+                }
+            }
+        }
+
+        // 2. Pressure Correction (Poisson Step)
+        // laplacian p = div(u*) / dt
+        let mut rhs_vec =
+            vec![0.0; n * n];
+
+        // Calculate Div U*
+        for j in 1 .. n - 1 {
+
+            for i in 1 .. n - 1 {
+
+                if obstacle_mask[[j, i]]
+                {
+
+                    continue;
+                }
+
+                let div = (u_star
+                    [[j, i + 1]]
+                    - u_star
+                        [[j, i - 1]])
+                    / (2.0 * h)
+                    + (v_star
+                        [[j + 1, i]]
+                        - v_star[[
+                            j - 1,
+                            i,
+                        ]])
+                        / (2.0 * h);
+
+                rhs_vec[idx(i, j)] =
+                    div / dt;
+            }
+        }
+
+        // Solve Poisson
+        // Note: Our MG solver expects "f" where "-laplacian u = f".
+        // Our equation is "laplacian p = R". So we pass "-R" as f.
+        for val in rhs_vec.iter_mut() {
+
+            *val = -*val;
+        }
+
+        let p_flat =
+            solve_poisson_2d_multigrid(
+                mg_size,
+                &rhs_vec,
+                2,
+            )?; // 2 V-cycles
+
+        // Copy back to P array
+        for j in 0 .. n {
+
+            for i in 0 .. n {
+
+                p[[j, i]] =
+                    p_flat[idx(i, j)];
+            }
+        }
+
+        // 3. Velocity Correction
+        // u_new = u* - dt * grad p
+        for j in 1 .. n - 1 {
+
+            for i in 1 .. n - 1 {
+
+                if obstacle_mask[[j, i]]
+                {
+
+                    u[[j, i]] = 0.0;
+
+                    v[[j, i]] = 0.0;
+
+                    continue;
+                }
+
+                let dp_dx = (p
+                    [[j, i + 1]]
+                    - p[[j, i - 1]])
+                    / (2.0 * h);
+
+                let dp_dy = (p
+                    [[j + 1, i]]
+                    - p[[j - 1, i]])
+                    / (2.0 * h);
+
+                u[[j, i]] = u_star
+                    [[j, i]]
+                    - dt * dp_dx;
+
+                v[[j, i]] = v_star
+                    [[j, i]]
+                    - dt * dp_dy;
+            }
+        }
+
+        // Re-apply BCs for u, v
+        // Inflow (Left)
+        for j in 0 .. n {
+
+            u[[j, 0]] = 1.0;
+
+            v[[j, 0]] = 0.0;
+        }
+
+        // Outflow (Right)
+        for j in 0 .. n {
+
+            u[[j, n - 1]] =
+                u[[j, n - 2]];
+
+            v[[j, n - 1]] =
+                v[[j, n - 2]];
+        }
+
+        // Walls (Top/Bottom)
+        for i in 0 .. n {
+
+            u[[0, i]] = u[[1, i]];
+
+            v[[0, i]] = 0.0;
+
+            u[[n - 1, i]] =
+                u[[n - 2, i]];
+
+            v[[n - 1, i]] = 0.0;
+        }
+    }
+
+    Ok((u, v, p))
+}
+
 /// Main solver for the 2D lid-driven cavity problem.
 ///
 /// # Errors

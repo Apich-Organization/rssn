@@ -3693,8 +3693,10 @@ pub mod output {
     pub use crate::output::plotting::plot_function_2d;
     pub use crate::output::plotting::plot_parametric_curve_3d;
     pub use crate::output::plotting::plot_surface_3d;
+    pub use crate::output::plotting::plot_surface_2d;
     pub use crate::output::plotting::plot_vector_field_2d;
     pub use crate::output::plotting::plot_vector_field_3d;
+    pub use crate::output::plotting::plot_series_2d;
 
     // crate::output::pretty_print exports:
     pub use crate::output::pretty_print::pretty_print;

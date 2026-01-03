@@ -201,6 +201,7 @@ fn main() {
             Some(plot_config),
         ) {
             | Ok(_) => {
+
                 println!(
                     "Successfully \
                      saved comparison \
@@ -209,6 +210,7 @@ fn main() {
                 )
             },
             | Err(e) => {
+
                 eprintln!(
                     "Failed to save \
                      plot: {}",

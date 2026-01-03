@@ -129,6 +129,7 @@ fn main() {
         // Run Solver Step
         // Note: solve_advection_2d returns the new state but doesn't update mesh automatically
         let bc = |i, j, w, h| {
+
             i == 0
                 || i == w - 1
                 || j == 0
