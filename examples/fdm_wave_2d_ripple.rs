@@ -202,6 +202,7 @@ fn fdm_grid_to_ndarray(
             (*w, *h)
         },
         | _ => {
+
             panic!("Expected a 2D grid")
         },
     };

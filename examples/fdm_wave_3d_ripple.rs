@@ -249,6 +249,7 @@ fn fdm_grid_3d_slice_to_array2(
             (*w, *h, *d)
         },
         | _ => {
+
             panic!("Expected a 3D grid")
         },
     };

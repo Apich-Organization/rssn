@@ -23,6 +23,16 @@ pub struct PlotConfig {
     pub mesh_color: RGBAColor,
     /// The number of samples to use when plotting.
     pub samples: usize,
+    /// The pitch for 3D plots (in radians).
+    pub pitch: f64,
+    /// The yaw for 3D plots (in radians).
+    pub yaw: f64,
+    /// The scale for 3D plots.
+    pub scale: f64,
+    /// The font size for labels (axis, legend).
+    pub label_font_size: u32,
+    /// The font size for the caption.
+    pub caption_font_size: u32,
 }
 
 impl Default for PlotConfig {
@@ -35,6 +45,11 @@ impl Default for PlotConfig {
             line_color: RED.to_rgba(),
             mesh_color: BLACK.mix(0.1),
             samples: 500,
+            pitch: 0.5,
+            yaw: 0.5,
+            scale: 0.7,
+            label_font_size: 20,
+            caption_font_size: 40,
         }
     }
 }
@@ -268,6 +283,177 @@ pub fn plot_function_2d(
 
     Ok(())
 }
+
+/// Plots multiple data series on a single 2D plot and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
+
+pub fn plot_series_2d(
+    series: &[(
+        String,
+        Vec<(f64, f64)>,
+    )],
+    path: &str,
+    config: Option<PlotConfig>,
+) -> Result<(), String> {
+
+    let conf =
+        config.unwrap_or_default();
+
+    let root = BitMapBackend::new(
+        path,
+        (
+            conf.width,
+            conf.height,
+        ),
+    )
+    .into_drawing_area();
+
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
+
+    if series.is_empty() {
+
+        return Err("No data series \
+                    provided"
+            .to_string());
+    }
+
+    // Find x and y ranges
+    let mut x_min = f64::INFINITY;
+
+    let mut x_max = f64::NEG_INFINITY;
+
+    let mut y_min = f64::INFINITY;
+
+    let mut y_max = f64::NEG_INFINITY;
+
+    for (_, data) in series {
+
+        for &(x, y) in data {
+
+            x_min = x_min.min(x);
+
+            x_max = x_max.max(x);
+
+            y_min = y_min.min(y);
+
+            y_max = y_max.max(y);
+        }
+    }
+
+    // Add padding
+    let x_pad = (x_max - x_min) * 0.05;
+
+    let y_pad = (y_max - y_min) * 0.1;
+
+    let x_range = (x_min - x_pad)
+        .. (x_max + x_pad);
+
+    let y_range = (y_min - y_pad)
+        .. (y_max + y_pad);
+
+    let mut chart = ChartBuilder::on(
+        &root,
+    )
+    .caption(
+        &conf.caption,
+        (
+            "sans-serif",
+            conf.caption_font_size,
+        )
+            .into_font(),
+    )
+    .margin(conf.label_font_size / 2)
+    .x_label_area_size(
+        conf.label_font_size * 2,
+    )
+    .y_label_area_size(
+        conf.label_font_size * 2,
+    )
+    .build_cartesian_2d(
+        x_range,
+        y_range,
+    )
+    .map_err(|e| e.to_string())?;
+
+    chart
+        .configure_mesh()
+        .light_line_style(
+            conf.mesh_color,
+        )
+        .label_style(
+            (
+                "sans-serif",
+                conf.label_font_size,
+            )
+                .into_font(),
+        )
+        .draw()
+        .map_err(|e| e.to_string())?;
+
+    let colors = [
+        &RED,
+        &BLUE,
+        &GREEN,
+        &CYAN,
+        &MAGENTA,
+        &YELLOW,
+        &BLACK,
+    ];
+
+    for (i, (label, data)) in series
+        .iter()
+        .enumerate()
+    {
+
+        let color =
+            colors[i % colors.len()];
+
+        chart
+            .draw_series(
+                LineSeries::new(
+                    data.clone(),
+                    color,
+                ),
+            )
+            .map_err(|e| e.to_string())?
+            .label(label)
+            .legend(move |(x, y)| {
+                PathElement::new(
+                    vec![
+                        (x, y),
+                        (x + 20, y),
+                    ],
+                    color,
+                )
+            });
+    }
+
+    chart
+        .configure_series_labels()
+        .background_style(
+            &WHITE.mix(0.8),
+        )
+        .border_style(&BLACK)
+        .label_font(
+            (
+                "sans-serif",
+                conf.label_font_size,
+            )
+                .into_font(),
+        )
+        .draw()
+        .map_err(|e| e.to_string())?;
+
+    root.present()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 
 /// Plots a 2D vector field and saves it to a file.
 ///
@@ -614,6 +800,7 @@ pub fn plot_surface_2d(
                 0.0 .. height as f64,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
