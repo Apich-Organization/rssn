@@ -196,8 +196,6 @@ pub fn solve_rk4<
 }
 
 /// Adaptive Runge-Kutta solver using Dormand-Prince 5(4).
-#[derive(Default)]
-
 pub struct DormandPrince54 {
     c: [f64; 7],
     a: [[f64; 6]; 6],
@@ -205,11 +203,15 @@ pub struct DormandPrince54 {
     b4: [f64; 7],
 }
 
+impl Default for DormandPrince54 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DormandPrince54 {
     /// Creates a new Dormand-Prince 5(4) solver.
-
     #[must_use]
-
     pub fn new() -> Self {
 
         Self {
