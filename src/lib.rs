@@ -319,6 +319,9 @@
     clippy::must_use_candidate
 )]
 
+#![doc(html_logo_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/logo.png")]
+#![doc(html_favicon_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/favicon.ico")]
+
 #[cfg(feature = "compute")]
 /// Computation engine and task management.
 pub mod compute;

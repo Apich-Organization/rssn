@@ -1,3 +1,6 @@
+
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/black_hole_orbits_rust.png)
+
 use std::fs::File;
 use std::io::Write;
 
