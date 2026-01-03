@@ -1,68 +1,110 @@
-use rssn::physics::physics_sim::ising_statistical;
-use plotters::prelude::*;
 use std::fs::File;
 use std::io::Read;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+use plotters::style::Color;
+use plotters::style::RED;
+use rssn::output::plotting::PlotConfig;
+use rssn::output::plotting::plot_series_2d;
+use rssn::physics::physics_sim::ising_statistical;
+
+fn main() -> Result<
+    (),
+    Box<dyn std::error::Error>,
+> {
+
     // 1. Run the simulation (this generates the CSV and NPY files)
-    ising_statistical::simulate_ising_phase_transition_scenario()?;
+    ising_statistical::simulate_ising_phase_transition_scenario()
+        .map_err(|e| e.to_string())?;
 
     // 2. Read the generated CSV file
-    let mut file = File::open("ising_magnetization_vs_temp.csv")?;
+    let mut file = File::open(
+        "ising_magnetization_vs_temp.\
+         csv",
+    )?;
+
     let mut contents = String::new();
+
     file.read_to_string(&mut contents)?;
 
     let mut data = Vec::new();
-    for line in contents.lines().skip(1) {
-        let parts: Vec<&str> = line.split(',').collect();
+
+    for line in contents
+        .lines()
+        .skip(1)
+    {
+
+        let parts: Vec<&str> = line
+            .split(',')
+            .collect();
+
         if parts.len() == 2 {
-            let temp: f64 = parts[0].parse()?;
-            let mag: f64 = parts[1].parse()?;
+
+            let temp: f64 =
+                parts[0].parse()?;
+
+            let mag: f64 =
+                parts[1].parse()?;
+
             data.push((temp, mag));
         }
     }
 
-    // 3. Plot Magnetization vs Temperature
-    let output_file = "ising_phase_transition.png";
-    let root = BitMapBackend::new(output_file, (800, 600)).into_drawing_area();
-    root.fill(&WHITE)?;
+    // 3. Plot Magnetization vs Temperature using rssn::output::plotting
+    let output_file =
+        "ising_phase_transition.png";
 
-    let mut chart = ChartBuilder::on(&root)
-        .caption("Ising Model 2D: Magnetization vs Temperature", ("sans-serif", 30).into_font())
-        .margin(10)
-        .x_label_area_size(40)
-        .y_label_area_size(40)
-        .build_cartesian_2d(0.0..4.5, 0.0..1.1)?;
+    let critical_temp_line = vec![
+        (2.269, 0.0),
+        (2.269, 1.0),
+    ];
 
-    chart.configure_mesh()
-        .x_desc("Temperature (T)")
-        .y_desc("Magnetization |M|")
-        .draw()?;
+    let series = vec![
+        (
+            "Magnetization".to_string(),
+            data,
+        ),
+        (
+            "Critical Temp (Tc ≈ 2.27)"
+                .to_string(),
+            critical_temp_line,
+        ),
+    ];
 
-    chart.draw_series(LineSeries::new(
-        data.clone(),
-        &RED,
-    ))?
-    .label("Magnetization")
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
-    
-    // Critical temperature for 2D Ising model is approx 2.269
-    chart.draw_series(std::iter::once(PathElement::new(
-        vec![(2.269, 0.0), (2.269, 1.0)],
-        BLACK.stroke_width(1).style_dash(),
-    )))?
-    .label("Critical Temp (Tc ≈ 2.27)")
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLACK.stroke_width(1).style_dash()));
+    let mut config =
+        PlotConfig::default();
 
-    chart.configure_series_labels()
-        .background_style(&WHITE.mix(0.8))
-        .border_style(&BLACK)
-        .draw()?;
+    config.caption = "Ising Model 2D: \
+                      Magnetization \
+                      vs Temperature"
+        .to_string();
 
-    root.present()?;
-    println!("Plot saved to {}", output_file);
+    config.width = 800;
 
-    println!("Simulation and plotting complete.");
+    config.height = 600;
+
+    config.line_color = RED.to_rgba(); // Base color, though plot_series_2d cycles colors
+
+    plot_series_2d(
+        &series,
+        output_file,
+        Some(config),
+    )
+    .map_err(|e| {
+        format!(
+            "Plotting error: {}",
+            e
+        )
+    })?;
+
+    println!(
+        "Plot saved to {}",
+        output_file
+    );
+
+    println!(
+        "Simulation and plotting \
+         complete."
+    );
 
     Ok(())
 }
