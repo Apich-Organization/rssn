@@ -32,6 +32,7 @@ fn main() {
         match parse_expr(input1) {
             | Ok(("", expr)) => expr,
             | Ok((rem, _)) => {
+
                 panic!(
                     "Unparsed input: \
                      '{}'",
@@ -39,6 +40,7 @@ fn main() {
                 )
             },
             | Err(e) => {
+
                 panic!(
                     "Failed to parse \
                      expression '{}': \
@@ -52,6 +54,7 @@ fn main() {
         match parse_expr(input2) {
             | Ok(("", expr)) => expr,
             | Ok((rem, _)) => {
+
                 panic!(
                     "Unparsed input: \
                      '{}'",
@@ -59,6 +62,7 @@ fn main() {
                 )
             },
             | Err(e) => {
+
                 panic!(
                     "Failed to parse \
                      expression '{}': \

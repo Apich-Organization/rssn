@@ -36,6 +36,7 @@ fn main() {
         {
             | Ok(("", expr)) => expr,
             | Ok((rem, _)) => {
+
                 panic!(
                     "Unparsed input \
                      for expression: \
@@ -44,6 +45,7 @@ fn main() {
                 )
             },
             | Err(e) => {
+
                 panic!(
                     "Failed to parse \
                      expression '{}': \
@@ -58,6 +60,7 @@ fn main() {
     ) {
         | Ok(("", expr)) => expr,
         | Ok((rem, _)) => {
+
             panic!(
                 "Unparsed input for \
                  relation: '{}'",
@@ -65,6 +68,7 @@ fn main() {
             )
         },
         | Err(e) => {
+
             panic!(
                 "Failed to parse \
                  relation '{}': {:?}",

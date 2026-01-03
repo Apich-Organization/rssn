@@ -70,7 +70,6 @@ pub enum OdeSolverMethod {
 ///
 ///
 /// ![Lorentz Attractor](../doc/ode_lorenz_attractor_3_fg.svg)
-///
 
 
 pub fn solve_ode_system(

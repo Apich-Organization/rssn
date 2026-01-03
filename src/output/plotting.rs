@@ -926,38 +926,82 @@ mod tests {
 /// # Errors
 ///
 /// This function will return an error if the plot cannot be created or saved.
+
 pub fn plot_3d_path_from_points(
     data: &[Vec<f64>],
     path: &str,
     config: Option<PlotConfig>,
 ) -> Result<(), String> {
-    let conf = config.unwrap_or_default();
 
-    let root = BitMapBackend::new(path, (conf.width, conf.height)).into_drawing_area();
-    root.fill(&WHITE).map_err(|e| e.to_string())?;
+    let conf =
+        config.unwrap_or_default();
+
+    let root = BitMapBackend::new(
+        path,
+        (
+            conf.width,
+            conf.height,
+        ),
+    )
+    .into_drawing_area();
+
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
 
     // Find the ranges for x, y, and z axes
-    let (mut x_min, mut x_max) = (f64::INFINITY, f64::NEG_INFINITY);
-    let (mut y_min, mut y_max) = (f64::INFINITY, f64::NEG_INFINITY);
-    let (mut z_min, mut z_max) = (f64::INFINITY, f64::NEG_INFINITY);
+    let (mut x_min, mut x_max) = (
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    );
+
+    let (mut y_min, mut y_max) = (
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    );
+
+    let (mut z_min, mut z_max) = (
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    );
 
     for point in data {
+
         if point.len() >= 3 {
+
             x_min = x_min.min(point[0]);
+
             x_max = x_max.max(point[0]);
+
             y_min = y_min.min(point[1]);
+
             y_max = y_max.max(point[1]);
+
             z_min = z_min.min(point[2]);
+
             z_max = z_max.max(point[2]);
         }
     }
 
-    let mut chart = ChartBuilder::on(&root)
-        .caption(&conf.caption, ("sans-serif", 40).into_font())
-        .build_cartesian_3d(x_min..x_max, z_min..z_max, y_min..y_max) // Note: y and z are swapped in plotters' 3D coordinate system
-        .map_err(|e| e.to_string())?;
+    let mut chart =
+        ChartBuilder::on(&root)
+            .caption(
+                &conf.caption,
+                ("sans-serif", 40)
+                    .into_font(),
+            )
+            .build_cartesian_3d(
+                x_min .. x_max,
+                z_min .. z_max,
+                y_min .. y_max,
+            ) // Note: y and z are swapped in plotters' 3D coordinate system
+            .map_err(|e| {
+                e.to_string()
+            })?;
 
-    chart.configure_axes().draw().map_err(|e| e.to_string())?;
+    chart
+        .configure_axes()
+        .draw()
+        .map_err(|e| e.to_string())?;
 
     chart
         .draw_series(LineSeries::new(
@@ -966,7 +1010,8 @@ pub fn plot_3d_path_from_points(
         ))
         .map_err(|e| e.to_string())?;
 
-    root.present().map_err(|e| e.to_string())?;
+    root.present()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -976,31 +1021,61 @@ pub fn plot_3d_path_from_points(
 /// # Errors
 ///
 /// This function will return an error if the plot cannot be created or saved.
+
 pub fn plot_heatmap_2d(
     data: &Array2<f64>,
     path: &str,
     config: Option<PlotConfig>,
 ) -> Result<(), String> {
-    let conf = config.unwrap_or_default();
-    let root = BitMapBackend::new(path, (conf.width, conf.height)).into_drawing_area();
-    root.fill(&WHITE).map_err(|e| e.to_string())?;
+
+    let conf =
+        config.unwrap_or_default();
+
+    let root = BitMapBackend::new(
+        path,
+        (
+            conf.width,
+            conf.height,
+        ),
+    )
+    .into_drawing_area();
+
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
 
     let (height, width) = data.dim();
 
     // Find min and max values for color mapping
     let mut min_val = f64::INFINITY;
+
     let mut max_val = f64::NEG_INFINITY;
+
     for &val in data.iter() {
+
         min_val = min_val.min(val);
+
         max_val = max_val.max(val);
     }
 
-    let mut chart = ChartBuilder::on(&root)
-        .caption(&conf.caption, ("sans-serif", 40).into_font())
-        .build_cartesian_2d(0..width as u32, 0..height as u32)
-        .map_err(|e| e.to_string())?;
+    let mut chart =
+        ChartBuilder::on(&root)
+            .caption(
+                &conf.caption,
+                ("sans-serif", 40)
+                    .into_font(),
+            )
+            .build_cartesian_2d(
+                0 .. width as u32,
+                0 .. height as u32,
+            )
+            .map_err(|e| {
+                e.to_string()
+            })?;
 
-    chart.configure_mesh().draw().map_err(|e| e.to_string())?;
+    chart
+        .configure_mesh()
+        .draw()
+        .map_err(|e| e.to_string())?;
 
     chart.draw_series(
         (0..width).flat_map(move |x| (0..height).map(move |y| {
@@ -1016,7 +1091,8 @@ pub fn plot_heatmap_2d(
         }))
     ).map_err(|e| e.to_string())?;
 
-    root.present().map_err(|e| e.to_string())?;
+    root.present()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
