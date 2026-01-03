@@ -27,6 +27,7 @@ fn main() {
         {
             | Ok(("", expr)) => expr,
             | Ok((rem, _)) => {
+
                 panic!(
                     "Unparsed input: \
                      '{}'",
@@ -34,6 +35,7 @@ fn main() {
                 )
             },
             | Err(e) => {
+
                 panic!(
                     "Failed to parse \
                      '{}': {:?}",

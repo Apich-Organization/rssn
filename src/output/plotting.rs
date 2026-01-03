@@ -536,6 +536,129 @@ pub fn plot_surface_3d(
     Ok(())
 }
 
+/// Plots a 2D array as a 3D surface plot and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
+
+pub fn plot_surface_2d(
+    data: &Array2<f64>,
+    path: &str,
+    config: Option<PlotConfig>,
+) -> Result<(), String> {
+
+    let conf =
+        config.unwrap_or_default();
+
+    let root = BitMapBackend::new(
+        path,
+        (
+            conf.width,
+            conf.height,
+        ),
+    )
+    .into_drawing_area();
+
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
+
+    let (height, width) = data.dim();
+
+    let mut min_val = f64::INFINITY;
+
+    let mut max_val = f64::NEG_INFINITY;
+
+    for &val in data.iter() {
+
+        min_val = min_val.min(val);
+
+        max_val = max_val.max(val);
+    }
+
+    // Add a bit of padding to the Z axis
+    let z_min = if (max_val - min_val)
+        .abs()
+        < 1e-9
+    {
+
+        min_val - 1.0
+    } else {
+
+        min_val
+            - (max_val - min_val) * 0.1
+    };
+
+    let z_max = if (max_val - min_val)
+        .abs()
+        < 1e-9
+    {
+
+        max_val + 1.0
+    } else {
+
+        max_val
+            + (max_val - min_val) * 0.1
+    };
+
+    let mut chart =
+        ChartBuilder::on(&root)
+            .caption(
+                &conf.caption,
+                ("sans-serif", 40)
+                    .into_font(),
+            )
+            .build_cartesian_3d(
+                0.0 .. width as f64,
+                z_min .. z_max,
+                0.0 .. height as f64,
+            )
+            .map_err(|e| {
+                e.to_string()
+            })?;
+
+    chart
+        .configure_axes()
+        .draw()
+        .map_err(|e| e.to_string())?;
+
+    chart
+        .draw_series(
+            SurfaceSeries::xoz(
+                (0 .. width)
+                    .map(|x| x as f64),
+                (0 .. height)
+                    .map(|y| y as f64),
+                |x, y| {
+
+                    let ix = (x
+                        as usize)
+                        .min(width - 1);
+
+                    let iy = (y
+                        as usize)
+                        .min(
+                            height - 1,
+                        );
+
+                    data[[iy, ix]]
+                },
+            )
+            .style(
+                conf.line_color
+                    .mix(0.5)
+                    .filled(),
+            ),
+        )
+        .map_err(|e| e.to_string())?;
+
+    root.present()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+
 /// Plots a 3D parametric curve (x(t), y(t), z(t)) and saves it to a file.
 ///
 /// # Errors
@@ -995,6 +1118,7 @@ pub fn plot_3d_path_from_points(
                 y_min .. y_max,
             ) // Note: y and z are swapped in plotters' 3D coordinate system
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
@@ -1054,7 +1178,17 @@ pub fn plot_heatmap_2d(
 
         min_val = min_val.min(val);
 
+        println!(
+            "min_val: {}",
+            min_val
+        );
+
         max_val = max_val.max(val);
+
+        println!(
+            "max_val: {}",
+            max_val
+        );
     }
 
     let mut chart =
@@ -1069,6 +1203,7 @@ pub fn plot_heatmap_2d(
                 0 .. height as u32,
             )
             .map_err(|e| {
+
                 e.to_string()
             })?;
 
@@ -1086,7 +1221,8 @@ pub fn plot_heatmap_2d(
                 0.5 // Avoid division by zero if all values are the same
             };
             // Use a blue-to-red color gradient
-            let color = HSLColor(240.0 - 240.0 * normalized, 1.0, 0.5);
+            // let color = HSLColor(240.0 - 240.0 * normalized, 1.0, 0.5);
+            let color = HSLColor(240.0 * normalized, 1.0, 0.5);
             Rectangle::new([(x as u32, y as u32), (x as u32 + 1, y as u32 + 1)], color.filled())
         }))
     ).map_err(|e| e.to_string())?;
