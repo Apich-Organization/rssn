@@ -98,6 +98,9 @@
 //! );
 //! ```
 //!
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_3d.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/ode_lorenz_attractor_1_fg.svg)
+
 //! This library is in active development. The API may change, and community
 //! contributions are welcome.
 
@@ -318,9 +321,12 @@
     clippy::no_effect_underscore_binding,
     clippy::must_use_candidate
 )]
-
-#![doc(html_logo_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/logo.png")]
-#![doc(html_favicon_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/favicon.ico")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/logo.png"
+)]
+#![doc(
+    html_favicon_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/favicon.ico"
+)]
 
 #[cfg(feature = "compute")]
 /// Computation engine and task management.

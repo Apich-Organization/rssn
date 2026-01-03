@@ -132,6 +132,7 @@ fn main() -> Result<
         ))?
         .label("Event Horizon (2M)")
         .legend(|(x, y)| {
+
             Circle::new(
                 (x, y),
                 5,
@@ -176,6 +177,7 @@ fn main() -> Result<
             )?
             .label(name)
             .legend(move |(x, y)| {
+
                 PathElement::new(
                     vec![
                         (x, y),

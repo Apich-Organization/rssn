@@ -1,9 +1,34 @@
-//! # Finite Volume Method (FVM) Module
+//! # Finite Volume Method (FVM) Solvers
 //!
-//! This module provides tools for solving partial differential equations, particularly
-//! those that can be expressed in a conservative form, like advection equations.
-//! It is well-suited for problems in fluid dynamics where the conservation of
-//! quantities like mass, momentum, and energy is crucial.
+//! This module implements Finite Volume Method (FVM) solvers for hyperbolic partial differential equations (PDEs),
+//! focusing on conservation laws. FVM is particularly well-suited for problems involving discontinuities (like shocks)
+//! and for ensuring that physical quantities (mass, momentum, energy) are strictly conserved locally and globally.
+//!
+//! # Overview
+//!
+//! The module provides a framework for simulating fluid dynamics and wave propagation problems on structured grids
+//! in 1D, 2D, and 3D. It discretizes the integral form of conservation laws, making it robust for calculating
+//! flows with high gradients.
+//!
+//! Key components include:
+//! - **Mesh Structures**: `Mesh` (1D), `Mesh2D`, and `Mesh3D` define the simulation domains composed of finite volumes (cells).
+//! - **Conservation Solvers**:
+//!     - **Linear Advection**: Solvers for 1D, 2D, and 3D advection equations using upwind schemes.
+//!     - **Non-Linear Equations**: `solve_burgers_1d` for Burgers' equation and `solve_shallow_water_1d` for shallow water equations.
+//! - **Numerical Fluxes**: Implementation of standard flux functions like `upwind_flux` and `lax_friedrichs_flux`.
+//! - **Limiters**: Includes `minmod` and `van_leer` limiters (foundational for constructing high-resolution schemes like MUSCL).
+//!
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_00.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_03.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_05.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_07.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_09.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_12.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_14.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_16.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_18.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_19.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_20.png)
 
 use rayon::prelude::*;
 use serde::Deserialize;

@@ -1,3 +1,25 @@
+//! # Navier-Stokes Fluid Simulation
+//!
+//! This module provides Computational Fluid Dynamics (CFD) solvers for incompressible, viscous fluid flow
+//! governed by the Navier-Stokes equations. It focuses on 2D simulations using standard numerical techniques
+//! for pressure-velocity coupling.
+//!
+//! # Overview
+//!
+//! The simulation engine primarily uses the projection method (Chorin, 1968) to decouple the velocity
+//! and pressure fields. This involves an intermediate velocity prediction followed by a pressure correction step
+//! to enforce the incompressibility constraint (continuity equation).
+//!
+//! Key features include:
+//! - **Stable Solvers**: Implements the projection method for stable time-stepping.
+//! - **Multigrid Acceleration**: Utilizes a geometric multigrid solver (V-cycles) for the pressure Poisson equation, critical for performance on fine grids.
+//! - **Parallel Computation**: Leverages `rayon` for parallelized grid operations (advection, diffusion updates).
+//! - **Diverse Scenarios**:
+//!     - **Channel Flow**: Simulates flow past obstacles with configurable Reynolds numbers.
+//!     - **Lid-Driven Cavity**: A classic CFD benchmark problem for testing internal flow and vortex formation.
+//!
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/karman_velocity_mag.png)
+
 use ndarray::Array2;
 use rayon::prelude::*;
 use serde::Deserialize;

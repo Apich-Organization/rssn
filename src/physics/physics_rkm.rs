@@ -1,3 +1,25 @@
+//! # Runge-Kutta ODE Solvers
+//!
+//! This module provides a collection of Runge-Kutta methods for solving systems of first-order
+//! Ordinary Differential Equations (ODEs). It includes both fixed-step and adaptive step-size
+//! algorithms to cater to different accuracy and performance requirements.
+//!
+//! # Overview
+//!
+//! Runge-Kutta methods are a family of implicit and explicit iterative methods used in temporal discretization
+//! for the approximate solutions of ordinary differential equations. This module focuses on explicit methods,
+//! which are suitable for non-stiff problems.
+//!
+//! Key components include:
+//! - **ODE System Interface**: The `OdeSystem` trait allows users to define their own differential equations.
+//! - **Fixed-Step Solvers**: `solve_rk4` implements the classic 4th-order Runge-Kutta method.
+//! - **Adaptive Solvers**:
+//!     - `DormandPrince54`: A high-order method (5th order with 4th order error estimate), often the default choice for general purposes.
+//!     - `CashKarp45`: A 5th order method with a 4th order embedded error estimate.
+//!     - `BogackiShampine23`: A 3rd order method with a 2nd order error estimate, efficient for lower accuracy needs.
+//!
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/rkm_solver_comparison.png)
+
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;

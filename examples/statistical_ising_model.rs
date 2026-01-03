@@ -90,6 +90,7 @@ fn main() -> Result<
         Some(config),
     )
     .map_err(|e| {
+
         format!(
             "Plotting error: {}",
             e
