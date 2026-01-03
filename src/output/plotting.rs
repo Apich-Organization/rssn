@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use ndarray::Array2;
 use num_traits::ToPrimitive;
 use plotters::prelude::*;
 
@@ -964,6 +965,56 @@ pub fn plot_3d_path_from_points(
             &conf.line_color,
         ))
         .map_err(|e| e.to_string())?;
+
+    root.present().map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Plots a 2D heat map from a 2D array of data and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
+pub fn plot_heatmap_2d(
+    data: &Array2<f64>,
+    path: &str,
+    config: Option<PlotConfig>,
+) -> Result<(), String> {
+    let conf = config.unwrap_or_default();
+    let root = BitMapBackend::new(path, (conf.width, conf.height)).into_drawing_area();
+    root.fill(&WHITE).map_err(|e| e.to_string())?;
+
+    let (height, width) = data.dim();
+
+    // Find min and max values for color mapping
+    let mut min_val = f64::INFINITY;
+    let mut max_val = f64::NEG_INFINITY;
+    for &val in data.iter() {
+        min_val = min_val.min(val);
+        max_val = max_val.max(val);
+    }
+
+    let mut chart = ChartBuilder::on(&root)
+        .caption(&conf.caption, ("sans-serif", 40).into_font())
+        .build_cartesian_2d(0..width as u32, 0..height as u32)
+        .map_err(|e| e.to_string())?;
+
+    chart.configure_mesh().draw().map_err(|e| e.to_string())?;
+
+    chart.draw_series(
+        (0..width).flat_map(move |x| (0..height).map(move |y| {
+            let val = data[[y, x]]; // ndarray is (row, col) which corresponds to (y, x)
+            let normalized = if max_val - min_val > 0.0 {
+                (val - min_val) / (max_val - min_val)
+            } else {
+                0.5 // Avoid division by zero if all values are the same
+            };
+            // Use a blue-to-red color gradient
+            let color = HSLColor(240.0 - 240.0 * normalized, 1.0, 0.5);
+            Rectangle::new([(x as u32, y as u32), (x as u32 + 1, y as u32 + 1)], color.filled())
+        }))
+    ).map_err(|e| e.to_string())?;
 
     root.present().map_err(|e| e.to_string())?;
 
