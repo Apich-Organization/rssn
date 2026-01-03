@@ -1,4 +1,21 @@
-
+//! # Geodesic Relativity Simulation
+//!
+//! This module provides tools for simulating geodesic motion in the spacetime of a Schwarzschild black hole.
+//! It calculates the paths of particles (orbits) and light rays by numerically integrating the geodesic equations
+//! derived from the Schwarzschild metric.
+//!
+//! # Overview
+//!
+//! The simulation assumes a spherically symmetric, non-rotating massive body (a Schwarzschild black hole).
+//! The dynamics are governed by the relativistic geodesic equations, which describe how massive particles and
+//! photons move under the influence of the black hole's curvature.
+//!
+//! Key features include:
+//! - **Effective Potential Calculation**: Helper methods to calculate the effective potential for analysis of orbits.
+//! - **ODE System Definition**: `SchwarzschildSystem` defines the equations of motion for use with numerical ODE solvers.
+//! - **Adaptive Integration**: Uses a high-order adaptive Runge-Kutta method (Dormand-Prince 5(4)) for precision.
+//! - **Scenario Simulation**: Pre-configured scenarios for stable orbits, plunging trajectories, and photon deflection.
+//!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/black_hole_orbits_rust.png)
 
 use std::fs::File;
