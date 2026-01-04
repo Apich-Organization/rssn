@@ -77,24 +77,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 💰 Sponsorship & Donations
-
-Scientific computing requires heavy resources for CI/CD, benchmarking, and cloud testing.
-You can support development via **GitHub Sponsors**.
-
-Enterprise sponsors will receive:
-
-* Priority support from the core maintainers
-* Ability to request features
-* Direct collaboration on integration needs
-
-Excess donations will be redirected to upstream Rust ecosystem projects (e.g., rust foundation) or community initiatives.
-
-**Updates**:
-Due to temporary issues, GitHub Sponsors is currently unavailable. If you would like to make a donation, please use PayPal to donate to [@panayang338](https://www.paypal.me/panayang338).
-
----
-
 ## 👥 Maintainers & Contributors
 
 * **Author**: [Pana Yang](https://github.com/panayang) (ORCID: 0009-0007-2600-0948, email: [Pana.Yang@hotmail.com](mailto:Pana.Yang@hotmail.com))
@@ -104,7 +86,7 @@ Due to temporary issues, GitHub Sponsors is currently unavailable. If you would 
   * Y. Li (Physics) ([xian1360685019@qq.com](mailto:xian1360685019@qq.com))
 * **Project Reviewer**: Z. Li
 * **Outside Collaborator**: Chahat Patel ([@chahat-101](https://github.com/chahat-101))
-* **Additional contributors**: Owen Yang ([yangguangyong@gmail.com](mailto:yangguangyong@gmail.com))
+* **Contributors**: Owen Yang ([yangguangyong@gmail.com](mailto:yangguangyong@gmail.com))
 
 ---
 
@@ -156,5 +138,3 @@ And also, as one of the mission of Apich, we will continue to test the edges of 
 I sincerely appreciate all of your patience and understanding, and I welcome any contribution from the community.
 
 --- Pana Yang
-
-

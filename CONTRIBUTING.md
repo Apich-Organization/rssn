@@ -60,7 +60,7 @@ That's it! You are now ready to start contributing.
    * Before creating a pull request, please always run:
 
      ```bash
-     cargo fmt --all
+     cargo +nightly fmt --all
      cargo clippy --all-targets -- -D warnings
      cargo test --all
      ```
